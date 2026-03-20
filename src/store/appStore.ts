@@ -15,6 +15,10 @@ interface AppState {
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
   toggleBacklogExpand: (backlogId: string) => void;
+  addBacklog: (name: string, parentId: string | null, treeId: string) => void;
+  deleteBacklog: (backlogId: string) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
+  deleteWorkItem: (workItemId: string) => void;
 }
 
 // Track expanded state separately so it doesn't clutter the model
