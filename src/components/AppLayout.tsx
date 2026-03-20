@@ -162,9 +162,10 @@ export default function AppLayout() {
         const targetTreeId = overData.treeId as string;
         if (sourceTreeId !== targetTreeId) {
           moveBacklogToTree(activeData.backlogId, targetTreeId, pos === 'on' ? overData.backlogId : null);
+        } else if (pos === 'on') {
+          moveBacklog(activeData.backlogId, overData.backlogId, sourceTreeId);
         } else {
-          const sameTreePos = pos === 'on' ? 'after' : pos;
-          reorderBacklogInList(activeData.backlogId, overData.backlogId, sameTreePos);
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, pos);
         }
       }
       return;
