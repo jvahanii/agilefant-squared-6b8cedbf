@@ -242,7 +242,7 @@ function TreeHeader({ treeId }: { treeId: string }) {
 
   const commitRename = () => {
     const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== name) {
+    if (trimmed && trimmed !== tree?.name) {
       renameBacklogTree(treeId, trimmed);
     }
     setIsRenaming(false);
