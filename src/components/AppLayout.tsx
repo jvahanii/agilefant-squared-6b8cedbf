@@ -65,6 +65,13 @@ export default function AppLayout() {
           }
           break;
         }
+        case 'p': {
+          e.preventDefault();
+          if (state.selectedWorkItemId) {
+            window.dispatchEvent(new CustomEvent('shortcut:edit-points'));
+          }
+          break;
+        }
         case 'F2': {
           e.preventDefault();
           if (state.selectedWorkItemId) {

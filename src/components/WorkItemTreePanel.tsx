@@ -36,7 +36,7 @@ function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: 
   );
 }
 
-function EditablePoints({ workItemId, points }: { workItemId: string; points?: number }) {
+function EditablePoints({ workItemId, points, editTrigger }: { workItemId: string; points?: number; editTrigger?: number }) {
   const updatePoints = useAppStore(s => s.updateWorkItemPoints);
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState('');
@@ -48,6 +48,13 @@ function EditablePoints({ workItemId, points }: { workItemId: string; points?: n
       inputRef.current?.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (editTrigger && editTrigger > 0) {
+      setValue(points != null && points > 0 ? String(points) : '');
+      setIsEditing(true);
+    }
+  }, [editTrigger]);
 
   const commit = () => {
     const num = parseInt(value, 10);
