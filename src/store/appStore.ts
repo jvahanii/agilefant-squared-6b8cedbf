@@ -450,6 +450,7 @@ export const useAppStore = create<AppState & {
         return {
           ...undo,
           backlogTrees: { ...state.backlogTrees, [id]: { id, name, rootBacklogIds: [] } },
+          treeOrder: [...state.treeOrder, id],
         };
       });
     },
