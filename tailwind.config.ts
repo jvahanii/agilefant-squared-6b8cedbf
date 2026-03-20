@@ -57,6 +57,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        panel: {
+          handle: "hsl(var(--panel-handle))",
+        },
+        tree: {
+          indent: "hsl(var(--tree-indent))",
+        },
+        drag: {
+          overlay: "hsl(var(--drag-overlay))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
