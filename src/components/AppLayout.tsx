@@ -228,7 +228,7 @@ export default function AppLayout() {
   }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
           <img src={agilefantLogo} alt="Agilefant" className="h-7 w-7" />
