@@ -125,6 +125,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [pointsEditTrigger, setPointsEditTrigger] = useState(0);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const isSelected = selectedWorkItemId === workItemId;
