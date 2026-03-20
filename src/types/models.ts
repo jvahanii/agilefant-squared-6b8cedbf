@@ -2,6 +2,7 @@ export interface WorkItem {
   id: string;
   title: string;
   description?: string;
+  points?: number;
   parentId: string | null;
   childrenIds: string[];
   /** Maps backlogTreeId -> backlogId */
