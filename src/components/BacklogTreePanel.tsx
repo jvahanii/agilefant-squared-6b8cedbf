@@ -76,9 +76,14 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const [renameValue, setRenameValue] = useState('');
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `backlog-drop-${backlogId}`,
     data: { type: 'backlog', backlogId, treeId: backlog?.treeId }
+  });
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `backlog-drag-${backlogId}`,
+    data: { type: 'backlog-reorder', backlogId, treeId: backlog?.treeId },
   });
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
