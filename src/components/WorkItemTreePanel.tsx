@@ -84,7 +84,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
 
   return (
     <div
-      ref={(node) => { setDragRef(node); setDropRef(node); }}
+      ref={combinedRef}
       style={style}
       className="animate-fade-in-up"
       {...attributes}
