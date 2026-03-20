@@ -236,7 +236,7 @@ function TreeHeader({ treeId }: { treeId: string }) {
   }, [isRenaming]);
 
   const startRename = () => {
-    setRenameValue(name);
+    setRenameValue(tree?.name ?? '');
     setIsRenaming(true);
   };
 
