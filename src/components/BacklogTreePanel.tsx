@@ -335,7 +335,7 @@ export function BacklogTreePanel() {
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {Object.values(backlogTrees).map((tree) => (
-          <TreeHeader key={tree.id} treeId={tree.id} name={tree.name} />
+          <TreeHeader key={tree.id} treeId={tree.id} />
         ))}
         {isAddingTree && (
           <div className="px-2 py-1 flex items-center gap-1.5">
