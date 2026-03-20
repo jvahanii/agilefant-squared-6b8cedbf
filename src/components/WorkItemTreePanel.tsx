@@ -36,7 +36,7 @@ function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: 
   );
 }
 
-function EditablePoints({ workItemId, points }: { workItemId: string; points?: number }) {
+function EditablePoints({ workItemId, points, editTrigger }: { workItemId: string; points?: number; editTrigger?: number }) {
   const updatePoints = useAppStore(s => s.updateWorkItemPoints);
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState('');
@@ -48,6 +48,13 @@ function EditablePoints({ workItemId, points }: { workItemId: string; points?: n
       inputRef.current?.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (editTrigger && editTrigger > 0) {
+      setValue(points != null && points > 0 ? String(points) : '');
+      setIsEditing(true);
+    }
+  }, [editTrigger]);
 
   const commit = () => {
     const num = parseInt(value, 10);
@@ -118,6 +125,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [pointsEditTrigger, setPointsEditTrigger] = useState(0);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const isSelected = selectedWorkItemId === workItemId;
@@ -143,14 +151,17 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     const handleAddChild = () => setIsAdding(true);
     const handleDelete = () => handleDeleteClick();
     const handleRename = () => startRename();
+    const handleEditPoints = () => setPointsEditTrigger(t => t + 1);
 
     window.addEventListener('shortcut:add-child-workitem', handleAddChild);
     window.addEventListener('shortcut:delete-selected', handleDelete);
     window.addEventListener('shortcut:rename-workitem', handleRename);
+    window.addEventListener('shortcut:edit-points', handleEditPoints);
     return () => {
       window.removeEventListener('shortcut:add-child-workitem', handleAddChild);
       window.removeEventListener('shortcut:delete-selected', handleDelete);
       window.removeEventListener('shortcut:rename-workitem', handleRename);
+      window.removeEventListener('shortcut:edit-points', handleEditPoints);
     };
   }, [isSelected, workItemId]);
 
@@ -274,7 +285,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               )}
             </span>
           )}
-          <EditablePoints workItemId={workItemId} points={item.points} />
+          <EditablePoints workItemId={workItemId} points={item.points} editTrigger={isSelected ? pointsEditTrigger : 0} />
           {!isRenaming && (
             <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
               <button
