@@ -1,19 +1,34 @@
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
 import { useAppStore } from '@/store/appStore';
+import { Undo2 } from 'lucide-react';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 
 export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
-  const moveBacklog = useAppStore(s => s.moveBacklog);
+  const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
+  const undo = useAppStore(s => s.undo);
+  const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Ctrl+Z / Cmd+Z keyboard shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
@@ -34,8 +49,13 @@ export default function AppLayout() {
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
       moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
+      // Reparent: drop a work item onto another work item to make it a child
+      if (activeData.workItemId !== overData.workItemId) {
+        reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
+      }
     }
-  }, [moveWorkItemToBacklog]);
+  }, [moveWorkItemToBacklog, reparentWorkItem]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -46,6 +66,21 @@ export default function AppLayout() {
           <h1 className="text-sm font-bold tracking-tight">
             Agilefant<sup className="text-xs text-primary">2</sup>
           </h1>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              className={`
+                w-8 h-8 flex items-center justify-center rounded-md transition-colors
+                ${undoStackLength > 0
+                  ? 'text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer'
+                  : 'text-muted-foreground/30 cursor-not-allowed'}
+              `}
+              onClick={undo}
+              disabled={undoStackLength === 0}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         {/* Main content */}

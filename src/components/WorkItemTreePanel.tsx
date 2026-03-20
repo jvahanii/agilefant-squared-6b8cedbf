@@ -1,8 +1,8 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from 'lucide-react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 
 function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: string) => void; onCancel: () => void; depth: number }) {
   const [value, setValue] = useState('');
@@ -44,20 +44,37 @@ interface WorkItemNodeProps {
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
+  const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
   const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
   const addWorkItem = useAppStore(s => s.addWorkItem);
   const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
   const [isAdding, setIsAdding] = useState(false);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
     data: { type: 'workitem', workItemId, treeId },
   });
 
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `workitem-drop-${workItemId}`,
+    data: { type: 'workitem-parent', workItemId, treeId, backlogId },
+  });
+
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  }, [setDragRef, setDropRef]);
+
   if (!item) return null;
 
   const hasChildren = item.childrenIds.length > 0;
+
+  // Build backlog label string
+  const backlogLabels = Object.entries(item.backlogAssignments)
+    .map(([, blId]) => backlogs[blId]?.name)
+    .filter(Boolean)
+    .join(', ');
 
   const style = transform ? {
     transform: CSS.Translate.toString(transform),
@@ -67,7 +84,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
 
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       style={style}
       className="animate-fade-in-up"
       {...attributes}
@@ -78,6 +95,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
           transition-all duration-150 ease-out group
           hover:bg-muted border border-transparent hover:border-border
           ${isDragging ? 'shadow-lg bg-card' : ''}
+          ${isOver && !isDragging ? 'drag-over' : ''}
         `}
         style={{ paddingLeft: `${depth * 20 + 12}px` }}
       >
@@ -97,8 +115,13 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             <FileText className="w-3.5 h-3.5 text-primary/50" />
           )}
         </button>
-        <span className="text-sm truncate flex-1">{item.title}</span>
-        <div className="hidden group-hover:flex items-center gap-0.5">
+        <span className="text-sm truncate flex-1">
+          {item.title}
+          {backlogLabels && (
+            <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
+          )}
+        </span>
+        <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={() => setIsAdding(true)}
@@ -120,7 +143,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
           )}
         </div>
         {hasChildren && (
-          <span className="text-xs text-muted-foreground tabular-nums group-hover:hidden">
+          <span className="text-xs text-muted-foreground tabular-nums group-hover:hidden shrink-0">
             {item.childrenIds.length}
           </span>
         )}
