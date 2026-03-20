@@ -306,7 +306,7 @@ function TreeHeader({ treeId }: {treeId: string;}) {
         ref={mergedRef}
         {...attributes}
         {...dropPointerProps}
-        className={`relative px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.12)] ring-2 ring-dashed ring-[hsl(var(--selection)/0.50)]' : ''}`}
+        className={`relative px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver && dropPosition === 'on' ? 'outline outline-2 outline-dashed outline-[hsl(var(--selection))] bg-[hsl(var(--selection)/0.12)]' : ''}`}
         onDoubleClick={startRename}
       >
         <DropIndicatorLine position={dropPosition} />
