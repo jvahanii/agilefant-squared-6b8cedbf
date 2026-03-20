@@ -1,5 +1,5 @@
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useState, useCallback, useEffect } from 'react';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
