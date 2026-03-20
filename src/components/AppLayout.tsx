@@ -172,7 +172,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklogToTree]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklog, moveBacklogToTree]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
