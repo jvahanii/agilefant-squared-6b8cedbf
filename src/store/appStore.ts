@@ -27,6 +27,9 @@ interface AppState extends DataSnapshot {
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  renameBacklog: (backlogId: string, name: string) => void;
+  renameWorkItem: (workItemId: string, title: string) => void;
+  updateWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -392,6 +395,33 @@ export const useAppStore = create<AppState & {
         removeRecursive(workItemId);
 
         return { ...undo, workItems: updatedItems };
+      });
+    },
+
+    renameBacklog: (backlogId, name) => {
+      set(state => {
+        const backlog = state.backlogs[backlogId];
+        if (!backlog || backlog.name === name) return state;
+        const undo = pushUndo(state);
+        return { ...undo, backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name } } };
+      });
+    },
+
+    renameWorkItem: (workItemId, title) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item || item.title === title) return state;
+        const undo = pushUndo(state);
+        return { ...undo, workItems: { ...state.workItems, [workItemId]: { ...item, title } } };
+      });
+    },
+
+    updateWorkItemPoints: (workItemId, points) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+        const undo = pushUndo(state);
+        return { ...undo, workItems: { ...state.workItems, [workItemId]: { ...item, points } } };
       });
     },
   };
