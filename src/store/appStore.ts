@@ -34,6 +34,7 @@ interface AppState extends DataSnapshot {
   deleteBacklogTree: (treeId: string) => void;
   renameBacklogTree: (treeId: string, name: string) => void;
   reorderBacklogInList: (backlogId: string, targetBacklogId: string, position: 'before' | 'after') => void;
+  moveBacklogToTree: (backlogId: string, targetTreeId: string, targetBacklogId: string | null) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
