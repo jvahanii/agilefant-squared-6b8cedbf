@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList } from 'lucide-react';
-import { useDroppable } from '@dnd-kit/core';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList, GripVertical } from 'lucide-react';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 interface BacklogNodeProps {
@@ -76,9 +76,14 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const [renameValue, setRenameValue] = useState('');
   const renameRef = useRef<HTMLInputElement>(null);
 
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `backlog-drop-${backlogId}`,
     data: { type: 'backlog', backlogId, treeId: backlog?.treeId }
+  });
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `backlog-drag-${backlogId}`,
+    data: { type: 'backlog-reorder', backlogId, treeId: backlog?.treeId },
   });
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
@@ -125,10 +130,16 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     setIsRenaming(false);
   };
 
+  const mergedRef = (node: HTMLElement | null) => {
+    setDropRef(node);
+    setDragRef(node);
+  };
+
   return (
-    <div className="animate-fade-in-up" style={{ animationDelay: `${depth * 40}ms` }}>
+    <div className={`animate-fade-in-up ${isDragging ? 'opacity-40' : ''}`} style={{ animationDelay: `${depth * 40}ms` }}>
       <div
-        ref={setNodeRef}
+        ref={mergedRef}
+        {...attributes}
         className={`
           flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
@@ -141,6 +152,9 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
         onClick={() => selectBacklog(backlogId, backlog.treeId)}
         onDoubleClick={(e) => {e.stopPropagation();startRename();}}>
         
+        <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
+          <GripVertical className="w-3 h-3" />
+        </span>
         <button
           className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           onClick={(e) => {

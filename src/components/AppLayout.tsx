@@ -23,6 +23,7 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
+  const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
@@ -115,6 +116,10 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const item = store.workItems[data.workItemId];
       setActiveDrag({ id: data.workItemId, type: 'workitem', title: item?.title ?? '' });
+    } else if (data?.type === 'backlog-reorder') {
+      const store = useAppStore.getState();
+      const backlog = store.backlogs[data.backlogId];
+      setActiveDrag({ id: data.backlogId, type: 'backlog', title: backlog?.name ?? '' });
     }
   }, []);
 
@@ -125,6 +130,13 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+
+    if (activeData?.type === 'backlog-reorder' && overData?.type === 'backlog') {
+      if (activeData.backlogId !== overData.backlogId) {
+        reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+      }
+      return;
+    }
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
       const sourceTreeId = activeData.treeId as string;
@@ -152,7 +164,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
