@@ -242,6 +242,16 @@ function TreeHeader({ treeId }: {treeId: string;}) {
   const [isAdding, setIsAdding] = useState(false);
   const renameRef = useRef<HTMLInputElement>(null);
 
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `tree-header-drop-${treeId}`,
+    data: { type: 'tree-header', treeId },
+  });
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: `tree-drag-${treeId}`,
+    data: { type: 'tree-reorder', treeId },
+  });
+
   useEffect(() => {
     if (isRenaming) {
       renameRef.current?.focus();
@@ -262,40 +272,51 @@ function TreeHeader({ treeId }: {treeId: string;}) {
     setIsRenaming(false);
   };
 
+  const mergedRef = (node: HTMLElement | null) => {
+    setDropRef(node);
+    setDragRef(node);
+  };
+
   return (
-    <div className="mb-4">
-      <div className="px-2 py-1 flex items-center justify-between group" onDoubleClick={startRename}>
-        {isRenaming ?
-        <input
-          ref={renameRef}
-          className="text-xs font-semibold uppercase tracking-wide bg-transparent border-b border-[hsl(var(--selection))] outline-none px-1 py-0.5 flex-1"
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitRename();
-            if (e.key === 'Escape') setIsRenaming(false);
-          }}
-          onBlur={commitRename} /> :
-
-
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+    <div className={`mb-4 ${isDragging ? 'opacity-40' : ''}`}>
+      <div
+        ref={mergedRef}
+        {...attributes}
+        className={`px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver ? 'bg-primary/10' : ''}`}
+        onDoubleClick={startRename}
+      >
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
+            <GripVertical className="w-3 h-3" />
+          </span>
+          {isRenaming ?
+          <input
+            ref={renameRef}
+            className="text-xs font-semibold uppercase tracking-wide bg-transparent border-b border-[hsl(var(--selection))] outline-none px-1 py-0.5 flex-1"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') setIsRenaming(false);
+            }}
+            onBlur={commitRename} /> :
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
             {tree?.name}
           </span>
-        }
+          }
+        </div>
         {!isRenaming &&
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
             <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={() => setIsAdding(true)}
             title="Add root list">
-            
               <Plus className="w-3.5 h-3.5" />
             </button>
             <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={() => deleteBacklogTree(treeId)}
             title="Delete list tree">
-            
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -309,10 +330,8 @@ function TreeHeader({ treeId }: {treeId: string;}) {
         depth={0}
         onSubmit={(n) => {addBacklog(n, null, treeId);setIsAdding(false);}}
         onCancel={() => setIsAdding(false)} />
-
       }
     </div>);
-
 }
 
 export function BacklogTreePanel() {
