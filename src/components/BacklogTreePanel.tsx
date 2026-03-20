@@ -218,46 +218,142 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
 }
 
-export function BacklogTreePanel() {
-  const backlogTrees = useAppStore((s) => s.backlogTrees);
+function TreeHeader({ treeId, name }: { treeId: string; name: string }) {
+  const renameBacklogTree = useAppStore((s) => s.renameBacklogTree);
+  const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
   const addBacklog = useAppStore((s) => s.addBacklog);
-  const [addingToTree, setAddingToTree] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const renameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isRenaming) {
+      renameRef.current?.focus();
+      renameRef.current?.select();
+    }
+  }, [isRenaming]);
+
+  const startRename = () => {
+    setRenameValue(name);
+    setIsRenaming(true);
+  };
+
+  const commitRename = () => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== name) {
+      renameBacklogTree(treeId, trimmed);
+    }
+    setIsRenaming(false);
+  };
 
   return (
-    <div className="h-full flex flex-col bg-sidebar">
-      <div className="p-4 pb-2">
-        
-
-        
-      </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
-        {Object.values(backlogTrees).map((tree) =>
-        <div key={tree.id} className="mb-4">
-            <div className="px-2 py-1 flex items-center justify-between group">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {tree.name}
-              </span>
-              <button
-              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
-              onClick={() => setAddingToTree(tree.id)}
-              title="Add root list">
-              
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            {tree.rootBacklogIds.map((backlogId) =>
-          <BacklogNode key={backlogId} backlogId={backlogId} depth={0} />
-          )}
-            {addingToTree === tree.id &&
-          <InlineInput
-            depth={0}
-            onSubmit={(name) => {addBacklog(name, null, tree.id);setAddingToTree(null);}}
-            onCancel={() => setAddingToTree(null)} />
-
-          }
+    <div className="mb-4">
+      <div className="px-2 py-1 flex items-center justify-between group" onDoubleClick={startRename}>
+        {isRenaming ? (
+          <input
+            ref={renameRef}
+            className="text-xs font-semibold uppercase tracking-wide bg-transparent border-b border-[hsl(var(--selection))] outline-none px-1 py-0.5 flex-1"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') setIsRenaming(false);
+            }}
+            onBlur={commitRename}
+          />
+        ) : (
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            {name}
+          </span>
+        )}
+        {!isRenaming && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={() => setIsAdding(true)}
+              title="Add root list"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => deleteBacklogTree(treeId)}
+              title="Delete list tree"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
       </div>
-    </div>);
+      {useAppStore.getState().backlogTrees[treeId]?.rootBacklogIds.map((backlogId) => (
+        <BacklogNode key={backlogId} backlogId={backlogId} depth={0} />
+      ))}
+      {isAdding && (
+        <InlineInput
+          depth={0}
+          onSubmit={(n) => { addBacklog(n, null, treeId); setIsAdding(false); }}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
+    </div>
+  );
+}
 
+export function BacklogTreePanel() {
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
+  const addBacklogTree = useAppStore((s) => s.addBacklogTree);
+  const [isAddingTree, setIsAddingTree] = useState(false);
+  const [newTreeName, setNewTreeName] = useState('');
+  const newTreeRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAddingTree) {
+      newTreeRef.current?.focus();
+    }
+  }, [isAddingTree]);
+
+  const commitNewTree = () => {
+    const trimmed = newTreeName.trim();
+    if (trimmed) addBacklogTree(trimmed);
+    setNewTreeName('');
+    setIsAddingTree(false);
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-sidebar">
+      <div className="p-4 pb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">List Trees</span>
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          onClick={() => setIsAddingTree(true)}
+          title="Add list tree"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-4">
+        {Object.values(backlogTrees).map((tree) => (
+          <TreeHeader key={tree.id} treeId={tree.id} name={tree.name} />
+        ))}
+        {isAddingTree && (
+          <div className="px-2 py-1 flex items-center gap-1.5">
+            <LayoutList className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <input
+              ref={newTreeRef}
+              className="flex-1 text-xs font-semibold uppercase tracking-wide bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50"
+              placeholder="Tree name…"
+              value={newTreeName}
+              onChange={(e) => setNewTreeName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitNewTree();
+                if (e.key === 'Escape') { setNewTreeName(''); setIsAddingTree(false); }
+              }}
+              onBlur={commitNewTree}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
