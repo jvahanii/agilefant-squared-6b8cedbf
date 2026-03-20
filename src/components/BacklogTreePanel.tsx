@@ -1,7 +1,23 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList, GripVertical } from 'lucide-react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useDropPosition, DropPosition } from '@/hooks/useDropPosition';
+
+function DropIndicatorLine({ position, depth = 0 }: { position: DropPosition | null; depth?: number }) {
+  if (!position || position === 'on') return null;
+  return (
+    <div
+      className="absolute left-0 right-0 z-10 pointer-events-none"
+      style={{
+        [position === 'before' ? 'top' : 'bottom']: -1,
+        paddingLeft: `${depth * 16 + 8}px`,
+      }}
+    >
+      <div className="h-0.5 bg-[hsl(var(--selection))] rounded-full" />
+    </div>
+  );
+}
 
 interface BacklogNodeProps {
   backlogId: string;
