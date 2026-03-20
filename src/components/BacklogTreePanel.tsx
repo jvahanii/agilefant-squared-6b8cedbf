@@ -225,11 +225,11 @@ export function BacklogTreePanel() {
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
-      <div className="p-4 pb-2">
-        
+      
 
-        
-      </div>
+
+
+      
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {Object.values(backlogTrees).map((tree) =>
         <div key={tree.id} className="mb-4">
