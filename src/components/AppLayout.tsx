@@ -23,9 +23,6 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
-  const addWorkItem = useAppStore(s => s.addWorkItem);
-  const addBacklog = useAppStore(s => s.addBacklog);
-  const deleteBacklog = useAppStore(s => s.deleteBacklog);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
@@ -54,32 +51,46 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       switch (e.key) {
-        case 'n': {
-          // N = new work item in selected backlog, Shift+N = new child backlog
+        case 'N': {
+          // Shift+N = add child of selected (backlog child or work item child)
           e.preventDefault();
-          if (e.shiftKey) {
-            if (state.selectedBacklogId && state.selectedTreeId) {
-              // Dispatch event for BacklogTreePanel to handle inline input
-              window.dispatchEvent(new CustomEvent('shortcut:add-backlog'));
-            }
-          } else {
-            if (state.selectedBacklogId && state.selectedTreeId) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
-            }
+          if (state.selectedWorkItemId) {
+            window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
+          } else if (state.selectedBacklogId) {
+            window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+          }
+          break;
+        }
+        case 'n': {
+          // N (no shift) = new root work item in selected backlog
+          e.preventDefault();
+          if (state.selectedBacklogId && state.selectedTreeId) {
+            window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
           }
           break;
         }
         case 'Delete':
         case 'Backspace': {
-          if (state.selectedBacklogId) {
+          // Delete the selected item (work item takes priority over backlog)
+          if (state.selectedWorkItemId) {
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent('shortcut:delete-backlog'));
+            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
+          } else if (state.selectedBacklogId) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
           }
           break;
         }
         case '?': {
           e.preventDefault();
           setShowShortcuts(s => !s);
+          break;
+        }
+        case 'Escape': {
+          // Deselect work item
+          if (state.selectedWorkItemId) {
+            useAppStore.getState().selectWorkItem(null);
+          }
           break;
         }
       }
@@ -245,9 +256,10 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const shortcuts = [
-    { keys: ['N'], description: 'New work item in selected backlog' },
-    { keys: ['Shift', 'N'], description: 'New child backlog under selected' },
-    { keys: ['Delete'], description: 'Delete selected backlog' },
+    { keys: ['N'], description: 'New root work item in selected backlog' },
+    { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
+    { keys: ['Del'], description: 'Delete selected item or backlog' },
+    { keys: ['Esc'], description: 'Deselect work item' },
     { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
     { keys: ['?'], description: 'Toggle this help' },
   ];

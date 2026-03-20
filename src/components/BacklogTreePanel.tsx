@@ -1,7 +1,7 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2 } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 interface BacklogNodeProps {
   backlogId: string;
@@ -39,6 +39,30 @@ function InlineInput({ onSubmit, onCancel, depth }: { onSubmit: (name: string) =
   );
 }
 
+/** Compute total points for a backlog (including descendant backlogs) */
+function useBacklogPoints(backlogId: string, treeId: string) {
+  const workItems = useAppStore(s => s.workItems);
+  const backlogs = useAppStore(s => s.backlogs);
+
+  return useMemo(() => {
+    // Collect this backlog + all descendant backlog IDs
+    const backlogIds = new Set<string>();
+    const collectBacklogs = (id: string) => {
+      backlogIds.add(id);
+      backlogs[id]?.childrenIds.forEach(collectBacklogs);
+    };
+    collectBacklogs(backlogId);
+
+    let total = 0;
+    Object.values(workItems).forEach(wi => {
+      if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
+        total += wi.points ?? 0;
+      }
+    });
+    return total;
+  }, [workItems, backlogs, backlogId, treeId]);
+}
+
 function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const backlog = useAppStore(s => s.backlogs[backlogId]);
   const selectedBacklogId = useAppStore(s => s.selectedBacklogId);
@@ -54,6 +78,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     data: { type: 'backlog', backlogId, treeId: backlog?.treeId },
   });
 
+  const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
+
   // Listen for keyboard shortcut events when this backlog is selected
   useEffect(() => {
     if (selectedBacklogId !== backlogId) return;
@@ -61,11 +87,11 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     const handleAddBacklog = () => setIsAdding(true);
     const handleDeleteBacklog = () => deleteBacklog(backlogId);
 
-    window.addEventListener('shortcut:add-backlog', handleAddBacklog);
-    window.addEventListener('shortcut:delete-backlog', handleDeleteBacklog);
+    window.addEventListener('shortcut:add-child-backlog', handleAddBacklog);
+    window.addEventListener('shortcut:delete-selected', handleDeleteBacklog);
     return () => {
-      window.removeEventListener('shortcut:add-backlog', handleAddBacklog);
-      window.removeEventListener('shortcut:delete-backlog', handleDeleteBacklog);
+      window.removeEventListener('shortcut:add-child-backlog', handleAddBacklog);
+      window.removeEventListener('shortcut:delete-selected', handleDeleteBacklog);
     };
   }, [selectedBacklogId, backlogId, deleteBacklog]);
 
@@ -81,7 +107,9 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
         className={`
           flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
-          ${isSelected ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-muted'}
+          ${isSelected
+            ? 'bg-primary/10 ring-1 ring-primary/30 text-foreground font-medium'
+            : 'hover:bg-muted'}
           ${isOver ? 'drag-over' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -102,7 +130,17 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
         </button>
         <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
         <span className="text-sm truncate flex-1">{backlog.name}</span>
-        <div className="hidden group-hover:flex items-center gap-0.5">
+        {totalPoints > 0 && (
+          <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
+            {totalPoints} pt{totalPoints !== 1 ? 's' : ''}
+          </span>
+        )}
+        <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+          {totalPoints > 0 && (
+            <span className="text-xs tabular-nums text-muted-foreground mr-1">
+              {totalPoints}
+            </span>
+          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}

@@ -47,12 +47,16 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const item = useAppStore(s => s.workItems[workItemId]);
   const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
+  const selectedWorkItemId = useAppStore(s => s.selectedWorkItemId);
   const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
+  const selectWorkItem = useAppStore(s => s.selectWorkItem);
   const addWorkItem = useAppStore(s => s.addWorkItem);
   const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+
+  const isSelected = selectedWorkItemId === workItemId;
 
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
@@ -68,6 +72,21 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     setDragRef(node);
     setDropRef(node);
   }, [setDragRef, setDropRef]);
+
+  // Listen for keyboard shortcuts when this work item is selected
+  useEffect(() => {
+    if (!isSelected) return;
+
+    const handleAddChild = () => setIsAdding(true);
+    const handleDelete = () => handleDeleteClick();
+
+    window.addEventListener('shortcut:add-child-workitem', handleAddChild);
+    window.addEventListener('shortcut:delete-selected', handleDelete);
+    return () => {
+      window.removeEventListener('shortcut:add-child-workitem', handleAddChild);
+      window.removeEventListener('shortcut:delete-selected', handleDelete);
+    };
+  }, [isSelected, workItemId]);
 
   if (!item) return null;
 
@@ -112,13 +131,20 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
       >
         <div
           className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-md
+            flex items-center gap-1.5 px-3 py-2 rounded-md cursor-pointer
             transition-all duration-150 ease-out group
-            hover:bg-muted border border-transparent hover:border-border
+            border
+            ${isSelected
+              ? 'bg-primary/8 border-primary/25 ring-1 ring-primary/20'
+              : 'border-transparent hover:bg-muted hover:border-border'}
             ${isDragging ? 'shadow-lg bg-card' : ''}
             ${isOver && !isDragging ? 'drag-over' : ''}
           `}
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
+          onClick={(e) => {
+            e.stopPropagation();
+            selectWorkItem(isSelected ? null : workItemId);
+          }}
         >
           <div
             {...listeners}
@@ -128,7 +154,10 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
           </div>
           <button
             className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => hasChildren && toggleExpand(workItemId)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasChildren) toggleExpand(workItemId);
+            }}
           >
             {hasChildren ? (
               expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
@@ -142,18 +171,23 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
             )}
           </span>
+          {item.points != null && item.points > 0 && (
+            <span className="text-xs tabular-nums font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+              {item.points}
+            </span>
+          )}
           <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={() => setIsAdding(true)}
-              title="Add child item (N)"
+              onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
+              title="Add child item (Shift+N)"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              onClick={handleDeleteClick}
-              title="Delete item"
+              onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
+              title="Delete item (Del)"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -223,11 +257,12 @@ export function WorkItemTreePanel() {
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
   const addWorkItem = useAppStore(s => s.addWorkItem);
+  const selectWorkItem = useAppStore(s => s.selectWorkItem);
   const [isAdding, setIsAdding] = useState(false);
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
 
-  // Listen for keyboard shortcut to add work item
+  // Listen for keyboard shortcut to add root work item
   useEffect(() => {
     const handler = () => setIsAdding(true);
     window.addEventListener('shortcut:add-workitem', handler);
@@ -256,7 +291,10 @@ export function WorkItemTreePanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div
+      className="h-full flex flex-col"
+      onClick={() => selectWorkItem(null)}
+    >
       <div className="p-4 pb-2 border-b flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold">{selectedBacklog?.name}</h2>
@@ -266,7 +304,7 @@ export function WorkItemTreePanel() {
         </div>
         <button
           className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={() => setIsAdding(true)}
+          onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           title="Add work item (N)"
         >
           <Plus className="w-4 h-4" />
