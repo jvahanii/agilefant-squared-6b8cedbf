@@ -548,5 +548,87 @@ export const useAppStore = create<AppState & {
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees };
       });
     },
+
+    moveBacklogToTree: (backlogId, targetTreeId, targetBacklogId) => {
+      set(state => {
+        const backlog = state.backlogs[backlogId];
+        if (!backlog) return state;
+        if (backlog.treeId === targetTreeId) return state;
+
+        const undo = pushUndo(state);
+        const updatedBacklogs = { ...state.backlogs };
+        const updatedTrees = { ...state.backlogTrees };
+        const updatedItems = { ...state.workItems };
+        const sourceTreeId = backlog.treeId;
+
+        // Collect this backlog and all descendants
+        const allBacklogIds = new Set<string>();
+        const collectBacklogs = (id: string) => {
+          allBacklogIds.add(id);
+          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+        };
+        collectBacklogs(backlogId);
+
+        // Remove from old parent/tree root
+        if (backlog.parentId) {
+          const oldParent = updatedBacklogs[backlog.parentId];
+          if (oldParent) {
+            updatedBacklogs[backlog.parentId] = {
+              ...oldParent,
+              childrenIds: oldParent.childrenIds.filter(id => id !== backlogId),
+            };
+          }
+        } else {
+          const srcTree = updatedTrees[sourceTreeId];
+          if (srcTree) {
+            updatedTrees[sourceTreeId] = {
+              ...srcTree,
+              rootBacklogIds: srcTree.rootBacklogIds.filter(id => id !== backlogId),
+            };
+          }
+        }
+
+        // Update treeId for all descendant backlogs
+        allBacklogIds.forEach(id => {
+          updatedBacklogs[id] = { ...updatedBacklogs[id], treeId: targetTreeId };
+        });
+
+        // Set new parent
+        updatedBacklogs[backlogId] = { ...updatedBacklogs[backlogId], parentId: targetBacklogId };
+
+        // Add to target
+        if (targetBacklogId) {
+          const targetParent = updatedBacklogs[targetBacklogId];
+          if (targetParent) {
+            updatedBacklogs[targetBacklogId] = {
+              ...targetParent,
+              childrenIds: [...targetParent.childrenIds, backlogId],
+            };
+          }
+        } else {
+          const targetTree = updatedTrees[targetTreeId];
+          if (targetTree) {
+            updatedTrees[targetTreeId] = {
+              ...targetTree,
+              rootBacklogIds: [...targetTree.rootBacklogIds, backlogId],
+            };
+          }
+        }
+
+        // Re-assign work items from source tree backlogs to target tree
+        Object.keys(updatedItems).forEach(wiId => {
+          const wi = updatedItems[wiId];
+          const assignedBacklogId = wi.backlogAssignments[sourceTreeId];
+          if (assignedBacklogId && allBacklogIds.has(assignedBacklogId)) {
+            const newAssignments = { ...wi.backlogAssignments };
+            delete newAssignments[sourceTreeId];
+            newAssignments[targetTreeId] = assignedBacklogId;
+            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+          }
+        });
+
+        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems };
+      });
+    },
   };
 });
