@@ -151,14 +151,17 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     const handleAddChild = () => setIsAdding(true);
     const handleDelete = () => handleDeleteClick();
     const handleRename = () => startRename();
+    const handleEditPoints = () => setPointsEditTrigger(t => t + 1);
 
     window.addEventListener('shortcut:add-child-workitem', handleAddChild);
     window.addEventListener('shortcut:delete-selected', handleDelete);
     window.addEventListener('shortcut:rename-workitem', handleRename);
+    window.addEventListener('shortcut:edit-points', handleEditPoints);
     return () => {
       window.removeEventListener('shortcut:add-child-workitem', handleAddChild);
       window.removeEventListener('shortcut:delete-selected', handleDelete);
       window.removeEventListener('shortcut:rename-workitem', handleRename);
+      window.removeEventListener('shortcut:edit-points', handleEditPoints);
     };
   }, [isSelected, workItemId]);
 
