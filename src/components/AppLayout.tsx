@@ -270,6 +270,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ['Shift', 'N'], description: 'New child of selected item or list' },
     { keys: ['Del'], description: 'Delete selected item or list' },
     { keys: ['F2'], description: 'Rename selected item or list' },
+    { keys: ['P'], description: 'Edit points on selected work item' },
     { keys: ['Esc'], description: 'Deselect work item' },
     { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
     { keys: ['?'], description: 'Toggle this help' },
