@@ -74,6 +74,7 @@ export const useAppStore = create<AppState & {
 
   return {
     ...mock,
+    treeOrder: Object.keys(mock.backlogTrees),
     selectedBacklogId: null,
     selectedTreeId: null,
     selectedWorkItemId: null,
