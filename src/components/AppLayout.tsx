@@ -130,6 +130,21 @@ export default function AppLayout() {
     }
   }, []);
 
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const ae = event.activatorEvent as PointerEvent;
+    if (ae && event.delta) {
+      lastPointerY.current = ae.clientY + event.delta.y;
+    }
+  }, []);
+
+  const getDropPosition = useCallback((overRect: { top: number; height: number }) => {
+    const y = lastPointerY.current - overRect.top;
+    const ratio = y / overRect.height;
+    if (ratio < 0.35) return 'before' as const;
+    if (ratio > 0.65) return 'after' as const;
+    return 'on' as const;
+  }, []);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveDrag(null);
     const { active, over } = event;
@@ -137,15 +152,18 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+    const overRect = over.rect;
+    const pos = getDropPosition(overRect);
 
     if (activeData?.type === 'backlog-reorder' && overData?.type === 'backlog') {
       if (activeData.backlogId !== overData.backlogId) {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
         if (sourceTreeId !== targetTreeId) {
-          moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
+          moveBacklogToTree(activeData.backlogId, targetTreeId, pos === 'on' ? overData.backlogId : null);
         } else {
-          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+          const sameTreePos = pos === 'on' ? 'after' : pos;
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, sameTreePos);
         }
       }
       return;
@@ -162,7 +180,8 @@ export default function AppLayout() {
 
     if (activeData?.type === 'tree-reorder' && overData?.type === 'tree-header') {
       if (activeData.treeId !== overData.treeId) {
-        reorderBacklogTree(activeData.treeId, overData.treeId, 'after');
+        const treePos = pos === 'on' ? 'after' : pos;
+        reorderBacklogTree(activeData.treeId, overData.treeId, treePos);
       }
       return;
     }
