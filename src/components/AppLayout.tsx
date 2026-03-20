@@ -4,21 +4,33 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
 import { useAppStore } from '@/store/appStore';
+import { ActionPrompt } from '@/components/ActionPrompt';
 import { Undo2 } from 'lucide-react';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 
+interface PendingCrossTreeDrop {
+  workItemId: string;
+  targetBacklogId: string;
+  targetTreeId: string;
+  sourceTreeId: string;
+  itemTitle: string;
+  sourceTreeName: string;
+  targetTreeName: string;
+}
+
 export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
+  const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
+  const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // Ctrl+Z / Cmd+Z keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
@@ -48,19 +60,52 @@ export default function AppLayout() {
     const overData = over.data.current;
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
-      moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+      const sourceTreeId = activeData.treeId as string;
+      const targetTreeId = overData.treeId as string;
+
+      if (sourceTreeId !== targetTreeId) {
+        // Cross-tree drop — prompt move vs add
+        const store = useAppStore.getState();
+        const item = store.workItems[activeData.workItemId];
+        const sourceTree = store.backlogTrees[sourceTreeId];
+        const targetTree = store.backlogTrees[targetTreeId];
+        setPendingCrossTree({
+          workItemId: activeData.workItemId,
+          targetBacklogId: overData.backlogId,
+          targetTreeId,
+          sourceTreeId,
+          itemTitle: item?.title ?? '',
+          sourceTreeName: sourceTree?.name ?? sourceTreeId,
+          targetTreeName: targetTree?.name ?? targetTreeId,
+        });
+      } else {
+        moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+      }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
-      // Reparent: drop a work item onto another work item to make it a child
       if (activeData.workItemId !== overData.workItemId) {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
   }, [moveWorkItemToBacklog, reparentWorkItem]);
 
+  const handleCrossTreeChoice = useCallback((value: string) => {
+    if (!pendingCrossTree) return;
+    const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
+
+    if (value === 'move') {
+      // Move: assign to target tree, remove from source tree
+      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
+      removeWorkItemFromTree(workItemId, sourceTreeId);
+    } else if (value === 'add') {
+      // Add: assign to target tree, keep source
+      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
+    }
+    setPendingCrossTree(null);
+  }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
-        {/* Header */}
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
           <img src={agilefantLogo} alt="Agilefant" className="h-7 w-7" />
           <h1 className="text-sm font-bold tracking-tight">
@@ -83,7 +128,6 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* Main content */}
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal">
             <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
@@ -104,6 +148,27 @@ export default function AppLayout() {
           </div>
         )}
       </DragOverlay>
+
+      {pendingCrossTree && (
+        <ActionPrompt
+          title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
+          options={[
+            {
+              label: 'Move item',
+              description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
+              value: 'move',
+              isDefault: true,
+            },
+            {
+              label: 'Add to both',
+              description: `Keep in "${pendingCrossTree.sourceTreeName}" and also add to "${pendingCrossTree.targetTreeName}".`,
+              value: 'add',
+            },
+          ]}
+          onSelect={handleCrossTreeChoice}
+          onCancel={() => setPendingCrossTree(null)}
+        />
+      )}
     </DndContext>
   );
 }
