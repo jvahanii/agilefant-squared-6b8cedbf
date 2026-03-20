@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList } from 'lucide-react';
-import { useDroppable } from '@dnd-kit/core';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList, GripVertical } from 'lucide-react';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 interface BacklogNodeProps {
