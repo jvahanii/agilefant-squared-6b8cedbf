@@ -1,7 +1,23 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList, GripVertical } from 'lucide-react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useDropPosition, DropPosition } from '@/hooks/useDropPosition';
+
+function DropIndicatorLine({ position, depth = 0 }: { position: DropPosition | null; depth?: number }) {
+  if (!position || position === 'on') return null;
+  return (
+    <div
+      className="absolute left-0 right-0 z-10 pointer-events-none"
+      style={{
+        [position === 'before' ? 'top' : 'bottom']: -1,
+        paddingLeft: `${depth * 16 + 8}px`,
+      }}
+    >
+      <div className="h-0.5 bg-[hsl(var(--selection))] rounded-full" />
+    </div>
+  );
+}
 
 interface BacklogNodeProps {
   backlogId: string;
@@ -86,6 +102,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     data: { type: 'backlog-reorder', backlogId, treeId: backlog?.treeId },
   });
 
+  const { position: dropPosition, dropRef, dropPointerProps } = useDropPosition(isOver);
+
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
 
   useEffect(() => {
@@ -133,6 +151,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const mergedRef = (node: HTMLElement | null) => {
     setDropRef(node);
     setDragRef(node);
+    dropRef.current = node;
   };
 
   return (
@@ -140,18 +159,19 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
       <div
         ref={mergedRef}
         {...attributes}
+        {...dropPointerProps}
         className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
+          relative flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
           ${isSelected ?
         'bg-[hsl(var(--selection)/0.10)] ring-1 ring-[hsl(var(--selection)/0.40)] text-foreground font-medium' :
         'hover:bg-muted'}
-          ${isOver ? 'drag-over' : ''}
+          ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.08)] ring-1 ring-[hsl(var(--selection)/0.30)]' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => selectBacklog(backlogId, backlog.treeId)}
         onDoubleClick={(e) => {e.stopPropagation();startRename();}}>
-        
+        <DropIndicatorLine position={dropPosition} depth={depth} />
         <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
           <GripVertical className="w-3 h-3" />
         </span>
@@ -252,6 +272,8 @@ function TreeHeader({ treeId }: {treeId: string;}) {
     data: { type: 'tree-reorder', treeId },
   });
 
+  const { position: dropPosition, dropRef, dropPointerProps } = useDropPosition(isOver);
+
   useEffect(() => {
     if (isRenaming) {
       renameRef.current?.focus();
@@ -275,6 +297,7 @@ function TreeHeader({ treeId }: {treeId: string;}) {
   const mergedRef = (node: HTMLElement | null) => {
     setDropRef(node);
     setDragRef(node);
+    dropRef.current = node;
   };
 
   return (
@@ -282,9 +305,11 @@ function TreeHeader({ treeId }: {treeId: string;}) {
       <div
         ref={mergedRef}
         {...attributes}
-        className={`px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver ? 'bg-primary/10' : ''}`}
+        {...dropPointerProps}
+        className={`relative px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.08)]' : ''}`}
         onDoubleClick={startRename}
       >
+        <DropIndicatorLine position={dropPosition} />
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
           <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
             <GripVertical className="w-3 h-3" />

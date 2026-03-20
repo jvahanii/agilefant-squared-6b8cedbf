@@ -1,5 +1,5 @@
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useState, useCallback, useEffect } from 'react';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
@@ -31,6 +31,7 @@ export default function AppLayout() {
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const lastPointerY = useRef(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -129,6 +130,21 @@ export default function AppLayout() {
     }
   }, []);
 
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const ae = event.activatorEvent as PointerEvent;
+    if (ae && event.delta) {
+      lastPointerY.current = ae.clientY + event.delta.y;
+    }
+  }, []);
+
+  const getDropPosition = useCallback((overRect: { top: number; height: number }) => {
+    const y = lastPointerY.current - overRect.top;
+    const ratio = y / overRect.height;
+    if (ratio < 0.35) return 'before' as const;
+    if (ratio > 0.65) return 'after' as const;
+    return 'on' as const;
+  }, []);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveDrag(null);
     const { active, over } = event;
@@ -136,15 +152,18 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+    const overRect = over.rect;
+    const pos = getDropPosition(overRect);
 
     if (activeData?.type === 'backlog-reorder' && overData?.type === 'backlog') {
       if (activeData.backlogId !== overData.backlogId) {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
         if (sourceTreeId !== targetTreeId) {
-          moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
+          moveBacklogToTree(activeData.backlogId, targetTreeId, pos === 'on' ? overData.backlogId : null);
         } else {
-          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+          const sameTreePos = pos === 'on' ? 'after' : pos;
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, sameTreePos);
         }
       }
       return;
@@ -161,7 +180,8 @@ export default function AppLayout() {
 
     if (activeData?.type === 'tree-reorder' && overData?.type === 'tree-header') {
       if (activeData.treeId !== overData.treeId) {
-        reorderBacklogTree(activeData.treeId, overData.treeId, 'after');
+        const treePos = pos === 'on' ? 'after' : pos;
+        reorderBacklogTree(activeData.treeId, overData.treeId, treePos);
       }
       return;
     }
@@ -192,7 +212,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklogToTree, reorderBacklogTree]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklogToTree, reorderBacklogTree, getDropPosition]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
@@ -208,7 +228,7 @@ export default function AppLayout() {
   }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
           <img src={agilefantLogo} alt="Agilefant" className="h-7 w-7" />
