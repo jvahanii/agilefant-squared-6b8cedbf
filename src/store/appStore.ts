@@ -24,6 +24,7 @@ interface AppState extends DataSnapshot {
   deleteBacklog: (backlogId: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
+  removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
