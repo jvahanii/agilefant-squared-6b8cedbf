@@ -335,7 +335,7 @@ function TreeHeader({ treeId }: {treeId: string;}) {
 }
 
 export function BacklogTreePanel() {
-  const backlogTrees = useAppStore((s) => s.backlogTrees);
+  const treeOrder = useAppStore((s) => s.treeOrder);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [newTreeName, setNewTreeName] = useState('');
@@ -362,13 +362,12 @@ export function BacklogTreePanel() {
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onClick={() => setIsAddingTree(true)}
           title="Add list tree">
-          
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
-        {Object.values(backlogTrees).map((tree) =>
-        <TreeHeader key={tree.id} treeId={tree.id} />
+        {treeOrder.map((treeId) =>
+        <TreeHeader key={treeId} treeId={treeId} />
         )}
         {isAddingTree &&
         <div className="px-2 py-1 flex items-center gap-1.5">
