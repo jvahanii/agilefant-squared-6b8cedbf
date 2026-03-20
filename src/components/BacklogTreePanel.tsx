@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, X, Check } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2 } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { useState, useRef, useEffect } from 'react';
 
@@ -54,6 +54,21 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     data: { type: 'backlog', backlogId, treeId: backlog?.treeId },
   });
 
+  // Listen for keyboard shortcut events when this backlog is selected
+  useEffect(() => {
+    if (selectedBacklogId !== backlogId) return;
+
+    const handleAddBacklog = () => setIsAdding(true);
+    const handleDeleteBacklog = () => deleteBacklog(backlogId);
+
+    window.addEventListener('shortcut:add-backlog', handleAddBacklog);
+    window.addEventListener('shortcut:delete-backlog', handleDeleteBacklog);
+    return () => {
+      window.removeEventListener('shortcut:add-backlog', handleAddBacklog);
+      window.removeEventListener('shortcut:delete-backlog', handleDeleteBacklog);
+    };
+  }, [selectedBacklogId, backlogId, deleteBacklog]);
+
   if (!backlog) return null;
 
   const hasChildren = backlog.childrenIds.length > 0;
@@ -91,14 +106,14 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
-            title="Add child backlog"
+            title="Add child backlog (Shift+N)"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
-            title="Delete backlog"
+            title="Delete backlog (Del)"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
