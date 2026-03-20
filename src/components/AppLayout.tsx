@@ -122,6 +122,10 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const backlog = store.backlogs[data.backlogId];
       setActiveDrag({ id: data.backlogId, type: 'backlog', title: backlog?.name ?? '' });
+    } else if (data?.type === 'tree-reorder') {
+      const store = useAppStore.getState();
+      const tree = store.backlogTrees[data.treeId];
+      setActiveDrag({ id: data.treeId, type: 'tree', title: tree?.name ?? '' });
     }
   }, []);
 
