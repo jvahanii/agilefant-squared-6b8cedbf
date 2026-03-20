@@ -152,6 +152,9 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
         onClick={() => selectBacklog(backlogId, backlog.treeId)}
         onDoubleClick={(e) => {e.stopPropagation();startRename();}}>
         
+        <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
+          <GripVertical className="w-3 h-3" />
+        </span>
         <button
           className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           onClick={(e) => {
