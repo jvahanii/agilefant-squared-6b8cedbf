@@ -490,7 +490,7 @@ export const useAppStore = create<AppState & {
           selectedTreeId = null;
         }
 
-        return { ...undo, backlogTrees: updatedTrees, backlogs: updatedBacklogs, workItems: updatedItems, selectedBacklogId, selectedTreeId };
+        return { ...undo, backlogTrees: updatedTrees, backlogs: updatedBacklogs, workItems: updatedItems, selectedBacklogId, selectedTreeId, treeOrder: state.treeOrder.filter(id => id !== treeId) };
       });
     },
 
