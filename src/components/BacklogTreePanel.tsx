@@ -272,6 +272,8 @@ function TreeHeader({ treeId }: {treeId: string;}) {
     data: { type: 'tree-reorder', treeId },
   });
 
+  const { position: dropPosition, dropRef, dropPointerProps } = useDropPosition(isOver);
+
   useEffect(() => {
     if (isRenaming) {
       renameRef.current?.focus();
@@ -295,6 +297,7 @@ function TreeHeader({ treeId }: {treeId: string;}) {
   const mergedRef = (node: HTMLElement | null) => {
     setDropRef(node);
     setDragRef(node);
+    dropRef.current = node;
   };
 
   return (
@@ -302,7 +305,8 @@ function TreeHeader({ treeId }: {treeId: string;}) {
       <div
         ref={mergedRef}
         {...attributes}
-        className={`px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver ? 'bg-primary/10' : ''}`}
+        {...dropPointerProps}
+        className={`relative px-2 py-1 flex items-center justify-between group rounded-md transition-colors ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.08)]' : ''}`}
         onDoubleClick={startRename}
       >
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
