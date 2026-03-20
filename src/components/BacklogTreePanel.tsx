@@ -130,10 +130,16 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     setIsRenaming(false);
   };
 
+  const mergedRef = (node: HTMLElement | null) => {
+    setDropRef(node);
+    setDragRef(node);
+  };
+
   return (
-    <div className="animate-fade-in-up" style={{ animationDelay: `${depth * 40}ms` }}>
+    <div className={`animate-fade-in-up ${isDragging ? 'opacity-40' : ''}`} style={{ animationDelay: `${depth * 40}ms` }}>
       <div
-        ref={setNodeRef}
+        ref={mergedRef}
+        {...attributes}
         className={`
           flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
