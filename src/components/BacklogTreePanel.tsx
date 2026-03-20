@@ -151,6 +151,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const mergedRef = (node: HTMLElement | null) => {
     setDropRef(node);
     setDragRef(node);
+    dropRef.current = node;
   };
 
   return (
@@ -158,18 +159,19 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
       <div
         ref={mergedRef}
         {...attributes}
+        {...dropPointerProps}
         className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
+          relative flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
           ${isSelected ?
         'bg-[hsl(var(--selection)/0.10)] ring-1 ring-[hsl(var(--selection)/0.40)] text-foreground font-medium' :
         'hover:bg-muted'}
-          ${isOver ? 'drag-over' : ''}
+          ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.08)] ring-1 ring-[hsl(var(--selection)/0.30)]' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => selectBacklog(backlogId, backlog.treeId)}
         onDoubleClick={(e) => {e.stopPropagation();startRename();}}>
-        
+        <DropIndicatorLine position={dropPosition} depth={depth} />
         <span {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/0 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors">
           <GripVertical className="w-3 h-3" />
         </span>
