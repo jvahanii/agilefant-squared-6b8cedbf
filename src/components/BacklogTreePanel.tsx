@@ -102,6 +102,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     data: { type: 'backlog-reorder', backlogId, treeId: backlog?.treeId },
   });
 
+  const { position: dropPosition, dropRef, dropPointerProps } = useDropPosition(isOver);
+
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
 
   useEffect(() => {
