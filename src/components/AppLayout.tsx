@@ -23,6 +23,7 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
+  const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
