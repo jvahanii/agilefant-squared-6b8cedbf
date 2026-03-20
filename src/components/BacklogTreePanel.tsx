@@ -88,12 +88,15 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
     const handleAddBacklog = () => setIsAdding(true);
     const handleDeleteBacklog = () => deleteBacklog(backlogId);
+    const handleRename = () => startRename();
 
     window.addEventListener('shortcut:add-child-backlog', handleAddBacklog);
     window.addEventListener('shortcut:delete-selected', handleDeleteBacklog);
+    window.addEventListener('shortcut:rename-backlog', handleRename);
     return () => {
       window.removeEventListener('shortcut:add-child-backlog', handleAddBacklog);
       window.removeEventListener('shortcut:delete-selected', handleDeleteBacklog);
+      window.removeEventListener('shortcut:rename-backlog', handleRename);
     };
   }, [selectedBacklogId, backlogId, deleteBacklog]);
 
