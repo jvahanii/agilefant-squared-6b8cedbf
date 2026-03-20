@@ -166,7 +166,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           ${isSelected ?
         'bg-[hsl(var(--selection)/0.10)] ring-1 ring-[hsl(var(--selection)/0.40)] text-foreground font-medium' :
         'hover:bg-muted'}
-          ${isOver && dropPosition === 'on' ? 'bg-[hsl(var(--selection)/0.12)] ring-2 ring-dashed ring-[hsl(var(--selection)/0.50)]' : ''}
+           ${isOver && dropPosition === 'on' ? 'outline outline-2 outline-dashed outline-[hsl(var(--selection))] bg-[hsl(var(--selection)/0.12)]' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => selectBacklog(backlogId, backlog.treeId)}
