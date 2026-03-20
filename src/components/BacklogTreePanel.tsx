@@ -287,7 +287,7 @@ function TreeHeader({ treeId }: { treeId: string }) {
           </div>
         )}
       </div>
-      {useAppStore.getState().backlogTrees[treeId]?.rootBacklogIds.map((backlogId) => (
+      {tree?.rootBacklogIds.map((backlogId) => (
         <BacklogNode key={backlogId} backlogId={backlogId} depth={0} />
       ))}
       {isAdding && (
