@@ -53,29 +53,29 @@ export function generateMockData() {
     childrenIds: [], treeId: 'tree-team', rank: 1,
   };
 
-  // Work items
+  // Work items with points
   const items: Array<Omit<WorkItem, 'rank'> & { rank?: number }> = [
-    { id: 'wi-1', title: 'User authentication flow', parentId: null, childrenIds: ['wi-1a', 'wi-1b'],
+    { id: 'wi-1', title: 'User authentication flow', points: 13, parentId: null, childrenIds: ['wi-1a', 'wi-1b'],
       backlogAssignments: { 'tree-product': 'bl-sprint-1', 'tree-team': 'bl-backend' } },
-    { id: 'wi-1a', title: 'Login page UI', parentId: 'wi-1', childrenIds: [],
+    { id: 'wi-1a', title: 'Login page UI', points: 5, parentId: 'wi-1', childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-1', 'tree-team': 'bl-frontend' } },
-    { id: 'wi-1b', title: 'JWT token handling', parentId: 'wi-1', childrenIds: [],
+    { id: 'wi-1b', title: 'JWT token handling', points: 8, parentId: 'wi-1', childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-1', 'tree-team': 'bl-backend' } },
-    { id: 'wi-2', title: 'Dashboard layout', parentId: null, childrenIds: ['wi-2a'],
+    { id: 'wi-2', title: 'Dashboard layout', points: 8, parentId: null, childrenIds: ['wi-2a'],
       backlogAssignments: { 'tree-product': 'bl-sprint-1', 'tree-team': 'bl-frontend' } },
-    { id: 'wi-2a', title: 'Sidebar navigation', parentId: 'wi-2', childrenIds: [],
+    { id: 'wi-2a', title: 'Sidebar navigation', points: 3, parentId: 'wi-2', childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-1', 'tree-team': 'bl-frontend' } },
-    { id: 'wi-3', title: 'API rate limiting', parentId: null, childrenIds: [],
+    { id: 'wi-3', title: 'API rate limiting', points: 5, parentId: null, childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-2', 'tree-team': 'bl-backend' } },
-    { id: 'wi-4', title: 'Database migration tool', parentId: null, childrenIds: ['wi-4a', 'wi-4b'],
+    { id: 'wi-4', title: 'Database migration tool', points: 13, parentId: null, childrenIds: ['wi-4a', 'wi-4b'],
       backlogAssignments: { 'tree-product': 'bl-sprint-2', 'tree-team': 'bl-backend' } },
-    { id: 'wi-4a', title: 'Schema diff engine', parentId: 'wi-4', childrenIds: [],
+    { id: 'wi-4a', title: 'Schema diff engine', points: 8, parentId: 'wi-4', childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-2', 'tree-team': 'bl-backend' } },
-    { id: 'wi-4b', title: 'Rollback support', parentId: 'wi-4', childrenIds: [],
+    { id: 'wi-4b', title: 'Rollback support', points: 5, parentId: 'wi-4', childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-sprint-2', 'tree-team': 'bl-backend' } },
-    { id: 'wi-5', title: 'Search functionality', parentId: null, childrenIds: [],
+    { id: 'wi-5', title: 'Search functionality', points: 8, parentId: null, childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-release-2', 'tree-team': 'bl-frontend' } },
-    { id: 'wi-6', title: 'Performance monitoring', parentId: null, childrenIds: [],
+    { id: 'wi-6', title: 'Performance monitoring', points: 5, parentId: null, childrenIds: [],
       backlogAssignments: { 'tree-product': 'bl-release-2', 'tree-team': 'bl-backend' } },
   ];
 

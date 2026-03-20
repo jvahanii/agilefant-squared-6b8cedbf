@@ -8,12 +8,14 @@ interface DataSnapshot {
   backlogTrees: Record<string, BacklogTree>;
   selectedBacklogId: string | null;
   selectedTreeId: string | null;
+  selectedWorkItemId: string | null;
 }
 
 interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
 
   selectBacklog: (backlogId: string, treeId: string) => void;
+  selectWorkItem: (workItemId: string | null) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
@@ -39,6 +41,7 @@ function snapshot(state: DataSnapshot): DataSnapshot {
     backlogTrees: state.backlogTrees,
     selectedBacklogId: state.selectedBacklogId,
     selectedTreeId: state.selectedTreeId,
+    selectedWorkItemId: state.selectedWorkItemId,
   };
 }
 
@@ -62,11 +65,14 @@ export const useAppStore = create<AppState & {
     ...mock,
     selectedBacklogId: null,
     selectedTreeId: null,
+    selectedWorkItemId: null,
     expandedWorkItems,
     expandedBacklogs,
     undoStack: [],
 
-    selectBacklog: (backlogId, treeId) => set({ selectedBacklogId: backlogId, selectedTreeId: treeId }),
+    selectBacklog: (backlogId, treeId) => set({ selectedBacklogId: backlogId, selectedTreeId: treeId, selectedWorkItemId: null }),
+
+    selectWorkItem: (workItemId) => set({ selectedWorkItemId: workItemId }),
 
     canUndo: () => get().undoStack.length > 0,
 
@@ -106,7 +112,6 @@ export const useAppStore = create<AppState & {
       set(state => {
         const item = state.workItems[workItemId];
         if (!item) return state;
-        // Prevent parenting to self or own descendant
         if (newParentId === workItemId) return state;
         if (newParentId) {
           let check: string | null = newParentId;
@@ -115,13 +120,11 @@ export const useAppStore = create<AppState & {
             check = state.workItems[check]?.parentId ?? null;
           }
         }
-        // Already in correct position
         if (item.parentId === newParentId) return state;
 
         const undo = pushUndo(state);
         const updatedItems = { ...state.workItems };
 
-        // Remove from old parent
         if (item.parentId && updatedItems[item.parentId]) {
           updatedItems[item.parentId] = {
             ...updatedItems[item.parentId],
@@ -129,7 +132,6 @@ export const useAppStore = create<AppState & {
           };
         }
 
-        // Add to new parent
         if (newParentId && updatedItems[newParentId]) {
           updatedItems[newParentId] = {
             ...updatedItems[newParentId],
@@ -139,7 +141,6 @@ export const useAppStore = create<AppState & {
 
         updatedItems[workItemId] = { ...item, parentId: newParentId };
 
-        // Expand new parent
         const nextExpanded = new Set(state.expandedWorkItems);
         if (newParentId) nextExpanded.add(newParentId);
 
@@ -363,7 +364,12 @@ export const useAppStore = create<AppState & {
 
         toDelete.forEach(id => delete updatedItems[id]);
 
-        return { ...undo, workItems: updatedItems };
+        let { selectedWorkItemId } = state;
+        if (selectedWorkItemId && toDelete.has(selectedWorkItemId)) {
+          selectedWorkItemId = null;
+        }
+
+        return { ...undo, workItems: updatedItems, selectedWorkItemId };
       });
     },
 
@@ -375,7 +381,6 @@ export const useAppStore = create<AppState & {
         const undo = pushUndo(state);
         const updatedItems = { ...state.workItems };
 
-        // Remove tree assignment from this item and all descendants
         const removeRecursive = (id: string) => {
           const wi = updatedItems[id];
           if (!wi) return;
