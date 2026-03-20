@@ -24,6 +24,7 @@ export default function AppLayout() {
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
   const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
+  const moveBacklog = useAppStore(s => s.moveBacklog);
   const moveBacklogToTree = useAppStore(s => s.moveBacklogToTree);
   const reorderBacklogTree = useAppStore(s => s.reorderBacklogTree);
   const undo = useAppStore(s => s.undo);
