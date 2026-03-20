@@ -6,6 +6,7 @@ interface DataSnapshot {
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
+  treeOrder: string[];
   selectedBacklogId: string | null;
   selectedTreeId: string | null;
   selectedWorkItemId: string | null;
