@@ -24,6 +24,7 @@ export default function AppLayout() {
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
   const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
+  const moveBacklog = useAppStore(s => s.moveBacklog);
   const moveBacklogToTree = useAppStore(s => s.moveBacklogToTree);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
@@ -137,10 +138,9 @@ export default function AppLayout() {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
         if (sourceTreeId !== targetTreeId) {
-          // Cross-tree: move list to target tree as sibling of drop target
           moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
         } else {
-          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+          moveBacklog(activeData.backlogId, overData.backlogId, sourceTreeId);
         }
       }
       return;
@@ -172,7 +172,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklogToTree]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklog, moveBacklogToTree]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;

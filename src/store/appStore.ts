@@ -175,6 +175,15 @@ export const useAppStore = create<AppState & {
       set(state => {
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
+        if (backlog.parentId === newParentId) return state;
+        // Cycle check: ensure newParentId is not a descendant of backlogId
+        if (newParentId) {
+          let check: string | null = newParentId;
+          while (check) {
+            if (check === backlogId) return state;
+            check = state.backlogs[check]?.parentId ?? null;
+          }
+        }
 
         const undo = pushUndo(state);
         const updatedBacklogs = { ...state.backlogs };
