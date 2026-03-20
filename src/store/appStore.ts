@@ -6,6 +6,7 @@ interface DataSnapshot {
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
+  treeOrder: string[];
   selectedBacklogId: string | null;
   selectedTreeId: string | null;
   selectedWorkItemId: string | null;
@@ -35,6 +36,7 @@ interface AppState extends DataSnapshot {
   renameBacklogTree: (treeId: string, name: string) => void;
   reorderBacklogInList: (backlogId: string, targetBacklogId: string, position: 'before' | 'after') => void;
   moveBacklogToTree: (backlogId: string, targetTreeId: string, targetBacklogId: string | null) => void;
+  reorderBacklogTree: (treeId: string, targetTreeId: string, position: 'before' | 'after') => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -47,6 +49,7 @@ function snapshot(state: DataSnapshot): DataSnapshot {
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
+    treeOrder: state.treeOrder,
     selectedBacklogId: state.selectedBacklogId,
     selectedTreeId: state.selectedTreeId,
     selectedWorkItemId: state.selectedWorkItemId,
@@ -71,6 +74,7 @@ export const useAppStore = create<AppState & {
 
   return {
     ...mock,
+    treeOrder: Object.keys(mock.backlogTrees),
     selectedBacklogId: null,
     selectedTreeId: null,
     selectedWorkItemId: null,
@@ -446,6 +450,7 @@ export const useAppStore = create<AppState & {
         return {
           ...undo,
           backlogTrees: { ...state.backlogTrees, [id]: { id, name, rootBacklogIds: [] } },
+          treeOrder: [...state.treeOrder, id],
         };
       });
     },
@@ -485,7 +490,7 @@ export const useAppStore = create<AppState & {
           selectedTreeId = null;
         }
 
-        return { ...undo, backlogTrees: updatedTrees, backlogs: updatedBacklogs, workItems: updatedItems, selectedBacklogId, selectedTreeId };
+        return { ...undo, backlogTrees: updatedTrees, backlogs: updatedBacklogs, workItems: updatedItems, selectedBacklogId, selectedTreeId, treeOrder: state.treeOrder.filter(id => id !== treeId) };
       });
     },
 
@@ -637,6 +642,18 @@ export const useAppStore = create<AppState & {
         });
 
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems };
+      });
+    },
+
+    reorderBacklogTree: (treeId, targetTreeId, position) => {
+      set(state => {
+        if (treeId === targetTreeId) return state;
+        const undo = pushUndo(state);
+        const order = state.treeOrder.filter(id => id !== treeId);
+        const idx = order.indexOf(targetTreeId);
+        const insertAt = position === 'after' ? idx + 1 : idx;
+        order.splice(insertAt, 0, treeId);
+        return { ...undo, treeOrder: order };
       });
     },
   };

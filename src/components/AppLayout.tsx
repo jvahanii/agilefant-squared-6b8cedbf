@@ -24,8 +24,8 @@ export default function AppLayout() {
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
   const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
-  const moveBacklog = useAppStore(s => s.moveBacklog);
   const moveBacklogToTree = useAppStore(s => s.moveBacklogToTree);
+  const reorderBacklogTree = useAppStore(s => s.reorderBacklogTree);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
@@ -122,6 +122,10 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const backlog = store.backlogs[data.backlogId];
       setActiveDrag({ id: data.backlogId, type: 'backlog', title: backlog?.name ?? '' });
+    } else if (data?.type === 'tree-reorder') {
+      const store = useAppStore.getState();
+      const tree = store.backlogTrees[data.treeId];
+      setActiveDrag({ id: data.treeId, type: 'tree', title: tree?.name ?? '' });
     }
   }, []);
 
@@ -140,8 +144,24 @@ export default function AppLayout() {
         if (sourceTreeId !== targetTreeId) {
           moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
         } else {
-          moveBacklog(activeData.backlogId, overData.backlogId, sourceTreeId);
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
         }
+      }
+      return;
+    }
+
+    if (activeData?.type === 'backlog-reorder' && overData?.type === 'tree-header') {
+      const sourceTreeId = activeData.treeId as string;
+      const targetTreeId = overData.treeId as string;
+      if (sourceTreeId !== targetTreeId) {
+        moveBacklogToTree(activeData.backlogId, targetTreeId, null);
+      }
+      return;
+    }
+
+    if (activeData?.type === 'tree-reorder' && overData?.type === 'tree-header') {
+      if (activeData.treeId !== overData.treeId) {
+        reorderBacklogTree(activeData.treeId, overData.treeId, 'after');
       }
       return;
     }
@@ -172,7 +192,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklog, moveBacklogToTree]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklogToTree, reorderBacklogTree]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
