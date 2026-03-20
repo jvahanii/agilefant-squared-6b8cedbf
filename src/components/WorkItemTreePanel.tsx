@@ -285,7 +285,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               )}
             </span>
           )}
-          <EditablePoints workItemId={workItemId} points={item.points} />
+          <EditablePoints workItemId={workItemId} points={item.points} editTrigger={isSelected ? pointsEditTrigger : 0} />
           {!isRenaming && (
             <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
               <button
