@@ -61,6 +61,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     data: { type: 'workitem-parent', workItemId, treeId, backlogId },
   });
 
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  }, [setDragRef, setDropRef]);
+
   if (!item) return null;
 
   const hasChildren = item.childrenIds.length > 0;
