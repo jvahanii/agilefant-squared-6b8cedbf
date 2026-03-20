@@ -644,5 +644,17 @@ export const useAppStore = create<AppState & {
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems };
       });
     },
+
+    reorderBacklogTree: (treeId, targetTreeId, position) => {
+      set(state => {
+        if (treeId === targetTreeId) return state;
+        const undo = pushUndo(state);
+        const order = state.treeOrder.filter(id => id !== treeId);
+        const idx = order.indexOf(targetTreeId);
+        const insertAt = position === 'after' ? idx + 1 : idx;
+        order.splice(insertAt, 0, treeId);
+        return { ...undo, treeOrder: order };
+      });
+    },
   };
 });
