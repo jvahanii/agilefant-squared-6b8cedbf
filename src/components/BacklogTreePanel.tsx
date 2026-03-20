@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, LayoutList } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { useState, useRef, useEffect, useMemo } from 'react';
 
