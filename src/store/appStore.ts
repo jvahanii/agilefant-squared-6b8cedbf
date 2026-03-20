@@ -487,5 +487,65 @@ export const useAppStore = create<AppState & {
         return { ...undo, backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name } } };
       });
     },
+
+    reorderBacklogInList: (backlogId, targetBacklogId, position) => {
+      set(state => {
+        if (backlogId === targetBacklogId) return state;
+        const backlog = state.backlogs[backlogId];
+        const target = state.backlogs[targetBacklogId];
+        if (!backlog || !target) return state;
+        if (backlog.treeId !== target.treeId) return state;
+
+        const undo = pushUndo(state);
+        const updatedBacklogs = { ...state.backlogs };
+        const updatedTrees = { ...state.backlogTrees };
+        const treeId = backlog.treeId;
+
+        // Remove from old parent
+        if (backlog.parentId) {
+          const oldParent = updatedBacklogs[backlog.parentId];
+          if (oldParent) {
+            updatedBacklogs[backlog.parentId] = {
+              ...oldParent,
+              childrenIds: oldParent.childrenIds.filter(id => id !== backlogId),
+            };
+          }
+        } else {
+          const tree = updatedTrees[treeId];
+          if (tree) {
+            updatedTrees[treeId] = {
+              ...tree,
+              rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId),
+            };
+          }
+        }
+
+        // Insert into target's parent at the right position
+        const newParentId = target.parentId;
+        updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
+
+        if (newParentId) {
+          const newParent = updatedBacklogs[newParentId];
+          if (newParent) {
+            const list = newParent.childrenIds.filter(id => id !== backlogId);
+            const idx = list.indexOf(targetBacklogId);
+            const insertAt = position === 'after' ? idx + 1 : idx;
+            list.splice(insertAt, 0, backlogId);
+            updatedBacklogs[newParentId] = { ...newParent, childrenIds: list };
+          }
+        } else {
+          const tree = updatedTrees[treeId];
+          if (tree) {
+            const list = tree.rootBacklogIds.filter(id => id !== backlogId);
+            const idx = list.indexOf(targetBacklogId);
+            const insertAt = position === 'after' ? idx + 1 : idx;
+            list.splice(insertAt, 0, backlogId);
+            updatedTrees[treeId] = { ...tree, rootBacklogIds: list };
+          }
+        }
+
+        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees };
+      });
+    },
   };
 });
