@@ -49,6 +49,7 @@ function snapshot(state: DataSnapshot): DataSnapshot {
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
+    treeOrder: state.treeOrder,
     selectedBacklogId: state.selectedBacklogId,
     selectedTreeId: state.selectedTreeId,
     selectedWorkItemId: state.selectedWorkItemId,
