@@ -265,7 +265,7 @@ function TreeHeader({ treeId }: { treeId: string }) {
           />
         ) : (
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {name}
+            {tree?.name}
           </span>
         )}
         {!isRenaming && (
