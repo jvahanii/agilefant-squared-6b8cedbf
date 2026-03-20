@@ -140,8 +140,24 @@ export default function AppLayout() {
         if (sourceTreeId !== targetTreeId) {
           moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
         } else {
-          moveBacklog(activeData.backlogId, overData.backlogId, sourceTreeId);
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
         }
+      }
+      return;
+    }
+
+    if (activeData?.type === 'backlog-reorder' && overData?.type === 'tree-header') {
+      const sourceTreeId = activeData.treeId as string;
+      const targetTreeId = overData.treeId as string;
+      if (sourceTreeId !== targetTreeId) {
+        moveBacklogToTree(activeData.backlogId, targetTreeId, null);
+      }
+      return;
+    }
+
+    if (activeData?.type === 'tree-reorder' && overData?.type === 'tree-header') {
+      if (activeData.treeId !== overData.treeId) {
+        reorderBacklogTree(activeData.treeId, overData.treeId, 'after');
       }
       return;
     }
