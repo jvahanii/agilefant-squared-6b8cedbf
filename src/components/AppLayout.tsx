@@ -38,21 +38,18 @@ export default function AppLayout() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      // Ctrl+Z always works
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
 
-      // Don't fire shortcuts when typing in inputs
       if (isInput) return;
 
       const state = useAppStore.getState();
 
       switch (e.key) {
         case 'N': {
-          // Shift+N = add child of selected (backlog child or work item child)
           e.preventDefault();
           if (state.selectedWorkItemId) {
             window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
@@ -62,16 +59,23 @@ export default function AppLayout() {
           break;
         }
         case 'n': {
-          // N (no shift) = new root work item in selected backlog
           e.preventDefault();
           if (state.selectedBacklogId && state.selectedTreeId) {
             window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
           }
           break;
         }
+        case 'F2': {
+          e.preventDefault();
+          if (state.selectedWorkItemId) {
+            window.dispatchEvent(new CustomEvent('shortcut:rename-workitem'));
+          } else if (state.selectedBacklogId) {
+            window.dispatchEvent(new CustomEvent('shortcut:rename-backlog'));
+          }
+          break;
+        }
         case 'Delete':
         case 'Backspace': {
-          // Delete the selected item (work item takes priority over backlog)
           if (state.selectedWorkItemId) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
@@ -87,7 +91,6 @@ export default function AppLayout() {
           break;
         }
         case 'Escape': {
-          // Deselect work item
           if (state.selectedWorkItemId) {
             useAppStore.getState().selectWorkItem(null);
           }
@@ -256,9 +259,10 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const shortcuts = [
-    { keys: ['N'], description: 'New root work item in selected backlog' },
-    { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
-    { keys: ['Del'], description: 'Delete selected item or backlog' },
+    { keys: ['N'], description: 'New root work item in selected list' },
+    { keys: ['Shift', 'N'], description: 'New child of selected item or list' },
+    { keys: ['Del'], description: 'Delete selected item or list' },
+    { keys: ['F2'], description: 'Rename selected item or list' },
     { keys: ['Esc'], description: 'Deselect work item' },
     { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
     { keys: ['?'], description: 'Toggle this help' },
