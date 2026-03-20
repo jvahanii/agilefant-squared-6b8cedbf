@@ -1,10 +1,42 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, X, Check } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
+import { useState, useRef, useEffect } from 'react';
 
 interface BacklogNodeProps {
   backlogId: string;
   depth: number;
+}
+
+function InlineInput({ onSubmit, onCancel, depth }: { onSubmit: (name: string) => void; onCancel: () => void; depth: number }) {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const handleSubmit = () => {
+    const trimmed = value.trim();
+    if (trimmed) onSubmit(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: `${depth * 16 + 28}px` }}>
+      <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
+      <input
+        ref={inputRef}
+        className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50"
+        placeholder="Backlog name…"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') handleSubmit();
+          if (e.key === 'Escape') onCancel();
+        }}
+        onBlur={handleSubmit}
+      />
+    </div>
+  );
 }
 
 function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
@@ -13,10 +45,13 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const expanded = useAppStore(s => s.expandedBacklogs.has(backlogId));
   const toggleExpand = useAppStore(s => s.toggleBacklogExpand);
   const selectBacklog = useAppStore(s => s.selectBacklog);
+  const addBacklog = useAppStore(s => s.addBacklog);
+  const deleteBacklog = useAppStore(s => s.deleteBacklog);
+  const [isAdding, setIsAdding] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `backlog-drop-${backlogId}`,
-    data: { type: 'backlog', backlogId, treeId: backlog.treeId },
+    data: { type: 'backlog', backlogId, treeId: backlog?.treeId },
   });
 
   if (!backlog) return null;
@@ -51,13 +86,36 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           )}
         </button>
         <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
-        <span className="text-sm truncate">{backlog.name}</span>
+        <span className="text-sm truncate flex-1">{backlog.name}</span>
+        <div className="hidden group-hover:flex items-center gap-0.5">
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
+            title="Add child backlog"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
+            title="Delete backlog"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
-      {expanded && hasChildren && (
+      {(expanded || isAdding) && (
         <div>
-          {backlog.childrenIds.map(childId => (
+          {hasChildren && expanded && backlog.childrenIds.map(childId => (
             <BacklogNode key={childId} backlogId={childId} depth={depth + 1} />
           ))}
+          {isAdding && (
+            <InlineInput
+              depth={depth + 1}
+              onSubmit={(name) => { addBacklog(name, backlogId, backlog.treeId); setIsAdding(false); }}
+              onCancel={() => setIsAdding(false)}
+            />
+          )}
         </div>
       )}
     </div>
@@ -66,6 +124,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
 export function BacklogTreePanel() {
   const backlogTrees = useAppStore(s => s.backlogTrees);
+  const addBacklog = useAppStore(s => s.addBacklog);
+  const [addingToTree, setAddingToTree] = useState<string | null>(null);
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
@@ -77,12 +137,28 @@ export function BacklogTreePanel() {
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {Object.values(backlogTrees).map(tree => (
           <div key={tree.id} className="mb-4">
-            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {tree.name}
+            <div className="px-2 py-1 flex items-center justify-between group">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {tree.name}
+              </span>
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
+                onClick={() => setAddingToTree(tree.id)}
+                title="Add root backlog"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
             </div>
             {tree.rootBacklogIds.map(backlogId => (
               <BacklogNode key={backlogId} backlogId={backlogId} depth={0} />
             ))}
+            {addingToTree === tree.id && (
+              <InlineInput
+                depth={0}
+                onSubmit={(name) => { addBacklog(name, null, tree.id); setAddingToTree(null); }}
+                onCancel={() => setAddingToTree(null)}
+              />
+            )}
           </div>
         ))}
       </div>
