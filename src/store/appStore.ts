@@ -24,6 +24,7 @@ interface AppState extends DataSnapshot {
   deleteBacklog: (backlogId: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
+  removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -361,6 +362,29 @@ export const useAppStore = create<AppState & {
         }
 
         toDelete.forEach(id => delete updatedItems[id]);
+
+        return { ...undo, workItems: updatedItems };
+      });
+    },
+
+    removeWorkItemFromTree: (workItemId, treeId) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+
+        const undo = pushUndo(state);
+        const updatedItems = { ...state.workItems };
+
+        // Remove tree assignment from this item and all descendants
+        const removeRecursive = (id: string) => {
+          const wi = updatedItems[id];
+          if (!wi) return;
+          const newAssignments = { ...wi.backlogAssignments };
+          delete newAssignments[treeId];
+          updatedItems[id] = { ...wi, backlogAssignments: newAssignments };
+          wi.childrenIds.forEach(removeRecursive);
+        };
+        removeRecursive(workItemId);
 
         return { ...undo, workItems: updatedItems };
       });
