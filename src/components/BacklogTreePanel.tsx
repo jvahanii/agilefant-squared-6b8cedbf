@@ -218,7 +218,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
 }
 
-function TreeHeader({ treeId, name }: { treeId: string; name: string }) {
+function TreeHeader({ treeId }: { treeId: string }) {
+  const tree = useAppStore((s) => s.backlogTrees[treeId]);
   const renameBacklogTree = useAppStore((s) => s.renameBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
   const addBacklog = useAppStore((s) => s.addBacklog);
