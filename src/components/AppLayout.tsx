@@ -5,8 +5,9 @@ import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
 import { useAppStore } from '@/store/appStore';
 import { ActionPrompt } from '@/components/ActionPrompt';
-import { Undo2 } from 'lucide-react';
+import { Undo2, Keyboard } from 'lucide-react';
 import agilefantLogo from '@/assets/agilefant-logo.png';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PendingCrossTreeDrop {
   workItemId: string;
@@ -22,10 +23,14 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
+  const addWorkItem = useAppStore(s => s.addWorkItem);
+  const addBacklog = useAppStore(s => s.addBacklog);
+  const deleteBacklog = useAppStore(s => s.deleteBacklog);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -33,9 +38,50 @@ export default function AppLayout() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Ctrl+Z always works
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
+        return;
+      }
+
+      // Don't fire shortcuts when typing in inputs
+      if (isInput) return;
+
+      const state = useAppStore.getState();
+
+      switch (e.key) {
+        case 'n': {
+          // N = new work item in selected backlog, Shift+N = new child backlog
+          e.preventDefault();
+          if (e.shiftKey) {
+            if (state.selectedBacklogId && state.selectedTreeId) {
+              // Dispatch event for BacklogTreePanel to handle inline input
+              window.dispatchEvent(new CustomEvent('shortcut:add-backlog'));
+            }
+          } else {
+            if (state.selectedBacklogId && state.selectedTreeId) {
+              window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+            }
+          }
+          break;
+        }
+        case 'Delete':
+        case 'Backspace': {
+          if (state.selectedBacklogId) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('shortcut:delete-backlog'));
+          }
+          break;
+        }
+        case '?': {
+          e.preventDefault();
+          setShowShortcuts(s => !s);
+          break;
+        }
       }
     };
     window.addEventListener('keydown', handler);
@@ -64,7 +110,6 @@ export default function AppLayout() {
       const targetTreeId = overData.treeId as string;
 
       if (sourceTreeId !== targetTreeId) {
-        // Cross-tree drop — prompt move vs add
         const store = useAppStore.getState();
         const item = store.workItems[activeData.workItemId];
         const sourceTree = store.backlogTrees[sourceTreeId];
@@ -93,11 +138,9 @@ export default function AppLayout() {
     const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
     if (value === 'move') {
-      // Move: assign to target tree, remove from source tree
       moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
       removeWorkItemFromTree(workItemId, sourceTreeId);
     } else if (value === 'add') {
-      // Add: assign to target tree, keep source
       moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
     }
     setPendingCrossTree(null);
@@ -112,6 +155,18 @@ export default function AppLayout() {
             Agilefant<sup className="text-xs text-primary">2</sup>
           </h1>
           <div className="ml-auto flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={() => setShowShortcuts(s => !s)}
+                  title="Keyboard shortcuts (?)"
+                >
+                  <Keyboard className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
+            </Tooltip>
             <button
               className={`
                 w-8 h-8 flex items-center justify-center rounded-md transition-colors
@@ -169,6 +224,59 @@ export default function AppLayout() {
           onCancel={() => setPendingCrossTree(null)}
         />
       )}
+
+      {showShortcuts && (
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
+      )}
     </DndContext>
+  );
+}
+
+function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === '?') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const shortcuts = [
+    { keys: ['N'], description: 'New work item in selected backlog' },
+    { keys: ['Shift', 'N'], description: 'New child backlog under selected' },
+    { keys: ['Delete'], description: 'Delete selected backlog' },
+    { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
+    { keys: ['?'], description: 'Toggle this help' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-card border rounded-lg shadow-2xl w-full max-w-sm mx-4 animate-fade-in-up overflow-hidden">
+        <div className="px-5 pt-5 pb-3">
+          <h3 className="text-sm font-semibold">Keyboard Shortcuts</h3>
+        </div>
+        <div className="px-5 pb-5 space-y-2.5">
+          {shortcuts.map((s, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{s.description}</span>
+              <div className="flex items-center gap-1">
+                {s.keys.map((key, j) => (
+                  <kbd
+                    key={j}
+                    className="px-1.5 py-0.5 rounded border bg-muted text-xs font-mono min-w-[24px] text-center"
+                  >
+                    {key}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -74,7 +74,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const hasChildren = item.childrenIds.length > 0;
   const assignmentCount = Object.keys(item.backlogAssignments).length;
 
-  // Build backlog label string
   const backlogLabels = Object.entries(item.backlogAssignments)
     .map(([, blId]) => backlogs[blId]?.name)
     .filter(Boolean)
@@ -147,7 +146,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={() => setIsAdding(true)}
-              title="Add child item"
+              title="Add child item (N)"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -228,6 +227,13 @@ export function WorkItemTreePanel() {
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
 
+  // Listen for keyboard shortcut to add work item
+  useEffect(() => {
+    const handler = () => setIsAdding(true);
+    window.addEventListener('shortcut:add-workitem', handler);
+    return () => window.removeEventListener('shortcut:add-workitem', handler);
+  }, []);
+
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId) return [];
     return Object.values(workItems)
@@ -261,7 +267,7 @@ export function WorkItemTreePanel() {
         <button
           className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onClick={() => setIsAdding(true)}
-          title="Add work item"
+          title="Add work item (N)"
         >
           <Plus className="w-4 h-4" />
         </button>
