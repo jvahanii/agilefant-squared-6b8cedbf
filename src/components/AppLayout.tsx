@@ -134,7 +134,14 @@ export default function AppLayout() {
 
     if (activeData?.type === 'backlog-reorder' && overData?.type === 'backlog') {
       if (activeData.backlogId !== overData.backlogId) {
-        reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+        const sourceTreeId = activeData.treeId as string;
+        const targetTreeId = overData.treeId as string;
+        if (sourceTreeId !== targetTreeId) {
+          // Cross-tree: move list to target tree as sibling of drop target
+          moveBacklogToTree(activeData.backlogId, targetTreeId, overData.backlogId);
+        } else {
+          reorderBacklogInList(activeData.backlogId, overData.backlogId, 'after');
+        }
       }
       return;
     }
