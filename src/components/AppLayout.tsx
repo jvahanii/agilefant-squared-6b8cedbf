@@ -95,14 +95,23 @@ export default function AppLayout() {
               const wi = state.workItems[wiId];
               if (!wi) break;
               const treeId = state.selectedTreeId;
-              const backlogId = state.selectedBacklogIds[0];
+              const selectedBacklogId = state.selectedBacklogIds[0];
+
+              // Collect selected backlog + all descendant backlog IDs
+              const backlogIds: string[] = [];
+              const collectBacklogs = (id: string) => {
+                backlogIds.push(id);
+                state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+              };
+              collectBacklogs(selectedBacklogId);
 
               // Get siblings
+              const backlogIdSet = new Set(backlogIds);
               const siblings = Object.values(state.workItems).
               filter((w) => {
-                if (w.backlogAssignments[treeId] !== backlogId) return false;
+                if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
                 if (wi.parentId === null) {
-                  return w.parentId === null || !state.workItems[w.parentId] || state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId;
+                  return w.parentId === null || !state.workItems[w.parentId] || !backlogIdSet.has(state.workItems[w.parentId].backlogAssignments[treeId]);
                 }
                 return w.parentId === wi.parentId;
               }).
@@ -112,7 +121,7 @@ export default function AppLayout() {
               if (idx === -1) break;
               const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
               if (newIdx < 0 || newIdx >= siblings.length) break;
-              useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
+              useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
             }
             break;
           }
@@ -167,7 +176,7 @@ export default function AppLayout() {
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
       reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
-      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogId as string);
+      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogIds as string[]);
     }
   }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
 

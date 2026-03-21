@@ -41,9 +41,10 @@ interface WorkItemNodeProps {
   depth: number;
   treeId: string;
   backlogId: string;
+  allBacklogIds: string[];
 }
 
-function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
+function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
@@ -353,11 +354,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
                         id={`reorder-${workItemId}-${index}`}
                         index={index}
                         treeId={treeId}
-                        backlogId={childBacklogId}
+                        backlogIds={allBacklogIds}
                         parentId={workItemId}
                         depth={depth + 1}
                       />
-                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} />
                     </div>
                     );
                   })}
@@ -365,7 +366,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
                   id={`reorder-${workItemId}-${item.childrenIds.length}`}
                   index={item.childrenIds.length}
                   treeId={treeId}
-                  backlogId={item.childrenIds.length > 0 ? (workItems[item.childrenIds[item.childrenIds.length - 1]]?.backlogAssignments[treeId] ?? backlogId) : backlogId}
+                  backlogIds={allBacklogIds}
                   parentId={workItemId}
                   depth={depth + 1}
                 />
@@ -406,12 +407,12 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   );
 }
 
-function ReorderDropZone({ id, index, treeId, backlogId, parentId, depth }: {
-  id: string; index: number; treeId: string; backlogId: string; parentId: string | null; depth: number;
+function ReorderDropZone({ id, index, treeId, backlogIds, parentId, depth }: {
+  id: string; index: number; treeId: string; backlogIds: string[]; parentId: string | null; depth: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: 'workitem-reorder', index, treeId, backlogId, parentId },
+    data: { type: 'workitem-reorder', index, treeId, backlogIds, parentId },
   });
 
   return (
@@ -466,6 +467,8 @@ export function WorkItemTreePanel() {
     collect(selectedBacklogId);
     return ids;
   }, [selectedBacklogId, backlogs]);
+
+  const allBacklogIds = useMemo(() => Array.from(backlogIdSet), [backlogIdSet]);
 
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
@@ -524,11 +527,11 @@ export function WorkItemTreePanel() {
                     id={`reorder-root-${index}`}
                     index={index}
                     treeId={selectedTreeId}
-                    backlogId={itemBacklogId}
+                    backlogIds={allBacklogIds}
                     parentId={null}
                     depth={0}
                   />
-                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} />
                 </div>
                 );
               })}
@@ -536,7 +539,7 @@ export function WorkItemTreePanel() {
                 id={`reorder-root-${rootWorkItems.length}`}
                 index={rootWorkItems.length}
                 treeId={selectedTreeId}
-                backlogId={rootWorkItems.length > 0 ? (rootWorkItems[rootWorkItems.length - 1].backlogAssignments[selectedTreeId] ?? selectedBacklogId) : selectedBacklogId}
+                backlogIds={allBacklogIds}
                 parentId={null}
                 depth={0}
               />

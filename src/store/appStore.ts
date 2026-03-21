@@ -19,7 +19,8 @@ interface AppState extends DataSnapshot {
   clearWorkItemSelection: () => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
-  reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogId: string) => void;
+  reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
+  
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
@@ -191,17 +192,19 @@ export const useAppStore = create<AppState & {
       });
     },
 
-    reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogId) => {
+    reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
       set(state => {
         const item = state.workItems[workItemId];
         if (!item) return state;
 
-        // Get siblings: items with same parent in same backlog
+        const backlogIdSet = new Set(backlogIds);
+
+        // Get siblings: items with same parent in the given set of backlogs
         const siblings = Object.values(state.workItems)
           .filter(wi => {
-            if (wi.backlogAssignments[treeId] !== backlogId) return false;
+            if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
             if (item.parentId === null) {
-              return wi.parentId === null || !state.workItems[wi.parentId] || state.workItems[wi.parentId].backlogAssignments[treeId] !== backlogId;
+              return wi.parentId === null || !state.workItems[wi.parentId] || !backlogIdSet.has(state.workItems[wi.parentId].backlogAssignments[treeId]);
             }
             return wi.parentId === item.parentId;
           })
