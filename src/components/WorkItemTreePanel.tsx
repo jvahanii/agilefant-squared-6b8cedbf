@@ -44,7 +44,7 @@ interface WorkItemNodeProps {
   allBacklogIds: string[];
 }
 
-function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
+function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
