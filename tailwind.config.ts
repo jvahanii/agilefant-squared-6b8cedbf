@@ -66,6 +66,9 @@ export default {
         drag: {
           overlay: "hsl(var(--drag-overlay))",
         },
+        selection: {
+          DEFAULT: "hsl(var(--selection))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
