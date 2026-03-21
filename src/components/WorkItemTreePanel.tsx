@@ -354,11 +354,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
                         id={`reorder-${workItemId}-${index}`}
                         index={index}
                         treeId={treeId}
-                        backlogId={childBacklogId}
+                        backlogIds={allBacklogIds}
                         parentId={workItemId}
                         depth={depth + 1}
                       />
-                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} />
                     </div>
                     );
                   })}
@@ -366,7 +366,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
                   id={`reorder-${workItemId}-${item.childrenIds.length}`}
                   index={item.childrenIds.length}
                   treeId={treeId}
-                  backlogId={item.childrenIds.length > 0 ? (workItems[item.childrenIds[item.childrenIds.length - 1]]?.backlogAssignments[treeId] ?? backlogId) : backlogId}
+                  backlogIds={allBacklogIds}
                   parentId={workItemId}
                   depth={depth + 1}
                 />
