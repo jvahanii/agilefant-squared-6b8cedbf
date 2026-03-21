@@ -141,7 +141,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
           onClick={(e) => {
             e.stopPropagation();
-            selectWorkItem(isSelected ? null : workItemId);
+            if (e.ctrlKey || e.metaKey) {
+              selectWorkItem(workItemId, true);
+            } else {
+              selectWorkItem(isSelected ? null : workItemId);
+            }
           }}
         >
           <div
