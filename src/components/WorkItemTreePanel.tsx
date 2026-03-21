@@ -419,15 +419,27 @@ export function WorkItemTreePanel() {
     return () => window.removeEventListener('shortcut:add-workitem', handler);
   }, []);
 
+  // Collect selected backlog + all descendant backlog IDs
+  const backlogIdSet = useMemo(() => {
+    if (!selectedBacklogId) return new Set<string>();
+    const ids = new Set<string>();
+    const collect = (id: string) => {
+      ids.add(id);
+      backlogs[id]?.childrenIds.forEach(collect);
+    };
+    collect(selectedBacklogId);
+    return ids;
+  }, [selectedBacklogId, backlogs]);
+
   const rootWorkItems = useMemo(() => {
-    if (!selectedBacklogId || !selectedTreeId) return [];
+    if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
     return Object.values(workItems)
       .filter(wi =>
-        wi.backlogAssignments[selectedTreeId] === selectedBacklogId &&
-        (wi.parentId === null || workItems[wi.parentId]?.backlogAssignments[selectedTreeId] !== selectedBacklogId)
+        backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
+        (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId]?.backlogAssignments[selectedTreeId]))
       )
       .sort((a, b) => a.rank - b.rank);
-  }, [workItems, selectedBacklogId, selectedTreeId]);
+  }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
   if (!selectedBacklogId || !selectedTreeId) {
     return (
