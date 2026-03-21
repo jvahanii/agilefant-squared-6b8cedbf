@@ -245,8 +245,31 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               }}
             >
               {item.title}
-              {backlogLabels && (
-                <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
+              {backlogPaths.length > 0 && (
+                <span className="text-muted-foreground text-xs ml-1 inline-flex items-center gap-0 flex-wrap">
+                  (
+                  {backlogPaths.map(({ treeId: tid, path }, pi) => (
+                    <span key={tid} className="inline-flex items-center">
+                      {pi > 0 && <span className="mx-0.5">·</span>}
+                      {path.map((seg, si) => (
+                        <span key={seg.id} className="inline-flex items-center">
+                          {si > 0 && <span className="mx-0.5 text-muted-foreground/50">/</span>}
+                          <button
+                            className="hover:text-primary hover:underline transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectBacklog(seg.id, tid);
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            {seg.name}
+                          </button>
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                  )
+                </span>
               )}
             </span>
           )}
