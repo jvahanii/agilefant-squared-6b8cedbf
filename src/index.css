@@ -6,49 +6,49 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 200 25% 12%;
+    --background: 340 30% 98%;
+    --foreground: 340 25% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 200 25% 12%;
+    --card: 340 20% 100%;
+    --card-foreground: 340 25% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 200 25% 12%;
+    --popover: 340 20% 100%;
+    --popover-foreground: 340 25% 12%;
 
-    --primary: 174 55% 30%;
+    --primary: 340 65% 47%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 200 15% 93%;
-    --secondary-foreground: 200 25% 12%;
+    --secondary: 340 20% 93%;
+    --secondary-foreground: 340 25% 12%;
 
-    --muted: 210 15% 94%;
-    --muted-foreground: 200 10% 48%;
+    --muted: 340 15% 94%;
+    --muted-foreground: 340 10% 48%;
 
-    --accent: 174 45% 92%;
-    --accent-foreground: 174 55% 22%;
+    --accent: 340 50% 93%;
+    --accent-foreground: 340 65% 30%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 18% 89%;
-    --input: 210 18% 89%;
-    --ring: 174 55% 30%;
+    --border: 340 18% 87%;
+    --input: 340 18% 87%;
+    --ring: 340 65% 47%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 200 20% 97%;
-    --sidebar-foreground: 200 15% 25%;
-    --sidebar-primary: 174 55% 30%;
+    --sidebar-background: 340 25% 97%;
+    --sidebar-foreground: 340 15% 25%;
+    --sidebar-primary: 340 65% 47%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 45% 92%;
-    --sidebar-accent-foreground: 174 55% 22%;
-    --sidebar-border: 210 18% 89%;
-    --sidebar-ring: 174 55% 30%;
+    --sidebar-accent: 340 50% 93%;
+    --sidebar-accent-foreground: 340 65% 30%;
+    --sidebar-border: 340 18% 87%;
+    --sidebar-ring: 340 65% 47%;
 
-    --panel-handle: 200 10% 78%;
-    --tree-indent: 200 15% 93%;
-    --drag-overlay: 174 55% 30%;
-    --selection: 30 90% 50%;
+    --panel-handle: 340 10% 78%;
+    --tree-indent: 340 15% 93%;
+    --drag-overlay: 340 65% 47%;
+    --selection: 330 80% 55%;
   }
 }
 
