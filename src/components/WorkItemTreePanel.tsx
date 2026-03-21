@@ -254,12 +254,13 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
 }
 
 export function WorkItemTreePanel() {
-  const selectedBacklogId = useAppStore(s => s.selectedBacklogId);
+  const selectedBacklogIds = useAppStore(s => s.selectedBacklogIds);
+  const selectedBacklogId = selectedBacklogIds[0] ?? null;
   const selectedTreeId = useAppStore(s => s.selectedTreeId);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
   const addWorkItem = useAppStore(s => s.addWorkItem);
-  const selectWorkItem = useAppStore(s => s.selectWorkItem);
+  const clearWorkItemSelection = useAppStore(s => s.clearWorkItemSelection);
   const [isAdding, setIsAdding] = useState(false);
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
