@@ -137,8 +137,10 @@ export default function AppLayout() {
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
       reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
+    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
+      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogId as string);
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
