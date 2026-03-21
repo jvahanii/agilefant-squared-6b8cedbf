@@ -191,6 +191,39 @@ export const useAppStore = create<AppState & {
       });
     },
 
+    reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogId) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+
+        // Get siblings: items with same parent in same backlog
+        const siblings = Object.values(state.workItems)
+          .filter(wi => {
+            if (wi.backlogAssignments[treeId] !== backlogId) return false;
+            if (item.parentId === null) {
+              return wi.parentId === null || !state.workItems[wi.parentId] || state.workItems[wi.parentId].backlogAssignments[treeId] !== backlogId;
+            }
+            return wi.parentId === item.parentId;
+          })
+          .sort((a, b) => a.rank - b.rank);
+
+        const currentIndex = siblings.findIndex(s => s.id === workItemId);
+        if (currentIndex === -1 || currentIndex === targetIndex) return state;
+
+        const undo = pushUndo(state);
+        const reordered = siblings.filter(s => s.id !== workItemId);
+        const clampedIndex = Math.max(0, Math.min(targetIndex, reordered.length));
+        reordered.splice(clampedIndex, 0, item);
+
+        const updatedItems = { ...state.workItems };
+        reordered.forEach((s, i) => {
+          updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
+        });
+
+        return { ...undo, workItems: updatedItems };
+      });
+    },
+
     moveBacklog: (backlogId, newParentId, treeId) => {
       set(state => {
         const backlog = state.backlogs[backlogId];

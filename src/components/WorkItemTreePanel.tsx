@@ -45,6 +45,7 @@ interface WorkItemNodeProps {
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
+  const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
