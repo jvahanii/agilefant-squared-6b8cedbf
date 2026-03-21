@@ -467,9 +467,29 @@ export function WorkItemTreePanel() {
               No work items in this backlog
             </div>
           ) : (
-            rootWorkItems.map(item => (
-              <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
-            ))
+            <>
+              {rootWorkItems.map((item, index) => (
+                <div key={item.id}>
+                  <ReorderDropZone
+                    id={`reorder-root-${index}`}
+                    index={index}
+                    treeId={selectedTreeId}
+                    backlogId={selectedBacklogId}
+                    parentId={null}
+                    depth={0}
+                  />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
+                </div>
+              ))}
+              <ReorderDropZone
+                id={`reorder-root-${rootWorkItems.length}`}
+                index={rootWorkItems.length}
+                treeId={selectedTreeId}
+                backlogId={selectedBacklogId}
+                parentId={null}
+                depth={0}
+              />
+            </>
           )}
           {isAdding && (
             <InlineWorkItemInput
