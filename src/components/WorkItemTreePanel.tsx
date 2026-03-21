@@ -406,12 +406,12 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   );
 }
 
-function ReorderDropZone({ id, index, treeId, backlogId, parentId, depth }: {
-  id: string; index: number; treeId: string; backlogId: string; parentId: string | null; depth: number;
+function ReorderDropZone({ id, index, treeId, backlogIds, parentId, depth }: {
+  id: string; index: number; treeId: string; backlogIds: string[]; parentId: string | null; depth: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: 'workitem-reorder', index, treeId, backlogId, parentId },
+    data: { type: 'workitem-reorder', index, treeId, backlogIds, parentId },
   });
 
   return (
