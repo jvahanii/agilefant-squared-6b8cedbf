@@ -41,6 +41,7 @@ interface WorkItemNodeProps {
   depth: number;
   treeId: string;
   backlogId: string;
+  allBacklogIds: string[];
 }
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
