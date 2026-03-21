@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from 'lucide-react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable, DragOverEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { ActionPrompt } from './ActionPrompt';
@@ -347,6 +347,19 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   );
 }
 
+function WorkItemRootDropZone({ treeId, backlogId, children }: { treeId: string; backlogId: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `workitem-root-drop-${backlogId}`,
+    data: { type: 'workitem-root', treeId, backlogId },
+  });
+
+  return (
+    <div ref={setNodeRef} className={`flex-1 overflow-hidden ${isOver ? 'ring-2 ring-selection/40 ring-inset rounded-md' : ''}`}>
+      {children}
+    </div>
+  );
+}
+
 export function WorkItemTreePanel() {
   const selectedBacklogIds = useAppStore(s => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
@@ -407,24 +420,26 @@ export function WorkItemTreePanel() {
           <Plus className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2">
-        {rootWorkItems.length === 0 && !isAdding ? (
-          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-            No work items in this backlog
-          </div>
-        ) : (
-          rootWorkItems.map(item => (
-            <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
-          ))
-        )}
-        {isAdding && (
-          <InlineWorkItemInput
-            depth={0}
-            onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
-            onCancel={() => setIsAdding(false)}
-          />
-        )}
-      </div>
+      <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
+        <div className="flex-1 overflow-y-auto p-2">
+          {rootWorkItems.length === 0 && !isAdding ? (
+            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+              No work items in this backlog
+            </div>
+          ) : (
+            rootWorkItems.map(item => (
+              <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
+            ))
+          )}
+          {isAdding && (
+            <InlineWorkItemInput
+              depth={0}
+              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
+              onCancel={() => setIsAdding(false)}
+            />
+          )}
+        </div>
+      </WorkItemRootDropZone>
     </div>
   );
 }
