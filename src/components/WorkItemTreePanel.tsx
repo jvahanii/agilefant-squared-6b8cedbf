@@ -527,11 +527,11 @@ export function WorkItemTreePanel() {
                     id={`reorder-root-${index}`}
                     index={index}
                     treeId={selectedTreeId}
-                    backlogId={itemBacklogId}
+                    backlogIds={allBacklogIds}
                     parentId={null}
                     depth={0}
                   />
-                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} />
                 </div>
                 );
               })}
@@ -539,7 +539,7 @@ export function WorkItemTreePanel() {
                 id={`reorder-root-${rootWorkItems.length}`}
                 index={rootWorkItems.length}
                 treeId={selectedTreeId}
-                backlogId={rootWorkItems.length > 0 ? (rootWorkItems[rootWorkItems.length - 1].backlogAssignments[selectedTreeId] ?? selectedBacklogId) : selectedBacklogId}
+                backlogIds={allBacklogIds}
                 parentId={null}
                 depth={0}
               />
