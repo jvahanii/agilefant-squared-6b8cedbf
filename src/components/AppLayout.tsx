@@ -87,6 +87,35 @@ export default function AppLayout() {
           }
           break;
         }
+        case 'ArrowUp':
+        case 'ArrowDown': {
+          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+            e.preventDefault();
+            const wiId = state.selectedWorkItemIds[0];
+            const wi = state.workItems[wiId];
+            if (!wi) break;
+            const treeId = state.selectedTreeId;
+            const backlogId = state.selectedBacklogIds[0];
+
+            // Get siblings
+            const siblings = Object.values(state.workItems)
+              .filter(w => {
+                if (w.backlogAssignments[treeId] !== backlogId) return false;
+                if (wi.parentId === null) {
+                  return w.parentId === null || !state.workItems[w.parentId] || state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId;
+                }
+                return w.parentId === wi.parentId;
+              })
+              .sort((a, b) => a.rank - b.rank);
+
+            const idx = siblings.findIndex(s => s.id === wiId);
+            if (idx === -1) break;
+            const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+            if (newIdx < 0 || newIdx >= siblings.length) break;
+            useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
+          }
+          break;
+        }
       }
     };
     window.addEventListener('keydown', handler);
