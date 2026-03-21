@@ -47,7 +47,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const item = useAppStore(s => s.workItems[workItemId]);
   const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
-  const selectedWorkItemId = useAppStore(s => s.selectedWorkItemId);
+  const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
   const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore(s => s.selectWorkItem);
   const addWorkItem = useAppStore(s => s.addWorkItem);
@@ -55,8 +55,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
-
-  const isSelected = selectedWorkItemId === workItemId;
 
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
