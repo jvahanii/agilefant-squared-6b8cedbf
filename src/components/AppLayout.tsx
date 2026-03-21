@@ -69,7 +69,10 @@ export default function AppLayout() {
         }
         case 'Delete':
         case 'Backspace': {
-          if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
+          } else if (state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
           }
