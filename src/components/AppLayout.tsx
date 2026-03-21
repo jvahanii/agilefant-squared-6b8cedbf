@@ -1,13 +1,21 @@
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useState, useCallback, useEffect } from 'react';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { BacklogTreePanel } from '@/components/BacklogTreePanel';
-import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
-import { useAppStore } from '@/store/appStore';
-import { ActionPrompt } from '@/components/ActionPrompt';
-import { Undo2, Keyboard } from 'lucide-react';
-import agilefantLogo from '@/assets/agilefant-logo.png';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { useState, useCallback, useEffect } from "react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { BacklogTreePanel } from "@/components/BacklogTreePanel";
+import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
+import { useAppStore } from "@/store/appStore";
+import { ActionPrompt } from "@/components/ActionPrompt";
+import { Undo2, Keyboard } from "lucide-react";
+import agilefantLogo from "@/assets/agilefant-logo.png";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PendingCrossTreeDrop {
   workItemId: string;
@@ -20,27 +28,25 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
-  const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
-  const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
-  const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
-  const reorderWorkItemAmongSiblings = useAppStore(s => s.reorderWorkItemAmongSiblings);
-  const undo = useAppStore(s => s.undo);
-  const undoStackLength = useAppStore(s => s.undoStack.length);
+  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
+  const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
+  const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
+  const undo = useAppStore((s) => s.undo);
+  const undoStackLength = useAppStore((s) => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
       // Ctrl+Z always works
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
@@ -52,43 +58,43 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       switch (e.key) {
-        case 'N': {
+        case "N": {
           e.preventDefault();
           if (state.selectedWorkItemIds.length > 0) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
+            window.dispatchEvent(new CustomEvent("shortcut:add-child-workitem"));
           } else if (state.selectedBacklogIds.length > 0) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+            window.dispatchEvent(new CustomEvent("shortcut:add-child-backlog"));
           }
           break;
         }
-        case 'n': {
+        case "n": {
           e.preventDefault();
           if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+            window.dispatchEvent(new CustomEvent("shortcut:add-workitem"));
           }
           break;
         }
-        case 'Delete':
-        case 'Backspace': {
+        case "Delete":
+        case "Backspace": {
           if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
+            window.dispatchEvent(new CustomEvent("shortcut:delete-selected"));
           }
           break;
         }
-        case '?': {
+        case "?": {
           e.preventDefault();
-          setShowShortcuts(s => !s);
+          setShowShortcuts((s) => !s);
           break;
         }
-        case 'Escape': {
+        case "Escape": {
           if (state.selectedWorkItemIds.length > 0) {
             useAppStore.getState().clearWorkItemSelection();
           }
           break;
         }
-        case 'ArrowUp':
-        case 'ArrowDown': {
+        case "ArrowUp":
+        case "ArrowDown": {
           if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             const wiId = state.selectedWorkItemIds[0];
@@ -99,18 +105,22 @@ export default function AppLayout() {
 
             // Get siblings
             const siblings = Object.values(state.workItems)
-              .filter(w => {
+              .filter((w) => {
                 if (w.backlogAssignments[treeId] !== backlogId) return false;
                 if (wi.parentId === null) {
-                  return w.parentId === null || !state.workItems[w.parentId] || state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId;
+                  return (
+                    w.parentId === null ||
+                    !state.workItems[w.parentId] ||
+                    state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId
+                  );
                 }
                 return w.parentId === wi.parentId;
               })
               .sort((a, b) => a.rank - b.rank);
 
-            const idx = siblings.findIndex(s => s.id === wiId);
+            const idx = siblings.findIndex((s) => s.id === wiId);
             if (idx === -1) break;
-            const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+            const newIdx = e.key === "ArrowUp" ? idx - 1 : idx + 1;
             if (newIdx < 0 || newIdx >= siblings.length) break;
             useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
           }
@@ -118,77 +128,88 @@ export default function AppLayout() {
         }
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [undo]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
-    if (data?.type === 'workitem') {
+    if (data?.type === "workitem") {
       const store = useAppStore.getState();
       const item = store.workItems[data.workItemId];
-      setActiveDrag({ id: data.workItemId, type: 'workitem', title: item?.title ?? '' });
+      setActiveDrag({ id: data.workItemId, type: "workitem", title: item?.title ?? "" });
     }
   }, []);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDrag(null);
-    const { active, over } = event;
-    if (!over) return;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDrag(null);
+      const { active, over } = event;
+      if (!over) return;
 
-    const activeData = active.data.current;
-    const overData = over.data.current;
+      const activeData = active.data.current;
+      const overData = over.data.current;
 
-    if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
-      const sourceTreeId = activeData.treeId as string;
-      const targetTreeId = overData.treeId as string;
+      if (activeData?.type === "workitem" && overData?.type === "backlog") {
+        const sourceTreeId = activeData.treeId as string;
+        const targetTreeId = overData.treeId as string;
 
-      if (sourceTreeId !== targetTreeId) {
-        const store = useAppStore.getState();
-        const item = store.workItems[activeData.workItemId];
-        const sourceTree = store.backlogTrees[sourceTreeId];
-        const targetTree = store.backlogTrees[targetTreeId];
-        setPendingCrossTree({
-          workItemId: activeData.workItemId,
-          targetBacklogId: overData.backlogId,
-          targetTreeId,
-          sourceTreeId,
-          itemTitle: item?.title ?? '',
-          sourceTreeName: sourceTree?.name ?? sourceTreeId,
-          targetTreeName: targetTree?.name ?? targetTreeId,
-        });
-      } else {
-        moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+        if (sourceTreeId !== targetTreeId) {
+          const store = useAppStore.getState();
+          const item = store.workItems[activeData.workItemId];
+          const sourceTree = store.backlogTrees[sourceTreeId];
+          const targetTree = store.backlogTrees[targetTreeId];
+          setPendingCrossTree({
+            workItemId: activeData.workItemId,
+            targetBacklogId: overData.backlogId,
+            targetTreeId,
+            sourceTreeId,
+            itemTitle: item?.title ?? "",
+            sourceTreeName: sourceTree?.name ?? sourceTreeId,
+            targetTreeName: targetTree?.name ?? targetTreeId,
+          });
+        } else {
+          moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+        }
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
+        if (activeData.workItemId !== overData.workItemId) {
+          reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
+        }
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
+        reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
+        reorderWorkItemAmongSiblings(
+          activeData.workItemId,
+          overData.index as number,
+          overData.treeId as string,
+          overData.backlogId as string,
+        );
       }
-    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
-      if (activeData.workItemId !== overData.workItemId) {
-        reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
+    },
+    [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings],
+  );
+
+  const handleCrossTreeChoice = useCallback(
+    (value: string) => {
+      if (!pendingCrossTree) return;
+      const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
+
+      if (value === "move") {
+        moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
+        removeWorkItemFromTree(workItemId, sourceTreeId);
+      } else if (value === "add") {
+        moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
       }
-    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
-      reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
-    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
-      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogId as string);
-    }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
-
-  const handleCrossTreeChoice = useCallback((value: string) => {
-    if (!pendingCrossTree) return;
-    const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
-
-    if (value === 'move') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-      removeWorkItemFromTree(workItemId, sourceTreeId);
-    } else if (value === 'add') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-    }
-    setPendingCrossTree(null);
-  }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
+      setPendingCrossTree(null);
+    },
+    [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree],
+  );
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
-          <img src={agilefantLogo} alt="Agilefant" className="h-9 w-9" />
+          <img src={agilefantLogo} alt="Agilefant" className="h-15 w-15" />
           <h1 className="text-sm font-bold tracking-tight">
             Agilefant<sup className="text-xs text-primary">2</sup>
           </h1>
@@ -197,7 +218,7 @@ export default function AppLayout() {
               <TooltipTrigger asChild>
                 <button
                   className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  onClick={() => setShowShortcuts(s => !s)}
+                  onClick={() => setShowShortcuts((s) => !s)}
                   title="Keyboard shortcuts (?)"
                 >
                   <Keyboard className="w-4 h-4" />
@@ -208,9 +229,11 @@ export default function AppLayout() {
             <button
               className={`
                 w-8 h-8 flex items-center justify-center rounded-md transition-colors
-                ${undoStackLength > 0
-                  ? 'text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer'
-                  : 'text-muted-foreground/30 cursor-not-allowed'}
+                ${
+                  undoStackLength > 0
+                    ? "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    : "text-muted-foreground/30 cursor-not-allowed"
+                }
               `}
               onClick={undo}
               disabled={undoStackLength === 0}
@@ -247,15 +270,15 @@ export default function AppLayout() {
           title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
           options={[
             {
-              label: 'Move item',
+              label: "Move item",
               description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
-              value: 'move',
+              value: "move",
               isDefault: true,
             },
             {
-              label: 'Add to both',
+              label: "Add to both",
               description: `Keep in "${pendingCrossTree.sourceTreeName}" and also add to "${pendingCrossTree.targetTreeName}".`,
-              value: 'add',
+              value: "add",
             },
           ]}
           onSelect={handleCrossTreeChoice}
@@ -263,9 +286,7 @@ export default function AppLayout() {
         />
       )}
 
-      {showShortcuts && (
-        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
-      )}
+      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
     </DndContext>
   );
 }
@@ -273,23 +294,23 @@ export default function AppLayout() {
 function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === '?') {
+      if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
         onClose();
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
   const shortcuts = [
-    { keys: ['N'], description: 'New root work item in selected backlog' },
-    { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
-    { keys: ['Del'], description: 'Delete selected item or backlog' },
-    { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
-    { keys: ['Esc'], description: 'Deselect work item' },
-    { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
-    { keys: ['?'], description: 'Toggle this help' },
+    { keys: ["N"], description: "New root work item in selected backlog" },
+    { keys: ["Shift", "N"], description: "New child of selected item or backlog" },
+    { keys: ["Del"], description: "Delete selected item or backlog" },
+    { keys: ["↑", "↓"], description: "Reorder selected work item among siblings" },
+    { keys: ["Esc"], description: "Deselect work item" },
+    { keys: ["Ctrl", "Z"], description: "Undo last action" },
+    { keys: ["?"], description: "Toggle this help" },
   ];
 
   return (
