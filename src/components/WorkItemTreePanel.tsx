@@ -128,8 +128,9 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
         {...attributes}
       >
         <div
+          {...listeners}
           className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-md cursor-pointer
+            flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
             transition-all duration-150 ease-out group
             border
             ${isSelected
@@ -148,10 +149,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             }
           }}
         >
-          <div
-            {...listeners}
-            className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors"
-          >
+          <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
             <GripVertical className="w-3.5 h-3.5" />
           </div>
           <button
