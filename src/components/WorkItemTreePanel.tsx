@@ -135,7 +135,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             transition-all duration-150 ease-out group
             border
             ${isSelected
-              ? 'bg-primary/8 border-primary/25 ring-1 ring-primary/20'
+              ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
               : 'border-transparent hover:bg-muted hover:border-border'}
             ${isDragging ? 'shadow-lg bg-card' : ''}
             ${isOver && !isDragging ? 'drag-over' : ''}

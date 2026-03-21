@@ -108,7 +108,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
           transition-all duration-150 ease-out select-none group
           ${isSelected
-            ? 'bg-primary/10 ring-1 ring-primary/30 text-foreground font-medium'
+            ? 'bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium'
             : 'hover:bg-muted'}
           ${isOver ? 'drag-over' : ''}
         `}
