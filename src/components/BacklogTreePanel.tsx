@@ -71,7 +71,11 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const selectBacklog = useAppStore(s => s.selectBacklog);
   const addBacklog = useAppStore(s => s.addBacklog);
   const deleteBacklog = useAppStore(s => s.deleteBacklog);
+  const renameBacklog = useAppStore(s => s.renameBacklog);
   const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const editRef = useRef<HTMLInputElement>(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `backlog-drop-${backlogId}`,
@@ -79,6 +83,13 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   });
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
+
+  useEffect(() => {
+    if (isEditing) {
+      editRef.current?.focus();
+      editRef.current?.select();
+    }
+  }, [isEditing]);
 
   // Listen for keyboard shortcut events when this backlog is selected
   useEffect(() => {
@@ -102,6 +113,19 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   if (!backlog) return null;
 
   const hasChildren = backlog.childrenIds.length > 0;
+
+  const startEditing = () => {
+    setEditValue(backlog.name);
+    setIsEditing(true);
+  };
+
+  const commitEdit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== backlog.name) {
+      renameBacklog(backlogId, trimmed);
+    }
+    setIsEditing(false);
+  };
 
   return (
     <div className="animate-fade-in-up" style={{ animationDelay: `${depth * 40}ms` }}>
@@ -132,7 +156,33 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           )}
         </button>
         <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
-        <span className="text-sm truncate flex-1">{backlog.name}</span>
+        {isEditing ? (
+          <input
+            ref={editRef}
+            className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-0.5 py-0 min-w-0"
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') commitEdit();
+              if (e.key === 'Escape') setIsEditing(false);
+              e.stopPropagation();
+            }}
+            onBlur={commitEdit}
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="text-sm truncate flex-1"
+            onClick={(e) => {
+              if (isSelected) {
+                e.stopPropagation();
+                startEditing();
+              }
+            }}
+          >
+            {backlog.name}
+          </span>
+        )}
         {totalPoints > 0 && (
           <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
             {totalPoints} pt{totalPoints !== 1 ? 's' : ''}
