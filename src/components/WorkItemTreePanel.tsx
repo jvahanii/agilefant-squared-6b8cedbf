@@ -1,6 +1,6 @@
 import { useAppStore } from '@/store/appStore';
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from 'lucide-react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable, DragOverEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { ActionPrompt } from './ActionPrompt';
