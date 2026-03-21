@@ -415,5 +415,35 @@ export const useAppStore = create<AppState & {
         return { ...undo, workItems: updatedItems };
       });
     },
+
+    renameBacklog: (backlogId, name) => {
+      set(state => {
+        const backlog = state.backlogs[backlogId];
+        if (!backlog || !name.trim()) return state;
+        return {
+          backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name: name.trim() } },
+        };
+      });
+    },
+
+    renameWorkItem: (workItemId, title) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item || !title.trim()) return state;
+        return {
+          workItems: { ...state.workItems, [workItemId]: { ...item, title: title.trim() } },
+        };
+      });
+    },
+
+    setWorkItemPoints: (workItemId, points) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+        return {
+          workItems: { ...state.workItems, [workItemId]: { ...item, points } },
+        };
+      });
+    },
   };
 });
