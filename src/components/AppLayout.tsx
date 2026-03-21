@@ -188,7 +188,7 @@ export default function AppLayout() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
-          <img src={agilefantLogo} alt="Agilefant" className="h-7 w-7" />
+          <img src={agilefantLogo} alt="Agilefant" className="h-9 w-9" />
           <h1 className="text-sm font-bold tracking-tight">
             Agilefant<sup className="text-xs text-primary">2</sup>
           </h1>
