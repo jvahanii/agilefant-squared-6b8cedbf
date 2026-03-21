@@ -53,8 +53,16 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const addWorkItem = useAppStore(s => s.addWorkItem);
   const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
+  const renameWorkItem = useAppStore(s => s.renameWorkItem);
+  const setWorkItemPoints = useAppStore(s => s.setWorkItemPoints);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [isEditingPoints, setIsEditingPoints] = useState(false);
+  const [editPoints, setEditPoints] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+  const pointsRef = useRef<HTMLInputElement>(null);
 
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
@@ -70,6 +78,14 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     setDragRef(node);
     setDropRef(node);
   }, [setDragRef, setDropRef]);
+
+  useEffect(() => {
+    if (isEditingTitle) { titleRef.current?.focus(); titleRef.current?.select(); }
+  }, [isEditingTitle]);
+
+  useEffect(() => {
+    if (isEditingPoints) { pointsRef.current?.focus(); pointsRef.current?.select(); }
+  }, [isEditingPoints]);
 
   // Listen for keyboard shortcuts when this work item is selected
   useEffect(() => {
@@ -119,6 +135,30 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     }
   };
 
+  const startEditingTitle = () => {
+    setEditTitle(item.title);
+    setIsEditingTitle(true);
+  };
+
+  const commitTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== item.title) {
+      renameWorkItem(workItemId, trimmed);
+    }
+    setIsEditingTitle(false);
+  };
+
+  const startEditingPoints = () => {
+    setEditPoints(item.points != null ? String(item.points) : '');
+    setIsEditingPoints(true);
+  };
+
+  const commitPoints = () => {
+    const num = parseInt(editPoints, 10);
+    setWorkItemPoints(workItemId, isNaN(num) || num <= 0 ? undefined : num);
+    setIsEditingPoints(false);
+  };
+
   return (
     <>
       <div
@@ -165,15 +205,71 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               <FileText className="w-3.5 h-3.5 text-primary/50" />
             )}
           </button>
-          <span className="text-sm truncate flex-1">
-            {item.title}
-            {backlogLabels && (
-              <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
-            )}
-          </span>
-          {item.points != null && item.points > 0 && (
-            <span className="text-xs tabular-nums font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
-              {item.points}
+          {isEditingTitle ? (
+            <input
+              ref={titleRef}
+              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-0.5 py-0 min-w-0"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitTitle();
+                if (e.key === 'Escape') setIsEditingTitle(false);
+                e.stopPropagation();
+              }}
+              onBlur={commitTitle}
+              onClick={e => e.stopPropagation()}
+              onPointerDown={e => e.stopPropagation()}
+            />
+          ) : (
+            <span
+              className="text-sm truncate flex-1"
+              onClick={(e) => {
+                if (isSelected) {
+                  e.stopPropagation();
+                  startEditingTitle();
+                }
+              }}
+              onPointerDown={(e) => {
+                if (isSelected) e.stopPropagation();
+              }}
+            >
+              {item.title}
+              {backlogLabels && (
+                <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
+              )}
+            </span>
+          )}
+          {isEditingPoints ? (
+            <input
+              ref={pointsRef}
+              className="w-12 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums shrink-0"
+              value={editPoints}
+              onChange={e => setEditPoints(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitPoints();
+                if (e.key === 'Escape') setIsEditingPoints(false);
+                e.stopPropagation();
+              }}
+              onBlur={commitPoints}
+              onClick={e => e.stopPropagation()}
+              onPointerDown={e => e.stopPropagation()}
+              placeholder="pts"
+            />
+          ) : (
+            <span
+              className={`text-xs tabular-nums font-medium px-1.5 py-0.5 rounded-full shrink-0 cursor-pointer
+                ${item.points != null && item.points > 0
+                  ? 'text-primary bg-primary/10'
+                  : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}
+              `}
+              onClick={(e) => {
+                e.stopPropagation();
+                startEditingPoints();
+              }}
+              onPointerDown={e => e.stopPropagation()}
+              title="Edit points (P)"
+            >
+              {item.points != null && item.points > 0 ? item.points : '·'}
             </span>
           )}
           <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
