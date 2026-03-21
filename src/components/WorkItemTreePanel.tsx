@@ -307,9 +307,31 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
                   className="absolute tree-line"
                   style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }}
                 />
-                {item.childrenIds.map(childId => (
-                  <WorkItemNode key={childId} workItemId={childId} depth={depth + 1} treeId={treeId} backlogId={backlogId} />
-                ))}
+                {[...item.childrenIds]
+                  .map(id => workItems[id])
+                  .filter(Boolean)
+                  .sort((a, b) => a.rank - b.rank)
+                  .map((child, index) => (
+                    <div key={child.id}>
+                      <ReorderDropZone
+                        id={`reorder-${workItemId}-${index}`}
+                        index={index}
+                        treeId={treeId}
+                        backlogId={backlogId}
+                        parentId={workItemId}
+                        depth={depth + 1}
+                      />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={backlogId} />
+                    </div>
+                  ))}
+                <ReorderDropZone
+                  id={`reorder-${workItemId}-${item.childrenIds.length}`}
+                  index={item.childrenIds.length}
+                  treeId={treeId}
+                  backlogId={backlogId}
+                  parentId={workItemId}
+                  depth={depth + 1}
+                />
               </>
             )}
             {isAdding && (
