@@ -345,24 +345,27 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
                   .map(id => workItems[id])
                   .filter(Boolean)
                   .sort((a, b) => a.rank - b.rank)
-                  .map((child, index) => (
+                  .map((child, index) => {
+                    const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
+                    return (
                     <div key={child.id}>
                       <ReorderDropZone
                         id={`reorder-${workItemId}-${index}`}
                         index={index}
                         treeId={treeId}
-                        backlogId={backlogId}
+                        backlogId={childBacklogId}
                         parentId={workItemId}
                         depth={depth + 1}
                       />
-                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={backlogId} />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} />
                     </div>
-                  ))}
+                    );
+                  })}
                 <ReorderDropZone
                   id={`reorder-${workItemId}-${item.childrenIds.length}`}
                   index={item.childrenIds.length}
                   treeId={treeId}
-                  backlogId={backlogId}
+                  backlogId={item.childrenIds.length > 0 ? (workItems[item.childrenIds[item.childrenIds.length - 1]]?.backlogAssignments[treeId] ?? backlogId) : backlogId}
                   parentId={workItemId}
                   depth={depth + 1}
                 />
@@ -513,24 +516,27 @@ export function WorkItemTreePanel() {
             </div>
           ) : (
             <>
-              {rootWorkItems.map((item, index) => (
+              {rootWorkItems.map((item, index) => {
+                const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
+                return (
                 <div key={item.id}>
                   <ReorderDropZone
                     id={`reorder-root-${index}`}
                     index={index}
                     treeId={selectedTreeId}
-                    backlogId={selectedBacklogId}
+                    backlogId={itemBacklogId}
                     parentId={null}
                     depth={0}
                   />
-                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} />
                 </div>
-              ))}
+                );
+              })}
               <ReorderDropZone
                 id={`reorder-root-${rootWorkItems.length}`}
                 index={rootWorkItems.length}
                 treeId={selectedTreeId}
-                backlogId={selectedBacklogId}
+                backlogId={rootWorkItems.length > 0 ? (rootWorkItems[rootWorkItems.length - 1].backlogAssignments[selectedTreeId] ?? selectedBacklogId) : selectedBacklogId}
                 parentId={null}
                 depth={0}
               />
