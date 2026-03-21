@@ -407,24 +407,26 @@ export function WorkItemTreePanel() {
           <Plus className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2">
-        {rootWorkItems.length === 0 && !isAdding ? (
-          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-            No work items in this backlog
-          </div>
-        ) : (
-          rootWorkItems.map(item => (
-            <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
-          ))
-        )}
-        {isAdding && (
-          <InlineWorkItemInput
-            depth={0}
-            onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
-            onCancel={() => setIsAdding(false)}
-          />
-        )}
-      </div>
+      <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
+        <div className="flex-1 overflow-y-auto p-2">
+          {rootWorkItems.length === 0 && !isAdding ? (
+            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+              No work items in this backlog
+            </div>
+          ) : (
+            rootWorkItems.map(item => (
+              <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
+            ))
+          )}
+          {isAdding && (
+            <InlineWorkItemInput
+              depth={0}
+              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
+              onCancel={() => setIsAdding(false)}
+            />
+          )}
+        </div>
+      </WorkItemRootDropZone>
     </div>
   );
 }

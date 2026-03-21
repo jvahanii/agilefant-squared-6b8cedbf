@@ -134,6 +134,8 @@ export default function AppLayout() {
       if (activeData.workItemId !== overData.workItemId) {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
+    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
+      reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
     }
   }, [moveWorkItemToBacklog, reparentWorkItem]);
 
