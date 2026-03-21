@@ -468,6 +468,8 @@ export function WorkItemTreePanel() {
     return ids;
   }, [selectedBacklogId, backlogs]);
 
+  const allBacklogIds = useMemo(() => Array.from(backlogIdSet), [backlogIdSet]);
+
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
     return Object.values(workItems)
