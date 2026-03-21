@@ -19,6 +19,7 @@ interface AppState extends DataSnapshot {
   clearWorkItemSelection: () => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
+  reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogId: string) => void;
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
