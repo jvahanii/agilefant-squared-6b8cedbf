@@ -6,16 +6,17 @@ interface DataSnapshot {
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
-  selectedBacklogId: string | null;
+  selectedBacklogIds: string[];
   selectedTreeId: string | null;
-  selectedWorkItemId: string | null;
+  selectedWorkItemIds: string[];
 }
 
 interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
 
-  selectBacklog: (backlogId: string, treeId: string) => void;
-  selectWorkItem: (workItemId: string | null) => void;
+  selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
+  selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
+  clearWorkItemSelection: () => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
@@ -39,9 +40,9 @@ function snapshot(state: DataSnapshot): DataSnapshot {
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
-    selectedBacklogId: state.selectedBacklogId,
+    selectedBacklogIds: [...state.selectedBacklogIds],
     selectedTreeId: state.selectedTreeId,
-    selectedWorkItemId: state.selectedWorkItemId,
+    selectedWorkItemIds: [...state.selectedWorkItemIds],
   };
 }
 
@@ -63,16 +64,39 @@ export const useAppStore = create<AppState & {
 
   return {
     ...mock,
-    selectedBacklogId: null,
+    selectedBacklogIds: [],
     selectedTreeId: null,
-    selectedWorkItemId: null,
+    selectedWorkItemIds: [],
     expandedWorkItems,
     expandedBacklogs,
     undoStack: [],
 
-    selectBacklog: (backlogId, treeId) => set({ selectedBacklogId: backlogId, selectedTreeId: treeId, selectedWorkItemId: null }),
+    selectBacklog: (backlogId, treeId, ctrlKey = false) => set(state => {
+      if (ctrlKey) {
+        // Only allow multi-select within same tree
+        if (state.selectedTreeId && state.selectedTreeId !== treeId) {
+          return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
+        }
+        const ids = state.selectedBacklogIds.includes(backlogId)
+          ? state.selectedBacklogIds.filter(id => id !== backlogId)
+          : [...state.selectedBacklogIds, backlogId];
+        return { selectedBacklogIds: ids, selectedTreeId: treeId, selectedWorkItemIds: [] };
+      }
+      return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
+    }),
 
-    selectWorkItem: (workItemId) => set({ selectedWorkItemId: workItemId }),
+    selectWorkItem: (workItemId, ctrlKey = false) => set(state => {
+      if (!workItemId) return { selectedWorkItemIds: [] };
+      if (ctrlKey) {
+        const ids = state.selectedWorkItemIds.includes(workItemId)
+          ? state.selectedWorkItemIds.filter(id => id !== workItemId)
+          : [...state.selectedWorkItemIds, workItemId];
+        return { selectedWorkItemIds: ids };
+      }
+      return { selectedWorkItemIds: [workItemId] };
+    }),
+
+    clearWorkItemSelection: () => set({ selectedWorkItemIds: [] }),
 
     canUndo: () => get().undoStack.length > 0,
 
@@ -306,12 +330,9 @@ export const useAppStore = create<AppState & {
 
         toDelete.forEach(id => delete updatedBacklogs[id]);
 
-        let { selectedBacklogId } = state;
-        if (selectedBacklogId && toDelete.has(selectedBacklogId)) {
-          selectedBacklogId = null;
-        }
+        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDelete.has(id));
 
-        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogId };
+        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds };
       });
     },
 
@@ -364,12 +385,9 @@ export const useAppStore = create<AppState & {
 
         toDelete.forEach(id => delete updatedItems[id]);
 
-        let { selectedWorkItemId } = state;
-        if (selectedWorkItemId && toDelete.has(selectedWorkItemId)) {
-          selectedWorkItemId = null;
-        }
+        const selectedWorkItemIds = state.selectedWorkItemIds.filter(id => !toDelete.has(id));
 
-        return { ...undo, workItems: updatedItems, selectedWorkItemId };
+        return { ...undo, workItems: updatedItems, selectedWorkItemIds };
       });
     },
 

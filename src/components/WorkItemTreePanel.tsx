@@ -47,7 +47,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const item = useAppStore(s => s.workItems[workItemId]);
   const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
-  const selectedWorkItemId = useAppStore(s => s.selectedWorkItemId);
+  const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
   const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore(s => s.selectWorkItem);
   const addWorkItem = useAppStore(s => s.addWorkItem);
@@ -55,8 +55,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
-
-  const isSelected = selectedWorkItemId === workItemId;
 
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
@@ -143,7 +141,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
           onClick={(e) => {
             e.stopPropagation();
-            selectWorkItem(isSelected ? null : workItemId);
+            if (e.ctrlKey || e.metaKey) {
+              selectWorkItem(workItemId, true);
+            } else {
+              selectWorkItem(isSelected ? null : workItemId);
+            }
           }}
         >
           <div
@@ -252,12 +254,13 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
 }
 
 export function WorkItemTreePanel() {
-  const selectedBacklogId = useAppStore(s => s.selectedBacklogId);
+  const selectedBacklogIds = useAppStore(s => s.selectedBacklogIds);
+  const selectedBacklogId = selectedBacklogIds[0] ?? null;
   const selectedTreeId = useAppStore(s => s.selectedTreeId);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
   const addWorkItem = useAppStore(s => s.addWorkItem);
-  const selectWorkItem = useAppStore(s => s.selectWorkItem);
+  const clearWorkItemSelection = useAppStore(s => s.clearWorkItemSelection);
   const [isAdding, setIsAdding] = useState(false);
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
@@ -293,7 +296,7 @@ export function WorkItemTreePanel() {
   return (
     <div
       className="h-full flex flex-col"
-      onClick={() => selectWorkItem(null)}
+      onClick={() => clearWorkItemSelection()}
     >
       <div className="p-4 pb-2 border-b flex items-center justify-between">
         <div>

@@ -65,7 +65,7 @@ function useBacklogPoints(backlogId: string, treeId: string) {
 
 function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const backlog = useAppStore(s => s.backlogs[backlogId]);
-  const selectedBacklogId = useAppStore(s => s.selectedBacklogId);
+  const isSelected = useAppStore(s => s.selectedBacklogIds.includes(backlogId));
   const expanded = useAppStore(s => s.expandedBacklogs.has(backlogId));
   const toggleExpand = useAppStore(s => s.toggleBacklogExpand);
   const selectBacklog = useAppStore(s => s.selectBacklog);
@@ -82,7 +82,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
   // Listen for keyboard shortcut events when this backlog is selected
   useEffect(() => {
-    if (selectedBacklogId !== backlogId) return;
+    if (!isSelected) return;
 
     const handleAddBacklog = () => setIsAdding(true);
     const handleDeleteBacklog = () => deleteBacklog(backlogId);
@@ -93,12 +93,11 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
       window.removeEventListener('shortcut:add-child-backlog', handleAddBacklog);
       window.removeEventListener('shortcut:delete-selected', handleDeleteBacklog);
     };
-  }, [selectedBacklogId, backlogId, deleteBacklog]);
+  }, [isSelected, backlogId, deleteBacklog]);
 
   if (!backlog) return null;
 
   const hasChildren = backlog.childrenIds.length > 0;
-  const isSelected = selectedBacklogId === backlogId;
 
   return (
     <div className="animate-fade-in-up" style={{ animationDelay: `${depth * 40}ms` }}>
@@ -113,7 +112,7 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           ${isOver ? 'drag-over' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
-        onClick={() => selectBacklog(backlogId, backlog.treeId)}
+        onClick={(e) => selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey)}
       >
         <button
           className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
