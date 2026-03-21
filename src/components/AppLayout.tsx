@@ -20,13 +20,13 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
-  const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
-  const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
-  const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
-  const reorderWorkItemAmongSiblings = useAppStore(s => s.reorderWorkItemAmongSiblings);
-  const undo = useAppStore(s => s.undo);
-  const undoStackLength = useAppStore(s => s.undoStack.length);
-  const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
+  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
+  const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
+  const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
+  const undo = useAppStore((s) => s.undo);
+  const undoStackLength = useAppStore((s) => s.undoStack.length);
+  const [activeDrag, setActiveDrag] = useState<{id: string;type: string;title: string;} | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -52,70 +52,70 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       switch (e.key) {
-        case 'N': {
-          e.preventDefault();
-          if (state.selectedWorkItemIds.length > 0) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
-          } else if (state.selectedBacklogIds.length > 0) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+        case 'N':{
+            e.preventDefault();
+            if (state.selectedWorkItemIds.length > 0) {
+              window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
+            } else if (state.selectedBacklogIds.length > 0) {
+              window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+            }
+            break;
           }
-          break;
-        }
-        case 'n': {
-          e.preventDefault();
-          if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-            window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+        case 'n':{
+            e.preventDefault();
+            if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+              window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+            }
+            break;
           }
-          break;
-        }
         case 'Delete':
-        case 'Backspace': {
-          if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
+        case 'Backspace':{
+            if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
+              e.preventDefault();
+              window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
+            }
+            break;
+          }
+        case '?':{
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
+            setShowShortcuts((s) => !s);
+            break;
           }
-          break;
-        }
-        case '?': {
-          e.preventDefault();
-          setShowShortcuts(s => !s);
-          break;
-        }
-        case 'Escape': {
-          if (state.selectedWorkItemIds.length > 0) {
-            useAppStore.getState().clearWorkItemSelection();
+        case 'Escape':{
+            if (state.selectedWorkItemIds.length > 0) {
+              useAppStore.getState().clearWorkItemSelection();
+            }
+            break;
           }
-          break;
-        }
         case 'ArrowUp':
-        case 'ArrowDown': {
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            const wiId = state.selectedWorkItemIds[0];
-            const wi = state.workItems[wiId];
-            if (!wi) break;
-            const treeId = state.selectedTreeId;
-            const backlogId = state.selectedBacklogIds[0];
+        case 'ArrowDown':{
+            if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+              e.preventDefault();
+              const wiId = state.selectedWorkItemIds[0];
+              const wi = state.workItems[wiId];
+              if (!wi) break;
+              const treeId = state.selectedTreeId;
+              const backlogId = state.selectedBacklogIds[0];
 
-            // Get siblings
-            const siblings = Object.values(state.workItems)
-              .filter(w => {
+              // Get siblings
+              const siblings = Object.values(state.workItems).
+              filter((w) => {
                 if (w.backlogAssignments[treeId] !== backlogId) return false;
                 if (wi.parentId === null) {
                   return w.parentId === null || !state.workItems[w.parentId] || state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId;
                 }
                 return w.parentId === wi.parentId;
-              })
-              .sort((a, b) => a.rank - b.rank);
+              }).
+              sort((a, b) => a.rank - b.rank);
 
-            const idx = siblings.findIndex(s => s.id === wiId);
-            if (idx === -1) break;
-            const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
-            if (newIdx < 0 || newIdx >= siblings.length) break;
-            useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
+              const idx = siblings.findIndex((s) => s.id === wiId);
+              if (idx === -1) break;
+              const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+              if (newIdx < 0 || newIdx >= siblings.length) break;
+              useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
+            }
+            break;
           }
-          break;
-        }
       }
     };
     window.addEventListener('keydown', handler);
@@ -155,7 +155,7 @@ export default function AppLayout() {
           sourceTreeId,
           itemTitle: item?.title ?? '',
           sourceTreeName: sourceTree?.name ?? sourceTreeId,
-          targetTreeName: targetTree?.name ?? targetTreeId,
+          targetTreeName: targetTree?.name ?? targetTreeId
         });
       } else {
         moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
@@ -188,7 +188,7 @@ export default function AppLayout() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
-          <img src={agilefantLogo} alt="Agilefant" className="h-9 w-9" />
+          <img alt="Agilefant" className="h-9 w-9" src="/lovable-uploads/6d752c0a-b561-4cd5-b816-dec2434093f1.png" />
           <h1 className="text-sm font-bold tracking-tight">
             Agilefant<sup className="text-xs text-primary">2</sup>
           </h1>
@@ -197,9 +197,9 @@ export default function AppLayout() {
               <TooltipTrigger asChild>
                 <button
                   className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  onClick={() => setShowShortcuts(s => !s)}
-                  title="Keyboard shortcuts (?)"
-                >
+                  onClick={() => setShowShortcuts((s) => !s)}
+                  title="Keyboard shortcuts (?)">
+                  
                   <Keyboard className="w-4 h-4" />
                 </button>
               </TooltipTrigger>
@@ -208,14 +208,14 @@ export default function AppLayout() {
             <button
               className={`
                 w-8 h-8 flex items-center justify-center rounded-md transition-colors
-                ${undoStackLength > 0
-                  ? 'text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer'
-                  : 'text-muted-foreground/30 cursor-not-allowed'}
+                ${undoStackLength > 0 ?
+              'text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer' :
+              'text-muted-foreground/30 cursor-not-allowed'}
               `}
               onClick={undo}
               disabled={undoStackLength === 0}
-              title="Undo (Ctrl+Z)"
-            >
+              title="Undo (Ctrl+Z)">
+              
               <Undo2 className="w-4 h-4" />
             </button>
           </div>
@@ -235,42 +235,42 @@ export default function AppLayout() {
       </div>
 
       <DragOverlay>
-        {activeDrag && (
-          <div className="bg-card border shadow-xl rounded-md px-3 py-2 text-sm font-medium max-w-64 truncate">
+        {activeDrag &&
+        <div className="bg-card border shadow-xl rounded-md px-3 py-2 text-sm font-medium max-w-64 truncate">
             {activeDrag.title}
           </div>
-        )}
+        }
       </DragOverlay>
 
-      {pendingCrossTree && (
-        <ActionPrompt
-          title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
-          options={[
-            {
-              label: 'Move item',
-              description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
-              value: 'move',
-              isDefault: true,
-            },
-            {
-              label: 'Add to both',
-              description: `Keep in "${pendingCrossTree.sourceTreeName}" and also add to "${pendingCrossTree.targetTreeName}".`,
-              value: 'add',
-            },
-          ]}
-          onSelect={handleCrossTreeChoice}
-          onCancel={() => setPendingCrossTree(null)}
-        />
-      )}
+      {pendingCrossTree &&
+      <ActionPrompt
+        title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
+        options={[
+        {
+          label: 'Move item',
+          description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
+          value: 'move',
+          isDefault: true
+        },
+        {
+          label: 'Add to both',
+          description: `Keep in "${pendingCrossTree.sourceTreeName}" and also add to "${pendingCrossTree.targetTreeName}".`,
+          value: 'add'
+        }]
+        }
+        onSelect={handleCrossTreeChoice}
+        onCancel={() => setPendingCrossTree(null)} />
 
-      {showShortcuts && (
-        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
-      )}
-    </DndContext>
-  );
+      }
+
+      {showShortcuts &&
+      <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
+      }
+    </DndContext>);
+
 }
 
-function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+function ShortcutsOverlay({ onClose }: {onClose: () => void;}) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === '?') {
@@ -283,14 +283,14 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const shortcuts = [
-    { keys: ['N'], description: 'New root work item in selected backlog' },
-    { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
-    { keys: ['Del'], description: 'Delete selected item or backlog' },
-    { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
-    { keys: ['Esc'], description: 'Deselect work item' },
-    { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
-    { keys: ['?'], description: 'Toggle this help' },
-  ];
+  { keys: ['N'], description: 'New root work item in selected backlog' },
+  { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
+  { keys: ['Del'], description: 'Delete selected item or backlog' },
+  { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
+  { keys: ['Esc'], description: 'Deselect work item' },
+  { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
+  { keys: ['?'], description: 'Toggle this help' }];
+
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -300,23 +300,23 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
           <h3 className="text-sm font-semibold">Keyboard Shortcuts</h3>
         </div>
         <div className="px-5 pb-5 space-y-2.5">
-          {shortcuts.map((s, i) => (
-            <div key={i} className="flex items-center justify-between">
+          {shortcuts.map((s, i) =>
+          <div key={i} className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{s.description}</span>
               <div className="flex items-center gap-1">
-                {s.keys.map((key, j) => (
-                  <kbd
-                    key={j}
-                    className="px-1.5 py-0.5 rounded border bg-muted text-xs font-mono min-w-[24px] text-center"
-                  >
+                {s.keys.map((key, j) =>
+              <kbd
+                key={j}
+                className="px-1.5 py-0.5 rounded border bg-muted text-xs font-mono min-w-[24px] text-center">
+                
                     {key}
                   </kbd>
-                ))}
+              )}
               </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
