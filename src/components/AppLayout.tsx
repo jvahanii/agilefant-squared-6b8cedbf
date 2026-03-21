@@ -1,5 +1,5 @@
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragMoveEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useState, useCallback, useEffect } from 'react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
@@ -23,16 +23,11 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
-  const reorderBacklogInList = useAppStore(s => s.reorderBacklogInList);
-  const moveBacklog = useAppStore(s => s.moveBacklog);
-  const moveBacklogToTree = useAppStore(s => s.moveBacklogToTree);
-  const reorderBacklogTree = useAppStore(s => s.reorderBacklogTree);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const lastPointerY = useRef(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -43,18 +38,21 @@ export default function AppLayout() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
+      // Ctrl+Z always works
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
         return;
       }
 
+      // Don't fire shortcuts when typing in inputs
       if (isInput) return;
 
       const state = useAppStore.getState();
 
       switch (e.key) {
         case 'N': {
+          // Shift+N = add child of selected (backlog child or work item child)
           e.preventDefault();
           if (state.selectedWorkItemId) {
             window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
@@ -64,30 +62,16 @@ export default function AppLayout() {
           break;
         }
         case 'n': {
+          // N (no shift) = new root work item in selected backlog
           e.preventDefault();
           if (state.selectedBacklogId && state.selectedTreeId) {
             window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
           }
           break;
         }
-        case 'p': {
-          e.preventDefault();
-          if (state.selectedWorkItemId) {
-            window.dispatchEvent(new CustomEvent('shortcut:edit-points'));
-          }
-          break;
-        }
-        case 'F2': {
-          e.preventDefault();
-          if (state.selectedWorkItemId) {
-            window.dispatchEvent(new CustomEvent('shortcut:rename-workitem'));
-          } else if (state.selectedBacklogId) {
-            window.dispatchEvent(new CustomEvent('shortcut:rename-backlog'));
-          }
-          break;
-        }
         case 'Delete':
         case 'Backspace': {
+          // Delete the selected item (work item takes priority over backlog)
           if (state.selectedWorkItemId) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
@@ -103,6 +87,7 @@ export default function AppLayout() {
           break;
         }
         case 'Escape': {
+          // Deselect work item
           if (state.selectedWorkItemId) {
             useAppStore.getState().selectWorkItem(null);
           }
@@ -120,30 +105,7 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const item = store.workItems[data.workItemId];
       setActiveDrag({ id: data.workItemId, type: 'workitem', title: item?.title ?? '' });
-    } else if (data?.type === 'backlog-reorder') {
-      const store = useAppStore.getState();
-      const backlog = store.backlogs[data.backlogId];
-      setActiveDrag({ id: data.backlogId, type: 'backlog', title: backlog?.name ?? '' });
-    } else if (data?.type === 'tree-reorder') {
-      const store = useAppStore.getState();
-      const tree = store.backlogTrees[data.treeId];
-      setActiveDrag({ id: data.treeId, type: 'tree', title: tree?.name ?? '' });
     }
-  }, []);
-
-  const handleDragMove = useCallback((event: DragMoveEvent) => {
-    const ae = event.activatorEvent as PointerEvent;
-    if (ae && event.delta) {
-      lastPointerY.current = ae.clientY + event.delta.y;
-    }
-  }, []);
-
-  const getDropPosition = useCallback((overRect: { top: number; height: number }) => {
-    const y = lastPointerY.current - overRect.top;
-    const ratio = y / overRect.height;
-    if (ratio < 0.35) return 'before' as const;
-    if (ratio > 0.65) return 'after' as const;
-    return 'on' as const;
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -153,40 +115,6 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
-    const overRect = over.rect;
-    const pos = getDropPosition(overRect);
-
-    if (activeData?.type === 'backlog-reorder' && overData?.type === 'backlog') {
-      if (activeData.backlogId !== overData.backlogId) {
-        const sourceTreeId = activeData.treeId as string;
-        const targetTreeId = overData.treeId as string;
-        if (sourceTreeId !== targetTreeId) {
-          moveBacklogToTree(activeData.backlogId, targetTreeId, pos === 'on' ? overData.backlogId : null);
-        } else if (pos === 'on') {
-          moveBacklog(activeData.backlogId, overData.backlogId, sourceTreeId);
-        } else {
-          reorderBacklogInList(activeData.backlogId, overData.backlogId, pos);
-        }
-      }
-      return;
-    }
-
-    if (activeData?.type === 'backlog-reorder' && overData?.type === 'tree-header') {
-      const sourceTreeId = activeData.treeId as string;
-      const targetTreeId = overData.treeId as string;
-      if (sourceTreeId !== targetTreeId) {
-        moveBacklogToTree(activeData.backlogId, targetTreeId, null);
-      }
-      return;
-    }
-
-    if (activeData?.type === 'tree-reorder' && overData?.type === 'tree-header') {
-      if (activeData.treeId !== overData.treeId) {
-        const treePos = pos === 'on' ? 'after' : pos;
-        reorderBacklogTree(activeData.treeId, overData.treeId, treePos);
-      }
-      return;
-    }
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
       const sourceTreeId = activeData.treeId as string;
@@ -214,7 +142,7 @@ export default function AppLayout() {
         reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
       }
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderBacklogInList, moveBacklog, moveBacklogToTree, reorderBacklogTree, getDropPosition]);
+  }, [moveWorkItemToBacklog, reparentWorkItem]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
@@ -230,7 +158,7 @@ export default function AppLayout() {
   }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-12 border-b flex items-center px-4 gap-3 bg-card shrink-0">
           <img src={agilefantLogo} alt="Agilefant" className="h-7 w-7" />
@@ -328,11 +256,9 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   const shortcuts = [
-    { keys: ['N'], description: 'New root work item in selected list' },
-    { keys: ['Shift', 'N'], description: 'New child of selected item or list' },
-    { keys: ['Del'], description: 'Delete selected item or list' },
-    { keys: ['F2'], description: 'Rename selected item or list' },
-    { keys: ['P'], description: 'Edit points on selected work item' },
+    { keys: ['N'], description: 'New root work item in selected backlog' },
+    { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
+    { keys: ['Del'], description: 'Delete selected item or backlog' },
     { keys: ['Esc'], description: 'Deselect work item' },
     { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
     { keys: ['?'], description: 'Toggle this help' },

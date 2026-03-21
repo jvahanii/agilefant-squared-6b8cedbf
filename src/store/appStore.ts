@@ -6,7 +6,6 @@ interface DataSnapshot {
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
-  treeOrder: string[];
   selectedBacklogId: string | null;
   selectedTreeId: string | null;
   selectedWorkItemId: string | null;
@@ -28,15 +27,6 @@ interface AppState extends DataSnapshot {
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
-  renameBacklog: (backlogId: string, name: string) => void;
-  renameWorkItem: (workItemId: string, title: string) => void;
-  updateWorkItemPoints: (workItemId: string, points: number | undefined) => void;
-  addBacklogTree: (name: string) => void;
-  deleteBacklogTree: (treeId: string) => void;
-  renameBacklogTree: (treeId: string, name: string) => void;
-  reorderBacklogInList: (backlogId: string, targetBacklogId: string, position: 'before' | 'after') => void;
-  moveBacklogToTree: (backlogId: string, targetTreeId: string, targetBacklogId: string | null) => void;
-  reorderBacklogTree: (treeId: string, targetTreeId: string, position: 'before' | 'after') => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -49,7 +39,6 @@ function snapshot(state: DataSnapshot): DataSnapshot {
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
-    treeOrder: state.treeOrder,
     selectedBacklogId: state.selectedBacklogId,
     selectedTreeId: state.selectedTreeId,
     selectedWorkItemId: state.selectedWorkItemId,
@@ -74,7 +63,6 @@ export const useAppStore = create<AppState & {
 
   return {
     ...mock,
-    treeOrder: Object.keys(mock.backlogTrees),
     selectedBacklogId: null,
     selectedTreeId: null,
     selectedWorkItemId: null,
@@ -179,15 +167,6 @@ export const useAppStore = create<AppState & {
       set(state => {
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
-        if (backlog.parentId === newParentId) return state;
-        // Cycle check: ensure newParentId is not a descendant of backlogId
-        if (newParentId) {
-          let check: string | null = newParentId;
-          while (check) {
-            if (check === backlogId) return state;
-            check = state.backlogs[check]?.parentId ?? null;
-          }
-        }
 
         const undo = pushUndo(state);
         const updatedBacklogs = { ...state.backlogs };
@@ -413,247 +392,6 @@ export const useAppStore = create<AppState & {
         removeRecursive(workItemId);
 
         return { ...undo, workItems: updatedItems };
-      });
-    },
-
-    renameBacklog: (backlogId, name) => {
-      set(state => {
-        const backlog = state.backlogs[backlogId];
-        if (!backlog || backlog.name === name) return state;
-        const undo = pushUndo(state);
-        return { ...undo, backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name } } };
-      });
-    },
-
-    renameWorkItem: (workItemId, title) => {
-      set(state => {
-        const item = state.workItems[workItemId];
-        if (!item || item.title === title) return state;
-        const undo = pushUndo(state);
-        return { ...undo, workItems: { ...state.workItems, [workItemId]: { ...item, title } } };
-      });
-    },
-
-    updateWorkItemPoints: (workItemId, points) => {
-      set(state => {
-        const item = state.workItems[workItemId];
-        if (!item) return state;
-        const undo = pushUndo(state);
-        return { ...undo, workItems: { ...state.workItems, [workItemId]: { ...item, points } } };
-      });
-    },
-
-    addBacklogTree: (name) => {
-      set(state => {
-        const undo = pushUndo(state);
-        const id = `bt-${crypto.randomUUID().slice(0, 8)}`;
-        return {
-          ...undo,
-          backlogTrees: { ...state.backlogTrees, [id]: { id, name, rootBacklogIds: [] } },
-          treeOrder: [...state.treeOrder, id],
-        };
-      });
-    },
-
-    deleteBacklogTree: (treeId) => {
-      set(state => {
-        const tree = state.backlogTrees[treeId];
-        if (!tree) return state;
-        const undo = pushUndo(state);
-
-        // Collect all backlogs in this tree
-        const toDeleteBacklogs = new Set<string>();
-        Object.values(state.backlogs).forEach(b => {
-          if (b.treeId === treeId) toDeleteBacklogs.add(b.id);
-        });
-
-        const updatedBacklogs = { ...state.backlogs };
-        toDeleteBacklogs.forEach(id => delete updatedBacklogs[id]);
-
-        const updatedTrees = { ...state.backlogTrees };
-        delete updatedTrees[treeId];
-
-        // Remove tree assignments from work items
-        const updatedItems = { ...state.workItems };
-        Object.keys(updatedItems).forEach(wiId => {
-          const wi = updatedItems[wiId];
-          if (wi.backlogAssignments[treeId]) {
-            const newAssignments = { ...wi.backlogAssignments };
-            delete newAssignments[treeId];
-            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
-          }
-        });
-
-        let { selectedBacklogId, selectedTreeId } = state;
-        if (selectedTreeId === treeId) {
-          selectedBacklogId = null;
-          selectedTreeId = null;
-        }
-
-        return { ...undo, backlogTrees: updatedTrees, backlogs: updatedBacklogs, workItems: updatedItems, selectedBacklogId, selectedTreeId, treeOrder: state.treeOrder.filter(id => id !== treeId) };
-      });
-    },
-
-    renameBacklogTree: (treeId, name) => {
-      set(state => {
-        const tree = state.backlogTrees[treeId];
-        if (!tree || tree.name === name) return state;
-        const undo = pushUndo(state);
-        return { ...undo, backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name } } };
-      });
-    },
-
-    reorderBacklogInList: (backlogId, targetBacklogId, position) => {
-      set(state => {
-        if (backlogId === targetBacklogId) return state;
-        const backlog = state.backlogs[backlogId];
-        const target = state.backlogs[targetBacklogId];
-        if (!backlog || !target) return state;
-        if (backlog.treeId !== target.treeId) return state;
-
-        const undo = pushUndo(state);
-        const updatedBacklogs = { ...state.backlogs };
-        const updatedTrees = { ...state.backlogTrees };
-        const treeId = backlog.treeId;
-
-        // Remove from old parent
-        if (backlog.parentId) {
-          const oldParent = updatedBacklogs[backlog.parentId];
-          if (oldParent) {
-            updatedBacklogs[backlog.parentId] = {
-              ...oldParent,
-              childrenIds: oldParent.childrenIds.filter(id => id !== backlogId),
-            };
-          }
-        } else {
-          const tree = updatedTrees[treeId];
-          if (tree) {
-            updatedTrees[treeId] = {
-              ...tree,
-              rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId),
-            };
-          }
-        }
-
-        // Insert into target's parent at the right position
-        const newParentId = target.parentId;
-        updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
-
-        if (newParentId) {
-          const newParent = updatedBacklogs[newParentId];
-          if (newParent) {
-            const list = newParent.childrenIds.filter(id => id !== backlogId);
-            const idx = list.indexOf(targetBacklogId);
-            const insertAt = position === 'after' ? idx + 1 : idx;
-            list.splice(insertAt, 0, backlogId);
-            updatedBacklogs[newParentId] = { ...newParent, childrenIds: list };
-          }
-        } else {
-          const tree = updatedTrees[treeId];
-          if (tree) {
-            const list = tree.rootBacklogIds.filter(id => id !== backlogId);
-            const idx = list.indexOf(targetBacklogId);
-            const insertAt = position === 'after' ? idx + 1 : idx;
-            list.splice(insertAt, 0, backlogId);
-            updatedTrees[treeId] = { ...tree, rootBacklogIds: list };
-          }
-        }
-
-        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees };
-      });
-    },
-
-    moveBacklogToTree: (backlogId, targetTreeId, targetBacklogId) => {
-      set(state => {
-        const backlog = state.backlogs[backlogId];
-        if (!backlog) return state;
-        if (backlog.treeId === targetTreeId) return state;
-
-        const undo = pushUndo(state);
-        const updatedBacklogs = { ...state.backlogs };
-        const updatedTrees = { ...state.backlogTrees };
-        const updatedItems = { ...state.workItems };
-        const sourceTreeId = backlog.treeId;
-
-        // Collect this backlog and all descendants
-        const allBacklogIds = new Set<string>();
-        const collectBacklogs = (id: string) => {
-          allBacklogIds.add(id);
-          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-        };
-        collectBacklogs(backlogId);
-
-        // Remove from old parent/tree root
-        if (backlog.parentId) {
-          const oldParent = updatedBacklogs[backlog.parentId];
-          if (oldParent) {
-            updatedBacklogs[backlog.parentId] = {
-              ...oldParent,
-              childrenIds: oldParent.childrenIds.filter(id => id !== backlogId),
-            };
-          }
-        } else {
-          const srcTree = updatedTrees[sourceTreeId];
-          if (srcTree) {
-            updatedTrees[sourceTreeId] = {
-              ...srcTree,
-              rootBacklogIds: srcTree.rootBacklogIds.filter(id => id !== backlogId),
-            };
-          }
-        }
-
-        // Update treeId for all descendant backlogs
-        allBacklogIds.forEach(id => {
-          updatedBacklogs[id] = { ...updatedBacklogs[id], treeId: targetTreeId };
-        });
-
-        // Set new parent
-        updatedBacklogs[backlogId] = { ...updatedBacklogs[backlogId], parentId: targetBacklogId };
-
-        // Add to target
-        if (targetBacklogId) {
-          const targetParent = updatedBacklogs[targetBacklogId];
-          if (targetParent) {
-            updatedBacklogs[targetBacklogId] = {
-              ...targetParent,
-              childrenIds: [...targetParent.childrenIds, backlogId],
-            };
-          }
-        } else {
-          const targetTree = updatedTrees[targetTreeId];
-          if (targetTree) {
-            updatedTrees[targetTreeId] = {
-              ...targetTree,
-              rootBacklogIds: [...targetTree.rootBacklogIds, backlogId],
-            };
-          }
-        }
-
-        // Re-assign work items from source tree backlogs to target tree
-        Object.keys(updatedItems).forEach(wiId => {
-          const wi = updatedItems[wiId];
-          const assignedBacklogId = wi.backlogAssignments[sourceTreeId];
-          if (assignedBacklogId && allBacklogIds.has(assignedBacklogId)) {
-            const newAssignments = { ...wi.backlogAssignments };
-            delete newAssignments[sourceTreeId];
-            newAssignments[targetTreeId] = assignedBacklogId;
-            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
-          }
-        });
-
-        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems };
-      });
-    },
-
-    reorderBacklogTree: (treeId, targetTreeId, position) => {
-      set(state => {
-        if (treeId === targetTreeId) return state;
-        const undo = pushUndo(state);
-        const order = state.treeOrder.filter(id => id !== treeId);
-        const idx = order.indexOf(targetTreeId);
-        const insertAt = position === 'after' ? idx + 1 : idx;
-        order.splice(insertAt, 0, treeId);
-        return { ...undo, treeOrder: order };
       });
     },
   };

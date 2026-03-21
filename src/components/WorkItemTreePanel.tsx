@@ -36,73 +36,6 @@ function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: 
   );
 }
 
-function EditablePoints({ workItemId, points, editTrigger }: { workItemId: string; points?: number; editTrigger?: number }) {
-  const updatePoints = useAppStore(s => s.updateWorkItemPoints);
-  const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (editTrigger && editTrigger > 0) {
-      setValue(points != null && points > 0 ? String(points) : '');
-      setIsEditing(true);
-    }
-  }, [editTrigger]);
-
-  const commit = () => {
-    const num = parseInt(value, 10);
-    updatePoints(workItemId, isNaN(num) || num <= 0 ? undefined : num);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <input
-        ref={inputRef}
-        className="w-10 text-xs tabular-nums text-center bg-[hsl(var(--selection)/0.10)] border border-[hsl(var(--selection)/0.40)] rounded-full px-1 py-0.5 outline-none shrink-0"
-        value={value}
-        onChange={e => setValue(e.target.value.replace(/[^0-9]/g, ''))}
-        onKeyDown={e => {
-          if (e.key === 'Enter') commit();
-          if (e.key === 'Escape') setIsEditing(false);
-          e.stopPropagation();
-        }}
-        onBlur={commit}
-        onClick={e => e.stopPropagation()}
-      />
-    );
-  }
-
-  if (points != null && points > 0) {
-    return (
-      <button
-        className="text-xs tabular-nums font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0 hover:bg-primary/20 transition-colors"
-        onClick={(e) => { e.stopPropagation(); setValue(String(points)); setIsEditing(true); }}
-        title="Click to edit points"
-      >
-        {points}
-      </button>
-    );
-  }
-
-  return (
-    <button
-      className="text-xs text-muted-foreground/40 hover:text-muted-foreground px-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all"
-      onClick={(e) => { e.stopPropagation(); setValue(''); setIsEditing(true); }}
-      title="Set points"
-    >
-      pts
-    </button>
-  );
-}
-
 interface WorkItemNodeProps {
   workItemId: string;
   depth: number;
@@ -120,13 +53,8 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const addWorkItem = useAppStore(s => s.addWorkItem);
   const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
-  const renameWorkItem = useAppStore(s => s.renameWorkItem);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
-  const [pointsEditTrigger, setPointsEditTrigger] = useState(0);
-  const renameRef = useRef<HTMLInputElement>(null);
 
   const isSelected = selectedWorkItemId === workItemId;
 
@@ -145,32 +73,20 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     setDropRef(node);
   }, [setDragRef, setDropRef]);
 
+  // Listen for keyboard shortcuts when this work item is selected
   useEffect(() => {
     if (!isSelected) return;
 
     const handleAddChild = () => setIsAdding(true);
     const handleDelete = () => handleDeleteClick();
-    const handleRename = () => startRename();
-    const handleEditPoints = () => setPointsEditTrigger(t => t + 1);
 
     window.addEventListener('shortcut:add-child-workitem', handleAddChild);
     window.addEventListener('shortcut:delete-selected', handleDelete);
-    window.addEventListener('shortcut:rename-workitem', handleRename);
-    window.addEventListener('shortcut:edit-points', handleEditPoints);
     return () => {
       window.removeEventListener('shortcut:add-child-workitem', handleAddChild);
       window.removeEventListener('shortcut:delete-selected', handleDelete);
-      window.removeEventListener('shortcut:rename-workitem', handleRename);
-      window.removeEventListener('shortcut:edit-points', handleEditPoints);
     };
   }, [isSelected, workItemId]);
-
-  useEffect(() => {
-    if (isRenaming) {
-      renameRef.current?.focus();
-      renameRef.current?.select();
-    }
-  }, [isRenaming]);
 
   if (!item) return null;
 
@@ -187,19 +103,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
     zIndex: 50,
     opacity: isDragging ? 0.5 : 1,
   } : undefined;
-
-  const startRename = () => {
-    setRenameValue(item.title);
-    setIsRenaming(true);
-  };
-
-  const commitRename = () => {
-    const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== item.title) {
-      renameWorkItem(workItemId, trimmed);
-    }
-    setIsRenaming(false);
-  };
 
   const handleDeleteClick = () => {
     if (assignmentCount > 1) {
@@ -232,7 +135,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             transition-all duration-150 ease-out group
             border
             ${isSelected
-              ? 'bg-[hsl(var(--selection)/0.08)] border-[hsl(var(--selection)/0.30)] ring-1 ring-[hsl(var(--selection)/0.25)]'
+              ? 'bg-primary/8 border-primary/25 ring-1 ring-primary/20'
               : 'border-transparent hover:bg-muted hover:border-border'}
             ${isDragging ? 'shadow-lg bg-card' : ''}
             ${isOver && !isDragging ? 'drag-over' : ''}
@@ -242,7 +145,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
             e.stopPropagation();
             selectWorkItem(isSelected ? null : workItemId);
           }}
-          onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
         >
           <div
             {...listeners}
@@ -263,53 +165,39 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               <FileText className="w-3.5 h-3.5 text-primary/50" />
             )}
           </button>
-          {isRenaming ? (
-            <input
-              ref={renameRef}
-              className="flex-1 text-sm bg-transparent border-b border-[hsl(var(--selection))] outline-none px-1 py-0.5"
-              value={renameValue}
-              onChange={e => setRenameValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') setIsRenaming(false);
-                e.stopPropagation();
-              }}
-              onBlur={commitRename}
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <span className="text-sm truncate flex-1">
-              {item.title}
-              {backlogLabels && (
-                <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
-              )}
+          <span className="text-sm truncate flex-1">
+            {item.title}
+            {backlogLabels && (
+              <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
+            )}
+          </span>
+          {item.points != null && item.points > 0 && (
+            <span className="text-xs tabular-nums font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+              {item.points}
             </span>
           )}
-          <EditablePoints workItemId={workItemId} points={item.points} editTrigger={isSelected ? pointsEditTrigger : 0} />
-          {!isRenaming && (
-            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-              <button
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
-                title="Add child item (Shift+N)"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
-                title="Delete item (Del)"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-              {hasChildren && (
-                <span className="text-xs text-muted-foreground ml-1 tabular-nums">
-                  {item.childrenIds.length}
-                </span>
-              )}
-            </div>
-          )}
-          {hasChildren && !isRenaming && (
+          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
+              title="Add child item (Shift+N)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
+              title="Delete item (Del)"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+            {hasChildren && (
+              <span className="text-xs text-muted-foreground ml-1 tabular-nums">
+                {item.childrenIds.length}
+              </span>
+            )}
+          </div>
+          {hasChildren && (
             <span className="text-xs text-muted-foreground tabular-nums group-hover:hidden shrink-0">
               {item.childrenIds.length}
             </span>
@@ -340,17 +228,17 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
       </div>
       {showDeletePrompt && (
         <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} lists`}
+          title={`"${item.title}" is in ${assignmentCount} backlogs`}
           options={[
             {
-              label: 'Remove from this list',
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other lists.`,
+              label: 'Remove from this backlog',
+              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
               value: 'remove-from-backlog',
               isDefault: true,
             },
             {
               label: 'Delete everywhere',
-              description: 'Permanently delete this item from all lists.',
+              description: 'Permanently delete this item from all backlogs.',
               value: 'delete-everywhere',
               variant: 'destructive',
             },
@@ -374,6 +262,7 @@ export function WorkItemTreePanel() {
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
 
+  // Listen for keyboard shortcut to add root work item
   useEffect(() => {
     const handler = () => setIsAdding(true);
     window.addEventListener('shortcut:add-workitem', handler);
@@ -395,7 +284,7 @@ export function WorkItemTreePanel() {
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <div className="text-center">
           <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">Select a list to view work items</p>
+          <p className="text-sm">Select a backlog to view work items</p>
         </div>
       </div>
     );
@@ -424,7 +313,7 @@ export function WorkItemTreePanel() {
       <div className="flex-1 overflow-y-auto p-2">
         {rootWorkItems.length === 0 && !isAdding ? (
           <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-            No work items in this list
+            No work items in this backlog
           </div>
         ) : (
           rootWorkItems.map(item => (
