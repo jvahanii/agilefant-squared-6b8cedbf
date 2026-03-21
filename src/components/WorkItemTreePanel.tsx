@@ -45,6 +45,7 @@ interface WorkItemNodeProps {
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
+  const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
   const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
@@ -307,9 +308,31 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
                   className="absolute tree-line"
                   style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }}
                 />
-                {item.childrenIds.map(childId => (
-                  <WorkItemNode key={childId} workItemId={childId} depth={depth + 1} treeId={treeId} backlogId={backlogId} />
-                ))}
+                {[...item.childrenIds]
+                  .map(id => workItems[id])
+                  .filter(Boolean)
+                  .sort((a, b) => a.rank - b.rank)
+                  .map((child, index) => (
+                    <div key={child.id}>
+                      <ReorderDropZone
+                        id={`reorder-${workItemId}-${index}`}
+                        index={index}
+                        treeId={treeId}
+                        backlogId={backlogId}
+                        parentId={workItemId}
+                        depth={depth + 1}
+                      />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={backlogId} />
+                    </div>
+                  ))}
+                <ReorderDropZone
+                  id={`reorder-${workItemId}-${item.childrenIds.length}`}
+                  index={item.childrenIds.length}
+                  treeId={treeId}
+                  backlogId={backlogId}
+                  parentId={workItemId}
+                  depth={depth + 1}
+                />
               </>
             )}
             {isAdding && (
@@ -344,6 +367,23 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
         />
       )}
     </>
+  );
+}
+
+function ReorderDropZone({ id, index, treeId, backlogId, parentId, depth }: {
+  id: string; index: number; treeId: string; backlogId: string; parentId: string | null; depth: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: 'workitem-reorder', index, treeId, backlogId, parentId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-1 transition-all ${isOver ? 'h-1 bg-selection rounded-full mx-2' : ''}`}
+      style={{ marginLeft: `${depth * 20 + 12}px` }}
+    />
   );
 }
 
@@ -427,9 +467,29 @@ export function WorkItemTreePanel() {
               No work items in this backlog
             </div>
           ) : (
-            rootWorkItems.map(item => (
-              <WorkItemNode key={item.id} workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
-            ))
+            <>
+              {rootWorkItems.map((item, index) => (
+                <div key={item.id}>
+                  <ReorderDropZone
+                    id={`reorder-root-${index}`}
+                    index={index}
+                    treeId={selectedTreeId}
+                    backlogId={selectedBacklogId}
+                    parentId={null}
+                    depth={0}
+                  />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={selectedBacklogId} />
+                </div>
+              ))}
+              <ReorderDropZone
+                id={`reorder-root-${rootWorkItems.length}`}
+                index={rootWorkItems.length}
+                treeId={selectedTreeId}
+                backlogId={selectedBacklogId}
+                parentId={null}
+                depth={0}
+              />
+            </>
           )}
           {isAdding && (
             <InlineWorkItemInput

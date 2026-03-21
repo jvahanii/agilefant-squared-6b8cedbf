@@ -23,6 +23,7 @@ export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore(s => s.moveWorkItemToBacklog);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore(s => s.reparentWorkItem);
+  const reorderWorkItemAmongSiblings = useAppStore(s => s.reorderWorkItemAmongSiblings);
   const undo = useAppStore(s => s.undo);
   const undoStackLength = useAppStore(s => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
@@ -86,6 +87,35 @@ export default function AppLayout() {
           }
           break;
         }
+        case 'ArrowUp':
+        case 'ArrowDown': {
+          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+            e.preventDefault();
+            const wiId = state.selectedWorkItemIds[0];
+            const wi = state.workItems[wiId];
+            if (!wi) break;
+            const treeId = state.selectedTreeId;
+            const backlogId = state.selectedBacklogIds[0];
+
+            // Get siblings
+            const siblings = Object.values(state.workItems)
+              .filter(w => {
+                if (w.backlogAssignments[treeId] !== backlogId) return false;
+                if (wi.parentId === null) {
+                  return w.parentId === null || !state.workItems[w.parentId] || state.workItems[w.parentId].backlogAssignments[treeId] !== backlogId;
+                }
+                return w.parentId === wi.parentId;
+              })
+              .sort((a, b) => a.rank - b.rank);
+
+            const idx = siblings.findIndex(s => s.id === wiId);
+            if (idx === -1) break;
+            const newIdx = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+            if (newIdx < 0 || newIdx >= siblings.length) break;
+            useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogId);
+          }
+          break;
+        }
       }
     };
     window.addEventListener('keydown', handler);
@@ -136,8 +166,10 @@ export default function AppLayout() {
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
       reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
+    } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
+      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogId as string);
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
@@ -254,6 +286,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ['N'], description: 'New root work item in selected backlog' },
     { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
     { keys: ['Del'], description: 'Delete selected item or backlog' },
+    { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
     { keys: ['Esc'], description: 'Deselect work item' },
     { keys: ['Ctrl', 'Z'], description: 'Undo last action' },
     { keys: ['?'], description: 'Toggle this help' },

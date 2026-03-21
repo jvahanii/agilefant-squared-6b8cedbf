@@ -19,6 +19,7 @@ interface AppState extends DataSnapshot {
   clearWorkItemSelection: () => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
+  reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogId: string) => void;
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
@@ -187,6 +188,39 @@ export const useAppStore = create<AppState & {
             [workItemId]: { ...item, rank: newRank }
           }
         };
+      });
+    },
+
+    reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogId) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+
+        // Get siblings: items with same parent in same backlog
+        const siblings = Object.values(state.workItems)
+          .filter(wi => {
+            if (wi.backlogAssignments[treeId] !== backlogId) return false;
+            if (item.parentId === null) {
+              return wi.parentId === null || !state.workItems[wi.parentId] || state.workItems[wi.parentId].backlogAssignments[treeId] !== backlogId;
+            }
+            return wi.parentId === item.parentId;
+          })
+          .sort((a, b) => a.rank - b.rank);
+
+        const currentIndex = siblings.findIndex(s => s.id === workItemId);
+        if (currentIndex === -1 || currentIndex === targetIndex) return state;
+
+        const undo = pushUndo(state);
+        const reordered = siblings.filter(s => s.id !== workItemId);
+        const clampedIndex = Math.max(0, Math.min(targetIndex, reordered.length));
+        reordered.splice(clampedIndex, 0, item);
+
+        const updatedItems = { ...state.workItems };
+        reordered.forEach((s, i) => {
+          updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
+        });
+
+        return { ...undo, workItems: updatedItems };
       });
     },
 
