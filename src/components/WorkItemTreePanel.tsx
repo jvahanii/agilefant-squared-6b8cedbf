@@ -370,6 +370,23 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   );
 }
 
+function ReorderDropZone({ id, index, treeId, backlogId, parentId, depth }: {
+  id: string; index: number; treeId: string; backlogId: string; parentId: string | null; depth: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: 'workitem-reorder', index, treeId, backlogId, parentId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`h-1 transition-all ${isOver ? 'h-1 bg-selection rounded-full mx-2' : ''}`}
+      style={{ marginLeft: `${depth * 20 + 12}px` }}
+    />
+  );
+}
+
 function WorkItemRootDropZone({ treeId, backlogId, children }: { treeId: string; backlogId: string; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `workitem-root-drop-${backlogId}`,
