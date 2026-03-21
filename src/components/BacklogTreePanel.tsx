@@ -187,7 +187,7 @@ export function BacklogTreePanel() {
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 pb-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Backlog Trees
+          BACKLOGS
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
