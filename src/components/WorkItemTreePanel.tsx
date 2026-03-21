@@ -108,10 +108,19 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const hasChildren = item.childrenIds.length > 0;
   const assignmentCount = Object.keys(item.backlogAssignments).length;
 
-  const backlogLabels = Object.entries(item.backlogAssignments)
-    .map(([, blId]) => backlogs[blId]?.name)
-    .filter(Boolean)
-    .join(', ');
+  const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
+    const path: { id: string; name: string }[] = [];
+    let current = backlogs[backlogId];
+    while (current) {
+      path.unshift({ id: current.id, name: current.name });
+      current = current.parentId ? backlogs[current.parentId] : undefined;
+    }
+    return path;
+  };
+
+  const backlogPaths = Object.entries(item.backlogAssignments)
+    .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
+    .filter(({ path }) => path.length > 0);
 
   const style = transform ? {
     transform: CSS.Translate.toString(transform),
