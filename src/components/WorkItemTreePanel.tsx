@@ -56,6 +56,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const renameWorkItem = useAppStore(s => s.renameWorkItem);
   const setWorkItemPoints = useAppStore(s => s.setWorkItemPoints);
+  const selectBacklog = useAppStore(s => s.selectBacklog);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
