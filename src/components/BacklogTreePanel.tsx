@@ -85,7 +85,11 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     if (!isSelected) return;
 
     const handleAddBacklog = () => setIsAdding(true);
-    const handleDeleteBacklog = () => deleteBacklog(backlogId);
+    const handleDeleteBacklog = () => {
+      // Only delete backlogs if no work items are selected
+      if (useAppStore.getState().selectedWorkItemIds.length > 0) return;
+      deleteBacklog(backlogId);
+    };
 
     window.addEventListener('shortcut:add-child-backlog', handleAddBacklog);
     window.addEventListener('shortcut:delete-selected', handleDeleteBacklog);
