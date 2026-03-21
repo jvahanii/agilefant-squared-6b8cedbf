@@ -347,6 +347,19 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   );
 }
 
+function WorkItemRootDropZone({ treeId, backlogId, children }: { treeId: string; backlogId: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `workitem-root-drop-${backlogId}`,
+    data: { type: 'workitem-root', treeId, backlogId },
+  });
+
+  return (
+    <div ref={setNodeRef} className={`flex-1 overflow-hidden ${isOver ? 'ring-2 ring-selection/40 ring-inset rounded-md' : ''}`}>
+      {children}
+    </div>
+  );
+}
+
 export function WorkItemTreePanel() {
   const selectedBacklogIds = useAppStore(s => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
