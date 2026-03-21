@@ -52,30 +52,24 @@ export default function AppLayout() {
 
       switch (e.key) {
         case 'N': {
-          // Shift+N = add child of selected (backlog child or work item child)
           e.preventDefault();
-          if (state.selectedWorkItemId) {
+          if (state.selectedWorkItemIds.length > 0) {
             window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
-          } else if (state.selectedBacklogId) {
+          } else if (state.selectedBacklogIds.length > 0) {
             window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
           }
           break;
         }
         case 'n': {
-          // N (no shift) = new root work item in selected backlog
           e.preventDefault();
-          if (state.selectedBacklogId && state.selectedTreeId) {
+          if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
             window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
           }
           break;
         }
         case 'Delete':
         case 'Backspace': {
-          // Delete the selected item (work item takes priority over backlog)
-          if (state.selectedWorkItemId) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
-          } else if (state.selectedBacklogId) {
+          if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent('shortcut:delete-selected'));
           }
@@ -87,9 +81,8 @@ export default function AppLayout() {
           break;
         }
         case 'Escape': {
-          // Deselect work item
-          if (state.selectedWorkItemId) {
-            useAppStore.getState().selectWorkItem(null);
+          if (state.selectedWorkItemIds.length > 0) {
+            useAppStore.getState().clearWorkItemSelection();
           }
           break;
         }

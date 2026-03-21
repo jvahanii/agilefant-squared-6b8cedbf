@@ -296,7 +296,7 @@ export function WorkItemTreePanel() {
   return (
     <div
       className="h-full flex flex-col"
-      onClick={() => selectWorkItem(null)}
+      onClick={() => clearWorkItemSelection()}
     >
       <div className="p-4 pb-2 border-b flex items-center justify-between">
         <div>
