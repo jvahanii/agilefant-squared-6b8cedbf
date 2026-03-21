@@ -56,6 +56,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
   const renameWorkItem = useAppStore(s => s.renameWorkItem);
   const setWorkItemPoints = useAppStore(s => s.setWorkItemPoints);
+  const selectBacklog = useAppStore(s => s.selectBacklog);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -108,10 +109,19 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
   const hasChildren = item.childrenIds.length > 0;
   const assignmentCount = Object.keys(item.backlogAssignments).length;
 
-  const backlogLabels = Object.entries(item.backlogAssignments)
-    .map(([, blId]) => backlogs[blId]?.name)
-    .filter(Boolean)
-    .join(', ');
+  const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
+    const path: { id: string; name: string }[] = [];
+    let current = backlogs[backlogId];
+    while (current) {
+      path.unshift({ id: current.id, name: current.name });
+      current = current.parentId ? backlogs[current.parentId] : undefined;
+    }
+    return path;
+  };
+
+  const backlogPaths = Object.entries(item.backlogAssignments)
+    .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
+    .filter(({ path }) => path.length > 0);
 
   const style = transform ? {
     transform: CSS.Translate.toString(transform),
@@ -235,8 +245,31 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId }: WorkItemNodeProp
               }}
             >
               {item.title}
-              {backlogLabels && (
-                <span className="text-muted-foreground text-xs ml-1">({backlogLabels})</span>
+              {backlogPaths.length > 0 && (
+                <span className="text-muted-foreground text-xs ml-1 inline-flex items-center gap-0 flex-wrap">
+                  (
+                  {backlogPaths.map(({ treeId: tid, path }, pi) => (
+                    <span key={tid} className="inline-flex items-center">
+                      {pi > 0 && <span className="mx-0.5">·</span>}
+                      {path.map((seg, si) => (
+                        <span key={seg.id} className="inline-flex items-center">
+                          {si > 0 && <span className="mx-0.5 text-muted-foreground/50">/</span>}
+                          <button
+                            className="hover:text-primary hover:underline transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectBacklog(seg.id, tid);
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            {seg.name}
+                          </button>
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                  )
+                </span>
               )}
             </span>
           )}
