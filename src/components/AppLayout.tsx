@@ -135,8 +135,10 @@ export default function AppLayout() {
     const data = event.active.data.current;
     if (data?.type === 'workitem') {
       const store = useAppStore.getState();
-      const item = store.workItems[data.workItemId];
-      setActiveDrag({ id: data.workItemId, type: 'workitem', title: item?.title ?? '' });
+      const ids: string[] = data.selectedIds ?? [data.workItemId];
+      const titles = ids.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
+      const title = ids.length > 1 ? `${titles[0]} (+${ids.length - 1} more)` : (titles[0] ?? '');
+      setActiveDrag({ id: data.workItemId, type: 'workitem', title });
     }
   }, []);
 
