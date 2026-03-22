@@ -66,6 +66,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
   const [editPoints, setEditPoints] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
+  const dragStartedRef = useRef(false);
 
   const selectedWorkItemIds = useAppStore(s => s.selectedWorkItemIds);
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
