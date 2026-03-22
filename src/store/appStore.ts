@@ -59,10 +59,12 @@ function pushUndo(state: AppState & { expandedWorkItems: Set<string>; expandedBa
   return { undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] };
 }
 
-export const useAppStore = create<AppState & {
+type StoreState = AppState & {
   expandedWorkItems: Set<string>;
   expandedBacklogs: Set<string>;
-}>()(persist((set, get) => {
+};
+
+export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) => {
   const savedState = localStorage.getItem('app-store');
   const mock = savedState ? null : generateMockData();
   const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
@@ -505,9 +507,9 @@ export const useAppStore = create<AppState & {
   };
 }, {
   name: 'app-store',
-  partialize: (state) => ({
+  partialize: (state: StoreState) => ({
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
-  }),
-})));
+  } as unknown as StoreState),
+}));
