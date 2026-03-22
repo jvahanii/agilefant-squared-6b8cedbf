@@ -174,10 +174,9 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           <span
             className="text-sm truncate flex-1"
             onClick={(e) => {
-              if (isSelected) {
-                e.stopPropagation();
-                startEditing();
-              }
+              e.stopPropagation();
+              selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey);
+              startEditing();
             }}
           >
             {backlog.name}
