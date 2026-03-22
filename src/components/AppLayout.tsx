@@ -258,10 +258,14 @@ export default function AppLayout() {
 
       {pendingCrossTree &&
       <ActionPrompt
-        title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
+        title={
+          pendingCrossTree.workItemIds.length > 1
+            ? `Move ${pendingCrossTree.workItemIds.length} items to ${pendingCrossTree.targetTreeName}`
+            : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+        }
         options={[
         {
-          label: 'Move item',
+          label: pendingCrossTree.workItemIds.length > 1 ? `Move ${pendingCrossTree.workItemIds.length} items` : 'Move item',
           description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
           value: 'move',
           isDefault: true

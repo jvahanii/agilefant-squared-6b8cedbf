@@ -67,9 +67,18 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
   const titleRef = useRef<HTMLInputElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
 
+  const selectedWorkItemIds = useAppStore(s => s.selectedWorkItemIds);
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
-    data: { type: 'workitem', workItemId, treeId },
+    data: {
+      type: 'workitem',
+      workItemId,
+      treeId,
+      // If this item is part of a multi-selection, include all selected IDs
+      selectedIds: selectedWorkItemIds.includes(workItemId) && selectedWorkItemIds.length > 1
+        ? selectedWorkItemIds
+        : [workItemId],
+    },
   });
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
