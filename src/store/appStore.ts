@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { WorkItem, Backlog, BacklogTree } from '@/types/models';
 import { generateMockData } from './mockData';
 
