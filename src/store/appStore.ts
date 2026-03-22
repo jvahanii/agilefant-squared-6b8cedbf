@@ -507,9 +507,9 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
   };
 }, {
   name: 'app-store',
-  partialize: (state) => ({
+  partialize: (state: StoreState) => ({
     workItems: state.workItems,
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
-  }),
+  } as unknown as StoreState),
 }));
