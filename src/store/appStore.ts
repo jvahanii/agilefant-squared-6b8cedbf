@@ -62,15 +62,19 @@ function pushUndo(state: AppState & { expandedWorkItems: Set<string>; expandedBa
 export const useAppStore = create<AppState & {
   expandedWorkItems: Set<string>;
   expandedBacklogs: Set<string>;
-}>((set, get) => {
-  const mock = generateMockData();
+}>()(persist((set, get) => {
+  const savedState = localStorage.getItem('app-store');
+  const mock = savedState ? null : generateMockData();
+  const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
 
-  Object.values(mock.backlogs).forEach(b => {
-    if (!b.parentId) expandedBacklogs.add(b.id);
-  });
+  if (!savedState) {
+    Object.values(initial.backlogs).forEach(b => {
+      if (!b.parentId) expandedBacklogs.add(b.id);
+    });
+  }
 
   return {
-    ...mock,
+    ...initial,
     selectedBacklogIds: [],
     selectedTreeId: null,
     selectedWorkItemIds: [],
