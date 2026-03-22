@@ -134,11 +134,14 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
 
-  const style = transform ? {
-    transform: CSS.Translate.toString(transform),
-    zIndex: 50,
-    opacity: isDragging ? 0.5 : 1,
-  } : undefined;
+  const dragStyle = {
+    paddingLeft: `${depth * 20 + 12}px`,
+    ...(transform ? {
+      transform: CSS.Translate.toString(transform),
+      zIndex: 50,
+      opacity: isDragging ? 0.5 : 1,
+    } : {}),
+  };
 
   const handleDeleteClick = () => {
     if (assignmentCount > 1) {
