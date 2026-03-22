@@ -180,36 +180,45 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
     setIsEditingPoints(false);
   };
 
+  const dragStartedRef = useRef(false);
+
   return (
     <>
       <div
         ref={combinedRef}
         style={style}
-        className="animate-fade-in-up"
         {...attributes}
+        {...listeners}
+        className={`
+          animate-fade-in-up
+          flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
+          transition-all duration-150 ease-out group
+          border select-none touch-none
+          ${isSelected
+            ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
+            : 'border-transparent hover:bg-muted hover:border-border'}
+          ${isDragging ? 'shadow-lg bg-card' : ''}
+          ${isOver && !isDragging ? 'drag-over' : ''}
+        `}
+        style={{ paddingLeft: `${depth * 20 + 12}px`, ...(style ?? {}) }}
+        onPointerDown={(e) => {
+          dragStartedRef.current = false;
+          // Call dnd-kit's onPointerDown
+          listeners?.onPointerDown?.(e);
+        }}
+        onPointerMove={() => {
+          dragStartedRef.current = true;
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (dragStartedRef.current) return;
+          if (e.ctrlKey || e.metaKey) {
+            selectWorkItem(workItemId, true);
+          } else {
+            selectWorkItem(isSelected ? null : workItemId);
+          }
+        }}
       >
-        <div
-          {...listeners}
-          className={`
-            flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
-            transition-all duration-150 ease-out group
-            border
-            ${isSelected
-              ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
-              : 'border-transparent hover:bg-muted hover:border-border'}
-            ${isDragging ? 'shadow-lg bg-card' : ''}
-            ${isOver && !isDragging ? 'drag-over' : ''}
-          `}
-          style={{ paddingLeft: `${depth * 20 + 12}px` }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (e.ctrlKey || e.metaKey) {
-              selectWorkItem(workItemId, true);
-            } else {
-              selectWorkItem(isSelected ? null : workItemId);
-            }
-          }}
-        >
           <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
             <GripVertical className="w-3.5 h-3.5" />
           </div>
