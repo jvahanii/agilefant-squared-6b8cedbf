@@ -184,13 +184,10 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
     setIsEditingPoints(false);
   };
 
-  const dragStartedRef = useRef(false);
-
   return (
     <>
       <div
         ref={combinedRef}
-        style={style}
         {...attributes}
         {...listeners}
         className={`
@@ -204,10 +201,9 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
           ${isDragging ? 'shadow-lg bg-card' : ''}
           ${isOver && !isDragging ? 'drag-over' : ''}
         `}
-        style={{ paddingLeft: `${depth * 20 + 12}px`, ...(style ?? {}) }}
+        style={dragStyle}
         onPointerDown={(e) => {
           dragStartedRef.current = false;
-          // Call dnd-kit's onPointerDown
           listeners?.onPointerDown?.(e);
         }}
         onPointerMove={() => {
