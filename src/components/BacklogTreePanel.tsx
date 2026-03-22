@@ -279,7 +279,7 @@ function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
   return (
     <span
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
-      onClick={startEditing}>
+      onDoubleClick={startEditing}>
       
       {name}
     </span>);
