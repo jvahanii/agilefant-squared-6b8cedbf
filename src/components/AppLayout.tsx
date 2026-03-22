@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
+  totalCount: number;
   targetBacklogId: string;
   targetTreeId: string;
   sourceTreeId: string;
@@ -131,16 +132,29 @@ export default function AppLayout() {
     return () => window.removeEventListener('keydown', handler);
   }, [undo]);
 
+  const countWithDescendants = useCallback((ids: string[]) => {
+    const store = useAppStore.getState();
+    const seen = new Set<string>();
+    const collect = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      store.workItems[id]?.childrenIds.forEach(collect);
+    };
+    ids.forEach(collect);
+    return seen.size;
+  }, []);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
     if (data?.type === 'workitem') {
       const store = useAppStore.getState();
       const ids: string[] = data.selectedIds ?? [data.workItemId];
+      const totalCount = countWithDescendants(ids);
       const titles = ids.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
-      const title = ids.length > 1 ? `${titles[0]} (+${ids.length - 1} more)` : (titles[0] ?? '');
+      const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? '');
       setActiveDrag({ id: data.workItemId, type: 'workitem', title });
     }
-  }, []);
+  }, [countWithDescendants]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveDrag(null);
@@ -162,6 +176,7 @@ export default function AppLayout() {
         const titles = draggedIds.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
         setPendingCrossTree({
           workItemIds: draggedIds,
+          totalCount: countWithDescendants(draggedIds),
           targetBacklogId: overData.backlogId,
           targetTreeId,
           sourceTreeId,
@@ -259,13 +274,13 @@ export default function AppLayout() {
       {pendingCrossTree &&
       <ActionPrompt
         title={
-          pendingCrossTree.workItemIds.length > 1
-            ? `Move ${pendingCrossTree.workItemIds.length} items to ${pendingCrossTree.targetTreeName}`
+          pendingCrossTree.totalCount > 1
+            ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
             : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
         }
         options={[
         {
-          label: pendingCrossTree.workItemIds.length > 1 ? `Move ${pendingCrossTree.workItemIds.length} items` : 'Move item',
+          label: pendingCrossTree.totalCount > 1 ? `Move ${pendingCrossTree.totalCount} items` : 'Move item',
           description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
           value: 'move',
           isDefault: true
