@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
+  totalCount: number;
   targetBacklogId: string;
   targetTreeId: string;
   sourceTreeId: string;
