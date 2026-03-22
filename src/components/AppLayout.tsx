@@ -149,6 +149,7 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+    const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
       const sourceTreeId = activeData.treeId as string;
@@ -156,20 +157,20 @@ export default function AppLayout() {
 
       if (sourceTreeId !== targetTreeId) {
         const store = useAppStore.getState();
-        const item = store.workItems[activeData.workItemId];
         const sourceTree = store.backlogTrees[sourceTreeId];
         const targetTree = store.backlogTrees[targetTreeId];
+        const titles = draggedIds.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
         setPendingCrossTree({
-          workItemId: activeData.workItemId,
+          workItemIds: draggedIds,
           targetBacklogId: overData.backlogId,
           targetTreeId,
           sourceTreeId,
-          itemTitle: item?.title ?? '',
+          itemTitles: titles,
           sourceTreeName: sourceTree?.name ?? sourceTreeId,
           targetTreeName: targetTree?.name ?? targetTreeId
         });
       } else {
-        moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+        draggedIds.forEach(id => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
       if (activeData.workItemId !== overData.workItemId) {
