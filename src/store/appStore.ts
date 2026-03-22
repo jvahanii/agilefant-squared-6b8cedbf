@@ -483,5 +483,15 @@ export const useAppStore = create<AppState & {
         };
       });
     },
+
+    renameBacklogTree: (treeId, name) => {
+      set(state => {
+        const tree = state.backlogTrees[treeId];
+        if (!tree || !name.trim()) return state;
+        return {
+          backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name: name.trim() } },
+        };
+      });
+    },
   };
 });
