@@ -228,6 +228,51 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   );
 }
 
+function EditableTreeName({ treeId, name }: { treeId: string; name: string }) {
+  const renameBacklogTree = useAppStore(s => s.renameBacklogTree);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) { inputRef.current?.focus(); inputRef.current?.select(); }
+  }, [isEditing]);
+
+  const startEditing = () => { setEditValue(name); setIsEditing(true); };
+  const commitEdit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== name) renameBacklogTree(treeId, trimmed);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        className="text-xs font-semibold uppercase tracking-wide bg-transparent border-b border-primary/40 outline-none px-0.5 py-0 min-w-0 flex-1"
+        value={editValue}
+        onChange={e => setEditValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') commitEdit();
+          if (e.key === 'Escape') setIsEditing(false);
+          e.stopPropagation();
+        }}
+        onBlur={commitEdit}
+        onClick={e => e.stopPropagation()}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors"
+      onClick={startEditing}
+    >
+      {name}
+    </span>
+  );
+}
+
 export function BacklogTreePanel() {
   const backlogTrees = useAppStore(s => s.backlogTrees);
   const addBacklog = useAppStore(s => s.addBacklog);
@@ -244,9 +289,7 @@ export function BacklogTreePanel() {
         {Object.values(backlogTrees).map(tree => (
           <div key={tree.id} className="mb-4">
             <div className="px-2 py-1 flex items-center justify-between group">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {tree.name}
-              </span>
+              <EditableTreeName treeId={tree.id} name={tree.name} />
               <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
                 onClick={() => setAddingToTree(tree.id)}

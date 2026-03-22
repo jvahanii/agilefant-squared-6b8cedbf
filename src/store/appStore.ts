@@ -33,6 +33,7 @@ interface AppState extends DataSnapshot {
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  renameBacklogTree: (treeId: string, name: string) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -479,6 +480,16 @@ export const useAppStore = create<AppState & {
         if (!item) return state;
         return {
           workItems: { ...state.workItems, [workItemId]: { ...item, points } },
+        };
+      });
+    },
+
+    renameBacklogTree: (treeId, name) => {
+      set(state => {
+        const tree = state.backlogTrees[treeId];
+        if (!tree || !name.trim()) return state;
+        return {
+          backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name: name.trim() } },
         };
       });
     },
