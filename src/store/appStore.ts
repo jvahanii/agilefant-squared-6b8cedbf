@@ -33,6 +33,7 @@ interface AppState extends DataSnapshot {
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  renameBacklogTree: (treeId: string, name: string) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
