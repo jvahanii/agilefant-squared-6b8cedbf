@@ -188,9 +188,8 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
 
         <span
           className="text-sm truncate flex-1"
-          onClick={(e) => {
+          onDoubleClick={(e) => {
             e.stopPropagation();
-            selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey);
             startEditing();
           }}>
           
@@ -280,7 +279,7 @@ function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
   return (
     <span
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
-      onClick={startEditing}>
+      onDoubleClick={startEditing}>
       
       {name}
     </span>);
