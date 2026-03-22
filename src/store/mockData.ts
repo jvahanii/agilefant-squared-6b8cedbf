@@ -36,20 +36,20 @@ export function generateMockData() {
   // Tree 2: Team
   backlogTrees['tree-team'] = {
     id: 'tree-team',
-    name: 'Team Backlog',
+    name: 'TEAMS',
     rootBacklogIds: ['bl-team'],
   };
 
   backlogs['bl-team'] = {
-    id: 'bl-team', name: 'Engineering', parentId: null,
+    id: 'bl-team', name: 'Q1', parentId: null,
     childrenIds: ['bl-frontend', 'bl-backend'], treeId: 'tree-team', rank: 0,
   };
   backlogs['bl-frontend'] = {
-    id: 'bl-frontend', name: 'Frontend', parentId: 'bl-team',
+    id: 'bl-frontend', name: 'Hawk sprint 1', parentId: 'bl-team',
     childrenIds: [], treeId: 'tree-team', rank: 0,
   };
   backlogs['bl-backend'] = {
-    id: 'bl-backend', name: 'Backend', parentId: 'bl-team',
+    id: 'bl-backend', name: 'Falcon sprint 1\n', parentId: 'bl-team',
     childrenIds: [], treeId: 'tree-team', rank: 1,
   };
 
