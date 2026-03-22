@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { WorkItem, Backlog, BacklogTree } from '@/types/models';
 import { generateMockData } from './mockData';
 
@@ -61,15 +62,19 @@ function pushUndo(state: AppState & { expandedWorkItems: Set<string>; expandedBa
 export const useAppStore = create<AppState & {
   expandedWorkItems: Set<string>;
   expandedBacklogs: Set<string>;
-}>((set, get) => {
-  const mock = generateMockData();
+}>()(persist((set, get) => {
+  const savedState = localStorage.getItem('app-store');
+  const mock = savedState ? null : generateMockData();
+  const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
 
-  Object.values(mock.backlogs).forEach(b => {
-    if (!b.parentId) expandedBacklogs.add(b.id);
-  });
+  if (!savedState) {
+    Object.values(initial.backlogs).forEach(b => {
+      if (!b.parentId) expandedBacklogs.add(b.id);
+    });
+  }
 
   return {
-    ...mock,
+    ...initial,
     selectedBacklogIds: [],
     selectedTreeId: null,
     selectedWorkItemIds: [],
@@ -498,4 +503,11 @@ export const useAppStore = create<AppState & {
       });
     },
   };
-});
+}, {
+  name: 'app-store',
+  partialize: (state) => ({
+    workItems: state.workItems,
+    backlogs: state.backlogs,
+    backlogTrees: state.backlogTrees,
+  }),
+})));
