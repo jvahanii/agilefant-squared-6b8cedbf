@@ -1,25 +1,15 @@
-import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from "lucide-react";
-import { useDraggable, useDroppable, DragOverEvent } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import { ActionPrompt } from "./ActionPrompt";
+import { useAppStore } from '@/store/appStore';
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from 'lucide-react';
+import { useDraggable, useDroppable, DragOverEvent } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { ActionPrompt } from './ActionPrompt';
 
-function InlineWorkItemInput({
-  onSubmit,
-  onCancel,
-  depth,
-}: {
-  onSubmit: (title: string) => void;
-  onCancel: () => void;
-  depth: number;
-}) {
-  const [value, setValue] = useState("");
+function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: string) => void; onCancel: () => void; depth: number }) {
+  const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
@@ -35,10 +25,10 @@ function InlineWorkItemInput({
         className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50"
         placeholder="Work item title…"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleSubmit();
-          if (e.key === "Escape") onCancel();
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') handleSubmit();
+          if (e.key === 'Escape') onCancel();
         }}
         onBlur={handleSubmit}
       />
@@ -55,72 +45,59 @@ interface WorkItemNodeProps {
 }
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
-  const item = useAppStore((s) => s.workItems[workItemId]);
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
-  const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
-  const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
-  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
-  const addWorkItem = useAppStore((s) => s.addWorkItem);
-  const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
-  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
-  const renameWorkItem = useAppStore((s) => s.renameWorkItem);
-  const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
-  const selectBacklog = useAppStore((s) => s.selectBacklog);
+  const item = useAppStore(s => s.workItems[workItemId]);
+  const workItems = useAppStore(s => s.workItems);
+  const backlogs = useAppStore(s => s.backlogs);
+  const expanded = useAppStore(s => s.expandedWorkItems.has(workItemId));
+  const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
+  const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
+  const selectWorkItem = useAppStore(s => s.selectWorkItem);
+  const addWorkItem = useAppStore(s => s.addWorkItem);
+  const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
+  const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
+  const renameWorkItem = useAppStore(s => s.renameWorkItem);
+  const setWorkItemPoints = useAppStore(s => s.setWorkItemPoints);
+  const selectBacklog = useAppStore(s => s.selectBacklog);
   const [isAdding, setIsAdding] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
+  const [editTitle, setEditTitle] = useState('');
   const [isEditingPoints, setIsEditingPoints] = useState(false);
-  const [editPoints, setEditPoints] = useState("");
+  const [editPoints, setEditPoints] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
+  const dragStartedRef = useRef(false);
 
-  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
-  const {
-    attributes,
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({
+  const selectedWorkItemIds = useAppStore(s => s.selectedWorkItemIds);
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `workitem-${workItemId}`,
     data: {
-      type: "workitem",
+      type: 'workitem',
       workItemId,
       treeId,
       // If this item is part of a multi-selection, include all selected IDs
-      selectedIds:
-        selectedWorkItemIds.includes(workItemId) && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId],
+      selectedIds: selectedWorkItemIds.includes(workItemId) && selectedWorkItemIds.length > 1
+        ? selectedWorkItemIds
+        : [workItemId],
     },
   });
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `workitem-drop-${workItemId}`,
-    data: { type: "workitem-parent", workItemId, treeId, backlogId },
+    data: { type: 'workitem-parent', workItemId, treeId, backlogId },
   });
 
-  const combinedRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      setDragRef(node);
-      setDropRef(node);
-    },
-    [setDragRef, setDropRef],
-  );
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  }, [setDragRef, setDropRef]);
 
   useEffect(() => {
-    if (isEditingTitle) {
-      titleRef.current?.focus();
-      titleRef.current?.select();
-    }
+    if (isEditingTitle) { titleRef.current?.focus(); titleRef.current?.select(); }
   }, [isEditingTitle]);
 
   useEffect(() => {
-    if (isEditingPoints) {
-      pointsRef.current?.focus();
-      pointsRef.current?.select();
-    }
+    if (isEditingPoints) { pointsRef.current?.focus(); pointsRef.current?.select(); }
   }, [isEditingPoints]);
 
   // Listen for keyboard shortcuts when this work item is selected
@@ -130,11 +107,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
     const handleAddChild = () => setIsAdding(true);
     const handleDelete = () => handleDeleteClick();
 
-    window.addEventListener("shortcut:add-child-workitem", handleAddChild);
-    window.addEventListener("shortcut:delete-selected", handleDelete);
+    window.addEventListener('shortcut:add-child-workitem', handleAddChild);
+    window.addEventListener('shortcut:delete-selected', handleDelete);
     return () => {
-      window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
-      window.removeEventListener("shortcut:delete-selected", handleDelete);
+      window.removeEventListener('shortcut:add-child-workitem', handleAddChild);
+      window.removeEventListener('shortcut:delete-selected', handleDelete);
     };
   }, [isSelected, workItemId]);
 
@@ -157,14 +134,6 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
 
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-        zIndex: 50,
-        opacity: isDragging ? 0.5 : 1,
-      }
-    : undefined;
-
   const handleDeleteClick = () => {
     if (assignmentCount > 1) {
       setShowDeletePrompt(true);
@@ -175,9 +144,9 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") {
+    if (value === 'remove-from-backlog') {
       removeWorkItemFromTree(workItemId, treeId);
-    } else if (value === "delete-everywhere") {
+    } else if (value === 'delete-everywhere') {
       deleteWorkItem(workItemId);
     }
   };
@@ -196,7 +165,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
   };
 
   const startEditingPoints = () => {
-    setEditPoints(item.points != null ? String(item.points) : "");
+    setEditPoints(item.points != null ? String(item.points) : '');
     setIsEditingPoints(true);
   };
 
@@ -208,24 +177,31 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
 
   return (
     <>
-      <div ref={combinedRef} style={style} className="animate-fade-in-up" {...attributes}>
+      <div ref={combinedRef} style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 } : undefined} className="animate-fade-in-up">
         <div
+          {...attributes}
           {...listeners}
           className={`
             flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
             transition-all duration-150 ease-out group
-            border
-            ${
-              isSelected
-                ? "bg-selection/10 border-selection/30 ring-1 ring-selection/30"
-                : "border-transparent hover:bg-muted hover:border-border"
-            }
-            ${isDragging ? "shadow-lg bg-card" : ""}
-            ${isOver && !isDragging ? "drag-over" : ""}
+            border select-none touch-none
+            ${isSelected
+              ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
+              : 'border-transparent hover:bg-muted hover:border-border'}
+            ${isDragging ? 'shadow-lg bg-card' : ''}
+            ${isOver && !isDragging ? 'drag-over' : ''}
           `}
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
+          onPointerDown={(e) => {
+            dragStartedRef.current = false;
+            listeners?.onPointerDown?.(e);
+          }}
+          onPointerMove={() => {
+            dragStartedRef.current = true;
+          }}
           onClick={(e) => {
             e.stopPropagation();
+            if (dragStartedRef.current) return;
             if (e.ctrlKey || e.metaKey) {
               selectWorkItem(workItemId, true);
             } else {
@@ -244,11 +220,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             }}
           >
             {hasChildren ? (
-              expanded ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )
+              expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
             ) : (
               <FileText className="w-3.5 h-3.5 text-primary/50" />
             )}
@@ -256,118 +228,81 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
           {isEditingTitle ? (
             <input
               ref={titleRef}
-              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-0.5 py-0 min-w-0"
+              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5"
               value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitTitle();
-                if (e.key === "Escape") setIsEditingTitle(false);
-                e.stopPropagation();
-              }}
+              onChange={e => setEditTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') setIsEditingTitle(false); }}
               onBlur={commitTitle}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             />
           ) : (
             <span
-              className="text-sm truncate flex-1"
-              onClick={(e) => {
-                if (isSelected) {
-                  e.stopPropagation();
-                  startEditingTitle();
-                }
-              }}
-              onPointerDown={(e) => {
-                if (isSelected) e.stopPropagation();
-              }}
+              className="flex-1 text-sm truncate cursor-text"
+              onDoubleClick={(e) => { e.stopPropagation(); startEditingTitle(); }}
             >
               {item.title}
-              {backlogPaths.length > 0 && (
-                <span className="text-muted-foreground text-xs ml-1 inline-flex items-center gap-0 flex-wrap">
-                  (
-                  {backlogPaths.map(({ treeId: tid, path }, pi) => (
-                    <span key={tid} className="inline-flex items-center">
-                      {pi > 0 && <span className="mx-0.5">·</span>}
-                      {path.map((seg, si) => (
-                        <span key={seg.id} className="inline-flex items-center">
-                          {si > 0 && <span className="mx-0.5 text-muted-foreground/50">/</span>}
-                          <button
-                            className="hover:text-primary hover:underline transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              selectBacklog(seg.id, tid);
-                            }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                          >
-                            {seg.name}
-                          </button>
-                        </span>
-                      ))}
-                    </span>
-                  ))}
-                  )
-                </span>
-              )}
             </span>
           )}
+
+          {backlogPaths.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              {backlogPaths.map(({ treeId: tid, path }) => (
+                <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
+                  {path.map((seg, i) => (
+                    <span key={seg.id} className="flex items-center">
+                      {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40" />}
+                      <button
+                        className="hover:text-foreground hover:underline transition-colors"
+                        onClick={(e) => { e.stopPropagation(); selectBacklog(seg.id, tid); }}
+                      >
+                        {seg.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           {isEditingPoints ? (
             <input
               ref={pointsRef}
-              className="w-12 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums shrink-0"
+              className="w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
               value={editPoints}
-              onChange={(e) => setEditPoints(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitPoints();
-                if (e.key === "Escape") setIsEditingPoints(false);
-                e.stopPropagation();
-              }}
+              onChange={e => setEditPoints(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitPoints(); if (e.key === 'Escape') setIsEditingPoints(false); }}
               onBlur={commitPoints}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              placeholder="pts"
+              onClick={e => e.stopPropagation()}
             />
           ) : (
             <span
-              className={`text-xs tabular-nums font-medium px-1.5 py-0.5 rounded-full shrink-0 cursor-pointer
-                ${
-                  item.points != null && item.points > 0
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground/50 opacity-0 group-hover:opacity-100"
-                }
-              `}
-              onClick={(e) => {
-                e.stopPropagation();
-                startEditingPoints();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title="Edit points (P)"
+              className="text-xs text-muted-foreground tabular-nums cursor-text shrink-0 min-w-[20px] text-center"
+              onDoubleClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
+              title="Story points (double-click to edit)"
             >
-              {item.points != null && item.points > 0 ? item.points : "·"}
+              {item.points ?? '–'}
             </span>
           )}
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAdding(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
               title="Add child item (Shift+N)"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleDeleteClick(); }}
               title="Delete item (Del)"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
             {hasChildren && (
-              <span className="text-xs text-muted-foreground ml-1 tabular-nums">{item.childrenIds.length}</span>
+              <span className="text-xs text-muted-foreground ml-1 tabular-nums">
+                {item.childrenIds.length}
+              </span>
             )}
           </div>
           {hasChildren && (
@@ -378,33 +313,30 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
-            {expanded && hasChildren && (
+            {(expanded && hasChildren) && (
               <>
-                <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
+                <div
+                  className="absolute tree-line"
+                  style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }}
+                />
                 {[...item.childrenIds]
-                  .map((id) => workItems[id])
+                  .map(id => workItems[id])
                   .filter(Boolean)
                   .sort((a, b) => a.rank - b.rank)
                   .map((child, index) => {
                     const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
                     return (
-                      <div key={child.id}>
-                        <ReorderDropZone
-                          id={`reorder-${workItemId}-${index}`}
-                          index={index}
-                          treeId={treeId}
-                          backlogIds={allBacklogIds}
-                          parentId={workItemId}
-                          depth={depth + 1}
-                        />
-                        <WorkItemNode
-                          workItemId={child.id}
-                          depth={depth + 1}
-                          treeId={treeId}
-                          backlogId={childBacklogId}
-                          allBacklogIds={allBacklogIds}
-                        />
-                      </div>
+                    <div key={child.id}>
+                      <ReorderDropZone
+                        id={`reorder-${workItemId}-${index}`}
+                        index={index}
+                        treeId={treeId}
+                        backlogIds={allBacklogIds}
+                        parentId={workItemId}
+                        depth={depth + 1}
+                      />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} />
+                    </div>
                     );
                   })}
                 <ReorderDropZone
@@ -420,10 +352,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             {isAdding && (
               <InlineWorkItemInput
                 depth={depth + 1}
-                onSubmit={(title) => {
-                  addWorkItem(title, workItemId, backlogId, treeId);
-                  setIsAdding(false);
-                }}
+                onSubmit={(title) => { addWorkItem(title, workItemId, backlogId, treeId); setIsAdding(false); }}
                 onCancel={() => setIsAdding(false)}
               />
             )}
@@ -435,16 +364,16 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
           title={`"${item.title}" is in ${assignmentCount} backlogs`}
           options={[
             {
-              label: "Remove from this backlog",
+              label: 'Remove from this backlog',
               description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
-              value: "remove-from-backlog",
+              value: 'remove-from-backlog',
               isDefault: true,
             },
             {
-              label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
-              value: "delete-everywhere",
-              variant: "destructive",
+              label: 'Delete everywhere',
+              description: 'Permanently delete this item from all backlogs.',
+              value: 'delete-everywhere',
+              variant: 'destructive',
             },
           ]}
           onSelect={handleDeleteChoice}
@@ -455,67 +384,48 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
   );
 }
 
-function ReorderDropZone({
-  id,
-  index,
-  treeId,
-  backlogIds,
-  parentId,
-  depth,
-}: {
-  id: string;
-  index: number;
-  treeId: string;
-  backlogIds: string[];
-  parentId: string | null;
-  depth: number;
+function ReorderDropZone({ id, index, treeId, backlogIds, parentId, depth }: {
+  id: string; index: number; treeId: string; backlogIds: string[]; parentId: string | null; depth: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId },
+    data: { type: 'workitem-reorder', index, treeId, backlogIds, parentId },
   });
 
   return (
     <div
       ref={setNodeRef}
-      className={`h-1 transition-all ${isOver ? "h-1 bg-selection rounded-full mx-2" : ""}`}
-      style={{ marginLeft: `${depth * 20 + 16}px` }}
-    />
+      className="relative py-1"
+      style={{ marginLeft: `${depth * 20 + 12}px` }}
+    >
+      <div
+        className={`h-0.5 rounded-full transition-all ${isOver ? 'bg-selection' : ''}`}
+      />
+    </div>
   );
 }
 
-function WorkItemRootDropZone({
-  treeId,
-  backlogId,
-  children,
-}: {
-  treeId: string;
-  backlogId: string;
-  children: React.ReactNode;
-}) {
+function WorkItemRootDropZone({ treeId, backlogId, children }: { treeId: string; backlogId: string; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `workitem-root-drop-${backlogId}`,
-    data: { type: "workitem-root", treeId, backlogId },
+    data: { type: 'workitem-root', treeId, backlogId },
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex-1 overflow-hidden ${isOver ? "ring-2 ring-selection/40 ring-inset rounded-md" : ""}`}
-    >
+    <div ref={setNodeRef} className={`flex-1 overflow-hidden ${isOver ? 'ring-2 ring-selection/40 ring-inset rounded-md' : ''}`}>
       {children}
     </div>
   );
 }
 
 export function WorkItemTreePanel() {
-  const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
+  const selectedBacklogIds = useAppStore(s => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
-  const selectedTreeId = useAppStore((s) => s.selectedTreeId);
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const addWorkItem = useAppStore((s) => s.addWorkItem);
-  const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
+  const selectedTreeId = useAppStore(s => s.selectedTreeId);
+  const workItems = useAppStore(s => s.workItems);
+  const backlogs = useAppStore(s => s.backlogs);
+  const addWorkItem = useAppStore(s => s.addWorkItem);
+  const clearWorkItemSelection = useAppStore(s => s.clearWorkItemSelection);
   const [isAdding, setIsAdding] = useState(false);
 
   const selectedBacklog = selectedBacklogId ? backlogs[selectedBacklogId] : null;
@@ -523,8 +433,8 @@ export function WorkItemTreePanel() {
   // Listen for keyboard shortcut to add root work item
   useEffect(() => {
     const handler = () => setIsAdding(true);
-    window.addEventListener("shortcut:add-workitem", handler);
-    return () => window.removeEventListener("shortcut:add-workitem", handler);
+    window.addEventListener('shortcut:add-workitem', handler);
+    return () => window.removeEventListener('shortcut:add-workitem', handler);
   }, []);
 
   // Collect selected backlog + all descendant backlog IDs
@@ -544,10 +454,9 @@ export function WorkItemTreePanel() {
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
     return Object.values(workItems)
-      .filter(
-        (wi) =>
-          backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
-          (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId]?.backlogAssignments[selectedTreeId])),
+      .filter(wi =>
+        backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
+        (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId]?.backlogAssignments[selectedTreeId]))
       )
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
@@ -564,20 +473,20 @@ export function WorkItemTreePanel() {
   }
 
   return (
-    <div className="h-full flex flex-col" onClick={() => clearWorkItemSelection()}>
+    <div
+      className="h-full flex flex-col"
+      onClick={() => clearWorkItemSelection()}
+    >
       <div className="p-4 pb-2 border-b flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold">{selectedBacklog?.name}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
+            {rootWorkItems.length} item{rootWorkItems.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsAdding(true);
-          }}
+          onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           title="Add work item (N)"
         >
           <Plus className="w-4 h-4" />
@@ -594,23 +503,17 @@ export function WorkItemTreePanel() {
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
                 return (
-                  <div key={item.id}>
-                    <ReorderDropZone
-                      id={`reorder-root-${index}`}
-                      index={index}
-                      treeId={selectedTreeId}
-                      backlogIds={allBacklogIds}
-                      parentId={null}
-                      depth={0}
-                    />
-                    <WorkItemNode
-                      workItemId={item.id}
-                      depth={0}
-                      treeId={selectedTreeId}
-                      backlogId={itemBacklogId}
-                      allBacklogIds={allBacklogIds}
-                    />
-                  </div>
+                <div key={item.id}>
+                  <ReorderDropZone
+                    id={`reorder-root-${index}`}
+                    index={index}
+                    treeId={selectedTreeId}
+                    backlogIds={allBacklogIds}
+                    parentId={null}
+                    depth={0}
+                  />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} />
+                </div>
                 );
               })}
               <ReorderDropZone
@@ -626,10 +529,7 @@ export function WorkItemTreePanel() {
           {isAdding && (
             <InlineWorkItemInput
               depth={0}
-              onSubmit={(title) => {
-                addWorkItem(title, null, selectedBacklogId, selectedTreeId);
-                setIsAdding(false);
-              }}
+              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
               onCancel={() => setIsAdding(false)}
             />
           )}
