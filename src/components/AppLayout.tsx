@@ -150,8 +150,8 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const ids: string[] = data.selectedIds ?? [data.workItemId];
       const totalCount = countWithDescendants(ids);
-      const titles = ids.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
-      const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? '');
+      const titles = ids.map((id) => store.workItems[id]?.title ?? '').filter(Boolean);
+      const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : titles[0] ?? '';
       setActiveDrag({ id: data.workItemId, type: 'workitem', title });
     }
   }, [countWithDescendants]);
@@ -173,7 +173,7 @@ export default function AppLayout() {
         const store = useAppStore.getState();
         const sourceTree = store.backlogTrees[sourceTreeId];
         const targetTree = store.backlogTrees[targetTreeId];
-        const titles = draggedIds.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
+        const titles = draggedIds.map((id) => store.workItems[id]?.title ?? '').filter(Boolean);
         setPendingCrossTree({
           workItemIds: draggedIds,
           totalCount: countWithDescendants(draggedIds),
@@ -185,15 +185,15 @@ export default function AppLayout() {
           targetTreeName: targetTree?.name ?? targetTreeId
         });
       } else {
-        draggedIds.forEach(id => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
+        draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
       const targetId = overData.workItemId;
-      draggedIds.filter(id => id !== targetId).forEach(id => {
+      draggedIds.filter((id) => id !== targetId).forEach((id) => {
         reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
       });
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
-      draggedIds.forEach(id => {
+      draggedIds.forEach((id) => {
         reparentWorkItem(id, null, overData.treeId, overData.backlogId);
       });
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
@@ -201,8 +201,8 @@ export default function AppLayout() {
       const treeId = overData.treeId as string;
       const backlogIds = overData.backlogIds as string[];
       const store = useAppStore.getState();
-      
-      draggedIds.forEach(id => {
+
+      draggedIds.forEach((id) => {
         const wi = store.workItems[id];
         if (!wi) return;
         // If the item's parent differs from the drop zone's parent, reparent first
@@ -212,7 +212,7 @@ export default function AppLayout() {
         }
       });
       // After reparenting, reorder among the new siblings
-      draggedIds.forEach(id => {
+      draggedIds.forEach((id) => {
         reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
       });
     }
@@ -222,7 +222,7 @@ export default function AppLayout() {
     if (!pendingCrossTree) return;
     const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
-    workItemIds.forEach(id => {
+    workItemIds.forEach((id) => {
       if (value === 'move') {
         moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
         removeWorkItemFromTree(id, sourceTreeId);
@@ -237,9 +237,9 @@ export default function AppLayout() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
         <header className="h-16 border-b flex items-center px-4 gap-3 bg-card shrink-0 py-0">
-          <img alt="Agilefant" className="h-12" src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png" />
-          <h1 className="text-sm font-bold tracking-tight">
-            Agilefant<sup className="text-xs text-primary">2</sup>
+          <img alt="Agilefant" className="h-12 bg-destructive-foreground shadow-none" src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png" />
+          <h1 className="text-sm font-bold tracking-tight">Agilefant2
+            <sup className="text-xs text-primary">2</sup>
           </h1>
           <div className="ml-auto flex items-center gap-1">
             <Tooltip>
@@ -294,9 +294,9 @@ export default function AppLayout() {
       {pendingCrossTree &&
       <ActionPrompt
         title={
-          pendingCrossTree.totalCount > 1
-            ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
-            : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+        pendingCrossTree.totalCount > 1 ?
+        `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}` :
+        `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
         }
         options={[
         {
