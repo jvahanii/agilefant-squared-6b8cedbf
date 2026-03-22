@@ -459,6 +459,7 @@ export const useAppStore = create<AppState & {
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
         return {
+          ...pushUndo(state),
           backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name: name.trim() } },
         };
       });
@@ -469,6 +470,7 @@ export const useAppStore = create<AppState & {
         const item = state.workItems[workItemId];
         if (!item || !title.trim()) return state;
         return {
+          ...pushUndo(state),
           workItems: { ...state.workItems, [workItemId]: { ...item, title: title.trim() } },
         };
       });
@@ -479,6 +481,7 @@ export const useAppStore = create<AppState & {
         const item = state.workItems[workItemId];
         if (!item) return state;
         return {
+          ...pushUndo(state),
           workItems: { ...state.workItems, [workItemId]: { ...item, points } },
         };
       });
@@ -489,6 +492,7 @@ export const useAppStore = create<AppState & {
         const tree = state.backlogTrees[treeId];
         if (!tree || !name.trim()) return state;
         return {
+          ...pushUndo(state),
           backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name: name.trim() } },
         };
       });
