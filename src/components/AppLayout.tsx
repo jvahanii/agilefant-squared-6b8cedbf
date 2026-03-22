@@ -197,8 +197,23 @@ export default function AppLayout() {
         reparentWorkItem(id, null, overData.treeId, overData.backlogId);
       });
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
+      const targetParentId = overData.parentId as string | null;
+      const treeId = overData.treeId as string;
+      const backlogIds = overData.backlogIds as string[];
+      const store = useAppStore.getState();
+      
       draggedIds.forEach(id => {
-        reorderWorkItemAmongSiblings(id, overData.index as number, overData.treeId as string, overData.backlogIds as string[]);
+        const wi = store.workItems[id];
+        if (!wi) return;
+        // If the item's parent differs from the drop zone's parent, reparent first
+        if (wi.parentId !== targetParentId) {
+          const backlogId = backlogIds[0] ?? '';
+          reparentWorkItem(id, targetParentId, treeId, backlogId);
+        }
+      });
+      // After reparenting, reorder among the new siblings
+      draggedIds.forEach(id => {
+        reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
       });
     }
   }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
