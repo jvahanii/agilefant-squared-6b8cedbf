@@ -479,7 +479,7 @@ export function WorkItemTreePanel() {
     >
       <div className="p-4 pb-2 border-b flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold">{selectedBacklog?.name}</h2>
+          <EditableBacklogName backlogId={selectedBacklogId} />
           <p className="text-xs text-muted-foreground mt-0.5">
             {rootWorkItems.length} item{rootWorkItems.length !== 1 ? 's' : ''}
           </p>
