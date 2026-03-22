@@ -395,9 +395,13 @@ function ReorderDropZone({ id, index, treeId, backlogIds, parentId, depth }: {
   return (
     <div
       ref={setNodeRef}
-      className={`h-1 transition-all ${isOver ? 'h-1 bg-selection rounded-full mx-2' : ''}`}
+      className="relative py-1"
       style={{ marginLeft: `${depth * 20 + 12}px` }}
-    />
+    >
+      <div
+        className={`h-0.5 rounded-full transition-all ${isOver ? 'bg-selection' : ''}`}
+      />
+    </div>
   );
 }
 
