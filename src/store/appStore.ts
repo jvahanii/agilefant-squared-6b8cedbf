@@ -512,4 +512,4 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
     backlogs: state.backlogs,
     backlogTrees: state.backlogTrees,
   }),
-})));
+}));
