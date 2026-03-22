@@ -186,39 +186,38 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
 
   return (
     <>
-      <div
-        ref={combinedRef}
-        {...attributes}
-        {...listeners}
-        className={`
-          animate-fade-in-up
-          flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
-          transition-all duration-150 ease-out group
-          border select-none touch-none
-          ${isSelected
-            ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
-            : 'border-transparent hover:bg-muted hover:border-border'}
-          ${isDragging ? 'shadow-lg bg-card' : ''}
-          ${isOver && !isDragging ? 'drag-over' : ''}
-        `}
-        style={dragStyle}
-        onPointerDown={(e) => {
-          dragStartedRef.current = false;
-          listeners?.onPointerDown?.(e);
-        }}
-        onPointerMove={() => {
-          dragStartedRef.current = true;
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (dragStartedRef.current) return;
-          if (e.ctrlKey || e.metaKey) {
-            selectWorkItem(workItemId, true);
-          } else {
-            selectWorkItem(isSelected ? null : workItemId);
-          }
-        }}
-      >
+      <div ref={combinedRef} style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 } : undefined} className="animate-fade-in-up">
+        <div
+          {...attributes}
+          {...listeners}
+          className={`
+            flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
+            transition-all duration-150 ease-out group
+            border select-none touch-none
+            ${isSelected
+              ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
+              : 'border-transparent hover:bg-muted hover:border-border'}
+            ${isDragging ? 'shadow-lg bg-card' : ''}
+            ${isOver && !isDragging ? 'drag-over' : ''}
+          `}
+          style={{ paddingLeft: `${depth * 20 + 12}px` }}
+          onPointerDown={(e) => {
+            dragStartedRef.current = false;
+            listeners?.onPointerDown?.(e);
+          }}
+          onPointerMove={() => {
+            dragStartedRef.current = true;
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (dragStartedRef.current) return;
+            if (e.ctrlKey || e.metaKey) {
+              selectWorkItem(workItemId, true);
+            } else {
+              selectWorkItem(isSelected ? null : workItemId);
+            }
+          }}
+        >
           <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
             <GripVertical className="w-3.5 h-3.5" />
           </div>
@@ -238,94 +237,63 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
           {isEditingTitle ? (
             <input
               ref={titleRef}
-              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-0.5 py-0 min-w-0"
+              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5"
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitTitle();
-                if (e.key === 'Escape') setIsEditingTitle(false);
-                e.stopPropagation();
-              }}
+              onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') setIsEditingTitle(false); }}
               onBlur={commitTitle}
               onClick={e => e.stopPropagation()}
-              onPointerDown={e => e.stopPropagation()}
             />
           ) : (
             <span
-              className="text-sm truncate flex-1"
-              onClick={(e) => {
-                if (isSelected) {
-                  e.stopPropagation();
-                  startEditingTitle();
-                }
-              }}
-              onPointerDown={(e) => {
-                if (isSelected) e.stopPropagation();
-              }}
+              className="flex-1 text-sm truncate cursor-text"
+              onDoubleClick={(e) => { e.stopPropagation(); startEditingTitle(); }}
             >
               {item.title}
-              {backlogPaths.length > 0 && (
-                <span className="text-muted-foreground text-xs ml-1 inline-flex items-center gap-0 flex-wrap">
-                  (
-                  {backlogPaths.map(({ treeId: tid, path }, pi) => (
-                    <span key={tid} className="inline-flex items-center">
-                      {pi > 0 && <span className="mx-0.5">·</span>}
-                      {path.map((seg, si) => (
-                        <span key={seg.id} className="inline-flex items-center">
-                          {si > 0 && <span className="mx-0.5 text-muted-foreground/50">/</span>}
-                          <button
-                            className="hover:text-primary hover:underline transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              selectBacklog(seg.id, tid);
-                            }}
-                            onPointerDown={(e) => e.stopPropagation()}
-                          >
-                            {seg.name}
-                          </button>
-                        </span>
-                      ))}
-                    </span>
-                  ))}
-                  )
-                </span>
-              )}
             </span>
           )}
+
+          {backlogPaths.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              {backlogPaths.map(({ treeId: tid, path }) => (
+                <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
+                  {path.map((seg, i) => (
+                    <span key={seg.id} className="flex items-center">
+                      {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40" />}
+                      <button
+                        className="hover:text-foreground hover:underline transition-colors"
+                        onClick={(e) => { e.stopPropagation(); selectBacklog(seg.id, tid); }}
+                      >
+                        {seg.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           {isEditingPoints ? (
             <input
               ref={pointsRef}
-              className="w-12 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums shrink-0"
+              className="w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
               value={editPoints}
               onChange={e => setEditPoints(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitPoints();
-                if (e.key === 'Escape') setIsEditingPoints(false);
-                e.stopPropagation();
-              }}
+              onKeyDown={e => { if (e.key === 'Enter') commitPoints(); if (e.key === 'Escape') setIsEditingPoints(false); }}
               onBlur={commitPoints}
               onClick={e => e.stopPropagation()}
-              onPointerDown={e => e.stopPropagation()}
-              placeholder="pts"
             />
           ) : (
             <span
-              className={`text-xs tabular-nums font-medium px-1.5 py-0.5 rounded-full shrink-0 cursor-pointer
-                ${item.points != null && item.points > 0
-                  ? 'text-primary bg-primary/10'
-                  : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}
-              `}
-              onClick={(e) => {
-                e.stopPropagation();
-                startEditingPoints();
-              }}
-              onPointerDown={e => e.stopPropagation()}
-              title="Edit points (P)"
+              className="text-xs text-muted-foreground tabular-nums cursor-text shrink-0 min-w-[20px] text-center"
+              onDoubleClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
+              title="Story points (double-click to edit)"
             >
-              {item.points != null && item.points > 0 ? item.points : '·'}
+              {item.points ?? '–'}
             </span>
           )}
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
