@@ -503,4 +503,11 @@ export const useAppStore = create<AppState & {
       });
     },
   };
-});
+}, {
+  name: 'app-store',
+  partialize: (state) => ({
+    workItems: state.workItems,
+    backlogs: state.backlogs,
+    backlogTrees: state.backlogTrees,
+  }),
+})));
