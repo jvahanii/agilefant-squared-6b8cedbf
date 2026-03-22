@@ -10,11 +10,11 @@ import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PendingCrossTreeDrop {
-  workItemId: string;
+  workItemIds: string[];
   targetBacklogId: string;
   targetTreeId: string;
   sourceTreeId: string;
-  itemTitle: string;
+  itemTitles: string[];
   sourceTreeName: string;
   targetTreeName: string;
 }
