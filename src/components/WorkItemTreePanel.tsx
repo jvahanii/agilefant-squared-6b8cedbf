@@ -323,17 +323,25 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
               onClick={e => e.stopPropagation()}
             />
           ) : (() => {
-            const childrenSum = item.childrenIds.reduce((sum, cid) => {
+            const getEffectivePoints = (wi: typeof item): number => {
+              const own = wi.points ?? 0;
+              const childrenSum = wi.childrenIds.reduce((sum, cid) => {
+                const child = workItems[cid];
+                return sum + (child ? getEffectivePoints(child) : 0);
+              }, 0);
+              return Math.max(own, childrenSum);
+            };
+            const totalPoints = getEffectivePoints(item);
+            const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
               const child = workItems[cid];
-              return sum + (child?.points ?? 0);
+              return sum + (child ? getEffectivePoints(child) : 0);
             }, 0);
-            const totalPoints = Math.max(item.points ?? 0, childrenSum);
-            const isRolledUp = childrenSum > 0 && childrenSum > (item.points ?? 0);
+            const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
             return (
               <span
                 className={`text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                 onDoubleClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
-                title={isRolledUp ? `Own: ${item.points ?? 0}, Children sum: ${childrenSum}` : 'Story points (double-click to edit)'}
+                title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : 'Story points (double-click to edit)'}
               >
                 {totalPoints > 0 ? totalPoints : '–'}
               </span>
