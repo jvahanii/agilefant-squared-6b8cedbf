@@ -131,16 +131,29 @@ export default function AppLayout() {
     return () => window.removeEventListener('keydown', handler);
   }, [undo]);
 
+  const countWithDescendants = useCallback((ids: string[]) => {
+    const store = useAppStore.getState();
+    const seen = new Set<string>();
+    const collect = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      store.workItems[id]?.childrenIds.forEach(collect);
+    };
+    ids.forEach(collect);
+    return seen.size;
+  }, []);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current;
     if (data?.type === 'workitem') {
       const store = useAppStore.getState();
       const ids: string[] = data.selectedIds ?? [data.workItemId];
+      const totalCount = countWithDescendants(ids);
       const titles = ids.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
-      const title = ids.length > 1 ? `${titles[0]} (+${ids.length - 1} more)` : (titles[0] ?? '');
+      const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? '');
       setActiveDrag({ id: data.workItemId, type: 'workitem', title });
     }
-  }, []);
+  }, [countWithDescendants]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveDrag(null);
