@@ -188,13 +188,18 @@ export default function AppLayout() {
         draggedIds.forEach(id => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
-      if (activeData.workItemId !== overData.workItemId) {
-        reparentWorkItem(activeData.workItemId, overData.workItemId, overData.treeId, overData.backlogId);
-      }
+      const targetId = overData.workItemId;
+      draggedIds.filter(id => id !== targetId).forEach(id => {
+        reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
+      });
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-root') {
-      reparentWorkItem(activeData.workItemId, null, overData.treeId, overData.backlogId);
+      draggedIds.forEach(id => {
+        reparentWorkItem(id, null, overData.treeId, overData.backlogId);
+      });
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-reorder') {
-      reorderWorkItemAmongSiblings(activeData.workItemId, overData.index as number, overData.treeId as string, overData.backlogIds as string[]);
+      draggedIds.forEach(id => {
+        reorderWorkItemAmongSiblings(id, overData.index as number, overData.treeId as string, overData.backlogIds as string[]);
+      });
     }
   }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
 
