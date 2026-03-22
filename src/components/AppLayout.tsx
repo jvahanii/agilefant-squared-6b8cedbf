@@ -10,11 +10,11 @@ import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PendingCrossTreeDrop {
-  workItemId: string;
+  workItemIds: string[];
   targetBacklogId: string;
   targetTreeId: string;
   sourceTreeId: string;
-  itemTitle: string;
+  itemTitles: string[];
   sourceTreeName: string;
   targetTreeName: string;
 }
@@ -135,8 +135,10 @@ export default function AppLayout() {
     const data = event.active.data.current;
     if (data?.type === 'workitem') {
       const store = useAppStore.getState();
-      const item = store.workItems[data.workItemId];
-      setActiveDrag({ id: data.workItemId, type: 'workitem', title: item?.title ?? '' });
+      const ids: string[] = data.selectedIds ?? [data.workItemId];
+      const titles = ids.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
+      const title = ids.length > 1 ? `${titles[0]} (+${ids.length - 1} more)` : (titles[0] ?? '');
+      setActiveDrag({ id: data.workItemId, type: 'workitem', title });
     }
   }, []);
 
@@ -147,6 +149,7 @@ export default function AppLayout() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+    const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
 
     if (activeData?.type === 'workitem' && overData?.type === 'backlog') {
       const sourceTreeId = activeData.treeId as string;
@@ -154,20 +157,20 @@ export default function AppLayout() {
 
       if (sourceTreeId !== targetTreeId) {
         const store = useAppStore.getState();
-        const item = store.workItems[activeData.workItemId];
         const sourceTree = store.backlogTrees[sourceTreeId];
         const targetTree = store.backlogTrees[targetTreeId];
+        const titles = draggedIds.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
         setPendingCrossTree({
-          workItemId: activeData.workItemId,
+          workItemIds: draggedIds,
           targetBacklogId: overData.backlogId,
           targetTreeId,
           sourceTreeId,
-          itemTitle: item?.title ?? '',
+          itemTitles: titles,
           sourceTreeName: sourceTree?.name ?? sourceTreeId,
           targetTreeName: targetTree?.name ?? targetTreeId
         });
       } else {
-        moveWorkItemToBacklog(activeData.workItemId, overData.backlogId, overData.treeId);
+        draggedIds.forEach(id => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
       }
     } else if (activeData?.type === 'workitem' && overData?.type === 'workitem-parent') {
       if (activeData.workItemId !== overData.workItemId) {
@@ -182,14 +185,16 @@ export default function AppLayout() {
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
-    const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
+    const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
-    if (value === 'move') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-      removeWorkItemFromTree(workItemId, sourceTreeId);
-    } else if (value === 'add') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-    }
+    workItemIds.forEach(id => {
+      if (value === 'move') {
+        moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+        removeWorkItemFromTree(id, sourceTreeId);
+      } else if (value === 'add') {
+        moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+      }
+    });
     setPendingCrossTree(null);
   }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
 
@@ -253,10 +258,14 @@ export default function AppLayout() {
 
       {pendingCrossTree &&
       <ActionPrompt
-        title={`Move "${pendingCrossTree.itemTitle}" to ${pendingCrossTree.targetTreeName}`}
+        title={
+          pendingCrossTree.workItemIds.length > 1
+            ? `Move ${pendingCrossTree.workItemIds.length} items to ${pendingCrossTree.targetTreeName}`
+            : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+        }
         options={[
         {
-          label: 'Move item',
+          label: pendingCrossTree.workItemIds.length > 1 ? `Move ${pendingCrossTree.workItemIds.length} items` : 'Move item',
           description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
           value: 'move',
           isDefault: true
