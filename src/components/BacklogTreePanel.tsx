@@ -53,10 +53,25 @@ function useBacklogPoints(backlogId: string, treeId: string) {
     };
     collectBacklogs(backlogId);
 
+    // Compute rolled-up points for each work item: max(own, sum of direct children)
+    const getEffectivePoints = (wi: typeof workItems[string]): number => {
+      const own = wi.points ?? 0;
+      const childrenSum = wi.childrenIds.reduce((sum, cid) => {
+        const child = workItems[cid];
+        return sum + (child ? getEffectivePoints(child) : 0);
+      }, 0);
+      return Math.max(own, childrenSum);
+    };
+
     let total = 0;
     Object.values(workItems).forEach((wi) => {
       if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
-        total += wi.points ?? 0;
+        // Only count root-level items (or items whose parent isn't in same backlog set)
+        const parentInSet = wi.parentId && workItems[wi.parentId] &&
+          backlogIds.has(workItems[wi.parentId].backlogAssignments[treeId]);
+        if (!parentInSet) {
+          total += getEffectivePoints(wi);
+        }
       }
     });
     return total;

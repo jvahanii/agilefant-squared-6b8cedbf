@@ -322,15 +322,23 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
               onBlur={commitPoints}
               onClick={e => e.stopPropagation()}
             />
-          ) : (
-            <span
-              className="text-xs text-muted-foreground tabular-nums cursor-text shrink-0 min-w-[20px] text-center"
-              onDoubleClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
-              title="Story points (double-click to edit)"
-            >
-              {item.points ?? '–'}
-            </span>
-          )}
+          ) : (() => {
+            const childrenSum = item.childrenIds.reduce((sum, cid) => {
+              const child = workItems[cid];
+              return sum + (child?.points ?? 0);
+            }, 0);
+            const totalPoints = Math.max(item.points ?? 0, childrenSum);
+            const isRolledUp = childrenSum > 0 && childrenSum > (item.points ?? 0);
+            return (
+              <span
+                className={`text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? 'text-primary font-medium' : 'text-muted-foreground'}`}
+                onDoubleClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
+                title={isRolledUp ? `Own: ${item.points ?? 0}, Children sum: ${childrenSum}` : 'Story points (double-click to edit)'}
+              >
+                {totalPoints > 0 ? totalPoints : '–'}
+              </span>
+            );
+          })()}
 
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
