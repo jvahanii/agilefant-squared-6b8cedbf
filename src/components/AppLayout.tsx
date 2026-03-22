@@ -185,14 +185,16 @@ export default function AppLayout() {
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
-    const { workItemId, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
+    const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
-    if (value === 'move') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-      removeWorkItemFromTree(workItemId, sourceTreeId);
-    } else if (value === 'add') {
-      moveWorkItemToBacklog(workItemId, targetBacklogId, targetTreeId);
-    }
+    workItemIds.forEach(id => {
+      if (value === 'move') {
+        moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+        removeWorkItemFromTree(id, sourceTreeId);
+      } else if (value === 'add') {
+        moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+      }
+    });
     setPendingCrossTree(null);
   }, [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree]);
 
