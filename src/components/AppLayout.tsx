@@ -176,6 +176,7 @@ export default function AppLayout() {
         const titles = draggedIds.map(id => store.workItems[id]?.title ?? '').filter(Boolean);
         setPendingCrossTree({
           workItemIds: draggedIds,
+          totalCount: countWithDescendants(draggedIds),
           targetBacklogId: overData.backlogId,
           targetTreeId,
           sourceTreeId,
