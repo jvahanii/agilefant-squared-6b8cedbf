@@ -459,6 +459,7 @@ export const useAppStore = create<AppState & {
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
         return {
+          ...pushUndo(state),
           backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name: name.trim() } },
         };
       });
