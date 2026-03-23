@@ -41,23 +41,23 @@ function InlineInput({ onSubmit, onCancel, depth }: {onSubmit: (name: string) =>
     </div>);
 }
 
-function BacklogReorderDropZone({ id, index, parentId, treeId, depth }: {
-  id: string; index: number; parentId: string | null; treeId: string; depth: number;
-}) {
+function BacklogReorderDropZone({ id, index, parentId, treeId, depth
+
+}: {id: string;index: number;parentId: string | null;treeId: string;depth: number;}) {
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: 'backlog-reorder', index, parentId, treeId },
+    data: { type: 'backlog-reorder', index, parentId, treeId }
   });
 
   return (
     <div
       ref={setNodeRef}
       className="relative py-0.5"
-      style={{ marginLeft: `${depth * 16 + 8}px` }}
-    >
+      style={{ marginLeft: `${depth * 16 + 8}px` }}>
+      
       <div className={`h-0.5 rounded-full transition-all ${isOver ? 'bg-selection' : ''}`} />
-    </div>
-  );
+    </div>);
+
 }
 
 /** Compute total points for a backlog (including descendant backlogs) */
@@ -86,7 +86,7 @@ function useBacklogPoints(backlogId: string, treeId: string) {
     Object.values(workItems).forEach((wi) => {
       if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
         const parentInSet = wi.parentId && workItems[wi.parentId] &&
-          backlogIds.has(workItems[wi.parentId].backlogAssignments[treeId]);
+        backlogIds.has(workItems[wi.parentId].backlogAssignments[treeId]);
         if (!parentInSet) {
           total += getEffectivePoints(wi);
         }
@@ -114,7 +114,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   // Draggable for rearranging
   const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
     id: `backlog-drag-${backlogId}`,
-    data: { type: 'backlog-node', backlogId, treeId: backlog?.treeId, parentId },
+    data: { type: 'backlog-node', backlogId, treeId: backlog?.treeId, parentId }
   });
 
   // Droppable for work items AND for reparenting backlogs onto this node
@@ -176,9 +176,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
       className="animate-fade-in-up"
       style={{
         animationDelay: `${depth * 40}ms`,
-        ...(transform ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 } : {}),
-      }}
-    >
+        ...(transform ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 } : {})
+      }}>
+      
       <div
         ref={combinedRef}
         {...attributes}
@@ -271,26 +271,26 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
       {(expanded || isAdding) &&
       <div>
           {hasChildren && expanded && backlog.childrenIds.map((childId, i) =>
-            <div key={childId}>
+        <div key={childId}>
               <BacklogReorderDropZone
-                id={`backlog-reorder-${backlogId}-${i}`}
-                index={i}
-                parentId={backlogId}
-                treeId={backlog.treeId}
-                depth={depth + 1}
-              />
+            id={`backlog-reorder-${backlogId}-${i}`}
+            index={i}
+            parentId={backlogId}
+            treeId={backlog.treeId}
+            depth={depth + 1} />
+          
               <BacklogNode backlogId={childId} depth={depth + 1} index={i} parentId={backlogId} treeId={backlog.treeId} />
             </div>
-          )}
+        )}
           {hasChildren && expanded &&
-            <BacklogReorderDropZone
-              id={`backlog-reorder-${backlogId}-${backlog.childrenIds.length}`}
-              index={backlog.childrenIds.length}
-              parentId={backlogId}
-              treeId={backlog.treeId}
-              depth={depth + 1}
-            />
-          }
+        <BacklogReorderDropZone
+          id={`backlog-reorder-${backlogId}-${backlog.childrenIds.length}`}
+          index={backlog.childrenIds.length}
+          parentId={backlogId}
+          treeId={backlog.treeId}
+          depth={depth + 1} />
+
+        }
           {isAdding &&
         <InlineInput
           depth={depth + 1}
@@ -351,8 +351,8 @@ export function BacklogTreePanel() {
   return (
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 pb-2">
-        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">
-          BACKLOGS
+        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS
+
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -368,24 +368,24 @@ export function BacklogTreePanel() {
               </button>
             </div>
             {tree.rootBacklogIds.map((backlogId, i) =>
-              <div key={backlogId}>
+          <div key={backlogId}>
                 <BacklogReorderDropZone
-                  id={`backlog-reorder-root-${tree.id}-${i}`}
-                  index={i}
-                  parentId={null}
-                  treeId={tree.id}
-                  depth={0}
-                />
-                <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} />
-              </div>
-            )}
-            <BacklogReorderDropZone
-              id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
-              index={tree.rootBacklogIds.length}
+              id={`backlog-reorder-root-${tree.id}-${i}`}
+              index={i}
               parentId={null}
               treeId={tree.id}
-              depth={0}
-            />
+              depth={0} />
+            
+                <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} />
+              </div>
+          )}
+            <BacklogReorderDropZone
+            id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
+            index={tree.rootBacklogIds.length}
+            parentId={null}
+            treeId={tree.id}
+            depth={0} />
+          
             {addingToTree === tree.id &&
           <InlineInput
             depth={0}
