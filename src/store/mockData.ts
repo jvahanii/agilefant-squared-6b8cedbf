@@ -10,6 +10,7 @@ export function generateMockData() {
     id: "tree-product",
     name: "VALUE STREAMS\n",
     rootBacklogIds: ["bl-product", "bl-b2c"],
+    rank: 0,
   };
 
   backlogs["bl-b2c"] = {
