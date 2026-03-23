@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, RotateCcw } from 'lucide-react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -419,12 +419,20 @@ export function BacklogTreePanel() {
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 pb-2 flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
-        <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={() => setIsAddingTree(true)}
-          title="Add backlog tree">
-          <Plus className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={() => { if (confirm('Reset all data to defaults?')) useAppStore.getState().resetToMockData(); }}
+            title="Reset to mock data">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={() => setIsAddingTree(true)}
+            title="Add backlog tree">
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {isAddingTree &&

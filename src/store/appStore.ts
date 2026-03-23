@@ -39,8 +39,8 @@ interface AppState extends DataSnapshot {
   addBacklogTree: (name: string) => void;
   deleteBacklogTree: (treeId: string) => void;
   reorderBacklogTree: (treeId: string, targetIndex: number) => void;
+  resetToMockData: () => void;
   undo: () => void;
-  canUndo: () => boolean;
 }
 
 const expandedWorkItems = new Set<string>();
@@ -69,13 +69,15 @@ type StoreState = AppState & {
 };
 
 export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) => {
-  localStorage.removeItem('app-store');
-  const mock = generateMockData();
-  const initial = mock;
+  const savedState = localStorage.getItem('app-store');
+  const mock = savedState ? null : generateMockData();
+  const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
 
-  Object.values(initial.backlogs).forEach(b => {
-    if (!b.parentId) expandedBacklogs.add(b.id);
-  });
+  if (!savedState) {
+    Object.values(initial.backlogs).forEach(b => {
+      if (!b.parentId) expandedBacklogs.add(b.id);
+    });
+  }
 
   return {
     ...initial,
@@ -121,6 +123,23 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const prev = stack.pop();
         if (!prev) return state;
         return { ...prev, undoStack: stack };
+      });
+    },
+
+    resetToMockData: () => {
+      const mock = generateMockData();
+      const nextExpanded = new Set<string>();
+      Object.values(mock.backlogs).forEach(b => {
+        if (!b.parentId) nextExpanded.add(b.id);
+      });
+      set({
+        ...mock,
+        selectedBacklogIds: [],
+        selectedTreeId: null,
+        selectedWorkItemIds: [],
+        expandedBacklogs: nextExpanded,
+        expandedWorkItems: new Set<string>(),
+        undoStack: [],
       });
     },
 
