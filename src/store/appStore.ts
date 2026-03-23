@@ -126,6 +126,23 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
       });
     },
 
+    resetToMockData: () => {
+      const mock = generateMockData();
+      const nextExpanded = new Set<string>();
+      Object.values(mock.backlogs).forEach(b => {
+        if (!b.parentId) nextExpanded.add(b.id);
+      });
+      set({
+        ...mock,
+        selectedBacklogIds: [],
+        selectedTreeId: null,
+        selectedWorkItemIds: [],
+        expandedBacklogs: nextExpanded,
+        expandedWorkItems: new Set<string>(),
+        undoStack: [],
+      });
+    },
+
     moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
       set(state => {
         const item = state.workItems[workItemId];
