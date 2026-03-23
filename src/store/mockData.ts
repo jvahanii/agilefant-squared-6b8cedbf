@@ -8,7 +8,7 @@ export function generateMockData() {
   // Tree 1: Product
   backlogTrees['tree-product'] = {
     id: 'tree-product',
-    name: 'VALUE STREAM',
+    name: 'VALUE STREAMS\n',
     rootBacklogIds: ['bl-product'],
   };
 
