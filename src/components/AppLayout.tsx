@@ -155,6 +155,10 @@ export default function AppLayout() {
       const titles = ids.map((id) => store.workItems[id]?.title ?? '').filter(Boolean);
       const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : titles[0] ?? '';
       setActiveDrag({ id: data.workItemId, type: 'workitem', title });
+    } else if (data?.type === 'backlog-node') {
+      const store = useAppStore.getState();
+      const bl = store.backlogs[data.backlogId];
+      setActiveDrag({ id: data.backlogId, type: 'backlog-node', title: bl?.name ?? '' });
     }
   }, [countWithDescendants]);
 
