@@ -69,15 +69,13 @@ type StoreState = AppState & {
 };
 
 export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) => {
-  const savedState = localStorage.getItem('app-store');
-  const mock = savedState ? null : generateMockData();
-  const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
+  localStorage.removeItem('app-store');
+  const mock = generateMockData();
+  const initial = mock;
 
-  if (!savedState) {
-    Object.values(initial.backlogs).forEach(b => {
-      if (!b.parentId) expandedBacklogs.add(b.id);
-    });
-  }
+  Object.values(initial.backlogs).forEach(b => {
+    if (!b.parentId) expandedBacklogs.add(b.id);
+  });
 
   return {
     ...initial,
