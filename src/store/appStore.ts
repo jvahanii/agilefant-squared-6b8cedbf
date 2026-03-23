@@ -73,11 +73,9 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
   const mock = generateMockData();
   const initial = mock;
 
-  if (!savedState) {
-    Object.values(initial.backlogs).forEach(b => {
-      if (!b.parentId) expandedBacklogs.add(b.id);
-    });
-  }
+  Object.values(initial.backlogs).forEach(b => {
+    if (!b.parentId) expandedBacklogs.add(b.id);
+  });
 
   return {
     ...initial,
