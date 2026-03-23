@@ -346,26 +346,49 @@ function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
 export function BacklogTreePanel() {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const addBacklog = useAppStore((s) => s.addBacklog);
+  const addBacklogTree = useAppStore((s) => s.addBacklogTree);
+  const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
+  const [isAddingTree, setIsAddingTree] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
-      <div className="p-4 pb-2">
-        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS
-
-        </h2>
+      <div className="p-4 pb-2 flex items-center justify-between">
+        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          onClick={() => setIsAddingTree(true)}
+          title="Add backlog tree">
+          <Plus className="w-3.5 h-3.5" />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
+        {isAddingTree &&
+          <div className="mb-4 px-2">
+            <InlineInput
+              depth={0}
+              onSubmit={(name) => { addBacklogTree(name); setIsAddingTree(false); }}
+              onCancel={() => setIsAddingTree(false)} />
+          </div>
+        }
         {Object.values(backlogTrees).map((tree) =>
         <div key={tree.id} className="mb-4">
             <div className="px-2 py-1 flex items-center justify-between group">
               <EditableTreeName treeId={tree.id} name={tree.name} />
-              <button
-              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
-              onClick={() => setAddingToTree(tree.id)}
-              title="Add root backlog">
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={() => setAddingToTree(tree.id)}
+                  title="Add root backlog">
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  onClick={() => deleteBacklogTree(tree.id)}
+                  title="Delete backlog tree">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             {tree.rootBacklogIds.map((backlogId, i) =>
           <div key={backlogId}>

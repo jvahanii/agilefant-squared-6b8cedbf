@@ -36,6 +36,8 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   renameBacklogTree: (treeId: string, name: string) => void;
+  addBacklogTree: (name: string) => void;
+  deleteBacklogTree: (treeId: string) => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -582,6 +584,58 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
           ...pushUndo(state),
           backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name: name.trim() } },
         };
+      });
+    },
+
+    addBacklogTree: (name) => {
+      set(state => {
+        const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
+        const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [] };
+        return {
+          ...pushUndo(state),
+          backlogTrees: { ...state.backlogTrees, [id]: newTree },
+        };
+      });
+    },
+
+    deleteBacklogTree: (treeId) => {
+      set(state => {
+        const tree = state.backlogTrees[treeId];
+        if (!tree) return state;
+
+        const undo = pushUndo(state);
+        const updatedBacklogs = { ...state.backlogs };
+        const updatedTrees = { ...state.backlogTrees };
+        const updatedItems = { ...state.workItems };
+
+        // Collect all backlogs in this tree
+        const toDelete = new Set<string>();
+        const collect = (id: string) => {
+          toDelete.add(id);
+          state.backlogs[id]?.childrenIds.forEach(collect);
+        };
+        tree.rootBacklogIds.forEach(collect);
+
+        // Remove tree assignments from work items
+        Object.keys(updatedItems).forEach(wiId => {
+          const wi = updatedItems[wiId];
+          if (wi.backlogAssignments[treeId]) {
+            const newAssignments = { ...wi.backlogAssignments };
+            delete newAssignments[treeId];
+            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+          }
+        });
+
+        // Delete backlogs
+        toDelete.forEach(id => delete updatedBacklogs[id]);
+
+        // Delete tree
+        delete updatedTrees[treeId];
+
+        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDelete.has(id));
+        const selectedTreeId = state.selectedTreeId === treeId ? null : state.selectedTreeId;
+
+        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds, selectedTreeId };
       });
     },
   };
