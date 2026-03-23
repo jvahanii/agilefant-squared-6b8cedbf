@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, FolderKanban, Plus, Trash2, GripVertical } from 'lucide-react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -348,8 +348,14 @@ export function BacklogTreePanel() {
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
+  const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
+
+  const sortedTrees = useMemo(
+    () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
+    [backlogTrees]
+  );
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
@@ -371,11 +377,27 @@ export function BacklogTreePanel() {
               onCancel={() => setIsAddingTree(false)} />
           </div>
         }
-        {Object.values(backlogTrees).map((tree) =>
+        {sortedTrees.map((tree, treeIndex) =>
         <div key={tree.id} className="mb-4">
             <div className="px-2 py-1 flex items-center justify-between group">
               <EditableTreeName treeId={tree.id} name={tree.name} />
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                {treeIndex > 0 &&
+                  <button
+                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    onClick={() => reorderBacklogTree(tree.id, 'up')}
+                    title="Move tree up">
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                }
+                {treeIndex < sortedTrees.length - 1 &&
+                  <button
+                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    onClick={() => reorderBacklogTree(tree.id, 'down')}
+                    title="Move tree down">
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                }
                 <button
                   className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                   onClick={() => setAddingToTree(tree.id)}

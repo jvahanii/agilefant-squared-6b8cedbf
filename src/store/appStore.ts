@@ -38,6 +38,7 @@ interface AppState extends DataSnapshot {
   renameBacklogTree: (treeId: string, name: string) => void;
   addBacklogTree: (name: string) => void;
   deleteBacklogTree: (treeId: string) => void;
+  reorderBacklogTree: (treeId: string, direction: 'up' | 'down') => void;
   undo: () => void;
   canUndo: () => boolean;
 }
@@ -590,7 +591,8 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
     addBacklogTree: (name) => {
       set(state => {
         const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
-        const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [] };
+        const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map(t => t.rank ?? 0));
+        const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [], rank: maxRank + 1 };
         return {
           ...pushUndo(state),
           backlogTrees: { ...state.backlogTrees, [id]: newTree },
@@ -636,6 +638,22 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const selectedTreeId = state.selectedTreeId === treeId ? null : state.selectedTreeId;
 
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds, selectedTreeId };
+      });
+    },
+
+    reorderBacklogTree: (treeId, direction) => {
+      set(state => {
+        const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+        const idx = sorted.findIndex(t => t.id === treeId);
+        if (idx === -1) return state;
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= sorted.length) return state;
+
+        const updatedTrees = { ...state.backlogTrees };
+        updatedTrees[sorted[idx].id] = { ...sorted[idx], rank: swapIdx };
+        updatedTrees[sorted[swapIdx].id] = { ...sorted[swapIdx], rank: idx };
+
+        return { ...pushUndo(state), backlogTrees: updatedTrees };
       });
     },
   };
