@@ -185,14 +185,6 @@ export function generateMockData() {
       childrenIds: [],
       backlogAssignments: { "tree-product": "bl-release-2", "tree-team": "bl-frontend" },
     },
-    {
-      id: "wi-6",
-      title: "Performance monitoring",
-      points: 5,
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: { "tree-team": "bl-backend" },
-    },
   ];
 
   items.forEach((item, i) => {
