@@ -32,7 +32,7 @@ export function generateMockData() {
   };
   backlogs["bl-release-1"] = {
     id: "bl-release-1",
-    name: "MVP",
+    name: "MVP1",
     parentId: "bl-product",
     childrenIds: ["bl-sprint-1", "bl-sprint-2"],
     treeId: "tree-product",
