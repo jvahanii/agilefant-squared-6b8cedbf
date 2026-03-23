@@ -5,26 +5,34 @@ export function generateMockData() {
   const backlogs: Record<string, Backlog> = {};
   const workItems: Record<string, WorkItem> = {};
 
-  // 1. Update the Tree definition
+  // --- 1. TREE DEFINITIONS ---
   backlogTrees["tree-product"] = {
     id: "tree-product",
-    name: "VALUE STREAMS\n",
-    // REMOVE "bl-product" from here; only "bl-b2c" is a root now
+    name: "VALUE STREAMS",
     rootBacklogIds: ["bl-b2c"],
     rank: 0,
   };
 
-  // 1. B2C: Now parents "Entertainment"
-  backlogs["bl-b2c"] = {
-    id: "bl-b2c",
-    name: "B2C\n",
-    parentId: null,
-    childrenIds: ["bl-entertainment"], // Updated from bl-product
-    treeId: "tree-product",
+  backlogTrees["tree-team"] = {
+    id: "tree-team",
+    name: "TEAMS",
+    rootBacklogIds: ["bl-team"],
     rank: 1,
   };
 
-  // 2. NEW: Entertainment (The middle layer)
+  // --- 2. BACKLOG HIERARCHY ---
+
+  // Root
+  backlogs["bl-b2c"] = {
+    id: "bl-b2c",
+    name: "B2C",
+    parentId: null,
+    childrenIds: ["bl-entertainment"],
+    treeId: "tree-product",
+    rank: 0,
+  };
+
+  // Middle Layer
   backlogs["bl-entertainment"] = {
     id: "bl-entertainment",
     name: "Entertainment",
@@ -34,22 +42,22 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // 3. Streaming Service: Now child of "Entertainment"
+  // Service Layer
   backlogs["bl-product"] = {
     id: "bl-product",
     name: "Streaming service",
-    parentId: "bl-entertainment", // Updated from bl-b2c
+    parentId: "bl-entertainment",
     childrenIds: ["bl-release-1", "bl-release-2"],
     treeId: "tree-product",
     rank: 0,
   };
 
-  // Update MVP to have no children
+  // Release Layer (MVP & Desired)
   backlogs["bl-release-1"] = {
     id: "bl-release-1",
     name: "MVP",
     parentId: "bl-product",
-    childrenIds: [], // Removed "bl-sprint-1" and "bl-sprint-2"
+    childrenIds: [], // Sprints removed as requested
     treeId: "tree-product",
     rank: 0,
   };
@@ -62,142 +70,55 @@ export function generateMockData() {
     treeId: "tree-product",
     rank: 1,
   };
-  backlogs["bl-sprint-1"] = {
-    id: "bl-sprint-1",
-    name: "Sprint 1",
-    parentId: "bl-release-1",
-    childrenIds: [],
-    treeId: "tree-product",
-    rank: 0,
-  };
-  backlogs["bl-sprint-2"] = {
-    id: "bl-sprint-2",
-    name: "Sprint 2",
-    parentId: "bl-release-1",
-    childrenIds: [],
-    treeId: "tree-product",
-    rank: 1,
-  };
 
-  // Tree 2: Team
-  backlogTrees["tree-team"] = {
-    id: "tree-team",
-    name: "TEAMS",
-    rootBacklogIds: ["bl-team"],
-    rank: 1,
-  };
-
+  // Team Backlog
   backlogs["bl-team"] = {
     id: "bl-team",
     name: "Q1",
     parentId: null,
-    childrenIds: ["bl-frontend", "bl-backend"],
-    treeId: "tree-team",
-    rank: 0,
-  };
-  backlogs["bl-frontend"] = {
-    id: "bl-frontend",
-    name: "Hawk sprint 1",
-    parentId: "bl-team",
     childrenIds: [],
     treeId: "tree-team",
     rank: 0,
-  };
-  backlogs["bl-backend"] = {
-    id: "bl-backend",
-    name: "Falcon sprint 1\n",
-    parentId: "bl-team",
-    childrenIds: [],
-    treeId: "tree-team",
-    rank: 1,
   };
 
-  // Work items with points
-  const items: Array<Omit<WorkItem, "rank"> & { rank?: number }> = [
-    {
-      id: "wi-1",
-      title: "User authentication flow",
-      points: 13,
-      parentId: null,
-      childrenIds: ["wi-1a", "wi-1b"],
-      backlogAssignments: { "tree-product": "bl-sprint-1", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-1a",
-      title: "Login page UI",
-      points: 5,
-      parentId: "wi-1",
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-1", "tree-team": "bl-frontend" },
-    },
-    {
-      id: "wi-1b",
-      title: "JWT token handling",
-      points: 8,
-      parentId: "wi-1",
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-1", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-2",
-      title: "Dashboard layout",
-      points: 8,
-      parentId: null,
-      childrenIds: ["wi-2a"],
-      backlogAssignments: { "tree-product": "bl-sprint-1", "tree-team": "bl-frontend" },
-    },
-    {
-      id: "wi-2a",
-      title: "Sidebar navigation",
-      points: 3,
-      parentId: "wi-2",
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-1", "tree-team": "bl-frontend" },
-    },
-    {
-      id: "wi-3",
-      title: "API rate limiting",
-      points: 5,
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-2", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-4",
-      title: "Database migration tool",
-      points: 13,
-      parentId: null,
-      childrenIds: ["wi-4a", "wi-4b"],
-      backlogAssignments: { "tree-product": "bl-sprint-2", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-4a",
-      title: "Schema diff engine",
-      points: 8,
-      parentId: "wi-4",
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-2", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-4b",
-      title: "Rollback support",
-      points: 5,
-      parentId: "wi-4",
-      childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-sprint-2", "tree-team": "bl-backend" },
-    },
-    {
-      id: "wi-5",
-      title: "Search functionality",
-      points: 8,
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: { "tree-team": "bl-frontend" },
-    },
+  // --- 3. WORK ITEMS (M1 to M20) ---
+  const mItemTitles = [
+    "M1: Basic pkg order (A)",
+    "M2: Multi‑subs allowed",
+    "M3: Show base price (A)",
+    "M4: Activation msg",
+    "M5: Order conf (A)",
+    "M6: Basic pkg order (C)",
+    "M7: Activation info (C)",
+    "M8: Guide to config",
+    "M9: View base product (A)",
+    "M10: View selections (A)",
+    "M11: View locks (A)",
+    "M12: View base product (C)",
+    "M13: View selections (C)",
+    "M14: View locks (C)",
+    "M15: Service links",
+    "M16: Activation state (C)",
+    "M17: Change services (C)",
+    "M18: Cancel base (C)",
+    "M19: Basic reporting",
+    "M20: Validation core (part1)",
   ];
 
-  items.forEach((item, i) => {
-    workItems[item.id] = { ...item, rank: item.rank ?? i } as WorkItem;
+  mItemTitles.forEach((title, index) => {
+    const id = `wi-m${index + 1}`;
+    workItems[id] = {
+      id,
+      title,
+      points: 5,
+      parentId: null,
+      childrenIds: [],
+      rank: index,
+      backlogAssignments: {
+        "tree-product": "bl-release-1", // All assigned to MVP
+        "tree-team": "bl-team",
+      },
+    };
   });
 
   return { backlogTrees, backlogs, workItems };
