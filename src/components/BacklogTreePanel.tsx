@@ -1,11 +1,15 @@
 import { useAppStore } from '@/store/appStore';
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2 } from 'lucide-react';
-import { useDroppable } from '@dnd-kit/core';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical } from 'lucide-react';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
 interface BacklogNodeProps {
   backlogId: string;
   depth: number;
+  index: number;
+  parentId: string | null;
+  treeId: string;
 }
 
 function InlineInput({ onSubmit, onCancel, depth }: {onSubmit: (name: string) => void;onCancel: () => void;depth: number;}) {
@@ -34,9 +38,26 @@ function InlineInput({ onSubmit, onCancel, depth }: {onSubmit: (name: string) =>
           if (e.key === 'Escape') onCancel();
         }}
         onBlur={handleSubmit} />
-      
     </div>);
+}
 
+function BacklogReorderDropZone({ id, index, parentId, treeId, depth }: {
+  id: string; index: number; parentId: string | null; treeId: string; depth: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: 'backlog-reorder', index, parentId, treeId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="relative py-0.5"
+      style={{ marginLeft: `${depth * 16 + 8}px` }}
+    >
+      <div className={`h-0.5 rounded-full transition-all ${isOver ? 'bg-selection' : ''}`} />
+    </div>
+  );
 }
 
 /** Compute total points for a backlog (including descendant backlogs) */
@@ -45,7 +66,6 @@ function useBacklogPoints(backlogId: string, treeId: string) {
   const backlogs = useAppStore((s) => s.backlogs);
 
   return useMemo(() => {
-    // Collect this backlog + all descendant backlog IDs
     const backlogIds = new Set<string>();
     const collectBacklogs = (id: string) => {
       backlogIds.add(id);
@@ -53,7 +73,6 @@ function useBacklogPoints(backlogId: string, treeId: string) {
     };
     collectBacklogs(backlogId);
 
-    // Compute rolled-up points for each work item: max(own, sum of direct children)
     const getEffectivePoints = (wi: typeof workItems[string]): number => {
       const own = wi.points ?? 0;
       const childrenSum = wi.childrenIds.reduce((sum, cid) => {
@@ -66,7 +85,6 @@ function useBacklogPoints(backlogId: string, treeId: string) {
     let total = 0;
     Object.values(workItems).forEach((wi) => {
       if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
-        // Only count root-level items (or items whose parent isn't in same backlog set)
         const parentInSet = wi.parentId && workItems[wi.parentId] &&
           backlogIds.has(workItems[wi.parentId].backlogAssignments[treeId]);
         if (!parentInSet) {
@@ -78,7 +96,7 @@ function useBacklogPoints(backlogId: string, treeId: string) {
   }, [workItems, backlogs, backlogId, treeId]);
 }
 
-function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
+function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeProps) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const isSelected = useAppStore((s) => s.selectedBacklogIds.includes(backlogId));
   const expanded = useAppStore((s) => s.expandedBacklogs.has(backlogId));
@@ -91,11 +109,24 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const editRef = useRef<HTMLInputElement>(null);
+  const dragStartedRef = useRef(false);
 
-  const { setNodeRef, isOver } = useDroppable({
+  // Draggable for rearranging
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
+    id: `backlog-drag-${backlogId}`,
+    data: { type: 'backlog-node', backlogId, treeId: backlog?.treeId, parentId },
+  });
+
+  // Droppable for work items AND for reparenting backlogs onto this node
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: `backlog-drop-${backlogId}`,
     data: { type: 'backlog', backlogId, treeId: backlog?.treeId }
   });
+
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setDragRef(node);
+    setDropRef(node);
+  }, [setDragRef, setDropRef]);
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? '');
 
@@ -106,13 +137,11 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
     }
   }, [isEditing]);
 
-  // Listen for keyboard shortcut events when this backlog is selected
   useEffect(() => {
     if (!isSelected) return;
 
     const handleAddBacklog = () => setIsAdding(true);
     const handleDeleteBacklog = () => {
-      // Only delete backlogs if no work items are selected
       if (useAppStore.getState().selectedWorkItemIds.length > 0) return;
       deleteBacklog(backlogId);
     };
@@ -143,30 +172,50 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
   };
 
   return (
-    <div className="animate-fade-in-up" style={{ animationDelay: `${depth * 40}ms` }}>
+    <div
+      className="animate-fade-in-up"
+      style={{
+        animationDelay: `${depth * 40}ms`,
+        ...(transform ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 } : {}),
+      }}
+    >
       <div
-        ref={setNodeRef}
+        ref={combinedRef}
+        {...attributes}
+        {...listeners}
         className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer
-          transition-all duration-150 ease-out select-none group
+          flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-grab active:cursor-grabbing
+          transition-all duration-150 ease-out select-none group touch-none
           ${isSelected ?
         'bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium' :
         'hover:bg-muted'}
-          ${isOver ? 'drag-over' : ''}
+          ${isOver && !isDragging ? 'drag-over' : ''}
+          ${isDragging ? 'shadow-lg bg-card' : ''}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
-        onClick={(e) => selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey)}>
+        onPointerDown={(e) => {
+          dragStartedRef.current = false;
+          listeners?.onPointerDown?.(e);
+        }}
+        onPointerMove={() => {
+          dragStartedRef.current = true;
+        }}
+        onClick={(e) => {
+          if (dragStartedRef.current) return;
+          selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey);
+        }}>
         
+        <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
+          <GripVertical className="w-3 h-3" />
+        </div>
         <button
           className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           onClick={(e) => {
             e.stopPropagation();
             if (hasChildren) toggleExpand(backlogId);
           }}>
-          
           {hasChildren ?
           expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" /> :
-
           <span className="w-3.5" />
           }
         </button>
@@ -185,14 +234,12 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
           onBlur={commitEdit}
           onClick={(e) => e.stopPropagation()} /> :
 
-
         <span
           className="text-sm truncate flex-1"
           onDoubleClick={(e) => {
             e.stopPropagation();
             startEditing();
           }}>
-          
             {backlog.name}
           </span>
         }
@@ -211,34 +258,48 @@ function BacklogNode({ backlogId, depth }: BacklogNodeProps) {
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {e.stopPropagation();setIsAdding(true);}}
             title="Add child backlog (Shift+N)">
-            
             <Plus className="w-3.5 h-3.5" />
           </button>
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => {e.stopPropagation();deleteBacklog(backlogId);}}
             title="Delete backlog (Del)">
-            
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
       {(expanded || isAdding) &&
       <div>
-          {hasChildren && expanded && backlog.childrenIds.map((childId) =>
-        <BacklogNode key={childId} backlogId={childId} depth={depth + 1} />
-        )}
+          {hasChildren && expanded && backlog.childrenIds.map((childId, i) =>
+            <div key={childId}>
+              <BacklogReorderDropZone
+                id={`backlog-reorder-${backlogId}-${i}`}
+                index={i}
+                parentId={backlogId}
+                treeId={backlog.treeId}
+                depth={depth + 1}
+              />
+              <BacklogNode backlogId={childId} depth={depth + 1} index={i} parentId={backlogId} treeId={backlog.treeId} />
+            </div>
+          )}
+          {hasChildren && expanded &&
+            <BacklogReorderDropZone
+              id={`backlog-reorder-${backlogId}-${backlog.childrenIds.length}`}
+              index={backlog.childrenIds.length}
+              parentId={backlogId}
+              treeId={backlog.treeId}
+              depth={depth + 1}
+            />
+          }
           {isAdding &&
         <InlineInput
           depth={depth + 1}
           onSubmit={(name) => {addBacklog(name, backlogId, backlog.treeId);setIsAdding(false);}}
           onCancel={() => setIsAdding(false)} />
-
         }
         </div>
       }
     </div>);
-
 }
 
 function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
@@ -272,18 +333,14 @@ function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
         }}
         onBlur={commitEdit}
         onClick={(e) => e.stopPropagation()} />);
-
-
   }
 
   return (
     <span
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
       onDoubleClick={startEditing}>
-      
       {name}
     </span>);
-
 }
 
 export function BacklogTreePanel() {
@@ -307,23 +364,36 @@ export function BacklogTreePanel() {
               className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-all"
               onClick={() => setAddingToTree(tree.id)}
               title="Add root backlog">
-              
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
-            {tree.rootBacklogIds.map((backlogId) =>
-          <BacklogNode key={backlogId} backlogId={backlogId} depth={0} />
-          )}
+            {tree.rootBacklogIds.map((backlogId, i) =>
+              <div key={backlogId}>
+                <BacklogReorderDropZone
+                  id={`backlog-reorder-root-${tree.id}-${i}`}
+                  index={i}
+                  parentId={null}
+                  treeId={tree.id}
+                  depth={0}
+                />
+                <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} />
+              </div>
+            )}
+            <BacklogReorderDropZone
+              id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
+              index={tree.rootBacklogIds.length}
+              parentId={null}
+              treeId={tree.id}
+              depth={0}
+            />
             {addingToTree === tree.id &&
           <InlineInput
             depth={0}
             onSubmit={(name) => {addBacklog(name, null, tree.id);setAddingToTree(null);}}
             onCancel={() => setAddingToTree(null)} />
-
           }
           </div>
         )}
       </div>
     </div>);
-
 }

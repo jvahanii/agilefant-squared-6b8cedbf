@@ -24,6 +24,7 @@ interface AppState extends DataSnapshot {
   
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
+  reorderBacklogAmongSiblings: (backlogId: string, targetIndex: number, newParentId: string | null, treeId: string) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
   toggleBacklogExpand: (backlogId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
@@ -283,6 +284,85 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
 
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees };
+      });
+    },
+
+    reorderBacklogAmongSiblings: (backlogId, targetIndex, newParentId, treeId) => {
+      set(state => {
+        const backlog = state.backlogs[backlogId];
+        if (!backlog || backlog.treeId !== treeId) return state;
+
+        // If parent changed, do a move first conceptually
+        const updatedBacklogs = { ...state.backlogs };
+        const updatedTrees = { ...state.backlogTrees };
+
+        // Remove from old parent/root
+        if (backlog.parentId !== newParentId) {
+          if (backlog.parentId) {
+            const oldParent = updatedBacklogs[backlog.parentId];
+            if (oldParent) {
+              updatedBacklogs[backlog.parentId] = {
+                ...oldParent,
+                childrenIds: oldParent.childrenIds.filter(id => id !== backlogId),
+              };
+            }
+          } else {
+            const tree = updatedTrees[treeId];
+            if (tree) {
+              updatedTrees[treeId] = {
+                ...tree,
+                rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId),
+              };
+            }
+          }
+          updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
+
+          // Add to new parent/root (will be reordered below)
+          if (newParentId) {
+            const newParent = updatedBacklogs[newParentId];
+            if (newParent) {
+              updatedBacklogs[newParentId] = {
+                ...newParent,
+                childrenIds: [...newParent.childrenIds, backlogId],
+              };
+            }
+          } else {
+            const tree = updatedTrees[treeId];
+            if (tree) {
+              updatedTrees[treeId] = { ...tree, rootBacklogIds: [...tree.rootBacklogIds, backlogId] };
+            }
+          }
+        }
+
+        // Now reorder among siblings
+        let siblings: string[];
+        if (newParentId) {
+          siblings = [...(updatedBacklogs[newParentId]?.childrenIds ?? [])];
+        } else {
+          siblings = [...(updatedTrees[treeId]?.rootBacklogIds ?? [])];
+        }
+
+        const currentIdx = siblings.indexOf(backlogId);
+        if (currentIdx !== -1) siblings.splice(currentIdx, 1);
+        const clampedIdx = Math.max(0, Math.min(targetIndex, siblings.length));
+        siblings.splice(clampedIdx, 0, backlogId);
+
+        // Update ranks
+        siblings.forEach((id, i) => {
+          updatedBacklogs[id] = { ...updatedBacklogs[id], rank: i };
+        });
+
+        // Write back the ordered list
+        if (newParentId) {
+          updatedBacklogs[newParentId] = { ...updatedBacklogs[newParentId], childrenIds: siblings };
+        } else {
+          updatedTrees[treeId] = { ...updatedTrees[treeId], rootBacklogIds: siblings };
+        }
+
+        const nextExpanded = new Set(state.expandedBacklogs);
+        if (newParentId) nextExpanded.add(newParentId);
+
+        return { ...pushUndo(state), backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: nextExpanded };
       });
     },
 

@@ -22,6 +22,8 @@ interface PendingCrossTreeDrop {
 
 export default function AppLayout() {
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
+  const moveBacklog = useAppStore((s) => s.moveBacklog);
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
@@ -153,6 +155,10 @@ export default function AppLayout() {
       const titles = ids.map((id) => store.workItems[id]?.title ?? '').filter(Boolean);
       const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : titles[0] ?? '';
       setActiveDrag({ id: data.workItemId, type: 'workitem', title });
+    } else if (data?.type === 'backlog-node') {
+      const store = useAppStore.getState();
+      const bl = store.backlogs[data.backlogId];
+      setActiveDrag({ id: data.backlogId, type: 'backlog-node', title: bl?.name ?? '' });
     }
   }, [countWithDescendants]);
 
@@ -215,8 +221,42 @@ export default function AppLayout() {
       draggedIds.forEach((id) => {
         reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
       });
+    } else if (activeData?.type === 'backlog-node' && overData?.type === 'backlog-reorder') {
+      // Reorder/reparent backlog among siblings
+      const backlogId = activeData.backlogId as string;
+      const targetParentId = overData.parentId as string | null;
+      const treeId = overData.treeId as string;
+      const targetIndex = overData.index as number;
+      // Prevent dropping onto own descendant
+      const store = useAppStore.getState();
+      const isDescendant = (parentId: string | null, checkId: string): boolean => {
+        if (!parentId) return false;
+        if (parentId === checkId) return true;
+        return isDescendant(store.backlogs[parentId]?.parentId ?? null, checkId);
+      };
+      if (targetParentId && isDescendant(targetParentId, backlogId)) return;
+      reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
+    } else if (activeData?.type === 'backlog-node' && overData?.type === 'backlog') {
+      // Drop backlog onto another backlog = reparent as child
+      const backlogId = activeData.backlogId as string;
+      const targetBacklogId = overData.backlogId as string;
+      const treeId = overData.treeId as string;
+      if (backlogId === targetBacklogId) return;
+      // Prevent dropping onto own descendant
+      const store = useAppStore.getState();
+      const isDescendant = (id: string): boolean => {
+        const bl = store.backlogs[id];
+        if (!bl) return false;
+        if (bl.parentId === backlogId) return true;
+        if (bl.parentId) return isDescendant(bl.parentId);
+        return false;
+      };
+      if (isDescendant(targetBacklogId)) return;
+      // Only within same tree
+      if (activeData.treeId !== treeId) return;
+      moveBacklog(backlogId, targetBacklogId, treeId);
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings, reorderBacklogAmongSiblings, moveBacklog]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
