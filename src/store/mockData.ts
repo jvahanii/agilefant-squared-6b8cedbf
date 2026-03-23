@@ -5,31 +5,36 @@ export function generateMockData() {
   const backlogs: Record<string, Backlog> = {};
   const workItems: Record<string, WorkItem> = {};
 
-  // Tree 1: Product
+  // 1. Update the Tree definition
   backlogTrees["tree-product"] = {
     id: "tree-product",
     name: "VALUE STREAMS\n",
-    rootBacklogIds: ["bl-product", "bl-b2c"],
+    // REMOVE "bl-product" from here; only "bl-b2c" is a root now
+    rootBacklogIds: ["bl-b2c"],
     rank: 0,
   };
 
+  // 2. Update B2C to include the child
   backlogs["bl-b2c"] = {
     id: "bl-b2c",
     name: "B2C\n",
     parentId: null,
-    childrenIds: [],
+    // ADD "bl-product" to the children list
+    childrenIds: ["bl-product"],
     treeId: "tree-product",
     rank: 1,
   };
 
+  // 3. Ensure Streaming Service points to B2C
   backlogs["bl-product"] = {
     id: "bl-product",
     name: "Streaming service",
-    parentId: "bl-b2c",
+    parentId: "bl-b2c", // This matches the ID above
     childrenIds: ["bl-release-1", "bl-release-2"],
     treeId: "tree-product",
     rank: 0,
   };
+
   backlogs["bl-release-1"] = {
     id: "bl-release-1",
     name: "MVP",
