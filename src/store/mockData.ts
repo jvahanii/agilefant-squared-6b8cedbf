@@ -191,7 +191,7 @@ export function generateMockData() {
       points: 5,
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { "tree-product": "bl-release-2", "tree-team": "bl-backend" },
+      backlogAssignments: { "tree-team": "bl-backend" },
     },
   ];
 
