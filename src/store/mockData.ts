@@ -183,7 +183,7 @@ export function generateMockData() {
       points: 8,
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { "tree-team": "bl-frontend" },
+      backlogAssignments: { "tree-product": "bl-release-2", "tree-team": "bl-frontend" },
     },
     {
       id: "wi-6",
