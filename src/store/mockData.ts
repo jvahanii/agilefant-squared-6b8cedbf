@@ -13,7 +13,7 @@ export function generateMockData() {
   };
 
   backlogs['bl-b2c'] = {
-    id: 'bl-b2c', name: 'Entertainments', parentId: null,
+    id: 'bl-b2c', name: 'B2C1', parentId: null,
     childrenIds: [], treeId: 'tree-product', rank: 1,
   };
 
