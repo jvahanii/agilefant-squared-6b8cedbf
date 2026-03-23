@@ -23,4 +23,5 @@ export interface BacklogTree {
   id: string;
   name: string;
   rootBacklogIds: string[];
+  rank: number;
 }
