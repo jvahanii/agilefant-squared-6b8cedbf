@@ -13,16 +13,16 @@ export function generateMockData() {
   };
 
   backlogs['bl-b2c'] = {
-    id: 'bl-b2c', name: 'B2C', parentId: null,
+    id: 'bl-b2c', name: 'Entertainments', parentId: null,
     childrenIds: [], treeId: 'tree-product', rank: 1,
   };
 
   backlogs['bl-product'] = {
-    id: 'bl-product', name: 'Streaming service', parentId: null,
+    id: 'bl-product', name: 'Streaming services', parentId: null,
     childrenIds: ['bl-release-1', 'bl-release-2'], treeId: 'tree-product', rank: 0,
   };
   backlogs['bl-release-1'] = {
-    id: 'bl-release-1', name: 'MVP', parentId: 'bl-product',
+    id: 'bl-release-1', name: 'MVPs', parentId: 'bl-product',
     childrenIds: ['bl-sprint-1', 'bl-sprint-2'], treeId: 'tree-product', rank: 0,
   };
   backlogs['bl-release-2'] = {
