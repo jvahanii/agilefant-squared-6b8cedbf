@@ -278,7 +278,7 @@ export default function AppLayout() {
       <div className="h-screen flex flex-col">
         <header className="h-16 border-b flex items-center px-4 gap-3 bg-card shrink-0 py-0">
           <img alt="Agilefant" className="h-12 bg-destructive-foreground shadow-none" src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png" />
-          <h1 className="text-sm font-bold tracking-tight">Agilefant2
+          <h1 className="text-sm font-bold tracking-tight">Agilefant
             <sup className="text-xs text-primary">2</sup>
           </h1>
           <div className="ml-auto flex items-center gap-1">
