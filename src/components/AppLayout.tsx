@@ -260,8 +260,12 @@ export default function AppLayout() {
       // Only within same tree
       if (activeData.treeId !== treeId) return;
       moveBacklog(backlogId, targetBacklogId, treeId);
+    } else if (activeData?.type === 'tree-node' && overData?.type === 'tree-reorder') {
+      const treeId = activeData.treeId as string;
+      const targetIndex = overData.index as number;
+      reorderBacklogTree(treeId, targetIndex);
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings, reorderBacklogAmongSiblings, moveBacklog]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings, reorderBacklogAmongSiblings, moveBacklog, reorderBacklogTree]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
