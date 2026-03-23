@@ -590,7 +590,8 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
     addBacklogTree: (name) => {
       set(state => {
         const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
-        const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [] };
+        const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map(t => t.rank ?? 0));
+        const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [], rank: maxRank + 1 };
         return {
           ...pushUndo(state),
           backlogTrees: { ...state.backlogTrees, [id]: newTree },

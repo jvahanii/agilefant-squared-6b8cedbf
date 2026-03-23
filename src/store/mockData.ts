@@ -68,6 +68,7 @@ export function generateMockData() {
     id: "tree-team",
     name: "TEAMS",
     rootBacklogIds: ["bl-team"],
+    rank: 1,
   };
 
   backlogs["bl-team"] = {
