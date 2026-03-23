@@ -56,7 +56,7 @@ export function generateMockData() {
   };
   backlogs["bl-sprint-2"] = {
     id: "bl-sprint-2",
-    name: "Sprint 2",
+    name: "Sprint 21",
     parentId: "bl-release-1",
     childrenIds: [],
     treeId: "tree-product",
