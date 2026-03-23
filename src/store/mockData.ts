@@ -21,8 +21,6 @@ export function generateMockData() {
   };
 
   // --- 2. BACKLOG HIERARCHY ---
-
-  // Root
   backlogs["bl-b2c"] = {
     id: "bl-b2c",
     name: "B2C",
@@ -32,7 +30,6 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // Middle Layer
   backlogs["bl-entertainment"] = {
     id: "bl-entertainment",
     name: "Entertainment",
@@ -42,7 +39,6 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // Service Layer
   backlogs["bl-product"] = {
     id: "bl-product",
     name: "Streaming service",
@@ -52,12 +48,11 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // Release Layer (MVP & Desired)
   backlogs["bl-release-1"] = {
     id: "bl-release-1",
     name: "MVP",
     parentId: "bl-product",
-    childrenIds: [], // Sprints removed as requested
+    childrenIds: [],
     treeId: "tree-product",
     rank: 0,
   };
@@ -71,7 +66,6 @@ export function generateMockData() {
     rank: 1,
   };
 
-  // Team Backlog
   backlogs["bl-team"] = {
     id: "bl-team",
     name: "Q1",
@@ -81,8 +75,8 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // --- 3. WORK ITEMS (M1 to M20) ---
-  const mItemTitles = [
+  // --- 3. WORK ITEMS (M-Items for MVP) ---
+  const mvpTitles = [
     "M1: Basic pkg order (A)",
     "M2: Multi‑subs allowed",
     "M3: Show base price (A)",
@@ -105,7 +99,7 @@ export function generateMockData() {
     "M20: Validation core (part1)",
   ];
 
-  mItemTitles.forEach((title, index) => {
+  mvpTitles.forEach((title, index) => {
     const id = `wi-m${index + 1}`;
     workItems[id] = {
       id,
@@ -115,7 +109,44 @@ export function generateMockData() {
       childrenIds: [],
       rank: index,
       backlogAssignments: {
-        "tree-product": "bl-release-1", // All assigned to MVP
+        "tree-product": "bl-release-1",
+        "tree-team": "bl-team",
+      },
+    };
+  });
+
+  // --- 4. WORK ITEMS (L-Items for Desired for Launch) ---
+  const desiredTitles = [
+    "L1: Campaigns/terms (A)",
+    "L2: Pick basics (C)",
+    "L3: Pick upgrades (C)",
+    "L4: Pick extra slots (C)",
+    "L5: Campaigns/terms (C)",
+    "L6: View campaigns (A)",
+    "L7: View campaigns (C)",
+    "L8: Change basics/upgrades (A)",
+    "L9: Add extra slots (C)",
+    "L10: Cancel extra (A)",
+    "L11: Reverse cancel (A)",
+    "L12: Cancel extra (C)",
+    "L13: Reverse cancel (C)",
+    "L14: Activation report",
+    "L15: Credit rules",
+    "L16: Internal credit check",
+    "L17: Validation part2",
+  ];
+
+  desiredTitles.forEach((title, index) => {
+    const id = `wi-l${index + 1}`;
+    workItems[id] = {
+      id,
+      title,
+      points: 8, // Set a different point value for visual variety
+      parentId: null,
+      childrenIds: [],
+      rank: index,
+      backlogAssignments: {
+        "tree-product": "bl-release-2", // Assigned to Desired for launch
         "tree-team": "bl-team",
       },
     };
