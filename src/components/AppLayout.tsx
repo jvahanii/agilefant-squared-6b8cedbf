@@ -27,6 +27,7 @@ export default function AppLayout() {
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
+  const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const undo = useAppStore((s) => s.undo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
   const [activeDrag, setActiveDrag] = useState<{id: string;type: string;title: string;} | null>(null);
@@ -159,6 +160,10 @@ export default function AppLayout() {
       const store = useAppStore.getState();
       const bl = store.backlogs[data.backlogId];
       setActiveDrag({ id: data.backlogId, type: 'backlog-node', title: bl?.name ?? '' });
+    } else if (data?.type === 'tree-node') {
+      const store = useAppStore.getState();
+      const tree = store.backlogTrees[data.treeId];
+      setActiveDrag({ id: data.treeId, type: 'tree-node', title: tree?.name ?? '' });
     }
   }, [countWithDescendants]);
 
@@ -255,8 +260,12 @@ export default function AppLayout() {
       // Only within same tree
       if (activeData.treeId !== treeId) return;
       moveBacklog(backlogId, targetBacklogId, treeId);
+    } else if (activeData?.type === 'tree-node' && overData?.type === 'tree-reorder') {
+      const treeId = activeData.treeId as string;
+      const targetIndex = overData.index as number;
+      reorderBacklogTree(treeId, targetIndex);
     }
-  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings, reorderBacklogAmongSiblings, moveBacklog]);
+  }, [moveWorkItemToBacklog, reparentWorkItem, reorderWorkItemAmongSiblings, reorderBacklogAmongSiblings, moveBacklog, reorderBacklogTree]);
 
   const handleCrossTreeChoice = useCallback((value: string) => {
     if (!pendingCrossTree) return;
