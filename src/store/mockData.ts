@@ -17,15 +17,15 @@ export function generateMockData() {
     id: "bl-b2c",
     name: "B2C\n",
     parentId: null,
-    childrenIds: ["bl-product"],
+    childrenIds: [],
     treeId: "tree-product",
-    rank: 0,
+    rank: 1,
   };
 
   backlogs["bl-product"] = {
     id: "bl-product",
     name: "Streaming service",
-    parentId: "bl-b2c",
+    parentId: ["bl-b2c"],
     childrenIds: ["bl-release-1", "bl-release-2"],
     treeId: "tree-product",
     rank: 0,
