@@ -343,12 +343,70 @@ function EditableTreeName({ treeId, name }: {treeId: string;name: string;}) {
     </span>);
 }
 
+function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: 'tree-reorder', index }
+  });
+
+  return (
+    <div ref={setNodeRef} className="relative py-0.5 mx-2">
+      <div className={`h-0.5 rounded-full transition-all ${isOver ? 'bg-selection' : ''}`} />
+    </div>
+  );
+}
+
+function DraggableTreeHeader({ tree, onAddBacklog, onDeleteTree }: {
+  tree: { id: string; name: string; rank: number; rootBacklogIds: string[] };
+  onAddBacklog: () => void;
+  onDeleteTree: () => void;
+}) {
+  const dragStartedRef = useRef(false);
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
+    id: `tree-drag-${tree.id}`,
+    data: { type: 'tree-node', treeId: tree.id }
+  });
+
+  return (
+    <div
+      ref={setDragRef}
+      {...attributes}
+      {...listeners}
+      className={`px-2 py-1 flex items-center justify-between group cursor-grab active:cursor-grabbing touch-none select-none
+        ${isDragging ? 'opacity-50' : ''}`}
+      style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
+      onPointerDown={(e) => {
+        dragStartedRef.current = false;
+        listeners?.onPointerDown?.(e);
+      }}
+      onPointerMove={() => { dragStartedRef.current = true; }}>
+      <div className="flex items-center gap-1.5">
+        <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+        <EditableTreeName treeId={tree.id} name={tree.name} />
+      </div>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          onClick={(e) => { e.stopPropagation(); onAddBacklog(); }}
+          title="Add root backlog">
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onDeleteTree(); }}
+          title="Delete backlog tree">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function BacklogTreePanel() {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
-  const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
 
@@ -379,39 +437,11 @@ export function BacklogTreePanel() {
         }
         {sortedTrees.map((tree, treeIndex) =>
         <div key={tree.id} className="mb-4">
-            <div className="px-2 py-1 flex items-center justify-between group">
-              <EditableTreeName treeId={tree.id} name={tree.name} />
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                {treeIndex > 0 &&
-                  <button
-                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    onClick={() => reorderBacklogTree(tree.id, 'up')}
-                    title="Move tree up">
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                }
-                {treeIndex < sortedTrees.length - 1 &&
-                  <button
-                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    onClick={() => reorderBacklogTree(tree.id, 'down')}
-                    title="Move tree down">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                }
-                <button
-                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  onClick={() => setAddingToTree(tree.id)}
-                  title="Add root backlog">
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  onClick={() => deleteBacklogTree(tree.id)}
-                  title="Delete backlog tree">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+            <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
+            <DraggableTreeHeader
+              tree={tree}
+              onAddBacklog={() => setAddingToTree(tree.id)}
+              onDeleteTree={() => deleteBacklogTree(tree.id)} />
             {tree.rootBacklogIds.map((backlogId, i) =>
           <div key={backlogId}>
                 <BacklogReorderDropZone
@@ -420,7 +450,6 @@ export function BacklogTreePanel() {
               parentId={null}
               treeId={tree.id}
               depth={0} />
-            
                 <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} />
               </div>
           )}
@@ -430,7 +459,6 @@ export function BacklogTreePanel() {
             parentId={null}
             treeId={tree.id}
             depth={0} />
-          
             {addingToTree === tree.id &&
           <InlineInput
             depth={0}
@@ -439,6 +467,7 @@ export function BacklogTreePanel() {
           }
           </div>
         )}
+        <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
       </div>
     </div>);
 }
