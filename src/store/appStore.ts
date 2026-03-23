@@ -640,6 +640,22 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds, selectedTreeId };
       });
     },
+
+    reorderBacklogTree: (treeId, direction) => {
+      set(state => {
+        const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+        const idx = sorted.findIndex(t => t.id === treeId);
+        if (idx === -1) return state;
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= sorted.length) return state;
+
+        const updatedTrees = { ...state.backlogTrees };
+        updatedTrees[sorted[idx].id] = { ...sorted[idx], rank: swapIdx };
+        updatedTrees[sorted[swapIdx].id] = { ...sorted[swapIdx], rank: idx };
+
+        return { ...pushUndo(state), backlogTrees: updatedTrees };
+      });
+    },
   };
 }, {
   name: 'app-store',
