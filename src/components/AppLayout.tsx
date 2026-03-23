@@ -5,7 +5,7 @@ import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
 import { useAppStore } from '@/store/appStore';
 import { ActionPrompt } from '@/components/ActionPrompt';
-import { Undo2, Keyboard } from 'lucide-react';
+import { Undo2, Keyboard, RotateCcw } from 'lucide-react';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -290,7 +290,14 @@ export default function AppLayout() {
           <h1 className="text-sm font-bold tracking-tight">Agilefant
             <sup className="text-xs text-primary">2</sup>
           </h1>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => { if (confirm('Reset all data to defaults?')) useAppStore.getState().resetToMockData(); }}
+              title="Reset to mock data">
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset to mock data
+            </button>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
