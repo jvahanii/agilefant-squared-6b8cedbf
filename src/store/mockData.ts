@@ -35,14 +35,16 @@ export function generateMockData() {
     rank: 0,
   };
 
+  // Update MVP to have no children
   backlogs["bl-release-1"] = {
     id: "bl-release-1",
     name: "MVP",
     parentId: "bl-product",
-    childrenIds: ["bl-sprint-1", "bl-sprint-2"],
+    childrenIds: [], // Removed "bl-sprint-1" and "bl-sprint-2"
     treeId: "tree-product",
     rank: 0,
   };
+
   backlogs["bl-release-2"] = {
     id: "bl-release-2",
     name: "Desired for launch",
