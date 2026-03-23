@@ -15,7 +15,7 @@ export function generateMockData() {
 
   backlogs["bl-b2c"] = {
     id: "bl-b2c",
-    name: "B2C",
+    name: "B2Cs",
     parentId: null,
     childrenIds: [],
     treeId: "tree-product",
