@@ -14,22 +14,31 @@ export function generateMockData() {
     rank: 0,
   };
 
-  // 2. Update B2C to include the child
+  // 1. B2C: Now parents "Entertainment"
   backlogs["bl-b2c"] = {
     id: "bl-b2c",
     name: "B2C\n",
     parentId: null,
-    // ADD "bl-product" to the children list
-    childrenIds: ["bl-product"],
+    childrenIds: ["bl-entertainment"], // Updated from bl-product
     treeId: "tree-product",
     rank: 1,
   };
 
-  // 3. Ensure Streaming Service points to B2C
+  // 2. NEW: Entertainment (The middle layer)
+  backlogs["bl-entertainment"] = {
+    id: "bl-entertainment",
+    name: "Entertainment",
+    parentId: "bl-b2c",
+    childrenIds: ["bl-product"],
+    treeId: "tree-product",
+    rank: 0,
+  };
+
+  // 3. Streaming Service: Now child of "Entertainment"
   backlogs["bl-product"] = {
     id: "bl-product",
     name: "Streaming service",
-    parentId: "bl-b2c", // This matches the ID above
+    parentId: "bl-entertainment", // Updated from bl-b2c
     childrenIds: ["bl-release-1", "bl-release-2"],
     treeId: "tree-product",
     rank: 0,
