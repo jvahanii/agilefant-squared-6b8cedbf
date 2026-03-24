@@ -421,7 +421,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             {isAdding && (
               <InlineWorkItemInput
                 depth={depth + 1}
-                onSubmit={(title) => { addWorkItem(title, workItemId, backlogId, treeId); setIsAdding(false); }}
+                onSubmit={(title) => { addWorkItem(title, workItemId, backlogId, treeId); }}
                 onCancel={() => setIsAdding(false)}
               />
             )}
