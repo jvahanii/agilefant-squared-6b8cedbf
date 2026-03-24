@@ -561,6 +561,26 @@ export function generateMockData() {
       },
       rank: 51,
     },
+    "wi-442230d4": {
+      id: "wi-442230d4",
+      title: "github-yhteys",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 52,
+    },
+    "wi-01a9d0b2": {
+      id: "wi-01a9d0b2",
+      title: "supabase-yhteys",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 53,
+    },
   };
 
   const backlogs: Record<string, Backlog> = {
