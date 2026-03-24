@@ -416,7 +416,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-bbecfc7d",
+        "tree-87b6c6d1": "bl-afda9952",
       },
       rank: 4,
     },
@@ -436,7 +436,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-bbecfc7d",
+        "tree-87b6c6d1": "bl-afda9952",
       },
       rank: 2,
     },
@@ -446,7 +446,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-bbecfc7d",
+        "tree-87b6c6d1": "bl-afda9952",
       },
       rank: 3,
     },
@@ -462,13 +462,13 @@ export function generateMockData() {
     },
     "wi-e7745709": {
       id: "wi-e7745709",
-      title: "Uuden backlog treen luonti - siinä väärä teksti",
+      title: "Uuden backlog treen luonti - siinä väärä ikoni",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 2,
+      rank: 3,
     },
     "wi-211d1f62": {
       id: "wi-211d1f62",
@@ -476,9 +476,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: ["wi-204ca84d"],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-d211ad7a",
+        "tree-87b6c6d1": "bl-1a575dad",
       },
-      rank: 0,
+      rank: 9,
     },
     "wi-204ca84d": {
       id: "wi-204ca84d",
@@ -486,7 +486,7 @@ export function generateMockData() {
       parentId: "wi-211d1f62",
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-d211ad7a",
+        "tree-87b6c6d1": "bl-1a575dad",
       },
       rank: 2,
     },
@@ -499,7 +499,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 1,
+      rank: 2,
     },
     "wi-d10c106a": {
       id: "wi-d10c106a",
@@ -509,7 +509,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 3,
+      rank: 4,
     },
     "wi-cbacb2f1": {
       id: "wi-cbacb2f1",
@@ -529,7 +529,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 48,
+      rank: 5,
     },
     "wi-d075a44d": {
       id: "wi-d075a44d",
@@ -539,7 +539,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 49,
+      rank: 6,
     },
     "wi-18460cdb": {
       id: "wi-18460cdb",
@@ -549,7 +549,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 50,
+      rank: 7,
     },
     "wi-849668fd": {
       id: "wi-849668fd",
@@ -559,7 +559,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 51,
+      rank: 8,
     },
     "wi-442230d4": {
       id: "wi-442230d4",
@@ -569,7 +569,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 52,
+      rank: 0,
     },
     "wi-01a9d0b2": {
       id: "wi-01a9d0b2",
@@ -579,7 +579,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 53,
+      rank: 1,
     },
   };
 
@@ -636,7 +636,7 @@ export function generateMockData() {
       id: "bl-bbecfc7d",
       name: "Jarno's done",
       parentId: "bl-0e0d83c7",
-      childrenIds: [],
+      childrenIds: ["bl-afda9952"],
       treeId: "tree-87b6c6d1",
       rank: 1,
     },
@@ -652,7 +652,7 @@ export function generateMockData() {
       id: "bl-3b0ad9ec",
       name: "done items",
       parentId: "bl-d211ad7a",
-      childrenIds: [],
+      childrenIds: ["bl-1a575dad"],
       treeId: "tree-87b6c6d1",
       rank: 3,
     },
@@ -671,6 +671,22 @@ export function generateMockData() {
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 5,
+    },
+    "bl-1a575dad": {
+      id: "bl-1a575dad",
+      name: "done Tuesday",
+      parentId: "bl-3b0ad9ec",
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 6,
+    },
+    "bl-afda9952": {
+      id: "bl-afda9952",
+      name: "Tuesday",
+      parentId: "bl-bbecfc7d",
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 7,
     },
   };
 
