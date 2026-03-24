@@ -521,6 +521,16 @@ export function generateMockData() {
       },
       rank: 47,
     },
+    "wi-99511807": {
+      id: "wi-99511807",
+      title: "sibling backlogien sorttaaminen onnistuu vain vetämällä backlogi viimeiseksi tai ensimmäiseksi",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 48,
+    },
   };
 
   const backlogs: Record<string, Backlog> = {
@@ -567,7 +577,7 @@ export function generateMockData() {
     "bl-0e0d83c7": {
       id: "bl-0e0d83c7",
       name: "Jarnon tänään",
-      parentId: null,
+      parentId: "bl-98944c30",
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 1,
@@ -578,7 +588,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       treeId: "tree-87b6c6d1",
-      rank: 3,
+      rank: 1,
     },
     "bl-d211ad7a": {
       id: "bl-d211ad7a",
@@ -586,7 +596,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: ["bl-3b0ad9ec"],
       treeId: "tree-87b6c6d1",
-      rank: 0,
+      rank: 2,
     },
     "bl-3b0ad9ec": {
       id: "bl-3b0ad9ec",
@@ -600,9 +610,9 @@ export function generateMockData() {
       id: "bl-98944c30",
       name: "Jarnon tällä viikolla",
       parentId: null,
-      childrenIds: [],
+      childrenIds: ["bl-0e0d83c7"],
       treeId: "tree-87b6c6d1",
-      rank: 2,
+      rank: 0,
     },
   };
 
@@ -616,7 +626,7 @@ export function generateMockData() {
     "tree-87b6c6d1": {
       id: "tree-87b6c6d1",
       name: "Transformation office",
-      rootBacklogIds: ["bl-d211ad7a", "bl-0e0d83c7", "bl-98944c30", "bl-bbecfc7d"],
+      rootBacklogIds: ["bl-98944c30", "bl-bbecfc7d", "bl-d211ad7a"],
       rank: 2,
     },
   };
