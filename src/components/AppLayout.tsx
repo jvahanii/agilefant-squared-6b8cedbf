@@ -405,8 +405,8 @@ function ShortcutsOverlay({ onClose }: {onClose: () => void;}) {
   }, [onClose]);
 
   const shortcuts = [
-  { keys: ['N'], description: 'New root work item in selected backlog' },
-  { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
+  { keys: ['Enter'], description: 'New root work item in selected backlog' },
+  { keys: ['Shift', 'Enter'], description: 'New child of selected item or backlog' },
   { keys: ['Del'], description: 'Delete selected item or backlog' },
   { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
   { keys: ['Esc'], description: 'Deselect work item' },

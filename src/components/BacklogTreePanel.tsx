@@ -257,7 +257,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {e.stopPropagation();setIsAdding(true);}}
-            title="Add child backlog (Shift+N)">
+            title="Add child backlog (Shift+Enter)">
             <Plus className="w-3.5 h-3.5" />
           </button>
           <button
