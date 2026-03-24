@@ -1,7 +1,11 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { WorkItem, Backlog, BacklogTree } from '@/types/models';
-import { generateMockData } from './mockData';
+import {
+  loadFromSupabase,
+  upsertWorkItem, upsertWorkItems, deleteWorkItems,
+  upsertBacklog, upsertBacklogs, deleteBacklogs,
+  upsertBacklogTree, upsertBacklogTrees, deleteBacklogTree as deleteBacklogTreeFromDb,
+} from './supabaseSync';
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
@@ -14,6 +18,8 @@ interface DataSnapshot {
 
 interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
+  isLoading: boolean;
+  loadFromSupabase: () => Promise<void>;
 
   selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
   selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
@@ -68,29 +74,42 @@ type StoreState = AppState & {
   expandedBacklogs: Set<string>;
 };
 
-export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) => {
-  const savedState = localStorage.getItem('app-store');
-  const mock = savedState ? null : generateMockData();
-  const initial = mock ?? { backlogTrees: {}, backlogs: {}, workItems: {} };
-
-  if (!savedState) {
-    Object.values(initial.backlogs).forEach(b => {
-      if (!b.parentId) expandedBacklogs.add(b.id);
-    });
-  }
-
+export const useAppStore = create<StoreState>()((set, get) => {
   return {
-    ...initial,
+    workItems: {},
+    backlogs: {},
+    backlogTrees: {},
     selectedBacklogIds: [],
     selectedTreeId: null,
     selectedWorkItemIds: [],
     expandedWorkItems,
     expandedBacklogs,
     undoStack: [],
+    isLoading: true,
+
+    loadFromSupabase: async () => {
+      try {
+        const data = await loadFromSupabase();
+        // Expand root backlogs by default
+        const nextExpanded = new Set<string>();
+        Object.values(data.backlogs).forEach(b => {
+          if (!b.parentId) nextExpanded.add(b.id);
+        });
+        set({
+          ...data,
+          expandedBacklogs: nextExpanded,
+          expandedWorkItems: new Set<string>(),
+          isLoading: false,
+          undoStack: [],
+        });
+      } catch (err) {
+        console.error('Failed to load from Supabase:', err);
+        set({ isLoading: false });
+      }
+    },
 
     selectBacklog: (backlogId, treeId, ctrlKey = false) => set(state => {
       if (ctrlKey) {
-        // Only allow multi-select within same tree
         if (state.selectedTreeId && state.selectedTreeId !== treeId) {
           return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
         }
@@ -115,32 +134,19 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
     clearWorkItemSelection: () => set({ selectedWorkItemIds: [] }),
 
-    canUndo: () => get().undoStack.length > 0,
-
     undo: () => {
       set(state => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
+        // TODO: full Supabase sync on undo would be complex; for now just update local state
         return { ...prev, undoStack: stack };
       });
     },
 
     resetToMockData: () => {
-      const mock = generateMockData();
-      const nextExpanded = new Set<string>();
-      Object.values(mock.backlogs).forEach(b => {
-        if (!b.parentId) nextExpanded.add(b.id);
-      });
-      set({
-        ...mock,
-        selectedBacklogIds: [],
-        selectedTreeId: null,
-        selectedWorkItemIds: [],
-        expandedBacklogs: nextExpanded,
-        expandedWorkItems: new Set<string>(),
-        undoStack: [],
-      });
+      // Reload from Supabase
+      get().loadFromSupabase();
     },
 
     moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
@@ -150,18 +156,22 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const undo = pushUndo(state);
         const updatedItems = { ...state.workItems };
+        const changedItems: WorkItem[] = [];
 
         const moveRecursive = (id: string) => {
           const wi = updatedItems[id];
           if (!wi) return;
-          updatedItems[id] = {
+          const updated = {
             ...wi,
             backlogAssignments: { ...wi.backlogAssignments, [treeId]: targetBacklogId }
           };
+          updatedItems[id] = updated;
+          changedItems.push(updated);
           wi.childrenIds.forEach(moveRecursive);
         };
         moveRecursive(workItemId);
 
+        upsertWorkItems(changedItems);
         return { ...undo, workItems: updatedItems };
       });
     },
@@ -182,22 +192,31 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const undo = pushUndo(state);
         const updatedItems = { ...state.workItems };
+        const changedItems: WorkItem[] = [];
 
         if (item.parentId && updatedItems[item.parentId]) {
-          updatedItems[item.parentId] = {
+          const oldParent = {
             ...updatedItems[item.parentId],
             childrenIds: updatedItems[item.parentId].childrenIds.filter(id => id !== workItemId),
           };
+          updatedItems[item.parentId] = oldParent;
+          changedItems.push(oldParent);
         }
 
         if (newParentId && updatedItems[newParentId]) {
-          updatedItems[newParentId] = {
+          const newParent = {
             ...updatedItems[newParentId],
             childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
           };
+          updatedItems[newParentId] = newParent;
+          changedItems.push(newParent);
         }
 
-        updatedItems[workItemId] = { ...item, parentId: newParentId };
+        const movedItem = { ...item, parentId: newParentId };
+        updatedItems[workItemId] = movedItem;
+        changedItems.push(movedItem);
+
+        upsertWorkItems(changedItems);
 
         const nextExpanded = new Set(state.expandedWorkItems);
         if (newParentId) nextExpanded.add(newParentId);
@@ -211,11 +230,13 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const item = state.workItems[workItemId];
         if (!item) return state;
         const undo = pushUndo(state);
+        const updated = { ...item, rank: newRank };
+        upsertWorkItem(updated);
         return {
           ...undo,
           workItems: {
             ...state.workItems,
-            [workItemId]: { ...item, rank: newRank }
+            [workItemId]: updated
           }
         };
       });
@@ -228,7 +249,6 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const backlogIdSet = new Set(backlogIds);
 
-        // Get siblings: items with same parent in the given set of backlogs
         const siblings = Object.values(state.workItems)
           .filter(wi => {
             if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
@@ -248,10 +268,14 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         reordered.splice(clampedIndex, 0, item);
 
         const updatedItems = { ...state.workItems };
+        const changedItems: WorkItem[] = [];
         reordered.forEach((s, i) => {
-          updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
+          const updated = { ...updatedItems[s.id], rank: i };
+          updatedItems[s.id] = updated;
+          changedItems.push(updated);
         });
 
+        upsertWorkItems(changedItems);
         return { ...undo, workItems: updatedItems };
       });
     },
@@ -301,8 +325,10 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
           }
         }
 
-        updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
+        const updated = { ...backlog, parentId: newParentId };
+        updatedBacklogs[backlogId] = updated;
 
+        upsertBacklog(updated);
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees };
       });
     },
@@ -312,11 +338,9 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const backlog = state.backlogs[backlogId];
         if (!backlog || backlog.treeId !== treeId) return state;
 
-        // If parent changed, do a move first conceptually
         const updatedBacklogs = { ...state.backlogs };
         const updatedTrees = { ...state.backlogTrees };
 
-        // Remove from old parent/root
         if (backlog.parentId !== newParentId) {
           if (backlog.parentId) {
             const oldParent = updatedBacklogs[backlog.parentId];
@@ -337,7 +361,6 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
           }
           updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
 
-          // Add to new parent/root (will be reordered below)
           if (newParentId) {
             const newParent = updatedBacklogs[newParentId];
             if (newParent) {
@@ -354,7 +377,6 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
           }
         }
 
-        // Now reorder among siblings
         let siblings: string[];
         if (newParentId) {
           siblings = [...(updatedBacklogs[newParentId]?.childrenIds ?? [])];
@@ -367,12 +389,13 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const clampedIdx = Math.max(0, Math.min(targetIndex, siblings.length));
         siblings.splice(clampedIdx, 0, backlogId);
 
-        // Update ranks
+        const changedBacklogs: Backlog[] = [];
         siblings.forEach((id, i) => {
-          updatedBacklogs[id] = { ...updatedBacklogs[id], rank: i };
+          const updated = { ...updatedBacklogs[id], rank: i };
+          updatedBacklogs[id] = updated;
+          changedBacklogs.push(updated);
         });
 
-        // Write back the ordered list
         if (newParentId) {
           updatedBacklogs[newParentId] = { ...updatedBacklogs[newParentId], childrenIds: siblings };
         } else {
@@ -382,6 +405,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const nextExpanded = new Set(state.expandedBacklogs);
         if (newParentId) nextExpanded.add(newParentId);
 
+        upsertBacklogs(changedBacklogs);
         return { ...pushUndo(state), backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: nextExpanded };
       });
     },
@@ -430,6 +454,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const next = new Set(state.expandedBacklogs);
         if (parentId) next.add(parentId);
 
+        upsertBacklog(newBacklog);
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: next };
       });
     },
@@ -451,23 +476,22 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const updatedTrees = { ...state.backlogTrees };
         const updatedItems = { ...state.workItems };
 
-        // Collect work items affected by backlog deletion
-        // Delete items that only belong to deleted backlogs; clear assignment for multi-backlog items
+        const deletedWorkItemIds: string[] = [];
+        const changedWorkItems: WorkItem[] = [];
+
         const deleteWorkItemRecursive = (wiId: string) => {
           const wi = updatedItems[wiId];
           if (!wi) return;
-          // Delete children first
           [...wi.childrenIds].forEach(deleteWorkItemRecursive);
-          // Check if this item is assigned to a deleted backlog in this tree
           if (wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
             const otherAssignments = Object.keys(wi.backlogAssignments).filter(t => t !== backlog.treeId);
             if (otherAssignments.length > 0) {
-              // Item belongs to other trees — just clear this tree's assignment
               const newAssignments = { ...wi.backlogAssignments };
               delete newAssignments[backlog.treeId];
-              updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+              const updated = { ...wi, backlogAssignments: newAssignments };
+              updatedItems[wiId] = updated;
+              changedWorkItems.push(updated);
             } else {
-              // Item only belongs to deleted backlogs — delete it
               if (wi.parentId && updatedItems[wi.parentId]) {
                 updatedItems[wi.parentId] = {
                   ...updatedItems[wi.parentId],
@@ -475,6 +499,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
                 };
               }
               delete updatedItems[wiId];
+              deletedWorkItemIds.push(wiId);
             }
           }
         };
@@ -505,6 +530,11 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDelete.has(id));
 
+        // Sync to Supabase
+        deleteWorkItems(deletedWorkItemIds);
+        if (changedWorkItems.length) upsertWorkItems(changedWorkItems);
+        deleteBacklogs([...toDelete]);
+
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds };
       });
     },
@@ -520,11 +550,15 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         };
         const updatedItems = { ...state.workItems, [id]: newItem };
 
+        upsertWorkItem(newItem);
+
         if (parentId && updatedItems[parentId]) {
-          updatedItems[parentId] = {
+          const updatedParent = {
             ...updatedItems[parentId],
             childrenIds: [...updatedItems[parentId].childrenIds, id],
           };
+          updatedItems[parentId] = updatedParent;
+          // Parent's childrenIds are derived, no need to sync parent
           const next = new Set(state.expandedWorkItems);
           next.add(parentId);
           return { ...undo, workItems: updatedItems, expandedWorkItems: next };
@@ -560,6 +594,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const selectedWorkItemIds = state.selectedWorkItemIds.filter(id => !toDelete.has(id));
 
+        deleteWorkItems([...toDelete]);
         return { ...undo, workItems: updatedItems, selectedWorkItemIds };
       });
     },
@@ -571,17 +606,21 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
 
         const undo = pushUndo(state);
         const updatedItems = { ...state.workItems };
+        const changedItems: WorkItem[] = [];
 
         const removeRecursive = (id: string) => {
           const wi = updatedItems[id];
           if (!wi) return;
           const newAssignments = { ...wi.backlogAssignments };
           delete newAssignments[treeId];
-          updatedItems[id] = { ...wi, backlogAssignments: newAssignments };
+          const updated = { ...wi, backlogAssignments: newAssignments };
+          updatedItems[id] = updated;
+          changedItems.push(updated);
           wi.childrenIds.forEach(removeRecursive);
         };
         removeRecursive(workItemId);
 
+        upsertWorkItems(changedItems);
         return { ...undo, workItems: updatedItems };
       });
     },
@@ -590,9 +629,11 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
       set(state => {
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
+        const updated = { ...backlog, name: name.trim() };
+        upsertBacklog(updated);
         return {
           ...pushUndo(state),
-          backlogs: { ...state.backlogs, [backlogId]: { ...backlog, name: name.trim() } },
+          backlogs: { ...state.backlogs, [backlogId]: updated },
         };
       });
     },
@@ -601,9 +642,11 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
       set(state => {
         const item = state.workItems[workItemId];
         if (!item || !title.trim()) return state;
+        const updated = { ...item, title: title.trim() };
+        upsertWorkItem(updated);
         return {
           ...pushUndo(state),
-          workItems: { ...state.workItems, [workItemId]: { ...item, title: title.trim() } },
+          workItems: { ...state.workItems, [workItemId]: updated },
         };
       });
     },
@@ -612,9 +655,11 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
       set(state => {
         const item = state.workItems[workItemId];
         if (!item) return state;
+        const updated = { ...item, points };
+        upsertWorkItem(updated);
         return {
           ...pushUndo(state),
-          workItems: { ...state.workItems, [workItemId]: { ...item, points } },
+          workItems: { ...state.workItems, [workItemId]: updated },
         };
       });
     },
@@ -623,9 +668,11 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
       set(state => {
         const tree = state.backlogTrees[treeId];
         if (!tree || !name.trim()) return state;
+        const updated = { ...tree, name: name.trim() };
+        upsertBacklogTree(updated);
         return {
           ...pushUndo(state),
-          backlogTrees: { ...state.backlogTrees, [treeId]: { ...tree, name: name.trim() } },
+          backlogTrees: { ...state.backlogTrees, [treeId]: updated },
         };
       });
     },
@@ -635,6 +682,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
         const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map(t => t.rank ?? 0));
         const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [], rank: maxRank + 1 };
+        upsertBacklogTree(newTree);
         return {
           ...pushUndo(state),
           backlogTrees: { ...state.backlogTrees, [id]: newTree },
@@ -652,15 +700,16 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const updatedTrees = { ...state.backlogTrees };
         const updatedItems = { ...state.workItems };
 
-        // Collect all backlogs in this tree
-        const toDelete = new Set<string>();
+        const toDeleteBacklogs = new Set<string>();
         const collect = (id: string) => {
-          toDelete.add(id);
+          toDeleteBacklogs.add(id);
           state.backlogs[id]?.childrenIds.forEach(collect);
         };
         tree.rootBacklogIds.forEach(collect);
 
-        // Delete or unassign work items
+        const deletedWorkItemIds: string[] = [];
+        const changedWorkItems: WorkItem[] = [];
+
         const deleteWorkItemRecursive = (wiId: string) => {
           const wi = updatedItems[wiId];
           if (!wi) return;
@@ -670,7 +719,9 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
             if (otherAssignments.length > 0) {
               const newAssignments = { ...wi.backlogAssignments };
               delete newAssignments[treeId];
-              updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+              const updated = { ...wi, backlogAssignments: newAssignments };
+              updatedItems[wiId] = updated;
+              changedWorkItems.push(updated);
             } else {
               if (wi.parentId && updatedItems[wi.parentId]) {
                 updatedItems[wi.parentId] = {
@@ -679,6 +730,7 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
                 };
               }
               delete updatedItems[wiId];
+              deletedWorkItemIds.push(wiId);
             }
           }
         };
@@ -688,14 +740,16 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
           }
         });
 
-        // Delete backlogs
-        toDelete.forEach(id => delete updatedBacklogs[id]);
-
-        // Delete tree
+        toDeleteBacklogs.forEach(id => delete updatedBacklogs[id]);
         delete updatedTrees[treeId];
 
-        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDelete.has(id));
+        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDeleteBacklogs.has(id));
         const selectedTreeId = state.selectedTreeId === treeId ? null : state.selectedTreeId;
+
+        // Sync - cascade delete on backlog_trees handles backlogs
+        deleteWorkItems(deletedWorkItemIds);
+        if (changedWorkItems.length) upsertWorkItems(changedWorkItems);
+        deleteBacklogTreeFromDb(treeId);
 
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds, selectedTreeId };
       });
@@ -712,19 +766,19 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         reordered.splice(clamped, 0, sorted[currentIdx]);
 
         const updatedTrees = { ...state.backlogTrees };
+        const changedTrees: BacklogTree[] = [];
         reordered.forEach((t, i) => {
-          updatedTrees[t.id] = { ...t, rank: i };
+          const updated = { ...t, rank: i };
+          updatedTrees[t.id] = updated;
+          changedTrees.push(updated);
         });
 
+        upsertBacklogTrees(changedTrees);
         return { ...pushUndo(state), backlogTrees: updatedTrees };
       });
     },
   };
-}, {
-  name: 'app-store',
-  partialize: (state: StoreState) => ({
-    workItems: state.workItems,
-    backlogs: state.backlogs,
-    backlogTrees: state.backlogTrees,
-  } as unknown as StoreState),
-}));
+});
+
+// Auto-load from Supabase on app start
+useAppStore.getState().loadFromSupabase();
