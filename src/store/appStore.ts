@@ -660,13 +660,31 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         };
         tree.rootBacklogIds.forEach(collect);
 
-        // Remove tree assignments from work items
-        Object.keys(updatedItems).forEach(wiId => {
+        // Delete or unassign work items
+        const deleteWorkItemRecursive = (wiId: string) => {
           const wi = updatedItems[wiId];
+          if (!wi) return;
+          [...wi.childrenIds].forEach(deleteWorkItemRecursive);
           if (wi.backlogAssignments[treeId]) {
-            const newAssignments = { ...wi.backlogAssignments };
-            delete newAssignments[treeId];
-            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+            const otherAssignments = Object.keys(wi.backlogAssignments).filter(t => t !== treeId);
+            if (otherAssignments.length > 0) {
+              const newAssignments = { ...wi.backlogAssignments };
+              delete newAssignments[treeId];
+              updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+            } else {
+              if (wi.parentId && updatedItems[wi.parentId]) {
+                updatedItems[wi.parentId] = {
+                  ...updatedItems[wi.parentId],
+                  childrenIds: updatedItems[wi.parentId].childrenIds.filter(id => id !== wiId)
+                };
+              }
+              delete updatedItems[wiId];
+            }
+          }
+        };
+        Object.keys(updatedItems).forEach(wiId => {
+          if (updatedItems[wiId]?.backlogAssignments[treeId]) {
+            deleteWorkItemRecursive(wiId);
           }
         });
 
