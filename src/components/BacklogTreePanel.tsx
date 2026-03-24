@@ -436,7 +436,7 @@ export function BacklogTreePanel() {
           <div className="mb-4 px-2">
             <InlineInput
               depth={0}
-              onSubmit={(name) => { addBacklogTree(name); setIsAddingTree(false); }}
+              onSubmit={(name) => { addBacklogTree(name); }}
               onCancel={() => setIsAddingTree(false)} />
           </div>
         }
