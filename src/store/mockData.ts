@@ -474,7 +474,7 @@ export function generateMockData() {
       id: "wi-211d1f62",
       title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
       parentId: null,
-      childrenIds: ["wi-204ca84d"],
+      childrenIds: ["wi-204ca84d", "wi-7bb56b8b"],
       backlogAssignments: {
         "tree-87b6c6d1": "bl-1a575dad",
       },
@@ -567,7 +567,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-d211ad7a",
+        "tree-87b6c6d1": "bl-cea44697",
       },
       rank: 0,
     },
@@ -580,6 +580,26 @@ export function generateMockData() {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
       rank: 1,
+    },
+    "wi-bc18cea3": {
+      id: "wi-bc18cea3",
+      title: "ff",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-1a575dad",
+      },
+      rank: 54,
+    },
+    "wi-7bb56b8b": {
+      id: "wi-7bb56b8b",
+      title: "dsasd",
+      parentId: "wi-211d1f62",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-1a575dad",
+      },
+      rank: 55,
     },
   };
 
@@ -644,7 +664,7 @@ export function generateMockData() {
       id: "bl-d211ad7a",
       name: "Lovable-kokeilu Agilefant^2",
       parentId: null,
-      childrenIds: ["bl-3b0ad9ec"],
+      childrenIds: ["bl-cea44697", "bl-3b0ad9ec"],
       treeId: "tree-87b6c6d1",
       rank: 2,
     },
@@ -687,6 +707,14 @@ export function generateMockData() {
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 7,
+    },
+    "bl-cea44697": {
+      id: "bl-cea44697",
+      name: "in progress",
+      parentId: "bl-d211ad7a",
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 8,
     },
   };
 
