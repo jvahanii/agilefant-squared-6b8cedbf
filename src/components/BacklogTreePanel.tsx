@@ -299,7 +299,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           {isAdding &&
         <InlineInput
           depth={depth + 1}
-          onSubmit={(name) => {addBacklog(name, backlogId, backlog.treeId);setIsAdding(false);}}
+          onSubmit={(name) => {addBacklog(name, backlogId, backlog.treeId);}}
           onCancel={() => setIsAdding(false)} />
         }
         </div>
