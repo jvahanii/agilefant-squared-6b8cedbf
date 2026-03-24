@@ -451,12 +451,37 @@ export const useAppStore = create<StoreState>()(persist<StoreState>((set, get) =
         const updatedTrees = { ...state.backlogTrees };
         const updatedItems = { ...state.workItems };
 
+        // Collect work items affected by backlog deletion
+        // Delete items that only belong to deleted backlogs; clear assignment for multi-backlog items
+        const deleteWorkItemRecursive = (wiId: string) => {
+          const wi = updatedItems[wiId];
+          if (!wi) return;
+          // Delete children first
+          [...wi.childrenIds].forEach(deleteWorkItemRecursive);
+          // Check if this item is assigned to a deleted backlog in this tree
+          if (wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
+            const otherAssignments = Object.keys(wi.backlogAssignments).filter(t => t !== backlog.treeId);
+            if (otherAssignments.length > 0) {
+              // Item belongs to other trees — just clear this tree's assignment
+              const newAssignments = { ...wi.backlogAssignments };
+              delete newAssignments[backlog.treeId];
+              updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+            } else {
+              // Item only belongs to deleted backlogs — delete it
+              if (wi.parentId && updatedItems[wi.parentId]) {
+                updatedItems[wi.parentId] = {
+                  ...updatedItems[wi.parentId],
+                  childrenIds: updatedItems[wi.parentId].childrenIds.filter(id => id !== wiId)
+                };
+              }
+              delete updatedItems[wiId];
+            }
+          }
+        };
         Object.keys(updatedItems).forEach(wiId => {
           const wi = updatedItems[wiId];
-          if (wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
-            const newAssignments = { ...wi.backlogAssignments };
-            delete newAssignments[backlog.treeId];
-            updatedItems[wiId] = { ...wi, backlogAssignments: newAssignments };
+          if (wi && wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
+            deleteWorkItemRecursive(wiId);
           }
         });
 
