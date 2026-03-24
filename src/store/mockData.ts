@@ -418,7 +418,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 1,
+      rank: 4,
     },
     "wi-079edaf6": {
       id: "wi-079edaf6",
@@ -428,7 +428,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 3,
+      rank: 1,
     },
     "wi-c97a548d": {
       id: "wi-c97a548d",
@@ -438,7 +438,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 4,
+      rank: 2,
     },
     "wi-27d3bb73": {
       id: "wi-27d3bb73",
@@ -448,7 +448,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 0,
+      rank: 3,
     },
     "wi-ef21ad9e": {
       id: "wi-ef21ad9e",
@@ -458,7 +458,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 2,
+      rank: 0,
     },
     "wi-e7745709": {
       id: "wi-e7745709",
@@ -685,7 +685,7 @@ export function generateMockData() {
       id: "tree-87b6c6d1",
       name: "Transformation office",
       rootBacklogIds: ["bl-0e0d83c7", "bl-98944c30", "bl-d211ad7a"],
-      rank: 2,
+      rank: 1,
     },
   };
 
