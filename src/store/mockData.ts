@@ -505,27 +505,27 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 42,
+      rank: 2,
     },
     "wi-211d1f62": {
       id: "wi-211d1f62",
       title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
       parentId: null,
-      childrenIds: [],
+      childrenIds: ["wi-204ca84d"],
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 43,
+      rank: 0,
     },
     "wi-204ca84d": {
       id: "wi-204ca84d",
       title: "Muutenkin enterin painaminen pitäisi luoda uusi itemi",
-      parentId: null,
+      parentId: "wi-211d1f62",
       childrenIds: [],
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 44,
+      rank: 2,
     },
     "wi-2f795e7a": {
       id: "wi-2f795e7a",
@@ -536,7 +536,17 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 45,
+      rank: 1,
+    },
+    "wi-d10c106a": {
+      id: "wi-d10c106a",
+      title: "wrap text for long items",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 3,
     },
   };
 
