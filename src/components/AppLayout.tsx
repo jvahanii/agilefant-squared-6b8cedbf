@@ -57,19 +57,19 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       switch (e.key) {
-        case 'N':{
-            e.preventDefault();
-            if (state.selectedWorkItemIds.length > 0) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
-            } else if (state.selectedBacklogIds.length > 0) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
-            }
-            break;
-          }
-        case 'n':{
-            e.preventDefault();
-            if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+        case 'Enter':{
+            if (e.shiftKey) {
+              e.preventDefault();
+              if (state.selectedWorkItemIds.length > 0) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
+              } else if (state.selectedBacklogIds.length > 0) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+              }
+            } else {
+              e.preventDefault();
+              if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+              }
             }
             break;
           }
@@ -405,8 +405,8 @@ function ShortcutsOverlay({ onClose }: {onClose: () => void;}) {
   }, [onClose]);
 
   const shortcuts = [
-  { keys: ['N'], description: 'New root work item in selected backlog' },
-  { keys: ['Shift', 'N'], description: 'New child of selected item or backlog' },
+  { keys: ['Enter'], description: 'New root work item in selected backlog' },
+  { keys: ['Shift', 'Enter'], description: 'New child of selected item or backlog' },
   { keys: ['Del'], description: 'Delete selected item or backlog' },
   { keys: ['↑', '↓'], description: 'Reorder selected work item among siblings' },
   { keys: ['Esc'], description: 'Deselect work item' },
