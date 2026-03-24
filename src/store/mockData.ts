@@ -416,7 +416,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-afda9952",
+        "tree-87b6c6d1": "bl-bbecfc7d",
       },
       rank: 4,
     },
@@ -436,7 +436,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-afda9952",
+        "tree-87b6c6d1": "bl-bbecfc7d",
       },
       rank: 2,
     },
@@ -446,7 +446,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-afda9952",
+        "tree-87b6c6d1": "bl-bbecfc7d",
       },
       rank: 3,
     },
@@ -462,23 +462,23 @@ export function generateMockData() {
     },
     "wi-e7745709": {
       id: "wi-e7745709",
-      title: "Uuden backlog treen luonti - siinä väärä ikoni",
+      title: "Uuden backlog treen luonti - siinä väärä teksti",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 3,
+      rank: 2,
     },
     "wi-211d1f62": {
       id: "wi-211d1f62",
       title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
       parentId: null,
-      childrenIds: ["wi-204ca84d", "wi-7bb56b8b"],
+      childrenIds: ["wi-204ca84d"],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-1a575dad",
+        "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 9,
+      rank: 0,
     },
     "wi-204ca84d": {
       id: "wi-204ca84d",
@@ -486,7 +486,7 @@ export function generateMockData() {
       parentId: "wi-211d1f62",
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-1a575dad",
+        "tree-87b6c6d1": "bl-d211ad7a",
       },
       rank: 2,
     },
@@ -499,7 +499,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 2,
+      rank: 1,
     },
     "wi-d10c106a": {
       id: "wi-d10c106a",
@@ -509,7 +509,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 4,
+      rank: 3,
     },
     "wi-cbacb2f1": {
       id: "wi-cbacb2f1",
@@ -529,7 +529,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 5,
+      rank: 48,
     },
     "wi-d075a44d": {
       id: "wi-d075a44d",
@@ -539,7 +539,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 6,
+      rank: 49,
     },
     "wi-18460cdb": {
       id: "wi-18460cdb",
@@ -549,7 +549,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 7,
+      rank: 50,
     },
     "wi-849668fd": {
       id: "wi-849668fd",
@@ -559,7 +559,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 8,
+      rank: 51,
     },
     "wi-442230d4": {
       id: "wi-442230d4",
@@ -567,9 +567,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-cea44697",
+        "tree-87b6c6d1": "bl-3b0ad9ec",
       },
-      rank: 0,
+      rank: 52,
     },
     "wi-01a9d0b2": {
       id: "wi-01a9d0b2",
@@ -579,27 +579,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-      rank: 1,
-    },
-    "wi-bc18cea3": {
-      id: "wi-bc18cea3",
-      title: "ff",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-87b6c6d1": "bl-1a575dad",
-      },
-      rank: 54,
-    },
-    "wi-7bb56b8b": {
-      id: "wi-7bb56b8b",
-      title: "dsasd",
-      parentId: "wi-211d1f62",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-87b6c6d1": "bl-1a575dad",
-      },
-      rank: 55,
+      rank: 53,
     },
   };
 
@@ -656,7 +636,7 @@ export function generateMockData() {
       id: "bl-bbecfc7d",
       name: "Jarno's done",
       parentId: "bl-0e0d83c7",
-      childrenIds: ["bl-afda9952"],
+      childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 1,
     },
@@ -664,7 +644,7 @@ export function generateMockData() {
       id: "bl-d211ad7a",
       name: "Lovable-kokeilu Agilefant^2",
       parentId: null,
-      childrenIds: ["bl-cea44697", "bl-3b0ad9ec"],
+      childrenIds: ["bl-3b0ad9ec"],
       treeId: "tree-87b6c6d1",
       rank: 2,
     },
@@ -672,7 +652,7 @@ export function generateMockData() {
       id: "bl-3b0ad9ec",
       name: "done items",
       parentId: "bl-d211ad7a",
-      childrenIds: ["bl-1a575dad"],
+      childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 3,
     },
@@ -691,30 +671,6 @@ export function generateMockData() {
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 5,
-    },
-    "bl-1a575dad": {
-      id: "bl-1a575dad",
-      name: "done Tuesday",
-      parentId: "bl-3b0ad9ec",
-      childrenIds: [],
-      treeId: "tree-87b6c6d1",
-      rank: 6,
-    },
-    "bl-afda9952": {
-      id: "bl-afda9952",
-      name: "Tuesday",
-      parentId: "bl-bbecfc7d",
-      childrenIds: [],
-      treeId: "tree-87b6c6d1",
-      rank: 7,
-    },
-    "bl-cea44697": {
-      id: "bl-cea44697",
-      name: "in progress",
-      parentId: "bl-d211ad7a",
-      childrenIds: [],
-      treeId: "tree-87b6c6d1",
-      rank: 8,
     },
   };
 
