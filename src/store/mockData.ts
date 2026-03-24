@@ -416,9 +416,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-0e0d83c7",
+        "tree-87b6c6d1": "bl-88d693b3",
       },
-      rank: 0,
+      rank: 3,
     },
     "wi-079edaf6": {
       id: "wi-079edaf6",
@@ -428,7 +428,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 1,
+      rank: 0,
     },
     "wi-c97a548d": {
       id: "wi-c97a548d",
@@ -448,7 +448,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 2,
+      rank: 1,
     },
     "wi-ef21ad9e": {
       id: "wi-ef21ad9e",
@@ -458,7 +458,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 3,
+      rank: 2,
     },
     "wi-e7745709": {
       id: "wi-e7745709",
@@ -541,6 +541,26 @@ export function generateMockData() {
       },
       rank: 49,
     },
+    "wi-18460cdb": {
+      id: "wi-18460cdb",
+      title: "tab selected itemissä tai backlogissa tekee lapseksi. Shift tab vaihtaa parentin tasoa ylemmäksi",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 50,
+    },
+    "wi-849668fd": {
+      id: "wi-849668fd",
+      title: "itemien tilat",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 51,
+    },
   };
 
   const backlogs: Record<string, Backlog> = {
@@ -587,15 +607,15 @@ export function generateMockData() {
     "bl-0e0d83c7": {
       id: "bl-0e0d83c7",
       name: "Jarnon tänään",
-      parentId: "bl-98944c30",
-      childrenIds: [],
+      parentId: null,
+      childrenIds: ["bl-88d693b3"],
       treeId: "tree-87b6c6d1",
-      rank: 1,
+      rank: 0,
     },
     "bl-bbecfc7d": {
       id: "bl-bbecfc7d",
       name: "Jarno's done",
-      parentId: null,
+      parentId: "bl-98944c30",
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 1,
@@ -620,9 +640,17 @@ export function generateMockData() {
       id: "bl-98944c30",
       name: "Jarnon tällä viikolla",
       parentId: null,
-      childrenIds: ["bl-0e0d83c7"],
+      childrenIds: ["bl-bbecfc7d"],
       treeId: "tree-87b6c6d1",
-      rank: 0,
+      rank: 1,
+    },
+    "bl-88d693b3": {
+      id: "bl-88d693b3",
+      name: "in progress",
+      parentId: "bl-0e0d83c7",
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 5,
     },
   };
 
@@ -636,7 +664,7 @@ export function generateMockData() {
     "tree-87b6c6d1": {
       id: "tree-87b6c6d1",
       name: "Transformation office",
-      rootBacklogIds: ["bl-98944c30", "bl-bbecfc7d", "bl-d211ad7a"],
+      rootBacklogIds: ["bl-0e0d83c7", "bl-98944c30", "bl-d211ad7a"],
       rank: 2,
     },
   };
