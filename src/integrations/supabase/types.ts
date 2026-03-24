@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      backlog_trees: {
+        Row: {
+          id: string
+          name: string
+          rank: number
+        }
+        Insert: {
+          id: string
+          name: string
+          rank?: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          rank?: number
+        }
+        Relationships: []
+      }
+      backlogs: {
+        Row: {
+          id: string
+          name: string
+          parent_id: string | null
+          rank: number
+          tree_id: string
+        }
+        Insert: {
+          id: string
+          name: string
+          parent_id?: string | null
+          rank?: number
+          tree_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          parent_id?: string | null
+          rank?: number
+          tree_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlogs_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlogs_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_notes: {
         Row: {
           content: string | null
@@ -31,6 +88,44 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      work_items: {
+        Row: {
+          backlog_assignments: Json
+          description: string | null
+          id: string
+          parent_id: string | null
+          points: number | null
+          rank: number
+          title: string
+        }
+        Insert: {
+          backlog_assignments?: Json
+          description?: string | null
+          id: string
+          parent_id?: string | null
+          points?: number | null
+          rank?: number
+          title: string
+        }
+        Update: {
+          backlog_assignments?: Json
+          description?: string | null
+          id?: string
+          parent_id?: string | null
+          points?: number | null
+          rank?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
