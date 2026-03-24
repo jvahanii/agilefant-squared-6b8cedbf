@@ -447,6 +447,97 @@ export function generateMockData() {
         "tree-team": "bl-team",
       },
     },
+    "wi-d680f525": {
+      id: "wi-d680f525",
+      title: "järkkää synkkapalaveri liittyen tulosinfoon",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-0e0d83c7",
+      },
+      rank: 0,
+    },
+    "wi-079edaf6": {
+      id: "wi-079edaf6",
+      title: "auta support functionsia tekemään matskut QBRään",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-0e0d83c7",
+      },
+      rank: 1,
+    },
+    "wi-c97a548d": {
+      id: "wi-c97a548d",
+      title: "siirrä oma backlogi fanttiin",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-bbecfc7d",
+      },
+      rank: 4,
+    },
+    "wi-27d3bb73": {
+      id: "wi-27d3bb73",
+      title: "mitä torstaina tehdään - QBR-asia",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-0e0d83c7",
+      },
+      rank: 2,
+    },
+    "wi-ef21ad9e": {
+      id: "wi-ef21ad9e",
+      title: "tee esimerkkkimatsku ykkös op modelista",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-0e0d83c7",
+      },
+      rank: 3,
+    },
+    "wi-e7745709": {
+      id: "wi-e7745709",
+      title: "Uuden backlog treen luonti - siinä väärä teksti",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 42,
+    },
+    "wi-211d1f62": {
+      id: "wi-211d1f62",
+      title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 43,
+    },
+    "wi-204ca84d": {
+      id: "wi-204ca84d",
+      title: "Muutenkin enterin painaminen pitäisi luoda uusi itemi",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 44,
+    },
+    "wi-2f795e7a": {
+      id: "wi-2f795e7a",
+      title:
+        "alemmista backlogeista eri näkyvien itemien pitäisi jotenkin visuaalisesti olla erinäköiseiä, esim. punainen lappu harmaana tms",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-d211ad7a",
+      },
+      rank: 45,
+    },
   };
 
   const backlogs: Record<string, Backlog> = {
@@ -498,6 +589,30 @@ export function generateMockData() {
       treeId: "tree-team",
       rank: 0,
     },
+    "bl-0e0d83c7": {
+      id: "bl-0e0d83c7",
+      name: "Jarno's todo",
+      parentId: null,
+      childrenIds: ["bl-bbecfc7d"],
+      treeId: "tree-87b6c6d1",
+      rank: 0,
+    },
+    "bl-bbecfc7d": {
+      id: "bl-bbecfc7d",
+      name: "Jarno's done",
+      parentId: "bl-0e0d83c7",
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 1,
+    },
+    "bl-d211ad7a": {
+      id: "bl-d211ad7a",
+      name: "Lovable-kokeilu Agilefant^2",
+      parentId: null,
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 2,
+    },
   };
 
   const backlogTrees: Record<string, BacklogTree> = {
@@ -512,6 +627,12 @@ export function generateMockData() {
       name: "TEAMS",
       rootBacklogIds: ["bl-team"],
       rank: 1,
+    },
+    "tree-87b6c6d1": {
+      id: "tree-87b6c6d1",
+      name: "Transformation office",
+      rootBacklogIds: ["bl-0e0d83c7", "bl-d211ad7a"],
+      rank: 2,
     },
   };
 
