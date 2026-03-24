@@ -598,7 +598,7 @@ export function WorkItemTreePanel() {
           {isAdding && (
             <InlineWorkItemInput
               depth={0}
-              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
+              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); }}
               onCancel={() => setIsAdding(false)}
             />
           )}
