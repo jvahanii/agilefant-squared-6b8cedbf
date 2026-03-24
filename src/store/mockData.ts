@@ -605,7 +605,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: ["bl-bbecfc7d"],
       treeId: "tree-87b6c6d1",
-      rank: 0,
+      rank: 1,
     },
     "bl-bbecfc7d": {
       id: "bl-bbecfc7d",
@@ -619,9 +619,17 @@ export function generateMockData() {
       id: "bl-d211ad7a",
       name: "Lovable-kokeilu Agilefant^2",
       parentId: null,
+      childrenIds: ["bl-3b0ad9ec"],
+      treeId: "tree-87b6c6d1",
+      rank: 0,
+    },
+    "bl-3b0ad9ec": {
+      id: "bl-3b0ad9ec",
+      name: "done items",
+      parentId: "bl-d211ad7a",
       childrenIds: [],
       treeId: "tree-87b6c6d1",
-      rank: 2,
+      rank: 3,
     },
   };
 
@@ -641,7 +649,7 @@ export function generateMockData() {
     "tree-87b6c6d1": {
       id: "tree-87b6c6d1",
       name: "Transformation office",
-      rootBacklogIds: ["bl-0e0d83c7", "bl-d211ad7a"],
+      rootBacklogIds: ["bl-d211ad7a", "bl-0e0d83c7"],
       rank: 2,
     },
   };
