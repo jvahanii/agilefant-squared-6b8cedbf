@@ -1,983 +1,622 @@
 // Auto-exported mock data
-
 import { WorkItem, Backlog, BacklogTree } from "@/types/models";
 
 export function generateMockData() {
   const workItems: Record<string, WorkItem> = {
     "wi-m1": {
       id: "wi-m1",
-
       title: "M1: Basic pkg order (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 0,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m2": {
       id: "wi-m2",
-
       title: "M2: Multi‑subs allowed",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 1,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m3": {
       id: "wi-m3",
-
       title: "M3: Show base price (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 2,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m4": {
       id: "wi-m4",
-
       title: "M4: Activation msg",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 3,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m5": {
       id: "wi-m5",
-
       title: "M5: Order conf (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 4,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m6": {
       id: "wi-m6",
-
       title: "M6: Basic pkg order (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 5,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m7": {
       id: "wi-m7",
-
       title: "M7: Activation info (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 6,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m8": {
       id: "wi-m8",
-
       title: "M8: Guide to config",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 7,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m9": {
       id: "wi-m9",
-
       title: "M9: View base product (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 8,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m10": {
       id: "wi-m10",
-
       title: "M10: View selections (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 9,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m11": {
       id: "wi-m11",
-
       title: "M11: View locks (A)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 10,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m12": {
       id: "wi-m12",
-
       title: "M12: View base product (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 11,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m13": {
       id: "wi-m13",
-
       title: "M13: View selections (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 12,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m14": {
       id: "wi-m14",
-
       title: "M14: View locks (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 13,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m15": {
       id: "wi-m15",
-
       title: "M15: Service links",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 14,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m16": {
       id: "wi-m16",
-
       title: "M16: Activation state (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 15,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m17": {
       id: "wi-m17",
-
       title: "M17: Change services (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 16,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m18": {
       id: "wi-m18",
-
       title: "M18: Cancel base (C)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 17,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m19": {
       id: "wi-m19",
-
       title: "M19: Basic reporting",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 18,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-m20": {
       id: "wi-m20",
-
       title: "M20: Validation core (part1)",
-
       points: 5,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 19,
-
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
     },
-
     "wi-l1": {
       id: "wi-l1",
-
       title: "L1: Campaigns/terms (A)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 0,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l2": {
       id: "wi-l2",
-
       title: "L2: Pick basics (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 1,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l3": {
       id: "wi-l3",
-
       title: "L3: Pick upgrades (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 2,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l4": {
       id: "wi-l4",
-
       title: "L4: Pick extra slots (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 3,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l5": {
       id: "wi-l5",
-
       title: "L5: Campaigns/terms (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 4,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l6": {
       id: "wi-l6",
-
       title: "L6: View campaigns (A)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 5,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l7": {
       id: "wi-l7",
-
       title: "L7: View campaigns (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 6,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l8": {
       id: "wi-l8",
-
       title: "L8: Change basics/upgrades (A)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 7,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l9": {
       id: "wi-l9",
-
       title: "L9: Add extra slots (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 8,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l10": {
       id: "wi-l10",
-
       title: "L10: Cancel extra (A)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 9,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l11": {
       id: "wi-l11",
-
       title: "L11: Reverse cancel (A)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 10,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l12": {
       id: "wi-l12",
-
       title: "L12: Cancel extra (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 11,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l13": {
       id: "wi-l13",
-
       title: "L13: Reverse cancel (C)",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 12,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l14": {
       id: "wi-l14",
-
       title: "L14: Activation report",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 13,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l15": {
       id: "wi-l15",
-
       title: "L15: Credit rules",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 14,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l16": {
       id: "wi-l16",
-
       title: "L16: Internal credit check",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 15,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-l17": {
       id: "wi-l17",
-
       title: "L17: Validation part2",
-
       points: 8,
-
       parentId: null,
-
       childrenIds: [],
-
       rank: 16,
-
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
     },
-
     "wi-d680f525": {
       id: "wi-d680f525",
-
       title: "järkkää synkkapalaveri liittyen tulosinfoon",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-
       rank: 0,
     },
-
     "wi-079edaf6": {
       id: "wi-079edaf6",
-
       title: "auta support functionsia tekemään matskut QBRään",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-
       rank: 1,
     },
-
     "wi-c97a548d": {
       id: "wi-c97a548d",
-
       title: "siirrä oma backlogi fanttiin",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
-
       rank: 4,
     },
-
     "wi-27d3bb73": {
       id: "wi-27d3bb73",
-
-      title: "mitä torstaina tehdään - QBR-asia",
-
+      title: "mitä torstaina tehdään - QBR-asia / rakettipalsu",
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-
       rank: 2,
     },
-
     "wi-ef21ad9e": {
       id: "wi-ef21ad9e",
-
       title: "tee esimerkkkimatsku ykkös op modelista",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-
       rank: 3,
     },
-
     "wi-e7745709": {
       id: "wi-e7745709",
-
       title: "Uuden backlog treen luonti - siinä väärä teksti",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-
       rank: 2,
     },
-
     "wi-211d1f62": {
       id: "wi-211d1f62",
-
       title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
-
       parentId: null,
-
       childrenIds: ["wi-204ca84d"],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-
       rank: 0,
     },
-
     "wi-204ca84d": {
       id: "wi-204ca84d",
-
       title: "Muutenkin enterin painaminen pitäisi luoda uusi itemi",
-
       parentId: "wi-211d1f62",
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-
       rank: 2,
     },
-
     "wi-2f795e7a": {
       id: "wi-2f795e7a",
-
       title:
         "alemmista backlogeista eri näkyvien itemien pitäisi jotenkin visuaalisesti olla erinäköiseiä, esim. punainen lappu harmaana tms",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-
       rank: 1,
     },
-
     "wi-d10c106a": {
       id: "wi-d10c106a",
-
       title: "wrap text for long items",
-
       parentId: null,
-
       childrenIds: [],
-
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
-
       rank: 3,
+    },
+    "wi-cbacb2f1": {
+      id: "wi-cbacb2f1",
+      title: "Fasilitoi AAPOn kehityspäivän collab AItä Ville Heikkilän kanssa",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-87b6c6d1": "bl-98944c30",
+      },
+      rank: 47,
     },
   };
 
   const backlogs: Record<string, Backlog> = {
     "bl-b2c": {
       id: "bl-b2c",
-
       name: "B2C",
-
       parentId: null,
-
       childrenIds: ["bl-entertainment"],
-
       treeId: "tree-product",
-
       rank: 0,
     },
-
     "bl-entertainment": {
       id: "bl-entertainment",
-
       name: "Entertainment",
-
       parentId: "bl-b2c",
-
       childrenIds: ["bl-product"],
-
       treeId: "tree-product",
-
       rank: 0,
     },
-
     "bl-product": {
       id: "bl-product",
-
       name: "New service",
-
       parentId: "bl-entertainment",
-
       childrenIds: ["bl-release-1", "bl-release-2"],
-
       treeId: "tree-product",
-
       rank: 0,
     },
-
     "bl-release-1": {
       id: "bl-release-1",
-
       name: "MVP",
-
       parentId: "bl-product",
-
       childrenIds: [],
-
       treeId: "tree-product",
-
       rank: 0,
     },
-
     "bl-release-2": {
       id: "bl-release-2",
-
       name: "Desired for launch",
-
       parentId: "bl-product",
-
       childrenIds: [],
-
       treeId: "tree-product",
-
       rank: 1,
     },
-
     "bl-0e0d83c7": {
       id: "bl-0e0d83c7",
-
-      name: "Jarno's todo",
-
+      name: "Jarnon tänään",
       parentId: null,
-
-      childrenIds: ["bl-bbecfc7d"],
-
+      childrenIds: [],
       treeId: "tree-87b6c6d1",
-
       rank: 1,
     },
-
     "bl-bbecfc7d": {
       id: "bl-bbecfc7d",
-
       name: "Jarno's done",
-
-      parentId: "bl-0e0d83c7",
-
+      parentId: null,
       childrenIds: [],
-
       treeId: "tree-87b6c6d1",
-
-      rank: 1,
+      rank: 3,
     },
-
     "bl-d211ad7a": {
       id: "bl-d211ad7a",
-
       name: "Lovable-kokeilu Agilefant^2",
-
       parentId: null,
-
       childrenIds: ["bl-3b0ad9ec"],
-
       treeId: "tree-87b6c6d1",
-
       rank: 0,
     },
-
     "bl-3b0ad9ec": {
       id: "bl-3b0ad9ec",
-
       name: "done items",
-
       parentId: "bl-d211ad7a",
-
       childrenIds: [],
-
       treeId: "tree-87b6c6d1",
-
       rank: 3,
+    },
+    "bl-98944c30": {
+      id: "bl-98944c30",
+      name: "Jarnon tällä viikolla",
+      parentId: null,
+      childrenIds: [],
+      treeId: "tree-87b6c6d1",
+      rank: 2,
     },
   };
 
   const backlogTrees: Record<string, BacklogTree> = {
     "tree-product": {
       id: "tree-product",
-
       name: "VALUE STREAMS",
-
       rootBacklogIds: ["bl-b2c"],
-
       rank: 0,
     },
-
     "tree-87b6c6d1": {
       id: "tree-87b6c6d1",
-
       name: "Transformation office",
-
-      rootBacklogIds: ["bl-d211ad7a", "bl-0e0d83c7"],
-
+      rootBacklogIds: ["bl-d211ad7a", "bl-0e0d83c7", "bl-98944c30", "bl-bbecfc7d"],
       rank: 2,
     },
   };
