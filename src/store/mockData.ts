@@ -416,9 +416,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-88d693b3",
+        "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 3,
+      rank: 0,
     },
     "wi-079edaf6": {
       id: "wi-079edaf6",
@@ -428,7 +428,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 0,
+      rank: 2,
     },
     "wi-c97a548d": {
       id: "wi-c97a548d",
@@ -448,7 +448,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 1,
+      rank: 3,
     },
     "wi-ef21ad9e": {
       id: "wi-ef21ad9e",
@@ -458,7 +458,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 2,
+      rank: 1,
     },
     "wi-e7745709": {
       id: "wi-e7745709",
@@ -608,14 +608,14 @@ export function generateMockData() {
       id: "bl-0e0d83c7",
       name: "Jarnon tänään",
       parentId: null,
-      childrenIds: ["bl-88d693b3"],
+      childrenIds: ["bl-88d693b3", "bl-bbecfc7d"],
       treeId: "tree-87b6c6d1",
       rank: 0,
     },
     "bl-bbecfc7d": {
       id: "bl-bbecfc7d",
       name: "Jarno's done",
-      parentId: "bl-98944c30",
+      parentId: "bl-0e0d83c7",
       childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 1,
@@ -640,7 +640,7 @@ export function generateMockData() {
       id: "bl-98944c30",
       name: "Jarnon tällä viikolla",
       parentId: null,
-      childrenIds: ["bl-bbecfc7d"],
+      childrenIds: [],
       treeId: "tree-87b6c6d1",
       rank: 1,
     },
