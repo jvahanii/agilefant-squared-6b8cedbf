@@ -418,7 +418,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 0,
+      rank: 1,
     },
     "wi-079edaf6": {
       id: "wi-079edaf6",
@@ -428,7 +428,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 2,
+      rank: 3,
     },
     "wi-c97a548d": {
       id: "wi-c97a548d",
@@ -446,9 +446,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-87b6c6d1": "bl-88d693b3",
+        "tree-87b6c6d1": "bl-bbecfc7d",
       },
-      rank: 3,
+      rank: 0,
     },
     "wi-ef21ad9e": {
       id: "wi-ef21ad9e",
@@ -458,7 +458,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
-      rank: 1,
+      rank: 2,
     },
     "wi-e7745709": {
       id: "wi-e7745709",
