@@ -5,7 +5,8 @@ import { BacklogTreePanel } from '@/components/BacklogTreePanel';
 import { WorkItemTreePanel } from '@/components/WorkItemTreePanel';
 import { useAppStore } from '@/store/appStore';
 import { ActionPrompt } from '@/components/ActionPrompt';
-import { Undo2, Keyboard, RotateCcw } from 'lucide-react';
+import { Undo2, Keyboard, RotateCcw, Copy } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -291,6 +292,18 @@ export default function AppLayout() {
             <sup className="text-xs text-primary">2</sup>
           </h1>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+                const code = `// Auto-exported mock data\nimport { WorkItem, Backlog, BacklogTree } from '@/types/models';\n\nexport function generateMockData() {\n  const workItems: Record<string, WorkItem> = ${JSON.stringify(workItems, null, 2)};\n\n  const backlogs: Record<string, Backlog> = ${JSON.stringify(backlogs, null, 2)};\n\n  const backlogTrees: Record<string, BacklogTree> = ${JSON.stringify(backlogTrees, null, 2)};\n\n  return { workItems, backlogs, backlogTrees };\n}\n`;
+                navigator.clipboard.writeText(code);
+                toast({ title: 'Mock data copied to clipboard!' });
+              }}
+              title="Export data">
+              <Copy className="w-3.5 h-3.5" />
+              Export data
+            </button>
             <button
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
               onClick={() => { if (confirm('Reset all data to defaults?')) useAppStore.getState().resetToMockData(); }}
