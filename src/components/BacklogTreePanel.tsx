@@ -18,10 +18,15 @@ function InlineInput({ onSubmit, onCancel, depth }: {onSubmit: (name: string) =>
 
   useEffect(() => {inputRef.current?.focus();}, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = (fromBlur = false) => {
     const trimmed = value.trim();
-    if (trimmed) onSubmit(trimmed);else
-    onCancel();
+    if (trimmed) {
+      onSubmit(trimmed);
+      setValue('');
+      if (fromBlur) onCancel();
+    } else {
+      onCancel();
+    }
   };
 
   return (
@@ -34,10 +39,10 @@ function InlineInput({ onSubmit, onCancel, depth }: {onSubmit: (name: string) =>
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') handleSubmit();
+          if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
           if (e.key === 'Escape') onCancel();
         }}
-        onBlur={handleSubmit} />
+        onBlur={() => handleSubmit(true)} />
     </div>);
 }
 
@@ -294,7 +299,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           {isAdding &&
         <InlineInput
           depth={depth + 1}
-          onSubmit={(name) => {addBacklog(name, backlogId, backlog.treeId);setIsAdding(false);}}
+          onSubmit={(name) => {addBacklog(name, backlogId, backlog.treeId);}}
           onCancel={() => setIsAdding(false)} />
         }
         </div>
@@ -431,7 +436,7 @@ export function BacklogTreePanel() {
           <div className="mb-4 px-2">
             <InlineInput
               depth={0}
-              onSubmit={(name) => { addBacklogTree(name); setIsAddingTree(false); }}
+              onSubmit={(name) => { addBacklogTree(name); }}
               onCancel={() => setIsAddingTree(false)} />
           </div>
         }
@@ -462,7 +467,7 @@ export function BacklogTreePanel() {
             {addingToTree === tree.id &&
           <InlineInput
             depth={0}
-            onSubmit={(name) => {addBacklog(name, null, tree.id);setAddingToTree(null);}}
+            onSubmit={(name) => {addBacklog(name, null, tree.id);}}
             onCancel={() => setAddingToTree(null)} />
           }
           </div>

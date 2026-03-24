@@ -59,10 +59,15 @@ function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: 
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = (fromBlur = false) => {
     const trimmed = value.trim();
-    if (trimmed) onSubmit(trimmed);
-    else onCancel();
+    if (trimmed) {
+      onSubmit(trimmed);
+      setValue('');
+      if (fromBlur) onCancel();
+    } else {
+      onCancel();
+    }
   };
 
   return (
@@ -75,10 +80,10 @@ function InlineWorkItemInput({ onSubmit, onCancel, depth }: { onSubmit: (title: 
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={e => {
-          if (e.key === 'Enter') handleSubmit();
+          if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
           if (e.key === 'Escape') onCancel();
         }}
-        onBlur={handleSubmit}
+        onBlur={() => handleSubmit(true)}
       />
     </div>
   );
@@ -416,7 +421,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             {isAdding && (
               <InlineWorkItemInput
                 depth={depth + 1}
-                onSubmit={(title) => { addWorkItem(title, workItemId, backlogId, treeId); setIsAdding(false); }}
+                onSubmit={(title) => { addWorkItem(title, workItemId, backlogId, treeId); }}
                 onCancel={() => setIsAdding(false)}
               />
             )}
@@ -593,7 +598,7 @@ export function WorkItemTreePanel() {
           {isAdding && (
             <InlineWorkItemInput
               depth={0}
-              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); setIsAdding(false); }}
+              onSubmit={(title) => { addWorkItem(title, null, selectedBacklogId, selectedTreeId); }}
               onCancel={() => setIsAdding(false)}
             />
           )}
