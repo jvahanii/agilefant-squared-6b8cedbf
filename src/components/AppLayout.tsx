@@ -57,19 +57,19 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       switch (e.key) {
-        case 'N':{
-            e.preventDefault();
-            if (state.selectedWorkItemIds.length > 0) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
-            } else if (state.selectedBacklogIds.length > 0) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
-            }
-            break;
-          }
-        case 'n':{
-            e.preventDefault();
-            if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-              window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+        case 'Enter':{
+            if (e.shiftKey) {
+              e.preventDefault();
+              if (state.selectedWorkItemIds.length > 0) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-child-workitem'));
+              } else if (state.selectedBacklogIds.length > 0) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+              }
+            } else {
+              e.preventDefault();
+              if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+                window.dispatchEvent(new CustomEvent('shortcut:add-workitem'));
+              }
             }
             break;
           }
