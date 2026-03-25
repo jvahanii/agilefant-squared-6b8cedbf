@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WorkItem, Backlog, BacklogTree } from '@/types/models';
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
 import {
   loadFromSupabase,
   upsertWorkItem, upsertWorkItems, deleteWorkItems,
