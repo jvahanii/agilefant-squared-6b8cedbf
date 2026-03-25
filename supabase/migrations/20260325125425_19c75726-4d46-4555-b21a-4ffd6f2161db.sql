@@ -1,0 +1,1 @@
+UPDATE public.profiles SET is_superuser = true WHERE email = 'jvahanii@gmail.com';
