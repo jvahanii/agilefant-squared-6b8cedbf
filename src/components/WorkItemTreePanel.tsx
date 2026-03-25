@@ -406,7 +406,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
                         parentId={workItemId}
                         depth={depth + 1}
                       />
-                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} isChildBacklog={isChildBacklog} />
                     </div>
                     );
                   })}
