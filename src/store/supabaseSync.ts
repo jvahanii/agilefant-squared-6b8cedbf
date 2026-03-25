@@ -93,6 +93,7 @@ export async function upsertWorkItem(item: WorkItem) {
     title: item.title,
     description: item.description ?? null,
     points: item.points ?? null,
+    status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
     rank: item.rank,
