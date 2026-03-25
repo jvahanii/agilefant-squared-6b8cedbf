@@ -627,6 +627,19 @@ export const useAppStore = create<StoreState>()((set, get) => {
       });
     },
 
+    setWorkItemStatus: (workItemId, status) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+        const updated = { ...item, status };
+        upsertWorkItem(updated);
+        return {
+          ...pushUndo(state),
+          workItems: { ...state.workItems, [workItemId]: updated },
+        };
+      });
+    },
+
     renameBacklog: (backlogId, name) => {
       set(state => {
         const backlog = state.backlogs[backlogId];
