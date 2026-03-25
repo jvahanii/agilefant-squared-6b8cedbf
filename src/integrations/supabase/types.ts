@@ -305,6 +305,18 @@ export type Database = {
         Args: { _tree_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tree_admin: {
+        Args: { _tree_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_tree_owner_member: {
+        Args: { _tree_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_tree_shared_with_user: {
+        Args: { _tree_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "member"
