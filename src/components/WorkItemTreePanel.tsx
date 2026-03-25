@@ -95,9 +95,10 @@ interface WorkItemNodeProps {
   treeId: string;
   backlogId: string;
   allBacklogIds: string[];
+  isChildBacklog?: boolean;
 }
 
-function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
+function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isChildBacklog }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
@@ -238,6 +239,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
             transition-all duration-150 ease-out group
             border select-none touch-none
+            ${isChildBacklog ? 'text-muted-foreground' : ''}
             ${isSelected
               ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
               : 'border-transparent hover:bg-muted hover:border-border'}
@@ -262,11 +264,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             }
           }}
         >
-          <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
+          <div className={`w-4 h-4 flex items-center justify-center shrink-0 ${isChildBacklog ? 'text-muted-foreground/30' : 'text-muted-foreground/40'}`}>
             <GripVertical className="w-3.5 h-3.5" />
           </div>
           <button
-            className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            className={`w-4 h-4 flex items-center justify-center shrink-0 ${isChildBacklog ? 'text-muted-foreground/50' : 'text-muted-foreground'} hover:text-foreground transition-colors`}
             onClick={(e) => {
               e.stopPropagation();
               if (hasChildren) toggleExpand(workItemId);
@@ -275,7 +277,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
             {hasChildren ? (
               expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
             ) : (
-              <FileText className="w-3.5 h-3.5 text-primary/50" />
+              <FileText className={`w-3.5 h-3.5 ${isChildBacklog ? 'text-muted-foreground/40' : 'text-primary/50'}`} />
             )}
           </button>
           {isEditingTitle ? (
@@ -404,7 +406,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: W
                         parentId={workItemId}
                         depth={depth + 1}
                       />
-                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} />
+                      <WorkItemNode workItemId={child.id} depth={depth + 1} treeId={treeId} backlogId={childBacklogId} allBacklogIds={allBacklogIds} isChildBacklog={isChildBacklog} />
                     </div>
                     );
                   })}
@@ -581,7 +583,7 @@ export function WorkItemTreePanel() {
                     parentId={null}
                     depth={0}
                   />
-                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} isChildBacklog={itemBacklogId !== selectedBacklogId} />
                 </div>
                 );
               })}
