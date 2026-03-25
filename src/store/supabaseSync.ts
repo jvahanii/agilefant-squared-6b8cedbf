@@ -65,6 +65,7 @@ export async function loadFromSupabase(): Promise<{
       title: row.title,
       description: row.description ?? undefined,
       points: row.points ?? undefined,
+      status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id,
       childrenIds: [],
       backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
