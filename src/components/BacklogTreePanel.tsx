@@ -506,6 +506,7 @@ export function BacklogTreePanel() {
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
+  const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -544,6 +545,7 @@ export function BacklogTreePanel() {
               tree={tree}
               onAddBacklog={() => setAddingToTree(tree.id)}
               onDeleteTree={() => deleteBacklogTree(tree.id)}
+              onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
             />
             {tree.rootBacklogIds.map((backlogId, i) => (
               <div key={backlogId}>
@@ -578,6 +580,15 @@ export function BacklogTreePanel() {
         ))}
         <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
       </div>
+
+      {sharingTree && (
+        <ShareTreeDialog
+          treeId={sharingTree.id}
+          treeName={sharingTree.name}
+          open={!!sharingTree}
+          onOpenChange={(open) => { if (!open) setSharingTree(null); }}
+        />
+      )}
     </div>
   );
 }
