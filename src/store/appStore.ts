@@ -163,8 +163,18 @@ export const useAppStore = create<StoreState>()((set, get) => {
       });
     },
 
-    resetToMockData: () => {
-      get().loadFromSupabase();
+    resetToMockData: async () => {
+      const orgId = get().organizationId;
+      if (!orgId) return;
+      set({ isLoading: true });
+      try {
+        const mockData = generateMockData();
+        await resetOrgData(orgId, mockData);
+        await get().loadFromSupabase();
+      } catch (err) {
+        console.error('resetToMockData failed:', err);
+        set({ isLoading: false });
+      }
     },
 
     moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
