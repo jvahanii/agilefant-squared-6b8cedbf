@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WorkItem, Backlog, BacklogTree } from '@/types/models';
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
 import {
   loadFromSupabase,
   upsertWorkItem, upsertWorkItems, deleteWorkItems,
@@ -40,6 +40,7 @@ interface AppState extends DataSnapshot {
   deleteWorkItem: (workItemId: string) => void;
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
+  setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   renameBacklogTree: (treeId: string, name: string) => void;
   addBacklogTree: (name: string) => void;
@@ -545,6 +546,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
         const newItem: WorkItem = {
           id, title, parentId, childrenIds: [],
+          status: 'not_started',
           backlogAssignments: { [treeId]: backlogId },
           rank: Object.values(state.workItems).length,
         };
@@ -622,6 +624,19 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
         upsertWorkItems(changedItems);
         return { ...undo, workItems: updatedItems };
+      });
+    },
+
+    setWorkItemStatus: (workItemId, status) => {
+      set(state => {
+        const item = state.workItems[workItemId];
+        if (!item) return state;
+        const updated = { ...item, status };
+        upsertWorkItem(updated);
+        return {
+          ...pushUndo(state),
+          workItems: { ...state.workItems, [workItemId]: updated },
+        };
       });
     },
 

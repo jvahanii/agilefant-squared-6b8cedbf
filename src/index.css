@@ -49,6 +49,12 @@
     --tree-indent: 340 15% 93%;
     --drag-overlay: 340 65% 47%;
     --selection: 330 80% 55%;
+
+    --status-not-started: hsl(0 0% 72%);
+    --status-in-progress: hsl(30 90% 55%);
+    --status-pending: hsl(174 60% 45%);
+    --status-blocked: hsl(0 72% 51%);
+    --status-done: hsl(142 60% 45%);
   }
 }
 

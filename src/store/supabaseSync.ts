@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { WorkItem, Backlog, BacklogTree } from '@/types/models';
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
 
 // ─── Load all data from Supabase ───────────────────────────────────────────
 
@@ -65,6 +65,7 @@ export async function loadFromSupabase(): Promise<{
       title: row.title,
       description: row.description ?? undefined,
       points: row.points ?? undefined,
+      status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id,
       childrenIds: [],
       backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
@@ -92,6 +93,7 @@ export async function upsertWorkItem(item: WorkItem) {
     title: item.title,
     description: item.description ?? null,
     points: item.points ?? null,
+    status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
     rank: item.rank,
@@ -145,6 +147,7 @@ export async function upsertWorkItems(items: WorkItem[]) {
     title: item.title,
     description: item.description ?? null,
     points: item.points ?? null,
+    status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
     rank: item.rank,
