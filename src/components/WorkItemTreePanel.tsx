@@ -98,7 +98,7 @@ interface WorkItemNodeProps {
   isChildBacklog?: boolean;
 }
 
-function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
+function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isChildBacklog }: WorkItemNodeProps) {
   const item = useAppStore(s => s.workItems[workItemId]);
   const workItems = useAppStore(s => s.workItems);
   const backlogs = useAppStore(s => s.backlogs);
