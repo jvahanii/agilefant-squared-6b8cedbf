@@ -5,7 +5,9 @@ import {
   upsertWorkItem, upsertWorkItems, deleteWorkItems,
   upsertBacklog, upsertBacklogs, deleteBacklogs,
   upsertBacklogTree, upsertBacklogTrees, deleteBacklogTree as deleteBacklogTreeFromDb,
+  resetOrgData,
 } from './supabaseSync';
+import { generateMockData } from './mockData';
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
