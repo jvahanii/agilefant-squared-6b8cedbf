@@ -201,24 +201,6 @@ export type Database = {
         }
         Relationships: []
       }
-      test_notes: {
-        Row: {
-          content: string | null
-          created_at: string | null
-          id: string
-        }
-        Insert: {
-          content?: string | null
-          created_at?: string | null
-          id?: string
-        }
-        Update: {
-          content?: string | null
-          created_at?: string | null
-          id?: string
-        }
-        Relationships: []
-      }
       work_items: {
         Row: {
           backlog_assignments: Json
