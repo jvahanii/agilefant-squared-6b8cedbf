@@ -264,11 +264,11 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
             }
           }}
         >
-          <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
+          <div className={`w-4 h-4 flex items-center justify-center shrink-0 ${isChildBacklog ? 'text-muted-foreground/30' : 'text-muted-foreground/40'}`}>
             <GripVertical className="w-3.5 h-3.5" />
           </div>
           <button
-            className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            className={`w-4 h-4 flex items-center justify-center shrink-0 ${isChildBacklog ? 'text-muted-foreground/50' : 'text-muted-foreground'} hover:text-foreground transition-colors`}
             onClick={(e) => {
               e.stopPropagation();
               if (hasChildren) toggleExpand(workItemId);
@@ -277,7 +277,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
             {hasChildren ? (
               expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
             ) : (
-              <FileText className="w-3.5 h-3.5 text-primary/50" />
+              <FileText className={`w-3.5 h-3.5 ${isChildBacklog ? 'text-muted-foreground/40' : 'text-primary/50'}`} />
             )}
           </button>
           {isEditingTitle ? (
