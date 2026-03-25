@@ -10,6 +10,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 0,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -21,6 +22,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 1,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -32,6 +34,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 2,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -43,6 +46,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 3,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -54,6 +58,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 4,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -65,6 +70,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 5,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -76,6 +82,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 6,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -87,6 +94,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 7,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -98,6 +106,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 8,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -109,6 +118,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 9,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -120,6 +130,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 10,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -131,6 +142,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 11,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -142,6 +154,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 12,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -153,6 +166,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 13,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -164,6 +178,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 14,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -175,6 +190,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 15,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -186,6 +202,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 16,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -197,6 +214,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 17,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -208,6 +226,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 18,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -219,6 +238,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 19,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-1",
       },
@@ -230,6 +250,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 0,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -241,6 +262,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 1,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -252,6 +274,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 2,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -263,6 +286,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 3,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -274,6 +298,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 4,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -285,6 +310,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 5,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -296,6 +322,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 6,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -307,6 +334,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 7,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -318,6 +346,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 8,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -329,6 +358,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 9,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -340,6 +370,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 10,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -351,6 +382,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 11,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -362,6 +394,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 12,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -373,6 +406,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 13,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -384,6 +418,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 14,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -395,6 +430,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 15,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -406,6 +442,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       rank: 16,
+      status: "not_started",
       backlogAssignments: {
         "tree-product": "bl-release-2",
       },
@@ -415,6 +452,7 @@ export function generateMockData() {
       title: "järkkää synkkapalaveri liittyen tulosinfoon",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
@@ -425,6 +463,7 @@ export function generateMockData() {
       title: "auta support functionsia tekemään matskut QBRään",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
@@ -435,6 +474,7 @@ export function generateMockData() {
       title: "siirrä oma backlogi fanttiin",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
@@ -445,6 +485,7 @@ export function generateMockData() {
       title: "mitä torstaina tehdään - QBR-asia / rakettipalsu",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-bbecfc7d",
       },
@@ -455,6 +496,7 @@ export function generateMockData() {
       title: "tee esimerkkkimatsku ykkös op modelista",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-0e0d83c7",
       },
@@ -465,6 +507,7 @@ export function generateMockData() {
       title: "Uuden backlog treen luonti - siinä väärä teksti",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -475,6 +518,7 @@ export function generateMockData() {
       title: "Itemiä luodessa enterin painaminen pitäisi aloittaa uuden itemin luomisen",
       parentId: null,
       childrenIds: ["wi-204ca84d"],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -485,6 +529,7 @@ export function generateMockData() {
       title: "Muutenkin enterin painaminen pitäisi luoda uusi itemi",
       parentId: "wi-211d1f62",
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -496,6 +541,7 @@ export function generateMockData() {
         "alemmista backlogeista eri näkyvien itemien pitäisi jotenkin visuaalisesti olla erinäköiseiä, esim. punainen lappu harmaana tms",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -506,6 +552,7 @@ export function generateMockData() {
       title: "wrap text for long items",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -516,6 +563,7 @@ export function generateMockData() {
       title: "Fasilitoi AAPOn kehityspäivän collab AItä Ville Heikkilän kanssa",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-98944c30",
       },
@@ -526,6 +574,7 @@ export function generateMockData() {
       title: "sibling backlogien sorttaaminen onnistuu vain vetämällä backlogi viimeiseksi tai ensimmäiseksi",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -536,6 +585,7 @@ export function generateMockData() {
       title: "vaihda headerin taustaväri mätsäämään logossa olevaa ylimääräistä harmautta",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -546,6 +596,7 @@ export function generateMockData() {
       title: "tab selected itemissä tai backlogissa tekee lapseksi. Shift tab vaihtaa parentin tasoa ylemmäksi",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -556,6 +607,7 @@ export function generateMockData() {
       title: "itemien tilat",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },
@@ -566,6 +618,7 @@ export function generateMockData() {
       title: "github-yhteys",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-3b0ad9ec",
       },
@@ -576,6 +629,7 @@ export function generateMockData() {
       title: "supabase-yhteys",
       parentId: null,
       childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-87b6c6d1": "bl-d211ad7a",
       },

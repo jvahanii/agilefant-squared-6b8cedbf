@@ -545,6 +545,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
         const newItem: WorkItem = {
           id, title, parentId, childrenIds: [],
+          status: 'not_started',
           backlogAssignments: { [treeId]: backlogId },
           rank: Object.values(state.workItems).length,
         };
