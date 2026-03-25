@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      backlog_tree_shares: {
+        Row: {
+          created_at: string | null
+          id: string
+          organization_id: string
+          tree_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          organization_id: string
+          tree_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          organization_id?: string
+          tree_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlog_tree_shares_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlog_trees: {
         Row: {
           id: string
@@ -255,6 +284,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      has_accessible_tree_assignment: {
+        Args: { _assignments: Json; _user_id: string }
+        Returns: boolean
+      }
       has_org_role: {
         Args: {
           _org_id: string
@@ -268,6 +301,10 @@ export type Database = {
         Returns: boolean
       }
       is_superuser: { Args: { _user_id: string }; Returns: boolean }
+      is_tree_accessible: {
+        Args: { _tree_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "member"
