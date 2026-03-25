@@ -583,7 +583,7 @@ export function WorkItemTreePanel() {
                     parentId={null}
                     depth={0}
                   />
-                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} />
+                  <WorkItemNode workItemId={item.id} depth={0} treeId={selectedTreeId} backlogId={itemBacklogId} allBacklogIds={allBacklogIds} isChildBacklog={itemBacklogId !== selectedBacklogId} />
                 </div>
                 );
               })}
