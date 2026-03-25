@@ -593,6 +593,9 @@ export function BacklogTreePanel() {
     [backlogTrees],
   );
 
+  const treeIds = useMemo(() => sortedTrees.map((t) => t.id), [sortedTrees]);
+  const treeShares = useTreeShares(treeIds);
+
   return (
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 pb-2 flex items-center justify-between">
