@@ -85,6 +85,28 @@ function LoginForm({ loading, setLoading }: { loading: boolean; setLoading: (v: 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
+      <button
+        type="button"
+        className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors mt-2"
+        onClick={async () => {
+          if (!email) {
+            toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
+            return;
+          }
+          setLoading(true);
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+          });
+          if (error) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+          } else {
+            toast({ title: 'Check your email', description: 'We sent you a password reset link.' });
+          }
+          setLoading(false);
+        }}
+      >
+        Forgot password?
+      </button>
     </form>
   );
 }

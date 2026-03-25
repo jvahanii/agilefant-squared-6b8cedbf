@@ -1,8 +1,9 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2 } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { ShareTreeDialog } from "./ShareTreeDialog";
 
 interface BacklogNodeProps {
   backlogId: string;
@@ -423,10 +424,12 @@ function DraggableTreeHeader({
   tree,
   onAddBacklog,
   onDeleteTree,
+  onShareTree,
 }: {
   tree: { id: string; name: string; rank: number; rootBacklogIds: string[] };
   onAddBacklog: () => void;
   onDeleteTree: () => void;
+  onShareTree: () => void;
 }) {
   const dragStartedRef = useRef(false);
   const {
@@ -465,6 +468,16 @@ function DraggableTreeHeader({
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onClick={(e) => {
             e.stopPropagation();
+            onShareTree();
+          }}
+          title="Share tree with another organization"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
             onAddBacklog();
           }}
           title="Add root backlog"
@@ -493,6 +506,7 @@ export function BacklogTreePanel() {
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
+  const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -531,6 +545,7 @@ export function BacklogTreePanel() {
               tree={tree}
               onAddBacklog={() => setAddingToTree(tree.id)}
               onDeleteTree={() => deleteBacklogTree(tree.id)}
+              onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
             />
             {tree.rootBacklogIds.map((backlogId, i) => (
               <div key={backlogId}>
@@ -565,6 +580,15 @@ export function BacklogTreePanel() {
         ))}
         <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
       </div>
+
+      {sharingTree && (
+        <ShareTreeDialog
+          treeId={sharingTree.id}
+          treeName={sharingTree.name}
+          open={!!sharingTree}
+          onOpenChange={(open) => { if (!open) setSharingTree(null); }}
+        />
+      )}
     </div>
   );
 }

@@ -8,18 +8,56 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
 }> {
-  const [treesRes, backlogsRes, itemsRes] = await Promise.all([
-    supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
-    supabase.from('backlogs').select('*').eq('organization_id', organizationId),
-    supabase.from('work_items').select('*').eq('organization_id', organizationId),
-  ]);
+  // Load shared tree IDs for this org
+  const { data: shares } = await supabase
+    .from('backlog_tree_shares' as any)
+    .select('tree_id')
+    .eq('organization_id', organizationId);
+  const sharedTreeIds = (shares ?? []).map((s: any) => s.tree_id as string);
 
-  if (treesRes.error) throw treesRes.error;
+  // Load own trees + shared trees
+  const ownTreesPromise = supabase.from('backlog_trees').select('*').eq('organization_id', organizationId);
+  const sharedTreesPromise = sharedTreeIds.length > 0
+    ? supabase.from('backlog_trees').select('*').in('id', sharedTreeIds)
+    : Promise.resolve({ data: [], error: null });
+
+  const [ownTreesRes, sharedTreesRes] = await Promise.all([ownTreesPromise, sharedTreesPromise]);
+  if (ownTreesRes.error) throw ownTreesRes.error;
+  if (sharedTreesRes.error) throw sharedTreesRes.error;
+
+  const allTreeRows = [...(ownTreesRes.data ?? []), ...(sharedTreesRes.data ?? [])];
+  const allTreeIds = allTreeRows.map(t => t.id);
+
+  // Load backlogs for all accessible trees
+  const backlogsPromise = allTreeIds.length > 0
+    ? supabase.from('backlogs').select('*').in('tree_id', allTreeIds)
+    : Promise.resolve({ data: [], error: null });
+
+  // Load own work items + work items from shared trees
+  const ownItemsPromise = supabase.from('work_items').select('*').eq('organization_id', organizationId);
+
+  const [backlogsRes, itemsRes] = await Promise.all([backlogsPromise, ownItemsPromise]);
+
   if (backlogsRes.error) throw backlogsRes.error;
   if (itemsRes.error) throw itemsRes.error;
 
+  // Also load work items from shared trees that belong to other orgs
+  let sharedWorkItems: any[] = [];
+  if (sharedTreeIds.length > 0) {
+    // Load all work items that reference shared trees (from other orgs)
+    const { data: allSharedItems } = await supabase
+      .from('work_items')
+      .select('*')
+      .neq('organization_id', organizationId);
+    // Filter to items that have assignments to shared trees
+    sharedWorkItems = (allSharedItems ?? []).filter((item: any) => {
+      const assignments = item.backlog_assignments as Record<string, string>;
+      return Object.keys(assignments).some(treeId => sharedTreeIds.includes(treeId));
+    });
+  }
+
   const backlogTrees: Record<string, BacklogTree> = {};
-  for (const row of treesRes.data) {
+  for (const row of allTreeRows) {
     backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
   }
 
@@ -41,8 +79,9 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     tree.rootBacklogIds.sort((a, b) => (backlogs[a]?.rank ?? 0) - (backlogs[b]?.rank ?? 0));
   }
 
+  const allItemRows = [...(itemsRes.data ?? []), ...sharedWorkItems];
   const workItems: Record<string, WorkItem> = {};
-  for (const row of itemsRes.data) {
+  for (const row of allItemRows) {
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
