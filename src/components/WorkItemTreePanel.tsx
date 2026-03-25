@@ -95,6 +95,7 @@ interface WorkItemNodeProps {
   treeId: string;
   backlogId: string;
   allBacklogIds: string[];
+  isChildBacklog?: boolean;
 }
 
 function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds }: WorkItemNodeProps) {
