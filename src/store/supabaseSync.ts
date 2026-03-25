@@ -139,3 +139,43 @@ export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: s
   const { error } = await supabase.from('backlog_trees').upsert(rows);
   if (error) console.error('upsertBacklogTrees:', error);
 }
+
+export async function resetOrgData(organizationId: string, mockData: {
+  workItems: Record<string, WorkItem>;
+  backlogs: Record<string, Backlog>;
+  backlogTrees: Record<string, BacklogTree>;
+}) {
+  // Delete all existing data for this org (order matters for foreign keys)
+  await supabase.from('work_items').delete().eq('organization_id', organizationId);
+  await supabase.from('backlogs').delete().eq('organization_id', organizationId);
+  await supabase.from('backlog_trees').delete().eq('organization_id', organizationId);
+
+  // Insert mock data with org ID
+  const treeRows = Object.values(mockData.backlogTrees).map(t => ({
+    id: t.id, name: t.name, rank: t.rank, organization_id: organizationId,
+  }));
+  if (treeRows.length > 0) {
+    const { error } = await supabase.from('backlog_trees').insert(treeRows);
+    if (error) console.error('resetOrgData trees:', error);
+  }
+
+  const backlogRows = Object.values(mockData.backlogs).map(bl => ({
+    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
+    organization_id: organizationId,
+  }));
+  if (backlogRows.length > 0) {
+    const { error } = await supabase.from('backlogs').insert(backlogRows);
+    if (error) console.error('resetOrgData backlogs:', error);
+  }
+
+  const itemRows = Object.values(mockData.workItems).map(item => ({
+    id: item.id, title: item.title, description: item.description ?? null,
+    points: item.points ?? null, status: item.status, parent_id: item.parentId,
+    backlog_assignments: item.backlogAssignments, rank: item.rank,
+    organization_id: organizationId,
+  }));
+  if (itemRows.length > 0) {
+    const { error } = await supabase.from('work_items').insert(itemRows);
+    if (error) console.error('resetOrgData work_items:', error);
+  }
+}
