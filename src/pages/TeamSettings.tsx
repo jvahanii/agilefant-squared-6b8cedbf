@@ -1,53 +1,60 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrgStore } from '@/store/orgStore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrgStore } from "@/store/orgStore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Member {
   id: string;
   user_id: string;
   email: string;
   full_name: string;
-  role: 'owner' | 'admin' | 'member';
+  role: "owner" | "admin" | "member";
 }
 
 export default function TeamSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const activeOrgId = useOrgStore(s => s.activeOrgId);
-  const activeOrg = useOrgStore(s => s.getActiveOrg());
-  const loadMemberships = useOrgStore(s => s.loadMemberships);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrg = useOrgStore((s) => s.getActiveOrg());
+  const loadMemberships = useOrgStore((s) => s.loadMemberships);
   const [members, setMembers] = useState<Member[]>([]);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
   const [loading, setLoading] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
 
   // Org rename state
   const [isRenamingOrg, setIsRenamingOrg] = useState(false);
-  const [orgName, setOrgName] = useState('');
-  const [orgSlug, setOrgSlug] = useState('');
+  const [orgName, setOrgName] = useState("");
+  const [orgSlug, setOrgSlug] = useState("");
   const [renameLoading, setRenameLoading] = useState(false);
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const currentRole = activeOrg?.role;
-  const canManage = currentRole === 'owner' || currentRole === 'admin';
+  const canManage = currentRole === "owner" || currentRole === "admin";
 
   useEffect(() => {
     if (!activeOrgId) return;
@@ -56,7 +63,11 @@ export default function TeamSettings() {
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from('profiles').select('is_superuser').eq('id', user.id).single()
+    supabase
+      .from("profiles")
+      .select("is_superuser")
+      .eq("id", user.id)
+      .single()
       .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
   }, [user?.id]);
 
@@ -70,25 +81,27 @@ export default function TeamSettings() {
   const loadMembers = async () => {
     if (!activeOrgId) return;
     const { data, error } = await supabase
-      .from('memberships')
-      .select('id, user_id, role')
-      .eq('organization_id', activeOrgId);
-    if (error) { console.error(error); return; }
+      .from("memberships")
+      .select("id, user_id, role")
+      .eq("organization_id", activeOrgId);
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-    const userIds = data.map(m => m.user_id);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .in('id', userIds);
+    const userIds = data.map((m) => m.user_id);
+    const { data: profiles } = await supabase.from("profiles").select("id, email, full_name").in("id", userIds);
 
-    const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
-    setMembers(data.map(m => ({
-      id: m.id,
-      user_id: m.user_id,
-      email: profileMap.get(m.user_id)?.email ?? '',
-      full_name: profileMap.get(m.user_id)?.full_name ?? '',
-      role: m.role as Member['role'],
-    })));
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    setMembers(
+      data.map((m) => ({
+        id: m.id,
+        user_id: m.user_id,
+        email: profileMap.get(m.user_id)?.email ?? "",
+        full_name: profileMap.get(m.user_id)?.full_name ?? "",
+        role: m.role as Member["role"],
+      })),
+    );
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -97,26 +110,30 @@ export default function TeamSettings() {
     setLoading(true);
 
     const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', inviteEmail)
+      .from("profiles")
+      .select("id")
+      .eq("email", inviteEmail)
       .maybeSingle();
 
     if (profileErr || !profile) {
-      toast({ title: 'User not found', description: 'The user must sign up first before being invited.', variant: 'destructive' });
+      toast({
+        title: "User not found",
+        description: "The user must sign up first before being invited.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
     const { error } = await supabase
-      .from('memberships')
+      .from("memberships")
       .insert({ user_id: profile.id, organization_id: activeOrgId, role: inviteRole });
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: 'Member added!' });
-      setInviteEmail('');
+      toast({ title: "Member added!" });
+      setInviteEmail("");
       await loadMembers();
     }
     setLoading(false);
@@ -124,16 +141,16 @@ export default function TeamSettings() {
 
   const handleRemove = async (membershipId: string, memberUserId: string) => {
     if (memberUserId === user?.id) {
-      if (!confirm('Are you sure you want to leave this organization?')) return;
+      if (!confirm("Are you sure you want to leave this organization?")) return;
     }
-    const { error } = await supabase.from('memberships').delete().eq('id', membershipId);
+    const { error } = await supabase.from("memberships").delete().eq("id", membershipId);
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: 'Member removed' });
+      toast({ title: "Member removed" });
       if (memberUserId === user?.id) {
         await loadMemberships(user.id);
-        navigate('/');
+        navigate("/");
       } else {
         await loadMembers();
       }
@@ -142,11 +159,11 @@ export default function TeamSettings() {
 
   const handleRoleChange = async (membershipId: string, newRole: string) => {
     const { error } = await supabase
-      .from('memberships')
+      .from("memberships")
       .update({ role: newRole as any })
-      .eq('id', membershipId);
+      .eq("id", membershipId);
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       await loadMembers();
     }
@@ -158,14 +175,14 @@ export default function TeamSettings() {
     setRenameLoading(true);
 
     const { error } = await supabase
-      .from('organizations')
+      .from("organizations")
       .update({ name: orgName.trim(), slug: orgSlug.trim().toLowerCase() })
-      .eq('id', activeOrgId);
+      .eq("id", activeOrgId);
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: 'Organization updated' });
+      toast({ title: "Organization updated" });
       setIsRenamingOrg(false);
       if (user?.id) await loadMemberships(user.id);
     }
@@ -178,19 +195,16 @@ export default function TeamSettings() {
 
     try {
       // 1. Find backlog trees owned by this org that are shared with other orgs
-      const { data: ownedTrees } = await supabase
-        .from('backlog_trees')
-        .select('id')
-        .eq('organization_id', activeOrgId);
+      const { data: ownedTrees } = await supabase.from("backlog_trees").select("id").eq("organization_id", activeOrgId);
 
-      const ownedTreeIds = (ownedTrees ?? []).map(t => t.id);
+      const ownedTreeIds = (ownedTrees ?? []).map((t) => t.id);
 
       if (ownedTreeIds.length > 0) {
         // Find shares for these trees
         const { data: shares } = await supabase
-          .from('backlog_tree_shares' as any)
-          .select('tree_id, organization_id')
-          .in('tree_id', ownedTreeIds);
+          .from("backlog_tree_shares" as any)
+          .select("tree_id, organization_id")
+          .in("tree_id", ownedTreeIds);
 
         // Group shares by tree
         const sharesByTree = new Map<string, string[]>();
@@ -205,17 +219,17 @@ export default function TeamSettings() {
           const newOwnerId = orgIds[0];
 
           // Transfer tree ownership
-          await supabase.from('backlog_trees').update({ organization_id: newOwnerId }).eq('id', treeId);
+          await supabase.from("backlog_trees").update({ organization_id: newOwnerId }).eq("id", treeId);
 
           // Transfer backlogs ownership
-          await supabase.from('backlogs').update({ organization_id: newOwnerId }).eq('tree_id', treeId);
+          await supabase.from("backlogs").update({ organization_id: newOwnerId }).eq("tree_id", treeId);
 
           // Transfer work items that reference this tree
           // (items owned by the deleted org that have assignments to this tree)
           const { data: items } = await supabase
-            .from('work_items')
-            .select('id, backlog_assignments')
-            .eq('organization_id', activeOrgId);
+            .from("work_items")
+            .select("id, backlog_assignments")
+            .eq("organization_id", activeOrgId);
 
           const itemsInTree = (items ?? []).filter((item: any) => {
             const assignments = item.backlog_assignments as Record<string, string>;
@@ -224,50 +238,56 @@ export default function TeamSettings() {
 
           if (itemsInTree.length > 0) {
             const itemIds = itemsInTree.map((i: any) => i.id);
-            await supabase.from('work_items').update({ organization_id: newOwnerId }).in('id', itemIds);
+            await supabase.from("work_items").update({ organization_id: newOwnerId }).in("id", itemIds);
           }
 
           // Remove the share entry for the new owner (they now own it)
           await supabase
-            .from('backlog_tree_shares' as any)
+            .from("backlog_tree_shares" as any)
             .delete()
-            .eq('tree_id', treeId)
-            .eq('organization_id', newOwnerId);
+            .eq("tree_id", treeId)
+            .eq("organization_id", newOwnerId);
         }
       }
 
       // 2. Now delete the organization (non-shared trees/backlogs/items will cascade or be cleaned up)
       // Delete remaining work items owned by this org
-      await supabase.from('work_items').delete().eq('organization_id', activeOrgId);
+      await supabase.from("work_items").delete().eq("organization_id", activeOrgId);
       // Delete remaining backlogs owned by this org
-      await supabase.from('backlogs').delete().eq('organization_id', activeOrgId);
+      await supabase.from("backlogs").delete().eq("organization_id", activeOrgId);
       // Delete remaining backlog trees owned by this org
-      await supabase.from('backlog_trees').delete().eq('organization_id', activeOrgId);
+      await supabase.from("backlog_trees").delete().eq("organization_id", activeOrgId);
       // Delete memberships
-      await supabase.from('memberships').delete().eq('organization_id', activeOrgId);
+      await supabase.from("memberships").delete().eq("organization_id", activeOrgId);
       // Delete the org itself
-      const { error } = await supabase.from('organizations').delete().eq('id', activeOrgId);
+      const { error } = await supabase.from("organizations").delete().eq("id", activeOrgId);
 
       if (error) {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        toast({ title: "Error", description: error.message, variant: "destructive" });
         setDeleteLoading(false);
         return;
       }
 
-      toast({ title: 'Organization deleted', description: 'Shared backlog trees were transferred to their shared organizations.' });
+      toast({
+        title: "Organization deleted",
+        description: "Shared backlog trees were transferred to their shared organizations.",
+      });
       await loadMemberships(user.id);
-      navigate('/');
+      navigate("/");
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
     setDeleteLoading(false);
   };
 
   const roleBadgeColor = (role: string) => {
     switch (role) {
-      case 'owner': return 'default';
-      case 'admin': return 'secondary';
-      default: return 'outline';
+      case "owner":
+        return "default";
+      case "admin":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
@@ -275,10 +295,10 @@ export default function TeamSettings() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <h1 className="text-xl font-bold">Team Settings — {activeOrg?.organization_name}</h1>
+          <h1 className="text-xl font-bold">Organization Settings — {activeOrg?.organization_name}</h1>
         </div>
 
         {/* Organization Settings */}
@@ -294,15 +314,15 @@ export default function TeamSettings() {
                 <form onSubmit={handleRenameOrg} className="space-y-3">
                   <div className="space-y-1">
                     <Label>Name</Label>
-                    <Input value={orgName} onChange={e => setOrgName(e.target.value)} required />
+                    <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
                   </div>
                   <div className="space-y-1">
                     <Label>Slug</Label>
-                    <Input value={orgSlug} onChange={e => setOrgSlug(e.target.value)} required />
+                    <Input value={orgSlug} onChange={(e) => setOrgSlug(e.target.value)} required />
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" size="sm" disabled={renameLoading}>
-                      {renameLoading ? 'Saving...' : 'Save'}
+                      {renameLoading ? "Saving..." : "Save"}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={() => setIsRenamingOrg(false)}>
                       Cancel
@@ -338,14 +358,14 @@ export default function TeamSettings() {
                   <Input
                     type="email"
                     value={inviteEmail}
-                    onChange={e => setInviteEmail(e.target.value)}
+                    onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="colleague@example.com"
                     required
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Role</Label>
-                  <Select value={inviteRole} onValueChange={v => setInviteRole(v as 'member' | 'admin')}>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "member" | "admin")}>
                     <SelectTrigger className="w-28">
                       <SelectValue />
                     </SelectTrigger>
@@ -356,7 +376,7 @@ export default function TeamSettings() {
                   </Select>
                 </div>
                 <Button type="submit" disabled={loading}>
-                  {loading ? 'Adding...' : 'Add'}
+                  {loading ? "Adding..." : "Add"}
                 </Button>
               </form>
             </CardContent>
@@ -369,7 +389,7 @@ export default function TeamSettings() {
           </CardHeader>
           <CardContent>
             <div className="divide-y">
-              {members.map(member => (
+              {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-medium">
@@ -379,8 +399,8 @@ export default function TeamSettings() {
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {canManage && currentRole === 'owner' && member.user_id !== user?.id ? (
-                      <Select value={member.role} onValueChange={v => handleRoleChange(member.id, v)}>
+                    {canManage && currentRole === "owner" && member.user_id !== user?.id ? (
+                      <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v)}>
                         <SelectTrigger className="w-24 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
@@ -393,7 +413,7 @@ export default function TeamSettings() {
                     ) : (
                       <Badge variant={roleBadgeColor(member.role) as any}>{member.role}</Badge>
                     )}
-                    {(canManage || member.user_id === user?.id) && member.role !== 'owner' && (
+                    {(canManage || member.user_id === user?.id) && member.role !== "owner" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -447,24 +467,26 @@ export default function TeamSettings() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{activeOrg?.organization_name}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. All backlogs, work items, and memberships will be permanently deleted.
-                        <br /><br />
+                        This action cannot be undone. All backlogs, work items, and memberships will be permanently
+                        deleted.
+                        <br />
+                        <br />
                         Type <strong>{activeOrg?.organization_slug}</strong> to confirm:
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <Input
                       value={deleteConfirmText}
-                      onChange={e => setDeleteConfirmText(e.target.value)}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
                       placeholder={activeOrg?.organization_slug}
                     />
                     <AlertDialogFooter>
-                      <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         disabled={deleteConfirmText !== activeOrg?.organization_slug || deleteLoading}
                         onClick={handleDeleteOrg}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        {deleteLoading ? 'Deleting...' : 'Delete Organization'}
+                        {deleteLoading ? "Deleting..." : "Delete Organization"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -479,30 +501,30 @@ export default function TeamSettings() {
 }
 
 function ChangePasswordForm() {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ title: 'Error', description: 'New passwords do not match.', variant: 'destructive' });
+      toast({ title: "Error", description: "New passwords do not match.", variant: "destructive" });
       return;
     }
     if (newPassword.length < 6) {
-      toast({ title: 'Error', description: 'Password must be at least 6 characters.', variant: 'destructive' });
+      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
       return;
     }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: 'Password updated', description: 'Your password has been changed successfully.' });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      toast({ title: "Password updated", description: "Your password has been changed successfully." });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     }
     setLoading(false);
   };
@@ -511,14 +533,26 @@ function ChangePasswordForm() {
     <form onSubmit={handleChangePassword} className="space-y-3">
       <div className="space-y-1">
         <Label>New Password</Label>
-        <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6} />
+        <Input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+          minLength={6}
+        />
       </div>
       <div className="space-y-1">
         <Label>Confirm New Password</Label>
-        <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} />
+        <Input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={6}
+        />
       </div>
       <Button type="submit" disabled={loading} size="sm">
-        {loading ? 'Updating...' : 'Change Password'}
+        {loading ? "Updating..." : "Change Password"}
       </Button>
     </form>
   );
