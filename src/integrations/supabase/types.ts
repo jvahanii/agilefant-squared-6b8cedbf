@@ -97,6 +97,7 @@ export type Database = {
           parent_id: string | null
           points: number | null
           rank: number
+          status: string
           title: string
         }
         Insert: {
@@ -106,6 +107,7 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          status?: string
           title: string
         }
         Update: {
@@ -115,6 +117,7 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          status?: string
           title?: string
         }
         Relationships: [

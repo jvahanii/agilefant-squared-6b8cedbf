@@ -1,0 +1,1 @@
+ALTER TABLE public.work_items ADD COLUMN status text NOT NULL DEFAULT 'not_started';
