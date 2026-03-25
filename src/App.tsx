@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import TeamSettings from "./pages/TeamSettings";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
