@@ -79,8 +79,9 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     tree.rootBacklogIds.sort((a, b) => (backlogs[a]?.rank ?? 0) - (backlogs[b]?.rank ?? 0));
   }
 
+  const allItemRows = [...(itemsRes.data ?? []), ...sharedWorkItems];
   const workItems: Record<string, WorkItem> = {};
-  for (const row of itemsRes.data) {
+  for (const row of allItemRows) {
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
