@@ -288,6 +288,28 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
               <FileText className={`w-3.5 h-3.5 ${isChildBacklog ? 'text-muted-foreground/40' : 'text-primary/50'}`} />
             )}
           </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-3 h-3 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125"
+                style={{ backgroundColor: WORK_ITEM_STATUSES.find(s => s.value === item.status)?.color ?? 'var(--status-not-started)' }}
+                onClick={e => e.stopPropagation()}
+                title={WORK_ITEM_STATUSES.find(s => s.value === item.status)?.label ?? 'Not Started'}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[140px]">
+              {WORK_ITEM_STATUSES.map(s => (
+                <DropdownMenuItem
+                  key={s.value}
+                  onClick={(e) => { e.stopPropagation(); setWorkItemStatus(workItemId, s.value); }}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  {s.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isEditingTitle ? (
             <input
               ref={titleRef}
