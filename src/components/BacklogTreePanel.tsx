@@ -629,6 +629,7 @@ export function BacklogTreePanel() {
               onAddBacklog={() => setAddingToTree(tree.id)}
               onDeleteTree={() => deleteBacklogTree(tree.id)}
               onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
+              shares={treeShares[tree.id] ?? []}
             />
             {tree.rootBacklogIds.map((backlogId, i) => (
               <div key={backlogId}>
