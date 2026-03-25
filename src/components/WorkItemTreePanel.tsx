@@ -113,6 +113,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
   const isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId));
   const toggleExpand = useAppStore(s => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore(s => s.selectWorkItem);
+  const setWorkItemStatus = useAppStore(s => s.setWorkItemStatus);
   const addWorkItem = useAppStore(s => s.addWorkItem);
   const deleteWorkItem = useAppStore(s => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore(s => s.removeWorkItemFromTree);
