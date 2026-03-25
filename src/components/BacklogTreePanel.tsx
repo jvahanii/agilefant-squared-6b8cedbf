@@ -475,12 +475,22 @@ function DraggableTreeHeader({
   onAddBacklog,
   onDeleteTree,
   onShareTree,
+  shares,
 }: {
   tree: { id: string; name: string; rank: number; rootBacklogIds: string[] };
   onAddBacklog: () => void;
   onDeleteTree: () => void;
   onShareTree: () => void;
+  shares: TreeShare[];
 }) {
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const memberships = useOrgStore((s) => s.memberships);
+  const isSharedToMe = tree.id && activeOrgId
+    ? shares.length === 0 && memberships.some(m => m.organization_id !== activeOrgId)
+    : false;
+  // Check if this tree belongs to another org (i.e., it's shared *to* the current org)
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
+
   const dragStartedRef = useRef(false);
   const {
     attributes,
@@ -498,7 +508,7 @@ function DraggableTreeHeader({
       ref={setDragRef}
       {...attributes}
       {...listeners}
-      className={`px-2 py-1 flex items-center justify-between group cursor-grab active:cursor-grabbing touch-none select-none
+      className={`px-2 py-1 flex flex-col group cursor-grab active:cursor-grabbing touch-none select-none
         ${isDragging ? "opacity-50" : ""}`}
       style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
       onPointerDown={(e) => {
@@ -509,41 +519,61 @@ function DraggableTreeHeader({
         dragStartedRef.current = true;
       }}
     >
-      <div className="flex items-center gap-1.5">
-        <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
-        <EditableTreeName treeId={tree.id} name={tree.name} />
-      </div>
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-        <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShareTree();
-          }}
-          title="Share tree with another organization"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-        </button>
-        <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddBacklog();
-          }}
-          title="Add root backlog"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-        <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteTree();
-          }}
-          title="Delete backlog tree"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+          <EditableTreeName treeId={tree.id} name={tree.name} />
+          {shares.length > 0 && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-0.5 ml-1 text-muted-foreground">
+                    <Users className="w-3 h-3" />
+                    <span className="text-[10px] font-medium">{shares.length}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  <p className="font-medium mb-1">Shared with:</p>
+                  {shares.map((s) => (
+                    <p key={s.orgId} className="text-muted-foreground">{s.orgName}</p>
+                  ))}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShareTree();
+            }}
+            title="Share tree with another organization"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddBacklog();
+            }}
+            title="Add root backlog"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteTree();
+            }}
+            title="Delete backlog tree"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
