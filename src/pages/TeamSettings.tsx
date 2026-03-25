@@ -176,20 +176,90 @@ export default function TeamSettings() {
     if (!activeOrgId || !user?.id) return;
     setDeleteLoading(true);
 
-    const { error } = await supabase
-      .from('organizations')
-      .delete()
-      .eq('id', activeOrgId);
+    try {
+      // 1. Find backlog trees owned by this org that are shared with other orgs
+      const { data: ownedTrees } = await supabase
+        .from('backlog_trees')
+        .select('id')
+        .eq('organization_id', activeOrgId);
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      setDeleteLoading(false);
-      return;
+      const ownedTreeIds = (ownedTrees ?? []).map(t => t.id);
+
+      if (ownedTreeIds.length > 0) {
+        // Find shares for these trees
+        const { data: shares } = await supabase
+          .from('backlog_tree_shares' as any)
+          .select('tree_id, organization_id')
+          .in('tree_id', ownedTreeIds);
+
+        // Group shares by tree
+        const sharesByTree = new Map<string, string[]>();
+        for (const s of (shares ?? []) as any[]) {
+          const list = sharesByTree.get(s.tree_id) ?? [];
+          list.push(s.organization_id);
+          sharesByTree.set(s.tree_id, list);
+        }
+
+        // Transfer shared trees to the first shared org
+        for (const [treeId, orgIds] of sharesByTree) {
+          const newOwnerId = orgIds[0];
+
+          // Transfer tree ownership
+          await supabase.from('backlog_trees').update({ organization_id: newOwnerId }).eq('id', treeId);
+
+          // Transfer backlogs ownership
+          await supabase.from('backlogs').update({ organization_id: newOwnerId }).eq('tree_id', treeId);
+
+          // Transfer work items that reference this tree
+          // (items owned by the deleted org that have assignments to this tree)
+          const { data: items } = await supabase
+            .from('work_items')
+            .select('id, backlog_assignments')
+            .eq('organization_id', activeOrgId);
+
+          const itemsInTree = (items ?? []).filter((item: any) => {
+            const assignments = item.backlog_assignments as Record<string, string>;
+            return assignments[treeId] !== undefined;
+          });
+
+          if (itemsInTree.length > 0) {
+            const itemIds = itemsInTree.map((i: any) => i.id);
+            await supabase.from('work_items').update({ organization_id: newOwnerId }).in('id', itemIds);
+          }
+
+          // Remove the share entry for the new owner (they now own it)
+          await supabase
+            .from('backlog_tree_shares' as any)
+            .delete()
+            .eq('tree_id', treeId)
+            .eq('organization_id', newOwnerId);
+        }
+      }
+
+      // 2. Now delete the organization (non-shared trees/backlogs/items will cascade or be cleaned up)
+      // Delete remaining work items owned by this org
+      await supabase.from('work_items').delete().eq('organization_id', activeOrgId);
+      // Delete remaining backlogs owned by this org
+      await supabase.from('backlogs').delete().eq('organization_id', activeOrgId);
+      // Delete remaining backlog trees owned by this org
+      await supabase.from('backlog_trees').delete().eq('organization_id', activeOrgId);
+      // Delete memberships
+      await supabase.from('memberships').delete().eq('organization_id', activeOrgId);
+      // Delete the org itself
+      const { error } = await supabase.from('organizations').delete().eq('id', activeOrgId);
+
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        setDeleteLoading(false);
+        return;
+      }
+
+      toast({ title: 'Organization deleted', description: 'Shared backlog trees were transferred to their shared organizations.' });
+      await loadMemberships(user.id);
+      navigate('/');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
-
-    toast({ title: 'Organization deleted' });
-    await loadMemberships(user.id);
-    navigate('/');
     setDeleteLoading(false);
   };
 
