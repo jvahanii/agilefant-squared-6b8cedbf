@@ -239,6 +239,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
             flex items-center gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
             transition-all duration-150 ease-out group
             border select-none touch-none
+            ${isChildBacklog ? 'text-muted-foreground' : ''}
             ${isSelected
               ? 'bg-selection/10 border-selection/30 ring-1 ring-selection/30'
               : 'border-transparent hover:bg-muted hover:border-border'}
