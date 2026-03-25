@@ -9,6 +9,7 @@ import { Undo2, Keyboard, RotateCcw, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { OrgSwitcher } from '@/components/OrgSwitcher';
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
