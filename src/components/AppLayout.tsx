@@ -9,6 +9,7 @@ import { Undo2, Keyboard, RotateCcw, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import agilefantLogo from '@/assets/agilefant-logo.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { OrgSwitcher } from '@/components/OrgSwitcher';
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -291,6 +292,7 @@ export default function AppLayout() {
           <h1 className="text-sm font-bold tracking-tight">Agilefant
             <sup className="text-xs text-primary">2</sup>
           </h1>
+          <OrgSwitcher />
           <div className="ml-auto flex items-center gap-2">
             <button
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"

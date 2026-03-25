@@ -1,9 +1,21 @@
+import { useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
+import { useOrgStore } from '@/store/orgStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
-  
+  const setOrganizationId = useAppStore(s => s.setOrganizationId);
+  const loadData = useAppStore(s => s.loadFromSupabase);
+  const activeOrgId = useOrgStore(s => s.activeOrgId);
+
+  useEffect(() => {
+    if (activeOrgId) {
+      setOrganizationId(activeOrgId);
+      loadData();
+    }
+  }, [activeOrgId]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background text-foreground">
@@ -11,7 +23,7 @@ const Index = () => {
       </div>
     );
   }
-  
+
   return <AppLayout />;
 };
 
