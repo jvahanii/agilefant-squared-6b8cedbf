@@ -1,9 +1,59 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2 } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ShareTreeDialog } from "./ShareTreeDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrgStore } from "@/store/orgStore";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+
+interface TreeShare {
+  orgId: string;
+  orgName: string;
+}
+
+function useTreeShares(treeIds: string[]) {
+  const [shares, setShares] = useState<Record<string, TreeShare[]>>({});
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+
+  useEffect(() => {
+    if (treeIds.length === 0) return;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('backlog_tree_shares' as any)
+        .select('tree_id, organization_id')
+        .in('tree_id', treeIds);
+      if (error || !data) return;
+
+      const orgIds = [...new Set((data as any[]).map((s) => s.organization_id as string))];
+      let orgMap = new Map<string, string>();
+      if (orgIds.length > 0) {
+        const { data: orgs } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .in('id', orgIds);
+        orgMap = new Map((orgs ?? []).map((o) => [o.id, o.name]));
+      }
+
+      const result: Record<string, TreeShare[]> = {};
+      for (const row of data as any[]) {
+        const treeId = row.tree_id as string;
+        if (!result[treeId]) result[treeId] = [];
+        result[treeId].push({
+          orgId: row.organization_id,
+          orgName: orgMap.get(row.organization_id) ?? 'Unknown',
+        });
+      }
+      setShares(result);
+    };
+
+    load();
+  }, [treeIds.join(','), activeOrgId]);
+
+  return shares;
+}
 
 interface BacklogNodeProps {
   backlogId: string;
