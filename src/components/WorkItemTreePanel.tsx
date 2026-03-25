@@ -1,9 +1,16 @@
 import { useAppStore } from '@/store/appStore';
+import { WORK_ITEM_STATUSES, WorkItemStatus } from '@/types/models';
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from 'lucide-react';
 import { useDraggable, useDroppable, DragOverEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { ActionPrompt } from './ActionPrompt';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 function EditableBacklogName({ backlogId }: { backlogId: string }) {
   const backlog = useAppStore(s => s.backlogs[backlogId]);
