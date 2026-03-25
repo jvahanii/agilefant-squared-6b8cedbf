@@ -468,6 +468,16 @@ function DraggableTreeHeader({
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onClick={(e) => {
             e.stopPropagation();
+            onShareTree();
+          }}
+          title="Share tree with another organization"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
             onAddBacklog();
           }}
           title="Add root backlog"
