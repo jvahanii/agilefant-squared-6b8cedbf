@@ -38,12 +38,26 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   const [backlogsRes, itemsRes] = await Promise.all([backlogsPromise, ownItemsPromise]);
 
-  if (treesRes.error) throw treesRes.error;
   if (backlogsRes.error) throw backlogsRes.error;
   if (itemsRes.error) throw itemsRes.error;
 
+  // Also load work items from shared trees that belong to other orgs
+  let sharedWorkItems: any[] = [];
+  if (sharedTreeIds.length > 0) {
+    // Load all work items that reference shared trees (from other orgs)
+    const { data: allSharedItems } = await supabase
+      .from('work_items')
+      .select('*')
+      .neq('organization_id', organizationId);
+    // Filter to items that have assignments to shared trees
+    sharedWorkItems = (allSharedItems ?? []).filter((item: any) => {
+      const assignments = item.backlog_assignments as Record<string, string>;
+      return Object.keys(assignments).some(treeId => sharedTreeIds.includes(treeId));
+    });
+  }
+
   const backlogTrees: Record<string, BacklogTree> = {};
-  for (const row of treesRes.data) {
+  for (const row of allTreeRows) {
     backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
   }
 
