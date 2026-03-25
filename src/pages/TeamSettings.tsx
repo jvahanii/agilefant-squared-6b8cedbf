@@ -9,8 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, UserPlus, Trash2, KeyRound } from 'lucide-react';
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Member {
   id: string;
@@ -30,6 +34,17 @@ export default function TeamSettings() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
   const [loading, setLoading] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
+
+  // Org rename state
+  const [isRenamingOrg, setIsRenamingOrg] = useState(false);
+  const [orgName, setOrgName] = useState('');
+  const [orgSlug, setOrgSlug] = useState('');
+  const [renameLoading, setRenameLoading] = useState(false);
+
+  // Delete state
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const currentRole = activeOrg?.role;
   const canManage = currentRole === 'owner' || currentRole === 'admin';
@@ -39,6 +54,19 @@ export default function TeamSettings() {
     loadMembers();
   }, [activeOrgId]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('is_superuser').eq('id', user.id).single()
+      .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (activeOrg) {
+      setOrgName(activeOrg.organization_name);
+      setOrgSlug(activeOrg.organization_slug);
+    }
+  }, [activeOrg?.organization_name, activeOrg?.organization_slug]);
+
   const loadMembers = async () => {
     if (!activeOrgId) return;
     const { data, error } = await supabase
@@ -47,7 +75,6 @@ export default function TeamSettings() {
       .eq('organization_id', activeOrgId);
     if (error) { console.error(error); return; }
 
-    // Load profiles for these users
     const userIds = data.map(m => m.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
@@ -69,7 +96,6 @@ export default function TeamSettings() {
     if (!activeOrgId || !inviteEmail) return;
     setLoading(true);
 
-    // Find user by email in profiles
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('id')
@@ -126,6 +152,47 @@ export default function TeamSettings() {
     }
   };
 
+  const handleRenameOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeOrgId || !orgName.trim() || !orgSlug.trim()) return;
+    setRenameLoading(true);
+
+    const { error } = await supabase
+      .from('organizations')
+      .update({ name: orgName.trim(), slug: orgSlug.trim().toLowerCase() })
+      .eq('id', activeOrgId);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Organization updated' });
+      setIsRenamingOrg(false);
+      if (user?.id) await loadMemberships(user.id);
+    }
+    setRenameLoading(false);
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!activeOrgId || !user?.id) return;
+    setDeleteLoading(true);
+
+    const { error } = await supabase
+      .from('organizations')
+      .delete()
+      .eq('id', activeOrgId);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setDeleteLoading(false);
+      return;
+    }
+
+    toast({ title: 'Organization deleted' });
+    await loadMemberships(user.id);
+    navigate('/');
+    setDeleteLoading(false);
+  };
+
   const roleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner': return 'default';
@@ -143,6 +210,49 @@ export default function TeamSettings() {
           </Button>
           <h1 className="text-xl font-bold">Team Settings — {activeOrg?.organization_name}</h1>
         </div>
+
+        {/* Organization Settings */}
+        {canManage && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Pencil className="w-4 h-4" /> Organization
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isRenamingOrg ? (
+                <form onSubmit={handleRenameOrg} className="space-y-3">
+                  <div className="space-y-1">
+                    <Label>Name</Label>
+                    <Input value={orgName} onChange={e => setOrgName(e.target.value)} required />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Slug</Label>
+                    <Input value={orgSlug} onChange={e => setOrgSlug(e.target.value)} required />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={renameLoading}>
+                      {renameLoading ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsRenamingOrg(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{activeOrg?.organization_name}</p>
+                    <p className="text-xs text-muted-foreground">Slug: {activeOrg?.organization_slug}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setIsRenamingOrg(true)}>
+                    <Pencil className="w-3.5 h-3.5 mr-1" /> Rename
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {canManage && (
           <Card>
@@ -229,6 +339,7 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -239,6 +350,59 @@ export default function TeamSettings() {
             <ChangePasswordForm />
           </CardContent>
         </Card>
+
+        {/* Danger Zone — Superuser only */}
+        {isSuperuser && (
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-4 h-4" /> Danger Zone
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Delete this organization</p>
+                  <p className="text-xs text-muted-foreground">
+                    This will permanently delete the organization, all its data, and remove all members.
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete "{activeOrg?.organization_name}"?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. All backlogs, work items, and memberships will be permanently deleted.
+                        <br /><br />
+                        Type <strong>{activeOrg?.organization_slug}</strong> to confirm:
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                      value={deleteConfirmText}
+                      onChange={e => setDeleteConfirmText(e.target.value)}
+                      placeholder={activeOrg?.organization_slug}
+                    />
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={deleteConfirmText !== activeOrg?.organization_slug || deleteLoading}
+                        onClick={handleDeleteOrg}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteLoading ? 'Deleting...' : 'Delete Organization'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
