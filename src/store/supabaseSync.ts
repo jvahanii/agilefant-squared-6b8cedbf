@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { WorkItem, Backlog, BacklogTree } from '@/types/models';
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
 
 // ─── Load all data from Supabase ───────────────────────────────────────────
 
