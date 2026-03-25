@@ -424,10 +424,12 @@ function DraggableTreeHeader({
   tree,
   onAddBacklog,
   onDeleteTree,
+  onShareTree,
 }: {
   tree: { id: string; name: string; rank: number; rootBacklogIds: string[] };
   onAddBacklog: () => void;
   onDeleteTree: () => void;
+  onShareTree: () => void;
 }) {
   const dragStartedRef = useRef(false);
   const {
