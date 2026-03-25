@@ -18,24 +18,36 @@ export type Database = {
         Row: {
           id: string
           name: string
+          organization_id: string | null
           rank: number
         }
         Insert: {
           id: string
           name: string
+          organization_id?: string | null
           rank?: number
         }
         Update: {
           id?: string
           name?: string
+          organization_id?: string | null
           rank?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "backlog_trees_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       backlogs: {
         Row: {
           id: string
           name: string
+          organization_id: string | null
           parent_id: string | null
           rank: number
           tree_id: string
@@ -43,6 +55,7 @@ export type Database = {
         Insert: {
           id: string
           name: string
+          organization_id?: string | null
           parent_id?: string | null
           rank?: number
           tree_id: string
@@ -50,11 +63,19 @@ export type Database = {
         Update: {
           id?: string
           name?: string
+          organization_id?: string | null
           parent_id?: string | null
           rank?: number
           tree_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "backlogs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "backlogs_parent_id_fkey"
             columns: ["parent_id"]
@@ -70,6 +91,86 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      memberships: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          is_superuser: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_superuser?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_superuser?: boolean
+        }
+        Relationships: []
       }
       test_notes: {
         Row: {
@@ -94,6 +195,7 @@ export type Database = {
           backlog_assignments: Json
           description: string | null
           id: string
+          organization_id: string | null
           parent_id: string | null
           points: number | null
           rank: number
@@ -104,6 +206,7 @@ export type Database = {
           backlog_assignments?: Json
           description?: string | null
           id: string
+          organization_id?: string | null
           parent_id?: string | null
           points?: number | null
           rank?: number
@@ -114,6 +217,7 @@ export type Database = {
           backlog_assignments?: Json
           description?: string | null
           id?: string
+          organization_id?: string | null
           parent_id?: string | null
           points?: number | null
           rank?: number
@@ -121,6 +225,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "work_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "work_items_parent_id_fkey"
             columns: ["parent_id"]
@@ -135,10 +246,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_memberships: {
+        Args: { _user_id: string }
+        Returns: {
+          organization_id: string
+          organization_name: string
+          organization_slug: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_member_of: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_superuser: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -265,6 +397,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "admin", "member"],
+    },
   },
 } as const
