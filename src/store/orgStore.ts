@@ -50,18 +50,13 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   },
 
   createOrganization: async (name: string, slug: string, userId: string) => {
-    const orgId = crypto.randomUUID();
-    const { error: orgError } = await supabase
-      .from('organizations')
-      .insert({ id: orgId, name, slug });
-    if (orgError) throw orgError;
-
-    const { error: memError } = await supabase
-      .from('memberships')
-      .insert({ user_id: userId, organization_id: orgId, role: 'owner' });
-    if (memError) throw memError;
-
-    return orgId;
+    const { data, error } = await supabase.rpc('create_organization_with_owner', {
+      _name: name,
+      _slug: slug,
+      _user_id: userId,
+    });
+    if (error) throw error;
+    return data as string;
   },
 
   getActiveOrg: () => {
