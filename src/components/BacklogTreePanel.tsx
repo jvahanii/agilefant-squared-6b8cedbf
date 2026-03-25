@@ -1,8 +1,9 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2 } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { ShareTreeDialog } from "./ShareTreeDialog";
 
 interface BacklogNodeProps {
   backlogId: string;
