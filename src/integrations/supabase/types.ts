@@ -257,6 +257,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_organization_with_owner: {
+        Args: { _name: string; _slug: string; _user_id: string }
+        Returns: string
+      }
       get_user_memberships: {
         Args: { _user_id: string }
         Returns: {
