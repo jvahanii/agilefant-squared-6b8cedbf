@@ -14,6 +14,17 @@ export function generateMockData() {
       },
       rank: 2,
     },
+    "wi-1ec9c26c": {
+      id: "wi-1ec9c26c",
+      title: "change redo to ctrl-Y",
+      status: "done",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-9ac6663d",
+      },
+      rank: 6,
+    },
     "wi-1b45638e": {
       id: "wi-1b45638e",
       title: "asfa",
@@ -71,7 +82,7 @@ export function generateMockData() {
     },
     "wi-dc34c4fb": {
       id: "wi-dc34c4fb",
-      title: "changelog  tyhjenee kun refreshaa",
+      title: "changelog  tyhjenee kun refreshaa - tallenna tietokantaan",
       status: "in_progress",
       parentId: null,
       childrenIds: ["wi-e92e6519"],
@@ -644,7 +655,7 @@ export function generateMockData() {
       backlogAssignments: {
         "tree-64b6aad9": "bl-9ac6663d",
       },
-      rank: 55,
+      rank: 4,
     },
     "wi-beaa5b36": {
       id: "wi-beaa5b36",
@@ -660,24 +671,90 @@ export function generateMockData() {
     "wi-2ec4640c": {
       id: "wi-2ec4640c",
       title: "dsa",
+      status: "not_started",
       parentId: null,
       childrenIds: [],
-      status: "not_started",
       backlogAssignments: {
         "tree-9db09013": "bl-a0fa0068",
       },
       rank: 56,
     },
-    "wi-1ec9c26c": {
-      id: "wi-1ec9c26c",
-      title: "change redo to ctrl-Y",
+    "wi-44521d20": {
+      id: "wi-44521d20",
+      title: "Fat% 20",
+      parentId: null,
+      childrenIds: ["wi-d4fa2142"],
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 58,
+    },
+    "wi-0e18ce92": {
+      id: "wi-0e18ce92",
+      title: "Muscle% 40",
       parentId: null,
       childrenIds: [],
-      status: "done",
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 59,
+    },
+    "wi-5548fc2a": {
+      id: "wi-5548fc2a",
+      title: "VO2max 50",
+      parentId: null,
+      childrenIds: [],
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 60,
+    },
+    "wi-c207f75c": {
+      id: "wi-c207f75c",
+      title: "consistently start with3",
+      parentId: "wi-43a1075a",
+      childrenIds: [],
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 61,
+    },
+    "wi-43a1075a": {
+      id: "wi-43a1075a",
+      title: "consistently start with 2",
+      parentId: "wi-d4fa2142",
+      childrenIds: ["wi-c207f75c"],
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 1,
+    },
+    "wi-d4fa2142": {
+      id: "wi-d4fa2142",
+      title: "hover between starting with 1 and 2",
+      parentId: "wi-44521d20",
+      childrenIds: ["wi-43a1075a"],
+      status: "in_progress",
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 0,
+    },
+    "wi-d85c4785": {
+      id: "wi-d85c4785",
+      title: "Done to propagate down, in progress to propagate up",
+      parentId: null,
+      childrenIds: [],
+      status: "not_started",
       backlogAssignments: {
         "tree-64b6aad9": "bl-9ac6663d",
       },
-      rank: 57,
+      rank: 5,
     },
   };
 
@@ -759,11 +836,19 @@ export function generateMockData() {
     },
     "bl-a0fa0068": {
       id: "bl-a0fa0068",
-      name: "what",
+      name: "MWB: Shredded Grandpa",
       parentId: null,
-      childrenIds: [],
+      childrenIds: ["bl-8d4c1a11"],
       treeId: "tree-9db09013",
       rank: 0,
+    },
+    "bl-8d4c1a11": {
+      id: "bl-8d4c1a11",
+      name: "Health goals Q2/2026",
+      parentId: "bl-a0fa0068",
+      childrenIds: [],
+      treeId: "tree-9db09013",
+      rank: 1,
     },
   };
 
