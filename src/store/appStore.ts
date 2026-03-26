@@ -459,6 +459,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
+        logChange({ action: 'Delete backlog', entityType: 'backlog', entityId: backlogId, entityName: backlog.name });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
