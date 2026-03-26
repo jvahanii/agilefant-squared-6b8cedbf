@@ -503,6 +503,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["↑", "↓"], description: "Reorder selected work item among siblings" },
     { keys: ["Esc"], description: "Deselect work item" },
     { keys: ["Ctrl", "Z"], description: "Undo last action" },
+    { keys: ["Ctrl", "Shift", "Z"], description: "Redo last action" },
     { keys: ["?"], description: "Toggle this help" },
   ];
 
