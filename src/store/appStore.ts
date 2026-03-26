@@ -555,6 +555,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
       set(state => {
         const item = state.workItems[workItemId];
         if (!item) return state;
+        logChange({ action: 'Delete work item', entityType: 'work_item', entityId: workItemId, entityName: item.title });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
