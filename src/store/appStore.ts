@@ -448,6 +448,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const next = new Set(state.expandedBacklogs);
         if (parentId) next.add(parentId);
 
+        logChange({ action: 'Add backlog', entityType: 'backlog', entityId: id, entityName: name });
         upsertBacklog(newBacklog, orgId);
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: next };
       });
