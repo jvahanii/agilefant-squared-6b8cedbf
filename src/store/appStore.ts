@@ -124,6 +124,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
           expandedWorkItems: new Set<string>(),
           isLoading: false,
           undoStack: [],
+          redoStack: [],
         });
       } catch (err) {
         console.error('Failed to load from Supabase:', err);
