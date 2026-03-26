@@ -536,6 +536,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         const updatedItems = { ...state.workItems, [id]: newItem };
 
+        logChange({ action: 'Add work item', entityType: 'work_item', entityId: id, entityName: title });
         upsertWorkItem(newItem, orgId);
 
         if (parentId && updatedItems[parentId]) {
