@@ -20,6 +20,7 @@ interface DataSnapshot {
 
 interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
+  redoStack: DataSnapshot[];
   isLoading: boolean;
   organizationId: string | null;
   setOrganizationId: (orgId: string) => void;
