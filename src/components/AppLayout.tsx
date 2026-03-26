@@ -448,7 +448,7 @@ export default function AppLayout() {
               `}
               onClick={redo}
               disabled={redoStackLength === 0}
-              title="Redo (Ctrl+Shift+Z)"
+              title="Redo (Ctrl+Y)"
             >
               <Redo2 className="w-4 h-4" />
             </button>
@@ -525,7 +525,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["↑", "↓"], description: "Reorder selected work item among siblings" },
     { keys: ["Esc"], description: "Deselect work item" },
     { keys: ["Ctrl", "Z"], description: "Undo last action" },
-    { keys: ["Ctrl", "Shift", "Z"], description: "Redo last action" },
+    { keys: ["Ctrl", "Y"], description: "Redo last action" },
     { keys: ["?"], description: "Toggle this help" },
   ];
 
