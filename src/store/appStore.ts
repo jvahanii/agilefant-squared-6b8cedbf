@@ -68,10 +68,10 @@ function snapshot(state: DataSnapshot): DataSnapshot {
   };
 }
 
-const MAX_UNDO = 50;
+const MAX_UNDO = 100;
 
 function pushUndo(state: AppState & { expandedWorkItems: Set<string>; expandedBacklogs: Set<string> }) {
-  return { undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] };
+  return { undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] };
 }
 
 type StoreState = AppState & {
