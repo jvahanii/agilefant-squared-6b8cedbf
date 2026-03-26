@@ -163,7 +163,7 @@ export default function AppLayout() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo]);
+  }, [undo, redo]);
 
   const countWithDescendants = useCallback((ids: string[]) => {
     const store = useAppStore.getState();
