@@ -8,6 +8,17 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useState, useCallback, useEffect } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
@@ -340,17 +351,36 @@ export default function AppLayout() {
               <Copy className="w-3.5 h-3.5" />
               Export data
             </button>
-            <button
-              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                if (confirm("Are you sure you want to wipe all data and reset it to example data?"))
-                  useAppStore.getState().resetToMockData();
-              }}
-              title="Reset to mock data"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset data
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+                  title="Reset to mock data"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset data
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive font-bold text-lg">
+                    DANGER ZONE!
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm">
+                    Are you sure you want to wipe all data and reset it to example data?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => useAppStore.getState().resetToMockData()}
+                  >
+                    Reset all data
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
