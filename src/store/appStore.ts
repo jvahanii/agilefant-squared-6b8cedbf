@@ -184,6 +184,8 @@ export const useAppStore = create<StoreState>()((set, get) => {
       try {
         const mockData = generateMockData();
         await resetOrgData(orgId, mockData);
+        clearChangeLog();
+        logChange({ action: 'Reset to mock data', entityType: 'data' });
         await get().loadFromSupabase();
       } catch (err) {
         console.error('resetToMockData failed:', err);
