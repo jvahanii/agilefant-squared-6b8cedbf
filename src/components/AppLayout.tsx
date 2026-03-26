@@ -359,6 +359,29 @@ export default function AppLayout() {
               <Copy className="w-3.5 h-3.5" />
               Export data
             </button>
+            <button
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const log = getChangeLog();
+                if (log.length === 0) {
+                  toast({ title: "No changes recorded yet" });
+                  return;
+                }
+                const csv = exportChangeLogAsCsv();
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({ title: `Exported ${log.length} change log entries` });
+              }}
+              title="Export data change log"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Export data change log
+            </button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
