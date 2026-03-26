@@ -608,6 +608,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const item = state.workItems[workItemId];
         if (!item) return state;
         const updated = { ...item, status };
+        logChange({ action: 'Set status', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Status → ${status}` });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
