@@ -632,6 +632,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const item = state.workItems[workItemId];
         if (!item || !title.trim()) return state;
         const updated = { ...item, title: title.trim() };
+        logChange({ action: 'Rename work item', entityType: 'work_item', entityId: workItemId, entityName: title.trim(), details: `From "${item.title}"` });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
