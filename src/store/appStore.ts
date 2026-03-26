@@ -159,7 +159,16 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
-        return { ...prev, undoStack: stack };
+        return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
+      });
+    },
+
+    redo: () => {
+      set(state => {
+        const stack = [...state.redoStack];
+        const next = stack.pop();
+        if (!next) return state;
+        return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       });
     },
 
