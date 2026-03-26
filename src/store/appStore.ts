@@ -20,6 +20,7 @@ interface DataSnapshot {
 
 interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
+  redoStack: DataSnapshot[];
   isLoading: boolean;
   organizationId: string | null;
   setOrganizationId: (orgId: string) => void;
@@ -52,6 +53,7 @@ interface AppState extends DataSnapshot {
   reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
+  redo: () => void;
 }
 
 const expandedWorkItems = new Set<string>();
@@ -68,10 +70,10 @@ function snapshot(state: DataSnapshot): DataSnapshot {
   };
 }
 
-const MAX_UNDO = 50;
+const MAX_UNDO = 100;
 
 function pushUndo(state: AppState & { expandedWorkItems: Set<string>; expandedBacklogs: Set<string> }) {
-  return { undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] };
+  return { undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] };
 }
 
 type StoreState = AppState & {
@@ -96,6 +98,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     expandedWorkItems,
     expandedBacklogs,
     undoStack: [],
+    redoStack: [],
     isLoading: true,
     organizationId: null,
 
@@ -121,6 +124,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
           expandedWorkItems: new Set<string>(),
           isLoading: false,
           undoStack: [],
+          redoStack: [],
         });
       } catch (err) {
         console.error('Failed to load from Supabase:', err);
@@ -159,7 +163,16 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
-        return { ...prev, undoStack: stack };
+        return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
+      });
+    },
+
+    redo: () => {
+      set(state => {
+        const stack = [...state.redoStack];
+        const next = stack.pop();
+        if (!next) return state;
+        return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       });
     },
 

@@ -24,7 +24,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Keyboard, RotateCcw, Copy } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import agilefantLogo from "@/assets/agilefant-logo.png";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -50,7 +50,9 @@ export default function AppLayout() {
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const undo = useAppStore((s) => s.undo);
+  const redo = useAppStore((s) => s.redo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
+  const redoStackLength = useAppStore((s) => s.redoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -66,6 +68,11 @@ export default function AppLayout() {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault();
+        redo();
         return;
       }
 
@@ -156,7 +163,7 @@ export default function AppLayout() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo]);
+  }, [undo, redo]);
 
   const countWithDescendants = useCallback((ids: string[]) => {
     const store = useAppStore.getState();
@@ -408,6 +415,21 @@ export default function AppLayout() {
             >
               <Undo2 className="w-4 h-4" />
             </button>
+            <button
+              className={`
+                w-8 h-8 flex items-center justify-center rounded-md transition-colors
+                ${
+                  redoStackLength > 0
+                    ? "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    : "text-muted-foreground/30 cursor-not-allowed"
+                }
+              `}
+              onClick={redo}
+              disabled={redoStackLength === 0}
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
@@ -481,6 +503,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["↑", "↓"], description: "Reorder selected work item among siblings" },
     { keys: ["Esc"], description: "Deselect work item" },
     { keys: ["Ctrl", "Z"], description: "Undo last action" },
+    { keys: ["Ctrl", "Shift", "Z"], description: "Redo last action" },
     { keys: ["?"], description: "Toggle this help" },
   ];
 
