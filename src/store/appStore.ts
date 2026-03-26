@@ -8,6 +8,7 @@ import {
   resetOrgData,
 } from './supabaseSync';
 import { generateMockData } from './mockData';
+import { logChange, clearChangeLog } from './changeLog';
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
