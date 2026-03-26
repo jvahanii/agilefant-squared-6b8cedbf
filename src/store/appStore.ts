@@ -8,6 +8,7 @@ import {
   resetOrgData,
 } from './supabaseSync';
 import { generateMockData } from './mockData';
+import { logChange, clearChangeLog } from './changeLog';
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
@@ -183,6 +184,8 @@ export const useAppStore = create<StoreState>()((set, get) => {
       try {
         const mockData = generateMockData();
         await resetOrgData(orgId, mockData);
+        clearChangeLog();
+        logChange({ action: 'Reset to mock data', entityType: 'data' });
         await get().loadFromSupabase();
       } catch (err) {
         console.error('resetToMockData failed:', err);
@@ -210,6 +213,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         moveRecursive(workItemId);
 
+        logChange({ action: 'Move to backlog', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Moved to backlog ${targetBacklogId}` });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
@@ -444,6 +448,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const next = new Set(state.expandedBacklogs);
         if (parentId) next.add(parentId);
 
+        logChange({ action: 'Add backlog', entityType: 'backlog', entityId: id, entityName: name });
         upsertBacklog(newBacklog, orgId);
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: next };
       });
@@ -454,6 +459,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
+        logChange({ action: 'Delete backlog', entityType: 'backlog', entityId: backlogId, entityName: backlog.name });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
@@ -530,6 +536,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         const updatedItems = { ...state.workItems, [id]: newItem };
 
+        logChange({ action: 'Add work item', entityType: 'work_item', entityId: id, entityName: title });
         upsertWorkItem(newItem, orgId);
 
         if (parentId && updatedItems[parentId]) {
@@ -548,6 +555,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
       set(state => {
         const item = state.workItems[workItemId];
         if (!item) return state;
+        logChange({ action: 'Delete work item', entityType: 'work_item', entityId: workItemId, entityName: item.title });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
@@ -588,6 +596,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         removeRecursive(workItemId);
 
+        logChange({ action: 'Remove from tree', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Removed from tree ${treeId}` });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
@@ -599,6 +608,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const item = state.workItems[workItemId];
         if (!item) return state;
         const updated = { ...item, status };
+        logChange({ action: 'Set status', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Status → ${status}` });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
@@ -610,6 +620,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
         const updated = { ...backlog, name: name.trim() };
+        logChange({ action: 'Rename backlog', entityType: 'backlog', entityId: backlogId, entityName: name.trim(), details: `From "${backlog.name}"` });
         upsertBacklog(updated, orgId);
         return { ...pushUndo(state), backlogs: { ...state.backlogs, [backlogId]: updated } };
       });
@@ -621,6 +632,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const item = state.workItems[workItemId];
         if (!item || !title.trim()) return state;
         const updated = { ...item, title: title.trim() };
+        logChange({ action: 'Rename work item', entityType: 'work_item', entityId: workItemId, entityName: title.trim(), details: `From "${item.title}"` });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
@@ -632,6 +644,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const item = state.workItems[workItemId];
         if (!item) return state;
         const updated = { ...item, points };
+        logChange({ action: 'Set points', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Points → ${points ?? 'none'}` });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
@@ -643,6 +656,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const tree = state.backlogTrees[treeId];
         if (!tree || !name.trim()) return state;
         const updated = { ...tree, name: name.trim() };
+        logChange({ action: 'Rename tree', entityType: 'backlog_tree', entityId: treeId, entityName: name.trim(), details: `From "${tree.name}"` });
         upsertBacklogTree(updated, orgId);
         return { ...pushUndo(state), backlogTrees: { ...state.backlogTrees, [treeId]: updated } };
       });
@@ -654,6 +668,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
         const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map(t => t.rank ?? 0));
         const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [], rank: maxRank + 1 };
+        logChange({ action: 'Add tree', entityType: 'backlog_tree', entityId: id, entityName: name.trim() });
         upsertBacklogTree(newTree, orgId);
         return { ...pushUndo(state), backlogTrees: { ...state.backlogTrees, [id]: newTree } };
       });
@@ -664,6 +679,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const tree = state.backlogTrees[treeId];
         if (!tree) return state;
+        logChange({ action: 'Delete tree', entityType: 'backlog_tree', entityId: treeId, entityName: tree.name });
 
         const undo = pushUndo(state);
         const updatedBacklogs = { ...state.backlogs };

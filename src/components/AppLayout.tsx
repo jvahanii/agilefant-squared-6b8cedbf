@@ -24,8 +24,9 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import agilefantLogo from "@/assets/agilefant-logo.png";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
@@ -357,6 +358,29 @@ export default function AppLayout() {
             >
               <Copy className="w-3.5 h-3.5" />
               Export data
+            </button>
+            <button
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const log = getChangeLog();
+                if (log.length === 0) {
+                  toast({ title: "No changes recorded yet" });
+                  return;
+                }
+                const csv = exportChangeLogAsCsv();
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({ title: `Exported ${log.length} change log entries` });
+              }}
+              title="Export data change log"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Export data change log
             </button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
