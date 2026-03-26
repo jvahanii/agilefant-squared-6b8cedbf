@@ -53,6 +53,7 @@ interface AppState extends DataSnapshot {
   reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
+  redo: () => void;
 }
 
 const expandedWorkItems = new Set<string>();
