@@ -24,7 +24,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Keyboard, RotateCcw, Copy } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import agilefantLogo from "@/assets/agilefant-logo.png";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
