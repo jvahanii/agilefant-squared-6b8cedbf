@@ -213,6 +213,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         moveRecursive(workItemId);
 
+        logChange({ action: 'Move to backlog', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Moved to backlog ${targetBacklogId}` });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
