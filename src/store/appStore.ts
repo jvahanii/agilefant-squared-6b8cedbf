@@ -679,6 +679,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const tree = state.backlogTrees[treeId];
         if (!tree) return state;
+        logChange({ action: 'Delete tree', entityType: 'backlog_tree', entityId: treeId, entityName: tree.name });
 
         const undo = pushUndo(state);
         const updatedBacklogs = { ...state.backlogs };
