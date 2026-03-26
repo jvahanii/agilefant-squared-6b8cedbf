@@ -620,6 +620,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
         const updated = { ...backlog, name: name.trim() };
+        logChange({ action: 'Rename backlog', entityType: 'backlog', entityId: backlogId, entityName: name.trim(), details: `From "${backlog.name}"` });
         upsertBacklog(updated, orgId);
         return { ...pushUndo(state), backlogs: { ...state.backlogs, [backlogId]: updated } };
       });
