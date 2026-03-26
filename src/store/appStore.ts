@@ -98,6 +98,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     expandedWorkItems,
     expandedBacklogs,
     undoStack: [],
+    redoStack: [],
     isLoading: true,
     organizationId: null,
 
