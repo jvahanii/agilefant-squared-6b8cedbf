@@ -50,7 +50,9 @@ export default function AppLayout() {
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const undo = useAppStore((s) => s.undo);
+  const redo = useAppStore((s) => s.redo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
+  const redoStackLength = useAppStore((s) => s.redoStack.length);
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
