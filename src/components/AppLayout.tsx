@@ -415,6 +415,21 @@ export default function AppLayout() {
             >
               <Undo2 className="w-4 h-4" />
             </button>
+            <button
+              className={`
+                w-8 h-8 flex items-center justify-center rounded-md transition-colors
+                ${
+                  redoStackLength > 0
+                    ? "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    : "text-muted-foreground/30 cursor-not-allowed"
+                }
+              `}
+              onClick={redo}
+              disabled={redoStackLength === 0}
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
