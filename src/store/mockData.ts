@@ -14,17 +14,6 @@ export function generateMockData() {
       },
       rank: 2,
     },
-    "wi-1ec9c26c": {
-      id: "wi-1ec9c26c",
-      title: "change redo to ctrl-Y",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
-      },
-      rank: 6,
-    },
     "wi-1b45638e": {
       id: "wi-1b45638e",
       title: "asfa",
@@ -36,16 +25,16 @@ export function generateMockData() {
       },
       rank: 51,
     },
-    "wi-fa0ab672": {
-      id: "wi-fa0ab672",
-      title: "google sign up",
-      status: "not_started",
+    "wi-1ec9c26c": {
+      id: "wi-1ec9c26c",
+      title: "change redo to ctrl-Y",
+      status: "done",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
         "tree-64b6aad9": "bl-9ac6663d",
       },
-      rank: 3,
+      rank: 6,
     },
     "wi-50c48685": {
       id: "wi-50c48685",
@@ -57,6 +46,39 @@ export function generateMockData() {
         "tree-9db09013": "bl-a0fa0068",
       },
       rank: 52,
+    },
+    "wi-5548fc2a": {
+      id: "wi-5548fc2a",
+      title: "VO2max 50",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 60,
+    },
+    "wi-44521d20": {
+      id: "wi-44521d20",
+      title: "Fat% 20",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: ["wi-d4fa2142"],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 58,
+    },
+    "wi-fa0ab672": {
+      id: "wi-fa0ab672",
+      title: "google sign up",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-9ac6663d",
+      },
+      rank: 3,
     },
     "wi-83dc560e": {
       id: "wi-83dc560e",
@@ -80,6 +102,17 @@ export function generateMockData() {
       },
       rank: 10,
     },
+    "wi-0e18ce92": {
+      id: "wi-0e18ce92",
+      title: "Muscle% 40",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 59,
+    },
     "wi-dc34c4fb": {
       id: "wi-dc34c4fb",
       title: "changelog  tyhjenee kun refreshaa - tallenna tietokantaan",
@@ -101,6 +134,17 @@ export function generateMockData() {
         "tree-9db09013": "bl-a0fa0068",
       },
       rank: 54,
+    },
+    "wi-c207f75c": {
+      id: "wi-c207f75c",
+      title: "consistently start with3",
+      status: "in_progress",
+      parentId: "wi-43a1075a",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 61,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d",
@@ -591,16 +635,27 @@ export function generateMockData() {
       },
       rank: 0,
     },
-    "wi-ce414313": {
-      id: "wi-ce414313",
-      title: "add confirmation to backlog deletion",
+    "wi-43a1075a": {
+      id: "wi-43a1075a",
+      title: "consistently start with 2",
+      status: "in_progress",
+      parentId: "wi-d4fa2142",
+      childrenIds: ["wi-c207f75c"],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 1,
+    },
+    "wi-f28f1983": {
+      id: "wi-f28f1983",
+      title: "member-käyttäjien (poislukien superuser) ei tulisi antaa säätää itseään admineiksi tai ownereiksi",
       status: "not_started",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
         "tree-64b6aad9": "bl-9ac6663d",
       },
-      rank: 1,
+      rank: 66,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525",
@@ -646,6 +701,28 @@ export function generateMockData() {
       },
       rank: 6,
     },
+    "wi-d4fa2142": {
+      id: "wi-d4fa2142",
+      title: "hover between starting with 1 and 2",
+      status: "in_progress",
+      parentId: "wi-44521d20",
+      childrenIds: ["wi-43a1075a"],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 0,
+    },
+    "wi-ce414313": {
+      id: "wi-ce414313",
+      title: "add confirmation to backlog deletion",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-9ac6663d",
+      },
+      rank: 1,
+    },
     "wi-23269a64": {
       id: "wi-23269a64",
       title: "snooze items / repeating item",
@@ -679,82 +756,39 @@ export function generateMockData() {
       },
       rank: 56,
     },
-    "wi-44521d20": {
-      id: "wi-44521d20",
-      title: "Fat% 20",
-      parentId: null,
-      childrenIds: ["wi-d4fa2142"],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 58,
-    },
-    "wi-0e18ce92": {
-      id: "wi-0e18ce92",
-      title: "Muscle% 40",
-      parentId: null,
-      childrenIds: [],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 59,
-    },
-    "wi-5548fc2a": {
-      id: "wi-5548fc2a",
-      title: "VO2max 50",
-      parentId: null,
-      childrenIds: [],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 60,
-    },
-    "wi-c207f75c": {
-      id: "wi-c207f75c",
-      title: "consistently start with3",
-      parentId: "wi-43a1075a",
-      childrenIds: [],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 61,
-    },
-    "wi-43a1075a": {
-      id: "wi-43a1075a",
-      title: "consistently start with 2",
-      parentId: "wi-d4fa2142",
-      childrenIds: ["wi-c207f75c"],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 1,
-    },
-    "wi-d4fa2142": {
-      id: "wi-d4fa2142",
-      title: "hover between starting with 1 and 2",
-      parentId: "wi-44521d20",
-      childrenIds: ["wi-43a1075a"],
-      status: "in_progress",
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 0,
-    },
     "wi-d85c4785": {
       id: "wi-d85c4785",
       title: "Done to propagate down, in progress to propagate up",
+      status: "not_started",
       parentId: null,
       childrenIds: [],
-      status: "not_started",
       backlogAssignments: {
         "tree-64b6aad9": "bl-9ac6663d",
       },
       rank: 5,
+    },
+    "wi-44cfd0c9": {
+      id: "wi-44cfd0c9",
+      title:
+        "superuserin tulisi voida vapaasti säätää käyttäjiä kaikissa organisaatioissa membereiksi, admineiksi, ownereiksi",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-9ac6663d",
+      },
+      rank: 65,
+    },
+    "wi-1aca5905": {
+      id: "wi-1aca5905",
+      title: "adminien tulisi voida vapaasti säätää oman organisaationsa käyttäjien luokitusta",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-9ac6663d",
+      },
+      rank: 67,
     },
   };
 
@@ -834,14 +868,6 @@ export function generateMockData() {
       treeId: "tree-64b6aad9",
       rank: 0,
     },
-    "bl-a0fa0068": {
-      id: "bl-a0fa0068",
-      name: "MWB: Shredded Grandpa",
-      parentId: null,
-      childrenIds: ["bl-8d4c1a11"],
-      treeId: "tree-9db09013",
-      rank: 0,
-    },
     "bl-8d4c1a11": {
       id: "bl-8d4c1a11",
       name: "Health goals Q2/2026",
@@ -849,6 +875,14 @@ export function generateMockData() {
       childrenIds: [],
       treeId: "tree-9db09013",
       rank: 1,
+    },
+    "bl-a0fa0068": {
+      id: "bl-a0fa0068",
+      name: "MWB: Shredded Grandpa",
+      parentId: null,
+      childrenIds: ["bl-8d4c1a11"],
+      treeId: "tree-9db09013",
+      rank: 0,
     },
   };
 
