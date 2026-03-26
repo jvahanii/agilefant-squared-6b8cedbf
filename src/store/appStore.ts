@@ -596,6 +596,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         removeRecursive(workItemId);
 
+        logChange({ action: 'Remove from tree', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Removed from tree ${treeId}` });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
