@@ -656,6 +656,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const tree = state.backlogTrees[treeId];
         if (!tree || !name.trim()) return state;
         const updated = { ...tree, name: name.trim() };
+        logChange({ action: 'Rename tree', entityType: 'backlog_tree', entityId: treeId, entityName: name.trim(), details: `From "${tree.name}"` });
         upsertBacklogTree(updated, orgId);
         return { ...pushUndo(state), backlogTrees: { ...state.backlogTrees, [treeId]: updated } };
       });
