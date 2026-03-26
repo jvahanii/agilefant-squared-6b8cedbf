@@ -71,7 +71,7 @@ export default function AppLayout() {
         undo();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "y")) {
         e.preventDefault();
         redo();
         return;
@@ -368,9 +368,9 @@ export default function AppLayout() {
                   return;
                 }
                 const csv = exportChangeLogAsCsv();
-                const blob = new Blob([csv], { type: 'text/csv' });
+                const blob = new Blob([csv], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
+                const a = document.createElement("a");
                 a.href = url;
                 a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
                 a.click();
@@ -394,9 +394,7 @@ export default function AppLayout() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-destructive font-bold text-lg">
-                    DANGER ZONE!
-                  </AlertDialogTitle>
+                  <AlertDialogTitle className="text-destructive font-bold text-lg">DANGER ZONE!</AlertDialogTitle>
                   <AlertDialogDescription className="text-sm">
                     Are you sure you want to wipe all data and reset it to example data?
                   </AlertDialogDescription>
