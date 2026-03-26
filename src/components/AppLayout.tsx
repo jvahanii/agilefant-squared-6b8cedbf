@@ -70,6 +70,11 @@ export default function AppLayout() {
         undo();
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault();
+        redo();
+        return;
+      }
 
       // Don't fire shortcuts when typing in inputs
       if (isInput) return;
