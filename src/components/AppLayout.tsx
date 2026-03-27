@@ -30,6 +30,7 @@ import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import agilefantLogo from "@/assets/agilefant-logo.png";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -43,6 +44,7 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
+  const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
   const moveBacklog = useAppStore((s) => s.moveBacklog);
@@ -345,7 +347,10 @@ export default function AppLayout() {
             <sup className="text-xs text-primary">2</sup>
           </h1>
           <OrgSwitcher />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-sm text-muted-foreground truncate max-w-48">
+              {user?.user_metadata?.full_name || user?.email || ''}
+            </span>
             <button
               className="px-3 py-1.5 text-xs font-medium rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
               onClick={() => {
