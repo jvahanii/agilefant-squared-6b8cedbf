@@ -3,17 +3,6 @@ import { WorkItem, Backlog, BacklogTree } from "@/types/models";
 
 export function generateMockData() {
   const workItems: Record<string, WorkItem> = {
-    "wi-77a60539": {
-      id: "wi-77a60539",
-      title: "item creation tune ups - if an item is selected and sibling is created, put it below the selected item",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 3,
-    },
     "wi-1b45638e": {
       id: "wi-1b45638e",
       title: "asfa",
@@ -25,17 +14,6 @@ export function generateMockData() {
       },
       rank: 51,
     },
-    "wi-1ec9c26c": {
-      id: "wi-1ec9c26c",
-      title: "change redo to ctrl-Y",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 10,
-    },
     "wi-fa0ab672": {
       id: "wi-fa0ab672",
       title: "google sign up",
@@ -43,7 +21,7 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
+        "tree-64b6aad9": "bl-25b6451b",
       },
       rank: 5,
     },
@@ -87,8 +65,8 @@ export function generateMockData() {
       parentId: null,
       childrenIds: ["wi-e92e6519"],
       backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-        "tree-9db09013": "bl-171e88af",
       },
       rank: 0,
     },
@@ -659,28 +637,6 @@ export function generateMockData() {
       },
       rank: 4,
     },
-    "wi-23269a64": {
-      id: "wi-23269a64",
-      title: "snooze items / repeating item",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 6,
-    },
-    "wi-ce414313": {
-      id: "wi-ce414313",
-      title: "add confirmation to backlog deletion",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 2,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525",
       title: "järkkää synkkapalaveri liittyen tulosinfoon",
@@ -749,18 +705,6 @@ export function generateMockData() {
       },
       rank: 71,
     },
-    "wi-e92e6519": {
-      id: "wi-e92e6519",
-      title: "add item rank changes to change log",
-      status: "not_started",
-      parentId: "wi-dc34c4fb",
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 52,
-    },
     "wi-44cfd0c9": {
       id: "wi-44cfd0c9",
       title:
@@ -769,31 +713,10 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
         "tree-9db09013": "bl-171e88af",
       },
       rank: 1,
-    },
-    "wi-f28f1983": {
-      id: "wi-f28f1983",
-      title: "member-käyttäjien (poislukien superuser) ei tulisi antaa säätää itseään admineiksi tai ownereiksi",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 8,
-    },
-    "wi-1aca5905": {
-      id: "wi-1aca5905",
-      title: "adminien tulisi voida vapaasti säätää oman organisaationsa käyttäjien luokitusta",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 9,
     },
     "wi-8c98fc5c": {
       id: "wi-8c98fc5c",
@@ -829,18 +752,6 @@ export function generateMockData() {
       },
       rank: 0,
     },
-    "wi-d85c4785": {
-      id: "wi-d85c4785",
-      title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 7,
-    },
     "wi-52deda65": {
       id: "wi-52deda65",
       title: "Roudaa Raijan tuoli",
@@ -853,28 +764,122 @@ export function generateMockData() {
       },
       rank: 5,
     },
-    "wi-c8751376": {
-      id: "wi-c8751376",
-      title: "Lisää security fixejä superuseriin liittyen",
+    "wi-1aca5905": {
+      id: "wi-1aca5905",
+      title: "adminien tulisi voida vapaasti säätää oman organisaationsa käyttäjien luokitusta",
+      status: "not_started",
       parentId: null,
       childrenIds: [],
-      status: "done",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 9,
+    },
+    "wi-77a60539": {
+      id: "wi-77a60539",
+      title: "item creation tune ups - if an item is selected and sibling is created, put it below the selected item",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 3,
+    },
+    "wi-ce414313": {
+      id: "wi-ce414313",
+      title: "add confirmation to backlog deletion",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 2,
+    },
+    "wi-23269a64": {
+      id: "wi-23269a64",
+      title: "snooze items / repeating item",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 6,
+    },
+    "wi-f28f1983": {
+      id: "wi-f28f1983",
+      title: "member-käyttäjien (poislukien superuser) ei tulisi antaa säätää itseään admineiksi tai ownereiksi",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
       backlogAssignments: {
         "tree-9db09013": "bl-171e88af",
       },
-      rank: 11,
+      rank: 8,
+    },
+    "wi-1ec9c26c": {
+      id: "wi-1ec9c26c",
+      title: "change redo to ctrl-Y",
+      status: "done",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 10,
     },
     "wi-81f6e48e": {
       id: "wi-81f6e48e",
       title:
         "If no item is selected and a backlog is selected, pressing enter should create a sibling backlog below the selected backlog",
+      status: "not_started",
       parentId: null,
       childrenIds: [],
-      status: "not_started",
       backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
         "tree-9db09013": "bl-171e88af",
       },
       rank: 4,
+    },
+    "wi-d85c4785": {
+      id: "wi-d85c4785",
+      title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 7,
+    },
+    "wi-e92e6519": {
+      id: "wi-e92e6519",
+      title: "add item rank changes to change log",
+      status: "not_started",
+      parentId: "wi-dc34c4fb",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 52,
+    },
+    "wi-c8751376": {
+      id: "wi-c8751376",
+      title: "Lisää security fixejä superuseriin liittyen",
+      status: "done",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 11,
     },
   };
 
@@ -913,14 +918,6 @@ export function generateMockData() {
       childrenIds: [],
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
       rank: 1,
-    },
-    "bl-9ac6663d": {
-      id: "bl-9ac6663d",
-      name: "Product backlog",
-      parentId: null,
-      childrenIds: [],
-      treeId: "tree-64b6aad9",
-      rank: 0,
     },
     "bl-a0fa0068": {
       id: "bl-a0fa0068",
@@ -1018,6 +1015,14 @@ export function generateMockData() {
       treeId: "tree-9db09013",
       rank: 4,
     },
+    "bl-25b6451b": {
+      id: "bl-25b6451b",
+      name: "Backlog",
+      parentId: null,
+      childrenIds: [],
+      treeId: "tree-64b6aad9",
+      rank: 0,
+    },
   };
 
   const backlogTrees: Record<string, BacklogTree> = {
@@ -1033,7 +1038,7 @@ export function generateMockData() {
     "tree-64b6aad9": {
       id: "tree-64b6aad9",
       name: "Agilefant",
-      rootBacklogIds: ["bl-9ac6663d"],
+      rootBacklogIds: ["bl-25b6451b"],
       rank: 3,
     },
     "tree-9db09013": {
