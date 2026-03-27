@@ -462,7 +462,7 @@ export default function AppLayout() {
 
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="overflow-y-auto">
+            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
               <BacklogTreePanel />
             </ResizablePanel>
             <ResizableHandle withHandle />
