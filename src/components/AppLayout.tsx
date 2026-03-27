@@ -30,6 +30,7 @@ import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import agilefantLogo from "@/assets/agilefant-logo.png";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
