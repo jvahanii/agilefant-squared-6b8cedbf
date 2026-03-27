@@ -5,14 +5,14 @@ export function generateMockData() {
   const workItems: Record<string, WorkItem> = {
     "wi-77a60539": {
       id: "wi-77a60539",
-      title: "item creation tune ups - sibling item should be created immediataly below the selected itemf",
+      title: "item creation tune ups - if an item is selected and sibling is created, put it below the selected item",
       status: "not_started",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 2,
+      rank: 3,
     },
     "wi-1b45638e": {
       id: "wi-1b45638e",
@@ -32,9 +32,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 9,
+      rank: 10,
     },
     "wi-fa0ab672": {
       id: "wi-fa0ab672",
@@ -43,9 +43,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 3,
+      rank: 5,
     },
     "wi-50c48685": {
       id: "wi-50c48685",
@@ -87,8 +87,8 @@ export function generateMockData() {
       parentId: null,
       childrenIds: ["wi-e92e6519"],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+        "tree-9db09013": "bl-171e88af",
       },
       rank: 0,
     },
@@ -603,17 +603,6 @@ export function generateMockData() {
       },
       rank: 16,
     },
-    "wi-43a1075a": {
-      id: "wi-43a1075a",
-      title: "consistently start with 2",
-      status: "in_progress",
-      parentId: "wi-d4fa2142",
-      childrenIds: ["wi-c207f75c"],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
-      rank: 1,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ef21ad9e": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ef21ad9e",
       title: "tee esimerkkkimatsku ykkös op modelista",
@@ -624,7 +613,18 @@ export function generateMockData() {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
-      rank: 0,
+      rank: 2,
+    },
+    "wi-43a1075a": {
+      id: "wi-43a1075a",
+      title: "consistently start with 2",
+      status: "in_progress",
+      parentId: "wi-d4fa2142",
+      childrenIds: ["wi-c207f75c"],
+      backlogAssignments: {
+        "tree-9db09013": "bl-8d4c1a11",
+      },
+      rank: 1,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d",
@@ -666,9 +666,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 4,
+      rank: 6,
     },
     "wi-ce414313": {
       id: "wi-ce414313",
@@ -677,9 +677,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 1,
+      rank: 2,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525",
@@ -691,7 +691,7 @@ export function generateMockData() {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
-      rank: 1,
+      rank: 3,
     },
     "wi-d4fa2142": {
       id: "wi-d4fa2142",
@@ -704,17 +704,17 @@ export function generateMockData() {
       },
       rank: 0,
     },
-    "wi-52deda65": {
-      id: "wi-52deda65",
-      title: "Roudaa Raijan tuoli",
-      status: "not_started",
+    "wi-6ba37878": {
+      id: "wi-6ba37878",
+      title: "AI-assisted facilitation of AAPO toimintasuunnitelma 2026",
+      status: "done",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-9db09013": "bl-8b3a4abd",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
       },
-      rank: 68,
+      rank: 2,
     },
     "wi-beaa5b36": {
       id: "wi-beaa5b36",
@@ -738,6 +738,17 @@ export function generateMockData() {
       },
       rank: 56,
     },
+    "wi-59943678": {
+      id: "wi-59943678",
+      title: "AI-assisted tuoteomistajan ja järjestelmäomistajan vastuut -workshop / Kulmala Mikko",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
+      },
+      rank: 71,
+    },
     "wi-e92e6519": {
       id: "wi-e92e6519",
       title: "add item rank changes to change log",
@@ -745,8 +756,8 @@ export function generateMockData() {
       parentId: "wi-dc34c4fb",
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+        "tree-9db09013": "bl-171e88af",
       },
       rank: 52,
     },
@@ -758,9 +769,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 6,
+      rank: 1,
     },
     "wi-f28f1983": {
       id: "wi-f28f1983",
@@ -769,9 +780,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 7,
+      rank: 8,
     },
     "wi-1aca5905": {
       id: "wi-1aca5905",
@@ -780,9 +791,9 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 8,
+      rank: 9,
     },
     "wi-8c98fc5c": {
       id: "wi-8c98fc5c",
@@ -795,6 +806,29 @@ export function generateMockData() {
       },
       rank: 69,
     },
+    "wi-c16feba3": {
+      id: "wi-c16feba3",
+      title: "AI-assisted Employee shop ominaisuuden Go-To-Market aineisto",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
+      },
+      rank: 70,
+    },
+    "wi-f0e0ae46": {
+      id: "wi-f0e0ae46",
+      title: "Roudaa Raijan tuoli",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-9db09013": "bl-3d4a8289",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 0,
+    },
     "wi-d85c4785": {
       id: "wi-d85c4785",
       title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
@@ -802,44 +836,45 @@ export function generateMockData() {
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-9ac6663d",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 7,
+    },
+    "wi-52deda65": {
+      id: "wi-52deda65",
+      title: "Roudaa Raijan tuoli",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
       rank: 5,
     },
-    "wi-6ba37878": {
-      id: "wi-6ba37878",
-      title: "AI-assisted facilitation of AAPO toimintasuunnitelma 2026",
+    "wi-c8751376": {
+      id: "wi-c8751376",
+      title: "Lisää security fixejä superuseriin liittyen",
+      parentId: null,
+      childrenIds: [],
       status: "done",
-      parentId: null,
-      childrenIds: [],
       backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 2,
+      rank: 11,
     },
-    "wi-c16feba3": {
-      id: "wi-c16feba3",
-      title: "AI-assisted Employee shop ominaisuuden Go-To-Market aineisto",
+    "wi-81f6e48e": {
+      id: "wi-81f6e48e",
+      title:
+        "If no item is selected and a backlog is selected, pressing enter should create a sibling backlog below the selected backlog",
       parentId: null,
       childrenIds: [],
       status: "not_started",
       backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
+        "tree-9db09013": "bl-171e88af",
       },
-      rank: 70,
-    },
-    "wi-59943678": {
-      id: "wi-59943678",
-      title: "AI-assisted tuoteomistajan ja järjestelmäomistajan vastuut -workshop / Kulmala Mikko",
-      parentId: null,
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-      },
-      rank: 71,
+      rank: 4,
     },
   };
 
@@ -927,54 +962,6 @@ export function generateMockData() {
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
       rank: 0,
     },
-    "bl-096c4e6b": {
-      id: "bl-096c4e6b",
-      name: "Friends",
-      parentId: "bl-171e88af",
-      childrenIds: [],
-      treeId: "tree-9db09013",
-      rank: 3,
-    },
-    "bl-a9407d07": {
-      id: "bl-a9407d07",
-      name: "Family",
-      parentId: "bl-171e88af",
-      childrenIds: ["bl-4eace573", "bl-901c6642", "bl-8b3a4abd"],
-      treeId: "tree-9db09013",
-      rank: 4,
-    },
-    "bl-171e88af": {
-      id: "bl-171e88af",
-      name: "MWB: Count on both hands the ones I love",
-      parentId: null,
-      childrenIds: ["bl-096c4e6b", "bl-a9407d07"],
-      treeId: "tree-9db09013",
-      rank: 0,
-    },
-    "bl-4eace573": {
-      id: "bl-4eace573",
-      name: "Isla",
-      parentId: "bl-a9407d07",
-      childrenIds: [],
-      treeId: "tree-9db09013",
-      rank: 5,
-    },
-    "bl-901c6642": {
-      id: "bl-901c6642",
-      name: "Ella",
-      parentId: "bl-a9407d07",
-      childrenIds: [],
-      treeId: "tree-9db09013",
-      rank: 6,
-    },
-    "bl-8b3a4abd": {
-      id: "bl-8b3a4abd",
-      name: "Paula",
-      parentId: "bl-a9407d07",
-      childrenIds: [],
-      treeId: "tree-9db09013",
-      rank: 7,
-    },
     "bl-7797e710": {
       id: "bl-7797e710",
       name: "Value streams",
@@ -1007,6 +994,30 @@ export function generateMockData() {
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
       rank: 8,
     },
+    "bl-171e88af": {
+      id: "bl-171e88af",
+      name: "MWB: Isla ja Ella haluamiinsa kouluihin ykkösellä",
+      parentId: null,
+      childrenIds: ["bl-4eace573"],
+      treeId: "tree-9db09013",
+      rank: 0,
+    },
+    "bl-4eace573": {
+      id: "bl-4eace573",
+      name: "Isla lukioon",
+      parentId: "bl-171e88af",
+      childrenIds: [],
+      treeId: "tree-9db09013",
+      rank: 5,
+    },
+    "bl-3d4a8289": {
+      id: "bl-3d4a8289",
+      name: "Other",
+      parentId: null,
+      childrenIds: [],
+      treeId: "tree-9db09013",
+      rank: 4,
+    },
   };
 
   const backlogTrees: Record<string, BacklogTree> = {
@@ -1028,7 +1039,7 @@ export function generateMockData() {
     "tree-9db09013": {
       id: "tree-9db09013",
       name: "Jarno",
-      rootBacklogIds: ["bl-171e88af", "bl-a0fa0068"],
+      rootBacklogIds: ["bl-171e88af", "bl-a0fa0068", "bl-3d4a8289"],
       rank: 4,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": {
