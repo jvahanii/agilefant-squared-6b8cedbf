@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
+import { WORK_ITEM_STATUSES } from "@/types/models";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from "lucide-react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -58,7 +58,7 @@ function EditableBacklogName({ backlogId }: { backlogId: string }) {
 
   return (
     <h2
-      className="text-base font-semibold cursor-text hover:text-primary transition-colors break-words whitespace-normal"
+      className="text-base font-semibold cursor-text hover:text-primary transition-colors break-words whitespace-normal leading-tight"
       onClick={(e) => {
         e.stopPropagation();
         startEditing();
@@ -102,7 +102,7 @@ function InlineWorkItemInput({
       <textarea
         ref={textAreaRef}
         rows={1}
-        className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50 resize-none overflow-hidden"
+        className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50 resize-none overflow-hidden min-h-[1.25rem] leading-relaxed"
         placeholder="Work item title…"
         value={value}
         onChange={(e) => {
@@ -282,17 +282,17 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
           {...attributes}
           {...listeners}
           className={`
-            flex items-start gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
-            transition-all duration-150 ease-out group
-            border select-none touch-none
+            flex items-start gap-2 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing
+            transition-all duration-200 ease-out group
+            border select-none touch-none mb-1
             ${isChildBacklog ? "text-muted-foreground" : ""}
             ${
               isSelected
-                ? "bg-selection/10 border-selection/30 ring-1 ring-selection/30"
-                : "border-transparent hover:bg-muted hover:border-border"
+                ? "bg-selection/10 border-selection/40 ring-1 ring-selection/20 shadow-sm"
+                : "border-transparent hover:bg-muted/60 hover:border-border/50"
             }
-            ${isDragging ? "shadow-lg bg-card" : ""}
-            ${isOver && !isDragging ? "drag-over" : ""}
+            ${isDragging ? "shadow-xl bg-card scale-[1.02] border-primary/20" : ""}
+            ${isOver && !isDragging ? "bg-primary/5 border-primary/20 ring-1 ring-primary/20" : ""}
           `}
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
           onPointerDown={(e) => {
@@ -309,196 +309,214 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
             else selectWorkItem(isSelected ? null : workItemId);
           }}
         >
-          <div
-            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"}`}
-          >
-            <GripVertical className="w-3.5 h-3.5" />
-          </div>
-          <button
-            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/50" : "text-muted-foreground"} hover:text-foreground transition-colors`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasChildren) toggleExpand(workItemId);
-            }}
-          >
-            {hasChildren ? (
-              expanded ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )
-            ) : (
-              <FileText className={`w-3.5 h-3.5 ${isChildBacklog ? "text-muted-foreground/40" : "text-primary/50"}`} />
-            )}
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125"
-                style={{
-                  backgroundColor:
-                    WORK_ITEM_STATUSES.find((s) => s.value === item.status)?.color ?? "var(--status-not-started)",
-                }}
-                onClick={(e) => e.stopPropagation()}
-                title={WORK_ITEM_STATUSES.find((s) => s.value === item.status)?.label ?? "Not Started"}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[140px]">
-              {WORK_ITEM_STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s.value}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setWorkItemStatus(workItemId, s.value);
-                  }}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {isEditingTitle ? (
-            <textarea
-              ref={titleRef}
-              rows={1}
-              className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0 resize-none overflow-hidden min-h-[1.25rem]"
-              value={editTitle}
-              onChange={(e) => {
-                setEditTitle(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${e.target.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  commitTitle();
-                }
-                if (e.key === "Escape") setIsEditingTitle(false);
-              }}
-              onBlur={commitTitle}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span
-              className="flex-1 text-sm cursor-text break-words whitespace-normal py-0.5"
-              onDoubleClick={(e) => {
+          {/* Left Column: Drag Handle & Expand Button */}
+          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+            <div
+              className={`w-4 h-4 flex items-center justify-center ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"}`}
+            >
+              <GripVertical className="w-3.5 h-3.5" />
+            </div>
+            <button
+              className={`w-5 h-5 flex items-center justify-center rounded hover:bg-muted transition-colors ${isChildBacklog ? "text-muted-foreground/50" : "text-muted-foreground"} hover:text-foreground`}
+              onClick={(e) => {
                 e.stopPropagation();
-                startEditingTitle();
+                if (hasChildren) toggleExpand(workItemId);
               }}
             >
-              {item.title}
-            </span>
-          )}
+              {hasChildren ? (
+                expanded ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )
+              ) : (
+                <FileText className={`w-3.5 h-3.5 opacity-40`} />
+              )}
+            </button>
+          </div>
 
-          {backlogPaths.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
-              {backlogPaths.map(({ treeId: tid, path }) => (
-                <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
-                  {path.map((seg, i) => (
-                    <span key={seg.id} className="flex items-center">
-                      {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40" />}
-                      <button
-                        className="hover:text-foreground hover:underline transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          selectBacklog(seg.id, tid);
-                        }}
-                      >
-                        {seg.name}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Status Dot */}
+          <div className="mt-1.5 shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="w-2.5 h-2.5 rounded-full border border-background/50 transition-all hover:ring-4 hover:ring-primary/10"
+                  style={{
+                    backgroundColor:
+                      WORK_ITEM_STATUSES.find((s) => s.value === item.status)?.color ?? "var(--status-not-started)",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[140px] shadow-xl border-border/50">
+                {WORK_ITEM_STATUSES.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWorkItemStatus(workItemId, s.value);
+                    }}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                    {s.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <div className="flex items-start gap-1 mt-0.5">
-            {isEditingPoints ? (
-              <input
-                ref={pointsRef}
-                className="w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
-                value={editPoints}
-                onChange={(e) => setEditPoints(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitPoints();
-                  if (e.key === "Escape") setIsEditingPoints(false);
+          {/* Title Area */}
+          <div className="flex-1 min-w-0">
+            {isEditingTitle ? (
+              <textarea
+                ref={titleRef}
+                rows={1}
+                className="w-full text-sm bg-transparent border-b border-primary/40 outline-none px-0 py-0 resize-none overflow-hidden min-h-[1.25rem] leading-relaxed font-medium"
+                value={editTitle}
+                onChange={(e) => {
+                  setEditTitle(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${e.target.scrollHeight}px`;
                 }}
-                onBlur={commitPoints}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    commitTitle();
+                  }
+                  if (e.key === "Escape") setIsEditingTitle(false);
+                }}
+                onBlur={commitTitle}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              (() => {
-                const getEffectivePoints = (wi: any): number => {
-                  const own = wi.points ?? 0;
-                  const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
+              <div className="flex flex-col gap-1">
+                <span
+                  className="text-sm font-medium leading-relaxed break-words whitespace-normal cursor-text hover:text-primary/80 transition-colors"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    startEditingTitle();
+                  }}
+                >
+                  {item.title}
+                </span>
+
+                {/* Backlog Path Breadcrumbs (Now below the title for a cleaner look) */}
+                {backlogPaths.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {backlogPaths.map(({ treeId: tid, path }) => (
+                      <div
+                        key={tid}
+                        className="flex items-center text-[10px] text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded"
+                      >
+                        {path.map((seg, i) => (
+                          <span key={seg.id} className="flex items-center">
+                            {i > 0 && <span className="mx-1 opacity-30">/</span>}
+                            <button
+                              className="hover:text-primary hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectBacklog(seg.id, tid);
+                              }}
+                            >
+                              {seg.name}
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Points & Actions */}
+          <div className="flex items-start gap-3 shrink-0 ml-2 mt-0.5">
+            <div className="flex flex-col items-end gap-2">
+              {isEditingPoints ? (
+                <input
+                  ref={pointsRef}
+                  className="w-8 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums font-semibold"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitPoints();
+                    if (e.key === "Escape") setIsEditingPoints(false);
+                  }}
+                  onBlur={commitPoints}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                (() => {
+                  const getEffectivePoints = (wi: any): number => {
+                    const own = wi.points ?? 0;
+                    const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
+                      const child = workItems[cid];
+                      return sum + (child ? getEffectivePoints(child) : 0);
+                    }, 0);
+                    return Math.max(own, childrenSum);
+                  };
+                  const totalPoints = getEffectivePoints(item);
+                  const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
                     const child = workItems[cid];
                     return sum + (child ? getEffectivePoints(child) : 0);
                   }, 0);
-                  return Math.max(own, childrenSum);
-                };
-                const totalPoints = getEffectivePoints(item);
-                const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
-                  const child = workItems[cid];
-                  return sum + (child ? getEffectivePoints(child) : 0);
-                }, 0);
-                const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
-                return (
-                  <span
-                    className={`text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      startEditingPoints();
-                    }}
-                    title={
-                      isRolledUp
-                        ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}`
-                        : "Story points (double-click to edit)"
-                    }
-                  >
-                    {totalPoints > 0 ? totalPoints : "–"}
-                  </span>
-                );
-              })()
-            )}
+                  const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
+                  return (
+                    <div
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs tabular-nums cursor-text transition-colors ${isRolledUp ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground bg-muted/30"}`}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        startEditingPoints();
+                      }}
+                      title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Points"}
+                    >
+                      {totalPoints > 0 ? totalPoints : "–"}
+                    </div>
+                  );
+                })()
+              )}
 
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <button
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAdding(true);
-                }}
-                title="Add child item (Shift+Enter)"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteClick();
-                }}
-                title="Delete item (Del)"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAdding(true);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick();
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
+
             {hasChildren && (
-              <span className="text-xs text-muted-foreground tabular-nums min-w-[12px] text-right">
+              <div className="min-w-[1.25rem] h-5 flex items-center justify-center bg-muted/50 rounded text-[10px] font-bold text-muted-foreground group-hover:hidden">
                 {item.childrenIds.length}
-              </span>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Child Containers */}
         {(expanded || isAdding) && (
           <div className="relative">
             {expanded && hasChildren && (
               <>
-                <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
+                <div
+                  className="absolute tree-line w-[1px] bg-border/40 hover:bg-primary/30 transition-colors"
+                  style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }}
+                />
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
                   .filter(Boolean)
@@ -594,8 +612,10 @@ function ReorderDropZone({
   });
 
   return (
-    <div ref={setNodeRef} className="relative py-1" style={{ marginLeft: `${depth * 20 + 12}px` }}>
-      <div className={`h-0.5 rounded-full transition-all ${isOver ? "bg-selection" : ""}`} />
+    <div ref={setNodeRef} className="relative h-2 -my-1 z-10" style={{ marginLeft: `${depth * 20 + 12}px` }}>
+      <div
+        className={`absolute inset-x-2 top-1/2 -translate-y-1/2 h-0.5 rounded-full transition-all duration-200 ${isOver ? "bg-primary scale-x-100 shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "bg-transparent scale-x-95"}`}
+      />
     </div>
   );
 }
@@ -617,7 +637,7 @@ function WorkItemRootDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 overflow-hidden ${isOver ? "ring-2 ring-selection/40 ring-inset rounded-md" : ""}`}
+      className={`flex-1 overflow-hidden transition-all duration-300 ${isOver ? "bg-primary/[0.02] ring-2 ring-primary/20 ring-inset rounded-xl" : ""}`}
     >
       {children}
     </div>
@@ -666,40 +686,44 @@ export function WorkItemTreePanel() {
 
   if (!selectedBacklogId || !selectedTreeId) {
     return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
+      <div className="h-full flex items-center justify-center text-muted-foreground animate-in fade-in zoom-in-95 duration-500">
         <div className="text-center">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">Select a backlog to view work items</p>
+          <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground/20" />
+          <p className="text-sm font-medium">Select a backlog to view work items</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col" onClick={() => clearWorkItemSelection()}>
-      <div className="p-4 pb-2 border-b flex items-start justify-between">
+    <div className="h-full flex flex-col bg-background/50" onClick={() => clearWorkItemSelection()}>
+      <div className="p-6 pb-4 border-b bg-card/30 backdrop-blur-md flex items-start justify-between">
         <div className="min-w-0 flex-1">
           <EditableBacklogName backlogId={selectedBacklogId} />
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 bg-muted px-1.5 py-0.5 rounded">
+              {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
+            </span>
+          </div>
         </div>
         <button
-          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 ml-2"
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all shrink-0 ml-4"
           onClick={(e) => {
             e.stopPropagation();
             setIsAdding(true);
           }}
           title="Add work item (N)"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
+
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
           {rootWorkItems.length === 0 && !isAdding ? (
-            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-              No work items in this backlog
+            <div className="flex flex-col items-center justify-center h-48 text-sm text-muted-foreground/60 border-2 border-dashed border-muted rounded-2xl mx-2">
+              <Plus className="w-6 h-6 mb-2 opacity-20" />
+              No work items yet
             </div>
           ) : (
             <>
