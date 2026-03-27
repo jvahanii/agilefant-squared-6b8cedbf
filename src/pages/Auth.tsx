@@ -55,7 +55,7 @@ export default function Auth() {
                 setLoading(false);
               }}
             >
-              Continue with Google - this does not work yet
+              Continue with Google - coming soon...
             </Button>
           </div>
         </CardContent>
