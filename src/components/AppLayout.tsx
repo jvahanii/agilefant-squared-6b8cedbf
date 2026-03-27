@@ -26,7 +26,7 @@ import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
+import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { useAuth } from "@/hooks/useAuth";
@@ -130,7 +130,10 @@ export default function AppLayout() {
     const collect = (id: string) => {
       if (seen.has(id)) return;
       seen.add(id);
-      store.workItems[id]?.childrenIds.forEach(collect);
+      const item = store.workItems[id];
+      if (item?.childrenIds) {
+        item.childrenIds.forEach(collect);
+      }
     };
     ids.forEach(collect);
     return seen.size;
@@ -139,24 +142,23 @@ export default function AppLayout() {
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const data = event.active.data.current;
+      const store = useAppStore.getState();
+      
       if (data?.type === "workitem") {
-        const store = useAppStore.getState();
         const ids: string[] = data.selectedIds ?? [data.workItemId];
         const totalCount = countWithDescendants(ids);
         const titles = ids.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
         const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? "");
         setActiveDrag({ id: data.workItemId, type: "workitem", title });
       } else if (data?.type === "backlog-node") {
-        const store = useAppStore.getState();
         const bl = store.backlogs[data.backlogId];
         setActiveDrag({ id: data.backlogId, type: "backlog-node", title: bl?.name ?? "" });
       } else if (data?.type === "tree-node") {
-        const store = useAppStore.getState();
         const tree = store.backlogTrees[data.treeId];
         setActiveDrag({ id: data.treeId, type: "tree-node", title: tree?.name ?? "" });
       }
     },
-    [countWithDescendants],
+    [countWithDescendants]
   );
 
   const handleDragEnd = useCallback(
@@ -189,11 +191,4 @@ export default function AppLayout() {
             targetTreeName: targetTree?.name ?? targetTreeId,
           });
         } else {
-          draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
-        }
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
-        const targetId = overData.workItemId;
-        draggedIds.filter((id) => id !== targetId).forEach((id) => {
-          reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
-        });
-      } else if (activeData
+          draggedIds.forEach((id) => moveWork
