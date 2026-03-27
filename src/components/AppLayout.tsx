@@ -67,6 +67,7 @@ export default function AppLayout() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
+      // Ctrl+Z always works
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -78,6 +79,7 @@ export default function AppLayout() {
         return;
       }
 
+      // Don't fire shortcuts when typing in inputs
       if (isInput) return;
 
       const state = useAppStore.getState();
@@ -128,6 +130,7 @@ export default function AppLayout() {
             const treeId = state.selectedTreeId;
             const selectedBacklogId = state.selectedBacklogIds[0];
 
+            // Collect selected backlog + all descendant backlog IDs
             const backlogIds: string[] = [];
             const collectBacklogs = (id: string) => {
               backlogIds.push(id);
@@ -135,6 +138,7 @@ export default function AppLayout() {
             };
             collectBacklogs(selectedBacklogId);
 
+            // Get siblings
             const backlogIdSet = new Set(backlogIds);
             const siblings = Object.values(state.workItems)
               .filter((w) => {
@@ -251,19 +255,23 @@ export default function AppLayout() {
         draggedIds.forEach((id) => {
           const wi = store.workItems[id];
           if (!wi) return;
+          // If the item's parent differs from the drop zone's parent, reparent first
           if (wi.parentId !== targetParentId) {
             const backlogId = backlogIds[0] ?? "";
             reparentWorkItem(id, targetParentId, treeId, backlogId);
           }
         });
+        // After reparenting, reorder among the new siblings
         draggedIds.forEach((id) => {
           reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
         });
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
+        // Reorder/reparent backlog among siblings
         const backlogId = activeData.backlogId as string;
         const targetParentId = overData.parentId as string | null;
         const treeId = overData.treeId as string;
         const targetIndex = overData.index as number;
+        // Prevent dropping onto own descendant
         const store = useAppStore.getState();
         const isDescendant = (parentId: string | null, checkId: string): boolean => {
           if (!parentId) return false;
@@ -273,10 +281,12 @@ export default function AppLayout() {
         if (targetParentId && isDescendant(targetParentId, backlogId)) return;
         reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog") {
+        // Drop backlog onto another backlog = reparent as child
         const backlogId = activeData.backlogId as string;
         const targetBacklogId = overData.backlogId as string;
         const treeId = overData.treeId as string;
         if (backlogId === targetBacklogId) return;
+        // Prevent dropping onto own descendant
         const store = useAppStore.getState();
         const isDescendant = (id: string): boolean => {
           const bl = store.backlogs[id];
@@ -286,6 +296,7 @@ export default function AppLayout() {
           return false;
         };
         if (isDescendant(targetBacklogId)) return;
+        // Only within same tree
         if (activeData.treeId !== treeId) return;
         moveBacklog(backlogId, targetBacklogId, treeId);
       } else if (activeData?.type === "tree-node" && overData?.type === "tree-reorder") {
@@ -301,7 +312,6 @@ export default function AppLayout() {
       reorderBacklogAmongSiblings,
       moveBacklog,
       reorderBacklogTree,
-      countWithDescendants,
     ],
   );
 
@@ -420,3 +430,135 @@ export default function AppLayout() {
             <button
               className={`
                 w-8 h-8 flex items-center justify-center rounded-md transition-colors
+                ${
+                  undoStackLength > 0
+                    ? "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    : "text-muted-foreground/30 cursor-not-allowed"
+                }
+              `}
+              onClick={undo}
+              disabled={undoStackLength === 0}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+            <button
+              className={`
+                w-8 h-8 flex items-center justify-center rounded-md transition-colors
+                ${
+                  redoStackLength > 0
+                    ? "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    : "text-muted-foreground/30 cursor-not-allowed"
+                }
+              `}
+              onClick={redo}
+              disabled={redoStackLength === 0}
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-hidden">
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="overflow-y-auto">
+              <BacklogTreePanel />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={70} minSize={40} className="overflow-y-auto">
+              <WorkItemTreePanel />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+      </div>
+
+      <DragOverlay>
+        {activeDrag && (
+          <div className="bg-card border shadow-xl rounded-md px-3 py-2 text-sm font-medium max-w-64 truncate">
+            {activeDrag.title}
+          </div>
+        )}
+      </DragOverlay>
+
+      {pendingCrossTree && (
+        <ActionPrompt
+          title={
+            pendingCrossTree.totalCount > 1
+              ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
+              : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+          }
+          options={[
+            {
+              label: pendingCrossTree.totalCount > 1 ? `Move ${pendingCrossTree.totalCount} items` : "Move item",
+              description: `Remove from "${pendingCrossTree.sourceTreeName}" and place in "${pendingCrossTree.targetTreeName}".`,
+              value: "move",
+              isDefault: true,
+            },
+            {
+              label: "Add to both",
+              description: `Keep in "${pendingCrossTree.sourceTreeName}" and also add to "${pendingCrossTree.targetTreeName}".`,
+              value: "add",
+            },
+          ]}
+          onSelect={handleCrossTreeChoice}
+          onCancel={() => setPendingCrossTree(null)}
+        />
+      )}
+
+      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+    </DndContext>
+  );
+}
+
+function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const shortcuts = [
+    { keys: ["Enter"], description: "New root work item in selected backlog" },
+    { keys: ["Shift", "Enter"], description: "New child of selected item or backlog" },
+    { keys: ["Del"], description: "Delete selected item or backlog" },
+    { keys: ["↑", "↓"], description: "Reorder selected work item among siblings" },
+    { keys: ["Esc"], description: "Deselect work item" },
+    { keys: ["Ctrl", "Z"], description: "Undo last action" },
+    { keys: ["Ctrl", "Y"], description: "Redo last action" },
+    { keys: ["?"], description: "Toggle this help" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative bg-card border rounded-lg shadow-2xl w-full max-w-sm mx-4 animate-fade-in-up overflow-hidden">
+        <div className="px-5 pt-5 pb-3">
+          <h3 className="text-sm font-semibold">Keyboard Shortcuts</h3>
+        </div>
+        <div className="px-5 pb-5 space-y-2.5">
+          {shortcuts.map((s, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{s.description}</span>
+              <div className="flex items-center gap-1">
+                {s.keys.map((key, j) => (
+                  <kbd
+                    key={j}
+                    className="px-1.5 py-0.5 rounded border bg-muted text-xs font-mono min-w-[24px] text-center"
+                  >
+                    {key}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
