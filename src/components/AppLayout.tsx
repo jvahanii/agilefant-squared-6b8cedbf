@@ -44,6 +44,7 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
+  const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
   const moveBacklog = useAppStore((s) => s.moveBacklog);
