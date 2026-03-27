@@ -24,7 +24,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, X } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -191,39 +191,4 @@ export default function AppLayout() {
             targetTreeName: targetTree?.name ?? targetTreeId,
           });
         } else {
-          draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
-        }
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
-        const targetId = overData.workItemId;
-        draggedIds.filter((id) => id !== targetId).forEach((id) => {
-          reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
-        });
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
-        draggedIds.forEach((id) => {
-          reparentWorkItem(id, null, overData.treeId, overData.backlogId);
-        });
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
-        const targetParentId = (overData.parentId as string | null) || null;
-        const treeId = overData.treeId as string;
-        const backlogIds = overData.backlogIds as string[];
-        const store = useAppStore.getState();
-
-        draggedIds.forEach((id) => {
-          const wi = store.workItems[id];
-          if (wi && wi.parentId !== targetParentId) {
-            reparentWorkItem(id, targetParentId, treeId, backlogIds[0] ?? "");
-          }
-        });
-        draggedIds.forEach((id) => {
-          reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
-        });
-      } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
-        const backlogId = activeData.backlogId as string;
-        const targetParentId = (overData.parentId as string | null) || null;
-        const treeId = overData.treeId as string;
-        const targetIndex = overData.index as number;
-        const store = useAppStore.getState();
-        
-        const checkIsDescendant = (parentId: string | null, checkId: string): boolean => {
-          if (!parentId) return false;
-          if (parentId === checkId) return
+          draggedIds.forEach((id) => moveWork
