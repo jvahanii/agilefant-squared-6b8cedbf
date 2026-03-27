@@ -112,6 +112,12 @@ export default function AppLayout() {
           setShowShortcuts((s) => !s);
           break;
         }
+        case "Escape": {
+          if (state.selectedWorkItemIds.length > 0) {
+            useAppStore.getState().clearWorkItemSelection();
+          }
+          break;
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -125,26 +131,99 @@ export default function AppLayout() {
       if (seen.has(id)) return;
       seen.add(id);
       const item = store.workItems[id];
-      if (item?.childrenIds) item.childrenIds.forEach(collect);
+      if (item?.childrenIds) {
+        item.childrenIds.forEach(collect);
+      }
     };
     ids.forEach(collect);
     return seen.size;
   }, []);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const data = event.active.data.current;
-    const store = useAppStore.getState();
-    if (data?.type === "workitem") {
-      const ids: string[] = data.selectedIds ?? [data.workItemId];
-      const totalCount = countWithDescendants(ids);
-      const titles = ids.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
-      const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? "");
-      setActiveDrag({ id: data.workItemId, type: "workitem", title });
-    } else if (data?.type === "backlog-node") {
-      const bl = store.backlogs[data.backlogId];
-      setActiveDrag({ id: data.backlogId, type: "backlog-node", title: bl?.name ?? "" });
-    }
-  }, [countWithDescendants]);
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const data = event.active.data.current;
+      const store = useAppStore.getState();
+      
+      if (data?.type === "workitem") {
+        const ids: string[] = data.selectedIds ?? [data.workItemId];
+        const totalCount = countWithDescendants(ids);
+        const titles = ids.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
+        const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? "");
+        setActiveDrag({ id: data.workItemId, type: "workitem", title });
+      } else if (data?.type === "backlog-node") {
+        const bl = store.backlogs[data.backlogId];
+        setActiveDrag({ id: data.backlogId, type: "backlog-node", title: bl?.name ?? "" });
+      } else if (data?.type === "tree-node") {
+        const tree = store.backlogTrees[data.treeId];
+        setActiveDrag({ id: data.treeId, type: "tree-node", title: tree?.name ?? "" });
+      }
+    },
+    [countWithDescendants]
+  );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveDrag(null);
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDrag(null);
+      const { active, over } = event;
+      if (!over) return;
+
+      const activeData = active.data.current;
+      const overData = over.data.current;
+      const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
+
+      if (activeData?.type === "workitem" && overData?.type === "backlog") {
+        const sourceTreeId = activeData.treeId as string;
+        const targetTreeId = overData.treeId as string;
+
+        if (sourceTreeId !== targetTreeId) {
+          const store = useAppStore.getState();
+          const sourceTree = store.backlogTrees[sourceTreeId];
+          const targetTree = store.backlogTrees[targetTreeId];
+          const titles = draggedIds.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
+          setPendingCrossTree({
+            workItemIds: draggedIds,
+            totalCount: countWithDescendants(draggedIds),
+            targetBacklogId: overData.backlogId,
+            targetTreeId,
+            sourceTreeId,
+            itemTitles: titles,
+            sourceTreeName: sourceTree?.name ?? sourceTreeId,
+            targetTreeName: targetTree?.name ?? targetTreeId,
+          });
+        } else {
+          draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
+        }
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
+        const targetId = overData.workItemId;
+        draggedIds.filter((id) => id !== targetId).forEach((id) => {
+          reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
+        });
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
+        draggedIds.forEach((id) => {
+          reparentWorkItem(id, null, overData.treeId, overData.backlogId);
+        });
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
+        const targetParentId = (overData.parentId as string | null) || null;
+        const treeId = overData.treeId as string;
+        const backlogIds = overData.backlogIds as string[];
+        const store = useAppStore.getState();
+
+        draggedIds.forEach((id) => {
+          const wi = store.workItems[id];
+          if (wi && wi.parentId !== targetParentId) {
+            reparentWorkItem(id, targetParentId, treeId, backlogIds[0] ?? "");
+          }
+        });
+        draggedIds.forEach((id) => {
+          reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
+        });
+      } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
+        const backlogId = activeData.backlogId as string;
+        const targetParentId = (overData.parentId as string | null) || null;
+        const treeId = overData.treeId as string;
+        const targetIndex = overData.index as number;
+        const store = useAppStore.getState();
+        
+        const checkIsDescendant = (parentId: string | null, checkId: string): boolean => {
+          if (!parentId) return false;
+          if (parentId === checkId) return
