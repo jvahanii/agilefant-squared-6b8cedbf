@@ -130,16 +130,24 @@ interface WorkItemNodeProps {
   backlogId: string;
   allBacklogIds: string[];
   isChildBacklog?: boolean;
+  onSelect: (id: string, multi: boolean, shift: boolean) => void;
 }
 
-function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isChildBacklog }: WorkItemNodeProps) {
+function WorkItemNode({
+  workItemId,
+  depth,
+  treeId,
+  backlogId,
+  allBacklogIds,
+  isChildBacklog,
+  onSelect,
+}: WorkItemNodeProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
-  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
@@ -305,8 +313,9 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
           onClick={(e) => {
             e.stopPropagation();
             if (dragStartedRef.current) return;
-            if (e.ctrlKey || e.metaKey) selectWorkItem(workItemId, true);
-            else selectWorkItem(isSelected ? null : workItemId);
+            const isMulti = e.ctrlKey || e.metaKey;
+            const isShift = e.shiftKey;
+            onSelect(workItemId, isMulti, isShift);
           }}
         >
           <div
@@ -522,6 +531,7 @@ function WorkItemNode({ workItemId, depth, treeId, backlogId, allBacklogIds, isC
                           backlogId={childBacklogId}
                           allBacklogIds={allBacklogIds}
                           isChildBacklog={isChildBacklog}
+                          onSelect={onSelect}
                         />
                       </div>
                     );
@@ -630,9 +640,14 @@ export function WorkItemTreePanel() {
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
+  const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
+  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
+  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+
   const [isAdding, setIsAdding] = useState(false);
+  const lastSelectedId = useRef<string | null>(null);
 
   useEffect(() => {
     const handler = () => setIsAdding(true);
@@ -664,6 +679,48 @@ export function WorkItemTreePanel() {
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
+  // Flatten the tree based on current expansion state to handle shift-select range
+  const visibleItemIds = useMemo(() => {
+    const ids: string[] = [];
+    const traverse = (workItemId: string) => {
+      ids.push(workItemId);
+      if (expandedWorkItems.has(workItemId)) {
+        const item = workItems[workItemId];
+        if (item) {
+          [...item.childrenIds]
+            .map((cid) => workItems[cid])
+            .filter(Boolean)
+            .sort((a, b) => a.rank - b.rank)
+            .forEach((child) => traverse(child.id));
+        }
+      }
+    };
+    rootWorkItems.forEach((root) => traverse(root.id));
+    return ids;
+  }, [rootWorkItems, expandedWorkItems, workItems]);
+
+  const handleSelect = useCallback(
+    (id: string, multi: boolean, shift: boolean) => {
+      if (shift && lastSelectedId.current && visibleItemIds.includes(lastSelectedId.current)) {
+        const startIdx = visibleItemIds.indexOf(lastSelectedId.current);
+        const endIdx = visibleItemIds.indexOf(id);
+        const rangeIds = visibleItemIds.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+
+        // Select all in range. If Ctrl isn't held, we replace current selection.
+        if (multi) {
+          rangeIds.forEach((rid) => selectWorkItem(rid, true));
+        } else {
+          clearWorkItemSelection();
+          rangeIds.forEach((rid) => selectWorkItem(rid, true));
+        }
+      } else {
+        selectWorkItem(id, multi);
+        lastSelectedId.current = id;
+      }
+    },
+    [visibleItemIds, selectWorkItem, clearWorkItemSelection],
+  );
+
   if (!selectedBacklogId || !selectedTreeId) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -676,7 +733,13 @@ export function WorkItemTreePanel() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" onClick={() => clearWorkItemSelection()}>
+    <div
+      className="h-full flex flex-col overflow-hidden"
+      onClick={() => {
+        clearWorkItemSelection();
+        lastSelectedId.current = null;
+      }}
+    >
       <div className="p-4 pb-2 border-b flex items-start justify-between shrink-0">
         <div className="min-w-0 flex-1">
           <EditableBacklogName backlogId={selectedBacklogId} />
@@ -722,6 +785,7 @@ export function WorkItemTreePanel() {
                       backlogId={itemBacklogId}
                       allBacklogIds={allBacklogIds}
                       isChildBacklog={itemBacklogId !== selectedBacklogId}
+                      onSelect={handleSelect}
                     />
                   </div>
                 );
