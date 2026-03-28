@@ -456,7 +456,7 @@ export function cleanseData(data: StoreData): CleanseResult {
     }
   });
 
-  // --- Remove cross-org polluted assignments ---
+  // --- Remove cross-org polluted assignments (work items) ---
   Object.values(workItems).forEach((wi) => {
     const wiOrgPrefix = wi.id.includes("::") ? wi.id.split("::")[0] : null;
     if (!wiOrgPrefix) return;
@@ -477,6 +477,60 @@ export function cleanseData(data: StoreData): CleanseResult {
         removed.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: "removed: no valid assignments after cross-org cleanup" });
         delete workItems[wi.id];
       }
+    }
+  });
+
+  // --- Remove cross-org polluted backlogs (backlog org prefix vs tree org prefix) ---
+  Object.keys(backlogs).forEach((id) => {
+    const bl = backlogs[id];
+    if (!bl) return;
+    const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
+    const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
+    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix) {
+      removed.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org "${blOrgPrefix}" mismatches tree org "${treeOrgPrefix}"` });
+      delete backlogs[id];
+    }
+  });
+
+  // --- Fix backlog orphaned children (bidirectional repair) ---
+  // If child.parentId = A, ensure A.childrenIds includes child
+  Object.values(backlogs).forEach((bl) => {
+    if (bl.parentId && backlogs[bl.parentId]) {
+      const parent = backlogs[bl.parentId];
+      if (!parent.childrenIds.includes(bl.id)) {
+        fixed.push({ category: "Orphaned Children", type: "backlog", id: bl.id, name: bl.name, detail: `added to parent "${parent.name}" childrenIds` });
+        backlogs[bl.parentId] = { ...backlogs[bl.parentId], childrenIds: [...parent.childrenIds, bl.id] };
+      }
+    }
+  });
+  // If A.childrenIds includes B, ensure B.parentId = A
+  Object.values(backlogs).forEach((bl) => {
+    bl.childrenIds.forEach((cid) => {
+      const child = backlogs[cid];
+      if (child && child.parentId !== bl.id) {
+        fixed.push({ category: "Orphaned Children", type: "backlog", id: cid, name: child.name, detail: `set parentId to "${bl.id}" to match parent's childrenIds` });
+        backlogs[cid] = { ...backlogs[cid], parentId: bl.id };
+      }
+    });
+  });
+
+  // --- Remove malformed IDs (multiple "::" separators) ---
+  Object.keys(workItems).forEach((id) => {
+    if (id.split("::").length > 2) {
+      removed.push({ category: "Malformed ID", type: "work_item", id, name: workItems[id].title, detail: `ID has ${id.split("::").length - 1} "::" separators` });
+      delete workItems[id];
+    }
+  });
+  Object.keys(backlogs).forEach((id) => {
+    if (id.split("::").length > 2) {
+      removed.push({ category: "Malformed ID", type: "backlog", id, name: backlogs[id].name, detail: `ID has ${id.split("::").length - 1} "::" separators` });
+      delete backlogs[id];
+    }
+  });
+  Object.keys(backlogTrees).forEach((id) => {
+    if (id.split("::").length > 2) {
+      removed.push({ category: "Malformed ID", type: "backlog_tree", id, name: backlogTrees[id].name, detail: `ID has ${id.split("::").length - 1} "::" separators` });
+      delete backlogTrees[id];
     }
   });
 
