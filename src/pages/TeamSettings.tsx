@@ -53,6 +53,7 @@ export default function TeamSettings() {
 
   // Auto-check state
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
+  const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
