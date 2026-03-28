@@ -595,6 +595,20 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const undo = pushUndo(state);
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
 
+        // 1. Determine New Rank using Negative Rank logic for Top placement
+        let newRank = 0;
+        const allItems = Object.values(state.workItems);
+
+        if (typeof index === "number" && index === 0) {
+          // TOP: Find current lowest rank and go one lower
+          const minRank = allItems.length > 0 ? Math.min(...allItems.map((i) => i.rank ?? 0)) : 0;
+          newRank = minRank - 1;
+        } else {
+          // BOTTOM: Find current highest rank and go one higher
+          const maxRank = allItems.length > 0 ? Math.max(...allItems.map((i) => i.rank ?? 0)) : 0;
+          newRank = maxRank + 1;
+        }
+
         const newItem: WorkItem = {
           id,
           title,
@@ -602,54 +616,38 @@ export const useAppStore = create<StoreState>()((set, get) => {
           childrenIds: [],
           status: "not_started",
           backlogAssignments: { [treeId]: backlogId },
-          rank: typeof index === "number" ? index : Object.values(state.workItems).length,
+          rank: newRank,
         };
 
         const updatedItems = { ...state.workItems, [id]: newItem };
-        const changedItems: WorkItem[] = [newItem];
 
+        // 2. Update Parent childrenIds if adding a child
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
           const nextChildren = [...parent.childrenIds];
 
-          if (typeof index === "number") {
-            nextChildren.splice(index, 0, id);
+          if (typeof index === "number" && index === 0) {
+            nextChildren.unshift(id); // Place at start of array
           } else {
             nextChildren.push(id);
           }
 
           updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
 
-          nextChildren.forEach((childId, i) => {
-            if (updatedItems[childId]) {
-              const updated = { ...updatedItems[childId], rank: i };
-              updatedItems[childId] = updated;
-              changedItems.push(updated);
-            }
-          });
-
-          const nextExpanded = new Set(state.expandedWorkItems);
-          nextExpanded.add(parentId);
-
-          upsertWorkItems(changedItems, orgId);
-          return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
-        } else {
-          // FIX: If adding to root at index 0, shift all other root items down
-          if (index === 0) {
-            Object.values(updatedItems).forEach((wi) => {
-              // Check if it's a root item in the same backlog and tree assignment
-              if (wi.parentId === null && wi.backlogAssignments[treeId] === backlogId && wi.id !== id) {
-                const updated = { ...wi, rank: wi.rank + 1 };
-                updatedItems[wi.id] = updated;
-                changedItems.push(updated);
-              }
-            });
-          }
-          upsertWorkItems(changedItems, orgId);
+          // Sync parent update to DB
+          upsertWorkItem(updatedItems[parentId], orgId);
         }
 
+        // 3. Sync New Item to DB
+        upsertWorkItem(newItem, orgId);
+
         logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
-        return { ...undo, workItems: updatedItems };
+
+        return {
+          ...undo,
+          workItems: updatedItems,
+          expandedWorkItems: parentId ? new Set(state.expandedWorkItems).add(parentId) : state.expandedWorkItems,
+        };
       });
     },
 
