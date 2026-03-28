@@ -568,6 +568,9 @@ export default function AppLayout() {
             >
               <FlaskConical className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">Run Tests</span>
+            </button>
+
+            <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
                   <RotateCcw className="w-3.5 h-3.5" />
