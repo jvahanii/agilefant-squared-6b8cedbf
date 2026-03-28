@@ -305,4 +305,208 @@ export default function AppLayout() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="p-2 text-muted-foreground hover:text
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                    onClick={() => {
+                      resetToMockData();
+                      toast({ title: "Data reset to mock state" });
+                    }}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Reset to Mock Data</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                    onClick={() => {
+                      const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+                      const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
+                      navigator.clipboard.writeText(code);
+                      toast({ title: "Data copied to clipboard" });
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">Export Mock</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Copy state JSON</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => exportChangeLogAsCsv()}
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Export CSV Log</TooltipContent>
+              </Tooltip>
+
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      onClick={undo}
+                      disabled={undoStackLength === 0}
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      onClick={redo}
+                      disabled={redoStackLength === 0}
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+                </Tooltip>
+
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={() => setShowShortcuts((s) => !s)}
+                >
+                  <Keyboard className="w-4 h-4" />
+                </button>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => signOut?.()}
+                      className="p-2 text-muted-foreground hover:text-destructive transition-colors ml-1"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Log Out</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 min-h-0 relative">
+            <ResizablePanelGroup direction="horizontal">
+              <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="border-r">
+                <div className="h-full overflow-hidden">
+                  <BacklogTreePanel />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={75} minSize={40}>
+                <div className="h-full overflow-hidden flex flex-col">
+                  <WorkItemTreePanel />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </main>
+        </div>
+
+        <DragOverlay dropAnimation={null}>
+          {activeDrag && (
+            <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background">
+              {activeDrag.title}
+            </div>
+          )}
+        </DragOverlay>
+
+        {pendingCrossTree && (
+          <ActionPrompt
+            title={
+              pendingCrossTree.totalCount > 1
+                ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
+                : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+            }
+            options={[
+              {
+                label: "Move",
+                description: `Switch from ${pendingCrossTree.sourceTreeName} to ${pendingCrossTree.targetTreeName}.`,
+                value: "move",
+                isDefault: true,
+              },
+              { label: "Mirror", description: `Keep in both tree views.`, value: "add" },
+            ]}
+            onSelect={handleCrossTreeChoice}
+            onCancel={() => setPendingCrossTree(null)}
+          />
+        )}
+
+        {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+      </DndContext>
+    </TooltipProvider>
+  );
+}
+
+function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const shortcuts = [
+    { keys: ["Enter"], description: "New root work item" },
+    { keys: ["Shift", "Enter"], description: "New child item" },
+    { keys: ["Del", "Bksp"], description: "Delete selected" },
+    { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
+    { keys: ["↑", "↓"], description: "Move selection up/down" },
+    { keys: ["T"], description: "Move selection to Top" },
+    { keys: ["B"], description: "Move selection to Bottom" },
+    { keys: ["Esc"], description: "Deselect items" },
+    { keys: ["Ctrl", "Z"], description: "Undo action" },
+    { keys: ["?"], description: "Toggle help" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-card border border-border shadow-2xl w-full max-w-sm mx-4 rounded-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b bg-muted/30">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <Keyboard className="w-4 h-4" /> Keyboard Shortcuts
+          </h3>
+        </div>
+        <div className="px-6 py-4 space-y-3">
+          {shortcuts.map((s, i) => (
+            <div key={i} className="flex items-center justify-between group">
+              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                {s.description}
+              </span>
+              <div className="flex items-center gap-1">
+                {s.keys.map((key, j) => (
+                  <kbd
+                    key={j}
+                    className="px-1.5 py-1 rounded border bg-muted text-[10px] font-mono shadow-sm min-w-[28px] text-center"
+                  >
+                    {key}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="px-6 py-3 bg-muted/20 border-t text-center">
+          <button onClick={onClose} className="text-xs font-semibold text-primary hover:underline">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
