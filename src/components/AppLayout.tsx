@@ -7,7 +7,9 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { isAutoCheckEnabled } from "@/hooks/useAutoIntegrityCheck";
+import { useOrgStore } from "@/store/orgStore";
 import {
   AlertDialog,
   AlertDialogAction,
