@@ -1,6 +1,18 @@
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from "@/types/models";
-import { loadFromSupabase, upsertWorkItems, resetOrgData } from "./supabaseSync";
+import {
+  loadFromSupabase,
+  upsertWorkItem,
+  upsertWorkItems,
+  deleteWorkItems,
+  upsertBacklog,
+  upsertBacklogs,
+  deleteBacklogs,
+  upsertBacklogTree,
+  deleteBacklogTree as deleteBacklogTreeDB,
+  upsertBacklogTrees,
+  resetOrgData,
+} from "./supabaseSync";
 import { generateMockData } from "./mockData";
 
 export interface ChangeLogEntry {
