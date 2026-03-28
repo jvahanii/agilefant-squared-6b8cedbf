@@ -10,7 +10,7 @@ import {
   deleteBacklogs,
   upsertBacklogTree,
   upsertBacklogTrees,
-  deleteBacklogTree as deleteBaacklogTreeFromDb,
+  deleteBacklogTree as deleteBacklogTreeFromDb,
   resetOrgData,
 } from "./supabaseSync";
 import { generateMockData } from "./mockData";
@@ -594,21 +594,6 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const undo = pushUndo(state);
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
-        const updatedItems = { ...state.workItems };
-        const changedItems: WorkItem[] = [];
-
-        // 1. Calculate New Rank using Negative logic for Top
-        let newRank = 0;
-        const allItems = Object.values(state.workItems);
-        if (typeof index === "number" && index === 0) {
-          // TOP: Find lowest rank in system and go lower
-          const minRank = allItems.length > 0 ? Math.min(...allItems.map((i) => i.rank ?? 0)) : 0;
-          newRank = minRank - 1;
-        } else {
-          // BOTTOM: Find highest rank and go higher
-          const maxRank = allItems.length > 0 ? Math.max(...allItems.map((i) => i.rank ?? 0)) : 0;
-          newRank = maxRank + 1;
-        }
 
         const newItem: WorkItem = {
           id,
@@ -617,41 +602,54 @@ export const useAppStore = create<StoreState>()((set, get) => {
           childrenIds: [],
           status: "not_started",
           backlogAssignments: { [treeId]: backlogId },
-          rank: newRank,
+          rank: typeof index === "number" ? index : Object.values(state.workItems).length,
         };
 
-        updatedItems[id] = newItem;
-        changedItems.push(newItem);
+        const updatedItems = { ...state.workItems, [id]: newItem };
+        const changedItems: WorkItem[] = [newItem];
 
-        // 2. Update Parent local and DB if applicable
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
           const nextChildren = [...parent.childrenIds];
 
-          if (typeof index === "number" && index === 0) {
-            nextChildren.unshift(id);
+          if (typeof index === "number") {
+            nextChildren.splice(index, 0, id);
           } else {
             nextChildren.push(id);
           }
 
-          const updatedParent = { ...parent, childrenIds: nextChildren };
-          updatedItems[parentId] = updatedParent;
-          changedItems.push(updatedParent);
+          updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
+
+          nextChildren.forEach((childId, i) => {
+            if (updatedItems[childId]) {
+              const updated = { ...updatedItems[childId], rank: i };
+              updatedItems[childId] = updated;
+              changedItems.push(updated);
+            }
+          });
+
+          const nextExpanded = new Set(state.expandedWorkItems);
+          nextExpanded.add(parentId);
+
+          upsertWorkItems(changedItems, orgId);
+          return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
+        } else {
+          // FIX: If adding to root at index 0, shift all other root items down
+          if (index === 0) {
+            Object.values(updatedItems).forEach((wi) => {
+              // Check if it's a root item in the same backlog and tree assignment
+              if (wi.parentId === null && wi.backlogAssignments[treeId] === backlogId && wi.id !== id) {
+                const updated = { ...wi, rank: wi.rank + 1 };
+                updatedItems[wi.id] = updated;
+                changedItems.push(updated);
+              }
+            });
+          }
+          upsertWorkItems(changedItems, orgId);
         }
 
-        // 3. Sync to Supabase - using upsertWorkItems to handle Parent ID list sync too
-        upsertWorkItems(changedItems, orgId);
-
         logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
-
-        const nextExpanded = new Set(state.expandedWorkItems);
-        if (parentId) nextExpanded.add(parentId);
-
-        return {
-          ...undo,
-          workItems: updatedItems,
-          expandedWorkItems: nextExpanded,
-        };
+        return { ...undo, workItems: updatedItems };
       });
     },
 
@@ -883,7 +881,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
         deleteWorkItems(deletedWorkItemIds);
         if (changedWorkItems.length) upsertWorkItems(changedWorkItems, orgId);
-        deleteBaacklogTreeFromDb(treeId);
+        deleteBacklogTreeFromDb(treeId);
 
         return {
           ...undo,
