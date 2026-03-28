@@ -1,4 +1,3 @@
-// Auto-exported mock data
 import { WorkItem, Backlog, BacklogTree } from "@/types/models";
 
 export function generateMockData() {
@@ -9,9 +8,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 51,
     },
     "wi-fa0ab672": {
@@ -20,9 +17,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: "wi-82a1bfce",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 1,
     },
     "wi-50c48685": {
@@ -31,9 +26,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 52,
     },
     "wi-5548fc2a": {
@@ -42,9 +35,7 @@ export function generateMockData() {
       status: "in_progress",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 60,
     },
     "wi-44521d20": {
@@ -53,9 +44,7 @@ export function generateMockData() {
       status: "in_progress",
       parentId: null,
       childrenIds: ["wi-d4fa2142"],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 58,
     },
     "wi-dc34c4fb": {
@@ -64,9 +53,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: ["wi-e92e6519", "wi-9a446fb6"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 7,
     },
     "wi-83dc560e": {
@@ -75,13 +62,11 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 53,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709",
+    "wi-e7745709": {
+      id: "wi-e7745709",
       title: "Uuden backlog treen luonti - siinä väärä teksti",
       status: "done",
       parentId: null,
@@ -97,9 +82,7 @@ export function generateMockData() {
       status: "in_progress",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 59,
     },
     "wi-7bccb3e7": {
@@ -108,9 +91,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 54,
     },
     "wi-c207f75c": {
@@ -119,15 +100,12 @@ export function generateMockData() {
       status: "in_progress",
       parentId: "wi-43a1075a",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 61,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d",
-      title:
-        "appstore.ts - Enterin painamisen pitäisi luoda uusi itemi valitun itemin alle. Jos itemiä ei ole valittu, se pitäisi luoda listan kärkeen",
+    "wi-204ca84d": {
+      id: "wi-204ca84d",
+      title: "appstore.ts - Enterin painamisen pitäisi luoda uusi itemi valitun itemin alle.",
       status: "not_started",
       parentId: null,
       childrenIds: [],
@@ -136,517 +114,14 @@ export function generateMockData() {
       },
       rank: 2,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m1": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m1",
-      title: "M1: Basic pkg order (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m2": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m2",
-      title: "M2: Multi‑subs allowed",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 1,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m3": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m3",
-      title: "M3: Show base price (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 2,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m4": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m4",
-      title: "M4: Activation msg",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 3,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m5": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m5",
-      title: "M5: Order conf (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 4,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m6": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m6",
-      title: "M6: Basic pkg order (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 5,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m7": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m7",
-      title: "M7: Activation info (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 6,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m8": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m8",
-      title: "M8: Guide to config",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 7,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m9": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m9",
-      title: "M9: View base product (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 8,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m10": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m10",
-      title: "M10: View selections (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 9,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m11": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m11",
-      title: "M11: View locks (A)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 10,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m12": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m12",
-      title: "M12: View base product (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 11,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m13": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m13",
-      title: "M13: View selections (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 12,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m14": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m14",
-      title: "M14: View locks (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 13,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m15": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m15",
-      title: "M15: Service links",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 14,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m16": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m16",
-      title: "M16: Activation state (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 15,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m17": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m17",
-      title: "M17: Change services (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 16,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m18": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m18",
-      title: "M18: Cancel base (C)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 17,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m19": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m19",
-      title: "M19: Basic reporting",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 18,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m20": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m20",
-      title: "M20: Validation core (part1)",
-      points: 5,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-      },
-      rank: 19,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l1": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l1",
-      title: "L1: Campaigns/terms (A)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l2": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l2",
-      title: "L2: Pick basics (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 1,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l3": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l3",
-      title: "L3: Pick upgrades (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 2,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l4": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l4",
-      title: "L4: Pick extra slots (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 3,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l5": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l5",
-      title: "L5: Campaigns/terms (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 4,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l6": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l6",
-      title: "L6: View campaigns (A)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 5,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l7": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l7",
-      title: "L7: View campaigns (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 6,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l8": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l8",
-      title: "L8: Change basics/upgrades (A)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 7,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l9": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l9",
-      title: "L9: Add extra slots (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 8,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l10": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l10",
-      title: "L10: Cancel extra (A)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 9,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l11": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l11",
-      title: "L11: Reverse cancel (A)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 10,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l12": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l12",
-      title: "L12: Cancel extra (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 11,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l13": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l13",
-      title: "L13: Reverse cancel (C)",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 12,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l14": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l14",
-      title: "L14: Activation report",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 13,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l15": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l15",
-      title: "L15: Credit rules",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 14,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l16": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l16",
-      title: "L16: Internal credit check",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 15,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l17": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-l17",
-      title: "L17: Validation part2",
-      points: 8,
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      },
-      rank: 16,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ef21ad9e": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ef21ad9e",
-      title: "tee eka versio DEM review & tulosinfomatsku ykkös op modelista",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 4,
-    },
     "wi-43a1075a": {
       id: "wi-43a1075a",
       title: "consistently start with 2",
       status: "in_progress",
       parentId: "wi-d4fa2142",
       childrenIds: ["wi-c207f75c"],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 1,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d",
-      title: "siirrä oma backlogi fanttiin",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 5,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-27d3bb73": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-27d3bb73",
-      title: "mitä torstaina tehdään - QBR-asia / rakettipalsu",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 6,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-079edaf6": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-079edaf6",
-      title: "auta support functionsia tekemään matskut QBRään",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 4,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d680f525",
-      title: "järkkää synkkapalaveri liittyen tulosinfoon",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 5,
     },
     "wi-d4fa2142": {
       id: "wi-d4fa2142",
@@ -654,9 +129,7 @@ export function generateMockData() {
       status: "in_progress",
       parentId: "wi-44521d20",
       childrenIds: ["wi-43a1075a"],
-      backlogAssignments: {
-        "tree-9db09013": "bl-8d4c1a11",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 0,
     },
     "wi-6ba37878": {
@@ -677,9 +150,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 50,
     },
     "wi-2ec4640c": {
@@ -688,20 +159,16 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-a0fa0068",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 56,
     },
     "wi-59943678": {
       id: "wi-59943678",
-      title: "AI-assisted tuoteomistajan ja järjestelmäomistajan vastuut -workshop / Kulmala Mikko",
+      title: "AI-assisted tuoteomistajan ja järjestelmäomistajan vastuut",
       status: "not_started",
       parentId: null,
       childrenIds: ["wi-7f604fb0"],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-      },
+      backlogAssignments: { "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c" },
       rank: 71,
     },
     "wi-44cfd0c9": {
@@ -710,10 +177,7 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: ["wi-c8751376", "wi-1aca5905", "wi-c62c04f4"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b", "tree-9db09013": "bl-171e88af" },
       rank: 8,
     },
     "wi-8c98fc5c": {
@@ -722,20 +186,16 @@ export function generateMockData() {
       status: "done",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-4eace573",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-4eace573" },
       rank: 69,
     },
     "wi-c16feba3": {
       id: "wi-c16feba3",
-      title: "AI-assisted Employee shop ominaisuuden Go-To-Market aineisto",
+      title: "AI-assisted Employee shop ominaisuuden Go-To-Market",
       status: "not_started",
       parentId: null,
       childrenIds: ["wi-ae3d94a7"],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-      },
+      backlogAssignments: { "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c" },
       rank: 70,
     },
     "wi-ce414313": {
@@ -744,68 +204,44 @@ export function generateMockData() {
       status: "not_started",
       parentId: "wi-86bba225",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 2,
     },
     "wi-1aca5905": {
       id: "wi-1aca5905",
-      title: "adminien tulisi voida vapaasti säätää oman organisaationsa käyttäjien luokitusta",
+      title: "adminien säätömahdollisuus käyttäjäluokituksiin",
       status: "not_started",
       parentId: "wi-44cfd0c9",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 6,
     },
     "wi-77a60539": {
       id: "wi-77a60539",
-      title: "item creation tune ups - if an item is selected and sibling is created, put it below the selected item",
+      title: "item creation tune ups",
       status: "not_started",
       parentId: "wi-86bba225",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b", "tree-9db09013": "bl-171e88af" },
       rank: 3,
     },
     "wi-23269a64": {
       id: "wi-23269a64",
-      title: "Recurring item (samalla pitää sanoa että mihin backlogeihin uudet kappaleet siitä luodaan)",
+      title: "Recurring item",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b", "tree-9db09013": "bl-171e88af" },
       rank: 10,
     },
     "wi-f0e0ae46": {
       id: "wi-f0e0ae46",
-      title: "Roudaa Raijan tuoli, paulan lasit, kaukosäädin",
+      title: "Roudaa Raijan tuoli, paulan lasit",
       status: "in_progress",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-3d4a8289",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
+      backlogAssignments: { "tree-9db09013": "bl-3d4a8289" },
       rank: 0,
-    },
-    "wi-f28f1983": {
-      id: "wi-f28f1983",
-      title: "member-käyttäjien (poislukien superuser) ei tulisi antaa säätää itseään admineiksi tai ownereiksi",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 8,
     },
     "wi-1ec9c26c": {
       id: "wi-1ec9c26c",
@@ -813,57 +249,44 @@ export function generateMockData() {
       status: "done",
       parentId: "wi-86bba225",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 5,
     },
-    "wi-81f6e48e": {
-      id: "wi-81f6e48e",
-      title:
-        "If no item is selected and a backlog is selected, pressing enter should create a sibling backlog below the selected backlog",
+    "wi-86bba225": {
+      id: "wi-86bba225",
+      title: "Käytettävyysviiilauksia",
+      parentId: null,
+      childrenIds: ["wi-77a60539", "wi-ce414313", "wi-1ec9c26c", "wi-621dc98a"],
+      status: "not_started",
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
+      rank: 4,
+    },
+    "wi-621dc98a": {
+      id: "wi-621dc98a",
+      title: "Tee paremmaksi käyttää mobiililla",
+      status: "not_started",
+      parentId: "wi-86bba225",
+      childrenIds: [],
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
+      rank: 1,
+    },
+    "wi-520fdc83": {
+      id: "wi-520fdc83",
+      title: "Lisää scrollaus iteminäkymään",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 9,
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
+      rank: 0,
     },
-    "wi-c8751376": {
-      id: "wi-c8751376",
-      title: "Lisää security fixejä superuseriin liittyen",
-      status: "done",
-      parentId: "wi-44cfd0c9",
-      childrenIds: ["wi-36c8eebb"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 12,
-    },
-    "wi-131146ab": {
-      id: "wi-131146ab",
-      title: "Calendar backlog sync",
-      status: "not_started",
-      parentId: null,
+    "wi-9a446fb6": {
+      id: "wi-9a446fb6",
+      title: "changelog tallennus tietokantaan",
+      parentId: "wi-dc34c4fb",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 12,
-    },
-    "wi-31dcc090": {
-      id: "wi-31dcc090",
-      title: "käyttäjän nimi headeriin",
       status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 75,
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
+      rank: 88,
     },
     "wi-e92e6519": {
       id: "wi-e92e6519",
@@ -871,100 +294,8 @@ export function generateMockData() {
       status: "not_started",
       parentId: "wi-dc34c4fb",
       childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 52,
-    },
-    "wi-ae3d94a7": {
-      id: "wi-ae3d94a7",
-      title: "co-fasilitaattorit Lotta ja Ville",
-      status: "done",
-      parentId: "wi-c16feba3",
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-      },
-      rank: 78,
-    },
-    "wi-7f604fb0": {
-      id: "wi-7f604fb0",
-      title: "co-fasilitaattorit S-K",
-      status: "done",
-      parentId: "wi-59943678",
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
-      },
-      rank: 79,
-    },
-    "wi-4c2815cc": {
-      id: "wi-4c2815cc",
-      title: "-------------- huomenna ---------",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 3,
-    },
-    "wi-e4b946e9": {
-      id: "wi-e4b946e9",
-      title: "laskettelukamat kartsiin",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 6,
-    },
-    "wi-a063380b": {
-      id: "wi-a063380b",
-      title: "Orgs need to be able to create users and send invites",
-      status: "not_started",
-      parentId: "wi-82a1bfce",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 3,
-    },
-    "wi-32a546d4": {
-      id: "wi-32a546d4",
-      title: "Users signing up need to be able to join orgs immediately upon sign up",
-      status: "not_started",
-      parentId: "wi-82a1bfce",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 4,
-    },
-    "wi-c62c04f4": {
-      id: "wi-c62c04f4",
-      title:
-        "Admins have in org settings a on-off button to encrypt so that superuser can't read the names of items and backlogs (can see the structure)",
-      status: "not_started",
-      parentId: "wi-44cfd0c9",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "wi-c7ebc52b": {
-      id: "wi-c7ebc52b",
-      title:
-        "Users signing up need to be able to join orgs immediately upon sign up: perhaps a per user lounge? Show as notification to admins and superusers",
-      status: "not_started",
-      parentId: "wi-82a1bfce",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 0,
     },
     "wi-82a1bfce": {
       id: "wi-82a1bfce",
@@ -972,151 +303,76 @@ export function generateMockData() {
       status: "not_started",
       parentId: null,
       childrenIds: ["wi-fa0ab672", "wi-a063380b", "wi-32a546d4", "wi-c7ebc52b"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 6,
     },
-    "wi-d85c4785": {
-      id: "wi-d85c4785",
-      title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 11,
+    "wi-c8751376": {
+      id: "wi-c8751376",
+      title: "Lisää security fixejä superuseriin",
+      status: "done",
+      parentId: "wi-44cfd0c9",
+      childrenIds: ["wi-36c8eebb"],
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b", "tree-9db09013": "bl-171e88af" },
+      rank: 12,
     },
     "wi-36c8eebb": {
       id: "wi-36c8eebb",
-      title: "Superuser ei pysty tällä hetkellä säätämään toisissa organisaatioissa käyttäjien rooleja; pitäisi pystyä",
+      title: "Superuser roolisäädöt",
       parentId: "wi-c8751376",
       childrenIds: [],
       status: "not_started",
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
+      backlogAssignments: { "tree-64b6aad9": "bl-25b6451b" },
       rank: 85,
-    },
-    "wi-621dc98a": {
-      id: "wi-621dc98a",
-      title: "Tee paremmaksi käyttää mobiililla",
-      parentId: null,
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "wi-520fdc83": {
-      id: "wi-520fdc83",
-      title: "Lisää scrollaus iteminäkymään",
-      parentId: null,
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 0,
-    },
-    "wi-9a446fb6": {
-      id: "wi-9a446fb6",
-      title: "changelog  tyhjenee kun refreshaa - tallenna tietokantaan",
-      parentId: "wi-dc34c4fb",
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 88,
-    },
-    "wi-86bba225": {
-      id: "wi-86bba225",
-      title: "Käytettävyysviiilauksia",
-      parentId: null,
-      childrenIds: ["wi-77a60539", "wi-ce414313", "wi-1ec9c26c"],
-      status: "not_started",
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 4,
-    },
-    "wi-37cc0327": {
-      id: "wi-37cc0327",
-      title: "Neumann ja Dune kirjastoon",
-      parentId: null,
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 2,
-    },
-    "wi-5786adf7": {
-      id: "wi-5786adf7",
-      title: "K&J",
-      parentId: null,
-      childrenIds: [],
-      status: "not_started",
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-      },
-      rank: 1,
     },
   };
 
   const backlogs: Record<string, Backlog> = {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment",
+    "bl-entertainment": {
+      id: "bl-entertainment",
       name: "Entertainment",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      parentId: "bl-b2c",
+      childrenIds: ["bl-product"],
+      treeId: "tree-product",
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product",
+    "bl-product": {
+      id: "bl-product",
       name: "New service",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment",
-      childrenIds: [
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
-      ],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      parentId: "bl-entertainment",
+      childrenIds: ["bl-release-1", "bl-release-2"],
+      treeId: "tree-product",
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
+    "bl-release-1": {
+      id: "bl-release-1",
       name: "MVP",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product",
+      parentId: "bl-product",
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      treeId: "tree-product",
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-2",
+    "bl-release-2": {
+      id: "bl-release-2",
       name: "Desired for launch",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product",
+      parentId: "bl-product",
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      treeId: "tree-product",
       rank: 1,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+    "bl-0e0d83c7": {
+      id: "bl-0e0d83c7",
       name: "Tänään",
       parentId: null,
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1",
+      treeId: "tree-87b6c6d1",
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
+    "bl-98944c30": {
+      id: "bl-98944c30",
       name: "Done",
       parentId: null,
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1",
+      treeId: "tree-87b6c6d1",
       rank: 1,
     },
     "bl-8d4c1a11": {
@@ -1127,12 +383,12 @@ export function generateMockData() {
       treeId: "tree-9db09013",
       rank: 1,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c",
+    "bl-b2c": {
+      id: "bl-b2c",
       name: "B2C",
       parentId: "bl-7797e710",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      childrenIds: ["bl-entertainment"],
+      treeId: "tree-product",
       rank: 0,
     },
     "bl-a0fa0068": {
@@ -1147,8 +403,8 @@ export function generateMockData() {
       id: "bl-7797e710",
       name: "Value streams",
       parentId: null,
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      childrenIds: ["bl-b2c"],
+      treeId: "tree-product",
       rank: 5,
     },
     "bl-acca717e": {
@@ -1156,7 +412,7 @@ export function generateMockData() {
       name: "Transformation office",
       parentId: null,
       childrenIds: ["bl-d0899a32", "bl-a295bf9c"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      treeId: "tree-product",
       rank: 6,
     },
     "bl-d0899a32": {
@@ -1164,7 +420,7 @@ export function generateMockData() {
       name: "Varsinaiset transuduunit",
       parentId: "bl-acca717e",
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      treeId: "tree-product",
       rank: 7,
     },
     "bl-a295bf9c": {
@@ -1172,7 +428,7 @@ export function generateMockData() {
       name: "Collab AI",
       parentId: "bl-acca717e",
       childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
+      treeId: "tree-product",
       rank: 8,
     },
     "bl-4eace573": {
@@ -1226,33 +482,15 @@ export function generateMockData() {
   };
 
   const backlogTrees: Record<string, BacklogTree> = {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1",
-      name: "TODO",
-      rootBacklogIds: [
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      ],
-      rank: 2,
-    },
-    "tree-64b6aad9": {
-      id: "tree-64b6aad9",
-      name: "Agilefant",
-      rootBacklogIds: ["bl-25b6451b"],
-      rank: 3,
-    },
+    "tree-87b6c6d1": { id: "tree-87b6c6d1", name: "TODO", rootBacklogIds: ["bl-0e0d83c7", "bl-98944c30"], rank: 2 },
+    "tree-64b6aad9": { id: "tree-64b6aad9", name: "Agilefant", rootBacklogIds: ["bl-25b6451b"], rank: 3 },
     "tree-9db09013": {
       id: "tree-9db09013",
       name: "Jarno",
       rootBacklogIds: ["bl-30af60c8", "bl-171e88af", "bl-a0fa0068", "bl-3d4a8289"],
       rank: 4,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
-      name: "DNA",
-      rootBacklogIds: ["bl-7797e710", "bl-acca717e"],
-      rank: 1,
-    },
+    "tree-product": { id: "tree-product", name: "DNA", rootBacklogIds: ["bl-7797e710", "bl-acca717e"], rank: 1 },
   };
 
   return { workItems, backlogs, backlogTrees };
