@@ -625,6 +625,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
     },
 
+    resetToMockData: async () => {
       const orgId = get().organizationId;
       if (!orgId) return;
       set({ isLoading: true });
