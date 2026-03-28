@@ -595,10 +595,6 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const undo = pushUndo(state);
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
 
-        // Determine correct siblings for rank calculation
-        // If we are at the top (index 0), current items shift down.
-        // We'll give the new item the specified index as its rank,
-        // and later updates would typically handle global rank normalization.
         const newItem: WorkItem = {
           id,
           title,
@@ -612,7 +608,6 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const updatedItems = { ...state.workItems, [id]: newItem };
         const changedItems: WorkItem[] = [newItem];
 
-        // Update Parent's children list
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
           const nextChildren = [...parent.childrenIds];
@@ -625,14 +620,11 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
           updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
 
-          // Re-rank siblings based on new order if necessary
-          // For simplicity here, we assume the UI/Store sort by rank.
-          // To ensure correct sorting immediately, we shift existing sibling ranks.
           nextChildren.forEach((childId, i) => {
             if (updatedItems[childId]) {
               const updated = { ...updatedItems[childId], rank: i };
               updatedItems[childId] = updated;
-              if (childId !== id) changedItems.push(updated);
+              changedItems.push(updated);
             }
           });
 
@@ -642,11 +634,18 @@ export const useAppStore = create<StoreState>()((set, get) => {
           upsertWorkItems(changedItems, orgId);
           return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
         } else {
-          // Root level item in the current backlog view
-          // If index is 0, we should technically shift other "root" ranks,
-          // but "roots" are dynamic based on tree view.
-          // We apply the rank and sync.
-          upsertWorkItem(newItem, orgId);
+          // FIX: If adding to root at index 0, shift all other root items down
+          if (index === 0) {
+            Object.values(updatedItems).forEach((wi) => {
+              // Check if it's a root item in the same backlog and tree assignment
+              if (wi.parentId === null && wi.backlogAssignments[treeId] === backlogId && wi.id !== id) {
+                const updated = { ...wi, rank: wi.rank + 1 };
+                updatedItems[wi.id] = updated;
+                changedItems.push(updated);
+              }
+            });
+          }
+          upsertWorkItems(changedItems, orgId);
         }
 
         logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
