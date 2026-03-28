@@ -471,7 +471,7 @@ export default function AppLayout() {
               className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
               onClick={() => {
                 const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-                const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
+                const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};\n`;
                 navigator.clipboard.writeText(code);
                 toast({ title: "Data copied to clipboard" });
               }}
