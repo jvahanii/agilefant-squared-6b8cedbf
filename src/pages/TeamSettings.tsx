@@ -461,6 +461,24 @@ export default function TeamSettings() {
                 }}
               />
             </div>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div>
+                <p className="text-sm font-medium">Auto-run tests on changes</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically run all integrity tests whenever item or backlog relationships change and copy results to clipboard.
+                </p>
+              </div>
+              <Switch
+                checked={autoTestEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setAutoTestEnabledSetting(activeOrgId, checked);
+                    setAutoTestEnabled(checked);
+                    toast({ title: checked ? "Auto-test enabled" : "Auto-test disabled" });
+                  }
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
 
