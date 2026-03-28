@@ -128,7 +128,7 @@ export function sanitizeData(data: any, orgId: string) {
     };
   });
 
-  // FIX: Sort by rank before rebuilding childrenIds to preserve order
+  // Preservation of order logic
   const sortedWorkItems = Object.values(cleanWorkItems).sort((a, b) => (a.rank || 0) - (b.rank || 0));
   sortedWorkItems.forEach((wi) => {
     if (wi.parentId && cleanWorkItems[wi.parentId]) {
@@ -243,7 +243,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const mainItem = state.workItems[workItemId];
       if (!mainItem) return;
 
@@ -279,7 +280,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
 
@@ -306,7 +308,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     addWorkItem: (title, parentId, backlogId, treeId, _rank) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const siblings = Object.values(state.workItems).filter(
         (wi) => wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId,
@@ -327,7 +330,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     deleteWorkItem: (workItemId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const idsToDelete: string[] = [];
@@ -351,7 +355,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     renameWorkItem: (workItemId, title) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const updated = { ...item, title };
@@ -362,7 +367,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     setWorkItemStatus: (workItemId, status) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const updated = { ...item, status };
@@ -373,7 +379,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     setWorkItemPoints: (workItemId, points) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const updated = { ...item, points };
@@ -384,7 +391,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     removeWorkItemFromTree: (workItemId, treeId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const newAssignments = { ...item.backlogAssignments };
@@ -401,7 +409,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     reparentWorkItem: (workItemId, newParentId, _treeId, _backlogId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const item = state.workItems[workItemId];
       if (!item) return;
       const updatedItems = { ...state.workItems };
@@ -428,7 +437,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     addBacklog: (name, parentId, treeId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const id = ensureCleanId(`bl-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const siblings = parentId
         ? (state.backlogs[parentId]?.childrenIds ?? [])
@@ -448,7 +458,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     deleteBacklog: (backlogId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const bl = state.backlogs[backlogId];
       if (!bl) return;
       const blIdsToDelete: string[] = [];
@@ -488,7 +499,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     renameBacklog: (backlogId, name) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const bl = state.backlogs[backlogId];
       if (!bl) return;
       const updated = { ...bl, name };
@@ -499,7 +511,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const bl = state.backlogs[backlogId];
       if (!bl) return;
       const siblingIds = bl.parentId
@@ -525,7 +538,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     moveBacklog: (backlogId, targetParentId, treeId) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
       const bl = state.backlogs[backlogId];
       if (!bl) return;
       const updatedBacklogs = { ...state.backlogs };
@@ -547,21 +561,4 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     addBacklogTree: (name) => {
-      const state = get();
-      const orgId = state.organizationId!;
-      const id = ensureCleanId(`bt-${crypto.randomUUID().slice(0, 8)}`, orgId);
-      const rank = Object.keys(state.backlogTrees).length;
-      const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
-      upsertBacklogTree(newTree, orgId);
-      internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
-      set({ backlogTrees: { ...state.backlogTrees, [id]: newTree }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
-    },
-
-    deleteBacklogTree: (treeId) => {
-      const state = get();
-      const blIdsToDelete = Object.values(state.backlogs).filter((bl) => bl.treeId === treeId).map((bl) => bl.id);
-      const blIdSet = new Set(blIdsToDelete);
-      const wiIdsToDelete: string[] = [];
-      const updatedItems = { ...state.workItems };
-      Object.values(updatedItems).forEach((wi) => {
-        const newAssignments = { ...wi.backlogAssignments };
+      const state = get
