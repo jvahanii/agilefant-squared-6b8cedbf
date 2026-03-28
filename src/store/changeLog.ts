@@ -1,33 +1,38 @@
-import { ChangeLogEntry } from "./appStore";
+export interface ChangeLogEntry {
+  timestamp: string;
+  action: string;
+  entityType: 'work_item' | 'backlog' | 'backlog_tree' | 'data';
+  entityId?: string;
+  entityName?: string;
+  details?: string;
+}
 
-export const triggerCsvDownload = (logs: ChangeLogEntry[]) => {
-  if (!logs || logs.length === 0) {
-    console.warn("No changes to export");
-    return;
-  }
+const changeLog: ChangeLogEntry[] = [];
 
-  const headers = ["Timestamp", "Action", "Type", "ID", "Name", "Details"];
+export function logChange(entry: Omit<ChangeLogEntry, 'timestamp'>) {
+  changeLog.push({
+    ...entry,
+    timestamp: new Date().toISOString(),
+  });
+}
 
-  const rows = logs.map((entry) => [
-    entry.timestamp,
-    `"${(entry.action || "").replace(/"/g, '""')}"`,
-    `"${(entry.entityType || "").replace(/"/g, '""')}"`,
-    `"${(entry.entityId || "").replace(/"/g, '""')}"`,
-    `"${(entry.entityName || "").replace(/"/g, '""')}"`,
-    `"${(entry.details || "").replace(/"/g, '""')}"`,
-  ]);
+export function getChangeLog(): ChangeLogEntry[] {
+  return [...changeLog];
+}
 
-  const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+export function clearChangeLog() {
+  changeLog.length = 0;
+}
 
-  link.setAttribute("href", url);
-  link.setAttribute("download", `changelog_${Date.now()}.csv`);
-  link.style.visibility = "hidden";
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+export function exportChangeLogAsCsv(): string {
+  const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'Entity Name', 'Details'];
+  const rows = changeLog.map(e => [
+    e.timestamp,
+    e.action,
+    e.entityType,
+    e.entityId ?? '',
+    e.entityName ?? '',
+    e.details ?? '',
+  ].map(v => `"${v.replace(/"/g, '""')}"`).join(','));
+  return [headers.join(','), ...rows].join('\n');
+}
