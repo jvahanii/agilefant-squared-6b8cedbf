@@ -24,7 +24,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -420,6 +420,104 @@ export default function AppLayout() {
             >
               <Copy className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">Export Mock</span>
+            </button>
+
+            <button
+              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+                const issues: string[] = [];
+
+                // Check work items
+                Object.values(workItems).forEach((wi) => {
+                  // Orphaned parent reference
+                  if (wi.parentId && !workItems[wi.parentId]) {
+                    issues.push(`Work item "${wi.title}" references missing parent ${wi.parentId}`);
+                  }
+                  // Children that don't exist
+                  wi.childrenIds.forEach((cid) => {
+                    if (!workItems[cid]) {
+                      issues.push(`Work item "${wi.title}" lists missing child ${cid}`);
+                    }
+                  });
+                  // Child doesn't point back
+                  wi.childrenIds.forEach((cid) => {
+                    const child = workItems[cid];
+                    if (child && child.parentId !== wi.id) {
+                      issues.push(`Work item "${wi.title}" lists child "${child.title}" but child's parent differs`);
+                    }
+                  });
+                  // Parent doesn't list this item as child
+                  if (wi.parentId && workItems[wi.parentId]) {
+                    if (!workItems[wi.parentId].childrenIds.includes(wi.id)) {
+                      issues.push(`Work item "${wi.title}" has parent "${workItems[wi.parentId].title}" but is not in parent's childrenIds`);
+                    }
+                  }
+                  // Backlog assignments reference missing trees or backlogs
+                  Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
+                    if (!backlogTrees[treeId]) {
+                      issues.push(`Work item "${wi.title}" assigned to missing tree ${treeId}`);
+                    }
+                    if (!backlogs[blId]) {
+                      issues.push(`Work item "${wi.title}" assigned to missing backlog ${blId}`);
+                    }
+                  });
+                  // No backlog assignments at all
+                  if (Object.keys(wi.backlogAssignments).length === 0) {
+                    issues.push(`Work item "${wi.title}" has no backlog assignments (orphaned)`);
+                  }
+                });
+
+                // Check backlogs
+                Object.values(backlogs).forEach((bl) => {
+                  if (bl.parentId && !backlogs[bl.parentId]) {
+                    issues.push(`Backlog "${bl.name}" references missing parent ${bl.parentId}`);
+                  }
+                  if (!backlogTrees[bl.treeId]) {
+                    issues.push(`Backlog "${bl.name}" references missing tree ${bl.treeId}`);
+                  }
+                  bl.childrenIds.forEach((cid) => {
+                    if (!backlogs[cid]) {
+                      issues.push(`Backlog "${bl.name}" lists missing child ${cid}`);
+                    }
+                  });
+                  // Parent doesn't list this backlog
+                  if (bl.parentId && backlogs[bl.parentId]) {
+                    if (!backlogs[bl.parentId].childrenIds.includes(bl.id)) {
+                      issues.push(`Backlog "${bl.name}" has parent "${backlogs[bl.parentId].name}" but is not in parent's childrenIds`);
+                    }
+                  }
+                  // Root backlog not listed in tree's rootBacklogIds
+                  if (!bl.parentId && backlogTrees[bl.treeId]) {
+                    if (!backlogTrees[bl.treeId].rootBacklogIds.includes(bl.id)) {
+                      issues.push(`Backlog "${bl.name}" is root but not in tree's rootBacklogIds`);
+                    }
+                  }
+                });
+
+                // Check backlog trees
+                Object.values(backlogTrees).forEach((tree) => {
+                  tree.rootBacklogIds.forEach((blId) => {
+                    if (!backlogs[blId]) {
+                      issues.push(`Tree "${tree.name}" lists missing root backlog ${blId}`);
+                    }
+                  });
+                });
+
+                if (issues.length === 0) {
+                  toast({ title: "✅ No broken items found", description: "All data references are valid." });
+                } else {
+                  console.warn("Data integrity issues:", issues);
+                  toast({
+                    title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
+                    description: issues.slice(0, 3).join("\n") + (issues.length > 3 ? `\n...and ${issues.length - 3} more (see console)` : ""),
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <SearchCheck className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Check Data</span>
             </button>
 
             <AlertDialog>
