@@ -617,7 +617,7 @@ function WorkItemRootDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 overflow-hidden ${isOver ? "ring-2 ring-selection/40 ring-inset rounded-md" : ""}`}
+      className={`flex-1 min-h-0 flex flex-col ${isOver ? "ring-2 ring-selection/40 ring-inset rounded-md" : ""}`}
     >
       {children}
     </div>
@@ -676,8 +676,8 @@ export function WorkItemTreePanel() {
   }
 
   return (
-    <div className="h-full flex flex-col" onClick={() => clearWorkItemSelection()}>
-      <div className="p-4 pb-2 border-b flex items-start justify-between">
+    <div className="h-full flex flex-col overflow-hidden" onClick={() => clearWorkItemSelection()}>
+      <div className="p-4 pb-2 border-b flex items-start justify-between shrink-0">
         <div className="min-w-0 flex-1">
           <EditableBacklogName backlogId={selectedBacklogId} />
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -702,7 +702,7 @@ export function WorkItemTreePanel() {
               No work items in this backlog
             </div>
           ) : (
-            <>
+            <div className="flex flex-col">
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
                 return (
@@ -734,7 +734,7 @@ export function WorkItemTreePanel() {
                 parentId={null}
                 depth={0}
               />
-            </>
+            </div>
           )}
           {isAdding && (
             <InlineWorkItemInput
