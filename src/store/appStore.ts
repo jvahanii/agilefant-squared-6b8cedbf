@@ -410,7 +410,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
     },
 
-    reparentWorkItem: (workItemId, newParentId) => {
+    reparentWorkItem: (workItemId, newParentId, _treeId, _backlogId) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
