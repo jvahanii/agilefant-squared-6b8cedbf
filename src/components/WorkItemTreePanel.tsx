@@ -358,7 +358,8 @@ function WorkItemNode({
                   key={s.value}
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Multi-select status update logic
+                    // Multi-select status update logic:
+                    // If the current item is selected, apply change to all selected items.
                     if (isSelected && selectedWorkItemIds.length > 1) {
                       selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.value));
                     } else {
