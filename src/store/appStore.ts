@@ -511,7 +511,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ backlogs: { ...state.backlogs, [backlogId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
     },
 
-    reorderBacklogAmongSiblings: (backlogId, targetIndex) => {
+    reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
       const state = get();
       const orgId = state.organizationId!;
       const bl = state.backlogs[backlogId];
