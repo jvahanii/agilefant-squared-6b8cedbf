@@ -51,6 +51,9 @@ export default function TeamSettings() {
   const [orgSlug, setOrgSlug] = useState("");
   const [renameLoading, setRenameLoading] = useState(false);
 
+  // Auto-check state
+  const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
+
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
