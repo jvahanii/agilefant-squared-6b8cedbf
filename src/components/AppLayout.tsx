@@ -520,7 +520,122 @@ export default function AppLayout() {
               <span className="hidden lg:inline">Check Data</span>
             </button>
 
-            <AlertDialog>
+            <button
+              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+                const removedItems: { type: string; id: string; name: string; reason: string }[] = [];
+                const validTreeIds = new Set(Object.keys(backlogTrees));
+                const validBacklogIds = new Set(Object.keys(backlogs));
+                const validWorkItemIds = new Set(Object.keys(workItems));
+
+                // Find invalid backlogs
+                const invalidBacklogIds = new Set<string>();
+                Object.values(backlogs).forEach((bl) => {
+                  if (!validTreeIds.has(bl.treeId)) {
+                    invalidBacklogIds.add(bl.id);
+                    removedItems.push({ type: "backlog", id: bl.id, name: bl.name, reason: `references missing tree ${bl.treeId}` });
+                  } else if (bl.parentId && !validBacklogIds.has(bl.parentId)) {
+                    invalidBacklogIds.add(bl.id);
+                    removedItems.push({ type: "backlog", id: bl.id, name: bl.name, reason: `references missing parent ${bl.parentId}` });
+                  }
+                });
+
+                // Find invalid work items
+                const invalidWorkItemIds = new Set<string>();
+                Object.values(workItems).forEach((wi) => {
+                  const hasValidAssignment = Object.entries(wi.backlogAssignments).some(
+                    ([treeId, blId]) => validTreeIds.has(treeId) && validBacklogIds.has(blId) && !invalidBacklogIds.has(blId)
+                  );
+                  if (!hasValidAssignment) {
+                    invalidWorkItemIds.add(wi.id);
+                    removedItems.push({ type: "work_item", id: wi.id, name: wi.title, reason: "no valid backlog assignments" });
+                  } else if (wi.parentId && !validWorkItemIds.has(wi.parentId)) {
+                    removedItems.push({ type: "work_item (fix)", id: wi.id, name: wi.title, reason: `orphaned parent ref ${wi.parentId} cleared` });
+                  }
+                });
+
+                if (removedItems.length === 0) {
+                  toast({ title: "✅ No invalid data found" });
+                  return;
+                }
+
+                // Build report and copy to clipboard
+                const report = removedItems.map((r) => `[${r.type}] "${r.name}" (${r.id}): ${r.reason}`).join("\n");
+                navigator.clipboard.writeText(report);
+
+                // Actually cleanse
+                const store = useAppStore.getState();
+                const newWorkItems = { ...workItems };
+                const newBacklogs = { ...backlogs };
+                const newTrees = { ...backlogTrees };
+
+                // Remove invalid backlogs
+                invalidBacklogIds.forEach((id) => {
+                  const bl = newBacklogs[id];
+                  if (bl?.parentId && newBacklogs[bl.parentId]) {
+                    newBacklogs[bl.parentId] = { ...newBacklogs[bl.parentId], childrenIds: newBacklogs[bl.parentId].childrenIds.filter((c) => c !== id) };
+                  }
+                  if (!bl?.parentId && bl?.treeId && newTrees[bl.treeId]) {
+                    newTrees[bl.treeId] = { ...newTrees[bl.treeId], rootBacklogIds: newTrees[bl.treeId].rootBacklogIds.filter((c) => c !== id) };
+                  }
+                  delete newBacklogs[id];
+                });
+
+                // Remove invalid work items & fix orphaned parents
+                invalidWorkItemIds.forEach((id) => {
+                  const wi = newWorkItems[id];
+                  if (wi?.parentId && newWorkItems[wi.parentId]) {
+                    newWorkItems[wi.parentId] = { ...newWorkItems[wi.parentId], childrenIds: newWorkItems[wi.parentId].childrenIds.filter((c) => c !== id) };
+                  }
+                  delete newWorkItems[id];
+                });
+                // Fix orphaned parent refs on remaining items
+                Object.values(newWorkItems).forEach((wi) => {
+                  if (wi.parentId && !newWorkItems[wi.parentId]) {
+                    newWorkItems[wi.id] = { ...wi, parentId: null };
+                  }
+                  // Clean stale childrenIds
+                  const validChildren = wi.childrenIds.filter((c) => newWorkItems[c]);
+                  if (validChildren.length !== wi.childrenIds.length) {
+                    newWorkItems[wi.id] = { ...newWorkItems[wi.id], childrenIds: validChildren };
+                  }
+                  // Clean stale backlog assignments
+                  const cleanAssignments: Record<string, string> = {};
+                  Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
+                    if (newTrees[treeId] && newBacklogs[blId]) cleanAssignments[treeId] = blId;
+                  });
+                  if (Object.keys(cleanAssignments).length !== Object.keys(wi.backlogAssignments).length) {
+                    newWorkItems[wi.id] = { ...newWorkItems[wi.id], backlogAssignments: cleanAssignments };
+                  }
+                });
+
+                // Clean stale rootBacklogIds and childrenIds in backlogs
+                Object.values(newTrees).forEach((tree) => {
+                  const valid = tree.rootBacklogIds.filter((id) => newBacklogs[id]);
+                  if (valid.length !== tree.rootBacklogIds.length) {
+                    newTrees[tree.id] = { ...tree, rootBacklogIds: valid };
+                  }
+                });
+                Object.values(newBacklogs).forEach((bl) => {
+                  const valid = bl.childrenIds.filter((id) => newBacklogs[id]);
+                  if (valid.length !== bl.childrenIds.length) {
+                    newBacklogs[bl.id] = { ...bl, childrenIds: valid };
+                  }
+                });
+
+                useAppStore.setState({ workItems: newWorkItems, backlogs: newBacklogs, backlogTrees: newTrees });
+
+                toast({
+                  title: `🧹 Cleansed ${removedItems.length} issue${removedItems.length > 1 ? "s" : ""}`,
+                  description: "Removed items copied to clipboard.",
+                });
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Cleanse Data</span>
+            </button>
+
               <AlertDialogTrigger asChild>
                 <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
                   <RotateCcw className="w-3.5 h-3.5" />
