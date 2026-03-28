@@ -513,12 +513,16 @@ function WorkItemNode({
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
-                {/* MOVED PROMPT TO THE TOP OF THE CHILD LIST */}
+                {/* CHILD PROMPT: CONTEXT AWARE */}
                 {isAdding && (
                   <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, 0);
+                      // Logic: Check if any child of this parent is selected
+                      const selectedChildId = item.childrenIds.find((id) => selectedWorkItemIds.includes(id));
+                      const targetIndex = selectedChildId ? item.childrenIds.indexOf(selectedChildId) + 1 : 0; // Default to top if no sibling selected
+
+                      addWorkItem(title, workItemId, backlogId, treeId, targetIndex);
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
@@ -775,12 +779,16 @@ export function WorkItemTreePanel() {
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
-          {/* MOVED ROOT PROMPT TO THE TOP */}
+          {/* ROOT PROMPT: CONTEXT AWARE */}
           {isAdding && (
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
-                addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+                // Logic: Find if any currently selected item is in the root list
+                const selectedRootItem = rootWorkItems.find((item) => selectedWorkItemIds.includes(item.id));
+                const targetIndex = selectedRootItem ? rootWorkItems.indexOf(selectedRootItem) + 1 : 0; // Default to top (0) if nothing selected
+
+                addWorkItem(title, null, selectedBacklogId, selectedTreeId, targetIndex);
               }}
               onCancel={() => setIsAdding(false)}
             />
