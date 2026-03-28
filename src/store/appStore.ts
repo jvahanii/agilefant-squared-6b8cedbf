@@ -13,7 +13,11 @@ import {
   upsertBacklogTrees,
   resetOrgData,
 } from "./supabaseSync";
-import { generateMockData } from "./mockData";
+import { mockData as staticMockData } from "./mockData";
+
+function generateMockData() {
+  return JSON.parse(JSON.stringify(staticMockData));
+}
 
 export interface ChangeLogEntry {
   timestamp: string;

@@ -8,7 +8,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { isAutoCheckEnabled } from "@/hooks/useAutoIntegrityCheck";
+import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
 import {
   AlertDialog,
@@ -26,7 +26,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2 } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
@@ -216,7 +216,10 @@ export default function AppLayout() {
 
   useEffect(() => {
     const unsub = useAppStore.subscribe((state) => {
-      if (!isAutoCheckEnabled(activeOrgId)) return;
+      const autoCheck = isAutoCheckEnabled(activeOrgId);
+      const autoTest = isAutoTestEnabled(activeOrgId);
+      if (!autoCheck && !autoTest) return;
+
       const fingerprint = JSON.stringify({
         wi: Object.fromEntries(Object.entries(state.workItems).map(([id, w]) => [id, { p: w.parentId, c: w.childrenIds, ba: w.backlogAssignments }])),
         bl: Object.fromEntries(Object.entries(state.backlogs).map(([id, b]) => [id, { p: b.parentId, c: b.childrenIds, t: b.treeId }])),
@@ -226,13 +229,35 @@ export default function AppLayout() {
       prevDataRef.current = fingerprint;
 
       const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
-      if (issues.length > 0) {
+
+      if (autoTest) {
+        const results: string[] = [];
+        const pass = (name: string) => results.push(`✅ PASS: ${name}`);
+        const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
+        const categories = ["Ghost Parent", "Orphaned Children", "Circular Reference", "Backlog Displacement", "Tree-Backlog Desync", "Duplicate Rank", "Cross-Org Pollution", "Malformed ID", "Zombie Assignment"];
+        categories.forEach(cat => {
+          const catIssues = issues.filter(i => i.category === cat);
+          catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
+        });
+        const passed = results.filter(r => r.startsWith("✅")).length;
+        const failed = results.filter(r => r.startsWith("❌")).length;
+        let report = `AUTO-TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed`;
+        if (issues.length > 0) report += "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues);
+        navigator.clipboard.writeText(report);
+        if (failed > 0) {
+          toast({
+            title: `⚠️ Auto-test: ${failed} test${failed > 1 ? "s" : ""} failed`,
+            description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
+            variant: "destructive",
+          });
+        }
+      } else if (autoCheck && issues.length > 0) {
         const report = formatIssueReport(issues);
         navigator.clipboard.writeText(report);
-        const categories = [...new Set(issues.map((i) => i.category))];
+        const cats = [...new Set(issues.map((i) => i.category))];
         toast({
           title: `⚠️ Auto-check: ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
-          description: `${categories.join(", ")}. Report copied to clipboard.`,
+          description: `${cats.join(", ")}. Report copied to clipboard.`,
           variant: "destructive",
         });
       }
@@ -500,6 +525,74 @@ export default function AppLayout() {
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">Cleanse Data</span>
+            </button>
+
+            <button
+              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const state = useAppStore.getState();
+                const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+
+                const results: string[] = [];
+                const pass = (name: string) => results.push(`✅ PASS: ${name}`);
+                const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
+
+                // Test 1: No ghost parents
+                const ghostParents = issues.filter(i => i.category === "Ghost Parent");
+                ghostParents.length === 0 ? pass("No ghost parents") : fail("Ghost parents found", `${ghostParents.length} items`);
+
+                // Test 2: No orphaned children
+                const orphaned = issues.filter(i => i.category === "Orphaned Children");
+                orphaned.length === 0 ? pass("No orphaned children") : fail("Orphaned children found", `${orphaned.length} items`);
+
+                // Test 3: No circular references
+                const circular = issues.filter(i => i.category === "Circular Reference");
+                circular.length === 0 ? pass("No circular references") : fail("Circular references found", `${circular.length} items`);
+
+                // Test 4: No backlog displacement
+                const displacement = issues.filter(i => i.category === "Backlog Displacement");
+                displacement.length === 0 ? pass("No backlog displacement") : fail("Backlog displacement found", `${displacement.length} items`);
+
+                // Test 5: No tree-backlog desync
+                const desync = issues.filter(i => i.category === "Tree-Backlog Desync");
+                desync.length === 0 ? pass("No tree-backlog desync") : fail("Tree-backlog desync found", `${desync.length} items`);
+
+                // Test 6: No duplicate ranks
+                const dupRank = issues.filter(i => i.category === "Duplicate Rank");
+                dupRank.length === 0 ? pass("No duplicate ranks") : fail("Duplicate ranks found", `${dupRank.length} items`);
+
+                // Test 7: No cross-org pollution
+                const crossOrg = issues.filter(i => i.category === "Cross-Org Pollution");
+                crossOrg.length === 0 ? pass("No cross-org pollution") : fail("Cross-org pollution found", `${crossOrg.length} items`);
+
+                // Test 8: No malformed IDs
+                const malformed = issues.filter(i => i.category === "Malformed ID");
+                malformed.length === 0 ? pass("No malformed IDs") : fail("Malformed IDs found", `${malformed.length} items`);
+
+                // Test 9: No zombie assignments
+                const zombie = issues.filter(i => i.category === "Zombie Assignment");
+                zombie.length === 0 ? pass("No zombie assignments") : fail("Zombie assignments found", `${zombie.length} items`);
+
+                const passed = results.filter(r => r.startsWith("✅")).length;
+                const failed = results.filter(r => r.startsWith("❌")).length;
+                const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
+
+                if (issues.length > 0) {
+                  report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues);
+                }
+
+                const fullReport = issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
+                navigator.clipboard.writeText(fullReport);
+
+                toast({
+                  title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`,
+                  description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
+                  variant: failed > 0 ? "destructive" : undefined,
+                });
+              }}
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Run Tests</span>
             </button>
 
             <AlertDialog>

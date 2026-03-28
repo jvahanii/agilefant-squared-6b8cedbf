@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
+import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -53,6 +53,7 @@ export default function TeamSettings() {
 
   // Auto-check state
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
+  const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -456,6 +457,24 @@ export default function TeamSettings() {
                     setAutoCheckEnabledSetting(activeOrgId, checked);
                     setAutoCheckEnabled(checked);
                     toast({ title: checked ? "Auto-check enabled" : "Auto-check disabled" });
+                  }
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div>
+                <p className="text-sm font-medium">Auto-run tests on changes</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically run all integrity tests whenever item or backlog relationships change and copy results to clipboard.
+                </p>
+              </div>
+              <Switch
+                checked={autoTestEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setAutoTestEnabledSetting(activeOrgId, checked);
+                    setAutoTestEnabled(checked);
+                    toast({ title: checked ? "Auto-test enabled" : "Auto-test disabled" });
                   }
                 }}
               />
