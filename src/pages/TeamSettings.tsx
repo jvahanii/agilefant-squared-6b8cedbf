@@ -433,6 +433,34 @@ export default function TeamSettings() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
+              <SearchCheck className="w-4 h-4" /> Data Integrity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Auto-check on changes</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically run data integrity checks whenever item or backlog relationships change.
+                </p>
+              </div>
+              <Switch
+                checked={autoCheckEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setAutoCheckEnabledSetting(activeOrgId, checked);
+                    setAutoCheckEnabled(checked);
+                    toast({ title: checked ? "Auto-check enabled" : "Auto-check disabled" });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
               <KeyRound className="w-4 h-4" /> Change Password
             </CardTitle>
           </CardHeader>
