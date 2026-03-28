@@ -110,17 +110,6 @@ export function generateMockData() {
       backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 61,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d",
-      title: "appstore.ts - Enterin painamisen pitäisi luoda uusi itemi valitun itemin alle.",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d211ad7a",
-      },
-      rank: 2,
-    },
     "wi-d4fa2142": {
       id: "wi-d4fa2142",
       title: "hover between starting with 1 and 2",
