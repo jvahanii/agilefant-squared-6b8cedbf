@@ -83,17 +83,6 @@ export function generateMockData() {
       backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 53,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709",
-      title: "Uuden backlog treen luonti - siinä väärä teksti",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3b0ad9ec",
-      },
-      rank: 10,
-    },
     "wi-0e18ce92": {
       id: "wi-0e18ce92",
       title: "Muscle% 40",
