@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -48,6 +50,9 @@ export default function TeamSettings() {
   const [orgName, setOrgName] = useState("");
   const [orgSlug, setOrgSlug] = useState("");
   const [renameLoading, setRenameLoading] = useState(false);
+
+  // Auto-check state
+  const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -426,6 +431,34 @@ export default function TeamSettings() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <SearchCheck className="w-4 h-4" /> Data Integrity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Auto-check on changes</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically run data integrity checks whenever item or backlog relationships change.
+                </p>
+              </div>
+              <Switch
+                checked={autoCheckEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setAutoCheckEnabledSetting(activeOrgId, checked);
+                    setAutoCheckEnabled(checked);
+                    toast({ title: checked ? "Auto-check enabled" : "Auto-check disabled" });
+                  }
+                }}
+              />
             </div>
           </CardContent>
         </Card>

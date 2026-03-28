@@ -7,7 +7,9 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { isAutoCheckEnabled } from "@/hooks/useAutoIntegrityCheck";
+import { useOrgStore } from "@/store/orgStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,6 +209,36 @@ export default function AppLayout() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [undo, redo, moveWorkItemToBacklog, reorderWorkItemAmongSiblings]);
+
+  // Auto integrity check on data changes
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const prevDataRef = useRef<string>("");
+
+  useEffect(() => {
+    const unsub = useAppStore.subscribe((state) => {
+      if (!isAutoCheckEnabled(activeOrgId)) return;
+      const fingerprint = JSON.stringify({
+        wi: Object.fromEntries(Object.entries(state.workItems).map(([id, w]) => [id, { p: w.parentId, c: w.childrenIds, ba: w.backlogAssignments }])),
+        bl: Object.fromEntries(Object.entries(state.backlogs).map(([id, b]) => [id, { p: b.parentId, c: b.childrenIds, t: b.treeId }])),
+        bt: Object.fromEntries(Object.entries(state.backlogTrees).map(([id, t]) => [id, { r: t.rootBacklogIds }])),
+      });
+      if (fingerprint === prevDataRef.current) return;
+      prevDataRef.current = fingerprint;
+
+      const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+      if (issues.length > 0) {
+        const report = formatIssueReport(issues);
+        navigator.clipboard.writeText(report);
+        const categories = [...new Set(issues.map((i) => i.category))];
+        toast({
+          title: `⚠️ Auto-check: ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
+          description: `${categories.join(", ")}. Report copied to clipboard.`,
+          variant: "destructive",
+        });
+      }
+    });
+    return unsub;
+  }, [activeOrgId]);
 
   const countWithDescendants = useCallback((ids: string[]) => {
     const store = useAppStore.getState();
