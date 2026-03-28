@@ -1,302 +1,203 @@
-// Auto-exported mock data
-const data = {
-  workItems: {
-    "dd3b7829-e4be-4097-9325-364714808957::wi-fa0ab672": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-fa0ab672",
+import { WorkItem, Backlog, BacklogTree } from "@/types/models";
+
+export function generateMockData() {
+  const prefix = "dd3b7829-e4be-4097-9325-364714808957";
+
+  const workItems: Record<string, WorkItem> = {
+    [`${prefix}::wi-fa0ab672`]: {
+      id: `${prefix}::wi-fa0ab672`,
       title: "google sign up",
       status: "not_started",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-82a1bfce",
+      parentId: `${prefix}::wi-82a1bfce`,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
       rank: 1,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-1b45638e": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-1b45638e",
+    [`${prefix}::wi-1b45638e`]: {
+      id: `${prefix}::wi-1b45638e`,
       title: "asfa",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
-      },
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-a0fa0068` },
       rank: 51,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-621dc98a": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-621dc98a",
+    [`${prefix}::wi-621dc98a`]: {
+      id: `${prefix}::wi-621dc98a`,
       title: "Tee paremmaksi käyttää mobiililla",
       status: "not_started",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-86bba225",
+      parentId: `${prefix}::wi-86bba225`,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
       rank: 0,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-520fdc83": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-520fdc83",
+    [`${prefix}::wi-520fdc83`]: {
+      id: `${prefix}::wi-520fdc83`,
       title: "Lisää scrollaus iteminäkymään",
       status: "done",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
       rank: 13,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-50c48685": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-50c48685",
+    [`${prefix}::wi-50c48685`]: {
+      id: `${prefix}::wi-50c48685`,
       title: "as",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
-      },
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-a0fa0068` },
       rank: 52,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-9a446fb6": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-9a446fb6",
-      title: "changelog tyhjenee kun refreshaa - tallenna tietokantaan",
-      status: "not_started",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-dc34c4fb",
+    [`${prefix}::wi-dc34c4fb`]: {
+      id: `${prefix}::wi-dc34c4fb`,
+      title: "Changelog-muutoksia",
+      status: "blocked",
+      parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 88,
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      rank: 1,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-5548fc2a": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-5548fc2a",
+    [`${prefix}::wi-5548fc2a`]: {
+      id: `${prefix}::wi-5548fc2a`,
       title: "VO2max 50",
       status: "in_progress",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
       rank: 60,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-44521d20": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-44521d20",
+    [`${prefix}::wi-44521d20`]: {
+      id: `${prefix}::wi-44521d20`,
       title: "Fat% 20",
       status: "in_progress",
       parentId: null,
-      childrenIds: ["dd3b7829-e4be-4097-9325-364714808957::wi-d4fa2142"],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
+      childrenIds: [`${prefix}::wi-d4fa2142`],
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
       rank: 58,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-83dc560e": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-83dc560e",
-      title: "asf",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
-      },
-      rank: 53,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-0e18ce92": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-0e18ce92",
-      title: "Muscle% 40",
+    [`${prefix}::wi-d4fa2142`]: {
+      id: `${prefix}::wi-d4fa2142`,
+      title: "hover between 1 and 2",
       status: "in_progress",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
-      rank: 59,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-7bccb3e7": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-7bccb3e7",
-      title: "asfs",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
-      },
-      rank: 54,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-c207f75c": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-c207f75c",
-      title: "consistently start with3",
-      status: "in_progress",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-43a1075a",
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
-      rank: 61,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-d4fa2142": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-d4fa2142",
-      title: "hover between starting with 1 and 2",
-      status: "in_progress",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-44521d20",
-      childrenIds: ["dd3b7829-e4be-4097-9325-364714808957::wi-43a1075a"],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
+      parentId: `${prefix}::wi-44521d20`,
+      childrenIds: [`${prefix}::wi-43a1075a`],
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
       rank: 0,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-43a1075a": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-43a1075a",
+    [`${prefix}::wi-43a1075a`]: {
+      id: `${prefix}::wi-43a1075a`,
       title: "consistently start with 2",
       status: "in_progress",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-d4fa2142",
-      childrenIds: ["dd3b7829-e4be-4097-9325-364714808957::wi-c207f75c"],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      },
+      parentId: `${prefix}::wi-d4fa2142`,
+      childrenIds: [`${prefix}::wi-c207f75c`],
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
       rank: 1,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-86bba225": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-86bba225",
-      title: "Käytettävyysviiilauksia",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [
-        "dd3b7829-e4be-4097-9325-364714808957::wi-621dc98a",
-        "dd3b7829-e4be-4097-9325-364714808957::wi-ce414313",
-      ],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 4,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-ce414313": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-ce414313",
-      title: "add confirmation to backlog deletion",
-      status: "blocked",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-86bba225",
+    [`${prefix}::wi-c207f75c`]: {
+      id: `${prefix}::wi-c207f75c`,
+      title: "consistently start with 3",
+      status: "in_progress",
+      parentId: `${prefix}::wi-43a1075a`,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-dc34c4fb": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-dc34c4fb",
-      title: "Changelog-muutoksia",
-      status: "blocked",
-      parentId: null,
-      childrenIds: [
-        "dd3b7829-e4be-4097-9325-364714808957::wi-e92e6519",
-        "dd3b7829-e4be-4097-9325-364714808957::wi-9a446fb6",
-      ],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-e92e6519": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-e92e6519",
-      title: "add item rank changes to change log",
-      status: "not_started",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::wi-dc34c4fb",
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 52,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-82a1bfce": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-82a1bfce",
-      title: "Signup flow improvements",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["dd3b7829-e4be-4097-9325-364714808957::wi-fa0ab672"],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
-      rank: 5,
-    },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-c121e75e": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-c121e75e",
-      title: "Data on rikki, siksi 'export ei toimi'",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
-      },
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
       rank: 0,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::wi-f0e0ae46": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::wi-f0e0ae46",
-      title: "Roudaa Raijan tuoli, paulan lasit",
+    [`${prefix}::wi-86bba225`]: {
+      id: `${prefix}::wi-86bba225`,
+      title: "Käytettävyysviilauksia",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [`${prefix}::wi-621dc98a`, `${prefix}::wi-ce414313`],
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      rank: 4,
+    },
+    [`${prefix}::wi-ce414313`]: {
+      id: `${prefix}::wi-ce414313`,
+      title: "backlog confirm",
+      status: "blocked",
+      parentId: `${prefix}::wi-86bba225`,
+      childrenIds: [],
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      rank: 1,
+    },
+    [`${prefix}::wi-82a1bfce`]: {
+      id: `${prefix}::wi-82a1bfce`,
+      title: "Signup flow",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [`${prefix}::wi-fa0ab672`],
+      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      rank: 5,
+    },
+    [`${prefix}::wi-f0e0ae46`]: {
+      id: `${prefix}::wi-f0e0ae46`,
+      title: "Roudaa Raijan tuoli",
       status: "done",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: {
-        "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": "dd3b7829-e4be-4097-9325-364714808957::bl-3d4a8289",
-      },
+      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-3d4a8289` },
       rank: 5,
     },
-  },
-  backlogs: {
-    "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b",
+  };
+
+  const backlogs: Record<string, Backlog> = {
+    [`${prefix}::bl-25b6451b`]: {
+      id: `${prefix}::bl-25b6451b`,
       name: "Product backlog",
       parentId: null,
       childrenIds: [],
-      treeId: "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9",
+      treeId: `${prefix}::tree-64b6aad9`,
       rank: 0,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11",
-      name: "Health goals Q2/2026",
-      parentId: "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
+    [`${prefix}::bl-8d4c1a11`]: {
+      id: `${prefix}::bl-8d4c1a11`,
+      name: "Health goals",
+      parentId: `${prefix}::bl-a0fa0068`,
       childrenIds: [],
-      treeId: "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013",
+      treeId: `${prefix}::tree-9db09013`,
       rank: 1,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
+    [`${prefix}::bl-a0fa0068`]: {
+      id: `${prefix}::bl-a0fa0068`,
       name: "MWB: Shredded Grandpa",
       parentId: null,
-      childrenIds: ["dd3b7829-e4be-4097-9325-364714808957::bl-8d4c1a11"],
-      treeId: "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013",
+      childrenIds: [`${prefix}::bl-8d4c1a11`],
+      treeId: `${prefix}::tree-9db09013`,
       rank: 2,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::bl-171e88af": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::bl-171e88af",
-      name: "MWB: Isla ja Ella haluamiinsa kouluihin ykkösellä",
+    [`${prefix}::bl-171e88af`]: {
+      id: `${prefix}::bl-171e88af`,
+      name: "MWB: Isla ja Ella",
       parentId: null,
       childrenIds: [],
-      treeId: "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013",
+      treeId: `${prefix}::tree-9db09013`,
       rank: 1,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::bl-3d4a8289": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::bl-3d4a8289",
+    [`${prefix}::bl-3d4a8289`]: {
+      id: `${prefix}::bl-3d4a8289`,
       name: "Other",
       parentId: null,
       childrenIds: [],
-      treeId: "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013",
+      treeId: `${prefix}::tree-9db09013`,
       rank: 3,
     },
-  },
-  backlogTrees: {
-    "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::tree-64b6aad9",
+  };
+
+  const backlogTrees: Record<string, BacklogTree> = {
+    [`${prefix}::tree-64b6aad9`]: {
+      id: `${prefix}::tree-64b6aad9`,
       name: "Agilefant",
-      rootBacklogIds: ["dd3b7829-e4be-4097-9325-364714808957::bl-25b6451b"],
+      rootBacklogIds: [`${prefix}::bl-25b6451b`],
       rank: 3,
     },
-    "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013": {
-      id: "dd3b7829-e4be-4097-9325-364714808957::tree-9db09013",
+    [`${prefix}::tree-9db09013`]: {
+      id: `${prefix}::tree-9db09013`,
       name: "Jarno",
-      rootBacklogIds: [
-        "dd3b7829-e4be-4097-9325-364714808957::bl-171e88af",
-        "dd3b7829-e4be-4097-9325-364714808957::bl-a0fa0068",
-        "dd3b7829-e4be-4097-9325-364714808957::bl-3d4a8289",
-      ],
+      rootBacklogIds: [`${prefix}::bl-171e88af`, `${prefix}::bl-a0fa0068`, `${prefix}::bl-3d4a8289`],
       rank: 4,
     },
-  },
-};
+  };
+
+  return { workItems, backlogs, backlogTrees };
+}
