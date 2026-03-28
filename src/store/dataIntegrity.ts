@@ -212,6 +212,26 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     });
   });
 
+  // === 9. Unique ID Prefix — every ID must have at most one "::" separator ===
+  const checkIdFormat = (id: string, name: string, type: DataIssue["type"]) => {
+    const parts = id.split("::");
+    if (parts.length > 2) {
+      issues.push({ category: "Malformed ID", type, id, name, detail: `ID contains ${parts.length - 1} "::" separators (expected at most 1)` });
+    }
+  };
+  Object.values(workItems).forEach((wi) => checkIdFormat(wi.id, wi.title, "work_item"));
+  Object.values(backlogs).forEach((bl) => checkIdFormat(bl.id, bl.name, "backlog"));
+  Object.values(backlogTrees).forEach((t) => checkIdFormat(t.id, t.name, "backlog_tree"));
+
+  // Also check consistency: if a backlog has an org prefix, its treeId should share it
+  Object.values(backlogs).forEach((bl) => {
+    const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
+    const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
+    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix) {
+      issues.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org prefix "${blOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
+    }
+  });
+
   return issues;
 }
 
