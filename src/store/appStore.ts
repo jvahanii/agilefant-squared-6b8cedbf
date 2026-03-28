@@ -66,7 +66,12 @@ interface AppState extends DataSnapshot {
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
   renameBacklog: (backlogId: string, name: string) => void;
-  reorderBacklogAmongSiblings: (backlogId: string, targetIndex: number, targetParentId?: string | null, treeId?: string) => void;
+  reorderBacklogAmongSiblings: (
+    backlogId: string,
+    targetIndex: number,
+    targetParentId?: string | null,
+    treeId?: string,
+  ) => void;
   moveBacklog: (backlogId: string, targetParentId: string | null, treeId: string) => void;
   addBacklogTree: (name: string) => void;
   deleteBacklogTree: (treeId: string) => void;
@@ -318,25 +323,67 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId, _rank) => {
+    addWorkItem: (title, parentId, backlogId, treeId, requestedRank) => {
       const state = get();
-      const orgId = state.organizationId!;
+      const orgId = state.organizationId;
+      if (!orgId) return;
+
+      const updatedWorkItems = { ...state.workItems };
+      const itemsToUpdateInDB: WorkItem[] = [];
+
+      // 1. Determine Target Rank: Default to 0 (Very Top)
+      const finalRank = requestedRank ?? 0;
+
+      // 2. Efficiently shift siblings
+      // We only look at items that share the same parent and backlog tree
+      Object.values(updatedWorkItems).forEach((wi) => {
+        const isSameContext = wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId;
+
+        if (isSameContext && wi.rank >= finalRank) {
+          // Create a shallow copy and increment rank
+          const updatedItem = { ...wi, rank: wi.rank + 1 };
+          updatedWorkItems[wi.id] = updatedItem;
+          itemsToUpdateInDB.push(updatedItem);
+        }
+      });
+
+      // 3. Create the New Item
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
-      const siblings = Object.values(state.workItems).filter(
-        (wi) => wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId,
-      );
       const newItem: WorkItem = {
-        id, title, status: "not_started", parentId,
-        childrenIds: [], backlogAssignments: { [treeId]: backlogId },
-        rank: siblings.length,
+        id,
+        title,
+        parentId,
+        rank: finalRank,
+        backlogAssignments: { [treeId]: backlogId },
+        status: "not_started" as WorkItemStatus,
+        childrenIds: [],
+        points: undefined,
       };
-      const updatedItems = { ...state.workItems, [id]: newItem };
-      if (parentId && updatedItems[parentId]) {
-        updatedItems[parentId] = { ...updatedItems[parentId], childrenIds: [...updatedItems[parentId].childrenIds, id] };
+
+      updatedWorkItems[id] = newItem;
+      itemsToUpdateInDB.push(newItem);
+
+      // 4. Batch Update to Database
+      // Using upsertWorkItems is faster than individual upsertWorkItem calls
+      upsertWorkItems(itemsToUpdateInDB, orgId);
+
+      // 5. Update Parent Reference (UI consistency)
+      if (parentId && updatedWorkItems[parentId]) {
+        updatedWorkItems[parentId] = {
+          ...updatedWorkItems[parentId],
+          childrenIds: [...updatedWorkItems[parentId].childrenIds, id],
+        };
       }
-      upsertWorkItem(newItem, orgId);
+
+      // 6. Update local state
+      set({
+        workItems: updatedWorkItems,
+        selectedWorkItemIds: [id],
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
-      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
     },
 
     deleteWorkItem: (workItemId) => {
@@ -360,7 +407,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       deleteWorkItems(idsToDelete);
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
-      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: updatedItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     renameWorkItem: (workItemId, title) => {
@@ -371,7 +422,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...item, title };
       upsertWorkItem(updated, orgId);
       internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title });
-      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     setWorkItemStatus: (workItemId, status) => {
@@ -382,7 +437,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...item, status };
       upsertWorkItem(updated, orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, details: status });
-      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     setWorkItemPoints: (workItemId, points) => {
@@ -392,8 +451,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
       const updated = { ...item, points };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Set Points", entityType: "work_item", entityId: workItemId, details: String(points ?? "none") });
-      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      internalLog({
+        action: "Set Points",
+        entityType: "work_item",
+        entityId: workItemId,
+        details: String(points ?? "none"),
+      });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     removeWorkItemFromTree: (workItemId, treeId) => {
@@ -411,7 +479,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...item, backlogAssignments: newAssignments };
       upsertWorkItem(updated, orgId);
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId });
-      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     reparentWorkItem: (workItemId, newParentId, _treeId, _backlogId) => {
@@ -440,7 +512,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
       upsertWorkItems(changed, orgId);
       internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId });
-      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: updatedItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     addBacklog: (name, parentId, treeId) => {
@@ -454,13 +530,24 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
       const updatedTrees = { ...state.backlogTrees };
       if (parentId && updatedBacklogs[parentId]) {
-        updatedBacklogs[parentId] = { ...updatedBacklogs[parentId], childrenIds: [...updatedBacklogs[parentId].childrenIds, id] };
+        updatedBacklogs[parentId] = {
+          ...updatedBacklogs[parentId],
+          childrenIds: [...updatedBacklogs[parentId].childrenIds, id],
+        };
       } else if (updatedTrees[treeId]) {
-        updatedTrees[treeId] = { ...updatedTrees[treeId], rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, id] };
+        updatedTrees[treeId] = {
+          ...updatedTrees[treeId],
+          rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, id],
+        };
       }
       upsertBacklog(newBacklog, orgId);
       internalLog({ action: "Add", entityType: "backlog", entityId: id, entityName: name });
-      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogs: updatedBacklogs,
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     deleteBacklog: (backlogId) => {
@@ -494,14 +581,26 @@ export const useAppStore = create<AppState>()((set, get) => {
       blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
       const updatedTrees = { ...state.backlogTrees };
       if (bl.parentId && updatedBacklogs[bl.parentId]) {
-        updatedBacklogs[bl.parentId] = { ...updatedBacklogs[bl.parentId], childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId) };
+        updatedBacklogs[bl.parentId] = {
+          ...updatedBacklogs[bl.parentId],
+          childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId),
+        };
       } else if (updatedTrees[bl.treeId]) {
-        updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId) };
+        updatedTrees[bl.treeId] = {
+          ...updatedTrees[bl.treeId],
+          rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId),
+        };
       }
       deleteWorkItems(wiIdsToDelete);
       deleteBacklogs(blIdsToDelete);
       internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
-      set({ workItems: updatedItems, backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: updatedItems,
+        backlogs: updatedBacklogs,
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     renameBacklog: (backlogId, name) => {
@@ -512,7 +611,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...bl, name };
       upsertBacklog(updated, orgId);
       internalLog({ action: "Rename", entityType: "backlog", entityId: backlogId, entityName: name });
-      set({ backlogs: { ...state.backlogs, [backlogId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
@@ -528,7 +631,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       const clamped = Math.max(0, Math.min(targetIndex, remaining.length));
       remaining.splice(clamped, 0, bl);
       const updatedBacklogs = { ...state.backlogs };
-      remaining.forEach((s, i) => { updatedBacklogs[s.id] = { ...updatedBacklogs[s.id], rank: i }; });
+      remaining.forEach((s, i) => {
+        updatedBacklogs[s.id] = { ...updatedBacklogs[s.id], rank: i };
+      });
       const newIds = remaining.map((s) => s.id);
       const updatedTrees = { ...state.backlogTrees };
       if (bl.parentId && updatedBacklogs[bl.parentId]) {
@@ -536,9 +641,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       } else if (updatedTrees[bl.treeId]) {
         updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: newIds };
       }
-      upsertBacklogs(remaining.map((s) => updatedBacklogs[s.id]), orgId);
+      upsertBacklogs(
+        remaining.map((s) => updatedBacklogs[s.id]),
+        orgId,
+      );
       internalLog({ action: "Reorder", entityType: "backlog" });
-      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogs: updatedBacklogs,
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     moveBacklog: (backlogId, targetParentId, treeId) => {
@@ -550,20 +663,37 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedTrees = { ...state.backlogTrees };
       // Remove from old parent
       if (bl.parentId && updatedBacklogs[bl.parentId]) {
-        updatedBacklogs[bl.parentId] = { ...updatedBacklogs[bl.parentId], childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId) };
+        updatedBacklogs[bl.parentId] = {
+          ...updatedBacklogs[bl.parentId],
+          childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId),
+        };
       } else if (updatedTrees[bl.treeId]) {
-        updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId) };
+        updatedTrees[bl.treeId] = {
+          ...updatedTrees[bl.treeId],
+          rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId),
+        };
       }
       // Add to new parent
       if (targetParentId && updatedBacklogs[targetParentId]) {
-        updatedBacklogs[targetParentId] = { ...updatedBacklogs[targetParentId], childrenIds: [...updatedBacklogs[targetParentId].childrenIds, backlogId] };
+        updatedBacklogs[targetParentId] = {
+          ...updatedBacklogs[targetParentId],
+          childrenIds: [...updatedBacklogs[targetParentId].childrenIds, backlogId],
+        };
       } else if (updatedTrees[treeId]) {
-        updatedTrees[treeId] = { ...updatedTrees[treeId], rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, backlogId] };
+        updatedTrees[treeId] = {
+          ...updatedTrees[treeId],
+          rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, backlogId],
+        };
       }
       updatedBacklogs[backlogId] = { ...bl, parentId: targetParentId, treeId };
       upsertBacklog(updatedBacklogs[backlogId], orgId);
       internalLog({ action: "Move", entityType: "backlog", entityId: backlogId });
-      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogs: updatedBacklogs,
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     addBacklogTree: (name) => {
@@ -574,19 +704,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
       upsertBacklogTree(newTree, orgId);
       internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
-      set({ backlogTrees: { ...state.backlogTrees, [id]: newTree }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogTrees: { ...state.backlogTrees, [id]: newTree },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     deleteBacklogTree: (treeId) => {
       const state = get();
-      const blIdsToDelete = Object.values(state.backlogs).filter((bl) => bl.treeId === treeId).map((bl) => bl.id);
+      const blIdsToDelete = Object.values(state.backlogs)
+        .filter((bl) => bl.treeId === treeId)
+        .map((bl) => bl.id);
       const blIdSet = new Set(blIdsToDelete);
       const wiIdsToDelete: string[] = [];
       const updatedItems = { ...state.workItems };
       Object.values(updatedItems).forEach((wi) => {
         const newAssignments = { ...wi.backlogAssignments };
         delete newAssignments[treeId];
-        Object.entries(newAssignments).forEach(([tId, bId]) => { if (blIdSet.has(bId)) delete newAssignments[tId]; });
+        Object.entries(newAssignments).forEach(([tId, bId]) => {
+          if (blIdSet.has(bId)) delete newAssignments[tId];
+        });
         if (Object.keys(newAssignments).length === 0) wiIdsToDelete.push(wi.id);
         else updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
       });
@@ -599,7 +737,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       deleteBacklogs(blIdsToDelete);
       deleteBacklogTreeDB(treeId);
       internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId });
-      set({ workItems: updatedItems, backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        workItems: updatedItems,
+        backlogs: updatedBacklogs,
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     renameBacklogTree: (treeId, name) => {
@@ -610,7 +754,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...tree, name };
       upsertBacklogTree(updated, orgId);
       internalLog({ action: "Rename", entityType: "backlog_tree", entityId: treeId, entityName: name });
-      set({ backlogTrees: { ...state.backlogTrees, [treeId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogTrees: { ...state.backlogTrees, [treeId]: updated },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     reorderBacklogTree: (treeId, targetIndex) => {
@@ -623,10 +771,19 @@ export const useAppStore = create<AppState>()((set, get) => {
       const clamped = Math.max(0, Math.min(targetIndex, remaining.length));
       remaining.splice(clamped, 0, tree);
       const updatedTrees = { ...state.backlogTrees };
-      remaining.forEach((t, i) => { updatedTrees[t.id] = { ...updatedTrees[t.id], rank: i }; });
-      upsertBacklogTrees(remaining.map((t) => updatedTrees[t.id]), orgId);
+      remaining.forEach((t, i) => {
+        updatedTrees[t.id] = { ...updatedTrees[t.id], rank: i };
+      });
+      upsertBacklogTrees(
+        remaining.map((t) => updatedTrees[t.id]),
+        orgId,
+      );
       internalLog({ action: "Reorder", entityType: "backlog_tree" });
-      set({ backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+      set({
+        backlogTrees: updatedTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     resetToMockData: async () => {
