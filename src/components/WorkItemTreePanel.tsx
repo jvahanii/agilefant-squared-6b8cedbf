@@ -358,8 +358,6 @@ function WorkItemNode({
                   key={s.value}
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Multi-select status update logic:
-                    // If the current item is selected, apply change to all selected items.
                     if (isSelected && selectedWorkItemIds.length > 1) {
                       selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.value));
                     } else {
@@ -556,7 +554,8 @@ function WorkItemNode({
               <InlineWorkItemInput
                 depth={depth + 1}
                 onSubmit={(title) => {
-                  addWorkItem(title, workItemId, backlogId, treeId);
+                  // PASSING 0 AS INDEX TO ADD AT THE TOP
+                  addWorkItem(title, workItemId, backlogId, treeId, 0);
                 }}
                 onCancel={() => setIsAdding(false)}
               />
@@ -808,7 +807,8 @@ export function WorkItemTreePanel() {
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
-                addWorkItem(title, null, selectedBacklogId, selectedTreeId);
+                // PASSING 0 AS INDEX TO ADD AT THE TOP
+                addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
               }}
               onCancel={() => setIsAdding(false)}
             />
