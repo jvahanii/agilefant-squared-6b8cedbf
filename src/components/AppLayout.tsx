@@ -432,7 +432,7 @@ export default function AppLayout() {
                   toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." });
                 } else {
                   const report = formatIssueReport(issues);
-                  console.warn("Data integrity issues:", report);
+                  navigator.clipboard.writeText(report);
                   const categories = [...new Set(issues.map((i) => i.category))];
                   toast({
                     title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
