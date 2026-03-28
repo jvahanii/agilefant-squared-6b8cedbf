@@ -1,14 +1,20 @@
-import { create } from 'zustand';
-import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
+import { create } from "zustand";
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from "@/types/models";
 import {
   loadFromSupabase,
-  upsertWorkItem, upsertWorkItems, deleteWorkItems,
-  upsertBacklog, upsertBacklogs, deleteBacklogs,
-  upsertBacklogTree, upsertBacklogTrees, deleteBacklogTree as deleteBacklogTreeFromDb,
+  upsertWorkItem,
+  upsertWorkItems,
+  deleteWorkItems,
+  upsertBacklog,
+  upsertBacklogs,
+  deleteBacklogs,
+  upsertBacklogTree,
+  upsertBacklogTrees,
+  deleteBacklogTree as deleteBacklogTreeFromDb,
   resetOrgData,
-} from './supabaseSync';
-import { generateMockData } from './mockData';
-import { logChange, clearChangeLog } from './changeLog';
+} from "./supabaseSync";
+import { generateMockData } from "./mockData";
+import { logChange, clearChangeLog } from "./changeLog";
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
@@ -33,16 +39,21 @@ interface AppState extends DataSnapshot {
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId: string, backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
-  
+
   reorderWorkItem: (workItemId: string, newRank: number, backlogId: string) => void;
   moveBacklog: (backlogId: string, newParentId: string | null, treeId: string) => void;
-  reorderBacklogAmongSiblings: (backlogId: string, targetIndex: number, newParentId: string | null, treeId: string) => void;
+  reorderBacklogAmongSiblings: (
+    backlogId: string,
+    targetIndex: number,
+    newParentId: string | null,
+    treeId: string,
+  ) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
   toggleBacklogExpand: (backlogId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
   renameBacklog: (backlogId: string, name: string) => void;
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, index?: number) => void;
   deleteWorkItem: (workItemId: string) => void;
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
@@ -82,9 +93,8 @@ type StoreState = AppState & {
   expandedBacklogs: Set<string>;
 };
 
-// Helper to get org ID or throw
 function getOrgId(state: { organizationId: string | null }): string {
-  if (!state.organizationId) throw new Error('No organization selected');
+  if (!state.organizationId) throw new Error("No organization selected");
   return state.organizationId;
 }
 
@@ -116,7 +126,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
       try {
         const data = await loadFromSupabase(orgId);
         const nextExpanded = new Set<string>();
-        Object.values(data.backlogs).forEach(b => {
+        Object.values(data.backlogs).forEach((b) => {
           if (!b.parentId) nextExpanded.add(b.id);
         });
         set({
@@ -128,39 +138,41 @@ export const useAppStore = create<StoreState>()((set, get) => {
           redoStack: [],
         });
       } catch (err) {
-        console.error('Failed to load from Supabase:', err);
+        console.error("Failed to load from Supabase:", err);
         set({ isLoading: false });
       }
     },
 
-    selectBacklog: (backlogId, treeId, ctrlKey = false) => set(state => {
-      if (ctrlKey) {
-        if (state.selectedTreeId && state.selectedTreeId !== treeId) {
-          return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
+    selectBacklog: (backlogId, treeId, ctrlKey = false) =>
+      set((state) => {
+        if (ctrlKey) {
+          if (state.selectedTreeId && state.selectedTreeId !== treeId) {
+            return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
+          }
+          const ids = state.selectedBacklogIds.includes(backlogId)
+            ? state.selectedBacklogIds.filter((id) => id !== backlogId)
+            : [...state.selectedBacklogIds, backlogId];
+          return { selectedBacklogIds: ids, selectedTreeId: treeId, selectedWorkItemIds: [] };
         }
-        const ids = state.selectedBacklogIds.includes(backlogId)
-          ? state.selectedBacklogIds.filter(id => id !== backlogId)
-          : [...state.selectedBacklogIds, backlogId];
-        return { selectedBacklogIds: ids, selectedTreeId: treeId, selectedWorkItemIds: [] };
-      }
-      return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
-    }),
+        return { selectedBacklogIds: [backlogId], selectedTreeId: treeId, selectedWorkItemIds: [] };
+      }),
 
-    selectWorkItem: (workItemId, ctrlKey = false) => set(state => {
-      if (!workItemId) return { selectedWorkItemIds: [] };
-      if (ctrlKey) {
-        const ids = state.selectedWorkItemIds.includes(workItemId)
-          ? state.selectedWorkItemIds.filter(id => id !== workItemId)
-          : [...state.selectedWorkItemIds, workItemId];
-        return { selectedWorkItemIds: ids };
-      }
-      return { selectedWorkItemIds: [workItemId] };
-    }),
+    selectWorkItem: (workItemId, ctrlKey = false) =>
+      set((state) => {
+        if (!workItemId) return { selectedWorkItemIds: [] };
+        if (ctrlKey) {
+          const ids = state.selectedWorkItemIds.includes(workItemId)
+            ? state.selectedWorkItemIds.filter((id) => id !== workItemId)
+            : [...state.selectedWorkItemIds, workItemId];
+          return { selectedWorkItemIds: ids };
+        }
+        return { selectedWorkItemIds: [workItemId] };
+      }),
 
     clearWorkItemSelection: () => set({ selectedWorkItemIds: [] }),
 
     undo: () => {
-      set(state => {
+      set((state) => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
@@ -169,7 +181,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     redo: () => {
-      set(state => {
+      set((state) => {
         const stack = [...state.redoStack];
         const next = stack.pop();
         if (!next) return state;
@@ -185,16 +197,16 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const mockData = generateMockData();
         await resetOrgData(orgId, mockData);
         clearChangeLog();
-        logChange({ action: 'Reset to mock data', entityType: 'data' });
+        logChange({ action: "Reset to mock data", entityType: "data" });
         await get().loadFromSupabase();
       } catch (err) {
-        console.error('resetToMockData failed:', err);
+        console.error("resetToMockData failed:", err);
         set({ isLoading: false });
       }
     },
 
     moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
@@ -213,14 +225,20 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         moveRecursive(workItemId);
 
-        logChange({ action: 'Move to backlog', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Moved to backlog ${targetBacklogId}` });
+        logChange({
+          action: "Move to backlog",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+          details: `Moved to backlog ${targetBacklogId}`,
+        });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
     },
 
     reparentWorkItem: (workItemId, newParentId, treeId, backlogId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
@@ -239,13 +257,19 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const changedItems: WorkItem[] = [];
 
         if (item.parentId && updatedItems[item.parentId]) {
-          const oldParent = { ...updatedItems[item.parentId], childrenIds: updatedItems[item.parentId].childrenIds.filter(id => id !== workItemId) };
+          const oldParent = {
+            ...updatedItems[item.parentId],
+            childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+          };
           updatedItems[item.parentId] = oldParent;
           changedItems.push(oldParent);
         }
 
         if (newParentId && updatedItems[newParentId]) {
-          const newParent = { ...updatedItems[newParentId], childrenIds: [...updatedItems[newParentId].childrenIds, workItemId] };
+          const newParent = {
+            ...updatedItems[newParentId],
+            childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
+          };
           updatedItems[newParentId] = newParent;
           changedItems.push(newParent);
         }
@@ -264,7 +288,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     reorderWorkItem: (workItemId, newRank) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
@@ -276,27 +300,31 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
 
         const backlogIdSet = new Set(backlogIds);
         const siblings = Object.values(state.workItems)
-          .filter(wi => {
+          .filter((wi) => {
             if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
             if (item.parentId === null) {
-              return wi.parentId === null || !state.workItems[wi.parentId] || !backlogIdSet.has(state.workItems[wi.parentId].backlogAssignments[treeId]);
+              return (
+                wi.parentId === null ||
+                !state.workItems[wi.parentId] ||
+                !backlogIdSet.has(state.workItems[wi.parentId].backlogAssignments[treeId])
+              );
             }
             return wi.parentId === item.parentId;
           })
           .sort((a, b) => a.rank - b.rank);
 
-        const currentIndex = siblings.findIndex(s => s.id === workItemId);
+        const currentIndex = siblings.findIndex((s) => s.id === workItemId);
         if (currentIndex === -1 || currentIndex === targetIndex) return state;
 
         const undo = pushUndo(state);
-        const reordered = siblings.filter(s => s.id !== workItemId);
+        const reordered = siblings.filter((s) => s.id !== workItemId);
         const clampedIndex = Math.max(0, Math.min(targetIndex, reordered.length));
         reordered.splice(clampedIndex, 0, item);
 
@@ -314,7 +342,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     moveBacklog: (backlogId, newParentId, treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
@@ -325,15 +353,21 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
         if (backlog.parentId) {
           const oldParent = updatedBacklogs[backlog.parentId];
-          if (oldParent) updatedBacklogs[backlog.parentId] = { ...oldParent, childrenIds: oldParent.childrenIds.filter(id => id !== backlogId) };
+          if (oldParent)
+            updatedBacklogs[backlog.parentId] = {
+              ...oldParent,
+              childrenIds: oldParent.childrenIds.filter((id) => id !== backlogId),
+            };
         } else {
           const tree = updatedTrees[treeId];
-          if (tree) updatedTrees[treeId] = { ...tree, rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId) };
+          if (tree)
+            updatedTrees[treeId] = { ...tree, rootBacklogIds: tree.rootBacklogIds.filter((id) => id !== backlogId) };
         }
 
         if (newParentId) {
           const newParent = updatedBacklogs[newParentId];
-          if (newParent) updatedBacklogs[newParentId] = { ...newParent, childrenIds: [...newParent.childrenIds, backlogId] };
+          if (newParent)
+            updatedBacklogs[newParentId] = { ...newParent, childrenIds: [...newParent.childrenIds, backlogId] };
         } else {
           const tree = updatedTrees[treeId];
           if (tree) updatedTrees[treeId] = { ...tree, rootBacklogIds: [...tree.rootBacklogIds, backlogId] };
@@ -348,7 +382,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     reorderBacklogAmongSiblings: (backlogId, targetIndex, newParentId, treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog || backlog.treeId !== treeId) return state;
@@ -359,15 +393,21 @@ export const useAppStore = create<StoreState>()((set, get) => {
         if (backlog.parentId !== newParentId) {
           if (backlog.parentId) {
             const oldParent = updatedBacklogs[backlog.parentId];
-            if (oldParent) updatedBacklogs[backlog.parentId] = { ...oldParent, childrenIds: oldParent.childrenIds.filter(id => id !== backlogId) };
+            if (oldParent)
+              updatedBacklogs[backlog.parentId] = {
+                ...oldParent,
+                childrenIds: oldParent.childrenIds.filter((id) => id !== backlogId),
+              };
           } else {
             const tree = updatedTrees[treeId];
-            if (tree) updatedTrees[treeId] = { ...tree, rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId) };
+            if (tree)
+              updatedTrees[treeId] = { ...tree, rootBacklogIds: tree.rootBacklogIds.filter((id) => id !== backlogId) };
           }
           updatedBacklogs[backlogId] = { ...backlog, parentId: newParentId };
           if (newParentId) {
             const newParent = updatedBacklogs[newParentId];
-            if (newParent) updatedBacklogs[newParentId] = { ...newParent, childrenIds: [...newParent.childrenIds, backlogId] };
+            if (newParent)
+              updatedBacklogs[newParentId] = { ...newParent, childrenIds: [...newParent.childrenIds, backlogId] };
           } else {
             const tree = updatedTrees[treeId];
             if (tree) updatedTrees[treeId] = { ...tree, rootBacklogIds: [...tree.rootBacklogIds, backlogId] };
@@ -403,12 +443,17 @@ export const useAppStore = create<StoreState>()((set, get) => {
         if (newParentId) nextExpanded.add(newParentId);
 
         upsertBacklogs(changedBacklogs, orgId);
-        return { ...pushUndo(state), backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: nextExpanded };
+        return {
+          ...pushUndo(state),
+          backlogs: updatedBacklogs,
+          backlogTrees: updatedTrees,
+          expandedBacklogs: nextExpanded,
+        };
       });
     },
 
     toggleWorkItemExpand: (workItemId) => {
-      set(state => {
+      set((state) => {
         const next = new Set(state.expandedWorkItems);
         if (next.has(workItemId)) next.delete(workItemId);
         else next.add(workItemId);
@@ -417,7 +462,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     toggleBacklogExpand: (backlogId) => {
-      set(state => {
+      set((state) => {
         const next = new Set(state.expandedBacklogs);
         if (next.has(backlogId)) next.delete(backlogId);
         else next.add(backlogId);
@@ -426,13 +471,17 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     addBacklog: (name, parentId, treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const undo = pushUndo(state);
         const id = `bl-${crypto.randomUUID().slice(0, 8)}`;
         const newBacklog: Backlog = {
-          id, name, parentId, childrenIds: [], treeId,
-          rank: Object.values(state.backlogs).filter(b => b.treeId === treeId).length,
+          id,
+          name,
+          parentId,
+          childrenIds: [],
+          treeId,
+          rank: Object.values(state.backlogs).filter((b) => b.treeId === treeId).length,
         };
         const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
         const updatedTrees = { ...state.backlogTrees };
@@ -448,18 +497,18 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const next = new Set(state.expandedBacklogs);
         if (parentId) next.add(parentId);
 
-        logChange({ action: 'Add backlog', entityType: 'backlog', entityId: id, entityName: name });
+        logChange({ action: "Add backlog", entityType: "backlog", entityId: id, entityName: name });
         upsertBacklog(newBacklog, orgId);
         return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, expandedBacklogs: next };
       });
     },
 
     deleteBacklog: (backlogId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog) return state;
-        logChange({ action: 'Delete backlog', entityType: 'backlog', entityId: backlogId, entityName: backlog.name });
+        logChange({ action: "Delete backlog", entityType: "backlog", entityId: backlogId, entityName: backlog.name });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
@@ -481,7 +530,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
           if (!wi) return;
           [...wi.childrenIds].forEach(deleteWorkItemRecursive);
           if (wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
-            const otherAssignments = Object.keys(wi.backlogAssignments).filter(t => t !== backlog.treeId);
+            const otherAssignments = Object.keys(wi.backlogAssignments).filter((t) => t !== backlog.treeId);
             if (otherAssignments.length > 0) {
               const newAssignments = { ...wi.backlogAssignments };
               delete newAssignments[backlog.treeId];
@@ -490,14 +539,17 @@ export const useAppStore = create<StoreState>()((set, get) => {
               changedWorkItems.push(updated);
             } else {
               if (wi.parentId && updatedItems[wi.parentId]) {
-                updatedItems[wi.parentId] = { ...updatedItems[wi.parentId], childrenIds: updatedItems[wi.parentId].childrenIds.filter(id => id !== wiId) };
+                updatedItems[wi.parentId] = {
+                  ...updatedItems[wi.parentId],
+                  childrenIds: updatedItems[wi.parentId].childrenIds.filter((id) => id !== wiId),
+                };
               }
               delete updatedItems[wiId];
               deletedWorkItemIds.push(wiId);
             }
           }
         };
-        Object.keys(updatedItems).forEach(wiId => {
+        Object.keys(updatedItems).forEach((wiId) => {
           const wi = updatedItems[wiId];
           if (wi && wi.backlogAssignments[backlog.treeId] && toDelete.has(wi.backlogAssignments[backlog.treeId])) {
             deleteWorkItemRecursive(wiId);
@@ -506,68 +558,130 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
         if (backlog.parentId) {
           const parent = updatedBacklogs[backlog.parentId];
-          if (parent) updatedBacklogs[backlog.parentId] = { ...parent, childrenIds: parent.childrenIds.filter(id => id !== backlogId) };
+          if (parent)
+            updatedBacklogs[backlog.parentId] = {
+              ...parent,
+              childrenIds: parent.childrenIds.filter((id) => id !== backlogId),
+            };
         } else {
           const tree = updatedTrees[backlog.treeId];
-          if (tree) updatedTrees[backlog.treeId] = { ...tree, rootBacklogIds: tree.rootBacklogIds.filter(id => id !== backlogId) };
+          if (tree)
+            updatedTrees[backlog.treeId] = {
+              ...tree,
+              rootBacklogIds: tree.rootBacklogIds.filter((id) => id !== backlogId),
+            };
         }
 
-        toDelete.forEach(id => delete updatedBacklogs[id]);
-        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDelete.has(id));
+        toDelete.forEach((id) => delete updatedBacklogs[id]);
+        const selectedBacklogIds = state.selectedBacklogIds.filter((id) => !toDelete.has(id));
 
         deleteWorkItems(deletedWorkItemIds);
         if (changedWorkItems.length) upsertWorkItems(changedWorkItems, orgId);
         deleteBacklogs([...toDelete]);
 
-        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds };
+        return {
+          ...undo,
+          backlogs: updatedBacklogs,
+          backlogTrees: updatedTrees,
+          workItems: updatedItems,
+          selectedBacklogIds,
+        };
       });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId) => {
-      set(state => {
+    addWorkItem: (title, parentId, backlogId, treeId, index) => {
+      set((state) => {
         const orgId = getOrgId(state);
         const undo = pushUndo(state);
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
+
+        // Determine correct siblings for rank calculation
+        // If we are at the top (index 0), current items shift down.
+        // We'll give the new item the specified index as its rank,
+        // and later updates would typically handle global rank normalization.
         const newItem: WorkItem = {
-          id, title, parentId, childrenIds: [],
-          status: 'not_started',
+          id,
+          title,
+          parentId,
+          childrenIds: [],
+          status: "not_started",
           backlogAssignments: { [treeId]: backlogId },
-          rank: Object.values(state.workItems).length,
+          rank: typeof index === "number" ? index : Object.values(state.workItems).length,
         };
+
         const updatedItems = { ...state.workItems, [id]: newItem };
+        const changedItems: WorkItem[] = [newItem];
 
-        logChange({ action: 'Add work item', entityType: 'work_item', entityId: id, entityName: title });
-        upsertWorkItem(newItem, orgId);
-
+        // Update Parent's children list
         if (parentId && updatedItems[parentId]) {
-          const updatedParent = { ...updatedItems[parentId], childrenIds: [...updatedItems[parentId].childrenIds, id] };
-          updatedItems[parentId] = updatedParent;
-          const next = new Set(state.expandedWorkItems);
-          next.add(parentId);
-          return { ...undo, workItems: updatedItems, expandedWorkItems: next };
+          const parent = updatedItems[parentId];
+          const nextChildren = [...parent.childrenIds];
+
+          if (typeof index === "number") {
+            nextChildren.splice(index, 0, id);
+          } else {
+            nextChildren.push(id);
+          }
+
+          updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
+
+          // Re-rank siblings based on new order if necessary
+          // For simplicity here, we assume the UI/Store sort by rank.
+          // To ensure correct sorting immediately, we shift existing sibling ranks.
+          nextChildren.forEach((childId, i) => {
+            if (updatedItems[childId]) {
+              const updated = { ...updatedItems[childId], rank: i };
+              updatedItems[childId] = updated;
+              if (childId !== id) changedItems.push(updated);
+            }
+          });
+
+          const nextExpanded = new Set(state.expandedWorkItems);
+          nextExpanded.add(parentId);
+
+          upsertWorkItems(changedItems, orgId);
+          return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
+        } else {
+          // Root level item in the current backlog view
+          // If index is 0, we should technically shift other "root" ranks,
+          // but "roots" are dynamic based on tree view.
+          // We apply the rank and sync.
+          upsertWorkItem(newItem, orgId);
         }
 
+        logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
         return { ...undo, workItems: updatedItems };
       });
     },
 
     deleteWorkItem: (workItemId) => {
-      set(state => {
+      set((state) => {
         const item = state.workItems[workItemId];
         if (!item) return state;
-        logChange({ action: 'Delete work item', entityType: 'work_item', entityId: workItemId, entityName: item.title });
+        logChange({
+          action: "Delete work item",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+        });
 
         const undo = pushUndo(state);
         const toDelete = new Set<string>();
-        const collect = (id: string) => { toDelete.add(id); state.workItems[id]?.childrenIds.forEach(collect); };
+        const collect = (id: string) => {
+          toDelete.add(id);
+          state.workItems[id]?.childrenIds.forEach(collect);
+        };
         collect(workItemId);
 
         const updatedItems = { ...state.workItems };
         if (item.parentId && updatedItems[item.parentId]) {
-          updatedItems[item.parentId] = { ...updatedItems[item.parentId], childrenIds: updatedItems[item.parentId].childrenIds.filter(id => id !== workItemId) };
+          updatedItems[item.parentId] = {
+            ...updatedItems[item.parentId],
+            childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+          };
         }
-        toDelete.forEach(id => delete updatedItems[id]);
-        const selectedWorkItemIds = state.selectedWorkItemIds.filter(id => !toDelete.has(id));
+        toDelete.forEach((id) => delete updatedItems[id]);
+        const selectedWorkItemIds = state.selectedWorkItemIds.filter((id) => !toDelete.has(id));
 
         deleteWorkItems([...toDelete]);
         return { ...undo, workItems: updatedItems, selectedWorkItemIds };
@@ -575,7 +689,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
     },
 
     removeWorkItemFromTree: (workItemId, treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
@@ -596,90 +710,126 @@ export const useAppStore = create<StoreState>()((set, get) => {
         };
         removeRecursive(workItemId);
 
-        logChange({ action: 'Remove from tree', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Removed from tree ${treeId}` });
+        logChange({
+          action: "Remove from tree",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+          details: `Removed from tree ${treeId}`,
+        });
         upsertWorkItems(changedItems, orgId);
         return { ...undo, workItems: updatedItems };
       });
     },
 
     setWorkItemStatus: (workItemId, status) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
         const updated = { ...item, status };
-        logChange({ action: 'Set status', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Status → ${status}` });
+        logChange({
+          action: "Set status",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+          details: `Status → ${status}`,
+        });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
     },
 
     renameBacklog: (backlogId, name) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const backlog = state.backlogs[backlogId];
         if (!backlog || !name.trim()) return state;
         const updated = { ...backlog, name: name.trim() };
-        logChange({ action: 'Rename backlog', entityType: 'backlog', entityId: backlogId, entityName: name.trim(), details: `From "${backlog.name}"` });
+        logChange({
+          action: "Rename backlog",
+          entityType: "backlog",
+          entityId: backlogId,
+          entityName: name.trim(),
+          details: `From "${backlog.name}"`,
+        });
         upsertBacklog(updated, orgId);
         return { ...pushUndo(state), backlogs: { ...state.backlogs, [backlogId]: updated } };
       });
     },
 
     renameWorkItem: (workItemId, title) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item || !title.trim()) return state;
         const updated = { ...item, title: title.trim() };
-        logChange({ action: 'Rename work item', entityType: 'work_item', entityId: workItemId, entityName: title.trim(), details: `From "${item.title}"` });
+        logChange({
+          action: "Rename work item",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: title.trim(),
+          details: `From "${item.title}"`,
+        });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
     },
 
     setWorkItemPoints: (workItemId, points) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
         const updated = { ...item, points };
-        logChange({ action: 'Set points', entityType: 'work_item', entityId: workItemId, entityName: item.title, details: `Points → ${points ?? 'none'}` });
+        logChange({
+          action: "Set points",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+          details: `Points → ${points ?? "none"}`,
+        });
         upsertWorkItem(updated, orgId);
         return { ...pushUndo(state), workItems: { ...state.workItems, [workItemId]: updated } };
       });
     },
 
     renameBacklogTree: (treeId, name) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const tree = state.backlogTrees[treeId];
         if (!tree || !name.trim()) return state;
         const updated = { ...tree, name: name.trim() };
-        logChange({ action: 'Rename tree', entityType: 'backlog_tree', entityId: treeId, entityName: name.trim(), details: `From "${tree.name}"` });
+        logChange({
+          action: "Rename tree",
+          entityType: "backlog_tree",
+          entityId: treeId,
+          entityName: name.trim(),
+          details: `From "${tree.name}"`,
+        });
         upsertBacklogTree(updated, orgId);
         return { ...pushUndo(state), backlogTrees: { ...state.backlogTrees, [treeId]: updated } };
       });
     },
 
     addBacklogTree: (name) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const id = `tree-${crypto.randomUUID().slice(0, 8)}`;
-        const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map(t => t.rank ?? 0));
+        const maxRank = Math.max(-1, ...Object.values(state.backlogTrees).map((t) => t.rank ?? 0));
         const newTree: BacklogTree = { id, name: name.trim(), rootBacklogIds: [], rank: maxRank + 1 };
-        logChange({ action: 'Add tree', entityType: 'backlog_tree', entityId: id, entityName: name.trim() });
+        logChange({ action: "Add tree", entityType: "backlog_tree", entityId: id, entityName: name.trim() });
         upsertBacklogTree(newTree, orgId);
         return { ...pushUndo(state), backlogTrees: { ...state.backlogTrees, [id]: newTree } };
       });
     },
 
     deleteBacklogTree: (treeId) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const tree = state.backlogTrees[treeId];
         if (!tree) return state;
-        logChange({ action: 'Delete tree', entityType: 'backlog_tree', entityId: treeId, entityName: tree.name });
+        logChange({ action: "Delete tree", entityType: "backlog_tree", entityId: treeId, entityName: tree.name });
 
         const undo = pushUndo(state);
         const updatedBacklogs = { ...state.backlogs };
@@ -687,7 +837,10 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const updatedItems = { ...state.workItems };
 
         const toDeleteBacklogs = new Set<string>();
-        const collect = (id: string) => { toDeleteBacklogs.add(id); state.backlogs[id]?.childrenIds.forEach(collect); };
+        const collect = (id: string) => {
+          toDeleteBacklogs.add(id);
+          state.backlogs[id]?.childrenIds.forEach(collect);
+        };
         tree.rootBacklogIds.forEach(collect);
 
         const deletedWorkItemIds: string[] = [];
@@ -698,7 +851,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
           if (!wi) return;
           [...wi.childrenIds].forEach(deleteWorkItemRecursive);
           if (wi.backlogAssignments[treeId]) {
-            const otherAssignments = Object.keys(wi.backlogAssignments).filter(t => t !== treeId);
+            const otherAssignments = Object.keys(wi.backlogAssignments).filter((t) => t !== treeId);
             if (otherAssignments.length > 0) {
               const newAssignments = { ...wi.backlogAssignments };
               delete newAssignments[treeId];
@@ -707,39 +860,49 @@ export const useAppStore = create<StoreState>()((set, get) => {
               changedWorkItems.push(updated);
             } else {
               if (wi.parentId && updatedItems[wi.parentId]) {
-                updatedItems[wi.parentId] = { ...updatedItems[wi.parentId], childrenIds: updatedItems[wi.parentId].childrenIds.filter(id => id !== wiId) };
+                updatedItems[wi.parentId] = {
+                  ...updatedItems[wi.parentId],
+                  childrenIds: updatedItems[wi.parentId].childrenIds.filter((id) => id !== wiId),
+                };
               }
               delete updatedItems[wiId];
               deletedWorkItemIds.push(wiId);
             }
           }
         };
-        Object.keys(updatedItems).forEach(wiId => {
+        Object.keys(updatedItems).forEach((wiId) => {
           if (updatedItems[wiId]?.backlogAssignments[treeId]) deleteWorkItemRecursive(wiId);
         });
 
-        toDeleteBacklogs.forEach(id => delete updatedBacklogs[id]);
+        toDeleteBacklogs.forEach((id) => delete updatedBacklogs[id]);
         delete updatedTrees[treeId];
 
-        const selectedBacklogIds = state.selectedBacklogIds.filter(id => !toDeleteBacklogs.has(id));
+        const selectedBacklogIds = state.selectedBacklogIds.filter((id) => !toDeleteBacklogs.has(id));
         const selectedTreeId = state.selectedTreeId === treeId ? null : state.selectedTreeId;
 
         deleteWorkItems(deletedWorkItemIds);
         if (changedWorkItems.length) upsertWorkItems(changedWorkItems, orgId);
         deleteBacklogTreeFromDb(treeId);
 
-        return { ...undo, backlogs: updatedBacklogs, backlogTrees: updatedTrees, workItems: updatedItems, selectedBacklogIds, selectedTreeId };
+        return {
+          ...undo,
+          backlogs: updatedBacklogs,
+          backlogTrees: updatedTrees,
+          workItems: updatedItems,
+          selectedBacklogIds,
+          selectedTreeId,
+        };
       });
     },
 
     reorderBacklogTree: (treeId, targetIndex) => {
-      set(state => {
+      set((state) => {
         const orgId = getOrgId(state);
         const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-        const currentIdx = sorted.findIndex(t => t.id === treeId);
+        const currentIdx = sorted.findIndex((t) => t.id === treeId);
         if (currentIdx === -1 || currentIdx === targetIndex) return state;
 
-        const reordered = sorted.filter(t => t.id !== treeId);
+        const reordered = sorted.filter((t) => t.id !== treeId);
         const clamped = Math.max(0, Math.min(targetIndex, reordered.length));
         reordered.splice(clamped, 0, sorted[currentIdx]);
 
