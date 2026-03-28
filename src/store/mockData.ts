@@ -1,203 +1,283 @@
-import { WorkItem, Backlog, BacklogTree } from "@/types/models";
-
-export function generateMockData() {
-  const prefix = "dd3b7829-e4be-4097-9325-364714808957";
-
-  const workItems: Record<string, WorkItem> = {
-    [`${prefix}::wi-fa0ab672`]: {
-      id: `${prefix}::wi-fa0ab672`,
+// Auto-exported mock data
+const data = {
+  workItems: {
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-0a2c37b1": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-0a2c37b1",
+      title: "Tee rapsa ykkösalueesta",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
+      },
+      rank: 0,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672",
       title: "google sign up",
       status: "not_started",
-      parentId: `${prefix}::wi-82a1bfce`,
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce",
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 1,
     },
-    [`${prefix}::wi-1b45638e`]: {
-      id: `${prefix}::wi-1b45638e`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1b45638e": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1b45638e",
       title: "asfa",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-a0fa0068` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
+      },
       rank: 51,
     },
-    [`${prefix}::wi-621dc98a`]: {
-      id: `${prefix}::wi-621dc98a`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a",
       title: "Tee paremmaksi käyttää mobiililla",
       status: "not_started",
-      parentId: `${prefix}::wi-86bba225`,
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 0,
     },
-    [`${prefix}::wi-520fdc83`]: {
-      id: `${prefix}::wi-520fdc83`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-520fdc83": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-520fdc83",
       title: "Lisää scrollaus iteminäkymään",
       status: "done",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 13,
     },
-    [`${prefix}::wi-50c48685`]: {
-      id: `${prefix}::wi-50c48685`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-50c48685": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-50c48685",
       title: "as",
       status: "not_started",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-a0fa0068` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
+      },
       rank: 52,
     },
-    [`${prefix}::wi-dc34c4fb`]: {
-      id: `${prefix}::wi-dc34c4fb`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-dc34c4fb": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-dc34c4fb",
       title: "Changelog-muutoksia",
       status: "blocked",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 1,
     },
-    [`${prefix}::wi-5548fc2a`]: {
-      id: `${prefix}::wi-5548fc2a`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a",
       title: "VO2max 50",
       status: "in_progress",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
-      rank: 60,
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 2,
     },
-    [`${prefix}::wi-44521d20`]: {
-      id: `${prefix}::wi-44521d20`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-44521d20": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-44521d20",
       title: "Fat% 20",
       status: "in_progress",
       parentId: null,
-      childrenIds: [`${prefix}::wi-d4fa2142`],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
-      rank: 58,
-    },
-    [`${prefix}::wi-d4fa2142`]: {
-      id: `${prefix}::wi-d4fa2142`,
-      title: "hover between 1 and 2",
-      status: "in_progress",
-      parentId: `${prefix}::wi-44521d20`,
-      childrenIds: [`${prefix}::wi-43a1075a`],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
-      rank: 0,
-    },
-    [`${prefix}::wi-43a1075a`]: {
-      id: `${prefix}::wi-43a1075a`,
-      title: "consistently start with 2",
-      status: "in_progress",
-      parentId: `${prefix}::wi-d4fa2142`,
-      childrenIds: [`${prefix}::wi-c207f75c`],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142"],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
       rank: 1,
     },
-    [`${prefix}::wi-c207f75c`]: {
-      id: `${prefix}::wi-c207f75c`,
-      title: "consistently start with 3",
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142",
+      title: "hover between 1 and 2",
       status: "in_progress",
-      parentId: `${prefix}::wi-43a1075a`,
-      childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-8d4c1a11` },
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-44521d20",
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-43a1075a"],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
       rank: 0,
     },
-    [`${prefix}::wi-86bba225`]: {
-      id: `${prefix}::wi-86bba225`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-43a1075a": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-43a1075a",
+      title: "consistently start with 2",
+      status: "in_progress",
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142",
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c207f75c"],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 1,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c207f75c": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c207f75c",
+      title: "consistently start with 3",
+      status: "in_progress",
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-43a1075a",
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 0,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
       title: "Käytettävyysviilauksia",
       status: "not_started",
       parentId: null,
-      childrenIds: [`${prefix}::wi-621dc98a`, `${prefix}::wi-ce414313`],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      childrenIds: [
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
+      ],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 4,
     },
-    [`${prefix}::wi-ce414313`]: {
-      id: `${prefix}::wi-ce414313`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
       title: "backlog confirm",
       status: "blocked",
-      parentId: `${prefix}::wi-86bba225`,
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 1,
     },
-    [`${prefix}::wi-82a1bfce`]: {
-      id: `${prefix}::wi-82a1bfce`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce",
       title: "Signup flow",
       status: "not_started",
       parentId: null,
-      childrenIds: [`${prefix}::wi-fa0ab672`],
-      backlogAssignments: { [`${prefix}::tree-64b6aad9`]: `${prefix}::bl-25b6451b` },
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672"],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
       rank: 5,
     },
-    [`${prefix}::wi-f0e0ae46`]: {
-      id: `${prefix}::wi-f0e0ae46`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f0e0ae46": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f0e0ae46",
       title: "Roudaa Raijan tuoli",
       status: "done",
       parentId: null,
       childrenIds: [],
-      backlogAssignments: { [`${prefix}::tree-9db09013`]: `${prefix}::bl-3d4a8289` },
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3d4a8289",
+      },
       rank: 5,
     },
-  };
-
-  const backlogs: Record<string, Backlog> = {
-    [`${prefix}::bl-25b6451b`]: {
-      id: `${prefix}::bl-25b6451b`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f5d5e882": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f5d5e882",
+      title: "Muscle% 40",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 0,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-7e92184f": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-7e92184f",
+      title: "foo",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 3,
+    },
+  },
+  backlogs: {
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce",
+      name: "Lista",
+      parentId: null,
+      childrenIds: [],
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3",
+      rank: 0,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       name: "Product backlog",
       parentId: null,
       childrenIds: [],
-      treeId: `${prefix}::tree-64b6aad9`,
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9",
       rank: 0,
     },
-    [`${prefix}::bl-8d4c1a11`]: {
-      id: `${prefix}::bl-8d4c1a11`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
       name: "Health goals",
-      parentId: `${prefix}::bl-a0fa0068`,
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
       childrenIds: [],
-      treeId: `${prefix}::tree-9db09013`,
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       rank: 1,
     },
-    [`${prefix}::bl-a0fa0068`]: {
-      id: `${prefix}::bl-a0fa0068`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
       name: "MWB: Shredded Grandpa",
       parentId: null,
-      childrenIds: [`${prefix}::bl-8d4c1a11`],
-      treeId: `${prefix}::tree-9db09013`,
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11"],
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       rank: 2,
     },
-    [`${prefix}::bl-171e88af`]: {
-      id: `${prefix}::bl-171e88af`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-171e88af": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-171e88af",
       name: "MWB: Isla ja Ella",
       parentId: null,
       childrenIds: [],
-      treeId: `${prefix}::tree-9db09013`,
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       rank: 1,
     },
-    [`${prefix}::bl-3d4a8289`]: {
-      id: `${prefix}::bl-3d4a8289`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3d4a8289": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3d4a8289",
       name: "Other",
       parentId: null,
       childrenIds: [],
-      treeId: `${prefix}::tree-9db09013`,
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       rank: 3,
     },
-  };
-
-  const backlogTrees: Record<string, BacklogTree> = {
-    [`${prefix}::tree-64b6aad9`]: {
-      id: `${prefix}::tree-64b6aad9`,
+  },
+  backlogTrees: {
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9",
       name: "Agilefant",
-      rootBacklogIds: [`${prefix}::bl-25b6451b`],
+      rootBacklogIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b"],
       rank: 3,
     },
-    [`${prefix}::tree-9db09013`]: {
-      id: `${prefix}::tree-9db09013`,
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       name: "Jarno",
-      rootBacklogIds: [`${prefix}::bl-171e88af`, `${prefix}::bl-a0fa0068`, `${prefix}::bl-3d4a8289`],
+      rootBacklogIds: [
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-171e88af",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3d4a8289",
+      ],
       rank: 4,
     },
-  };
-
-  return { workItems, backlogs, backlogTrees };
-}
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3",
+      name: "Transformation office",
+      rootBacklogIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce"],
+      rank: 2,
+    },
+  },
+};
