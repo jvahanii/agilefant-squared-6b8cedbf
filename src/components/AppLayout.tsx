@@ -26,8 +26,8 @@ import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { triggerCsvDownload } from "@/store/changeLog"; // Updated to the new functional import
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -51,6 +51,8 @@ export default function AppLayout() {
   const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
+  const loadFromSupabase = useAppStore((s) => s.loadFromSupabase); // Added this
+  const resetToMockData = useAppStore((s) => s.resetToMockData); // Extracting directly
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
@@ -67,7 +69,6 @@ export default function AppLayout() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
-      // Global Undo/Redo
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -85,7 +86,6 @@ export default function AppLayout() {
 
       switch (e.key.toLowerCase()) {
         case "t": {
-          // Rank to Top
           if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             const treeId = state.selectedTreeId;
@@ -96,8 +96,6 @@ export default function AppLayout() {
               state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
             };
             collectBacklogs(selectedBacklogId);
-
-            // Move each selected item to index 0
             state.selectedWorkItemIds.forEach((id) => {
               state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
             });
@@ -106,7 +104,6 @@ export default function AppLayout() {
           break;
         }
         case "b": {
-          // Rank to Bottom
           if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             const treeId = state.selectedTreeId;
@@ -117,8 +114,6 @@ export default function AppLayout() {
               state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
             };
             collectBacklogs(selectedBacklogId);
-
-            // Move each to a very high index to force bottom placement
             state.selectedWorkItemIds.forEach((id) => {
               state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
             });
@@ -367,180 +362,180 @@ export default function AppLayout() {
   );
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="h-screen flex flex-col overflow-hidden bg-background">
-        <header className="h-16 border-b flex items-center px-4 gap-3 bg-card shrink-0 shadow-sm z-10">
-          <img
-            alt="Agilefant"
-            className="h-10 w-auto"
-            src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
-          />
-          <h1 className="text-sm font-bold tracking-tight">
-            Agilefant
-            <sup className="text-xs text-primary ml-0.5 font-mono">2.0</sup>
-          </h1>
-          <OrgSwitcher />
+    <TooltipProvider>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="h-screen flex flex-col overflow-hidden bg-background">
+          <header className="h-16 border-b flex items-center px-4 gap-3 bg-card shrink-0 shadow-sm z-10">
+            <img
+              alt="Agilefant"
+              className="h-10 w-auto"
+              src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
+            />
+            <h1 className="text-sm font-bold tracking-tight">
+              Agilefant
+              <sup className="text-xs text-primary ml-0.5 font-mono">2.0</sup>
+            </h1>
+            <OrgSwitcher />
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-sm text-muted-foreground mr-2 border-r pr-3 hidden md:inline-block">
-              {user?.user_metadata?.full_name || user?.email || ""}
-            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm text-muted-foreground mr-2 border-r pr-3 hidden md:inline-block">
+                {user?.user_metadata?.full_name || user?.email || ""}
+              </span>
 
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const log = getChangeLog();
-                if (log.length === 0) {
-                  toast({ title: "No changes logged yet" });
-                  return;
-                }
-                const csv = exportChangeLogAsCsv();
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast({ title: `Exported ${log.length} change log entries` });
-              }}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Export Changelog</span>
-            </button>
-
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-                const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
-                navigator.clipboard.writeText(code);
-                toast({ title: "Data copied to clipboard" });
-              }}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Export Mock</span>
-            </button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">Reset Data</span>
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will replace all current data with the default mock dataset. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      useAppStore.getState().resetToMockData();
-                      toast({ title: "Data reset to mock data" });
-                    }}
-                  >
-                    Reset
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <div className="flex items-center gap-1 border-l pl-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                    onClick={undo}
-                    disabled={undoStackLength === 0}
-                  >
-                    <Undo2 className="w-4 h-4" />
+              {/* Reset Data Button */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">Reset Data</span>
                   </button>
-                </TooltipTrigger>
-                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-              </Tooltip>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will replace all current data with the default mock dataset. Any changes you've made will be
+                      permanently lost.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        await resetToMockData(); // Wait for DB reset
+                        await loadFromSupabase(); // Force UI refresh
+                        toast({ title: "Data reset to mock defaults" });
+                      }}
+                    >
+                      Reset
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                    onClick={redo}
-                    disabled={redoStackLength === 0}
-                  >
-                    <Redo2 className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
-              </Tooltip>
-
+              {/* Export Mock Button */}
               <button
-                className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={() => setShowShortcuts((s) => !s)}
+                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                onClick={() => {
+                  const state = useAppStore.getState();
+                  const cleanData = {
+                    workItems: state.workItems,
+                    backlogs: state.backlogs,
+                    backlogTrees: state.backlogTrees,
+                  };
+                  const code = `// Exported Mock Data\nconst data = ${JSON.stringify(cleanData, null, 2)};`;
+                  navigator.clipboard.writeText(code);
+                  toast({ title: "Mock data copied to clipboard" });
+                }}
               >
-                <Keyboard className="w-4 h-4" />
+                <Copy className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Export Mock</span>
               </button>
+
+              {/* Export Changelog Button */}
+              <button
+                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                onClick={() => {
+                  const logs = useAppStore.getState().changeLog;
+                  triggerCsvDownload(logs);
+                }}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Export Changelog</span>
+              </button>
+
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      onClick={undo}
+                      disabled={undoStackLength === 0}
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      onClick={redo}
+                      disabled={redoStackLength === 0}
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+                </Tooltip>
+
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={() => setShowShortcuts((s) => !s)}
+                >
+                  <Keyboard className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="flex-1 min-h-0 relative">
-          <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="border-r">
-              <div className="h-full overflow-hidden">
-                <BacklogTreePanel />
-              </div>
-            </ResizablePanel>
+          <main className="flex-1 min-h-0 relative">
+            <ResizablePanelGroup direction="horizontal">
+              <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="border-r">
+                <div className="h-full overflow-hidden">
+                  <BacklogTreePanel />
+                </div>
+              </ResizablePanel>
 
-            <ResizableHandle withHandle />
+              <ResizableHandle withHandle />
 
-            <ResizablePanel defaultSize={75} minSize={40}>
-              <div className="h-full overflow-hidden flex flex-col">
-                <WorkItemTreePanel />
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </main>
-      </div>
+              <ResizablePanel defaultSize={75} minSize={40}>
+                <div className="h-full overflow-hidden flex flex-col">
+                  <WorkItemTreePanel />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </main>
+        </div>
 
-      <DragOverlay dropAnimation={null}>
-        {activeDrag && (
-          <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background">
-            {activeDrag.title}
-          </div>
+        <DragOverlay dropAnimation={null}>
+          {activeDrag && (
+            <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background">
+              {activeDrag.title}
+            </div>
+          )}
+        </DragOverlay>
+
+        {pendingCrossTree && (
+          <ActionPrompt
+            title={
+              pendingCrossTree.totalCount > 1
+                ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
+                : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
+            }
+            options={[
+              {
+                label: "Move",
+                description: `Switch from ${pendingCrossTree.sourceTreeName} to ${pendingCrossTree.targetTreeName}.`,
+                value: "move",
+                isDefault: true,
+              },
+              {
+                label: "Mirror",
+                description: `Keep in both tree views.`,
+                value: "add",
+              },
+            ]}
+            onSelect={handleCrossTreeChoice}
+            onCancel={() => setPendingCrossTree(null)}
+          />
         )}
-      </DragOverlay>
 
-      {pendingCrossTree && (
-        <ActionPrompt
-          title={
-            pendingCrossTree.totalCount > 1
-              ? `Move ${pendingCrossTree.totalCount} items to ${pendingCrossTree.targetTreeName}`
-              : `Move "${pendingCrossTree.itemTitles[0]}" to ${pendingCrossTree.targetTreeName}`
-          }
-          options={[
-            {
-              label: "Move",
-              description: `Switch from ${pendingCrossTree.sourceTreeName} to ${pendingCrossTree.targetTreeName}.`,
-              value: "move",
-              isDefault: true,
-            },
-            {
-              label: "Mirror",
-              description: `Keep in both tree views.`,
-              value: "add",
-            },
-          ]}
-          onSelect={handleCrossTreeChoice}
-          onCancel={() => setPendingCrossTree(null)}
-        />
-      )}
-
-      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
-    </DndContext>
+        {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+      </DndContext>
+    </TooltipProvider>
   );
 }
 
