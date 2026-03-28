@@ -389,6 +389,29 @@ export default function AppLayout() {
             <button
               className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
               onClick={() => {
+                const log = getChangeLog();
+                if (log.length === 0) {
+                  toast({ title: "No changes logged yet" });
+                  return;
+                }
+                const csv = exportChangeLogAsCsv();
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast({ title: `Exported ${log.length} change log entries` });
+              }}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Export Changelog</span>
+            </button>
+
+            <button
+              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
                 const { workItems, backlogs, backlogTrees } = useAppStore.getState();
                 const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
                 navigator.clipboard.writeText(code);
@@ -398,6 +421,34 @@ export default function AppLayout() {
               <Copy className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">Export Mock</span>
             </button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden lg:inline">Reset Data</span>
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will replace all current data with the default mock dataset. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      useAppStore.getState().resetToMockData();
+                      toast({ title: "Data reset to mock data" });
+                    }}
+                  >
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <div className="flex items-center gap-1 border-l pl-2">
               <Tooltip>
