@@ -513,8 +513,8 @@ function WorkItemNode({
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
-                {/* SHOW PROMPT AT TOP OF CHILDREN IF NO CHILD SELECTED */}
-                {isAdding && !item.childrenIds.some((id) => selectedWorkItemIds.includes(id)) && (
+                {/* MOVED PROMPT TO THE TOP OF THE CHILD LIST */}
+                {isAdding && (
                   <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
@@ -530,7 +530,6 @@ function WorkItemNode({
                   .sort((a, b) => a.rank - b.rank)
                   .map((child, index) => {
                     const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
-                    const isThisChildSelected = selectedWorkItemIds.includes(child.id);
                     return (
                       <div key={child.id}>
                         <ReorderDropZone
@@ -550,16 +549,6 @@ function WorkItemNode({
                           isChildBacklog={isChildBacklog}
                           onSelect={onSelect}
                         />
-                        {/* SHOW PROMPT BELOW SELECTED CHILD */}
-                        {isAdding && isThisChildSelected && (
-                          <InlineWorkItemInput
-                            depth={depth + 1}
-                            onSubmit={(title) => {
-                              addWorkItem(title, workItemId, backlogId, treeId, index + 1);
-                            }}
-                            onCancel={() => setIsAdding(false)}
-                          />
-                        )}
                       </div>
                     );
                   })}
@@ -573,7 +562,7 @@ function WorkItemNode({
                 />
               </>
             )}
-            {/* Fallback for adding a first child when empty */}
+            {/* Fallback for adding a first child when not expanded */}
             {isAdding && !hasChildren && (
               <InlineWorkItemInput
                 depth={depth + 1}
@@ -786,70 +775,57 @@ export function WorkItemTreePanel() {
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
-          <div className="flex flex-col">
-            {/* SHOW AT TOP ONLY IF NOTHING SELECTED */}
-            {isAdding && !rootWorkItems.some((item) => selectedWorkItemIds.includes(item.id)) && (
-              <InlineWorkItemInput
-                depth={0}
-                onSubmit={(title) => {
-                  addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
-                }}
-                onCancel={() => setIsAdding(false)}
-              />
-            )}
+          {/* MOVED ROOT PROMPT TO THE TOP */}
+          {isAdding && (
+            <InlineWorkItemInput
+              depth={0}
+              onSubmit={(title) => {
+                addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+              }}
+              onCancel={() => setIsAdding(false)}
+            />
+          )}
 
-            {rootWorkItems.length === 0 && !isAdding ? (
-              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                No work items in this backlog
-              </div>
-            ) : (
-              <>
-                {rootWorkItems.map((item, index) => {
-                  const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
-                  const isThisRootSelected = selectedWorkItemIds.includes(item.id);
-                  return (
-                    <div key={item.id}>
-                      <ReorderDropZone
-                        id={`reorder-root-${index}`}
-                        index={index}
-                        treeId={selectedTreeId}
-                        backlogIds={allBacklogIds}
-                        parentId={null}
-                        depth={0}
-                      />
-                      <WorkItemNode
-                        workItemId={item.id}
-                        depth={0}
-                        treeId={selectedTreeId}
-                        backlogId={itemBacklogId}
-                        allBacklogIds={allBacklogIds}
-                        isChildBacklog={itemBacklogId !== selectedBacklogId}
-                        onSelect={handleSelect}
-                      />
-                      {/* SHOW PROMPT BELOW SELECTED ROOT ITEM */}
-                      {isAdding && isThisRootSelected && (
-                        <InlineWorkItemInput
-                          depth={0}
-                          onSubmit={(title) => {
-                            addWorkItem(title, null, selectedBacklogId, selectedTreeId, index + 1);
-                          }}
-                          onCancel={() => setIsAdding(false)}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-                <ReorderDropZone
-                  id={`reorder-root-${rootWorkItems.length}`}
-                  index={rootWorkItems.length}
-                  treeId={selectedTreeId}
-                  backlogIds={allBacklogIds}
-                  parentId={null}
-                  depth={0}
-                />
-              </>
-            )}
-          </div>
+          {rootWorkItems.length === 0 && !isAdding ? (
+            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+              No work items in this backlog
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {rootWorkItems.map((item, index) => {
+                const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
+                return (
+                  <div key={item.id}>
+                    <ReorderDropZone
+                      id={`reorder-root-${index}`}
+                      index={index}
+                      treeId={selectedTreeId}
+                      backlogIds={allBacklogIds}
+                      parentId={null}
+                      depth={0}
+                    />
+                    <WorkItemNode
+                      workItemId={item.id}
+                      depth={0}
+                      treeId={selectedTreeId}
+                      backlogId={itemBacklogId}
+                      allBacklogIds={allBacklogIds}
+                      isChildBacklog={itemBacklogId !== selectedBacklogId}
+                      onSelect={handleSelect}
+                    />
+                  </div>
+                );
+              })}
+              <ReorderDropZone
+                id={`reorder-root-${rootWorkItems.length}`}
+                index={rootWorkItems.length}
+                treeId={selectedTreeId}
+                backlogIds={allBacklogIds}
+                parentId={null}
+                depth={0}
+              />
+            </div>
+          )}
         </div>
       </WorkItemRootDropZone>
     </div>

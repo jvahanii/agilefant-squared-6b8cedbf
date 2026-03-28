@@ -8,14 +8,25 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useState, useCallback, useEffect } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, Copy, FileText, LogOut } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { exportChangeLogAsCsv } from "@/store/changeLog";
+import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,7 +43,7 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
   const moveBacklog = useAppStore((s) => s.moveBacklog);
@@ -56,6 +67,7 @@ export default function AppLayout() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
+      // Global Undo/Redo
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -73,6 +85,7 @@ export default function AppLayout() {
 
       switch (e.key.toLowerCase()) {
         case "t": {
+          // Rank to Top
           if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             const treeId = state.selectedTreeId;
@@ -83,6 +96,8 @@ export default function AppLayout() {
               state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
             };
             collectBacklogs(selectedBacklogId);
+
+            // Move each selected item to index 0
             state.selectedWorkItemIds.forEach((id) => {
               state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
             });
@@ -91,6 +106,7 @@ export default function AppLayout() {
           break;
         }
         case "b": {
+          // Rank to Bottom
           if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             const treeId = state.selectedTreeId;
@@ -101,6 +117,8 @@ export default function AppLayout() {
               state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
             };
             collectBacklogs(selectedBacklogId);
+
+            // Move each to a very high index to force bottom placement
             state.selectedWorkItemIds.forEach((id) => {
               state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
             });
@@ -143,11 +161,51 @@ export default function AppLayout() {
           }
           break;
         }
+        case "arrowup":
+        case "arrowdown": {
+          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+            e.preventDefault();
+            const wiId = state.selectedWorkItemIds[0];
+            const wi = state.workItems[wiId];
+            if (!wi) break;
+            const treeId = state.selectedTreeId;
+            const selectedBacklogId = state.selectedBacklogIds[0];
+
+            const backlogIds: string[] = [];
+            const collectBacklogs = (id: string) => {
+              backlogIds.push(id);
+              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+            };
+            collectBacklogs(selectedBacklogId);
+
+            const backlogIdSet = new Set(backlogIds);
+            const siblings = Object.values(state.workItems)
+              .filter((w) => {
+                if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
+                if (wi.parentId === null) {
+                  return (
+                    w.parentId === null ||
+                    !state.workItems[w.parentId] ||
+                    !backlogIdSet.has(state.workItems[w.parentId].backlogAssignments[treeId])
+                  );
+                }
+                return w.parentId === wi.parentId;
+              })
+              .sort((a, b) => a.rank - b.rank);
+
+            const idx = siblings.findIndex((s) => s.id === wiId);
+            if (idx === -1) break;
+            const newIdx = e.key === "ArrowUp" ? idx - 1 : idx + 1;
+            if (newIdx < 0 || newIdx >= siblings.length) break;
+            useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
+          }
+          break;
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo]);
+  }, [undo, redo, moveWorkItemToBacklog, reorderWorkItemAmongSiblings]);
 
   const countWithDescendants = useCallback((ids: string[]) => {
     const store = useAppStore.getState();
@@ -200,6 +258,8 @@ export default function AppLayout() {
 
         if (sourceTreeId !== targetTreeId) {
           const store = useAppStore.getState();
+          const sourceTree = store.backlogTrees[sourceTreeId];
+          const targetTree = store.backlogTrees[targetTreeId];
           const titles = draggedIds.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
           setPendingCrossTree({
             workItemIds: draggedIds,
@@ -208,53 +268,73 @@ export default function AppLayout() {
             targetTreeId,
             sourceTreeId,
             itemTitles: titles,
-            sourceTreeName: store.backlogTrees[sourceTreeId]?.name ?? sourceTreeId,
-            targetTreeName: store.backlogTrees[targetTreeId]?.name ?? targetTreeId,
+            sourceTreeName: sourceTree?.name ?? sourceTreeId,
+            targetTreeName: targetTree?.name ?? targetTreeId,
           });
         } else {
           draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
         }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
+        const targetId = overData.workItemId;
         draggedIds
-          .filter((id) => id !== overData.workItemId)
+          .filter((id) => id !== targetId)
           .forEach((id) => {
-            reparentWorkItem(id, overData.workItemId, overData.treeId, overData.backlogId);
+            reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
           });
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
-        draggedIds.forEach((id) => reparentWorkItem(id, null, overData.treeId, overData.backlogId));
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
         draggedIds.forEach((id) => {
-          const wi = useAppStore.getState().workItems[id];
-          if (wi && wi.parentId !== overData.parentId) {
-            reparentWorkItem(
-              id,
-              overData.parentId as string | null,
-              overData.treeId as string,
-              (overData.backlogIds as string[])[0] ?? "",
-            );
+          reparentWorkItem(id, null, overData.treeId, overData.backlogId);
+        });
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
+        const targetParentId = overData.parentId as string | null;
+        const treeId = overData.treeId as string;
+        const backlogIds = overData.backlogIds as string[];
+        const store = useAppStore.getState();
+
+        draggedIds.forEach((id) => {
+          const wi = store.workItems[id];
+          if (!wi) return;
+          if (wi.parentId !== targetParentId) {
+            const backlogId = backlogIds[0] ?? "";
+            reparentWorkItem(id, targetParentId, treeId, backlogId);
           }
         });
-        draggedIds.forEach((id) =>
-          reorderWorkItemAmongSiblings(
-            id,
-            overData.index as number,
-            overData.treeId as string,
-            overData.backlogIds as string[],
-          ),
-        );
+        draggedIds.forEach((id) => {
+          reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
+        });
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
-        reorderBacklogAmongSiblings(
-          activeData.backlogId as string,
-          overData.index as number,
-          overData.parentId as string | null,
-          overData.treeId as string,
-        );
+        const backlogId = activeData.backlogId as string;
+        const targetParentId = overData.parentId as string | null;
+        const treeId = overData.treeId as string;
+        const targetIndex = overData.index as number;
+        const store = useAppStore.getState();
+        const isDescendant = (parentId: string | null, checkId: string): boolean => {
+          if (!parentId) return false;
+          if (parentId === checkId) return true;
+          return isDescendant(store.backlogs[parentId]?.parentId ?? null, checkId);
+        };
+        if (targetParentId && isDescendant(targetParentId, backlogId)) return;
+        reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog") {
-        if (activeData.backlogId !== overData.backlogId && activeData.treeId === overData.treeId) {
-          moveBacklog(activeData.backlogId as string, overData.backlogId as string, overData.treeId as string);
-        }
+        const backlogId = activeData.backlogId as string;
+        const targetBacklogId = overData.backlogId as string;
+        const treeId = overData.treeId as string;
+        if (backlogId === targetBacklogId) return;
+        const store = useAppStore.getState();
+        const isDescendant = (id: string): boolean => {
+          const bl = store.backlogs[id];
+          if (!bl) return false;
+          if (bl.parentId === backlogId) return true;
+          if (bl.parentId) return isDescendant(bl.parentId);
+          return false;
+        };
+        if (isDescendant(targetBacklogId)) return;
+        if (activeData.treeId !== treeId) return;
+        moveBacklog(backlogId, targetBacklogId, treeId);
       } else if (activeData?.type === "tree-node" && overData?.type === "tree-reorder") {
-        reorderBacklogTree(activeData.treeId as string, overData.index as number);
+        const treeId = activeData.treeId as string;
+        const targetIndex = overData.index as number;
+        reorderBacklogTree(treeId, targetIndex);
       }
     },
     [
@@ -271,9 +351,15 @@ export default function AppLayout() {
   const handleCrossTreeChoice = useCallback(
     (value: string) => {
       if (!pendingCrossTree) return;
-      pendingCrossTree.workItemIds.forEach((id) => {
-        moveWorkItemToBacklog(id, pendingCrossTree.targetBacklogId, pendingCrossTree.targetTreeId);
-        if (value === "move") removeWorkItemFromTree(id, pendingCrossTree.sourceTreeId);
+      const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
+
+      workItemIds.forEach((id) => {
+        if (value === "move") {
+          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+          removeWorkItemFromTree(id, sourceTreeId);
+        } else if (value === "add") {
+          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+        }
       });
       setPendingCrossTree(null);
     },
@@ -290,7 +376,8 @@ export default function AppLayout() {
             src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
           />
           <h1 className="text-sm font-bold tracking-tight">
-            Agilefant<sup className="text-xs text-primary ml-0.5 font-mono">2.0</sup>
+            Agilefant
+            <sup className="text-xs text-primary ml-0.5 font-mono">2.0</sup>
           </h1>
           <OrgSwitcher />
 
@@ -299,35 +386,18 @@ export default function AppLayout() {
               {user?.user_metadata?.full_name || user?.email || ""}
             </span>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                  onClick={() => {
-                    const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-                    const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
-                    navigator.clipboard.writeText(code);
-                    toast({ title: "Data copied to clipboard" });
-                  }}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">Export Mock</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Copy state JSON</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => exportChangeLogAsCsv()}
-                >
-                  <FileText className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Export CSV Log</TooltipContent>
-            </Tooltip>
+            <button
+              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+              onClick={() => {
+                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+                const code = `// Auto-exported mock data\nconst data = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};`;
+                navigator.clipboard.writeText(code);
+                toast({ title: "Data copied to clipboard" });
+              }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Export Mock</span>
+            </button>
 
             <div className="flex items-center gap-1 border-l pl-2">
               <Tooltip>
@@ -362,18 +432,6 @@ export default function AppLayout() {
               >
                 <Keyboard className="w-4 h-4" />
               </button>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => signOut?.()}
-                    className="p-2 text-muted-foreground hover:text-destructive transition-colors ml-1"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Log Out</TooltipContent>
-              </Tooltip>
             </div>
           </div>
         </header>
@@ -385,7 +443,9 @@ export default function AppLayout() {
                 <BacklogTreePanel />
               </div>
             </ResizablePanel>
+
             <ResizableHandle withHandle />
+
             <ResizablePanel defaultSize={75} minSize={40}>
               <div className="h-full overflow-hidden flex flex-col">
                 <WorkItemTreePanel />
@@ -417,7 +477,11 @@ export default function AppLayout() {
               value: "move",
               isDefault: true,
             },
-            { label: "Mirror", description: `Keep in both tree views.`, value: "add" },
+            {
+              label: "Mirror",
+              description: `Keep in both tree views.`,
+              value: "add",
+            },
           ]}
           onSelect={handleCrossTreeChoice}
           onCancel={() => setPendingCrossTree(null)}
