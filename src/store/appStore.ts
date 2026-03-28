@@ -10,7 +10,7 @@ import {
   deleteBacklogs,
   upsertBacklogTree,
   upsertBacklogTrees,
-  deleteBacklogTree as deleteBacklogTreeFromDb,
+  deleteBacklogTree as deleteBaacklogTreeFromDb,
   resetOrgData,
 } from "./supabaseSync";
 import { generateMockData } from "./mockData";
@@ -594,17 +594,18 @@ export const useAppStore = create<StoreState>()((set, get) => {
         const orgId = getOrgId(state);
         const undo = pushUndo(state);
         const id = `wi-${crypto.randomUUID().slice(0, 8)}`;
+        const updatedItems = { ...state.workItems };
+        const changedItems: WorkItem[] = [];
 
-        // 1. Determine New Rank using Negative Rank logic for Top placement
+        // 1. Calculate New Rank using Negative logic for Top
         let newRank = 0;
         const allItems = Object.values(state.workItems);
-
         if (typeof index === "number" && index === 0) {
-          // TOP: Find current lowest rank and go one lower
+          // TOP: Find lowest rank in system and go lower
           const minRank = allItems.length > 0 ? Math.min(...allItems.map((i) => i.rank ?? 0)) : 0;
           newRank = minRank - 1;
         } else {
-          // BOTTOM: Find current highest rank and go one higher
+          // BOTTOM: Find highest rank and go higher
           const maxRank = allItems.length > 0 ? Math.max(...allItems.map((i) => i.rank ?? 0)) : 0;
           newRank = maxRank + 1;
         }
@@ -619,34 +620,37 @@ export const useAppStore = create<StoreState>()((set, get) => {
           rank: newRank,
         };
 
-        const updatedItems = { ...state.workItems, [id]: newItem };
+        updatedItems[id] = newItem;
+        changedItems.push(newItem);
 
-        // 2. Update Parent childrenIds if adding a child
+        // 2. Update Parent local and DB if applicable
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
           const nextChildren = [...parent.childrenIds];
 
           if (typeof index === "number" && index === 0) {
-            nextChildren.unshift(id); // Place at start of array
+            nextChildren.unshift(id);
           } else {
             nextChildren.push(id);
           }
 
-          updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
-
-          // Sync parent update to DB
-          upsertWorkItem(updatedItems[parentId], orgId);
+          const updatedParent = { ...parent, childrenIds: nextChildren };
+          updatedItems[parentId] = updatedParent;
+          changedItems.push(updatedParent);
         }
 
-        // 3. Sync New Item to DB
-        upsertWorkItem(newItem, orgId);
+        // 3. Sync to Supabase - using upsertWorkItems to handle Parent ID list sync too
+        upsertWorkItems(changedItems, orgId);
 
         logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
+
+        const nextExpanded = new Set(state.expandedWorkItems);
+        if (parentId) nextExpanded.add(parentId);
 
         return {
           ...undo,
           workItems: updatedItems,
-          expandedWorkItems: parentId ? new Set(state.expandedWorkItems).add(parentId) : state.expandedWorkItems,
+          expandedWorkItems: nextExpanded,
         };
       });
     },
@@ -879,7 +883,7 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
         deleteWorkItems(deletedWorkItemIds);
         if (changedWorkItems.length) upsertWorkItems(changedWorkItems, orgId);
-        deleteBacklogTreeFromDb(treeId);
+        deleteBaacklogTreeFromDb(treeId);
 
         return {
           ...undo,
