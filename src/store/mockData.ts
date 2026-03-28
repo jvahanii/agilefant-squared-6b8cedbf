@@ -1300,3 +1300,11 @@ const data = {
     },
   },
 };
+
+export function generateMockData() {
+  return {
+    workItems: data.workItems as Record<string, any>,
+    backlogs: data.backlogs as Record<string, any>,
+    backlogTrees: data.backlogTrees as Record<string, any>,
+  };
+}
