@@ -1,17 +1,8 @@
 // Auto-exported mock data
-const data = {
-  workItems: {
-    "wi-fa0ab672": {
-      id: "wi-fa0ab672",
-      title: "google sign up",
-      status: "not_started",
-      parentId: "wi-82a1bfce",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 1,
-    },
+import { WorkItem, Backlog, BacklogTree } from "@/types/models";
+
+export function generateMockData() {
+  const workItems: Record<string, WorkItem> = {
     "wi-1b45638e": {
       id: "wi-1b45638e",
       title: "asfa",
@@ -23,27 +14,16 @@ const data = {
       },
       rank: 51,
     },
-    "wi-621dc98a": {
-      id: "wi-621dc98a",
-      title: "Tee paremmaksi käyttää mobiililla",
+    "wi-fa0ab672": {
+      id: "wi-fa0ab672",
+      title: "google sign up",
       status: "not_started",
-      parentId: "wi-86bba225",
+      parentId: "wi-82a1bfce",
       childrenIds: [],
       backlogAssignments: {
         "tree-64b6aad9": "bl-25b6451b",
       },
-      rank: 0,
-    },
-    "wi-520fdc83": {
-      id: "wi-520fdc83",
-      title: "Lisää scrollaus iteminäkymään",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 12,
+      rank: 1,
     },
     "wi-50c48685": {
       id: "wi-50c48685",
@@ -55,17 +35,6 @@ const data = {
         "tree-9db09013": "bl-a0fa0068",
       },
       rank: 52,
-    },
-    "wi-9a446fb6": {
-      id: "wi-9a446fb6",
-      title: "changelog  tyhjenee kun refreshaa - tallenna tietokantaan",
-      status: "not_started",
-      parentId: "wi-dc34c4fb",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 88,
     },
     "wi-5548fc2a": {
       id: "wi-5548fc2a",
@@ -91,36 +60,14 @@ const data = {
     },
     "wi-dc34c4fb": {
       id: "wi-dc34c4fb",
-      title: "Changelog-muutoksia - headeri oli mennyt rikki jossain kohtaa eikä voi testata",
-      status: "blocked",
+      title: "Changelog-muutoksia",
+      status: "not_started",
       parentId: null,
       childrenIds: ["wi-e92e6519", "wi-9a446fb6"],
       backlogAssignments: {
         "tree-64b6aad9": "bl-25b6451b",
       },
-      rank: 0,
-    },
-    "wi-0452f38f": {
-      id: "wi-0452f38f",
-      title: "asd",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 0,
-    },
-    "wi-86bba225": {
-      id: "wi-86bba225",
-      title: "Käytettävyysviiilauksia",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["wi-621dc98a", "wi-ce414313"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 3,
+      rank: 7,
     },
     "wi-83dc560e": {
       id: "wi-83dc560e",
@@ -356,17 +303,6 @@ const data = {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-release-1",
       },
       rank: 13,
-    },
-    "wi-37cc0327": {
-      id: "wi-37cc0327",
-      title: "Neumann ja Dune kirjastoon",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 0,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m15": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-m15",
@@ -652,30 +588,9 @@ const data = {
       childrenIds: [],
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
       rank: 4,
-    },
-    "wi-727e5db4": {
-      id: "wi-727e5db4",
-      title: "multi-select with shift",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 11,
-    },
-    "wi-5786adf7": {
-      id: "wi-5786adf7",
-      title: "K&J",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 6,
     },
     "wi-43a1075a": {
       id: "wi-43a1075a",
@@ -687,17 +602,6 @@ const data = {
         "tree-9db09013": "bl-8d4c1a11",
       },
       rank: 1,
-    },
-    "wi-0e354919": {
-      id: "wi-0e354919",
-      title: "jos yrittää luoda child itemin suljettuun haaraan mitään ei tapahdu",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 2,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c97a548d",
@@ -740,6 +644,7 @@ const data = {
       childrenIds: [],
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-d0899a32",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
       rank: 5,
     },
@@ -753,17 +658,6 @@ const data = {
         "tree-9db09013": "bl-8d4c1a11",
       },
       rank: 0,
-    },
-    "wi-588a3d76": {
-      id: "wi-588a3d76",
-      title: "(t)op and (bottom item rank keyboard shortcuts",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 10,
     },
     "wi-6ba37878": {
       id: "wi-6ba37878",
@@ -799,88 +693,6 @@ const data = {
       },
       rank: 56,
     },
-    "wi-ce414313": {
-      id: "wi-ce414313",
-      title: "add confirmation to backlog deletion",
-      status: "blocked",
-      parentId: "wi-86bba225",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "wi-23269a64": {
-      id: "wi-23269a64",
-      title: "Recurring item (samalla pitää sanoa että mihin backlogeihin uudet kappaleet siitä luodaan)",
-      points: 4,
-      status: "blocked",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 1,
-    },
-    "wi-44cfd0c9": {
-      id: "wi-44cfd0c9",
-      title: "Käyttäjäoikkaviilausta",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["wi-c62c04f4", "wi-1aca5905", "wi-c8751376"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 5,
-    },
-    "wi-f0e0ae46": {
-      id: "wi-f0e0ae46",
-      title: "Roudaa Raijan tuoli, paulan lasit, kaukosäädin",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-9db09013": "bl-3d4a8289",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 5,
-    },
-    "wi-77a60539": {
-      id: "wi-77a60539",
-      title: "item creation placement tune ups: to top if no item is selected, below selected item otherwise",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 8,
-    },
-    "wi-85145e31": {
-      id: "wi-85145e31",
-      title: "change status for multiple selected items",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 9,
-    },
-    "wi-1ec9c26c": {
-      id: "wi-1ec9c26c",
-      title: "change redo to ctrl-Y",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 13,
-    },
     "wi-59943678": {
       id: "wi-59943678",
       title: "AI-assisted tuoteomistajan ja järjestelmäomistajan vastuut -workshop / Kulmala Mikko",
@@ -891,6 +703,18 @@ const data = {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product": "bl-a295bf9c",
       },
       rank: 71,
+    },
+    "wi-44cfd0c9": {
+      id: "wi-44cfd0c9",
+      title: "Käyttäjäoikkaviilausta",
+      status: "not_started",
+      parentId: null,
+      childrenIds: ["wi-c8751376", "wi-1aca5905", "wi-c62c04f4"],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 8,
     },
     "wi-8c98fc5c": {
       id: "wi-8c98fc5c",
@@ -914,6 +738,17 @@ const data = {
       },
       rank: 70,
     },
+    "wi-ce414313": {
+      id: "wi-ce414313",
+      title: "add confirmation to backlog deletion",
+      status: "not_started",
+      parentId: "wi-86bba225",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 2,
+    },
     "wi-1aca5905": {
       id: "wi-1aca5905",
       title: "adminien tulisi voida vapaasti säätää oman organisaationsa käyttäjien luokitusta",
@@ -924,6 +759,42 @@ const data = {
         "tree-64b6aad9": "bl-25b6451b",
       },
       rank: 6,
+    },
+    "wi-77a60539": {
+      id: "wi-77a60539",
+      title: "item creation tune ups - if an item is selected and sibling is created, put it below the selected item",
+      status: "not_started",
+      parentId: "wi-86bba225",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 3,
+    },
+    "wi-23269a64": {
+      id: "wi-23269a64",
+      title: "Recurring item (samalla pitää sanoa että mihin backlogeihin uudet kappaleet siitä luodaan)",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 10,
+    },
+    "wi-f0e0ae46": {
+      id: "wi-f0e0ae46",
+      title: "Roudaa Raijan tuoli, paulan lasit, kaukosäädin",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-9db09013": "bl-3d4a8289",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 0,
     },
     "wi-f28f1983": {
       id: "wi-f28f1983",
@@ -936,6 +807,53 @@ const data = {
       },
       rank: 8,
     },
+    "wi-1ec9c26c": {
+      id: "wi-1ec9c26c",
+      title: "change redo to ctrl-Y",
+      status: "done",
+      parentId: "wi-86bba225",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 5,
+    },
+    "wi-81f6e48e": {
+      id: "wi-81f6e48e",
+      title:
+        "If no item is selected and a backlog is selected, pressing enter should create a sibling backlog below the selected backlog",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 9,
+    },
+    "wi-c8751376": {
+      id: "wi-c8751376",
+      title: "Lisää security fixejä superuseriin liittyen",
+      status: "done",
+      parentId: "wi-44cfd0c9",
+      childrenIds: ["wi-36c8eebb"],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+        "tree-9db09013": "bl-171e88af",
+      },
+      rank: 12,
+    },
+    "wi-131146ab": {
+      id: "wi-131146ab",
+      title: "Calendar backlog sync",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 12,
+    },
     "wi-31dcc090": {
       id: "wi-31dcc090",
       title: "käyttäjän nimi headeriin",
@@ -946,6 +864,17 @@ const data = {
         "tree-9db09013": "bl-171e88af",
       },
       rank: 75,
+    },
+    "wi-e92e6519": {
+      id: "wi-e92e6519",
+      title: "add item rank changes to change log",
+      status: "not_started",
+      parentId: "wi-dc34c4fb",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 52,
     },
     "wi-ae3d94a7": {
       id: "wi-ae3d94a7",
@@ -969,52 +898,6 @@ const data = {
       },
       rank: 79,
     },
-    "wi-e4b946e9": {
-      id: "wi-e4b946e9",
-      title: "laskettelukamat kartsiin",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-98944c30",
-      },
-      rank: 4,
-    },
-    "wi-c62c04f4": {
-      id: "wi-c62c04f4",
-      title:
-        "Admins have in org settings a on-off button to encrypt so that superuser can't read the names of items and backlogs (can see the structure)",
-      status: "not_started",
-      parentId: "wi-44cfd0c9",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 1,
-    },
-    "wi-c8751376": {
-      id: "wi-c8751376",
-      title: "Lisää security fixejä superuseriin liittyen",
-      status: "done",
-      parentId: "wi-44cfd0c9",
-      childrenIds: ["wi-36c8eebb"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-        "tree-9db09013": "bl-171e88af",
-      },
-      rank: 12,
-    },
-    "wi-36c8eebb": {
-      id: "wi-36c8eebb",
-      title: "Superuser ei pysty tällä hetkellä säätämään toisissa organisaatioissa käyttäjien rooleja; pitäisi pystyä",
-      status: "not_started",
-      parentId: "wi-c8751376",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 85,
-    },
     "wi-4c2815cc": {
       id: "wi-4c2815cc",
       title: "-------------- huomenna ---------",
@@ -1024,63 +907,18 @@ const data = {
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
-      rank: 0,
+      rank: 3,
     },
-    "wi-82a1bfce": {
-      id: "wi-82a1bfce",
-      title: "Signup flow improvements",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["wi-c7ebc52b", "wi-fa0ab672", "wi-a063380b", "wi-32a546d4"],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 4,
-    },
-    "wi-e92e6519": {
-      id: "wi-e92e6519",
-      title: "add item rank changes to change log",
-      status: "not_started",
-      parentId: "wi-dc34c4fb",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 52,
-    },
-    "wi-d85c4785": {
-      id: "wi-d85c4785",
-      title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
-      status: "not_started",
+    "wi-e4b946e9": {
+      id: "wi-e4b946e9",
+      title: "laskettelukamat kartsiin",
+      status: "done",
       parentId: null,
       childrenIds: [],
       backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
       },
       rank: 6,
-    },
-    "wi-131146ab": {
-      id: "wi-131146ab",
-      title: "Calendar backlog sync",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 7,
-    },
-    "wi-c7ebc52b": {
-      id: "wi-c7ebc52b",
-      title:
-        "Users signing up need to be able to join orgs immediately upon sign up: perhaps a per user lounge? Show as notification to admins and superusers",
-      status: "not_started",
-      parentId: "wi-82a1bfce",
-      childrenIds: [],
-      backlogAssignments: {
-        "tree-64b6aad9": "bl-25b6451b",
-      },
-      rank: 0,
     },
     "wi-a063380b": {
       id: "wi-a063380b",
@@ -1104,8 +942,132 @@ const data = {
       },
       rank: 4,
     },
-  },
-  backlogs: {
+    "wi-c62c04f4": {
+      id: "wi-c62c04f4",
+      title:
+        "Admins have in org settings a on-off button to encrypt so that superuser can't read the names of items and backlogs (can see the structure)",
+      status: "not_started",
+      parentId: "wi-44cfd0c9",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 1,
+    },
+    "wi-c7ebc52b": {
+      id: "wi-c7ebc52b",
+      title:
+        "Users signing up need to be able to join orgs immediately upon sign up: perhaps a per user lounge? Show as notification to admins and superusers",
+      status: "not_started",
+      parentId: "wi-82a1bfce",
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 0,
+    },
+    "wi-82a1bfce": {
+      id: "wi-82a1bfce",
+      title: "Signup flow improvements",
+      status: "not_started",
+      parentId: null,
+      childrenIds: ["wi-fa0ab672", "wi-a063380b", "wi-32a546d4", "wi-c7ebc52b"],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 6,
+    },
+    "wi-d85c4785": {
+      id: "wi-d85c4785",
+      title: "Done to propagate down, in progress to propagate up - but do not touch when hierarchy changes",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 11,
+    },
+    "wi-36c8eebb": {
+      id: "wi-36c8eebb",
+      title: "Superuser ei pysty tällä hetkellä säätämään toisissa organisaatioissa käyttäjien rooleja; pitäisi pystyä",
+      parentId: "wi-c8751376",
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 85,
+    },
+    "wi-621dc98a": {
+      id: "wi-621dc98a",
+      title: "Tee paremmaksi käyttää mobiililla",
+      parentId: null,
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 1,
+    },
+    "wi-520fdc83": {
+      id: "wi-520fdc83",
+      title: "Lisää scrollaus iteminäkymään",
+      parentId: null,
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 0,
+    },
+    "wi-9a446fb6": {
+      id: "wi-9a446fb6",
+      title: "changelog  tyhjenee kun refreshaa - tallenna tietokantaan",
+      parentId: "wi-dc34c4fb",
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 88,
+    },
+    "wi-86bba225": {
+      id: "wi-86bba225",
+      title: "Käytettävyysviiilauksia",
+      parentId: null,
+      childrenIds: ["wi-77a60539", "wi-ce414313", "wi-1ec9c26c"],
+      status: "not_started",
+      backlogAssignments: {
+        "tree-64b6aad9": "bl-25b6451b",
+      },
+      rank: 4,
+    },
+    "wi-37cc0327": {
+      id: "wi-37cc0327",
+      title: "Neumann ja Dune kirjastoon",
+      parentId: null,
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 2,
+    },
+    "wi-5786adf7": {
+      id: "wi-5786adf7",
+      title: "K&J",
+      parentId: null,
+      childrenIds: [],
+      status: "not_started",
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0e0d83c7",
+      },
+      rank: 1,
+    },
+  };
+
+  const backlogs: Record<string, Backlog> = {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment",
       name: "Entertainment",
@@ -1181,14 +1143,6 @@ const data = {
       treeId: "tree-9db09013",
       rank: 2,
     },
-    "bl-f2b988b4": {
-      id: "bl-f2b988b4",
-      name: "asda",
-      parentId: "bl-a295bf9c",
-      childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
-      rank: 9,
-    },
     "bl-7797e710": {
       id: "bl-7797e710",
       name: "Value streams",
@@ -1217,7 +1171,7 @@ const data = {
       id: "bl-a295bf9c",
       name: "Collab AI",
       parentId: "bl-acca717e",
-      childrenIds: ["bl-f2b988b4"],
+      childrenIds: [],
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
       rank: 8,
     },
@@ -1269,8 +1223,9 @@ const data = {
       treeId: "tree-9db09013",
       rank: 6,
     },
-  },
-  backlogTrees: {
+  };
+
+  const backlogTrees: Record<string, BacklogTree> = {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1",
       name: "TODO",
@@ -1298,5 +1253,7 @@ const data = {
       rootBacklogIds: ["bl-7797e710", "bl-acca717e"],
       rank: 1,
     },
-  },
-};
+  };
+
+  return { workItems, backlogs, backlogTrees };
+}
