@@ -1,30 +1,6 @@
 // Auto-exported mock data
-export const mockData = {
+const data = {
   workItems: {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-0a2c37b1": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-0a2c37b1",
-      title: "Tee rapsa ykkösalueesta",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
-      },
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce",
-      title: "Signup flow",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672"],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
-      },
-      rank: 5,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672",
       title: "google sign up",
@@ -34,7 +10,7 @@ export const mockData = {
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       },
-      rank: 0,
+      rank: 1,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1b45638e": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1b45638e",
@@ -47,20 +23,6 @@ export const mockData = {
       },
       rank: 51,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
-      title: "Käytettävyysviilauksia",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a",
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
-      ],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
-      },
-      rank: 4,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a",
       title: "Tee paremmaksi käyttää mobiililla",
@@ -71,17 +33,6 @@ export const mockData = {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       },
       rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
-      title: "backlog confirm",
-      status: "blocked",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
-      },
-      rank: 1,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-520fdc83": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-520fdc83",
@@ -94,6 +45,39 @@ export const mockData = {
       },
       rank: 13,
     },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-50c48685": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-50c48685",
+      title: "as",
+      status: "not_started",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
+      },
+      rank: 52,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-dc34c4fb": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-dc34c4fb",
+      title: "Changelog-muutoksia",
+      status: "blocked",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
+      rank: 1,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a",
+      title: "VO2max 50",
+      status: "in_progress",
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+      },
+      rank: 60,
+    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-44521d20": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-44521d20",
       title: "Fat% 20",
@@ -103,7 +87,7 @@ export const mockData = {
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
       },
-      rank: 1,
+      rank: 58,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-d4fa2142",
@@ -125,7 +109,7 @@ export const mockData = {
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
       },
-      rank: 0,
+      rank: 1,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c207f75c": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c207f75c",
@@ -138,16 +122,41 @@ export const mockData = {
       },
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5548fc2a",
-      title: "VO2max 50",
-      status: "in_progress",
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
+      title: "Käytettävyysviilauksia",
+      status: "not_started",
       parentId: null,
+      childrenIds: [
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-621dc98a",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
+      ],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
+      rank: 4,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-ce414313",
+      title: "backlog confirm",
+      status: "blocked",
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-86bba225",
       childrenIds: [],
       backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       },
-      rank: 2,
+      rank: 1,
+    },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-82a1bfce",
+      title: "Signup flow",
+      status: "not_started",
+      parentId: null,
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-fa0ab672"],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
+      rank: 5,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f0e0ae46": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f0e0ae46",
@@ -160,27 +169,32 @@ export const mockData = {
       },
       rank: 5,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f5d5e882": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-f5d5e882",
-      title: "Muscle% 40",
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-574a73af": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-574a73af",
+      title: "itemi",
       status: "not_started",
       parentId: null,
-      childrenIds: [],
+      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1c883275"],
       backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-8d4c1a11",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       },
       rank: 0,
     },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1c883275": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-1c883275",
+      title: "itemi1",
+      status: "not_started",
+      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-574a73af",
+      childrenIds: [],
+      backlogAssignments: {
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
+        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
+      },
+      rank: 1,
+    },
   },
   backlogs: {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce",
-      name: "Lista",
-      parentId: null,
-      childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3",
-      rank: 0,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-25b6451b",
       name: "Product backlog",
@@ -195,7 +209,7 @@ export const mockData = {
       parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
       childrenIds: [],
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
-      rank: 0,
+      rank: 1,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-a0fa0068",
@@ -221,6 +235,14 @@ export const mockData = {
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-9db09013",
       rank: 3,
     },
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
+      name: "list",
+      parentId: null,
+      childrenIds: [],
+      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
+      rank: 0,
+    },
   },
   backlogTrees: {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-64b6aad9": {
@@ -239,10 +261,10 @@ export const mockData = {
       ],
       rank: 4,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-1e87e8e3",
-      name: "Transformation office",
-      rootBacklogIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d80eb6ce"],
+    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": {
+      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
+      name: "Test",
+      rootBacklogIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6"],
       rank: 2,
     },
   },
