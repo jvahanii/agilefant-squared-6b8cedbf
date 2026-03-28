@@ -177,14 +177,6 @@ export function generateMockData() {
   };
 
   const backlogs: Record<string, Backlog> = {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment",
-      name: "Entertainment",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
-      rank: 0,
-    },
     "bl-25b6451b": {
       id: "bl-25b6451b",
       name: "Product backlog",
