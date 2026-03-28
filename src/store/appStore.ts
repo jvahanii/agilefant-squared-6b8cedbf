@@ -314,7 +314,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId) => {
+    addWorkItem: (title, parentId, backlogId, treeId, _rank) => {
       const state = get();
       const orgId = state.organizationId!;
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
