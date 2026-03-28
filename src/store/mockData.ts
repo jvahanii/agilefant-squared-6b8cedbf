@@ -83,17 +83,6 @@ export function generateMockData() {
       backlogAssignments: { "tree-9db09013": "bl-a0fa0068" },
       rank: 53,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-e7745709",
-      title: "Uuden backlog treen luonti - siinä väärä teksti",
-      status: "done",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-3b0ad9ec",
-      },
-      rank: 10,
-    },
     "wi-0e18ce92": {
       id: "wi-0e18ce92",
       title: "Muscle% 40",
@@ -120,17 +109,6 @@ export function generateMockData() {
       childrenIds: [],
       backlogAssignments: { "tree-9db09013": "bl-8d4c1a11" },
       rank: 61,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-204ca84d",
-      title: "appstore.ts - Enterin painamisen pitäisi luoda uusi itemi valitun itemin alle.",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-87b6c6d1": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-d211ad7a",
-      },
-      rank: 2,
     },
     "wi-d4fa2142": {
       id: "wi-d4fa2142",
@@ -199,14 +177,6 @@ export function generateMockData() {
   };
 
   const backlogs: Record<string, Backlog> = {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-entertainment",
-      name: "Entertainment",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b2c",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-product"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::tree-product",
-      rank: 0,
-    },
     "bl-25b6451b": {
       id: "bl-25b6451b",
       name: "Product backlog",
@@ -243,7 +213,7 @@ export function generateMockData() {
     "tree-9db09013": {
       id: "tree-9db09013",
       name: "Jarno",
-      rootBacklogIds: ["bl-30af60c8", "bl-171e88af", "bl-a0fa0068", "bl-3d4a8289"],
+      rootBacklogIds: ["bl-a0fa0068"],
       rank: 4,
     },
   };
