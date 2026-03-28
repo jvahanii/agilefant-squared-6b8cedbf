@@ -287,13 +287,22 @@ export const useAppStore = create<StoreState>()((set, get) => {
       });
     },
 
-    reorderWorkItem: (workItemId, newRank) => {
+    reorderWorkItem: (workItemId, newRank, backlogId) => {
       set((state) => {
         const orgId = getOrgId(state);
         const item = state.workItems[workItemId];
         if (!item) return state;
         const undo = pushUndo(state);
         const updated = { ...item, rank: newRank };
+
+        logChange({
+          action: "Reorder item",
+          entityType: "work_item",
+          entityId: workItemId,
+          entityName: item.title,
+          details: `Rank set to ${newRank} in backlog ${backlogId}`,
+        });
+
         upsertWorkItem(updated, orgId);
         return { ...undo, workItems: { ...state.workItems, [workItemId]: updated } };
       });
@@ -302,42 +311,66 @@ export const useAppStore = create<StoreState>()((set, get) => {
     reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
       set((state) => {
         const orgId = getOrgId(state);
-        const item = state.workItems[workItemId];
-        if (!item) return state;
+        const mainItem = state.workItems[workItemId];
+        if (!mainItem) return state;
+
+        // 1. Identify all items to be moved (Support Multi-Selection)
+        const itemsToMoveIds =
+          state.selectedWorkItemIds.length > 1 && state.selectedWorkItemIds.includes(workItemId)
+            ? state.selectedWorkItemIds
+            : [workItemId];
 
         const backlogIdSet = new Set(backlogIds);
-        const siblings = Object.values(state.workItems)
+
+        // 2. Filter siblings
+        const allSiblings = Object.values(state.workItems)
           .filter((wi) => {
             if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
-            if (item.parentId === null) {
+            if (mainItem.parentId === null) {
               return (
                 wi.parentId === null ||
                 !state.workItems[wi.parentId] ||
                 !backlogIdSet.has(state.workItems[wi.parentId].backlogAssignments[treeId])
               );
             }
-            return wi.parentId === item.parentId;
+            return wi.parentId === mainItem.parentId;
           })
           .sort((a, b) => a.rank - b.rank);
 
-        const currentIndex = siblings.findIndex((s) => s.id === workItemId);
-        if (currentIndex === -1 || currentIndex === targetIndex) return state;
+        // 3. Reorder list logic
+        const movingItemsSet = new Set(itemsToMoveIds);
+        const remainingSiblings = allSiblings.filter((s) => !movingItemsSet.has(s.id));
+        const clampedIndex = Math.max(0, Math.min(targetIndex, remainingSiblings.length));
 
-        const undo = pushUndo(state);
-        const reordered = siblings.filter((s) => s.id !== workItemId);
-        const clampedIndex = Math.max(0, Math.min(targetIndex, reordered.length));
-        reordered.splice(clampedIndex, 0, item);
+        const movingItemsObjects = allSiblings.filter((s) => movingItemsSet.has(s.id));
+        const reordered = [...remainingSiblings];
+        reordered.splice(clampedIndex, 0, ...movingItemsObjects);
 
         const updatedItems = { ...state.workItems };
         const changedItems: WorkItem[] = [];
+
         reordered.forEach((s, i) => {
           const updated = { ...updatedItems[s.id], rank: i };
           updatedItems[s.id] = updated;
           changedItems.push(updated);
         });
 
+        // 4. LOG CHANGES: Record only the items the user explicitly moved
+        itemsToMoveIds.forEach((id) => {
+          const item = state.workItems[id];
+          if (item) {
+            logChange({
+              action: "Reorder item",
+              entityType: "work_item",
+              entityId: id,
+              entityName: item.title,
+              details: `Moved to new list position ${clampedIndex + 1}`,
+            });
+          }
+        });
+
         upsertWorkItems(changedItems, orgId);
-        return { ...undo, workItems: updatedItems };
+        return { ...pushUndo(state), workItems: updatedItems };
       });
     },
 
@@ -602,11 +635,11 @@ export const useAppStore = create<StoreState>()((set, get) => {
           childrenIds: [],
           status: "not_started",
           backlogAssignments: { [treeId]: backlogId },
-          rank: typeof index === "number" ? index : Object.values(state.workItems).length,
+          rank: 0,
         };
 
         const updatedItems = { ...state.workItems, [id]: newItem };
-        const changedItems: WorkItem[] = [newItem];
+        const changedItems: WorkItem[] = [];
 
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
@@ -631,25 +664,58 @@ export const useAppStore = create<StoreState>()((set, get) => {
           const nextExpanded = new Set(state.expandedWorkItems);
           nextExpanded.add(parentId);
 
-          upsertWorkItems(changedItems, orgId);
-          return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
-        } else {
-          // FIX: If adding to root at index 0, shift all other root items down
-          if (index === 0) {
-            Object.values(updatedItems).forEach((wi) => {
-              // Check if it's a root item in the same backlog and tree assignment
-              if (wi.parentId === null && wi.backlogAssignments[treeId] === backlogId && wi.id !== id) {
-                const updated = { ...wi, rank: wi.rank + 1 };
-                updatedItems[wi.id] = updated;
-                changedItems.push(updated);
-              }
-            });
-          }
-          upsertWorkItems(changedItems, orgId);
-        }
+          logChange({
+            action: "Add work item",
+            entityType: "work_item",
+            entityId: id,
+            entityName: title,
+            details: `Added as child of ${parentId}`,
+          });
 
-        logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
-        return { ...undo, workItems: updatedItems };
+          upsertWorkItems(changedItems, orgId);
+          return {
+            ...undo,
+            workItems: updatedItems,
+            expandedWorkItems: nextExpanded,
+            selectedWorkItemIds: [id],
+          };
+        } else {
+          const rootSiblings = Object.values(state.workItems)
+            .filter((wi) => wi.parentId === null && wi.backlogAssignments[treeId] === backlogId)
+            .sort((a, b) => a.rank - b.rank);
+
+          const nextRootIds = rootSiblings.map((wi) => wi.id);
+
+          if (typeof index === "number") {
+            nextRootIds.splice(index, 0, id);
+          } else {
+            nextRootIds.push(id);
+          }
+
+          nextRootIds.forEach((childId, i) => {
+            const currentItem = updatedItems[childId];
+            if (currentItem) {
+              const updated = { ...currentItem, rank: i };
+              updatedItems[childId] = updated;
+              changedItems.push(updated);
+            }
+          });
+
+          logChange({
+            action: "Add work item",
+            entityType: "work_item",
+            entityId: id,
+            entityName: title,
+            details: `Added to root at rank ${index ?? "end"}`,
+          });
+
+          upsertWorkItems(changedItems, orgId);
+          return {
+            ...undo,
+            workItems: updatedItems,
+            selectedWorkItemIds: [id],
+          };
+        }
       });
     },
 
