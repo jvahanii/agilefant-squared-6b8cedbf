@@ -216,7 +216,10 @@ export default function AppLayout() {
 
   useEffect(() => {
     const unsub = useAppStore.subscribe((state) => {
-      if (!isAutoCheckEnabled(activeOrgId)) return;
+      const autoCheck = isAutoCheckEnabled(activeOrgId);
+      const autoTest = isAutoTestEnabled(activeOrgId);
+      if (!autoCheck && !autoTest) return;
+
       const fingerprint = JSON.stringify({
         wi: Object.fromEntries(Object.entries(state.workItems).map(([id, w]) => [id, { p: w.parentId, c: w.childrenIds, ba: w.backlogAssignments }])),
         bl: Object.fromEntries(Object.entries(state.backlogs).map(([id, b]) => [id, { p: b.parentId, c: b.childrenIds, t: b.treeId }])),
@@ -226,13 +229,35 @@ export default function AppLayout() {
       prevDataRef.current = fingerprint;
 
       const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
-      if (issues.length > 0) {
+
+      if (autoTest) {
+        const results: string[] = [];
+        const pass = (name: string) => results.push(`✅ PASS: ${name}`);
+        const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
+        const categories = ["Ghost Parent", "Orphaned Children", "Circular Reference", "Backlog Displacement", "Tree-Backlog Desync", "Duplicate Rank", "Cross-Org Pollution", "Malformed ID", "Zombie Assignment"];
+        categories.forEach(cat => {
+          const catIssues = issues.filter(i => i.category === cat);
+          catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
+        });
+        const passed = results.filter(r => r.startsWith("✅")).length;
+        const failed = results.filter(r => r.startsWith("❌")).length;
+        let report = `AUTO-TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed`;
+        if (issues.length > 0) report += "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues);
+        navigator.clipboard.writeText(report);
+        if (failed > 0) {
+          toast({
+            title: `⚠️ Auto-test: ${failed} test${failed > 1 ? "s" : ""} failed`,
+            description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
+            variant: "destructive",
+          });
+        }
+      } else if (autoCheck && issues.length > 0) {
         const report = formatIssueReport(issues);
         navigator.clipboard.writeText(report);
-        const categories = [...new Set(issues.map((i) => i.category))];
+        const cats = [...new Set(issues.map((i) => i.category))];
         toast({
           title: `⚠️ Auto-check: ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
-          description: `${categories.join(", ")}. Report copied to clipboard.`,
+          description: `${cats.join(", ")}. Report copied to clipboard.`,
           variant: "destructive",
         });
       }
