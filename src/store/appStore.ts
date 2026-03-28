@@ -52,6 +52,22 @@ interface AppState extends DataSnapshot {
   toggleBacklogExpand: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string) => void;
+  deleteWorkItem: (workItemId: string) => void;
+  renameWorkItem: (workItemId: string, title: string) => void;
+  setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
+  setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
+  removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  reparentWorkItem: (workItemId: string, newParentId: string | null) => void;
+  addBacklog: (name: string, parentId: string | null, treeId: string) => void;
+  deleteBacklog: (backlogId: string) => void;
+  renameBacklog: (backlogId: string, name: string) => void;
+  reorderBacklogAmongSiblings: (backlogId: string, targetIndex: number) => void;
+  moveBacklog: (backlogId: string, targetParentId: string | null, treeId: string) => void;
+  addBacklogTree: (name: string) => void;
+  deleteBacklogTree: (treeId: string) => void;
+  renameBacklogTree: (treeId: string, name: string) => void;
+  reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
@@ -63,7 +79,7 @@ interface AppState extends DataSnapshot {
 const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
-  const rawId = parts[parts.length - 1]; // Always grab the original "wi-xxx" or "bl-xxx"
+  const rawId = parts[parts.length - 1];
   return `${orgId}::${rawId}`;
 };
 
