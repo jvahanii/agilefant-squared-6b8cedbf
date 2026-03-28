@@ -213,7 +213,7 @@ export function generateMockData() {
     "tree-9db09013": {
       id: "tree-9db09013",
       name: "Jarno",
-      rootBacklogIds: ["bl-30af60c8", "bl-171e88af", "bl-a0fa0068", "bl-3d4a8289"],
+      rootBacklogIds: ["bl-a0fa0068"],
       rank: 4,
     },
   };
