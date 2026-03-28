@@ -602,17 +602,16 @@ export const useAppStore = create<StoreState>()((set, get) => {
           childrenIds: [],
           status: "not_started",
           backlogAssignments: { [treeId]: backlogId },
-          rank: 0, // Rank will be reassigned below
+          rank: typeof index === "number" ? index : Object.values(state.workItems).length,
         };
 
         const updatedItems = { ...state.workItems, [id]: newItem };
-        const changedItems: WorkItem[] = [];
+        const changedItems: WorkItem[] = [newItem];
 
         if (parentId && updatedItems[parentId]) {
           const parent = updatedItems[parentId];
           const nextChildren = [...parent.childrenIds];
 
-          // Insert at specified index or push to end
           if (typeof index === "number") {
             nextChildren.splice(index, 0, id);
           } else {
@@ -621,7 +620,6 @@ export const useAppStore = create<StoreState>()((set, get) => {
 
           updatedItems[parentId] = { ...parent, childrenIds: nextChildren };
 
-          // Re-rank siblings to ensure data consistency
           nextChildren.forEach((childId, i) => {
             if (updatedItems[childId]) {
               const updated = { ...updatedItems[childId], rank: i };
@@ -634,45 +632,24 @@ export const useAppStore = create<StoreState>()((set, get) => {
           nextExpanded.add(parentId);
 
           upsertWorkItems(changedItems, orgId);
-          // NEW: Auto-select the created item
-          return {
-            ...undo,
-            workItems: updatedItems,
-            expandedWorkItems: nextExpanded,
-            selectedWorkItemIds: [id],
-          };
+          return { ...undo, workItems: updatedItems, expandedWorkItems: nextExpanded };
         } else {
-          // Logic for Root Items (no parent)
-          const rootSiblings = Object.values(state.workItems)
-            .filter((wi) => wi.parentId === null && wi.backlogAssignments[treeId] === backlogId)
-            .sort((a, b) => a.rank - b.rank);
-
-          const nextRootIds = rootSiblings.map((wi) => wi.id);
-
-          if (typeof index === "number") {
-            nextRootIds.splice(index, 0, id);
-          } else {
-            nextRootIds.push(id);
+          // FIX: If adding to root at index 0, shift all other root items down
+          if (index === 0) {
+            Object.values(updatedItems).forEach((wi) => {
+              // Check if it's a root item in the same backlog and tree assignment
+              if (wi.parentId === null && wi.backlogAssignments[treeId] === backlogId && wi.id !== id) {
+                const updated = { ...wi, rank: wi.rank + 1 };
+                updatedItems[wi.id] = updated;
+                changedItems.push(updated);
+              }
+            });
           }
-
-          // Re-rank all relevant root items
-          nextRootIds.forEach((childId, i) => {
-            const currentItem = updatedItems[childId];
-            if (currentItem) {
-              const updated = { ...currentItem, rank: i };
-              updatedItems[childId] = updated;
-              changedItems.push(updated);
-            }
-          });
-
           upsertWorkItems(changedItems, orgId);
-          // NEW: Auto-select the created item
-          return {
-            ...undo,
-            workItems: updatedItems,
-            selectedWorkItemIds: [id],
-          };
         }
+
+        logChange({ action: "Add work item", entityType: "work_item", entityId: id, entityName: title });
+        return { ...undo, workItems: updatedItems };
       });
     },
 
