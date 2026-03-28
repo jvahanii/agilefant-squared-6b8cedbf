@@ -1,6 +1,18 @@
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from "@/types/models";
-import { loadFromSupabase, upsertWorkItems, resetOrgData } from "./supabaseSync";
+import {
+  loadFromSupabase,
+  upsertWorkItem,
+  upsertWorkItems,
+  deleteWorkItems,
+  upsertBacklog,
+  upsertBacklogs,
+  deleteBacklogs,
+  upsertBacklogTree,
+  deleteBacklogTree as deleteBacklogTreeDB,
+  upsertBacklogTrees,
+  resetOrgData,
+} from "./supabaseSync";
 import { generateMockData } from "./mockData";
 
 export interface ChangeLogEntry {
@@ -40,6 +52,22 @@ interface AppState extends DataSnapshot {
   toggleBacklogExpand: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
+  deleteWorkItem: (workItemId: string) => void;
+  renameWorkItem: (workItemId: string, title: string) => void;
+  setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
+  setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
+  removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string) => void;
+  addBacklog: (name: string, parentId: string | null, treeId: string) => void;
+  deleteBacklog: (backlogId: string) => void;
+  renameBacklog: (backlogId: string, name: string) => void;
+  reorderBacklogAmongSiblings: (backlogId: string, targetIndex: number, targetParentId?: string | null, treeId?: string) => void;
+  moveBacklog: (backlogId: string, targetParentId: string | null, treeId: string) => void;
+  addBacklogTree: (name: string) => void;
+  deleteBacklogTree: (treeId: string) => void;
+  renameBacklogTree: (treeId: string, name: string) => void;
+  reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
@@ -51,7 +79,7 @@ interface AppState extends DataSnapshot {
 const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
-  const rawId = parts[parts.length - 1]; // Always grab the original "wi-xxx" or "bl-xxx"
+  const rawId = parts[parts.length - 1];
   return `${orgId}::${rawId}`;
 };
 
@@ -284,6 +312,317 @@ export const useAppStore = create<AppState>()((set, get) => {
       upsertWorkItems(changed, orgId);
       internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title });
       set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
+    },
+
+    addWorkItem: (title, parentId, backlogId, treeId, _rank) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+      const siblings = Object.values(state.workItems).filter(
+        (wi) => wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId,
+      );
+      const newItem: WorkItem = {
+        id, title, status: "not_started", parentId,
+        childrenIds: [], backlogAssignments: { [treeId]: backlogId },
+        rank: siblings.length,
+      };
+      const updatedItems = { ...state.workItems, [id]: newItem };
+      if (parentId && updatedItems[parentId]) {
+        updatedItems[parentId] = { ...updatedItems[parentId], childrenIds: [...updatedItems[parentId].childrenIds, id] };
+      }
+      upsertWorkItem(newItem, orgId);
+      internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
+      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    deleteWorkItem: (workItemId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const idsToDelete: string[] = [];
+      const collectIds = (id: string) => {
+        idsToDelete.push(id);
+        state.workItems[id]?.childrenIds.forEach(collectIds);
+      };
+      collectIds(workItemId);
+      const updatedItems = { ...state.workItems };
+      idsToDelete.forEach((id) => delete updatedItems[id]);
+      if (item.parentId && updatedItems[item.parentId]) {
+        updatedItems[item.parentId] = {
+          ...updatedItems[item.parentId],
+          childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+        };
+      }
+      deleteWorkItems(idsToDelete);
+      internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
+      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    renameWorkItem: (workItemId, title) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const updated = { ...item, title };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title });
+      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    setWorkItemStatus: (workItemId, status) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const updated = { ...item, status };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, details: status });
+      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    setWorkItemPoints: (workItemId, points) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const updated = { ...item, points };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Set Points", entityType: "work_item", entityId: workItemId, details: String(points ?? "none") });
+      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    removeWorkItemFromTree: (workItemId, treeId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const newAssignments = { ...item.backlogAssignments };
+      delete newAssignments[treeId];
+      if (Object.keys(newAssignments).length === 0) {
+        // No assignments left — delete the item
+        get().deleteWorkItem(workItemId);
+        return;
+      }
+      const updated = { ...item, backlogAssignments: newAssignments };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId });
+      set({ workItems: { ...state.workItems, [workItemId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    reparentWorkItem: (workItemId, newParentId, _treeId, _backlogId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const updatedItems = { ...state.workItems };
+      // Remove from old parent
+      if (item.parentId && updatedItems[item.parentId]) {
+        updatedItems[item.parentId] = {
+          ...updatedItems[item.parentId],
+          childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+        };
+      }
+      // Add to new parent
+      if (newParentId && updatedItems[newParentId]) {
+        updatedItems[newParentId] = {
+          ...updatedItems[newParentId],
+          childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
+        };
+      }
+      updatedItems[workItemId] = { ...item, parentId: newParentId };
+      const changed = [updatedItems[workItemId]];
+      if (item.parentId && updatedItems[item.parentId]) changed.push(updatedItems[item.parentId]);
+      if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
+      upsertWorkItems(changed, orgId);
+      internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId });
+      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    addBacklog: (name, parentId, treeId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const id = ensureCleanId(`bl-${crypto.randomUUID().slice(0, 8)}`, orgId);
+      const siblings = parentId
+        ? (state.backlogs[parentId]?.childrenIds ?? [])
+        : (state.backlogTrees[treeId]?.rootBacklogIds ?? []);
+      const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: siblings.length };
+      const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
+      const updatedTrees = { ...state.backlogTrees };
+      if (parentId && updatedBacklogs[parentId]) {
+        updatedBacklogs[parentId] = { ...updatedBacklogs[parentId], childrenIds: [...updatedBacklogs[parentId].childrenIds, id] };
+      } else if (updatedTrees[treeId]) {
+        updatedTrees[treeId] = { ...updatedTrees[treeId], rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, id] };
+      }
+      upsertBacklog(newBacklog, orgId);
+      internalLog({ action: "Add", entityType: "backlog", entityId: id, entityName: name });
+      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    deleteBacklog: (backlogId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const blIdsToDelete: string[] = [];
+      const collectBlIds = (id: string) => {
+        blIdsToDelete.push(id);
+        state.backlogs[id]?.childrenIds.forEach(collectBlIds);
+      };
+      collectBlIds(backlogId);
+      const blIdSet = new Set(blIdsToDelete);
+      // Delete work items assigned only to deleted backlogs
+      const wiIdsToDelete: string[] = [];
+      const updatedItems = { ...state.workItems };
+      Object.values(updatedItems).forEach((wi) => {
+        const newAssignments = { ...wi.backlogAssignments };
+        Object.entries(newAssignments).forEach(([tId, bId]) => {
+          if (blIdSet.has(bId)) delete newAssignments[tId];
+        });
+        if (Object.keys(newAssignments).length === 0) {
+          wiIdsToDelete.push(wi.id);
+        } else if (Object.keys(newAssignments).length !== Object.keys(wi.backlogAssignments).length) {
+          updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
+        }
+      });
+      wiIdsToDelete.forEach((id) => delete updatedItems[id]);
+      const updatedBacklogs = { ...state.backlogs };
+      blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
+      const updatedTrees = { ...state.backlogTrees };
+      if (bl.parentId && updatedBacklogs[bl.parentId]) {
+        updatedBacklogs[bl.parentId] = { ...updatedBacklogs[bl.parentId], childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId) };
+      } else if (updatedTrees[bl.treeId]) {
+        updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId) };
+      }
+      deleteWorkItems(wiIdsToDelete);
+      deleteBacklogs(blIdsToDelete);
+      internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
+      set({ workItems: updatedItems, backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    renameBacklog: (backlogId, name) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const updated = { ...bl, name };
+      upsertBacklog(updated, orgId);
+      internalLog({ action: "Rename", entityType: "backlog", entityId: backlogId, entityName: name });
+      set({ backlogs: { ...state.backlogs, [backlogId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const siblingIds = bl.parentId
+        ? (state.backlogs[bl.parentId]?.childrenIds ?? [])
+        : (state.backlogTrees[bl.treeId]?.rootBacklogIds ?? []);
+      const siblings = siblingIds.map((id) => state.backlogs[id]).filter(Boolean);
+      const remaining = siblings.filter((s) => s.id !== backlogId);
+      const clamped = Math.max(0, Math.min(targetIndex, remaining.length));
+      remaining.splice(clamped, 0, bl);
+      const updatedBacklogs = { ...state.backlogs };
+      remaining.forEach((s, i) => { updatedBacklogs[s.id] = { ...updatedBacklogs[s.id], rank: i }; });
+      const newIds = remaining.map((s) => s.id);
+      const updatedTrees = { ...state.backlogTrees };
+      if (bl.parentId && updatedBacklogs[bl.parentId]) {
+        updatedBacklogs[bl.parentId] = { ...updatedBacklogs[bl.parentId], childrenIds: newIds };
+      } else if (updatedTrees[bl.treeId]) {
+        updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: newIds };
+      }
+      upsertBacklogs(remaining.map((s) => updatedBacklogs[s.id]), orgId);
+      internalLog({ action: "Reorder", entityType: "backlog" });
+      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    moveBacklog: (backlogId, targetParentId, treeId) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const updatedBacklogs = { ...state.backlogs };
+      const updatedTrees = { ...state.backlogTrees };
+      // Remove from old parent
+      if (bl.parentId && updatedBacklogs[bl.parentId]) {
+        updatedBacklogs[bl.parentId] = { ...updatedBacklogs[bl.parentId], childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId) };
+      } else if (updatedTrees[bl.treeId]) {
+        updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId) };
+      }
+      // Add to new parent
+      if (targetParentId && updatedBacklogs[targetParentId]) {
+        updatedBacklogs[targetParentId] = { ...updatedBacklogs[targetParentId], childrenIds: [...updatedBacklogs[targetParentId].childrenIds, backlogId] };
+      } else if (updatedTrees[treeId]) {
+        updatedTrees[treeId] = { ...updatedTrees[treeId], rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, backlogId] };
+      }
+      updatedBacklogs[backlogId] = { ...bl, parentId: targetParentId, treeId };
+      upsertBacklog(updatedBacklogs[backlogId], orgId);
+      internalLog({ action: "Move", entityType: "backlog", entityId: backlogId });
+      set({ backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    addBacklogTree: (name) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const id = ensureCleanId(`bt-${crypto.randomUUID().slice(0, 8)}`, orgId);
+      const rank = Object.keys(state.backlogTrees).length;
+      const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
+      upsertBacklogTree(newTree, orgId);
+      internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
+      set({ backlogTrees: { ...state.backlogTrees, [id]: newTree }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    deleteBacklogTree: (treeId) => {
+      const state = get();
+      const blIdsToDelete = Object.values(state.backlogs).filter((bl) => bl.treeId === treeId).map((bl) => bl.id);
+      const blIdSet = new Set(blIdsToDelete);
+      const wiIdsToDelete: string[] = [];
+      const updatedItems = { ...state.workItems };
+      Object.values(updatedItems).forEach((wi) => {
+        const newAssignments = { ...wi.backlogAssignments };
+        delete newAssignments[treeId];
+        Object.entries(newAssignments).forEach(([tId, bId]) => { if (blIdSet.has(bId)) delete newAssignments[tId]; });
+        if (Object.keys(newAssignments).length === 0) wiIdsToDelete.push(wi.id);
+        else updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
+      });
+      wiIdsToDelete.forEach((id) => delete updatedItems[id]);
+      const updatedBacklogs = { ...state.backlogs };
+      blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
+      const updatedTrees = { ...state.backlogTrees };
+      delete updatedTrees[treeId];
+      deleteWorkItems(wiIdsToDelete);
+      deleteBacklogs(blIdsToDelete);
+      deleteBacklogTreeDB(treeId);
+      internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId });
+      set({ workItems: updatedItems, backlogs: updatedBacklogs, backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    renameBacklogTree: (treeId, name) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const tree = state.backlogTrees[treeId];
+      if (!tree) return;
+      const updated = { ...tree, name };
+      upsertBacklogTree(updated, orgId);
+      internalLog({ action: "Rename", entityType: "backlog_tree", entityId: treeId, entityName: name });
+      set({ backlogTrees: { ...state.backlogTrees, [treeId]: updated }, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
+    },
+
+    reorderBacklogTree: (treeId, targetIndex) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+      const remaining = sorted.filter((t) => t.id !== treeId);
+      const tree = sorted.find((t) => t.id === treeId);
+      if (!tree) return;
+      const clamped = Math.max(0, Math.min(targetIndex, remaining.length));
+      remaining.splice(clamped, 0, tree);
+      const updatedTrees = { ...state.backlogTrees };
+      remaining.forEach((t, i) => { updatedTrees[t.id] = { ...updatedTrees[t.id], rank: i }; });
+      upsertBacklogTrees(remaining.map((t) => updatedTrees[t.id]), orgId);
+      internalLog({ action: "Reorder", entityType: "backlog_tree" });
+      set({ backlogTrees: updatedTrees, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)], redoStack: [] });
     },
 
     resetToMockData: async () => {
