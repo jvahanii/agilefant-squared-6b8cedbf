@@ -793,29 +793,22 @@ export function WorkItemTreePanel() {
           ) : (
             <div className="flex flex-col">
               {rootWorkItems.map((item, index) => {
-                const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
-                return (
-                  <div key={item.id}>
-                    <ReorderDropZone
-                      id={`reorder-root-${index}`}
-                      index={index}
-                      treeId={selectedTreeId}
-                      backlogIds={allBacklogIds}
-                      parentId={null}
-                      depth={0}
-                    />
-                    <WorkItemNode
-                      workItemId={item.id}
-                      depth={0}
-                      treeId={selectedTreeId}
-                      backlogId={itemBacklogId}
-                      allBacklogIds={allBacklogIds}
-                      isChildBacklog={itemBacklogId !== selectedBacklogId}
-                      onSelect={handleSelect}
-                    />
-                  </div>
-                );
-              })}
+  const isItemSelected = selectedWorkItemIds.includes(item.id);
+  return (
+    <div key={item.id}>
+      {/* 1. RENDER INPUT ABOVE THE NODE */}
+      {isAdding && isItemSelected && (
+        <InlineWorkItemInput
+          depth={0}
+          onSubmit={(title) => {
+            // Pass the CURRENT item's rank. 
+            // The store will move this item to rank+1.
+            addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank);
+            setIsAdding(false);
+          }}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
               <ReorderDropZone
                 id={`reorder-root-${rootWorkItems.length}`}
                 index={rootWorkItems.length}
