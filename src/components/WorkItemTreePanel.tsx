@@ -216,11 +216,14 @@ function WorkItemNode({
   useEffect(() => {
     if (!isSelected) return;
     const handleAddChild = () => setIsAdding(true);
+    const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
+    window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
     return () => {
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
+      window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
     };
   }, [isSelected, workItemId]);
