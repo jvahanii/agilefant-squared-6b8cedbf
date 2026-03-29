@@ -786,16 +786,28 @@ export function WorkItemTreePanel() {
             {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 ml-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsAdding(true);
-          }}
-          title="Add work item (Enter)"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          <button
+            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePasteFromClipboard();
+            }}
+            title="Paste items from clipboard"
+          >
+            <ClipboardPaste className="w-4 h-4" />
+          </button>
+          <button
+            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAdding(true);
+            }}
+            title="Add work item (Enter)"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
