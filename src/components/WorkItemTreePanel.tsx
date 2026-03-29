@@ -156,6 +156,7 @@ function WorkItemNode({
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
+  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -558,14 +559,19 @@ function WorkItemNode({
                   depth={depth + 1}
                 />
                 {isAdding && (
-                   <InlineWorkItemInput
+                  <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
                       addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
-                      setIsAdding(false);
-                      queueMicrotask(() => {
-                        window.dispatchEvent(new CustomEvent('shortcut:add-sibling-workitem'));
-                      });
+                      const newChildId =
+                        [...item.childrenIds].length > 0
+                          ? item.childrenIds[item.childrenIds.length - 1]
+                          : Object.keys(workItems).find(
+                              (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
+                            );
+                      if (newChildId) {
+                        selectWorkItem(newChildId, false);
+                      }
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
@@ -577,10 +583,12 @@ function WorkItemNode({
                 depth={depth + 1}
                 onSubmit={(title) => {
                   addWorkItem(title, workItemId, backlogId, treeId, 0);
-                  setIsAdding(false);
-                  queueMicrotask(() => {
-                    window.dispatchEvent(new CustomEvent('shortcut:add-sibling-workitem'));
-                  });
+                  const newChildId = Object.keys(workItems).find(
+                    (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
+                  );
+                  if (newChildId) {
+                    selectWorkItem(newChildId, false);
+                  }
                 }}
                 onCancel={() => setIsAdding(false)}
               />
@@ -691,11 +699,14 @@ export function WorkItemTreePanel() {
     if (!selectedBacklogId || !selectedTreeId) return;
     try {
       const text = await navigator.clipboard.readText();
-      const titles = text.split('\n').map(t => t.trim()).filter(Boolean);
+      const titles = text
+        .split("\n")
+        .map((t) => t.trim())
+        .filter(Boolean);
       if (titles.length === 0) return;
       bulkAddWorkItems(titles, null, selectedBacklogId, selectedTreeId);
     } catch (err) {
-      console.error('Failed to read clipboard:', err);
+      console.error("Failed to read clipboard:", err);
     }
   };
 
