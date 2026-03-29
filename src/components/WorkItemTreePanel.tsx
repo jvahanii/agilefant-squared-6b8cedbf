@@ -158,6 +158,7 @@ function WorkItemNode({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
 
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -215,11 +216,14 @@ function WorkItemNode({
   useEffect(() => {
     if (!isSelected) return;
     const handleAddChild = () => setIsAdding(true);
+    const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
+    window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
     return () => {
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
+      window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
     };
   }, [isSelected, workItemId]);
@@ -572,6 +576,16 @@ function WorkItemNode({
           </div>
         )}
       </div>
+      {isAddingSibling && (
+        <InlineWorkItemInput
+          depth={depth}
+          onSubmit={(title) => {
+            addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
+            setIsAddingSibling(false);
+          }}
+          onCancel={() => setIsAddingSibling(false)}
+        />
+      )}
       {showDeletePrompt && (
         <ActionPrompt
           title={`"${item.title}" is in ${assignmentCount} backlogs`}
