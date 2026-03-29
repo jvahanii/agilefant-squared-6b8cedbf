@@ -139,7 +139,9 @@ export default function AppLayout() {
             }
           } else {
             e.preventDefault();
-            if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+            if (state.selectedWorkItemIds.length > 0) {
+              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+            } else if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
               window.dispatchEvent(new CustomEvent("shortcut:add-workitem"));
             }
           }
