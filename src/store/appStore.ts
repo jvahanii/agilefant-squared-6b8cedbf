@@ -377,9 +377,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
 
       // 6. Update local state
+      const newExpanded = new Set(state.expandedWorkItems);
+      if (parentId) newExpanded.add(parentId);
+
       set({
         workItems: updatedWorkItems,
         selectedWorkItemIds: [id],
+        expandedWorkItems: newExpanded,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
