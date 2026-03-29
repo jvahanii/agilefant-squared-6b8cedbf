@@ -200,6 +200,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
@@ -244,15 +245,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
     if (!isSelected) return;
 
     const handleAddBacklog = () => setIsAdding(true);
+    const handleAddSiblingBacklog = () => setIsAddingSibling(true);
     const handleDeleteBacklog = () => {
       if (useAppStore.getState().selectedWorkItemIds.length > 0) return;
       deleteBacklog(backlogId);
     };
 
     window.addEventListener("shortcut:add-child-backlog", handleAddBacklog);
+    window.addEventListener("shortcut:add-sibling-backlog", handleAddSiblingBacklog);
     window.addEventListener("shortcut:delete-selected", handleDeleteBacklog);
     return () => {
       window.removeEventListener("shortcut:add-child-backlog", handleAddBacklog);
+      window.removeEventListener("shortcut:add-sibling-backlog", handleAddSiblingBacklog);
       window.removeEventListener("shortcut:delete-selected", handleDeleteBacklog);
     };
   }, [isSelected, backlogId, deleteBacklog]);
@@ -421,11 +425,24 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
               onSubmit={(name) => {
                 addBacklog(name, backlogId, backlog.treeId);
                 setIsAdding(false);
+                queueMicrotask(() => {
+                  window.dispatchEvent(new CustomEvent('shortcut:add-sibling-backlog'));
+                });
               }}
               onCancel={() => setIsAdding(false)}
             />
           )}
         </div>
+      )}
+      {isAddingSibling && (
+        <InlineInput
+          depth={depth}
+          onSubmit={(name) => {
+            addBacklog(name, parentId, backlog.treeId);
+            setIsAddingSibling(false);
+          }}
+          onCancel={() => setIsAddingSibling(false)}
+        />
       )}
     </div>
   );
