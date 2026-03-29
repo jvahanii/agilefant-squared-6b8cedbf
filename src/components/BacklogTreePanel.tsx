@@ -23,11 +23,8 @@ function useTreeShares(treeIds: string[]) {
     const load = async () => {
       // Fetch shares and tree ownership in parallel
       const [sharesRes, treesRes] = await Promise.all([
-        supabase
-          .from("backlog_tree_shares" as any)
-          .select("tree_id, organization_id")
-          .in("tree_id", treeIds),
-        supabase.from("backlog_trees").select("id, organization_id").in("id", treeIds),
+        supabase.from('backlog_tree_shares' as any).select('tree_id, organization_id').in('tree_id', treeIds),
+        supabase.from('backlog_trees').select('id, organization_id').in('id', treeIds),
       ]);
       if (sharesRes.error || !sharesRes.data) return;
 
@@ -46,9 +43,9 @@ function useTreeShares(treeIds: string[]) {
       let orgMap = new Map<string, string>();
       if (allOrgIds.size > 0) {
         const { data: orgs } = await supabase
-          .from("organizations")
-          .select("id, name")
-          .in("id", [...allOrgIds]);
+          .from('organizations')
+          .select('id, name')
+          .in('id', [...allOrgIds]);
         orgMap = new Map((orgs ?? []).map((o) => [o.id, o.name]));
       }
 
@@ -75,7 +72,7 @@ function useTreeShares(treeIds: string[]) {
     };
 
     load();
-  }, [treeIds.join(","), activeOrgId]);
+  }, [treeIds.join(','), activeOrgId]);
 
   return shares;
 }
@@ -346,7 +343,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         ) : (
           <span
             className="text-sm truncate flex-1"
-            onClick={(e) => {
+            onDoubleClick={(e) => {
               e.stopPropagation();
               startEditing();
             }}
@@ -510,8 +507,9 @@ function DraggableTreeHeader({
 }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const memberships = useOrgStore((s) => s.memberships);
-  const isSharedToMe =
-    tree.id && activeOrgId ? shares.length === 0 && memberships.some((m) => m.organization_id !== activeOrgId) : false;
+  const isSharedToMe = tree.id && activeOrgId
+    ? shares.length === 0 && memberships.some(m => m.organization_id !== activeOrgId)
+    : false;
   // Check if this tree belongs to another org (i.e., it's shared *to* the current org)
   const backlogTrees = useAppStore((s) => s.backlogTrees);
 
@@ -559,9 +557,7 @@ function DraggableTreeHeader({
                 <TooltipContent side="right" className="text-xs">
                   <p className="font-medium mb-1">Shared with:</p>
                   {shares.map((s) => (
-                    <p key={s.orgId} className="text-muted-foreground">
-                      {s.orgName}
-                    </p>
+                    <p key={s.orgId} className="text-muted-foreground">{s.orgName}</p>
                   ))}
                 </TooltipContent>
               </Tooltip>
@@ -696,9 +692,7 @@ export function BacklogTreePanel() {
           treeId={sharingTree.id}
           treeName={sharingTree.name}
           open={!!sharingTree}
-          onOpenChange={(open) => {
-            if (!open) setSharingTree(null);
-          }}
+          onOpenChange={(open) => { if (!open) setSharingTree(null); }}
         />
       )}
     </div>
