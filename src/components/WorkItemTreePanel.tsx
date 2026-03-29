@@ -509,20 +509,9 @@ function WorkItemNode({
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
-            {expanded && hasChildren && (
+             {expanded && hasChildren && (
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
-
-                {/* MOVED PROMPT TO THE TOP OF THE CHILD LIST */}
-                {isAdding && (
-                  <InlineWorkItemInput
-                    depth={depth + 1}
-                    onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, 0);
-                    }}
-                    onCancel={() => setIsAdding(false)}
-                  />
-                )}
 
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
@@ -560,9 +549,17 @@ function WorkItemNode({
                   parentId={workItemId}
                   depth={depth + 1}
                 />
+                {isAdding && (
+                  <InlineWorkItemInput
+                    depth={depth + 1}
+                    onSubmit={(title) => {
+                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                    }}
+                    onCancel={() => setIsAdding(false)}
+                  />
+                )}
               </>
             )}
-            {/* Fallback for adding a first child when not expanded */}
             {isAdding && !hasChildren && (
               <InlineWorkItemInput
                 depth={depth + 1}
@@ -775,8 +772,7 @@ export function WorkItemTreePanel() {
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
-          {/* MOVED ROOT PROMPT TO THE TOP */}
-          {isAdding && !selectedWorkItemIds.length && (
+          {rootWorkItems.length === 0 && isAdding ? (
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
@@ -784,9 +780,7 @@ export function WorkItemTreePanel() {
               }}
               onCancel={() => setIsAdding(false)}
             />
-          )}
-
-          {rootWorkItems.length === 0 && !isAdding ? (
+          ) : rootWorkItems.length === 0 && !isAdding ? (
             <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
               No work items in this backlog
             </div>
@@ -834,6 +828,15 @@ export function WorkItemTreePanel() {
                 parentId={null}
                 depth={0}
               />
+              {isAdding && !selectedWorkItemIds.length && (
+                <InlineWorkItemInput
+                  depth={0}
+                  onSubmit={(title) => {
+                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length);
+                  }}
+                  onCancel={() => setIsAdding(false)}
+                />
+              )}
             </div>
           )}
         </div>
