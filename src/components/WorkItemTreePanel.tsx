@@ -215,7 +215,10 @@ function WorkItemNode({
 
   useEffect(() => {
     if (!isSelected) return;
-    const handleAddChild = () => setIsAdding(true);
+    const handleAddChild = () => {
+      if (!expanded) toggleExpand(workItemId);
+      setIsAdding(true);
+    };
     const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
@@ -487,6 +490,7 @@ function WorkItemNode({
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!expanded) toggleExpand(workItemId);
                   setIsAdding(true);
                 }}
                 title="Add child item (Shift+Enter)"
