@@ -596,9 +596,16 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       upsertBacklog(newBacklog, orgId);
       internalLog({ action: "Add", entityType: "backlog", entityId: id, entityName: name });
+
+      const newExpandedBacklogs = new Set(state.expandedBacklogs);
+      if (parentId) newExpandedBacklogs.add(parentId);
+
       set({
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
+        selectedBacklogIds: [id],
+        selectedTreeId: treeId,
+        expandedBacklogs: newExpandedBacklogs,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
