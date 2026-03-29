@@ -562,16 +562,8 @@ function WorkItemNode({
                   <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
-                      const newChildId =
-                        [...item.childrenIds].length > 0
-                          ? item.childrenIds[item.childrenIds.length - 1]
-                          : Object.keys(workItems).find(
-                              (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
-                            );
-                      if (newChildId) {
-                        selectWorkItem(newChildId, false);
-                      }
+                      const newChildId = addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                      selectWorkItem(newChildId, false);
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
@@ -582,13 +574,8 @@ function WorkItemNode({
               <InlineWorkItemInput
                 depth={depth + 1}
                 onSubmit={(title) => {
-                  addWorkItem(title, workItemId, backlogId, treeId, 0);
-                  const newChildId = Object.keys(workItems).find(
-                    (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
-                  );
-                  if (newChildId) {
-                    selectWorkItem(newChildId, false);
-                  }
+                  const newChildId = addWorkItem(title, workItemId, backlogId, treeId, 0);
+                  selectWorkItem(newChildId, false);
                 }}
                 onCancel={() => setIsAdding(false)}
               />
