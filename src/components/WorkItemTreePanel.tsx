@@ -509,20 +509,9 @@ function WorkItemNode({
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
-            {expanded && hasChildren && (
+             {expanded && hasChildren && (
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
-
-                {/* MOVED PROMPT TO THE TOP OF THE CHILD LIST */}
-                {isAdding && (
-                  <InlineWorkItemInput
-                    depth={depth + 1}
-                    onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, 0);
-                    }}
-                    onCancel={() => setIsAdding(false)}
-                  />
-                )}
 
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
