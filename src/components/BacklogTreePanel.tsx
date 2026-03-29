@@ -200,6 +200,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
