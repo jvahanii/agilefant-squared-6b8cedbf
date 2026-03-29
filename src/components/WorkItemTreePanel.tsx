@@ -524,13 +524,13 @@ function WorkItemNode({
                 depth={depth + 1}
                 onSubmit={(title) => {
                   addWorkItem(title, workItemId, backlogId, treeId, 0);
-                  // After store update, try to find the created child and select it.
+                  // locate the created item in the store after mutation and select it
                   queueMicrotask(() => {
                     const s = (useAppStore as any).getState();
-                    const created = Object.values(s.workItems).find(
+                    const created = (Object.values(s.workItems) as any[]).find(
                       (w: any) => w.parentId === workItemId && w.title === title,
                     );
-                    if (created) s.selectWorkItem(created.id, false);
+                    if (created) s.selectWorkItem((created as any).id, false);
                   });
                 }}
                 onCancel={() => setIsAdding(false)}
@@ -590,13 +590,12 @@ function WorkItemNode({
           depth={depth}
           onSubmit={(title) => {
             addWorkItem(title, item.parentId, backlogId, treeId, item.rank);
-            // attempt to select sibling after creation
             queueMicrotask(() => {
               const s = (useAppStore as any).getState();
-              const created = Object.values(s.workItems).find(
+              const created = (Object.values(s.workItems) as any[]).find(
                 (w: any) => w.parentId === item.parentId && w.title === title,
               );
-              if (created) s.selectWorkItem(created.id, false);
+              if (created) s.selectWorkItem((created as any).id, false);
             });
             setIsAddingSibling(false);
           }}
@@ -839,8 +838,10 @@ export function WorkItemTreePanel() {
                 addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
                 queueMicrotask(() => {
                   const s = (useAppStore as any).getState();
-                  const created = Object.values(s.workItems).find((w: any) => w.parentId === null && w.title === title);
-                  if (created) s.selectWorkItem(created.id, false);
+                  const created = (Object.values(s.workItems) as any[]).find(
+                    (w: any) => w.parentId === null && w.title === title,
+                  );
+                  if (created) s.selectWorkItem((created as any).id, false);
                 });
               }}
               onCancel={() => setIsAdding(false)}
@@ -859,10 +860,10 @@ export function WorkItemTreePanel() {
                     addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
                     queueMicrotask(() => {
                       const s = (useAppStore as any).getState();
-                      const created = Object.values(s.workItems).find(
+                      const created = (Object.values(s.workItems) as any[]).find(
                         (w: any) => w.parentId === null && w.title === title,
                       );
-                      if (created) s.selectWorkItem(created.id, false);
+                      if (created) s.selectWorkItem((created as any).id, false);
                     });
                   }}
                   onCancel={() => setIsAdding(false)}
@@ -900,10 +901,10 @@ export function WorkItemTreePanel() {
                           addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1);
                           queueMicrotask(() => {
                             const s = (useAppStore as any).getState();
-                            const created = Object.values(s.workItems).find(
+                            const created = (Object.values(s.workItems) as any[]).find(
                               (w: any) => w.parentId === null && w.title === title,
                             );
-                            if (created) s.selectWorkItem(created.id, false);
+                            if (created) s.selectWorkItem((created as any).id, false);
                           });
                         }}
                         onCancel={() => setIsAdding(false)}
