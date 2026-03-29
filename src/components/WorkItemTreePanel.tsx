@@ -670,9 +670,22 @@ export function WorkItemTreePanel() {
   const backlogs = useAppStore((s) => s.backlogs);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
+  const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+
+  const handlePasteFromClipboard = async () => {
+    if (!selectedBacklogId || !selectedTreeId) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      const titles = text.split('\n').map(t => t.trim()).filter(Boolean);
+      if (titles.length === 0) return;
+      bulkAddWorkItems(titles, null, selectedBacklogId, selectedTreeId);
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
+  };
 
   const [isAdding, setIsAdding] = useState(false);
   const lastSelectedId = useRef<string | null>(null);
