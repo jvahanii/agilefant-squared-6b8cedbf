@@ -518,9 +518,24 @@ function WorkItemNode({
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
+            {isAdding && (
+              <InlineWorkItemInput
+                depth={depth + 1}
+                onSubmit={(title) => {
+                  const newChildId = addWorkItem(title, workItemId, backlogId, treeId, 0);
+                  if (newChildId) {
+                    selectWorkItem(newChildId, false);
+                  }
+                }}
+                onCancel={() => setIsAdding(false)}
+              />
+            )}
             {expanded && hasChildren && (
               <>
-                <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
+                <div
+                  className="absolute tree-line"
+                  style={{ left: `${depth * 20 + 24}px`, top: isAdding ? 52 : 0, bottom: 0 }}
+                />
 
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
@@ -558,40 +573,7 @@ function WorkItemNode({
                   parentId={workItemId}
                   depth={depth + 1}
                 />
-                {isAdding && (
-                  <InlineWorkItemInput
-                    depth={depth + 1}
-                    onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
-                      const newChildId =
-                        [...item.childrenIds].length > 0
-                          ? item.childrenIds[item.childrenIds.length - 1]
-                          : Object.keys(workItems).find(
-                              (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
-                            );
-                      if (newChildId) {
-                        selectWorkItem(newChildId, false);
-                      }
-                    }}
-                    onCancel={() => setIsAdding(false)}
-                  />
-                )}
               </>
-            )}
-            {isAdding && !hasChildren && (
-              <InlineWorkItemInput
-                depth={depth + 1}
-                onSubmit={(title) => {
-                  addWorkItem(title, workItemId, backlogId, treeId, 0);
-                  const newChildId = Object.keys(workItems).find(
-                    (id) => workItems[id]?.title === title && workItems[id]?.parentId === workItemId,
-                  );
-                  if (newChildId) {
-                    selectWorkItem(newChildId, false);
-                  }
-                }}
-                onCancel={() => setIsAdding(false)}
-              />
             )}
           </div>
         )}
@@ -600,7 +582,7 @@ function WorkItemNode({
         <InlineWorkItemInput
           depth={depth}
           onSubmit={(title) => {
-            addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
+            addWorkItem(title, item.parentId, backlogId, treeId, item.rank);
             setIsAddingSibling(false);
           }}
           onCancel={() => setIsAddingSibling(false)}
@@ -848,19 +830,28 @@ export function WorkItemTreePanel() {
             </div>
           ) : (
             <div className="flex flex-col">
+              {isAdding && !selectedWorkItemIds.length && (
+                <InlineWorkItemInput
+                  depth={0}
+                  onSubmit={(title) => {
+                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+                  }}
+                  onCancel={() => setIsAdding(false)}
+                />
+              )}
+              <ReorderDropZone
+                id={`reorder-root-0`}
+                index={0}
+                treeId={selectedTreeId}
+                backlogIds={allBacklogIds}
+                parentId={null}
+                depth={0}
+              />
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
                 const isSelected = selectedWorkItemIds.includes(item.id);
                 return (
                   <div key={item.id}>
-                    <ReorderDropZone
-                      id={`reorder-root-${index}`}
-                      index={index}
-                      treeId={selectedTreeId}
-                      backlogIds={allBacklogIds}
-                      parentId={null}
-                      depth={0}
-                    />
                     <WorkItemNode
                       workItemId={item.id}
                       depth={0}
@@ -879,26 +870,17 @@ export function WorkItemTreePanel() {
                         onCancel={() => setIsAdding(false)}
                       />
                     )}
+                    <ReorderDropZone
+                      id={`reorder-root-${index + 1}`}
+                      index={index + 1}
+                      treeId={selectedTreeId}
+                      backlogIds={allBacklogIds}
+                      parentId={null}
+                      depth={0}
+                    />
                   </div>
                 );
               })}
-              <ReorderDropZone
-                id={`reorder-root-${rootWorkItems.length}`}
-                index={rootWorkItems.length}
-                treeId={selectedTreeId}
-                backlogIds={allBacklogIds}
-                parentId={null}
-                depth={0}
-              />
-              {isAdding && !selectedWorkItemIds.length && (
-                <InlineWorkItemInput
-                  depth={0}
-                  onSubmit={(title) => {
-                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length);
-                  }}
-                  onCancel={() => setIsAdding(false)}
-                />
-              )}
             </div>
           )}
         </div>
