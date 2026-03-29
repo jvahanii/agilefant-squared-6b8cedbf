@@ -576,6 +576,16 @@ function WorkItemNode({
           </div>
         )}
       </div>
+      {isAddingSibling && (
+        <InlineWorkItemInput
+          depth={depth}
+          onSubmit={(title) => {
+            addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
+            setIsAddingSibling(false);
+          }}
+          onCancel={() => setIsAddingSibling(false)}
+        />
+      )}
       {showDeletePrompt && (
         <ActionPrompt
           title={`"${item.title}" is in ${assignmentCount} backlogs`}
