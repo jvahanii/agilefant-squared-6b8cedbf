@@ -794,6 +794,7 @@ export function WorkItemTreePanel() {
             <div className="flex flex-col">
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
+                const isSelected = selectedWorkItemIds.includes(item.id);
                 return (
                   <div key={item.id}>
                     <ReorderDropZone
@@ -813,6 +814,15 @@ export function WorkItemTreePanel() {
                       isChildBacklog={itemBacklogId !== selectedBacklogId}
                       onSelect={handleSelect}
                     />
+                    {isAdding && isSelected && item.parentId === null && (
+                      <InlineWorkItemInput
+                        depth={0}
+                        onSubmit={(title) => {
+                          addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1);
+                        }}
+                        onCancel={() => setIsAdding(false)}
+                      />
+                    )}
                   </div>
                 );
               })}
