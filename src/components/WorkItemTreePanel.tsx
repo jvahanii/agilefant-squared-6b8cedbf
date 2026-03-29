@@ -554,10 +554,14 @@ function WorkItemNode({
                   depth={depth + 1}
                 />
                 {isAdding && (
-                  <InlineWorkItemInput
+                   <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
                       addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                      setIsAdding(false);
+                      queueMicrotask(() => {
+                        window.dispatchEvent(new CustomEvent('shortcut:add-sibling-workitem'));
+                      });
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
