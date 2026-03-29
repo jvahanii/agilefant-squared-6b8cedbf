@@ -1,6 +1,6 @@
 import { useAppStore } from "@/store/appStore";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste } from "lucide-react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
@@ -670,9 +670,22 @@ export function WorkItemTreePanel() {
   const backlogs = useAppStore((s) => s.backlogs);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
+  const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+
+  const handlePasteFromClipboard = async () => {
+    if (!selectedBacklogId || !selectedTreeId) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      const titles = text.split('\n').map(t => t.trim()).filter(Boolean);
+      if (titles.length === 0) return;
+      bulkAddWorkItems(titles, null, selectedBacklogId, selectedTreeId);
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
+  };
 
   const [isAdding, setIsAdding] = useState(false);
   const lastSelectedId = useRef<string | null>(null);
@@ -773,16 +786,28 @@ export function WorkItemTreePanel() {
             {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 ml-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsAdding(true);
-          }}
-          title="Add work item (Enter)"
-        >
-          <Plus className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          <button
+            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePasteFromClipboard();
+            }}
+            title="Paste items from clipboard"
+          >
+            <ClipboardPaste className="w-4 h-4" />
+          </button>
+          <button
+            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAdding(true);
+            }}
+            title="Add work item (Enter)"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">

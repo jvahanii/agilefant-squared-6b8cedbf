@@ -57,6 +57,7 @@ interface AppState extends DataSnapshot {
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
+  bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
@@ -384,6 +385,55 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
 
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
+    },
+
+
+    bulkAddWorkItems: (titles, parentId, backlogId, treeId) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId || titles.length === 0) return;
+
+      const updatedWorkItems = { ...state.workItems };
+
+      let maxRank = -1;
+      Object.values(updatedWorkItems).forEach((wi) => {
+        if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
+          if (wi.rank > maxRank) maxRank = wi.rank;
+        }
+      });
+
+      const newItems: WorkItem[] = [];
+      titles.forEach((title, i) => {
+        const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+        const newItem: WorkItem = {
+          id,
+          title,
+          parentId,
+          rank: maxRank + 1 + i,
+          backlogAssignments: { [treeId]: backlogId },
+          status: "not_started" as WorkItemStatus,
+          childrenIds: [],
+          points: undefined,
+        };
+        updatedWorkItems[id] = newItem;
+        newItems.push(newItem);
+
+        if (parentId && updatedWorkItems[parentId]) {
+          updatedWorkItems[parentId] = {
+            ...updatedWorkItems[parentId],
+            childrenIds: [...updatedWorkItems[parentId].childrenIds, id],
+          };
+        }
+      });
+
+      upsertWorkItems(newItems, orgId);
+      internalLog({ action: "Bulk Add", entityType: "work_item", details: `${titles.length} items added` });
+
+      set({
+        workItems: updatedWorkItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
     },
 
     deleteWorkItem: (workItemId) => {
