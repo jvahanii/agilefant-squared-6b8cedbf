@@ -560,10 +560,12 @@ function WorkItemNode({
                 {isAdding && (
                    <InlineWorkItemInput
                     depth={depth + 1}
-                   onSubmit={(title) => {
-  const newChildId = addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
-  selectWorkItem(newChildId, false);
-}};
+                    onSubmit={(title) => {
+                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                      setIsAdding(false);
+                      queueMicrotask(() => {
+                        window.dispatchEvent(new CustomEvent('shortcut:add-sibling-workitem'));
+                      });
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
@@ -573,10 +575,12 @@ function WorkItemNode({
             {isAdding && !hasChildren && (
               <InlineWorkItemInput
                 depth={depth + 1}
-              onSubmit={(title) => {
-  const newChildId = addWorkItem(title, workItemId, backlogId, treeId, 0);
-  selectWorkItem(newChildId, false);
-}};
+                onSubmit={(title) => {
+                  addWorkItem(title, workItemId, backlogId, treeId, 0);
+                  setIsAdding(false);
+                  queueMicrotask(() => {
+                    window.dispatchEvent(new CustomEvent('shortcut:add-sibling-workitem'));
+                  });
                 }}
                 onCancel={() => setIsAdding(false)}
               />
