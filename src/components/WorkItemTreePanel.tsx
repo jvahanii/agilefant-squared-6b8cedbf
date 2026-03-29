@@ -772,8 +772,7 @@ export function WorkItemTreePanel() {
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
-          {/* MOVED ROOT PROMPT TO THE TOP */}
-          {isAdding && !selectedWorkItemIds.length && (
+          {rootWorkItems.length === 0 && isAdding ? (
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
@@ -781,9 +780,7 @@ export function WorkItemTreePanel() {
               }}
               onCancel={() => setIsAdding(false)}
             />
-          )}
-
-          {rootWorkItems.length === 0 && !isAdding ? (
+          ) : rootWorkItems.length === 0 && !isAdding ? (
             <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
               No work items in this backlog
             </div>
