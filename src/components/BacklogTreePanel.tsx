@@ -245,15 +245,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
     if (!isSelected) return;
 
     const handleAddBacklog = () => setIsAdding(true);
+    const handleAddSiblingBacklog = () => setIsAddingSibling(true);
     const handleDeleteBacklog = () => {
       if (useAppStore.getState().selectedWorkItemIds.length > 0) return;
       deleteBacklog(backlogId);
     };
 
     window.addEventListener("shortcut:add-child-backlog", handleAddBacklog);
+    window.addEventListener("shortcut:add-sibling-backlog", handleAddSiblingBacklog);
     window.addEventListener("shortcut:delete-selected", handleDeleteBacklog);
     return () => {
       window.removeEventListener("shortcut:add-child-backlog", handleAddBacklog);
+      window.removeEventListener("shortcut:add-sibling-backlog", handleAddSiblingBacklog);
       window.removeEventListener("shortcut:delete-selected", handleDeleteBacklog);
     };
   }, [isSelected, backlogId, deleteBacklog]);
