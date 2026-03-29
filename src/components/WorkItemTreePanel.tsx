@@ -549,9 +549,17 @@ function WorkItemNode({
                   parentId={workItemId}
                   depth={depth + 1}
                 />
+                {isAdding && (
+                  <InlineWorkItemInput
+                    depth={depth + 1}
+                    onSubmit={(title) => {
+                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                    }}
+                    onCancel={() => setIsAdding(false)}
+                  />
+                )}
               </>
             )}
-            {/* Fallback for adding a first child when not expanded */}
             {isAdding && !hasChildren && (
               <InlineWorkItemInput
                 depth={depth + 1}
