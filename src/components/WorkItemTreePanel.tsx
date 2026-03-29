@@ -215,7 +215,10 @@ function WorkItemNode({
 
   useEffect(() => {
     if (!isSelected) return;
-    const handleAddChild = () => setIsAdding(true);
+    const handleAddChild = () => {
+      if (!expanded) toggleExpand(workItemId);
+      setIsAdding(true);
+    };
     const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
