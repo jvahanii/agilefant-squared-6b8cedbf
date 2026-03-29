@@ -776,7 +776,7 @@ export function WorkItemTreePanel() {
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
           {/* MOVED ROOT PROMPT TO THE TOP */}
-          {isAdding && (
+          {isAdding && !selectedWorkItemIds.length && (
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
