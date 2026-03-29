@@ -513,7 +513,7 @@ function WorkItemNode({
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
-             {expanded && hasChildren && (
+            {expanded && hasChildren && (
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
@@ -779,7 +779,7 @@ export function WorkItemTreePanel() {
             e.stopPropagation();
             setIsAdding(true);
           }}
-          title="Add work item (N)"
+          title="Add work item (Enter)"
         >
           <Plus className="w-4 h-4" />
         </button>
