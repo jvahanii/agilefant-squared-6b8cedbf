@@ -158,6 +158,7 @@ function WorkItemNode({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
 
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
