@@ -426,13 +426,23 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
                 addBacklog(name, backlogId, backlog.treeId);
                 setIsAdding(false);
                 queueMicrotask(() => {
-                  window.dispatchEvent(new CustomEvent('shortcut:add-child-backlog'));
+                  window.dispatchEvent(new CustomEvent('shortcut:add-sibling-backlog'));
                 });
               }}
               onCancel={() => setIsAdding(false)}
             />
           )}
         </div>
+      )}
+      {isAddingSibling && (
+        <InlineInput
+          depth={depth}
+          onSubmit={(name) => {
+            addBacklog(name, parentId, backlog.treeId);
+            setIsAddingSibling(false);
+          }}
+          onCancel={() => setIsAddingSibling(false)}
+        />
       )}
     </div>
   );
