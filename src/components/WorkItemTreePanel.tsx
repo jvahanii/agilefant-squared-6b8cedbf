@@ -156,7 +156,6 @@ function WorkItemNode({
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
-  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -518,31 +517,9 @@ function WorkItemNode({
         </div>
         {(expanded || isAdding) && (
           <div className="relative">
-            {/* show input at the top of children when adding */}
-            {isAdding && (
-              <InlineWorkItemInput
-                depth={depth + 1}
-                onSubmit={(title) => {
-                  addWorkItem(title, workItemId, backlogId, treeId, 0);
-                  // locate the created item in the store after mutation and select it
-                  queueMicrotask(() => {
-                    const s = (useAppStore as any).getState();
-                    const created = (Object.values(s.workItems) as any[]).find(
-                      (w: any) => w.parentId === workItemId && w.title === title,
-                    );
-                    if (created) s.selectWorkItem((created as any).id, false);
-                  });
-                }}
-                onCancel={() => setIsAdding(false)}
-              />
-            )}
-
             {expanded && hasChildren && (
               <>
-                <div
-                  className="absolute tree-line"
-                  style={{ left: `${depth * 20 + 24}px`, top: isAdding ? 52 : 0, bottom: 0 }}
-                />
+                <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
@@ -580,7 +557,33 @@ function WorkItemNode({
                   parentId={workItemId}
                   depth={depth + 1}
                 />
+                {isAdding && (
+                  <InlineWorkItemInput
+                    depth={depth + 1}
+                    onSubmit={(title) => {
+                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                      setIsAdding(false);
+                      queueMicrotask(() => {
+                        window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                      });
+                    }}
+                    onCancel={() => setIsAdding(false)}
+                  />
+                )}
               </>
+            )}
+            {isAdding && !hasChildren && (
+              <InlineWorkItemInput
+                depth={depth + 1}
+                onSubmit={(title) => {
+                  addWorkItem(title, workItemId, backlogId, treeId, 0);
+                  setIsAdding(false);
+                  queueMicrotask(() => {
+                    window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                  });
+                }}
+                onCancel={() => setIsAdding(false)}
+              />
             )}
           </div>
         )}
@@ -589,7 +592,8 @@ function WorkItemNode({
         <InlineWorkItemInput
           depth={depth}
           onSubmit={(title) => {
-            addWorkItem(title, item.parentId, backlogId, treeId, item.rank);
+            addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
+            setIsAddingSibling(false);
             queueMicrotask(() => {
               const s = (useAppStore as any).getState();
               const created = (Object.values(s.workItems) as any[]).find(
@@ -597,7 +601,6 @@ function WorkItemNode({
               );
               if (created) s.selectWorkItem((created as any).id, false);
             });
-            setIsAddingSibling(false);
           }}
           onCancel={() => setIsAddingSibling(false)}
         />
@@ -830,19 +833,11 @@ export function WorkItemTreePanel() {
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
         <div className="flex-1 overflow-y-auto p-2">
-          {/* when adding root items and none selected, show input at top */}
           {rootWorkItems.length === 0 && isAdding ? (
             <InlineWorkItemInput
               depth={0}
               onSubmit={(title) => {
                 addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
-                queueMicrotask(() => {
-                  const s = (useAppStore as any).getState();
-                  const created = (Object.values(s.workItems) as any[]).find(
-                    (w: any) => w.parentId === null && w.title === title,
-                  );
-                  if (created) s.selectWorkItem((created as any).id, false);
-                });
               }}
               onCancel={() => setIsAdding(false)}
             />
@@ -852,39 +847,19 @@ export function WorkItemTreePanel() {
             </div>
           ) : (
             <div className="flex flex-col">
-              {/* If adding with no selection, show input at top so new item appears at top */}
-              {isAdding && !selectedWorkItemIds.length && (
-                <InlineWorkItemInput
-                  depth={0}
-                  onSubmit={(title) => {
-                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
-                    queueMicrotask(() => {
-                      const s = (useAppStore as any).getState();
-                      const created = (Object.values(s.workItems) as any[]).find(
-                        (w: any) => w.parentId === null && w.title === title,
-                      );
-                      if (created) s.selectWorkItem((created as any).id, false);
-                    });
-                  }}
-                  onCancel={() => setIsAdding(false)}
-                />
-              )}
-
-              {/* top root dropzone (before items) */}
-              <ReorderDropZone
-                id={`reorder-root-0`}
-                index={0}
-                treeId={selectedTreeId}
-                backlogIds={allBacklogIds}
-                parentId={null}
-                depth={0}
-              />
-
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
                 const isSelected = selectedWorkItemIds.includes(item.id);
                 return (
                   <div key={item.id}>
+                    <ReorderDropZone
+                      id={`reorder-root-${index}`}
+                      index={index}
+                      treeId={selectedTreeId}
+                      backlogIds={allBacklogIds}
+                      parentId={null}
+                      depth={0}
+                    />
                     <WorkItemNode
                       workItemId={item.id}
                       depth={0}
@@ -899,28 +874,30 @@ export function WorkItemTreePanel() {
                         depth={0}
                         onSubmit={(title) => {
                           addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1);
-                          queueMicrotask(() => {
-                            const s = (useAppStore as any).getState();
-                            const created = (Object.values(s.workItems) as any[]).find(
-                              (w: any) => w.parentId === null && w.title === title,
-                            );
-                            if (created) s.selectWorkItem((created as any).id, false);
-                          });
                         }}
                         onCancel={() => setIsAdding(false)}
                       />
                     )}
-                    <ReorderDropZone
-                      id={`reorder-root-${index + 1}`}
-                      index={index + 1}
-                      treeId={selectedTreeId}
-                      backlogIds={allBacklogIds}
-                      parentId={null}
-                      depth={0}
-                    />
                   </div>
                 );
               })}
+              <ReorderDropZone
+                id={`reorder-root-${rootWorkItems.length}`}
+                index={rootWorkItems.length}
+                treeId={selectedTreeId}
+                backlogIds={allBacklogIds}
+                parentId={null}
+                depth={0}
+              />
+              {isAdding && !selectedWorkItemIds.length && (
+                <InlineWorkItemInput
+                  depth={0}
+                  onSubmit={(title) => {
+                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length);
+                  }}
+                  onCancel={() => setIsAdding(false)}
+                />
+              )}
             </div>
           )}
         </div>
