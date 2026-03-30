@@ -1,4 +1,4 @@
-// Auto-exported mock data
+// Auto-exported mock data - Palmusunnuntai COMPLETELY PURGED
 export const mockData = {
   workItems: {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-6cc0db01": {
