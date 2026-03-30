@@ -454,14 +454,14 @@ function WorkItemNode({
               (() => {
                 const getEffectivePoints = (wi: any): number => {
                   const own = wi.points ?? 0;
-                  const childrenSum = (wi.childrenIds || []).reduce((sum: number, cid: string) => {
+                  const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
                     const child = workItems[cid];
                     return sum + (child ? getEffectivePoints(child) : 0);
                   }, 0);
                   return Math.max(own, childrenSum);
                 };
                 const totalPoints = getEffectivePoints(item);
-                const directChildrenSum = (item.childrenIds || []).reduce((sum, cid) => {
+                const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
                   const child = workItems[cid];
                   return sum + (child ? getEffectivePoints(child) : 0);
                 }, 0);
@@ -612,8 +612,8 @@ function WorkItemNode({
               isDefault: true,
             },
             {
-              label: "Delete Everywhere",
-              description: "Permanently delete this item from ALL backlogs.",
+              label: "Delete everywhere",
+              description: "Permanently delete this item from all backlogs.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -729,25 +729,12 @@ export function WorkItemTreePanel() {
 
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
-
     return Object.values(workItems)
-      .filter((wi) => {
-        // 1. Pitää kuulua valittuun backlog-joukkoon
-        const assignedBacklogId = wi.backlogAssignments[selectedTreeId];
-        const isInCurrentBacklog = backlogIdSet.has(assignedBacklogId);
-
-        // 2. Pitää olla ROOT-item TÄSSÄ backlogissa (ei parentia tai parent ei kuulu tähän puuhun)
-        const isRoot = wi.parentId === null;
-
-        // Varmista, että jos parent on olemassa, se EI kuulu tähän backlog-näkymään
-        // (jos kuuluu, se renderöidään lapsena, muuten se on root tässä näkymässä)
-        const parentIsInScope =
-          wi.parentId &&
-          workItems[wi.parentId] &&
-          backlogIdSet.has(workItems[wi.parentId].backlogAssignments[selectedTreeId]);
-
-        return isInCurrentBacklog && (isRoot || !parentIsInScope);
-      })
+      .filter(
+        (wi) =>
+          backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
+          (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId ?? ""]?.backlogAssignments[selectedTreeId])),
+      )
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
