@@ -145,7 +145,15 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
 
 export async function deleteWorkItems(ids: string[]) {
   if (ids.length === 0) return;
-  const { error } = await supabase.from('work_items').delete().in('id', ids);
+  // Also delete any double-prefixed variants that may exist in the DB
+  const allIds = new Set(ids);
+  ids.forEach(id => {
+    const parts = id.split('::');
+    if (parts.length === 2) {
+      allIds.add(`${parts[0]}::${id}`);
+    }
+  });
+  const { error } = await supabase.from('work_items').delete().in('id', [...allIds]);
   if (error) console.error('deleteWorkItems:', error);
 }
 
