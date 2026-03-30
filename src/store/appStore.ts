@@ -471,21 +471,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
         };
       }
-      // 1. Etsi kaikki poistettavien kohteiden vanhemmat
-      wiIdsToDelete.forEach((childId) => {
-        const childItem = state.workItems[childId];
-        if (childItem && childItem.parentId) {
-          const parent = updatedItems[childItem.parentId];
-          if (parent) {
-            // 2. Poista kuollut lapsi vanhemman listalta
-            updatedItems[parent.id] = {
-              ...parent,
-              childrenIds: parent.childrenIds.filter((id) => id !== childId),
-      };
-
-     // Nyt voit turvallisesti poistaa itse kohteet
-
-      
       deleteWorkItems(idsToDelete);
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
       set({
