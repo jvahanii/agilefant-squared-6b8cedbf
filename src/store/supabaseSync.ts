@@ -99,8 +99,18 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   }
 
   const allItemRows = [...(itemsRes.data ?? []), ...sharedWorkItems];
+
+  // Auto-cleanup malformed (double-prefixed) work item IDs
+  const malformedItemIds = allItemRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
+  if (malformedItemIds.length > 0) {
+    supabase.from('work_items').delete().in('id', malformedItemIds).then(({ error }) => {
+      if (error) console.error('cleanup malformed work items:', error);
+    });
+  }
+  const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
+
   const workItems: Record<string, WorkItem> = {};
-  for (const row of allItemRows) {
+  for (const row of cleanItemRows) {
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
