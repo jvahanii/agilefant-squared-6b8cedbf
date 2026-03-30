@@ -229,7 +229,7 @@ function WorkItemNode({
       window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
     };
-  }, [isSelected, workItemId]);
+  }, [isSelected, workItemId, expanded]);
 
   if (!item) return null;
 
