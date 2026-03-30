@@ -561,7 +561,7 @@ function WorkItemNode({
                   <InlineWorkItemInput
                     depth={depth + 1}
                     onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
+                      addWorkItem(title, workItemId, backlogId, treeId);
                       setIsAdding(false);
                       setTimeout(() => {
                         window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
