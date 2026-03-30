@@ -83,6 +83,9 @@ interface AppState extends DataSnapshot {
   redo: () => void;
 }
 
+/**
+ * ID GUARD: Prevents double-prefixing (e.g., org::org::id)
+ */
 const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
@@ -90,11 +93,15 @@ const ensureCleanId = (id: string, orgId: string): string => {
   return `${orgId}::${rawId}`;
 };
 
+/**
+ * DATA SANITIZER: Rebuilds referential integrity and cleans IDs
+ */
 export function sanitizeData(data: any, orgId: string) {
   const cleanWorkItems: Record<string, WorkItem> = {};
   const cleanBacklogs: Record<string, Backlog> = {};
   const cleanTrees: Record<string, BacklogTree> = {};
 
+  // 1. Clean Backlogs first (to validate assignments later)
   Object.values(data.backlogs || {}).forEach((bl: any) => {
     const id = ensureCleanId(bl.id, orgId);
     cleanBacklogs[id] = {
@@ -102,10 +109,11 @@ export function sanitizeData(data: any, orgId: string) {
       id,
       parentId: bl.parentId ? ensureCleanId(bl.parentId, orgId) : null,
       treeId: ensureCleanId(bl.treeId, orgId),
-      childrenIds: [],
+      childrenIds: [], // Rebuilt below
     };
   });
 
+  // 2. Clean Trees
   Object.values(data.backlogTrees || {}).forEach((tree: any) => {
     const id = ensureCleanId(tree.id, orgId);
     cleanTrees[id] = {
@@ -117,6 +125,7 @@ export function sanitizeData(data: any, orgId: string) {
     };
   });
 
+  // 3. Clean Work Items
   Object.values(data.workItems || {}).forEach((wi: any) => {
     const id = ensureCleanId(wi.id, orgId);
     const validAssignments: Record<string, string> = {};
@@ -134,10 +143,11 @@ export function sanitizeData(data: any, orgId: string) {
       id,
       parentId: wi.parentId ? ensureCleanId(wi.parentId, orgId) : null,
       backlogAssignments: validAssignments,
-      childrenIds: [],
+      childrenIds: [], // Rebuilt below
     };
   });
 
+  // 4. Final Pass: Rebuild all childrenId arrays (Referential Integrity)
   Object.values(cleanWorkItems).forEach((wi) => {
     if (wi.parentId && cleanWorkItems[wi.parentId]) {
       const parent = cleanWorkItems[wi.parentId];
@@ -254,11 +264,6 @@ export const useAppStore = create<AppState>()((set, get) => {
       const mainItem = state.workItems[workItemId];
       if (!mainItem) return;
 
-      if (!mainItem.backlogAssignments[treeId]) {
-        console.warn(`Work item ${workItemId} has no assignment in tree ${treeId}`);
-        return;
-      }
-
       const itemsToMoveIds = state.selectedWorkItemIds.includes(workItemId) ? state.selectedWorkItemIds : [workItemId];
 
       const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
@@ -299,16 +304,6 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
 
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
-      const targetBacklog = state.backlogs[cleanTargetBl];
-      if (!targetBacklog) {
-        console.warn(`Target backlog ${cleanTargetBl} does not exist`);
-        return;
-      }
-      if (targetBacklog.treeId !== treeId) {
-        console.warn(`Target backlog ${cleanTargetBl} belongs to tree ${targetBacklog.treeId}, not ${treeId}`);
-        return;
-      }
-
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
 
@@ -337,10 +332,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       const itemsToUpdateInDB: WorkItem[] = [];
 
+      // 1. Determine Target Rank
       let finalRank: number;
       if (requestedRank != null) {
         finalRank = requestedRank;
       } else {
+        // Compute maxRank + 1 among siblings to avoid duplicates
         let maxRank = -1;
         Object.values(state.workItems).forEach((wi) => {
           if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
@@ -350,16 +347,20 @@ export const useAppStore = create<AppState>()((set, get) => {
         finalRank = maxRank + 1;
       }
 
+      // 2. Efficiently shift siblings
+      // We only look at items that share the same parent and backlog tree
       Object.values(updatedWorkItems).forEach((wi) => {
         const isSameContext = wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId;
 
         if (isSameContext && wi.rank >= finalRank) {
+          // Create a shallow copy and increment rank
           const updatedItem = { ...wi, rank: wi.rank + 1 };
           updatedWorkItems[wi.id] = updatedItem;
           itemsToUpdateInDB.push(updatedItem);
         }
       });
 
+      // 3. Create the New Item
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
         id,
@@ -375,8 +376,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       updatedWorkItems[id] = newItem;
       itemsToUpdateInDB.push(newItem);
 
+      // 4. Batch Update to Database
+      // Using upsertWorkItems is faster than individual upsertWorkItem calls
       upsertWorkItems(itemsToUpdateInDB, orgId);
 
+      // 5. Update Parent Reference (UI consistency)
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
           ...updatedWorkItems[parentId],
@@ -384,6 +388,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
+      // 6. Update local state
       const newExpanded = new Set(state.expandedWorkItems);
       if (parentId) newExpanded.add(parentId);
 
@@ -397,6 +402,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
     },
+
 
     bulkAddWorkItems: (titles, parentId, backlogId, treeId) => {
       const state = get();
@@ -532,6 +538,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const newAssignments = { ...item.backlogAssignments };
       delete newAssignments[treeId];
       if (Object.keys(newAssignments).length === 0) {
+        // No assignments left — delete the item
         get().deleteWorkItem(workItemId);
         return;
       }
@@ -545,51 +552,32 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    reparentWorkItem: (workItemId, newParentId, treeId, backlogId) => {
+    reparentWorkItem: (workItemId, newParentId, _treeId, _backlogId) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
       if (!item) return;
-
-      if (treeId && !item.backlogAssignments[treeId]) {
-        console.warn(`Work item ${workItemId} has no assignment in tree ${treeId}`);
-        return;
-      }
-
       const updatedItems = { ...state.workItems };
-
+      // Remove from old parent
       if (item.parentId && updatedItems[item.parentId]) {
         updatedItems[item.parentId] = {
           ...updatedItems[item.parentId],
           childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
         };
       }
-
+      // Add to new parent
       if (newParentId && updatedItems[newParentId]) {
         updatedItems[newParentId] = {
           ...updatedItems[newParentId],
           childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
         };
       }
-
-      let newRank = 0;
-      if (treeId && backlogId) {
-        const newSiblings = Object.values(updatedItems)
-          .filter(
-            (wi) => wi.parentId === newParentId && wi.backlogAssignments[treeId] === backlogId && wi.id !== workItemId,
-          )
-          .sort((a, b) => a.rank - b.rank);
-        newRank = newSiblings.length;
-      }
-
-      updatedItems[workItemId] = { ...item, parentId: newParentId, rank: newRank };
+      updatedItems[workItemId] = { ...item, parentId: newParentId };
       const changed = [updatedItems[workItemId]];
       if (item.parentId && updatedItems[item.parentId]) changed.push(updatedItems[item.parentId]);
       if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
-
       upsertWorkItems(changed, orgId);
       internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId });
-
       set({
         workItems: updatedItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -603,7 +591,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const id = ensureCleanId(`bl-${crypto.randomUUID().slice(0, 8)}`, orgId);
       let maxRank = -1;
       Object.values(state.backlogs).forEach((bl) => {
-        const isSibling = parentId ? bl.parentId === parentId : !bl.parentId && bl.treeId === treeId;
+        const isSibling = parentId ? bl.parentId === parentId : (!bl.parentId && bl.treeId === treeId);
         if (isSibling && bl.rank > maxRank) maxRank = bl.rank;
       });
       const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: maxRank + 1 };
@@ -649,6 +637,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       };
       collectBlIds(backlogId);
       const blIdSet = new Set(blIdsToDelete);
+      // Delete work items assigned only to deleted backlogs
       const wiIdsToDelete: string[] = [];
       const updatedItems = { ...state.workItems };
       Object.values(updatedItems).forEach((wi) => {
@@ -747,6 +736,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!bl) return;
       const updatedBacklogs = { ...state.backlogs };
       const updatedTrees = { ...state.backlogTrees };
+      // Remove from old parent
       if (bl.parentId && updatedBacklogs[bl.parentId]) {
         updatedBacklogs[bl.parentId] = {
           ...updatedBacklogs[bl.parentId],
@@ -758,6 +748,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId),
         };
       }
+      // Add to new parent
       if (targetParentId && updatedBacklogs[targetParentId]) {
         updatedBacklogs[targetParentId] = {
           ...updatedBacklogs[targetParentId],
@@ -876,6 +867,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ isLoading: true });
       try {
         const mockData = generateMockData();
+        // Sanitize the raw mock data before it even hits Supabase
         const cleanMock = sanitizeData(mockData, orgId);
         await resetOrgData(orgId, cleanMock);
         await get().loadFromSupabase();
