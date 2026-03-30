@@ -1,5 +1,3 @@
-// CACHE BUST 1
-
 // Auto-exported mock data
 export const mockData = {
   workItems: {
