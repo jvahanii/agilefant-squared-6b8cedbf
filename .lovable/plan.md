@@ -1,50 +1,54 @@
 
 
-## Fix: Corrupted double-prefixed items can't be deleted
+## Fix: Duplicate ranks when creating items
 
 ### Root Cause
 
-The database contains work items (and potentially backlogs/trees) with double-prefixed IDs like `orgId::orgId::wi-574a73af`, created by an old `resetToMockData` that applied `scopeMockDataToOrganization` to already-prefixed data. When loading, `sanitizeData` strips these to `orgId::wi-574a73af`, so the store sees one item. But when deleting, only `orgId::wi-574a73af` is deleted from the DB — the double-prefixed row survives and reappears on reload.
+Two sources of duplicate ranks:
+
+1. **Work items**: Callers pass `item.childrenIds.length` or `rootWorkItems.length` as the rank for "append at end" operations (lines 564, 872, 892 in `WorkItemTreePanel.tsx`). If ranks have gaps or `childrenIds` is stale, this collides with existing ranks. The store's `addWorkItem` only shifts items with `rank >= finalRank`, so if the computed rank already exists but isn't the expected "end" position, duplicates occur.
+
+2. **Backlogs**: `addBacklog` uses `siblings.length` as the rank (line 583 in `appStore.ts`), which has the same stale-length problem.
 
 ### Fix
 
-**1. `src/store/supabaseSync.ts` — Clean up malformed IDs on load**
+**`src/store/appStore.ts`** — Make rank computation robust in the store itself:
 
-In `loadFromSupabase`, after fetching all rows, detect and delete any rows with malformed (multi-segment) IDs before building the store state. A malformed ID has more than one `::` separator (e.g., `orgId::orgId::wi-x`).
+1. **`addWorkItem`** (line 335-336): When `requestedRank` is undefined, compute `maxRank + 1` among siblings instead of defaulting to 0:
+   ```ts
+   let finalRank: number;
+   if (requestedRank != null) {
+     finalRank = requestedRank;
+   } else {
+     let maxRank = -1;
+     Object.values(state.workItems).forEach((wi) => {
+       if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
+         if (wi.rank > maxRank) maxRank = wi.rank;
+       }
+     });
+     finalRank = maxRank + 1;
+   }
+   ```
 
-```ts
-// After fetching allItemRows, filter out and delete malformed ones
-const malformedItemIds = allItemRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
-if (malformedItemIds.length > 0) {
-  await supabase.from('work_items').delete().in('id', malformedItemIds);
-}
-const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
-```
+2. **`addBacklog`** (line 583): Replace `siblings.length` with computed max rank:
+   ```ts
+   let maxRank = -1;
+   Object.values(state.backlogs).forEach((bl) => {
+     const isSibling = parentId ? bl.parentId === parentId : (!bl.parentId && bl.treeId === treeId);
+     if (isSibling && bl.rank > maxRank) maxRank = bl.rank;
+   });
+   const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: maxRank + 1 };
+   ```
 
-Same for backlogs and backlog_trees rows.
+**`src/components/WorkItemTreePanel.tsx`** — Simplify callers to not pass rank for "append at end":
 
-**2. `src/store/supabaseSync.ts` — Delete malformed variants alongside clean IDs**
+3. **Line 564**: Change `addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length)` → `addWorkItem(title, workItemId, backlogId, treeId)` (let store compute)
 
-In `deleteWorkItems`, also compute and delete the double-prefixed variant for each ID:
+4. **Line 872**: Change `addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1)` → keep as-is (this is "insert after", needs explicit rank)
 
-```ts
-export async function deleteWorkItems(ids: string[]) {
-  if (ids.length === 0) return;
-  // Also delete any double-prefixed variants that may exist
-  const allIds = new Set(ids);
-  ids.forEach(id => {
-    const parts = id.split('::');
-    if (parts.length === 2) {
-      allIds.add(`${parts[0]}::${id}`); // orgId::orgId::suffix
-    }
-  });
-  const { error } = await supabase.from('work_items').delete().in('id', [...allIds]);
-  if (error) console.error('deleteWorkItems:', error);
-}
-```
-
-**3. Prevention** — Already handled by `ensureCleanId` which strips any ID to `orgId::rawSuffix`. No new corruption can occur. The load-time cleanup ensures any remaining legacy corruption is auto-repaired.
+5. **Line 892**: Change `addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length)` → `addWorkItem(title, null, selectedBacklogId, selectedTreeId)` (let store compute)
 
 ### Files to change
-- `src/store/supabaseSync.ts` — auto-cleanup malformed IDs on load; delete double-prefixed variants on delete
+- `src/store/appStore.ts` — robust rank computation in `addWorkItem` and `addBacklog`
+- `src/components/WorkItemTreePanel.tsx` — remove explicit "append" ranks, let store handle it
 

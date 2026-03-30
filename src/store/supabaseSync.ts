@@ -56,32 +56,13 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     });
   }
 
-  // Auto-cleanup malformed (double-prefixed) tree IDs
-  const malformedTreeIds = allTreeRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
-  if (malformedTreeIds.length > 0) {
-    supabase.from('backlog_trees').delete().in('id', malformedTreeIds).then(({ error }) => {
-      if (error) console.error('cleanup malformed trees:', error);
-    });
-  }
-  const cleanTreeRows = allTreeRows.filter(r => r.id.split('::').length <= 2);
-
   const backlogTrees: Record<string, BacklogTree> = {};
-  for (const row of cleanTreeRows) {
+  for (const row of allTreeRows) {
     backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
   }
 
-  // Auto-cleanup malformed (double-prefixed) backlog IDs
-  const backlogRows = backlogsRes.data ?? [];
-  const malformedBacklogIds = backlogRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
-  if (malformedBacklogIds.length > 0) {
-    supabase.from('backlogs').delete().in('id', malformedBacklogIds).then(({ error }) => {
-      if (error) console.error('cleanup malformed backlogs:', error);
-    });
-  }
-  const cleanBacklogRows = backlogRows.filter(r => r.id.split('::').length <= 2);
-
   const backlogs: Record<string, Backlog> = {};
-  for (const row of cleanBacklogRows) {
+  for (const row of backlogsRes.data) {
     backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank };
   }
   for (const bl of Object.values(backlogs)) {
@@ -99,18 +80,8 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   }
 
   const allItemRows = [...(itemsRes.data ?? []), ...sharedWorkItems];
-
-  // Auto-cleanup malformed (double-prefixed) work item IDs
-  const malformedItemIds = allItemRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
-  if (malformedItemIds.length > 0) {
-    supabase.from('work_items').delete().in('id', malformedItemIds).then(({ error }) => {
-      if (error) console.error('cleanup malformed work items:', error);
-    });
-  }
-  const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
-
   const workItems: Record<string, WorkItem> = {};
-  for (const row of cleanItemRows) {
+  for (const row of allItemRows) {
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
@@ -145,15 +116,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
 
 export async function deleteWorkItems(ids: string[]) {
   if (ids.length === 0) return;
-  // Also delete any double-prefixed variants that may exist in the DB
-  const allIds = new Set(ids);
-  ids.forEach(id => {
-    const parts = id.split('::');
-    if (parts.length === 2) {
-      allIds.add(`${parts[0]}::${id}`);
-    }
-  });
-  const { error } = await supabase.from('work_items').delete().in('id', [...allIds]);
+  const { error } = await supabase.from('work_items').delete().in('id', ids);
   if (error) console.error('deleteWorkItems:', error);
 }
 
