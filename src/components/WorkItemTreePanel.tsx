@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
+import { WORK_ITEM_STATUSES, WORK_ITEM_STATUS_COLORS, WorkItemStatus } from "@/types/models";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste } from "lucide-react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -607,13 +607,13 @@ function WorkItemNode({
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              description: `Remove only from current view. Keeps it in others.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete Everywhere",
-              description: "Permanently delete this item from ALL backlogs.",
+              description: "Permanently delete this item and ALL sub-items everywhere.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -735,18 +735,23 @@ export function WorkItemTreePanel() {
         // 1. Pitää kuulua valittuun backlog-joukkoon
         const assignedBacklogId = wi.backlogAssignments[selectedTreeId];
         const isInCurrentBacklog = backlogIdSet.has(assignedBacklogId);
+        if (!isInCurrentBacklog) return false;
 
-        // 2. Pitää olla ROOT-item TÄSSÄ backlogissa (ei parentia tai parent ei kuulu tähän puuhun)
-        const isRoot = wi.parentId === null;
+        // 2. TARKKA ROOT-LOGIIKKA:
+        // Onko se root tässä näkymässä?
+        const parent = wi.parentId ? workItems[wi.parentId] : null;
 
-        // Varmista, että jos parent on olemassa, se EI kuulu tähän backlog-näkymään
-        // (jos kuuluu, se renderöidään lapsena, muuten se on root tässä näkymässä)
-        const parentIsInScope =
-          wi.parentId &&
-          workItems[wi.parentId] &&
-          backlogIdSet.has(workItems[wi.parentId].backlogAssignments[selectedTreeId]);
+        // Se on root, jos:
+        // a) Sillä ei ole parentId:tä ollenkaan
+        // b) Sen parentia ei enää löydy datasta (se on poistettu)
+        if (!parent) return true;
 
-        return isInCurrentBacklog && (isRoot || !parentIsInScope);
+        // c) Sen parent on olemassa, mutta se EI kuulu tähän backlog-puuhun
+        // (Tällöin parent ei renderöidy, joten lapsen on oltava root tässä näkymässä)
+        const parentBacklogId = parent.backlogAssignments[selectedTreeId];
+        const parentIsInScope = backlogIdSet.has(parentBacklogId);
+
+        return !parentIsInScope;
       })
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
