@@ -251,14 +251,22 @@ function WorkItemNode({
     .filter(({ path }) => path.length > 0);
 
   const handleDeleteClick = () => {
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(workItemId);
+    // Jos item on useassa backlogissa, kysytään poistotapaa.
+    // Jos vain yhdessä, poistetaan suoraan globaalisti.
+    if (assignmentCount > 1) {
+      setShowDeletePrompt(true);
+    } else {
+      deleteWorkItem(workItemId);
+    }
   };
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") removeWorkItemFromTree(workItemId, treeId);
-    else if (value === "delete-everywhere") deleteWorkItem(workItemId);
+    if (value === "remove-from-backlog") {
+      removeWorkItemFromTree(workItemId, treeId);
+    } else if (value === "delete-everywhere") {
+      deleteWorkItem(workItemId);
+    }
   };
 
   const startEditingTitle = () => {
@@ -454,14 +462,14 @@ function WorkItemNode({
               (() => {
                 const getEffectivePoints = (wi: any): number => {
                   const own = wi.points ?? 0;
-                  const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
+                  const childrenSum = (wi.childrenIds || []).reduce((sum: number, cid: string) => {
                     const child = workItems[cid];
                     return sum + (child ? getEffectivePoints(child) : 0);
                   }, 0);
                   return Math.max(own, childrenSum);
                 };
                 const totalPoints = getEffectivePoints(item);
-                const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
+                const directChildrenSum = (item.childrenIds || []).reduce((sum, cid) => {
                   const child = workItems[cid];
                   return sum + (child ? getEffectivePoints(child) : 0);
                 }, 0);
@@ -607,13 +615,13 @@ function WorkItemNode({
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              description: `Remove only from "${backlogs[item.backlogAssignments[treeId]]?.name}". Keeps it in other views.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
-              label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
+              label: "Delete from all backlogs",
+              description: "Permanently delete this item and all its sub-items everywhere.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -733,7 +741,7 @@ export function WorkItemTreePanel() {
       .filter(
         (wi) =>
           backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
-          (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId ?? ""]?.backlogAssignments[selectedTreeId])),
+          (wi.parentId === null || !workItems[wi.parentId ?? ""]),
       )
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
