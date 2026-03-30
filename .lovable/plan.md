@@ -1,49 +1,54 @@
 
 
-## Fix: Prompt chaining stops after 2nd child & erratic + button
+## Fix: Duplicate ranks when creating items
 
-### Problem 1: Chain breaks after second item
-When the first child is created via `isAdding`, it dispatches `shortcut:add-sibling-workitem` which triggers `isAddingSibling` on the new child. But the `isAddingSibling` `onSubmit` handler (line 594-603) does NOT dispatch another `shortcut:add-sibling-workitem` — so the chain dies after the second item. Same issue in `BacklogTreePanel.tsx` (line 440-443).
+### Root Cause
 
-### Problem 2: Erratic + button  
-The `useEffect` registering shortcut listeners (line 216-232) has `[isSelected, workItemId]` as dependencies but references `expanded` inside `handleAddChild`. Since `expanded` isn't in the dependency array, the closure captures a stale value — sometimes `toggleExpand` fires when it shouldn't, or doesn't fire when it should.
+Two sources of duplicate ranks:
 
-### Changes
+1. **Work items**: Callers pass `item.childrenIds.length` or `rootWorkItems.length` as the rank for "append at end" operations (lines 564, 872, 892 in `WorkItemTreePanel.tsx`). If ranks have gaps or `childrenIds` is stale, this collides with existing ranks. The store's `addWorkItem` only shifts items with `rank >= finalRank`, so if the computed rank already exists but isn't the expected "end" position, duplicates occur.
 
-**`src/components/WorkItemTreePanel.tsx`**
+2. **Backlogs**: `addBacklog` uses `siblings.length` as the rank (line 583 in `appStore.ts`), which has the same stale-length problem.
 
-1. **Line 232** — Add `expanded` to the `useEffect` dependency array:
+### Fix
+
+**`src/store/appStore.ts`** — Make rank computation robust in the store itself:
+
+1. **`addWorkItem`** (line 335-336): When `requestedRank` is undefined, compute `maxRank + 1` among siblings instead of defaulting to 0:
    ```ts
-   }, [isSelected, workItemId, expanded]);
+   let finalRank: number;
+   if (requestedRank != null) {
+     finalRank = requestedRank;
+   } else {
+     let maxRank = -1;
+     Object.values(state.workItems).forEach((wi) => {
+       if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
+         if (wi.rank > maxRank) maxRank = wi.rank;
+       }
+     });
+     finalRank = maxRank + 1;
+   }
    ```
 
-2. **Lines 594-603** — In the `isAddingSibling` `onSubmit`, after creating the item, dispatch `shortcut:add-sibling-workitem` with a 50ms delay (same pattern as the child `onSubmit`):
+2. **`addBacklog`** (line 583): Replace `siblings.length` with computed max rank:
    ```ts
-   onSubmit={(title) => {
-     addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
-     setIsAddingSibling(false);
-     setTimeout(() => {
-       window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-     }, 50);
-   }}
+   let maxRank = -1;
+   Object.values(state.backlogs).forEach((bl) => {
+     const isSibling = parentId ? bl.parentId === parentId : (!bl.parentId && bl.treeId === treeId);
+     if (isSibling && bl.rank > maxRank) maxRank = bl.rank;
+   });
+   const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: maxRank + 1 };
    ```
 
-**`src/components/BacklogTreePanel.tsx`**
+**`src/components/WorkItemTreePanel.tsx`** — Simplify callers to not pass rank for "append at end":
 
-3. **Lines 440-443** — Same fix for backlog sibling `onSubmit`:
-   ```ts
-   onSubmit={(name) => {
-     addBacklog(name, parentId, backlog.treeId);
-     setIsAddingSibling(false);
-     setTimeout(() => {
-       window.dispatchEvent(new CustomEvent('shortcut:add-sibling-backlog'));
-     }, 50);
-   }}
-   ```
+3. **Line 564**: Change `addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length)` → `addWorkItem(title, workItemId, backlogId, treeId)` (let store compute)
 
-4. Add `expanded` to the equivalent shortcut `useEffect` dependency array if applicable.
+4. **Line 872**: Change `addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1)` → keep as-is (this is "insert after", needs explicit rank)
+
+5. **Line 892**: Change `addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length)` → `addWorkItem(title, null, selectedBacklogId, selectedTreeId)` (let store compute)
 
 ### Files to change
-- `src/components/WorkItemTreePanel.tsx` — fix dependency array, add chaining to sibling onSubmit
-- `src/components/BacklogTreePanel.tsx` — add chaining to sibling onSubmit
+- `src/store/appStore.ts` — robust rank computation in `addWorkItem` and `addBacklog`
+- `src/components/WorkItemTreePanel.tsx` — remove explicit "append" ranks, let store handle it
 
