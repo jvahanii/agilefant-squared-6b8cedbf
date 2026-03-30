@@ -444,40 +444,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       const idsArray = Array.from(idsToDelete);
 
       try {
-        // 1. POISTA TIETOKANNASTA
         await deleteWorkItems(idsArray);
 
-        // 2. GLOBAALI SIIVOUS PAIKALLISESTA TILASTA
-        const updatedItems = { ...state.workItems };
+        // SYVÄKOPIO JA GLOBAALI SIIVOUS
+        const updatedItems = JSON.parse(JSON.stringify(state.workItems));
 
-        // Poista varsinaiset itemit
+        // 1. Poista itse kohteet
         idsArray.forEach((id) => delete updatedItems[id]);
 
-        // KRIITTINEN: Käy läpi kaikki jäljellä olevat itemit ja tuhoa viittaukset poistettuihin
-        Object.keys(updatedItems).forEach((id) => {
-          const item = updatedItems[id];
-          let itemNeedsUpdate = false;
-
-          // Siivoa childrenIds listat kaikilta itemeiltä
-          const cleanChildren = item.childrenIds.filter((cid) => !idsToDelete.has(cid));
-          if (cleanChildren.length !== item.childrenIds.length) {
-            item.childrenIds = cleanChildren;
-            itemNeedsUpdate = true;
-          }
-
-          // Jos itemin parent on poistettu, pakota se rootiksi (parentId = null)
-          // TÄMÄ ESTÄÄ ITEMIÄ "NÄKYMÄSTÄ" JOS SE ON POISTETTU TAI SEN VANHEMPI ON POISTETTU
+        // 2. Siivoa KAIKKI viittaukset poistettuihin
+        Object.keys(updatedItems).forEach((key) => {
+          const item = updatedItems[key];
+          // Poista kuolleet lapset listalta
+          item.childrenIds = item.childrenIds.filter((cid) => !idsToDelete.has(cid));
+          // Jos itemin parent on poistettu, pakota se poistumaan tai orpoutumaan
           if (item.parentId && idsToDelete.has(item.parentId)) {
-            item.parentId = null;
-            itemNeedsUpdate = true;
-          }
-
-          if (itemNeedsUpdate) {
-            updatedItems[id] = { ...item };
+            // Agilefant Squared -logiikka: jos parent katoaa, koko haara katoaa tässä operaatiossa
+            delete updatedItems[key];
           }
         });
 
-        internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId });
+        internalLog({ action: "Delete Everywhere", entityType: "work_item", entityId: workItemId });
 
         set({
           workItems: updatedItems,
@@ -486,7 +473,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           redoStack: [],
         });
       } catch (err) {
-        console.error("Delete failed", err);
+        console.error("Critical: Delete failed", err);
       }
     },
 

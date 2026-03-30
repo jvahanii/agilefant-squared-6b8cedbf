@@ -251,22 +251,14 @@ function WorkItemNode({
     .filter(({ path }) => path.length > 0);
 
   const handleDeleteClick = () => {
-    // Jos item on useassa backlogissa, kysytään poistotapaa.
-    // Jos vain yhdessä, poistetaan suoraan globaalisti.
-    if (assignmentCount > 1) {
-      setShowDeletePrompt(true);
-    } else {
-      deleteWorkItem(workItemId);
-    }
+    if (assignmentCount > 1) setShowDeletePrompt(true);
+    else deleteWorkItem(workItemId);
   };
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") {
-      removeWorkItemFromTree(workItemId, treeId);
-    } else if (value === "delete-everywhere") {
-      deleteWorkItem(workItemId);
-    }
+    if (value === "remove-from-backlog") removeWorkItemFromTree(workItemId, treeId);
+    else if (value === "delete-everywhere") deleteWorkItem(workItemId);
   };
 
   const startEditingTitle = () => {
@@ -615,13 +607,13 @@ function WorkItemNode({
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove only from "${backlogs[item.backlogAssignments[treeId]]?.name}". Keeps it in other views.`,
+              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
-              label: "Delete from all backlogs",
-              description: "Permanently delete this item and all its sub-items everywhere.",
+              label: "Delete Everywhere",
+              description: "Permanently delete this item from ALL backlogs.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -737,12 +729,25 @@ export function WorkItemTreePanel() {
 
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
+
     return Object.values(workItems)
-      .filter(
-        (wi) =>
-          backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
-          (wi.parentId === null || !workItems[wi.parentId ?? ""]),
-      )
+      .filter((wi) => {
+        // 1. Pitää kuulua valittuun backlog-joukkoon
+        const assignedBacklogId = wi.backlogAssignments[selectedTreeId];
+        const isInCurrentBacklog = backlogIdSet.has(assignedBacklogId);
+
+        // 2. Pitää olla ROOT-item TÄSSÄ backlogissa (ei parentia tai parent ei kuulu tähän puuhun)
+        const isRoot = wi.parentId === null;
+
+        // Varmista, että jos parent on olemassa, se EI kuulu tähän backlog-näkymään
+        // (jos kuuluu, se renderöidään lapsena, muuten se on root tässä näkymässä)
+        const parentIsInScope =
+          wi.parentId &&
+          workItems[wi.parentId] &&
+          backlogIdSet.has(workItems[wi.parentId].backlogAssignments[selectedTreeId]);
+
+        return isInCurrentBacklog && (isRoot || !parentIsInScope);
+      })
       .sort((a, b) => a.rank - b.rank);
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
