@@ -429,39 +429,63 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     deleteWorkItem: async (workItemId) => {
       const state = get();
-      const item = state.workItems[workItemId];
-      if (!item) return;
+      if (!state.workItems[workItemId]) return;
 
-      const idsToDelete: string[] = [];
+      const idsToDelete = new Set<string>();
       const collectIds = (id: string) => {
-        idsToDelete.push(id);
-        state.workItems[id]?.childrenIds.forEach(collectIds);
+        if (idsToDelete.has(id)) return;
+        idsToDelete.add(id);
+        const item = state.workItems[id];
+        if (item) {
+          item.childrenIds.forEach(collectIds);
+        }
       };
       collectIds(workItemId);
+      const idsArray = Array.from(idsToDelete);
 
       try {
-        // Odotetaan DB-vastausta ennen tilan päivittämistä
-        await deleteWorkItems(idsToDelete);
+        // 1. Poistetaan tietokannasta
+        await deleteWorkItems(idsArray);
 
+        // 2. Päivitetään paikallinen tila GLOBAALILLA siivouksella
         const updatedItems = { ...state.workItems };
-        idsToDelete.forEach((id) => delete updatedItems[id]);
 
-        // Korjataan "Ghost Parent" siivoamalla viitteet vanhemmalta
-        if (item.parentId && updatedItems[item.parentId]) {
-          updatedItems[item.parentId] = {
-            ...updatedItems[item.parentId],
-            childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
-          };
-        }
+        // Poista varsinaiset itemit
+        idsArray.forEach((id) => delete updatedItems[id]);
 
-        internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
+        // GLOBAALI SIIVOUS: Käy läpi kaikki jäljellä olevat itemit ja poista viitteet poistettuihin
+        Object.keys(updatedItems).forEach((id) => {
+          const item = updatedItems[id];
+          let changed = false;
+
+          // Siivoa childrenIds
+          const newChildren = item.childrenIds.filter((cid) => !idsToDelete.has(cid));
+          if (newChildren.length !== item.childrenIds.length) {
+            item.childrenIds = newChildren;
+            changed = true;
+          }
+
+          // Jos itemin parent oli joku poistetuista, orpouta se
+          if (item.parentId && idsToDelete.has(item.parentId)) {
+            item.parentId = null;
+            changed = true;
+          }
+
+          if (changed) {
+            updatedItems[id] = { ...item };
+          }
+        });
+
+        internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId });
+
         set({
           workItems: updatedItems,
+          selectedWorkItemIds: state.selectedWorkItemIds.filter((id) => !idsToDelete.has(id)),
           undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
           redoStack: [],
         });
       } catch (err) {
-        console.error("Delete failed", err);
+        console.error("Critical: Delete failed", err);
       }
     },
 
@@ -520,15 +544,19 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
       if (!item) return;
+
       const newAssignments = { ...item.backlogAssignments };
       delete newAssignments[treeId];
+
       if (Object.keys(newAssignments).length === 0) {
+        // Jos ei enää missään puussa, poista kokonaan
         get().deleteWorkItem(workItemId);
         return;
       }
+
       const updated = { ...item, backlogAssignments: newAssignments };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId });
+
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -622,58 +650,46 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const wiIdsToDelete: string[] = [];
       const updatedItems = { ...state.workItems };
+
       Object.values(updatedItems).forEach((wi) => {
         const newAssignments = { ...wi.backlogAssignments };
         Object.entries(newAssignments).forEach(([tId, bId]) => {
           if (blIdSet.has(bId)) delete newAssignments[tId];
         });
+
         if (Object.keys(newAssignments).length === 0) {
           wiIdsToDelete.push(wi.id);
-        } else if (Object.keys(newAssignments).length !== Object.keys(wi.backlogAssignments).length) {
+        } else {
           updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
         }
       });
 
       try {
-        // Poistetaan tietokannasta ensin
         await deleteWorkItems(wiIdsToDelete);
         await deleteBacklogs(blIdsToDelete);
 
-        // Korjataan "Ghost Parent" siivoamalla orvot lapset vanhemmilta
-        wiIdsToDelete.forEach((childId) => {
-          const childItem = state.workItems[childId];
-          if (childItem && childItem.parentId && updatedItems[childItem.parentId]) {
-            updatedItems[childItem.parentId] = {
-              ...updatedItems[childItem.parentId],
-              childrenIds: updatedItems[childItem.parentId].childrenIds.filter((id) => id !== childId),
-            };
-          }
-        });
-
+        // Siivoa poistetut itemit paikallisesta tilasta
         wiIdsToDelete.forEach((id) => delete updatedItems[id]);
+
+        // Globaali referenssi-siivous poistetuille backlogeille
         const updatedBacklogs = { ...state.backlogs };
         blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
 
-        const updatedTrees = { ...state.backlogTrees };
-        if (bl.parentId && updatedBacklogs[bl.parentId]) {
-          updatedBacklogs[bl.parentId] = {
-            ...updatedBacklogs[bl.parentId],
-            childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((id) => id !== backlogId),
-          };
-        } else if (updatedTrees[bl.treeId]) {
-          updatedTrees[bl.treeId] = {
-            ...updatedTrees[bl.treeId],
-            rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((id) => id !== backlogId),
-          };
-        }
+        // Päivitä vanhemmat
+        Object.values(updatedBacklogs).forEach((b) => {
+          b.childrenIds = b.childrenIds.filter((cid) => !blIdSet.has(cid));
+        });
 
-        internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
+        const updatedTrees = { ...state.backlogTrees };
+        Object.values(updatedTrees).forEach((t) => {
+          t.rootBacklogIds = t.rootBacklogIds.filter((rid) => !blIdSet.has(rid));
+        });
+
         set({
           workItems: updatedItems,
           backlogs: updatedBacklogs,
           backlogTrees: updatedTrees,
           undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
-          redoStack: [],
         });
       } catch (err) {
         console.error("Backlog delete failed", err);
