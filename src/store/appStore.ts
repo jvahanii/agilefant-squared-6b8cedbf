@@ -273,10 +273,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
       });
 
-      upsertWorkItems(
-        reordered.map((s) => updatedItems[s.id]),
-        orgId,
-      );
+      upsertWorkItems(reordered.map((s) => updatedItems[s.id]), orgId);
       internalLog({ action: "Reorder", entityType: "work_item", details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -444,48 +441,49 @@ export const useAppStore = create<AppState>()((set, get) => {
       const idsArray = Array.from(idsToDelete);
 
       try {
-        // 1. Poistetaan tietokannasta
+        // 1. POISTA TIETOKANNASTA
         await deleteWorkItems(idsArray);
 
-        // 2. Päivitetään paikallinen tila GLOBAALILLA siivouksella
+        // 2. GLOBAALI SIIVOUS PAIKALLISESTA TILASTA
         const updatedItems = { ...state.workItems };
-
+        
         // Poista varsinaiset itemit
-        idsArray.forEach((id) => delete updatedItems[id]);
+        idsArray.forEach(id => delete updatedItems[id]);
 
-        // GLOBAALI SIIVOUS: Käy läpi kaikki jäljellä olevat itemit ja poista viitteet poistettuihin
-        Object.keys(updatedItems).forEach((id) => {
+        // KRIITTINEN: Käy läpi kaikki jäljellä olevat itemit ja tuhoa viittaukset poistettuihin
+        Object.keys(updatedItems).forEach(id => {
           const item = updatedItems[id];
-          let changed = false;
+          let itemNeedsUpdate = false;
 
-          // Siivoa childrenIds
-          const newChildren = item.childrenIds.filter((cid) => !idsToDelete.has(cid));
-          if (newChildren.length !== item.childrenIds.length) {
-            item.childrenIds = newChildren;
-            changed = true;
+          // Siivoa childrenIds listat kaikilta itemeiltä
+          const cleanChildren = item.childrenIds.filter(cid => !idsToDelete.has(cid));
+          if (cleanChildren.length !== item.childrenIds.length) {
+            item.childrenIds = cleanChildren;
+            itemNeedsUpdate = true;
           }
 
-          // Jos itemin parent oli joku poistetuista, orpouta se
+          // Jos itemin parent on poistettu, pakota se rootiksi (parentId = null)
+          // TÄMÄ ESTÄÄ ITEMIÄ "NÄKYMÄSTÄ" JOS SE ON POISTETTU TAI SEN VANHEMPI ON POISTETTU
           if (item.parentId && idsToDelete.has(item.parentId)) {
             item.parentId = null;
-            changed = true;
+            itemNeedsUpdate = true;
           }
 
-          if (changed) {
+          if (itemNeedsUpdate) {
             updatedItems[id] = { ...item };
           }
         });
 
         internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId });
-
+        
         set({
           workItems: updatedItems,
-          selectedWorkItemIds: state.selectedWorkItemIds.filter((id) => !idsToDelete.has(id)),
+          selectedWorkItemIds: state.selectedWorkItemIds.filter(id => !idsToDelete.has(id)),
           undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
           redoStack: [],
         });
       } catch (err) {
-        console.error("Critical: Delete failed", err);
+        console.error("Delete failed", err);
       }
     },
 
@@ -526,12 +524,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
       const updated = { ...item, points };
       upsertWorkItem(updated, orgId);
-      internalLog({
-        action: "Set Points",
-        entityType: "work_item",
-        entityId: workItemId,
-        details: String(points ?? "none"),
-      });
+      internalLog({ action: "Set Points", entityType: "work_item", entityId: workItemId, details: String(points ?? "none") });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -549,14 +542,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       delete newAssignments[treeId];
 
       if (Object.keys(newAssignments).length === 0) {
-        // Jos ei enää missään puussa, poista kokonaan
         get().deleteWorkItem(workItemId);
         return;
       }
 
       const updated = { ...item, backlogAssignments: newAssignments };
       upsertWorkItem(updated, orgId);
-
+      
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -650,7 +642,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const wiIdsToDelete: string[] = [];
       const updatedItems = { ...state.workItems };
-
+      
       Object.values(updatedItems).forEach((wi) => {
         const newAssignments = { ...wi.backlogAssignments };
         Object.entries(newAssignments).forEach(([tId, bId]) => {
@@ -668,21 +660,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         await deleteWorkItems(wiIdsToDelete);
         await deleteBacklogs(blIdsToDelete);
 
-        // Siivoa poistetut itemit paikallisesta tilasta
-        wiIdsToDelete.forEach((id) => delete updatedItems[id]);
+        wiIdsToDelete.forEach(id => delete updatedItems[id]);
 
-        // Globaali referenssi-siivous poistetuille backlogeille
         const updatedBacklogs = { ...state.backlogs };
-        blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
+        blIdsToDelete.forEach(id => delete updatedBacklogs[id]);
 
-        // Päivitä vanhemmat
-        Object.values(updatedBacklogs).forEach((b) => {
-          b.childrenIds = b.childrenIds.filter((cid) => !blIdSet.has(cid));
+        Object.values(updatedBacklogs).forEach(b => {
+          b.childrenIds = b.childrenIds.filter(cid => !blIdSet.has(cid));
         });
 
         const updatedTrees = { ...state.backlogTrees };
-        Object.values(updatedTrees).forEach((t) => {
-          t.rootBacklogIds = t.rootBacklogIds.filter((rid) => !blIdSet.has(rid));
+        Object.values(updatedTrees).forEach(t => {
+          t.rootBacklogIds = t.rootBacklogIds.filter(rid => !blIdSet.has(rid));
         });
 
         set({
@@ -734,10 +723,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       } else if (updatedTrees[bl.treeId]) {
         updatedTrees[bl.treeId] = { ...updatedTrees[bl.treeId], rootBacklogIds: newIds };
       }
-      upsertBacklogs(
-        remaining.map((s) => updatedBacklogs[s.id]),
-        orgId,
-      );
+      upsertBacklogs(remaining.map((s) => updatedBacklogs[s.id]), orgId);
       internalLog({ action: "Reorder", entityType: "backlog" });
       set({
         backlogs: updatedBacklogs,
@@ -854,58 +840,4 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     reorderBacklogTree: (treeId, targetIndex) => {
       const state = get();
-      const orgId = state.organizationId!;
-      const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-      const remaining = sorted.filter((t) => t.id !== treeId);
-      const tree = sorted.find((t) => t.id === treeId);
-      if (!tree) return;
-      const clamped = Math.max(0, Math.min(targetIndex, remaining.length));
-      remaining.splice(clamped, 0, tree);
-      const updatedTrees = { ...state.backlogTrees };
-      remaining.forEach((t, i) => {
-        updatedTrees[t.id] = { ...updatedTrees[t.id], rank: i };
-      });
-      upsertBacklogTrees(
-        remaining.map((t) => updatedTrees[t.id]),
-        orgId,
-      );
-      internalLog({ action: "Reorder", entityType: "backlog_tree" });
-      set({
-        backlogTrees: updatedTrees,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
-        redoStack: [],
-      });
-    },
-
-    resetToMockData: async () => {
-      const orgId = get().organizationId;
-      if (!orgId) return;
-      set({ isLoading: true });
-      try {
-        const mockData = generateMockData();
-        const cleanMock = sanitizeData(mockData, orgId);
-        await resetOrgData(orgId, cleanMock);
-        await get().loadFromSupabase();
-        internalLog({ action: "System Reset", entityType: "data" });
-      } catch (err) {
-        set({ isLoading: false });
-      }
-    },
-
-    undo: () =>
-      set((state) => {
-        const stack = [...state.undoStack];
-        const prev = stack.pop();
-        if (!prev) return state;
-        return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
-      }),
-
-    redo: () =>
-      set((state) => {
-        const stack = [...state.redoStack];
-        const next = stack.pop();
-        if (!next) return state;
-        return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
-      }),
-  };
-});
+      const orgId = state.organizationId
