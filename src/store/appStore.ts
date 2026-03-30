@@ -432,6 +432,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const item = state.workItems[workItemId];
       if (!item) return;
 
+      // 1. Kerätään kaikki poistettavat ID:t (itse itemi ja sen koko alipuu)
       const idsToDelete: string[] = [];
       const collectIds = (id: string) => {
         idsToDelete.push(id);
@@ -439,29 +440,38 @@ export const useAppStore = create<AppState>()((set, get) => {
       };
       collectIds(workItemId);
 
+      // 2. OPTIMISTINEN PÄIVITYS: Poistetaan itemit storesta heti
+      const updatedItems = { ...state.workItems };
+
+      // Siivotaan parentin childrenIds-lista, ettei jää haamulinkkejä
+      if (item.parentId && updatedItems[item.parentId]) {
+        updatedItems[item.parentId] = {
+          ...updatedItems[item.parentId],
+          childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+        };
+      }
+
+      // Poistetaan varsinaiset objektit
+      idsToDelete.forEach((id) => delete updatedItems[id]);
+
+      // Siivotaan valinnat, jotta UI ei yritä renderöidä poistettua itemiä
+      const updatedSelectedIds = state.selectedWorkItemIds.filter((id) => !idsToDelete.includes(id));
+
+      // Päivitetään tila välittömästi UI:lle
+      set({
+        workItems: updatedItems,
+        selectedWorkItemIds: updatedSelectedIds,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+
+      // 3. Suoritetaan varsinainen poisto tietokannasta taustalla
       try {
-        // Odotetaan DB-vastausta ennen tilan päivittämistä
         await deleteWorkItems(idsToDelete);
-
-        const updatedItems = { ...state.workItems };
-        idsToDelete.forEach((id) => delete updatedItems[id]);
-
-        // Korjataan "Ghost Parent" siivoamalla viitteet vanhemmalta
-        if (item.parentId && updatedItems[item.parentId]) {
-          updatedItems[item.parentId] = {
-            ...updatedItems[item.parentId],
-            childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
-          };
-        }
-
         internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
-        set({
-          workItems: updatedItems,
-          undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
-          redoStack: [],
-        });
       } catch (err) {
-        console.error("Delete failed", err);
+        console.error("Database delete failed", err);
+        // Huom: Jos haluat palauttaa tilan virhetilanteessa, voisit kutsua tässä undo() tai ladata datan uudestaan
       }
     },
 
