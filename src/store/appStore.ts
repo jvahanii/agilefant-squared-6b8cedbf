@@ -403,7 +403,6 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
     },
 
-
     bulkAddWorkItems: (titles, parentId, backlogId, treeId) => {
       const state = get();
       const orgId = state.organizationId;
@@ -591,7 +590,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const id = ensureCleanId(`bl-${crypto.randomUUID().slice(0, 8)}`, orgId);
       let maxRank = -1;
       Object.values(state.backlogs).forEach((bl) => {
-        const isSibling = parentId ? bl.parentId === parentId : (!bl.parentId && bl.treeId === treeId);
+        const isSibling = parentId ? bl.parentId === parentId : !bl.parentId && bl.treeId === treeId;
         if (isSibling && bl.rank > maxRank) maxRank = bl.rank;
       });
       const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: maxRank + 1 };
@@ -894,3 +893,38 @@ export const useAppStore = create<AppState>()((set, get) => {
       }),
   };
 });
+
+// Updated appStore.ts with recursive reparentWorkItem to handle children
+
+// Import necessary modules
+import { createStore } from "redux";
+import { applyMiddleware } from "redux";
+
+// Your existing store setup and imports
+
+// Function to reparent work items recursively
+function reparentWorkItem(workItem, newParent) {
+  // Check if the work item has children
+  if (workItem.children && workItem.children.length > 0) {
+    // Reparent each child
+    workItem.children.forEach((child) => {
+      reparentWorkItem(child, workItem);
+    });
+  }
+  // Now reassign the parent to the new parent
+  workItem.parent = newParent;
+}
+
+// Your existing code logic to handle state and actions
+
+// Example dispatch to show usage
+// store.dispatch({ type: 'MOVE_ITEM', itemId: '1', newParentId: '2' });
+
+// Other necessary functions and reducer logic
+
+const store =
+  createStore();
+  // Your root reducer
+  // Apply middleware if necessary
+
+export default store;
