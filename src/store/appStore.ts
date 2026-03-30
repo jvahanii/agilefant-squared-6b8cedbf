@@ -95,6 +95,7 @@ export function sanitizeData(data: any, orgId: string) {
   const cleanBacklogs: Record<string, Backlog> = {};
   const cleanTrees: Record<string, BacklogTree> = {};
 
+  // 1. Puhdistetaan backlogit ja puut ensin
   Object.values(data.backlogs || {}).forEach((bl: any) => {
     const id = ensureCleanId(bl.id, orgId);
     cleanBacklogs[id] = {
@@ -117,6 +118,7 @@ export function sanitizeData(data: any, orgId: string) {
     };
   });
 
+  // 2. Puhdistetaan itemit ja varmistetaan vain validit asetaukset
   Object.values(data.workItems || {}).forEach((wi: any) => {
     const id = ensureCleanId(wi.id, orgId);
     const validAssignments: Record<string, string> = {};
@@ -134,14 +136,17 @@ export function sanitizeData(data: any, orgId: string) {
       id,
       parentId: wi.parentId ? ensureCleanId(wi.parentId, orgId) : null,
       backlogAssignments: validAssignments,
-      childrenIds: [],
+      childrenIds: [], // Täytetään asiallisesti seuraavassa vaiheessa
     };
   });
 
+  // 3. Rakennetaan puurakenne uudelleen (Validoidaan viitteet samalla)
   Object.values(cleanWorkItems).forEach((wi) => {
     if (wi.parentId && cleanWorkItems[wi.parentId]) {
       const parent = cleanWorkItems[wi.parentId];
       if (!parent.childrenIds.includes(wi.id)) parent.childrenIds.push(wi.id);
+    } else {
+      wi.parentId = null; // Korjaa orvot viitteet
     }
   });
 
@@ -149,6 +154,8 @@ export function sanitizeData(data: any, orgId: string) {
     if (bl.parentId && cleanBacklogs[bl.parentId]) {
       const parent = cleanBacklogs[bl.parentId];
       if (!parent.childrenIds.includes(bl.id)) parent.childrenIds.push(bl.id);
+    } else {
+      bl.parentId = null;
     }
   });
 
@@ -432,46 +439,60 @@ export const useAppStore = create<AppState>()((set, get) => {
       const item = state.workItems[workItemId];
       if (!item) return;
 
-      // 1. Kerätään kaikki poistettavat ID:t (itse itemi ja sen koko alipuu)
-      const idsToDelete: string[] = [];
+      // 1. Kerätään kaikki poistettavat (itse kohde + lapset)
+      const idsToDelete = new Set<string>();
       const collectIds = (id: string) => {
-        idsToDelete.push(id);
-        state.workItems[id]?.childrenIds.forEach(collectIds);
+        if (idsToDelete.has(id)) return; // Estä ikuinen silmukka
+        idsToDelete.add(id);
+        const wi = state.workItems[id];
+        if (wi && wi.childrenIds) {
+          wi.childrenIds.forEach(collectIds);
+        }
       };
       collectIds(workItemId);
+      const deleteList = Array.from(idsToDelete);
 
-      // 2. OPTIMISTINEN PÄIVITYS: Poistetaan itemit storesta heti
-      const updatedItems = { ...state.workItems };
+      // 2. OPTIMISTINEN PÄIVITYS (UI muuttuu heti)
+      const nextWorkItems = { ...state.workItems };
 
-      // Siivotaan parentin childrenIds-lista, ettei jää haamulinkkejä
-      if (item.parentId && updatedItems[item.parentId]) {
-        updatedItems[item.parentId] = {
-          ...updatedItems[item.parentId],
-          childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+      // Siivotaan viittaukset parentilta
+      if (item.parentId && nextWorkItems[item.parentId]) {
+        nextWorkItems[item.parentId] = {
+          ...nextWorkItems[item.parentId],
+          childrenIds: nextWorkItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
         };
       }
 
-      // Poistetaan varsinaiset objektit
-      idsToDelete.forEach((id) => delete updatedItems[id]);
+      // Varmuuden vuoksi: Skannataan kaikki itemit ja poistetaan orvot viittaukset poistettaviin ID:ihin
+      Object.keys(nextWorkItems).forEach((key) => {
+        if (nextWorkItems[key].childrenIds.some((cid) => idsToDelete.has(cid))) {
+          nextWorkItems[key] = {
+            ...nextWorkItems[key],
+            childrenIds: nextWorkItems[key].childrenIds.filter((cid) => !idsToDelete.has(cid)),
+          };
+        }
+      });
 
-      // Siivotaan valinnat, jotta UI ei yritä renderöidä poistettua itemiä
-      const updatedSelectedIds = state.selectedWorkItemIds.filter((id) => !idsToDelete.includes(id));
+      // Poistetaan itse objektit
+      deleteList.forEach((id) => delete nextWorkItems[id]);
 
-      // Päivitetään tila välittömästi UI:lle
+      // Siivotaan valinnat
+      const nextSelected = state.selectedWorkItemIds.filter((id) => !idsToDelete.has(id));
+
       set({
-        workItems: updatedItems,
-        selectedWorkItemIds: updatedSelectedIds,
+        workItems: nextWorkItems,
+        selectedWorkItemIds: nextSelected,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
 
-      // 3. Suoritetaan varsinainen poisto tietokannasta taustalla
+      // 3. Taustalla tapahtuva DB-poisto
       try {
-        await deleteWorkItems(idsToDelete);
+        await deleteWorkItems(deleteList);
         internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
       } catch (err) {
-        console.error("Database delete failed", err);
-        // Huom: Jos haluat palauttaa tilan virhetilanteessa, voisit kutsua tässä undo() tai ladata datan uudestaan
+        console.error("Delete from DB failed", err);
+        // Tässä kohtaa voisi tarvittaessa pakottaa re-fetchin Supabasesta
       }
     },
 
@@ -645,11 +666,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
 
       try {
-        // Poistetaan tietokannasta ensin
         await deleteWorkItems(wiIdsToDelete);
         await deleteBacklogs(blIdsToDelete);
 
-        // Korjataan "Ghost Parent" siivoamalla orvot lapset vanhemmilta
         wiIdsToDelete.forEach((childId) => {
           const childItem = state.workItems[childId];
           if (childItem && childItem.parentId && updatedItems[childItem.parentId]) {
