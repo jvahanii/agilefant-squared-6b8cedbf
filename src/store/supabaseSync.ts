@@ -56,13 +56,32 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     });
   }
 
+  // Auto-cleanup malformed (double-prefixed) tree IDs
+  const malformedTreeIds = allTreeRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
+  if (malformedTreeIds.length > 0) {
+    supabase.from('backlog_trees').delete().in('id', malformedTreeIds).then(({ error }) => {
+      if (error) console.error('cleanup malformed trees:', error);
+    });
+  }
+  const cleanTreeRows = allTreeRows.filter(r => r.id.split('::').length <= 2);
+
   const backlogTrees: Record<string, BacklogTree> = {};
-  for (const row of allTreeRows) {
+  for (const row of cleanTreeRows) {
     backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
   }
 
+  // Auto-cleanup malformed (double-prefixed) backlog IDs
+  const backlogRows = backlogsRes.data ?? [];
+  const malformedBacklogIds = backlogRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
+  if (malformedBacklogIds.length > 0) {
+    supabase.from('backlogs').delete().in('id', malformedBacklogIds).then(({ error }) => {
+      if (error) console.error('cleanup malformed backlogs:', error);
+    });
+  }
+  const cleanBacklogRows = backlogRows.filter(r => r.id.split('::').length <= 2);
+
   const backlogs: Record<string, Backlog> = {};
-  for (const row of backlogsRes.data) {
+  for (const row of cleanBacklogRows) {
     backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank };
   }
   for (const bl of Object.values(backlogs)) {
