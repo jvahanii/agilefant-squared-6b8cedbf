@@ -1,37 +1,20 @@
+## Fix: Sibling prompt not consistently appearing after child creation
 
+**Problem**: After creating an item, the code dispatches `shortcut:add-sibling-workitem` via `queueMicrotask`. However, the newly created item's`WorkItemNode` component hasn't mounted and registered its event listener yet, so the event is lost. This is a race condition — sometimes React renders fast enough, sometimes not.
 
-## Fix: Add child on collapsed parent does nothing
-
-**Problem**: When `isAdding` is set to true on a collapsed node that already has children, the inline input never renders because:
-- Line 514: outer wrapper shows (due to `expanded || isAdding`)
-- Line 516-568: children + input only render when `expanded && hasChildren` — fails because not expanded
-- Line 571: fallback input only renders when `!hasChildren` — fails because has children
-
-**Fix**: In the `handleAddChild` handler (line 218) and the button onClick (line 488-491), also expand the node when setting `isAdding(true)`.
+**Fix**: Replace `queueMicrotask` with `setTimeout(..., 50)` to give React enough time to mount the new item node and register its event listeners. Apply to both the `hasChildren` and `!hasChildren` `onSubmit` handlers in `WorkItemTreePanel.tsx`, and to the equivalent handler in `BacklogTreePanel.tsx`.
 
 ### Changes
 
-**`src/components/WorkItemTreePanel.tsx`**
+`**src/components/WorkItemTreePanel.tsx**`
 
-1. **Line 218** — shortcut handler: change from `() => setIsAdding(true)` to also call `toggleExpand` if not expanded:
-   ```ts
-   const handleAddChild = () => {
-     if (!expanded) toggleExpand(workItemId);
-     setIsAdding(true);
-   };
-   ```
+- **Lines 566-568** and **lines 581-583**: Replace `queueMicrotask(() => { ... })` with `setTimeout(() => { ... }, 50)` in both `isAdding` `onSubmit` callbacks.
 
-2. **Lines 488-491** — button onClick: same pattern:
-   ```ts
-   onClick={(e) => {
-     e.stopPropagation();
-     if (!expanded) toggleExpand(workItemId);
-     setIsAdding(true);
-   }}
-   ```
+`**src/components/BacklogTreePanel.tsx**`
 
-This ensures the node is always expanded when adding a child, so the inline input renders correctly regardless of whether the node already has children.
+- Same pattern: find the equivalent `queueMicrotask` dispatch of `shortcut:add-sibling-backlog` and replace with `setTimeout(..., 50)`.
 
 ### Files to change
-- `src/components/WorkItemTreePanel.tsx` — 2 small edits
 
+- `src/components/WorkItemTreePanel.tsx` — 2 edits (replace `queueMicrotask` → `setTimeout`)
+- `src/components/BacklogTreePanel.tsx` — same fix for backlog sibling prompt
