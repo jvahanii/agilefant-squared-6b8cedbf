@@ -440,6 +440,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           onSubmit={(name) => {
             addBacklog(name, parentId, backlog.treeId);
             setIsAddingSibling(false);
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('shortcut:add-sibling-backlog'));
+            }, 50);
           }}
           onCancel={() => setIsAddingSibling(false)}
         />

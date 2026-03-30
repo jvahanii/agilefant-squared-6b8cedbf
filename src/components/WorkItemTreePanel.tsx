@@ -594,13 +594,9 @@ function WorkItemNode({
           onSubmit={(title) => {
             addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
             setIsAddingSibling(false);
-            queueMicrotask(() => {
-              const s = (useAppStore as any).getState();
-              const created = (Object.values(s.workItems) as any[]).find(
-                (w: any) => w.parentId === item.parentId && w.title === title,
-              );
-              if (created) s.selectWorkItem((created as any).id, false);
-            });
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+            }, 50);
           }}
           onCancel={() => setIsAddingSibling(false)}
         />
