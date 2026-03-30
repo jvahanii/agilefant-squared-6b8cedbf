@@ -1,4 +1,4 @@
-// Auto-exported mock data
+// Auto-exported mock data - CLEANED VERSION
 export const mockData = {
   workItems: {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-6cc0db01": {
@@ -11,28 +11,6 @@ export const mockData = {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-4ed93013": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-c37cbd47",
       },
       rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-3aa0beae": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-3aa0beae",
-      title: "possu",
-      status: "not_started",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c8e37c0b",
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      },
-      rank: 1,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c8e37c0b": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-c8e37c0b",
-      title: "item",
-      status: "not_started",
-      parentId: null,
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-3aa0beae"],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      },
-      rank: 3,
     },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-24fc0003": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-24fc0003",
@@ -608,17 +586,6 @@ export const mockData = {
       },
       rank: 6,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-69c044ef": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-69c044ef",
-      title: "possu",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      },
-      rank: 1,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-a92595b7": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-a92595b7",
       title: "Valtonen ja channel mix mobilen edellisen kuukauden highlightit Microsoft Teams Meeting Vähäniitty Jarno",
@@ -652,17 +619,6 @@ export const mockData = {
       },
       rank: 2,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5b150e7a": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-5b150e7a",
-      title: "itemama",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      },
-      rank: 2,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-a31ce178": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-a31ce178",
       title: "Vuosioutcomet",
@@ -682,17 +638,6 @@ export const mockData = {
       childrenIds: [],
       backlogAssignments: {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-58dda4ff": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-f42c7709",
-      },
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-25475f7d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::wi-25475f7d",
-      title: "asda",
-      status: "not_started",
-      parentId: null,
-      childrenIds: [],
-      backlogAssignments: {
-        "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
       },
       rank: 0,
     },
@@ -720,22 +665,6 @@ export const mockData = {
     },
   },
   backlogs: {
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-2ebb27c5": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-2ebb27c5",
-      name: "Ken",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-6514472b"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-809f5c1b": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-809f5c1b",
-      name: "Norsulla",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-4624d71e",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b1de18de"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 2,
-    },
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b5587ec6": {
       id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b5587ec6",
       name: "Todo",
@@ -760,38 +689,6 @@ export const mockData = {
       treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-4ed93013",
       rank: 0,
     },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b1de18de": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b1de18de",
-      name: "Ratsastaa",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-809f5c1b",
-      childrenIds: [],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 3,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6",
-      name: "Tiellä",
-      parentId: null,
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-2ebb27c5"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-6514472b": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-6514472b",
-      name: "Vaeltaa",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-2ebb27c5",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-4624d71e"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 0,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-4624d71e": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-4624d71e",
-      name: "Hän",
-      parentId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-6514472b",
-      childrenIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-809f5c1b"],
-      treeId: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      rank: 1,
-    },
   },
   backlogTrees: {
     "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-4ed93013": {
@@ -808,12 +705,6 @@ export const mockData = {
         "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-b5587ec6",
       ],
       rank: 3,
-    },
-    "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d": {
-      id: "227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-2915e75d",
-      name: "Palmusunnuntai",
-      rootBacklogIds: ["227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-0522f4a6"],
-      rank: 2,
     },
   },
 };
