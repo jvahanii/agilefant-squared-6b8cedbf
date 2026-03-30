@@ -446,13 +446,16 @@ export const useAppStore = create<AppState>()((set, get) => {
         const updatedItems = { ...state.workItems };
         idsToDelete.forEach((id) => delete updatedItems[id]);
 
-        // Korjataan "Ghost Parent" siivoamalla viitteet vanhemmalta
-        if (item.parentId && updatedItems[item.parentId]) {
-          updatedItems[item.parentId] = {
-            ...updatedItems[item.parentId],
-            childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
-          };
-        }
+        // Clean up all deleted items from their parents' childrenIds
+        idsToDelete.forEach((deletedId) => {
+          const deletedItem = state.workItems[deletedId];
+          if (deletedItem?.parentId && updatedItems[deletedItem.parentId]) {
+            updatedItems[deletedItem.parentId] = {
+              ...updatedItems[deletedItem.parentId],
+              childrenIds: updatedItems[deletedItem.parentId].childrenIds.filter((id) => id !== deletedId),
+            };
+          }
+        });
 
         internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
         set({
