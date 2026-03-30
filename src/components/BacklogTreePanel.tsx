@@ -425,9 +425,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
               onSubmit={(name) => {
                 addBacklog(name, backlogId, backlog.treeId);
                 setIsAdding(false);
-                queueMicrotask(() => {
+                setTimeout(() => {
                   window.dispatchEvent(new CustomEvent('shortcut:add-sibling-backlog'));
-                });
+                }, 50);
               }}
               onCancel={() => setIsAdding(false)}
             />
