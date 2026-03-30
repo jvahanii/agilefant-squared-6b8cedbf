@@ -167,7 +167,15 @@ export async function upsertBacklog(bl: Backlog, organizationId: string) {
 
 export async function deleteBacklogs(ids: string[]) {
   if (ids.length === 0) return;
-  const { error } = await supabase.from('backlogs').delete().in('id', ids);
+  // Also delete any double-prefixed variants that may exist in the DB
+  const allIds = new Set(ids);
+  ids.forEach(id => {
+    const parts = id.split('::');
+    if (parts.length === 2) {
+      allIds.add(`${parts[0]}::${id}`);
+    }
+  });
+  const { error } = await supabase.from('backlogs').delete().in('id', [...allIds]);
   if (error) console.error('deleteBacklogs:', error);
 }
 
@@ -180,7 +188,13 @@ export async function upsertBacklogTree(tree: BacklogTree, organizationId: strin
 }
 
 export async function deleteBacklogTree(id: string) {
-  const { error } = await supabase.from('backlog_trees').delete().eq('id', id);
+  // Also delete any double-prefixed variants that may exist in the DB
+  const parts = id.split('::');
+  const allIds = [id];
+  if (parts.length === 2) {
+    allIds.push(`${parts[0]}::${id}`);
+  }
+  const { error } = await supabase.from('backlog_trees').delete().in('id', allIds);
   if (error) console.error('deleteBacklogTree:', error);
 }
 
