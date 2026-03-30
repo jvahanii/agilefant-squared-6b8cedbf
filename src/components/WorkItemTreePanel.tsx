@@ -563,9 +563,9 @@ function WorkItemNode({
                     onSubmit={(title) => {
                       addWorkItem(title, workItemId, backlogId, treeId, item.childrenIds.length);
                       setIsAdding(false);
-                      queueMicrotask(() => {
+                      setTimeout(() => {
                         window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-                      });
+                      }, 50);
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
