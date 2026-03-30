@@ -9,7 +9,34 @@ import {
   upsertBacklogs,
   deleteBacklogs,
   upsertBacklogTree,
-  deleteBacklogTree as deleteBacklogTreeDB,
+  deleteBacklogTree as dele// Etsi rootWorkItems useMemo ja korvaa se tällä:
+const rootWorkItems = useMemo(() => {
+  if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
+  
+  const allItems = Object.values(workItems);
+  
+  return allItems
+    .filter((wi) => {
+      // 1. Kuuluuko itemi tähän backlog-näkymään?
+      const assignedBacklogId = wi.backlogAssignments[selectedTreeId];
+      if (!backlogIdSet.has(assignedBacklogId)) return false;
+      
+      // 2. Onko se root-item? 
+      // Se on root, JOS:
+      // a) parentId on null
+      // b) parentia ei löydy ollenkaan workItems-objektista (se on poistettu)
+      // c) parent on olemassa, mutta se kuuluu eri backlog-puuhun
+      const parent = wi.parentId ? workItems[wi.parentId] : null;
+      
+      if (!parent) return true; // Kohdat a ja b
+
+      const parentBacklogId = parent.backlogAssignments[selectedTreeId];
+      const parentIsInThisTree = backlogIdSet.has(parentBacklogId);
+
+      return !parentIsInThisTree; // Kohta c
+    })
+    .sort((a, b) => a.rank - b.rank);
+}, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);teBacklogTreeDB,
   upsertBacklogTrees,
   resetOrgData,
 } from "./supabaseSync";
