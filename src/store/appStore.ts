@@ -589,10 +589,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       const state = get();
       const orgId = state.organizationId!;
       const id = ensureCleanId(`bl-${crypto.randomUUID().slice(0, 8)}`, orgId);
-      const siblings = parentId
-        ? (state.backlogs[parentId]?.childrenIds ?? [])
-        : (state.backlogTrees[treeId]?.rootBacklogIds ?? []);
-      const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: siblings.length };
+      let maxRank = -1;
+      Object.values(state.backlogs).forEach((bl) => {
+        const isSibling = parentId ? bl.parentId === parentId : (!bl.parentId && bl.treeId === treeId);
+        if (isSibling && bl.rank > maxRank) maxRank = bl.rank;
+      });
+      const newBacklog: Backlog = { id, name, parentId, childrenIds: [], treeId, rank: maxRank + 1 };
       const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
       const updatedTrees = { ...state.backlogTrees };
       if (parentId && updatedBacklogs[parentId]) {

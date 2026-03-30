@@ -889,7 +889,7 @@ export function WorkItemTreePanel() {
                 <InlineWorkItemInput
                   depth={0}
                   onSubmit={(title) => {
-                    addWorkItem(title, null, selectedBacklogId, selectedTreeId, rootWorkItems.length);
+                    addWorkItem(title, null, selectedBacklogId, selectedTreeId);
                   }}
                   onCancel={() => setIsAdding(false)}
                 />
