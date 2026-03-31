@@ -1,50 +1,73 @@
 
 
-## Fix: Corrupted double-prefixed items can't be deleted
+## Fix: Export/Reset mock data cycle broken by double-prefixing
 
 ### Root Cause
 
-The database contains work items (and potentially backlogs/trees) with double-prefixed IDs like `orgId::orgId::wi-574a73af`, created by an old `resetToMockData` that applied `scopeMockDataToOrganization` to already-prefixed data. When loading, `sanitizeData` strips these to `orgId::wi-574a73af`, so the store sees one item. But when deleting, only `orgId::wi-574a73af` is deleted from the DB — the double-prefixed row survives and reappears on reload.
+The reset flow applies ID prefixing **twice**:
+
+1. `resetToMockData` calls `sanitizeData(mockData, orgId)` → produces `orgId::wi-xxx`
+2. Then passes result to `resetOrgData` which calls `scopeMockDataToOrganization` → produces `orgId::orgId::wi-xxx`
+
+The inserts fail or create corrupted rows. Only the deletes succeed, so the user sees everything wiped.
+
+Additionally, **export** outputs store data with org-prefixed IDs. If saved to `mockData.ts`, those IDs would get re-prefixed on import — another source of corruption.
 
 ### Fix
 
-**1. `src/store/supabaseSync.ts` — Clean up malformed IDs on load**
+**1. Make mock data org-agnostic** — Store mock data with raw IDs only (no org prefix):
 
-In `loadFromSupabase`, after fetching all rows, detect and delete any rows with malformed (multi-segment) IDs before building the store state. A malformed ID has more than one `::` separator (e.g., `orgId::orgId::wi-x`).
+**`src/store/mockData.ts`** — Strip the `227ff1d1-36df-4f46-b97e-483ada92ccfb::` prefix from all IDs so the file contains only raw IDs like `wi-d86155ba`, `bl-5ae79cc4`, `bt-e767d87e`. Update all cross-references (parentId, treeId, backlogAssignments keys/values, rootBacklogIds, childrenIds) accordingly.
 
-```ts
-// After fetching allItemRows, filter out and delete malformed ones
-const malformedItemIds = allItemRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
-if (malformedItemIds.length > 0) {
-  await supabase.from('work_items').delete().in('id', malformedItemIds);
-}
-const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
-```
+**2. Fix `resetToMockData`** — Remove the redundant `sanitizeData` call:
 
-Same for backlogs and backlog_trees rows.
-
-**2. `src/store/supabaseSync.ts` — Delete malformed variants alongside clean IDs**
-
-In `deleteWorkItems`, also compute and delete the double-prefixed variant for each ID:
+**`src/store/appStore.ts`** (line 867-879): Pass raw mock data directly to `resetOrgData`, which already calls `scopeMockDataToOrganization` to add the org prefix. Remove the `sanitizeData` call that was adding a prefix before scoping:
 
 ```ts
-export async function deleteWorkItems(ids: string[]) {
-  if (ids.length === 0) return;
-  // Also delete any double-prefixed variants that may exist
-  const allIds = new Set(ids);
-  ids.forEach(id => {
-    const parts = id.split('::');
-    if (parts.length === 2) {
-      allIds.add(`${parts[0]}::${id}`); // orgId::orgId::suffix
-    }
-  });
-  const { error } = await supabase.from('work_items').delete().in('id', [...allIds]);
-  if (error) console.error('deleteWorkItems:', error);
-}
+resetToMockData: async () => {
+  const orgId = get().organizationId;
+  if (!orgId) return;
+  set({ isLoading: true });
+  try {
+    const mockData = generateMockData();
+    await resetOrgData(orgId, mockData);  // scoping happens inside
+    await get().loadFromSupabase();
+    internalLog({ action: "System Reset", entityType: "data" });
+  } catch (err) {
+    set({ isLoading: false });
+  }
+},
 ```
 
-**3. Prevention** — Already handled by `ensureCleanId` which strips any ID to `orgId::rawSuffix`. No new corruption can occur. The load-time cleanup ensures any remaining legacy corruption is auto-repaired.
+**3. Fix export to strip org prefix** — So exported data can be saved directly to `mockData.ts`:
+
+**`src/components/AppLayout.tsx`** (line ~496): Strip the org prefix from all IDs before serializing, producing org-agnostic data that matches the new `mockData.ts` format:
+
+```ts
+onClick={() => {
+  const { workItems, backlogs, backlogTrees, organizationId } = useAppStore.getState();
+  const strip = (id: string) => id.split('::').pop()!;
+  // Transform all entities to raw IDs
+  const rawItems = Object.fromEntries(Object.values(workItems).map(wi => {
+    const rawId = strip(wi.id);
+    return [rawId, {
+      ...wi, id: rawId,
+      parentId: wi.parentId ? strip(wi.parentId) : null,
+      childrenIds: wi.childrenIds.map(strip),
+      backlogAssignments: Object.fromEntries(
+        Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)])
+      ),
+    }];
+  }));
+  // Same for backlogs and trees...
+  const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems: rawItems, backlogs: rawBacklogs, backlogTrees: rawTrees }, null, 2)};\n`;
+  navigator.clipboard.writeText(code);
+};
+```
 
 ### Files to change
-- `src/store/supabaseSync.ts` — auto-cleanup malformed IDs on load; delete double-prefixed variants on delete
+
+- `src/store/mockData.ts` — strip org prefix from all IDs
+- `src/store/appStore.ts` — remove `sanitizeData` from `resetToMockData`
+- `src/components/AppLayout.tsx` — strip org prefix in export
 
