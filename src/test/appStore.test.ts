@@ -119,6 +119,78 @@ describe("setWorkItemStatus", () => {
     useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "done");
     expect(useAppStore.getState().workItems[`${ORG}::wi-1`].status).toBe("done");
   });
+
+  it("cascades in_progress to all ancestors", () => {
+    seedStore();
+    // Add a parent and grandparent work item
+    useAppStore.setState({
+      workItems: {
+        ...useAppStore.getState().workItems,
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent", status: "not_started" as const,
+          parentId: `${ORG}::wi-grandparent`, childrenIds: [`${ORG}::wi-1`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+        [`${ORG}::wi-grandparent`]: {
+          id: `${ORG}::wi-grandparent`, title: "Grandparent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-parent`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+        [`${ORG}::wi-1`]: {
+          ...useAppStore.getState().workItems[`${ORG}::wi-1`],
+          parentId: `${ORG}::wi-parent`,
+        },
+      },
+    });
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "in_progress");
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-1`].status).toBe("in_progress");
+    expect(items[`${ORG}::wi-parent`].status).toBe("in_progress");
+    expect(items[`${ORG}::wi-grandparent`].status).toBe("in_progress");
+  });
+
+  it("does not cascade to ancestors when status is not in_progress", () => {
+    seedStore();
+    useAppStore.setState({
+      workItems: {
+        ...useAppStore.getState().workItems,
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-1`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+        [`${ORG}::wi-1`]: {
+          ...useAppStore.getState().workItems[`${ORG}::wi-1`],
+          parentId: `${ORG}::wi-parent`,
+        },
+      },
+    });
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "done");
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-1`].status).toBe("done");
+    expect(items[`${ORG}::wi-parent`].status).toBe("not_started");
+  });
+
+  it("skips ancestors already in_progress", () => {
+    seedStore();
+    useAppStore.setState({
+      workItems: {
+        ...useAppStore.getState().workItems,
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent", status: "in_progress" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-1`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+        [`${ORG}::wi-1`]: {
+          ...useAppStore.getState().workItems[`${ORG}::wi-1`],
+          parentId: `${ORG}::wi-parent`,
+        },
+      },
+    });
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "in_progress");
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-parent`].status).toBe("in_progress");
+  });
 });
 
 describe("setWorkItemPoints", () => {

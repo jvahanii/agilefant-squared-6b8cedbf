@@ -482,11 +482,26 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
       if (!item) return;
-      const updated = { ...item, status };
-      upsertWorkItem(updated, orgId);
+      const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
+      upsertWorkItem(updatedWorkItems[workItemId], orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, details: status });
+      if (status === "in_progress") {
+        const visited = new Set<string>([workItemId]);
+        let ancestorId = item.parentId;
+        while (ancestorId && !visited.has(ancestorId)) {
+          visited.add(ancestorId);
+          const ancestor = updatedWorkItems[ancestorId];
+          if (!ancestor) break;
+          if (ancestor.status !== "in_progress") {
+            updatedWorkItems[ancestorId] = { ...ancestor, status: "in_progress" };
+            upsertWorkItem(updatedWorkItems[ancestorId], orgId);
+            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, details: "in_progress" });
+          }
+          ancestorId = ancestor.parentId;
+        }
+      }
       set({
-        workItems: { ...state.workItems, [workItemId]: updated },
+        workItems: updatedWorkItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
