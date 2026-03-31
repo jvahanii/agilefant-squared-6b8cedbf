@@ -498,13 +498,6 @@ function DraggableTreeHeader({
   onShareTree: () => void;
   shares: TreeShare[];
 }) {
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const memberships = useOrgStore((s) => s.memberships);
-  const isSharedToMe =
-    tree.id && activeOrgId ? shares.length === 0 && memberships.some((m) => m.organization_id !== activeOrgId) : false;
-  // Check if this tree belongs to another org (i.e., it's shared *to* the current org)
-  const backlogTrees = useAppStore((s) => s.backlogTrees);
-
   const dragStartedRef = useRef(false);
   const {
     attributes,
