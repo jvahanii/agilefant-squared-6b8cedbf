@@ -261,6 +261,14 @@ export type Database = {
         Args: { _name: string; _slug: string; _user_id: string }
         Returns: string
       }
+      get_tree_sharing_info: {
+        Args: { _exclude_org_id: string; _tree_id: string }
+        Returns: {
+          is_owner: boolean
+          org_id: string
+          org_name: string
+        }[]
+      }
       get_user_memberships: {
         Args: { _user_id: string }
         Returns: {

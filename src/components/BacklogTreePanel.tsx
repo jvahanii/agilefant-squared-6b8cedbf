@@ -18,59 +18,29 @@ function useTreeShares(treeIds: string[]) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
 
   useEffect(() => {
-    if (treeIds.length === 0) return;
+    if (treeIds.length === 0 || !activeOrgId) return;
 
     const load = async () => {
-      // Fetch shares and tree ownership in parallel
-      const [sharesRes, treesRes] = await Promise.all([
-        supabase
-          .from("backlog_tree_shares" as any)
-          .select("tree_id, organization_id")
-          .in("tree_id", treeIds),
-        supabase.from("backlog_trees").select("id, organization_id").in("id", treeIds),
-      ]);
-      if (sharesRes.error || !sharesRes.data) return;
-
-      // Build a map of tree -> owner org id
-      const treeOwnerMap = new Map<string, string>();
-      for (const t of treesRes.data ?? []) {
-        if (t.organization_id) treeOwnerMap.set(t.id, t.organization_id);
-      }
-
-      // Collect all org IDs we need names for (share targets + tree owners)
-      const allOrgIds = new Set<string>();
-      for (const s of sharesRes.data as any[]) allOrgIds.add(s.organization_id);
-      for (const ownerId of treeOwnerMap.values()) allOrgIds.add(ownerId);
-      allOrgIds.delete(activeOrgId!); // we don't need our own name
-
-      let orgMap = new Map<string, string>();
-      if (allOrgIds.size > 0) {
-        const { data: orgs } = await supabase
-          .from("organizations")
-          .select("id, name")
-          .in("id", [...allOrgIds]);
-        orgMap = new Map((orgs ?? []).map((o) => [o.id, o.name]));
-      }
-
+      // Use security definer function to get sharing info for each tree
       const result: Record<string, TreeShare[]> = {};
-      for (const treeId of treeIds) {
-        const related: TreeShare[] = [];
 
-        // Add the owning org if it's not the current org
-        const ownerId = treeOwnerMap.get(treeId);
-        if (ownerId && ownerId !== activeOrgId && orgMap.has(ownerId)) {
-          related.push({ orgId: ownerId, orgName: orgMap.get(ownerId)! });
-        }
+      const results = await Promise.all(
+        treeIds.map((treeId) =>
+          supabase.rpc("get_tree_sharing_info", {
+            _tree_id: treeId,
+            _exclude_org_id: activeOrgId,
+          }).then((res) => ({ treeId, data: res.data, error: res.error }))
+        )
+      );
 
-        // Add shared orgs, excluding the current org
-        for (const row of (sharesRes.data as any[]).filter((s: any) => s.tree_id === treeId)) {
-          if (row.organization_id !== activeOrgId && orgMap.has(row.organization_id)) {
-            related.push({ orgId: row.organization_id, orgName: orgMap.get(row.organization_id)! });
-          }
-        }
-
-        if (related.length > 0) result[treeId] = related;
+      for (const { treeId, data, error } of results) {
+        if (error || !data || data.length === 0) continue;
+        result[treeId] = (data as any[]).map((row: any) => ({
+          orgId: row.org_id,
+          orgName: row.org_name,
+        }));
       }
+
       setShares(result);
     };
 
