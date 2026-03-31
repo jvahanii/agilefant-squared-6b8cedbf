@@ -494,7 +494,35 @@ export default function AppLayout() {
               className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
               onClick={() => {
                 const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-                const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems, backlogs, backlogTrees }, null, 2)};\n`;
+                const strip = (id: string) => id.split('::').pop()!;
+                const rawItems = Object.fromEntries(Object.values(workItems).map(wi => {
+                  const rawId = strip(wi.id);
+                  return [rawId, {
+                    ...wi, id: rawId,
+                    parentId: wi.parentId ? strip(wi.parentId) : null,
+                    childrenIds: wi.childrenIds.map(strip),
+                    backlogAssignments: Object.fromEntries(
+                      Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)])
+                    ),
+                  }];
+                }));
+                const rawBacklogs = Object.fromEntries(Object.values(backlogs).map(bl => {
+                  const rawId = strip(bl.id);
+                  return [rawId, {
+                    ...bl, id: rawId,
+                    parentId: bl.parentId ? strip(bl.parentId) : null,
+                    childrenIds: bl.childrenIds.map(strip),
+                    treeId: strip(bl.treeId),
+                  }];
+                }));
+                const rawTrees = Object.fromEntries(Object.values(backlogTrees).map(bt => {
+                  const rawId = strip(bt.id);
+                  return [rawId, {
+                    ...bt, id: rawId,
+                    rootBacklogIds: bt.rootBacklogIds.map(strip),
+                  }];
+                }));
+                const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems: rawItems, backlogs: rawBacklogs, backlogTrees: rawTrees }, null, 2)};\n`;
                 navigator.clipboard.writeText(code);
                 toast({ title: "Data copied to clipboard" });
               }}

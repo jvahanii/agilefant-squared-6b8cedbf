@@ -870,8 +870,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ isLoading: true });
       try {
         const mockData = generateMockData();
-        const cleanMock = sanitizeData(mockData, orgId);
-        await resetOrgData(orgId, cleanMock);
+        await resetOrgData(orgId, mockData);
         await get().loadFromSupabase();
         internalLog({ action: "System Reset", entityType: "data" });
       } catch (err) {
