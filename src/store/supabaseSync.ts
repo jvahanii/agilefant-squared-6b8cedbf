@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
+import { toast } from '@/hooks/use-toast';
 
 // Extra columns added via migration (not yet in generated Supabase types)
 interface WorkItemRespawnFields {
@@ -171,7 +172,10 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase.from('work_items').upsert(row as any);
-  if (error) console.error('upsertWorkItem:', error);
+  if (error) {
+    console.error('upsertWorkItem:', error);
+    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 export async function deleteWorkItems(ids: string[]) {
@@ -243,7 +247,10 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase.from('work_items').upsert(rows as any);
-  if (error) console.error('upsertWorkItems:', error);
+  if (error) {
+    console.error('upsertWorkItems:', error);
+    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
