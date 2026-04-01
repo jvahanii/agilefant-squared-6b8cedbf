@@ -72,7 +72,21 @@ export default function AppLayout() {
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<"backlogs" | "workitems">("backlogs");
+  const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
+
+  // Auto-switch to work items tab when a backlog is selected on mobile
+  useEffect(() => {
+    if (isMobile && selectedBacklogIds.length > 0) {
+      setMobileTab("workitems");
+    }
+  }, [isMobile, selectedBacklogIds]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
