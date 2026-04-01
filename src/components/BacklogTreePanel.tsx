@@ -15,6 +15,8 @@ interface TreeShare {
   orgName: string;
 }
 
+const DRAG_THRESHOLD = 5; // pixels
+
 function useTreeShares(treeIds: string[]) {
   const [shares, setShares] = useState<Record<string, TreeShare[]>>({});
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
