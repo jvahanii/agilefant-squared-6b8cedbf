@@ -1,6 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
@@ -414,6 +415,25 @@ function WorkItemNode({
               {item.title}
             </span>
           )}
+
+          {item.respawnEnabled && (() => {
+            const days = item.respawnIntervalDays ?? 7;
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0 mt-0.5 text-primary/70" onClick={(e) => e.stopPropagation()}>
+                      <RotateCcw className="w-3 h-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    Respawns every {days} day{days !== 1 ? "s" : ""}
+                    {item.respawnHour != null ? ` at ${item.respawnHour}:00` : ""}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })()}
 
           {backlogPaths.length > 0 && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
