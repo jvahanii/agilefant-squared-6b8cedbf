@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
+const DRAG_THRESHOLD = 5;
+
 interface TreeShare {
   orgId: string;
   orgName: string;
