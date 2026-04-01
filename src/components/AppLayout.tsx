@@ -4,6 +4,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -26,13 +27,21 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, FolderKanban, ListTree, ChevronLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
