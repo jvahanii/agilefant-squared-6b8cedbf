@@ -170,6 +170,7 @@ function WorkItemNode({
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
   const dragStartedRef = useRef(false);
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   const {
     attributes,
@@ -196,6 +197,7 @@ function WorkItemNode({
     (node: HTMLDivElement | null) => {
       setDragRef(node);
       setDropRef(node);
+      nodeRef.current = node;
     },
     [setDragRef, setDropRef],
   );
@@ -233,6 +235,16 @@ function WorkItemNode({
       window.removeEventListener("shortcut:delete-selected", handleDelete);
     };
   }, [isSelected, workItemId, expanded]);
+
+  // On mount, if this is the first selected item, scroll it into view so
+  // the previously-selected item is visible after restore (especially on mobile
+  // where the panel mounts fresh after a tab switch).
+  useEffect(() => {
+    if (selectedWorkItemIds.length > 0 && selectedWorkItemIds[0] === workItemId && nodeRef.current) {
+      nodeRef.current.scrollIntoView({ block: "nearest" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!item) return null;
 
