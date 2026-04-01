@@ -713,12 +713,13 @@ export default function AppLayout() {
 
               <ResizableHandle withHandle />
 
-            <ResizablePanel defaultSize={75} minSize={40}>
-              <div className="h-full overflow-hidden flex flex-col">
-                <WorkItemTreePanel />
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              <ResizablePanel defaultSize={75} minSize={40}>
+                <div className="h-full overflow-hidden flex flex-col">
+                  <WorkItemTreePanel />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
         </main>
       </div>
 
