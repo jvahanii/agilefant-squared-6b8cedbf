@@ -206,7 +206,33 @@ export const useAppStore = create<AppState>()((set, get) => {
       try {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
-        set({ ...cleanData, isLoading: false, undoStack: [], redoStack: [] });
+
+        const parseStoredIds = (key: string): string[] => {
+          try {
+            const raw = localStorage.getItem(key);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        };
+        const storedBacklogIds = parseStoredIds(`selection_${orgId}_backlogIds`);
+        const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
+        const storedWorkItemIds = parseStoredIds(`selection_${orgId}_workItemIds`);
+
+        const validBacklogIds = storedBacklogIds.filter((id) => cleanData.backlogs[id]);
+        const validTreeId = storedTreeId && cleanData.backlogTrees[storedTreeId] ? storedTreeId : null;
+        const validWorkItemIds = storedWorkItemIds.filter((id) => cleanData.workItems[id]);
+
+        set({
+          ...cleanData,
+          isLoading: false,
+          undoStack: [],
+          redoStack: [],
+          selectedBacklogIds: validBacklogIds,
+          selectedTreeId: validTreeId,
+          selectedWorkItemIds: validWorkItemIds,
+        });
       } catch (err) {
         set({ isLoading: false });
       }
@@ -234,21 +260,38 @@ export const useAppStore = create<AppState>()((set, get) => {
               ? state.selectedBacklogIds.filter((id) => id !== backlogId)
               : [...state.selectedBacklogIds, backlogId]
             : [backlogId];
+        const orgId = get().organizationId;
+        if (orgId) {
+          localStorage.setItem(`selection_${orgId}_backlogIds`, JSON.stringify(ids));
+          localStorage.setItem(`selection_${orgId}_treeId`, treeId);
+          localStorage.removeItem(`selection_${orgId}_workItemIds`);
+        }
         return { selectedBacklogIds: ids, selectedTreeId: treeId, selectedWorkItemIds: [] };
       }),
 
     selectWorkItem: (workItemId, ctrlKey) =>
       set((state) => {
-        if (!workItemId) return { selectedWorkItemIds: [] };
+        const orgId = get().organizationId;
+        if (!workItemId) {
+          if (orgId) localStorage.removeItem(`selection_${orgId}_workItemIds`);
+          return { selectedWorkItemIds: [] };
+        }
         const ids = ctrlKey
           ? state.selectedWorkItemIds.includes(workItemId)
             ? state.selectedWorkItemIds.filter((id) => id !== workItemId)
             : [...state.selectedWorkItemIds, workItemId]
           : [workItemId];
+        if (orgId) {
+          localStorage.setItem(`selection_${orgId}_workItemIds`, JSON.stringify(ids));
+        }
         return { selectedWorkItemIds: ids };
       }),
 
-    clearWorkItemSelection: () => set({ selectedWorkItemIds: [] }),
+    clearWorkItemSelection: () => {
+      const orgId = get().organizationId;
+      if (orgId) localStorage.removeItem(`selection_${orgId}_workItemIds`);
+      set({ selectedWorkItemIds: [] });
+    },
 
     reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
       const state = get();
