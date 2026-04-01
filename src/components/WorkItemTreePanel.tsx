@@ -414,7 +414,7 @@ function WorkItemNode({
           )}
 
           {backlogPaths.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
+            <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
               {backlogPaths.map(({ treeId: tid, path }) => (
                 <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
                   {path.map((seg, i) => (
