@@ -13,6 +13,8 @@ interface TreeShare {
   orgName: string;
 }
 
+const DRAG_THRESHOLD = 5; // pixels
+
 function useTreeShares(treeIds: string[]) {
   const [shares, setShares] = useState<Record<string, TreeShare[]>>({});
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -175,6 +177,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   const [editValue, setEditValue] = useState("");
   const editRef = useRef<HTMLInputElement>(null);
   const dragStartedRef = useRef(false);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Draggable for rearranging
   const {
@@ -272,10 +275,16 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onPointerDown={(e) => {
           dragStartedRef.current = false;
+          dragStartPosRef.current = { x: e.clientX, y: e.clientY };
           listeners?.onPointerDown?.(e);
         }}
-        onPointerMove={() => {
-          dragStartedRef.current = true;
+        onPointerMove={(e) => {
+          if (!dragStartPosRef.current) return;
+          const dx = Math.abs(e.clientX - dragStartPosRef.current.x);
+          const dy = Math.abs(e.clientY - dragStartPosRef.current.y);
+          if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+            dragStartedRef.current = true;
+          }
         }}
         onClick={(e) => {
           if (dragStartedRef.current) return;
@@ -510,6 +519,7 @@ function DraggableTreeHeader({
   shares: TreeShare[];
 }) {
   const dragStartedRef = useRef(false);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const {
     attributes,
     listeners,
@@ -531,10 +541,16 @@ function DraggableTreeHeader({
       style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
       onPointerDown={(e) => {
         dragStartedRef.current = false;
+        dragStartPosRef.current = { x: e.clientX, y: e.clientY };
         listeners?.onPointerDown?.(e);
       }}
-      onPointerMove={() => {
-        dragStartedRef.current = true;
+      onPointerMove={(e) => {
+        if (!dragStartPosRef.current) return;
+        const dx = Math.abs(e.clientX - dragStartPosRef.current.x);
+        const dy = Math.abs(e.clientY - dragStartPosRef.current.y);
+        if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+          dragStartedRef.current = true;
+        }
       }}
     >
       <div className="flex items-center justify-between">
