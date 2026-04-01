@@ -19,6 +19,12 @@ export interface WorkItem {
   /** Maps backlogTreeId -> backlogId */
   backlogAssignments: Record<string, string>;
   rank: number;
+  respawnEnabled?: boolean;
+  respawnIntervalDays?: number;
+  /** Hour of the day (0-23) when the respawn copy is created */
+  respawnHour?: number;
+  /** ISO timestamp of the last time this item was respawned */
+  respawnLastTriggeredAt?: string;
 }
 
 export interface Backlog {

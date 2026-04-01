@@ -1,10 +1,11 @@
 import { useAppStore } from "@/store/appStore";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings } from "lucide-react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
+import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,6 +161,7 @@ function WorkItemNode({
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
@@ -498,6 +500,16 @@ function WorkItemNode({
                 <Plus className="w-3.5 h-3.5" />
               </button>
               <button
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRespawnDialog(true);
+                }}
+                title="Respawn settings"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+              <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -622,6 +634,11 @@ function WorkItemNode({
           onCancel={() => setShowDeletePrompt(false)}
         />
       )}
+      <RespawnSettingsDialog
+        workItemId={workItemId}
+        open={showRespawnDialog}
+        onOpenChange={setShowRespawnDialog}
+      />
     </>
   );
 }

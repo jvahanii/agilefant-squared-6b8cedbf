@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
+import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -15,6 +16,8 @@ const Index = () => {
       loadData();
     }
   }, [activeOrgId]);
+
+  useRespawnCheck();
 
   if (isLoading) {
     return (
