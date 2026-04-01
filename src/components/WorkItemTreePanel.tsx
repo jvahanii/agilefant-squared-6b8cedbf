@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Minimum pointer movement (in px) required before treating an interaction as a
+// drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
+const DRAG_THRESHOLD_PX = 5;
+const DRAG_THRESHOLD_PX_SQUARED = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
+
 function EditableBacklogName({ backlogId }: { backlogId: string }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
@@ -170,6 +175,7 @@ function WorkItemNode({
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
   const dragStartedRef = useRef(false);
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -327,10 +333,19 @@ function WorkItemNode({
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
           onPointerDown={(e) => {
             dragStartedRef.current = false;
+            pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
             listeners?.onPointerDown?.(e);
           }}
-          onPointerMove={() => {
-            dragStartedRef.current = true;
+          onPointerMove={(e) => {
+            if (!pointerDownPosRef.current) return;
+            const dx = e.clientX - pointerDownPosRef.current.x;
+            const dy = e.clientY - pointerDownPosRef.current.y;
+            if (dx * dx + dy * dy >= DRAG_THRESHOLD_PX_SQUARED) {
+              dragStartedRef.current = true;
+            }
+          }}
+          onPointerUp={() => {
+            pointerDownPosRef.current = null;
           }}
           onClick={(e) => {
             e.stopPropagation();
