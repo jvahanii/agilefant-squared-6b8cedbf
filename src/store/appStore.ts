@@ -224,6 +224,26 @@ export const useAppStore = create<AppState>()((set, get) => {
         const validTreeId = storedTreeId && cleanData.backlogTrees[storedTreeId] ? storedTreeId : null;
         const validWorkItemIds = storedWorkItemIds.filter((id) => cleanData.workItems[id]);
 
+        // Expand all ancestor backlogs so selected backlog items are visible
+        const expandedBacklogs = new Set<string>();
+        for (const id of validBacklogIds) {
+          let current = cleanData.backlogs[id];
+          while (current?.parentId) {
+            expandedBacklogs.add(current.parentId);
+            current = cleanData.backlogs[current.parentId];
+          }
+        }
+
+        // Expand all ancestor work items so selected work items are visible
+        const expandedWorkItems = new Set<string>();
+        for (const id of validWorkItemIds) {
+          let current = cleanData.workItems[id];
+          while (current?.parentId) {
+            expandedWorkItems.add(current.parentId);
+            current = cleanData.workItems[current.parentId];
+          }
+        }
+
         set({
           ...cleanData,
           isLoading: false,
@@ -232,6 +252,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           selectedBacklogIds: validBacklogIds,
           selectedTreeId: validTreeId,
           selectedWorkItemIds: validWorkItemIds,
+          expandedBacklogs,
+          expandedWorkItems,
         });
       } catch (err) {
         set({ isLoading: false });
