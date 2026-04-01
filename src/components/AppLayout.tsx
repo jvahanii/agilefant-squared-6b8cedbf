@@ -4,6 +4,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -26,13 +27,21 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, FolderKanban, ListTree, ChevronLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -63,7 +72,21 @@ export default function AppLayout() {
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<"backlogs" | "workitems">("backlogs");
+  const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
+
+  // Auto-switch to work items tab when a backlog is selected on mobile
+  useEffect(() => {
+    if (isMobile && selectedBacklogIds.length > 0) {
+      setMobileTab("workitems");
+    }
+  }, [isMobile, selectedBacklogIds]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -447,318 +470,256 @@ export default function AppLayout() {
     [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree],
   );
 
+  // Extract handler functions for reuse in mobile menu
+  const handleExportChangelog = () => {
+    const log = getChangeLog();
+    if (log.length === 0) { toast({ title: "No changes logged yet" }); return; }
+    const csv = exportChangeLogAsCsv();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: `Exported ${log.length} change log entries` });
+  };
+
+  const handleExportMock = () => {
+    const { workItems, backlogs, backlogTrees } = useAppStore.getState();
+    const strip = (id: string) => id.split('::').pop()!;
+    const rawItems = Object.fromEntries(Object.values(workItems).map(wi => {
+      const rawId = strip(wi.id);
+      return [rawId, { ...wi, id: rawId, parentId: wi.parentId ? strip(wi.parentId) : null, childrenIds: wi.childrenIds.map(strip), backlogAssignments: Object.fromEntries(Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)])) }];
+    }));
+    const rawBacklogs = Object.fromEntries(Object.values(backlogs).map(bl => {
+      const rawId = strip(bl.id);
+      return [rawId, { ...bl, id: rawId, parentId: bl.parentId ? strip(bl.parentId) : null, childrenIds: bl.childrenIds.map(strip), treeId: strip(bl.treeId) }];
+    }));
+    const rawTrees = Object.fromEntries(Object.values(backlogTrees).map(bt => {
+      const rawId = strip(bt.id);
+      return [rawId, { ...bt, id: rawId, rootBacklogIds: bt.rootBacklogIds.map(strip) }];
+    }));
+    const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems: rawItems, backlogs: rawBacklogs, backlogTrees: rawTrees }, null, 2)};\n`;
+    navigator.clipboard.writeText(code);
+    toast({ title: "Data copied to clipboard" });
+  };
+
+  const handleCheckData = () => {
+    const state = useAppStore.getState();
+    const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+    if (issues.length === 0) { toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." }); }
+    else {
+      const report = formatIssueReport(issues);
+      navigator.clipboard.writeText(report);
+      const categories = [...new Set(issues.map((i) => i.category))];
+      toast({ title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`, description: `Categories: ${categories.join(", ")}. See console for full report.`, variant: "destructive" });
+    }
+  };
+
+  const handleCleanseData = () => {
+    const state = useAppStore.getState();
+    const result = cleanseData({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+    const allIssues = [...result.removed, ...result.fixed];
+    if (allIssues.length === 0) { toast({ title: "✅ No invalid data found" }); return; }
+    const report = formatIssueReport(allIssues);
+    navigator.clipboard.writeText(report);
+    console.log("Cleanse report:\n" + report);
+    useAppStore.setState(result.data);
+    toast({ title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`, description: "Full report copied to clipboard." });
+  };
+
+  const handleRunTests = () => {
+    const state = useAppStore.getState();
+    const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+    const results: string[] = [];
+    const pass = (name: string) => results.push(`✅ PASS: ${name}`);
+    const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
+    const categories = ["Ghost Parent", "Orphaned Children", "Circular Reference", "Backlog Displacement", "Tree-Backlog Desync", "Duplicate Rank", "Cross-Org Pollution", "Malformed ID", "Zombie Assignment"];
+    categories.forEach((cat) => {
+      const catIssues = issues.filter((i) => i.category === cat);
+      catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
+    });
+    const passed = results.filter((r) => r.startsWith("✅")).length;
+    const failed = results.filter((r) => r.startsWith("❌")).length;
+    const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
+    const fullReport = issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
+    navigator.clipboard.writeText(fullReport);
+    toast({ title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`, description: `${passed} passed, ${failed} failed. Report copied to clipboard.`, variant: failed > 0 ? "destructive" : undefined });
+  };
+
+  const [showResetDialog, setShowResetDialog] = useState(false);
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col overflow-hidden bg-background">
-        <header className="h-16 border-b flex items-center px-4 gap-3 bg-card shrink-0 shadow-sm z-10">
+        {/* HEADER */}
+        <header className="h-14 md:h-16 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-card shrink-0 shadow-sm z-10">
           <img
             alt="Agilefant"
-            className="h-10 w-auto"
+            className="h-8 md:h-10 w-auto"
             src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
           />
-          <h1 className="text-sm font-bold tracking-tight">
+          <h1 className="text-sm font-bold tracking-tight hidden sm:block">
             Agilefant
             <sup className="text-xs text-primary ml-0.5 font-mono">2</sup>
           </h1>
           <OrgSwitcher />
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-sm text-muted-foreground mr-2 border-r pr-3 hidden md:inline-block">
+          <div className="ml-auto flex items-center gap-1 md:gap-2">
+            <span className="text-xs md:text-sm text-muted-foreground truncate max-w-[100px] md:max-w-none md:mr-2 md:border-r md:pr-3">
               {user?.user_metadata?.full_name || user?.email || ""}
             </span>
 
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const log = getChangeLog();
-                if (log.length === 0) {
-                  toast({ title: "No changes logged yet" });
-                  return;
-                }
-                const csv = exportChangeLogAsCsv();
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast({ title: `Exported ${log.length} change log entries` });
-              }}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Export Changelog</span>
-            </button>
-
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-                const strip = (id: string) => id.split('::').pop()!;
-                const rawItems = Object.fromEntries(Object.values(workItems).map(wi => {
-                  const rawId = strip(wi.id);
-                  return [rawId, {
-                    ...wi, id: rawId,
-                    parentId: wi.parentId ? strip(wi.parentId) : null,
-                    childrenIds: wi.childrenIds.map(strip),
-                    backlogAssignments: Object.fromEntries(
-                      Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)])
-                    ),
-                  }];
-                }));
-                const rawBacklogs = Object.fromEntries(Object.values(backlogs).map(bl => {
-                  const rawId = strip(bl.id);
-                  return [rawId, {
-                    ...bl, id: rawId,
-                    parentId: bl.parentId ? strip(bl.parentId) : null,
-                    childrenIds: bl.childrenIds.map(strip),
-                    treeId: strip(bl.treeId),
-                  }];
-                }));
-                const rawTrees = Object.fromEntries(Object.values(backlogTrees).map(bt => {
-                  const rawId = strip(bt.id);
-                  return [rawId, {
-                    ...bt, id: rawId,
-                    rootBacklogIds: bt.rootBacklogIds.map(strip),
-                  }];
-                }));
-                const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems: rawItems, backlogs: rawBacklogs, backlogTrees: rawTrees }, null, 2)};\n`;
-                navigator.clipboard.writeText(code);
-                toast({ title: "Data copied to clipboard" });
-              }}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Export Mock</span>
-            </button>
-
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const state = useAppStore.getState();
-                const issues = checkDataIntegrity({
-                  workItems: state.workItems,
-                  backlogs: state.backlogs,
-                  backlogTrees: state.backlogTrees,
-                });
-                if (issues.length === 0) {
-                  toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." });
-                } else {
-                  const report = formatIssueReport(issues);
-                  navigator.clipboard.writeText(report);
-                  const categories = [...new Set(issues.map((i) => i.category))];
-                  toast({
-                    title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
-                    description: `Categories: ${categories.join(", ")}. See console for full report.`,
-                    variant: "destructive",
-                  });
-                }
-              }}
-            >
-              <SearchCheck className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Check Data</span>
-            </button>
-
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const state = useAppStore.getState();
-                const result = cleanseData({
-                  workItems: state.workItems,
-                  backlogs: state.backlogs,
-                  backlogTrees: state.backlogTrees,
-                });
-                const allIssues = [...result.removed, ...result.fixed];
-                if (allIssues.length === 0) {
-                  toast({ title: "✅ No invalid data found" });
-                  return;
-                }
-                const report = formatIssueReport(allIssues);
-                navigator.clipboard.writeText(report);
-                console.log("Cleanse report:\n" + report);
-                useAppStore.setState(result.data);
-                toast({
-                  title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`,
-                  description: "Full report copied to clipboard.",
-                });
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Cleanse Data</span>
-            </button>
-
-            <button
-              className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-              onClick={() => {
-                const state = useAppStore.getState();
-                const issues = checkDataIntegrity({
-                  workItems: state.workItems,
-                  backlogs: state.backlogs,
-                  backlogTrees: state.backlogTrees,
-                });
-
-                const results: string[] = [];
-                const pass = (name: string) => results.push(`✅ PASS: ${name}`);
-                const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
-
-                // Test 1: No ghost parents
-                const ghostParents = issues.filter((i) => i.category === "Ghost Parent");
-                ghostParents.length === 0
-                  ? pass("No ghost parents")
-                  : fail("Ghost parents found", `${ghostParents.length} items`);
-
-                // Test 2: No orphaned children
-                const orphaned = issues.filter((i) => i.category === "Orphaned Children");
-                orphaned.length === 0
-                  ? pass("No orphaned children")
-                  : fail("Orphaned children found", `${orphaned.length} items`);
-
-                // Test 3: No circular references
-                const circular = issues.filter((i) => i.category === "Circular Reference");
-                circular.length === 0
-                  ? pass("No circular references")
-                  : fail("Circular references found", `${circular.length} items`);
-
-                // Test 4: No backlog displacement
-                const displacement = issues.filter((i) => i.category === "Backlog Displacement");
-                displacement.length === 0
-                  ? pass("No backlog displacement")
-                  : fail("Backlog displacement found", `${displacement.length} items`);
-
-                // Test 5: No tree-backlog desync
-                const desync = issues.filter((i) => i.category === "Tree-Backlog Desync");
-                desync.length === 0
-                  ? pass("No tree-backlog desync")
-                  : fail("Tree-backlog desync found", `${desync.length} items`);
-
-                // Test 6: No duplicate ranks
-                const dupRank = issues.filter((i) => i.category === "Duplicate Rank");
-                dupRank.length === 0
-                  ? pass("No duplicate ranks")
-                  : fail("Duplicate ranks found", `${dupRank.length} items`);
-
-                // Test 7: No cross-org pollution
-                const crossOrg = issues.filter((i) => i.category === "Cross-Org Pollution");
-                crossOrg.length === 0
-                  ? pass("No cross-org pollution")
-                  : fail("Cross-org pollution found", `${crossOrg.length} items`);
-
-                // Test 8: No malformed IDs
-                const malformed = issues.filter((i) => i.category === "Malformed ID");
-                malformed.length === 0
-                  ? pass("No malformed IDs")
-                  : fail("Malformed IDs found", `${malformed.length} items`);
-
-                // Test 9: No zombie assignments
-                const zombie = issues.filter((i) => i.category === "Zombie Assignment");
-                zombie.length === 0
-                  ? pass("No zombie assignments")
-                  : fail("Zombie assignments found", `${zombie.length} items`);
-
-                const passed = results.filter((r) => r.startsWith("✅")).length;
-                const failed = results.filter((r) => r.startsWith("❌")).length;
-                const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
-
-                if (issues.length > 0) {
-                  report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues);
-                }
-
-                const fullReport =
-                  issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
-                navigator.clipboard.writeText(fullReport);
-
-                toast({
-                  title:
-                    failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`,
-                  description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
-                  variant: failed > 0 ? "destructive" : undefined,
-                });
-              }}
-            >
-              <FlaskConical className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Run Tests</span>
-            </button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">Reset Data</span>
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will replace all current data with the default mock dataset. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      useAppStore.getState().resetToMockData();
-                      toast({ title: "Data reset to mock data" });
-                    }}
-                  >
-                    Reset
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <div className="flex items-center gap-1 border-l pl-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                    onClick={undo}
-                    disabled={undoStackLength === 0}
-                  >
-                    <Undo2 className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                    onClick={redo}
-                    disabled={redoStackLength === 0}
-                  >
-                    <Redo2 className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
-              </Tooltip>
-
-              <button
-                className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={() => setShowShortcuts((s) => !s)}
-              >
-                <Keyboard className="w-4 h-4" />
+            {/* Desktop: show all buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportChangelog}>
+                <FileText className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export Changelog</span>
               </button>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportMock}>
+                <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export Mock</span>
+              </button>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleCheckData}>
+                <SearchCheck className="w-3.5 h-3.5" /><span className="hidden lg:inline">Check Data</span>
+              </button>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5" onClick={handleCleanseData}>
+                <Trash2 className="w-3.5 h-3.5" /><span className="hidden lg:inline">Cleanse Data</span>
+              </button>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleRunTests}>
+                <FlaskConical className="w-3.5 h-3.5" /><span className="hidden lg:inline">Run Tests</span>
+              </button>
+              <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                <AlertDialogTrigger asChild>
+                  <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" /><span className="hidden lg:inline">Reset Data</span>
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
+                    <AlertDialogDescription>This will replace all current data with the default mock dataset. This action cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { useAppStore.getState().resetToMockData(); toast({ title: "Data reset to mock data" }); }}>Reset</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`} onClick={undo} disabled={undoStackLength === 0}>
+                      <Undo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`} onClick={redo} disabled={redoStackLength === 0}>
+                      <Redo2 className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+                </Tooltip>
+                <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" onClick={() => setShowShortcuts((s) => !s)}>
+                  <Keyboard className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile: undo/redo + overflow menu */}
+            <div className="flex md:hidden items-center gap-0.5">
+              <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`} onClick={undo} disabled={undoStackLength === 0}>
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`} onClick={redo} disabled={redoStackLength === 0}>
+                <Redo2 className="w-4 h-4" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleExportChangelog}><FileText className="w-4 h-4 mr-2" />Export Changelog</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export Mock</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRunTests}><FlaskConical className="w-4 h-4 mr-2" />Run Tests</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowResetDialog(true)} className="text-destructive"><RotateCcw className="w-4 h-4 mr-2" />Reset Data</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>
 
+        {/* MAIN CONTENT */}
         <main className="flex-1 min-h-0 relative">
-          <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="border-r">
-              <div className="h-full overflow-hidden">
-                <BacklogTreePanel />
+          {isMobile ? (
+            /* Mobile: tab-based layout */
+            <div className="h-full flex flex-col">
+              {/* Tab bar */}
+              <div className="flex border-b shrink-0 bg-card">
+                <button
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${mobileTab === "backlogs" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                  onClick={() => setMobileTab("backlogs")}
+                >
+                  <FolderKanban className="w-4 h-4" />
+                  Backlogs
+                </button>
+                <button
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${mobileTab === "workitems" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                  onClick={() => setMobileTab("workitems")}
+                >
+                  <ListTree className="w-4 h-4" />
+                  Work Items
+                </button>
               </div>
-            </ResizablePanel>
-
-            <ResizableHandle withHandle />
-
-            <ResizablePanel defaultSize={75} minSize={40}>
-              <div className="h-full overflow-hidden flex flex-col">
-                <WorkItemTreePanel />
+              {/* Tab content */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {mobileTab === "backlogs" ? (
+                  <BacklogTreePanel />
+                ) : (
+                  <div className="h-full flex flex-col">
+                    {selectedBacklogIds.length > 0 && (
+                      <button
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 border-b"
+                        onClick={() => setMobileTab("backlogs")}
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        Back to backlogs
+                      </button>
+                    )}
+                    <div className="flex-1 min-h-0">
+                      <WorkItemTreePanel />
+                    </div>
+                  </div>
+                )}
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </div>
+          ) : (
+            /* Desktop: resizable panels */
+            <ResizablePanelGroup direction="horizontal">
+              <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="border-r">
+                <div className="h-full overflow-hidden">
+                  <BacklogTreePanel />
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              <ResizablePanel defaultSize={75} minSize={40}>
+                <div className="h-full overflow-hidden flex flex-col">
+                  <WorkItemTreePanel />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
         </main>
       </div>
 

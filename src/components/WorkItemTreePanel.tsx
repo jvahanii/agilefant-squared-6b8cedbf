@@ -414,7 +414,7 @@ function WorkItemNode({
           )}
 
           {backlogPaths.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
+            <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
               {backlogPaths.map(({ treeId: tid, path }) => (
                 <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
                   {path.map((seg, i) => (
@@ -485,7 +485,7 @@ function WorkItemNode({
               })()
             )}
 
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
               <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {

@@ -333,6 +333,17 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
         )}
+        <div className="flex md:hidden items-center gap-0.5 shrink-0">
+          {totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
+          ><Plus className="w-3.5 h-3.5" /></button>
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
+          ><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
         <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
           {totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
           <button
@@ -551,7 +562,21 @@ function DraggableTreeHeader({
             </TooltipProvider>
           )}
         </div>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+        <div className="flex md:hidden items-center gap-0.5 shrink-0">
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => { e.stopPropagation(); onShareTree(); }}
+          ><Share2 className="w-3.5 h-3.5" /></button>
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => { e.stopPropagation(); onAddBacklog(); }}
+          ><Plus className="w-3.5 h-3.5" /></button>
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onDeleteTree(); }}
+          ><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
