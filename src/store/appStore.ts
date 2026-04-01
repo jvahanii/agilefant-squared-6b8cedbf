@@ -64,6 +64,8 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string) => void;
+  setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number) => void;
+  respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
   renameBacklog: (backlogId: string, name: string) => void;
@@ -577,6 +579,82 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
+    },
+
+    setWorkItemRespawn: (workItemId, respawnEnabled, respawnIntervalDays, respawnHour) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const updated: WorkItem = {
+        ...item,
+        respawnEnabled,
+        respawnIntervalDays: respawnEnabled ? respawnIntervalDays : undefined,
+        respawnHour: respawnEnabled ? respawnHour : undefined,
+      };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Set Respawn", entityType: "work_item", entityId: workItemId });
+      set({ workItems: { ...state.workItems, [workItemId]: updated } });
+    },
+
+    respawnItem: (workItemId) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId) return;
+      const item = state.workItems[workItemId];
+      if (!item || !item.respawnEnabled) return;
+
+      const updatedWorkItems = { ...state.workItems };
+      const itemsToUpdateInDB: WorkItem[] = [];
+
+      // Find the first treeId + backlogId for the item
+      const treeId = Object.keys(item.backlogAssignments)[0];
+      const backlogId = treeId ? item.backlogAssignments[treeId] : undefined;
+      if (!treeId || !backlogId) return;
+
+      const insertRank = item.rank + 1;
+
+      // Shift siblings below the original item down
+      Object.values(updatedWorkItems).forEach((wi) => {
+        const isSameContext = wi.parentId === item.parentId && wi.backlogAssignments[treeId] === backlogId;
+        if (isSameContext && wi.rank >= insertRank && wi.id !== workItemId) {
+          const shifted = { ...wi, rank: wi.rank + 1 };
+          updatedWorkItems[wi.id] = shifted;
+          itemsToUpdateInDB.push(shifted);
+        }
+      });
+
+      const newId = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+      const copy: WorkItem = {
+        id: newId,
+        title: item.title,
+        description: item.description,
+        points: item.points,
+        parentId: item.parentId,
+        rank: insertRank,
+        backlogAssignments: { [treeId]: backlogId },
+        status: "not_started" as WorkItemStatus,
+        childrenIds: [],
+      };
+      updatedWorkItems[newId] = copy;
+      itemsToUpdateInDB.push(copy);
+
+      if (item.parentId && updatedWorkItems[item.parentId]) {
+        updatedWorkItems[item.parentId] = {
+          ...updatedWorkItems[item.parentId],
+          childrenIds: [...updatedWorkItems[item.parentId].childrenIds, newId],
+        };
+      }
+
+      // Update lastTriggeredAt on the source item
+      const now = new Date().toISOString();
+      const updatedSource: WorkItem = { ...item, respawnLastTriggeredAt: now };
+      updatedWorkItems[workItemId] = updatedSource;
+      itemsToUpdateInDB.push(updatedSource);
+
+      upsertWorkItems(itemsToUpdateInDB, orgId);
+      internalLog({ action: "Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title });
+      set({ workItems: updatedWorkItems });
     },
 
     addBacklog: (name, parentId, treeId) => {
