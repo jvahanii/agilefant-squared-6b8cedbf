@@ -124,7 +124,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
-    const r = row as typeof row & WorkItemRespawnFields;
+    const r = row as any;
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
