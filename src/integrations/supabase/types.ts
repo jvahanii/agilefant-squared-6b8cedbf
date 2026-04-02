@@ -210,6 +210,10 @@ export type Database = {
           parent_id: string | null
           points: number | null
           rank: number
+          respawn_enabled: boolean
+          respawn_hour: number | null
+          respawn_interval_days: number | null
+          respawn_last_triggered_at: string | null
           status: string
           title: string
         }
@@ -221,6 +225,10 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          respawn_enabled?: boolean
+          respawn_hour?: number | null
+          respawn_interval_days?: number | null
+          respawn_last_triggered_at?: string | null
           status?: string
           title: string
         }
@@ -232,6 +240,10 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          respawn_enabled?: boolean
+          respawn_hour?: number | null
+          respawn_interval_days?: number | null
+          respawn_last_triggered_at?: string | null
           status?: string
           title?: string
         }
