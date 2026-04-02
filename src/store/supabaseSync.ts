@@ -161,7 +161,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
 /** Refresh the Supabase auth session and retry a DB operation once on auth errors. */
 async function withSessionRetry(
-  operation: () => Promise<{ error: { message?: string; code?: string } | null }>
+  operation: () => PromiseLike<{ error: { message?: string; code?: string } | null }>
 ): Promise<{ error: { message?: string; code?: string } | null }> {
   const result = await operation();
   if (!result.error) return result;
