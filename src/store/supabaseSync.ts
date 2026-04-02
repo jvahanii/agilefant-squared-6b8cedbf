@@ -12,6 +12,10 @@ type WorkItemUpsertRow = {
   backlog_assignments: Record<string, string>;
   rank: number;
   organization_id: string;
+  respawn_enabled: boolean;
+  respawn_interval_days: number | null;
+  respawn_hour: number | null;
+  respawn_last_triggered_at: string | null;
 };
 
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
