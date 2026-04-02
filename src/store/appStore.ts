@@ -88,8 +88,13 @@ interface AppState extends DataSnapshot {
 const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
-  const rawId = parts[parts.length - 1];
-  return `${orgId}::${rawId}`;
+  if (parts.length === 1) {
+    // No prefix yet (mock/legacy data) – scope to the current org.
+    return `${orgId}::${id}`;
+  }
+  // Already prefixed. Strip any extra levels of nesting (e.g. orgA::orgA::rawId → orgA::rawId)
+  // but preserve the existing owner prefix so shared entities keep their original org scope.
+  return `${parts[parts.length - 2]}::${parts[parts.length - 1]}`;
 };
 
 export function sanitizeData(data: any, orgId: string) {

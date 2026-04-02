@@ -156,6 +156,19 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   return { workItems, backlogs, backlogTrees };
 }
 
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Return the organization that owns an entity, derived from its ID prefix
+ * (format: "<orgId>::<rawId>").  Falls back to `defaultOrgId` for unprefixed
+ * legacy/mock IDs so that newly-created entities are always attributed to the
+ * active org.
+ */
+function ownerOrgOf(entityId: string, defaultOrgId: string): string {
+  const sep = entityId.indexOf('::');
+  return sep > 0 ? entityId.slice(0, sep) : defaultOrgId;
+}
+
 // ─── Sync helpers ──────────────────────────────────────────────────────────
 
 /** Refresh the Supabase auth session and retry a DB operation once on auth errors. */
@@ -183,7 +196,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     id: item.id, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: item.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(item.id, organizationId),
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
     respawn_hour: item.respawnHour ?? null,
@@ -214,7 +227,7 @@ export async function deleteWorkItems(ids: string[]) {
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
   const { error } = await supabase.from('backlogs').upsert({
     id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(bl.id, organizationId),
   });
   if (error) console.error('upsertBacklog:', error);
 }
@@ -236,7 +249,7 @@ export async function deleteBacklogs(ids: string[]) {
 export async function upsertBacklogTree(tree: BacklogTree, organizationId: string) {
   const { error } = await supabase.from('backlog_trees').upsert({
     id: tree.id, name: tree.name, rank: tree.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(tree.id, organizationId),
   });
   if (error) console.error('upsertBacklogTree:', error);
 }
@@ -258,7 +271,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     id: item.id, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: item.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(item.id, organizationId),
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
     respawn_hour: item.respawnHour ?? null,
@@ -276,7 +289,7 @@ export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
   if (bls.length === 0) return;
   const rows = bls.map(bl => ({
     id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(bl.id, organizationId),
   }));
   const { error } = await supabase.from('backlogs').upsert(rows);
   if (error) console.error('upsertBacklogs:', error);
@@ -286,7 +299,7 @@ export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: s
   if (trees.length === 0) return;
   const rows = trees.map(t => ({
     id: t.id, name: t.name, rank: t.rank,
-    organization_id: organizationId,
+    organization_id: ownerOrgOf(t.id, organizationId),
   }));
   const { error } = await supabase.from('backlog_trees').upsert(rows);
   if (error) console.error('upsertBacklogTrees:', error);
