@@ -12,10 +12,6 @@ type WorkItemUpsertRow = {
   backlog_assignments: Record<string, string>;
   rank: number;
   organization_id: string;
-  respawn_enabled: boolean;
-  respawn_interval_days: number | null;
-  respawn_hour: number | null;
-  respawn_last_triggered_at: string | null;
 };
 
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
@@ -181,10 +177,6 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: item.rank,
     organization_id: organizationId,
-    respawn_enabled: item.respawnEnabled ?? false,
-    respawn_interval_days: item.respawnIntervalDays ?? null,
-    respawn_hour: item.respawnHour ?? null,
-    respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
@@ -256,10 +248,6 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: item.rank,
     organization_id: organizationId,
-    respawn_enabled: item.respawnEnabled ?? false,
-    respawn_interval_days: item.respawnIntervalDays ?? null,
-    respawn_hour: item.respawnHour ?? null,
-    respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
