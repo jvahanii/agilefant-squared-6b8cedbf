@@ -320,7 +320,7 @@ function WorkItemNode({
           className={`
             flex items-start gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
             transition-all duration-150 ease-out group
-            border select-none touch-none
+            border select-none
             ${isChildBacklog ? "text-muted-foreground" : ""}
             ${
               isSelected
