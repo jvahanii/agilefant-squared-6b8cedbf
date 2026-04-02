@@ -37,6 +37,7 @@ export function RespawnSettingsDialog({
 }: RespawnSettingsDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const setWorkItemRespawn = useAppStore((s) => s.setWorkItemRespawn);
+  const respawnItem = useAppStore((s) => s.respawnItem);
 
   const [enabled, setEnabled] = useState(false);
   const [intervalDays, setIntervalDays] = useState<string>("7");
@@ -122,13 +123,18 @@ export function RespawnSettingsDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Cancel
+        <div className="flex justify-between gap-2 mt-6">
+          <Button variant="outline" size="sm" onClick={() => { respawnItem(workItemId); onOpenChange(false); }}>
+            Respawn now
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={!!intervalError}>
-            Save
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={!!intervalError}>
+              Save
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
