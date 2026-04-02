@@ -16,6 +16,7 @@ interface TreeShare {
 function useTreeShares(treeIds: string[]) {
   const [shares, setShares] = useState<Record<string, TreeShare[]>>({});
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const treeIdsKey = treeIds.join(",");
 
   useEffect(() => {
     if (treeIds.length === 0 || !activeOrgId) return;
@@ -45,7 +46,21 @@ function useTreeShares(treeIds: string[]) {
     };
 
     load();
-  }, [treeIds.join(","), activeOrgId]);
+
+    // Subscribe to realtime changes on the shares table so the icon
+    // updates immediately for all parties (both when a share is added and removed).
+    const channel = supabase
+      .channel(`tree-shares-${activeOrgId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "backlog_tree_shares" },
+        () => { load(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeIdsKey, activeOrgId]);
 
   return shares;
 }
