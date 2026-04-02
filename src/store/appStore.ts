@@ -672,17 +672,19 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       const itemsToUpdateInDB: WorkItem[] = [];
 
-      // Find the first treeId + backlogId for the item
-      const treeId = Object.keys(item.backlogAssignments)[0];
-      const backlogId = treeId ? item.backlogAssignments[treeId] : undefined;
-      if (!treeId || !backlogId) return;
+      if (Object.keys(item.backlogAssignments).length === 0) return;
 
       const insertRank = item.rank + 1;
 
-      // Shift siblings below the original item down
+      // Shift siblings below the original item down across ALL backlog tree contexts
       Object.values(updatedWorkItems).forEach((wi) => {
-        const isSameContext = wi.parentId === item.parentId && wi.backlogAssignments[treeId] === backlogId;
-        if (isSameContext && wi.rank >= insertRank && wi.id !== workItemId) {
+        if (wi.id === workItemId) return;
+        const isSiblingInAnyContext =
+          wi.parentId === item.parentId &&
+          Object.entries(item.backlogAssignments).some(
+            ([treeId, backlogId]) => wi.backlogAssignments[treeId] === backlogId
+          );
+        if (isSiblingInAnyContext && wi.rank >= insertRank) {
           const shifted = { ...wi, rank: wi.rank + 1 };
           updatedWorkItems[wi.id] = shifted;
           itemsToUpdateInDB.push(shifted);
@@ -697,7 +699,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         points: item.points,
         parentId: item.parentId,
         rank: insertRank,
-        backlogAssignments: { [treeId]: backlogId },
+        backlogAssignments: { ...item.backlogAssignments },
         status: "not_started" as WorkItemStatus,
         childrenIds: [],
       };

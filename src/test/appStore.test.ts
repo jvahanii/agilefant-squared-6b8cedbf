@@ -258,6 +258,114 @@ describe("reparentWorkItem", () => {
   });
 });
 
+// ─── RESPAWN ITEM ──────────────────────────────────────────────────────
+
+describe("respawnItem", () => {
+  function seedRespawnStore() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`,
+          title: "Recurring Item",
+          description: "Some description",
+          points: 3,
+          status: "done" as const,
+          parentId: null,
+          childrenIds: [],
+          backlogAssignments: {
+            [`${ORG}::bt-1`]: `${ORG}::bl-1`,
+            [`${ORG}::bt-2`]: `${ORG}::bl-2`,
+          },
+          rank: 0,
+          respawnEnabled: true,
+          respawnIntervalDays: 7,
+          respawnHour: 9,
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+  }
+
+  it("respawned item inherits all backlog assignments from the original", () => {
+    seedRespawnStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-1`);
+    expect(copy).toBeDefined();
+    expect(copy!.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    expect(copy!.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+  });
+
+  it("respawned item has status not_started", () => {
+    seedRespawnStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-1`);
+    expect(copy!.status).toBe("not_started");
+  });
+
+  it("respawned item copies title, description, and points from the original", () => {
+    seedRespawnStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-1`);
+    expect(copy!.title).toBe("Recurring Item");
+    expect(copy!.description).toBe("Some description");
+    expect(copy!.points).toBe(3);
+  });
+
+  it("updates respawnLastTriggeredAt on the source item", () => {
+    seedRespawnStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const source = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    expect(source.respawnLastTriggeredAt).toBeDefined();
+  });
+
+  it("shifts siblings in all backlog tree contexts", () => {
+    seedRespawnStore();
+    // Add a sibling in tree 2 only (not in tree 1)
+    useAppStore.setState({
+      workItems: {
+        ...useAppStore.getState().workItems,
+        [`${ORG}::wi-sibling`]: {
+          id: `${ORG}::wi-sibling`,
+          title: "Sibling in tree 2",
+          status: "not_started" as const,
+          parentId: null,
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          rank: 1,
+        },
+      },
+    });
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const sibling = useAppStore.getState().workItems[`${ORG}::wi-sibling`];
+    expect(sibling.rank).toBe(2); // shifted from 1 to 2
+  });
+
+  it("respawned item is a single instance visible in all trees via backlogAssignments", () => {
+    seedRespawnStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-1`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-1`)!;
+    useAppStore.getState().setWorkItemStatus(copy.id, "done");
+    // The single item's status is done, visible in all trees via backlogAssignments
+    expect(useAppStore.getState().workItems[copy.id].status).toBe("done");
+    expect(Object.keys(useAppStore.getState().workItems[copy.id].backlogAssignments).length).toBe(2);
+  });
+});
+
 // ─── BACKLOG CRUD ──────────────────────────────────────────────────────
 
 describe("addBacklog", () => {
