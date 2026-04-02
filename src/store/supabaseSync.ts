@@ -191,7 +191,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select());
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
   if (error) {
     console.error('upsertWorkItem:', error);
     toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
