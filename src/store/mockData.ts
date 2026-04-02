@@ -3,7 +3,7 @@ export const mockData = {
   workItems: {
     "wi-35399ca7": {
       id: "wi-35399ca7",
-      title: "Napalm, son. mörkös  Nothing else in the",
+      title: "Napalm, son. mörkösaatn  Nothing else in the",
       parentId: null,
       rank: 0,
       backlogAssignments: {
