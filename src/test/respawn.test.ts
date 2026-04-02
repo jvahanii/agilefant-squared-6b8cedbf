@@ -2,9 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { respawnItem } from '@/store/appStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { createStore } from 'zustand';
-import { mockUpsertWorkItem, mockUpsertWorkItems } from '@/store/supabaseSync';
-
-const store = createStore(() => ({ ... })); // Initialize Zustand store
+const store = createStore(() => ({}));
 
 vi.mock('@/store/supabaseSync', () => ({
   upsertWorkItem: vi.fn(),
