@@ -27,7 +27,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, FolderKanban, ListTree, ChevronLeft } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
@@ -73,15 +73,6 @@ export default function AppLayout() {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   const isMobile = useIsMobile();
-  const [mobileTab, setMobileTab] = useState<"backlogs" | "workitems">("backlogs");
-  const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
-
-  // Auto-switch to work items tab when a backlog is selected on mobile
-  useEffect(() => {
-    if (isMobile && selectedBacklogIds.length > 0) {
-      setMobileTab("workitems");
-    }
-  }, [isMobile, selectedBacklogIds]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -661,45 +652,13 @@ export default function AppLayout() {
         {/* MAIN CONTENT */}
         <main className="flex-1 min-h-0 relative">
           {isMobile ? (
-            /* Mobile: tab-based layout */
+            /* Mobile: single-column stacked layout */
             <div className="h-full flex flex-col">
-              {/* Tab bar */}
-              <div className="flex border-b shrink-0 bg-card">
-                <button
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${mobileTab === "backlogs" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
-                  onClick={() => setMobileTab("backlogs")}
-                >
-                  <FolderKanban className="w-4 h-4" />
-                  Backlogs
-                </button>
-                <button
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${mobileTab === "workitems" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
-                  onClick={() => setMobileTab("workitems")}
-                >
-                  <ListTree className="w-4 h-4" />
-                  Work Items
-                </button>
+              <div className="border-b overflow-hidden shrink-0 h-[40%]">
+                <BacklogTreePanel />
               </div>
-              {/* Tab content */}
               <div className="flex-1 min-h-0 overflow-hidden">
-                {mobileTab === "backlogs" ? (
-                  <BacklogTreePanel />
-                ) : (
-                  <div className="h-full flex flex-col">
-                    {selectedBacklogIds.length > 0 && (
-                      <button
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 border-b"
-                        onClick={() => setMobileTab("backlogs")}
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                        Back to backlogs
-                      </button>
-                    )}
-                    <div className="flex-1 min-h-0">
-                      <WorkItemTreePanel />
-                    </div>
-                  </div>
-                )}
+                <WorkItemTreePanel />
               </div>
             </div>
           ) : (
