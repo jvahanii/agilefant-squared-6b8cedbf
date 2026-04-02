@@ -161,7 +161,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
 /** Refresh the Supabase auth session and retry a DB operation once on auth errors. */
 async function withSessionRetry(
-  operation: () => Promise<{ error: { message?: string; code?: string } | null }>
+  operation: () => PromiseLike<{ error: { message?: string; code?: string } | null }>
 ): Promise<{ error: { message?: string; code?: string } | null }> {
   const result = await operation();
   if (!result.error) return result;
@@ -191,7 +191,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
   if (error) {
     console.error('upsertWorkItem:', error);
     toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
@@ -266,7 +266,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
   if (error) {
     console.error('upsertWorkItems:', error);
     toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
