@@ -3,6 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -15,6 +16,25 @@ const Index = () => {
       setOrganizationId(activeOrgId);
       loadData();
     }
+  }, [activeOrgId]);
+
+  // Reload data whenever share membership changes so both the tree owner and
+  // the newly-shared org see each other's trees and contents immediately.
+  useEffect(() => {
+    if (!activeOrgId) return;
+
+    const channel = supabase
+      .channel(`share-data-reload-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'backlog_tree_shares' },
+        () => { loadData(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // loadData is a stable Zustand action reference; omitting it is intentional.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
   useRespawnCheck();

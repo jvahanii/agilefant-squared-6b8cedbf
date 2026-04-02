@@ -100,15 +100,17 @@ export function ShareTreeDialog({
   };
 
   const handleRemove = async (shareId: string) => {
-    const { error } = await supabase
-      .from('backlog_tree_shares' as any)
-      .delete()
-      .eq('id', shareId);
+    setLoading(true);
+    // Use the RPC function so that the leaving org gets a copy of the tree
+    // before the share is deleted (no data is lost).
+    const { error } = await (supabase as any).rpc('remove_tree_share_with_copy', { _share_id: shareId });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
+      toast({ title: 'Share removed', description: 'The organization now has its own independent copy of the tree.' });
       await loadShares();
     }
+    setLoading(false);
   };
 
   return (
@@ -143,7 +145,7 @@ export function ShareTreeDialog({
                   <span className="text-sm">{share.org_name}</span>
                   <Badge variant="outline" className="text-xs">{share.organization_id.slice(0, 8)}</Badge>
                 </div>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => handleRemove(share.id)}>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" disabled={loading} onClick={() => handleRemove(share.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>

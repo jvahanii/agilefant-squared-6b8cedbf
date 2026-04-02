@@ -58,18 +58,21 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   if (backlogsRes.error) throw backlogsRes.error;
   if (itemsRes.error) throw itemsRes.error;
 
-  // Also load work items from shared trees that belong to other orgs
+  // Also load work items from other orgs that reference any accessible tree.
+  // This covers both trees shared TO this org and trees this org OWNS that have been
+  // shared OUT (so the owner sees items created by the sharing partner).
   let sharedWorkItems: any[] = [];
-  if (sharedTreeIds.length > 0) {
-    // Load all work items that reference shared trees (from other orgs)
+  if (allTreeIds.length > 0) {
+    const allTreeIdSet = new Set(allTreeIds);
+    // Load all work items that reference accessible trees (from other orgs)
     const { data: allSharedItems } = await supabase
       .from('work_items')
       .select('*')
       .neq('organization_id', organizationId);
-    // Filter to items that have assignments to shared trees
+    // Filter to items that have assignments to any accessible tree
     sharedWorkItems = (allSharedItems ?? []).filter((item: any) => {
       const assignments = item.backlog_assignments as Record<string, string>;
-      return Object.keys(assignments).some(treeId => sharedTreeIds.includes(treeId));
+      return Object.keys(assignments).some(treeId => allTreeIdSet.has(treeId));
     });
   }
 
