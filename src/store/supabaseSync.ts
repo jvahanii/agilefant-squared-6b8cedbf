@@ -2,14 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 
-// Extra columns added via migration (not yet in generated Supabase types)
-interface WorkItemRespawnFields {
-  respawn_enabled?: boolean;
-  respawn_interval_days?: number | null;
-  respawn_hour?: number | null;
-  respawn_last_triggered_at?: string | null;
-}
-
 type WorkItemUpsertRow = {
   id: string;
   title: string;
@@ -20,7 +12,7 @@ type WorkItemUpsertRow = {
   backlog_assignments: Record<string, string>;
   rank: number;
   organization_id: string;
-} & WorkItemRespawnFields;
+};
 
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
