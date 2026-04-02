@@ -89,7 +89,8 @@ const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
   if (parts.length === 1) {
-    // No prefix yet (mock/legacy data) – scope to the current org.
+    // Unprefixed (mock/legacy) ID – IDs never contain '::' in their raw part,
+    // so any '::' means the ID is already org-scoped.
     return `${orgId}::${id}`;
   }
   // Already prefixed. Strip any extra levels of nesting (e.g. orgA::orgA::rawId → orgA::rawId)

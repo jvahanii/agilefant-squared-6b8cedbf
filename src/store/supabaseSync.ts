@@ -163,6 +163,9 @@ export async function loadFromSupabase(organizationId: string): Promise<{
  * (format: "<orgId>::<rawId>").  Falls back to `defaultOrgId` for unprefixed
  * legacy/mock IDs so that newly-created entities are always attributed to the
  * active org.
+ *
+ * `sep > 0` (not `>= 0`) is intentional: an ID starting with '::' has an
+ * empty org prefix and is treated as unprefixed, falling back to defaultOrgId.
  */
 function ownerOrgOf(entityId: string, defaultOrgId: string): string {
   const sep = entityId.indexOf('::');
