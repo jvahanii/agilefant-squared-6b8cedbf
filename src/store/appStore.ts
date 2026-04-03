@@ -95,6 +95,7 @@ interface AppState extends DataSnapshot {
   applyRealtimeWorkItem: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklog: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklogTree: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeHyperlink: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
 const ensureCleanId = (id: string, orgId: string): string => {
@@ -1305,6 +1306,42 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
 
         return { backlogTrees: { ...state.backlogTrees, [id]: newTree } };
+      });
+    },
+
+    applyRealtimeHyperlink: (eventType, row) => {
+      set((state) => {
+        const id = row.id as string;
+        const workItemId = row.work_item_id as string;
+
+        if (eventType === 'DELETE') {
+          const existing = state.hyperlinks[workItemId] ?? [];
+          const filtered = existing.filter((l) => l.id !== id);
+          if (filtered.length === existing.length) return state;
+          return { hyperlinks: { ...state.hyperlinks, [workItemId]: filtered } };
+        }
+
+        // INSERT or UPDATE
+        const link: Hyperlink = {
+          id,
+          workItemId,
+          url: row.url as string,
+          altText: (row.alt_text as string) ?? '',
+          rank: (row.rank as number) ?? 0,
+        };
+
+        const existing = state.hyperlinks[workItemId] ?? [];
+        const idx = existing.findIndex((l) => l.id === id);
+        let newList: Hyperlink[];
+        if (idx >= 0) {
+          newList = [...existing];
+          newList[idx] = link;
+        } else {
+          newList = [...existing, link];
+        }
+        newList.sort((a, b) => a.rank - b.rank);
+
+        return { hyperlinks: { ...state.hyperlinks, [workItemId]: newList } };
       });
     },
   };
