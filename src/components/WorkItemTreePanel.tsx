@@ -319,11 +319,10 @@ function WorkItemNode({
       >
         <div
           {...attributes}
-          {...listeners}
           className={`
-            flex items-start gap-1.5 px-3 py-2 rounded-md cursor-grab active:cursor-grabbing
+            flex items-start gap-1.5 px-3 py-2 rounded-md
             transition-all duration-150 ease-out group
-            border select-none touch-none
+            border select-none
             ${isChildBacklog ? "text-muted-foreground" : ""}
             ${
               isSelected
@@ -337,7 +336,6 @@ function WorkItemNode({
           onPointerDown={(e) => {
             dragStartedRef.current = false;
             pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
-            listeners?.onPointerDown?.(e);
           }}
           onPointerMove={(e) => {
             if (!pointerDownPosRef.current) return;
@@ -359,7 +357,8 @@ function WorkItemNode({
           }}
         >
           <div
-            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"}`}
+            {...listeners}
+            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 touch-none cursor-grab active:cursor-grabbing ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"}`}
           >
             <GripVertical className="w-3.5 h-3.5" />
           </div>

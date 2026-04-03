@@ -279,10 +279,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
       <div
         ref={combinedRef}
         {...attributes}
-        {...listeners}
         className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-grab active:cursor-grabbing
-          transition-all duration-150 ease-out select-none group touch-none
+          flex items-center gap-1.5 px-2 py-1.5 rounded-md
+          transition-all duration-150 ease-out select-none group
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
           ${isOver && !isDragging ? "drag-over" : ""}
           ${isDragging ? "shadow-lg bg-card" : ""}
@@ -291,7 +290,6 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         onPointerDown={(e) => {
           dragStartedRef.current = false;
           dragStartPosRef.current = { x: e.clientX, y: e.clientY };
-          listeners?.onPointerDown?.(e);
         }}
         onPointerMove={(e) => {
           if (!dragStartPosRef.current) return;
@@ -306,7 +304,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey);
         }}
       >
-        <div className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40">
+        <div {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40 touch-none cursor-grab active:cursor-grabbing">
           <GripVertical className="w-3 h-3" />
         </div>
         <button
@@ -550,14 +548,12 @@ function DraggableTreeHeader({
     <div
       ref={setDragRef}
       {...attributes}
-      {...listeners}
-      className={`px-2 py-1 flex flex-col group cursor-grab active:cursor-grabbing touch-none select-none
+      className={`px-2 py-1 flex flex-col group select-none
         ${isDragging ? "opacity-50" : ""}`}
       style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
       onPointerDown={(e) => {
         dragStartedRef.current = false;
         dragStartPosRef.current = { x: e.clientX, y: e.clientY };
-        listeners?.onPointerDown?.(e);
       }}
       onPointerMove={(e) => {
         if (!dragStartPosRef.current) return;
@@ -570,7 +566,9 @@ function DraggableTreeHeader({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+          <div {...listeners} className="touch-none cursor-grab active:cursor-grabbing flex items-center">
+            <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+          </div>
           <EditableTreeName treeId={tree.id} name={tree.name} />
           {shares.length > 0 && (
             <TooltipProvider delayDuration={200}>
