@@ -201,6 +201,36 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_hyperlinks: {
+        Row: {
+          alt_text: string
+          created_at: string
+          id: string
+          organization_id: string
+          rank: number
+          url: string
+          work_item_id: string
+        }
+        Insert: {
+          alt_text?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          rank?: number
+          url: string
+          work_item_id: string
+        }
+        Update: {
+          alt_text?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          rank?: number
+          url?: string
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       work_items: {
         Row: {
           backlog_assignments: Json
