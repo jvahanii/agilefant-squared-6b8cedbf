@@ -39,6 +39,7 @@ export default function Onboarding() {
                     await createOrganization(name, slug, user.id);
                     await loadMemberships(user.id);
                     toast({ title: 'Organization created!' });
+                    navigate('/', { replace: true });
                   } catch (err: any) {
                     toast({ title: 'Error', description: err.message, variant: 'destructive' });
                   }
