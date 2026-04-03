@@ -357,12 +357,12 @@ export default function AppLayout() {
           // Items already assigned to the target tree are being moved back to their
           // original tree — simply remove them from the source tree without prompting.
           const alreadyInTarget = draggedIds.filter(
-            (id) => store.workItems[id]?.backlogAssignments[targetTreeId] !== undefined,
+            (id) => store.workItems[id]?.backlogAssignments?.[targetTreeId] !== undefined,
           );
           alreadyInTarget.forEach((id) => removeWorkItemFromTree(id, sourceTreeId));
 
           const notInTarget = draggedIds.filter(
-            (id) => store.workItems[id]?.backlogAssignments[targetTreeId] === undefined,
+            (id) => store.workItems[id]?.backlogAssignments?.[targetTreeId] === undefined,
           );
           if (notInTarget.length === 0) return;
 
