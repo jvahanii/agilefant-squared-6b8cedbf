@@ -10,9 +10,9 @@
 -- (e.g. organization_id=eq.<uuid>) cannot match DELETE events because the
 -- filter column is absent from the payload.
 
-ALTER TABLE public.work_items       REPLICA IDENTITY FULL;
-ALTER TABLE public.backlogs         REPLICA IDENTITY FULL;
-ALTER TABLE public.backlog_trees    REPLICA IDENTITY FULL;
+ALTER TABLE public.work_items REPLICA IDENTITY FULL;
+ALTER TABLE public.backlogs REPLICA IDENTITY FULL;
+ALTER TABLE public.backlog_trees REPLICA IDENTITY FULL;
 ALTER TABLE public.work_item_hyperlinks REPLICA IDENTITY FULL;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.work_items;
