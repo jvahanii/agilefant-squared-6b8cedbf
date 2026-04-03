@@ -1303,6 +1303,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           name: row.name as string,
           rank: row.rank as number,
           rootBacklogIds: state.backlogTrees[id]?.rootBacklogIds ?? [],
+        };
+
+        return { backlogTrees: { ...state.backlogTrees, [id]: newTree } };
+      });
+    },
+
     applyRealtimeHyperlink: (eventType, row) => {
       set((state) => {
         const id = row.id as string;
@@ -1336,11 +1342,6 @@ export const useAppStore = create<AppState>()((set, get) => {
         newList.sort((a, b) => a.rank - b.rank);
 
         return { hyperlinks: { ...state.hyperlinks, [workItemId]: newList } };
-      });
-    },
-  };
-
-        return { backlogTrees: { ...state.backlogTrees, [id]: newTree } };
       });
     },
   };
