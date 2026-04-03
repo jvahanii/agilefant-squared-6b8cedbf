@@ -42,3 +42,11 @@ export interface BacklogTree {
   rootBacklogIds: string[];
   rank: number;
 }
+
+export interface Hyperlink {
+  id: string;
+  workItemId: string;
+  url: string;
+  altText: string;
+  rank: number;
+}

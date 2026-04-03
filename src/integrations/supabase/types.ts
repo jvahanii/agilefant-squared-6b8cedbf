@@ -201,6 +201,51 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_hyperlinks: {
+        Row: {
+          id: string
+          work_item_id: string
+          url: string
+          alt_text: string
+          rank: number
+          organization_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          work_item_id: string
+          url: string
+          alt_text?: string
+          rank?: number
+          organization_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          work_item_id?: string
+          url?: string
+          alt_text?: string
+          rank?: number
+          organization_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_item_hyperlinks_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_hyperlinks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_items: {
         Row: {
           backlog_assignments: Json

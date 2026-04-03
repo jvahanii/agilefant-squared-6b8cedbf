@@ -1,12 +1,13 @@
 import { useAppStore } from "@/store/appStore";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
+import { HyperlinksDialog } from "./HyperlinksDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,6 +169,8 @@ function WorkItemNode({
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
+  const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
+  const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
@@ -462,6 +465,27 @@ function WorkItemNode({
             );
           })()}
 
+          {hyperlinkCount > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="shrink-0 mt-0.5 text-primary/70 hover:text-primary transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowHyperlinksDialog(true);
+                    }}
+                  >
+                    <Link2 className="w-3 h-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {hyperlinkCount} hyperlink{hyperlinkCount !== 1 ? "s" : ""}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {backlogPaths.length > 0 && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
               {backlogPaths.map(({ treeId: tid, path }) => (
@@ -555,6 +579,16 @@ function WorkItemNode({
                 title="Respawn settings"
               >
                 <Settings className="w-3.5 h-3.5" />
+              </button>
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHyperlinksDialog(true);
+                }}
+                title="Manage hyperlinks"
+              >
+                <Link2 className="w-3.5 h-3.5" />
               </button>
               <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -685,6 +719,11 @@ function WorkItemNode({
         workItemId={workItemId}
         open={showRespawnDialog}
         onOpenChange={setShowRespawnDialog}
+      />
+      <HyperlinksDialog
+        workItemId={workItemId}
+        open={showHyperlinksDialog}
+        onOpenChange={setShowHyperlinksDialog}
       />
     </>
   );

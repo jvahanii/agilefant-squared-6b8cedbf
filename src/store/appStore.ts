@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from "@/types/models";
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from "@/types/models";
 import {
   loadFromSupabase,
   upsertWorkItem,
@@ -12,6 +12,9 @@ import {
   deleteBacklogTree as deleteBacklogTreeDB,
   upsertBacklogTrees,
   resetOrgData,
+  loadHyperlinksForWorkItems,
+  upsertHyperlink,
+  deleteHyperlink as deleteHyperlinkDB,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 
@@ -32,6 +35,8 @@ interface DataSnapshot {
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
+  /** Maps workItemId -> ordered list of hyperlinks */
+  hyperlinks: Record<string, Hyperlink[]>;
   selectedBacklogIds: string[];
   selectedTreeId: string | null;
   selectedWorkItemIds: string[];
@@ -83,6 +88,10 @@ interface AppState extends DataSnapshot {
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
+  addHyperlink: (workItemId: string, url: string, altText: string) => void;
+  updateHyperlink: (linkId: string, workItemId: string, url: string, altText: string) => void;
+  removeHyperlink: (linkId: string, workItemId: string) => void;
+  loadHyperlinksForItem: (workItemId: string) => Promise<void>;
 }
 
 const ensureCleanId = (id: string, orgId: string): string => {
@@ -167,6 +176,7 @@ const snapshot = (state: DataSnapshot): DataSnapshot => ({
   workItems: JSON.parse(JSON.stringify(state.workItems)),
   backlogs: JSON.parse(JSON.stringify(state.backlogs)),
   backlogTrees: JSON.parse(JSON.stringify(state.backlogTrees)),
+  hyperlinks: JSON.parse(JSON.stringify(state.hyperlinks)),
   selectedBacklogIds: [...state.selectedBacklogIds],
   selectedTreeId: state.selectedTreeId,
   selectedWorkItemIds: [...state.selectedWorkItemIds],
@@ -188,6 +198,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     workItems: {},
     backlogs: {},
     backlogTrees: {},
+    hyperlinks: {},
     selectedBacklogIds: [],
     selectedTreeId: null,
     selectedWorkItemIds: [],
@@ -212,6 +223,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       try {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
+
+        // Load hyperlinks for all work items
+        const workItemIds = Object.keys(cleanData.workItems);
+        const hyperlinks = await loadHyperlinksForWorkItems(workItemIds);
 
         const parseStoredIds = (key: string): string[] => {
           try {
@@ -252,6 +267,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
         set({
           ...cleanData,
+          hyperlinks,
           isLoading: false,
           undoStack: [],
           redoStack: [],
@@ -1047,5 +1063,66 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (!next) return state;
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       }),
+
+    addHyperlink: (workItemId, url, altText) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId) return;
+      const existing = state.hyperlinks[workItemId] ?? [];
+      const id = crypto.randomUUID();
+      const newLink: Hyperlink = {
+        id,
+        workItemId,
+        url,
+        altText,
+        rank: existing.length,
+      };
+      upsertHyperlink(newLink, orgId);
+      internalLog({ action: "Add Hyperlink", entityType: "hyperlink", entityId: workItemId, details: url });
+      set({
+        hyperlinks: { ...state.hyperlinks, [workItemId]: [...existing, newLink] },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
+    updateHyperlink: (linkId, workItemId, url, altText) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId) return;
+      const existing = state.hyperlinks[workItemId] ?? [];
+      const idx = existing.findIndex((l) => l.id === linkId);
+      if (idx === -1) return;
+      const updated: Hyperlink = { ...existing[idx], url, altText };
+      upsertHyperlink(updated, orgId);
+      internalLog({ action: "Update Hyperlink", entityType: "hyperlink", entityId: workItemId, details: url });
+      const newList = [...existing];
+      newList[idx] = updated;
+      set({
+        hyperlinks: { ...state.hyperlinks, [workItemId]: newList },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
+    removeHyperlink: (linkId, workItemId) => {
+      const state = get();
+      const existing = state.hyperlinks[workItemId] ?? [];
+      const filtered = existing.filter((l) => l.id !== linkId);
+      deleteHyperlinkDB(linkId);
+      internalLog({ action: "Remove Hyperlink", entityType: "hyperlink", entityId: workItemId });
+      set({
+        hyperlinks: { ...state.hyperlinks, [workItemId]: filtered },
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
+    loadHyperlinksForItem: async (workItemId) => {
+      const links = await loadHyperlinksForWorkItems([workItemId]);
+      set((state) => ({
+        hyperlinks: { ...state.hyperlinks, [workItemId]: links[workItemId] ?? [] },
+      }));
+    },
   };
 });

@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { WorkItem, WorkItemStatus, Backlog, BacklogTree } from '@/types/models';
+import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 
 type WorkItemUpsertRow = {
@@ -443,4 +443,50 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     const { error } = await supabase.from('work_items').insert(itemRows);
     if (error) throw error;
   }
+}
+
+// ─── Hyperlink CRUD ───────────────────────────────────────────────────────
+
+export async function loadHyperlinksForWorkItems(workItemIds: string[]): Promise<Record<string, Hyperlink[]>> {
+  if (workItemIds.length === 0) return {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await supabase.from('work_item_hyperlinks' as any).select('*').in('work_item_id', workItemIds).order('rank');
+  if (error) { console.error('loadHyperlinksForWorkItems:', error); return {}; }
+  const result: Record<string, Hyperlink[]> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    const link: Hyperlink = {
+      id: row.id,
+      workItemId: row.work_item_id,
+      url: row.url,
+      altText: row.alt_text ?? '',
+      rank: row.rank ?? 0,
+    };
+    if (!result[link.workItemId]) result[link.workItemId] = [];
+    result[link.workItemId].push(link);
+  }
+  return result;
+}
+
+export async function upsertHyperlink(link: Hyperlink, organizationId: string) {
+  const row = {
+    id: link.id,
+    work_item_id: link.workItemId,
+    url: link.url,
+    alt_text: link.altText,
+    rank: link.rank,
+    organization_id: ownerOrgOf(link.workItemId, organizationId),
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await withSessionRetry(() => supabase.from('work_item_hyperlinks' as any).upsert(row as any).select().then(r => r));
+  if (error) {
+    console.error('upsertHyperlink:', error);
+    toast({ title: 'Failed to save hyperlink', description: 'Please check your connection and try again.', variant: 'destructive' });
+  }
+}
+
+export async function deleteHyperlink(id: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('work_item_hyperlinks' as any).delete().eq('id', id);
+  if (error) console.error('deleteHyperlink:', error);
 }
