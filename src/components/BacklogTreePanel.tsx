@@ -282,7 +282,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         {...listeners}
         className={`
           flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-grab active:cursor-grabbing
-          transition-all duration-150 ease-out select-none group
+          transition-all duration-150 ease-out select-none group touch-none
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
           ${isOver && !isDragging ? "drag-over" : ""}
           ${isDragging ? "shadow-lg bg-card" : ""}
