@@ -353,12 +353,25 @@ export default function AppLayout() {
 
         if (sourceTreeId !== targetTreeId) {
           const store = useAppStore.getState();
+
+          // Items already assigned to the target tree are being moved back to their
+          // original tree — simply remove them from the source tree without prompting.
+          const alreadyInTarget = draggedIds.filter(
+            (id) => store.workItems[id]?.backlogAssignments[targetTreeId] !== undefined,
+          );
+          alreadyInTarget.forEach((id) => removeWorkItemFromTree(id, sourceTreeId));
+
+          const notInTarget = draggedIds.filter(
+            (id) => store.workItems[id]?.backlogAssignments[targetTreeId] === undefined,
+          );
+          if (notInTarget.length === 0) return;
+
           const sourceTree = store.backlogTrees[sourceTreeId];
           const targetTree = store.backlogTrees[targetTreeId];
-          const titles = draggedIds.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
+          const titles = notInTarget.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
           setPendingCrossTree({
-            workItemIds: draggedIds,
-            totalCount: countWithDescendants(draggedIds),
+            workItemIds: notInTarget,
+            totalCount: countWithDescendants(notInTarget),
             targetBacklogId: overData.backlogId,
             targetTreeId,
             sourceTreeId,
@@ -434,6 +447,7 @@ export default function AppLayout() {
     },
     [
       moveWorkItemToBacklog,
+      removeWorkItemFromTree,
       reparentWorkItem,
       reorderWorkItemAmongSiblings,
       reorderBacklogAmongSiblings,
