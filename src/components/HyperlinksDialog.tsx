@@ -23,7 +23,8 @@ export function HyperlinksDialog({
   onOpenChange,
 }: HyperlinksDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
-  const hyperlinks = useAppStore((s) => s.hyperlinks[workItemId] ?? []);
+  const hyperlinksRaw = useAppStore((s) => s.hyperlinks[workItemId]);
+  const hyperlinks = useMemo(() => hyperlinksRaw ?? [], [hyperlinksRaw]);
   const addHyperlink = useAppStore((s) => s.addHyperlink);
   const updateHyperlink = useAppStore((s) => s.updateHyperlink);
   const removeHyperlink = useAppStore((s) => s.removeHyperlink);
