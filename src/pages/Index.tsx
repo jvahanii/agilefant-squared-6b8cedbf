@@ -3,6 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -38,6 +39,7 @@ const Index = () => {
   }, [activeOrgId]);
 
   useRespawnCheck();
+  useRealtimeSync();
 
   if (isLoading) {
     return (

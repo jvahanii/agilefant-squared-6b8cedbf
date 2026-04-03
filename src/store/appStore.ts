@@ -92,6 +92,9 @@ interface AppState extends DataSnapshot {
   updateHyperlink: (linkId: string, workItemId: string, url: string, altText: string) => void;
   removeHyperlink: (linkId: string, workItemId: string) => void;
   loadHyperlinksForItem: (workItemId: string) => Promise<void>;
+  applyRealtimeWorkItem: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeBacklog: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeBacklogTree: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
 const ensureCleanId = (id: string, orgId: string): string => {
@@ -1123,6 +1126,186 @@ export const useAppStore = create<AppState>()((set, get) => {
       set((state) => ({
         hyperlinks: { ...state.hyperlinks, [workItemId]: links[workItemId] ?? [] },
       }));
+    },
+
+    applyRealtimeWorkItem: (eventType, row) => {
+      set((state) => {
+        const id = row.id as string;
+
+        if (eventType === 'DELETE') {
+          if (!state.workItems[id]) return state;
+          const oldItem = state.workItems[id];
+          const updatedWorkItems = { ...state.workItems };
+          delete updatedWorkItems[id];
+          if (oldItem.parentId && updatedWorkItems[oldItem.parentId]) {
+            updatedWorkItems[oldItem.parentId] = {
+              ...updatedWorkItems[oldItem.parentId],
+              childrenIds: updatedWorkItems[oldItem.parentId].childrenIds.filter((cid) => cid !== id),
+            };
+          }
+          return { workItems: updatedWorkItems };
+        }
+
+        // INSERT or UPDATE: preserve existing childrenIds from current state
+        const newItem: WorkItem = {
+          id,
+          title: row.title as string,
+          description: (row.description as string | null) ?? undefined,
+          points: (row.points as number | null) ?? undefined,
+          status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
+          parentId: (row.parent_id as string | null) ?? null,
+          childrenIds: state.workItems[id]?.childrenIds ?? [],
+          backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
+          rank: row.rank as number,
+          respawnEnabled: (row.respawn_enabled as boolean) ?? false,
+          respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
+          respawnHour: (row.respawn_hour as number | null) ?? undefined,
+          respawnLastTriggeredAt: (row.respawn_last_triggered_at as string | null) ?? undefined,
+        };
+
+        const updatedWorkItems = { ...state.workItems, [id]: newItem };
+
+        const sortWorkItemIds = (ids: string[]) =>
+          [...ids].sort((a, b) => (updatedWorkItems[a]?.rank ?? 0) - (updatedWorkItems[b]?.rank ?? 0));
+
+        const oldItem = state.workItems[id];
+        const oldParentId = oldItem?.parentId ?? null;
+
+        if (eventType === 'INSERT' || oldParentId !== newItem.parentId) {
+          // Remove from old parent (UPDATE reparent case)
+          if (oldParentId && oldParentId !== newItem.parentId && updatedWorkItems[oldParentId]) {
+            updatedWorkItems[oldParentId] = {
+              ...updatedWorkItems[oldParentId],
+              childrenIds: updatedWorkItems[oldParentId].childrenIds.filter((cid) => cid !== id),
+            };
+          }
+          // Add to new parent if not already there
+          if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
+            const parent = updatedWorkItems[newItem.parentId];
+            if (!parent.childrenIds.includes(id)) {
+              updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds([...parent.childrenIds, id]) };
+            }
+          }
+        } else if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
+          // Same non-null parent: re-sort childrenIds in case rank changed.
+          // Note: root work items (parentId=null) have no childrenIds container – they are
+          // rendered by querying work items directly sorted by rank, so no array update is needed.
+          const parent = updatedWorkItems[newItem.parentId];
+          updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
+        }
+
+        return { workItems: updatedWorkItems };
+      });
+    },
+
+    applyRealtimeBacklog: (eventType, row) => {
+      set((state) => {
+        const id = row.id as string;
+
+        if (eventType === 'DELETE') {
+          if (!state.backlogs[id]) return state;
+          const bl = state.backlogs[id];
+          const updatedBacklogs = { ...state.backlogs };
+          delete updatedBacklogs[id];
+          const updatedTrees = { ...state.backlogTrees };
+          if (bl.parentId && updatedBacklogs[bl.parentId]) {
+            updatedBacklogs[bl.parentId] = {
+              ...updatedBacklogs[bl.parentId],
+              childrenIds: updatedBacklogs[bl.parentId].childrenIds.filter((cid) => cid !== id),
+            };
+          } else if (updatedTrees[bl.treeId]) {
+            updatedTrees[bl.treeId] = {
+              ...updatedTrees[bl.treeId],
+              rootBacklogIds: updatedTrees[bl.treeId].rootBacklogIds.filter((bid) => bid !== id),
+            };
+          }
+          return { backlogs: updatedBacklogs, backlogTrees: updatedTrees };
+        }
+
+        // INSERT or UPDATE: preserve existing childrenIds from current state
+        const newBacklog: Backlog = {
+          id,
+          name: row.name as string,
+          parentId: (row.parent_id as string | null) ?? null,
+          childrenIds: state.backlogs[id]?.childrenIds ?? [],
+          treeId: row.tree_id as string,
+          rank: row.rank as number,
+        };
+
+        const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
+        const updatedTrees = { ...state.backlogTrees };
+
+        const sortBacklogIds = (ids: string[]) =>
+          [...ids].sort((a, b) => (updatedBacklogs[a]?.rank ?? 0) - (updatedBacklogs[b]?.rank ?? 0));
+
+        const oldBacklog = state.backlogs[id];
+        const oldParentId = oldBacklog?.parentId ?? null;
+        const oldTreeId = oldBacklog?.treeId ?? null;
+        const parentChanged = oldParentId !== newBacklog.parentId || oldTreeId !== newBacklog.treeId;
+
+        if (eventType === 'INSERT' || parentChanged) {
+          // Remove from old location (UPDATE reparent case)
+          if (oldBacklog && parentChanged) {
+            if (oldParentId && updatedBacklogs[oldParentId]) {
+              updatedBacklogs[oldParentId] = {
+                ...updatedBacklogs[oldParentId],
+                childrenIds: updatedBacklogs[oldParentId].childrenIds.filter((cid) => cid !== id),
+              };
+            } else if (oldTreeId && updatedTrees[oldTreeId]) {
+              updatedTrees[oldTreeId] = {
+                ...updatedTrees[oldTreeId],
+                rootBacklogIds: updatedTrees[oldTreeId].rootBacklogIds.filter((bid) => bid !== id),
+              };
+            }
+          }
+          // Add to new location if not already present
+          if (newBacklog.parentId && updatedBacklogs[newBacklog.parentId]) {
+            const parent = updatedBacklogs[newBacklog.parentId];
+            if (!parent.childrenIds.includes(id)) {
+              updatedBacklogs[newBacklog.parentId] = { ...parent, childrenIds: sortBacklogIds([...parent.childrenIds, id]) };
+            }
+          } else if (updatedTrees[newBacklog.treeId]) {
+            const tree = updatedTrees[newBacklog.treeId];
+            if (!tree.rootBacklogIds.includes(id)) {
+              updatedTrees[newBacklog.treeId] = { ...tree, rootBacklogIds: sortBacklogIds([...tree.rootBacklogIds, id]) };
+            }
+          }
+        } else {
+          // Same parent: re-sort in case rank changed
+          if (newBacklog.parentId && updatedBacklogs[newBacklog.parentId]) {
+            const parent = updatedBacklogs[newBacklog.parentId];
+            updatedBacklogs[newBacklog.parentId] = { ...parent, childrenIds: sortBacklogIds(parent.childrenIds) };
+          } else if (updatedTrees[newBacklog.treeId]) {
+            const tree = updatedTrees[newBacklog.treeId];
+            updatedTrees[newBacklog.treeId] = { ...tree, rootBacklogIds: sortBacklogIds(tree.rootBacklogIds) };
+          }
+        }
+
+        return { backlogs: updatedBacklogs, backlogTrees: updatedTrees };
+      });
+    },
+
+    applyRealtimeBacklogTree: (eventType, row) => {
+      set((state) => {
+        const id = row.id as string;
+
+        if (eventType === 'DELETE') {
+          if (!state.backlogTrees[id]) return state;
+          const updatedTrees = { ...state.backlogTrees };
+          delete updatedTrees[id];
+          return { backlogTrees: updatedTrees };
+        }
+
+        // INSERT or UPDATE: preserve existing rootBacklogIds so backlogs stay attached
+        const newTree: BacklogTree = {
+          id,
+          name: row.name as string,
+          rank: row.rank as number,
+          rootBacklogIds: state.backlogTrees[id]?.rootBacklogIds ?? [],
+        };
+
+        return { backlogTrees: { ...state.backlogTrees, [id]: newTree } };
+      });
     },
   };
 });
