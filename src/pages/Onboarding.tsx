@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function Onboarding() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { createOrganization, loadMemberships } = useOrgStore();
   const [loading, setLoading] = useState(false);
 
