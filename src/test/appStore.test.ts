@@ -14,6 +14,9 @@ vi.mock("@/store/supabaseSync", () => ({
   deleteBacklogTree: vi.fn(),
   upsertBacklogTrees: vi.fn(),
   resetOrgData: vi.fn(),
+  loadHyperlinksForWorkItems: vi.fn().mockResolvedValue({}),
+  upsertHyperlink: vi.fn(),
+  deleteHyperlink: vi.fn(),
 }));
 
 vi.mock("@/store/mockData", () => ({
@@ -49,7 +52,7 @@ function seedStore() {
 
 beforeEach(() => {
   useAppStore.setState({
-    workItems: {}, backlogs: {}, backlogTrees: {},
+    workItems: {}, backlogs: {}, backlogTrees: {}, hyperlinks: {},
     selectedBacklogIds: [], selectedTreeId: null, selectedWorkItemIds: [],
     changeLog: [], expandedWorkItems: new Set(), expandedBacklogs: new Set(),
     undoStack: [], redoStack: [], isLoading: false, organizationId: null,
@@ -510,5 +513,98 @@ describe("sanitizeData", () => {
       backlogTrees: { "bt-1": { id: "bt-1", name: "Tree", rootBacklogIds: ["bl-1"], rank: 0 } },
     }, ORG);
     expect(result.workItems[`${ORG}::wi-1`].childrenIds).toContain(`${ORG}::wi-2`);
+  });
+});
+
+// ─── HYPERLINKS ────────────────────────────────────────────────────────
+
+describe("addHyperlink", () => {
+  it("adds a hyperlink to a work item", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://example.com", "Example");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(links).toHaveLength(1);
+    expect(links[0].url).toBe("https://example.com");
+    expect(links[0].altText).toBe("Example");
+    expect(links[0].workItemId).toBe(`${ORG}::wi-1`);
+    expect(links[0].rank).toBe(0);
+  });
+
+  it("increments rank for subsequent links", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://a.com", "A");
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://b.com", "B");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(links).toHaveLength(2);
+    expect(links[0].rank).toBe(0);
+    expect(links[1].rank).toBe(1);
+  });
+
+  it("allows empty alt text", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://example.com", "");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(links[0].altText).toBe("");
+  });
+
+  it("pushes to undo stack", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://example.com", "Example");
+    expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
+  });
+});
+
+describe("updateHyperlink", () => {
+  it("updates URL and alt text of an existing hyperlink", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://old.com", "Old");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    const linkId = links[0].id;
+    useAppStore.getState().updateHyperlink(linkId, `${ORG}::wi-1`, "https://new.com", "New");
+    const updated = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(updated).toHaveLength(1);
+    expect(updated[0].url).toBe("https://new.com");
+    expect(updated[0].altText).toBe("New");
+  });
+
+  it("does nothing for non-existent link ID", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://old.com", "Old");
+    useAppStore.getState().updateHyperlink("nonexistent", `${ORG}::wi-1`, "https://new.com", "New");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(links[0].url).toBe("https://old.com");
+  });
+});
+
+describe("removeHyperlink", () => {
+  it("removes a hyperlink from a work item", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://example.com", "Example");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    const linkId = links[0].id;
+    useAppStore.getState().removeHyperlink(linkId, `${ORG}::wi-1`);
+    const remaining = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("only removes the specified hyperlink", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://a.com", "A");
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://b.com", "B");
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    const firstId = links[0].id;
+    useAppStore.getState().removeHyperlink(firstId, `${ORG}::wi-1`);
+    const remaining = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].url).toBe("https://b.com");
+  });
+
+  it("pushes to undo stack", () => {
+    seedStore();
+    useAppStore.getState().addHyperlink(`${ORG}::wi-1`, "https://example.com", "Example");
+    const stackBefore = useAppStore.getState().undoStack.length;
+    const links = useAppStore.getState().hyperlinks[`${ORG}::wi-1`];
+    useAppStore.getState().removeHyperlink(links[0].id, `${ORG}::wi-1`);
+    expect(useAppStore.getState().undoStack.length).toBeGreaterThan(stackBefore);
   });
 });
