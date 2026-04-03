@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function Onboarding() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { createOrganization, loadMemberships } = useOrgStore();
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +39,7 @@ export default function Onboarding() {
                     await createOrganization(name, slug, user.id);
                     await loadMemberships(user.id);
                     toast({ title: 'Organization created!' });
+                    navigate('/', { replace: true });
                   } catch (err: any) {
                     toast({ title: 'Error', description: err.message, variant: 'destructive' });
                   }
