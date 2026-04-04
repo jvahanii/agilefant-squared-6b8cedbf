@@ -249,6 +249,8 @@ export default function TeamSettings() {
           if (itemsInTree.length > 0) {
             const itemIds = itemsInTree.map((i: any) => i.id);
             await supabase.from("work_items").update({ organization_id: newOwnerId }).in("id", itemIds);
+            // Transfer hyperlinks so the org FK constraint is not violated on deletion
+            await supabase.from("work_item_hyperlinks").update({ organization_id: newOwnerId }).in("work_item_id", itemIds);
           }
 
           // Remove the share entry for the new owner (they now own it)
@@ -260,7 +262,60 @@ export default function TeamSettings() {
         }
       }
 
-      // 2. Now delete the organization (non-shared trees/backlogs/items will cascade or be cleaned up)
+      // 2. Handle trees SHARED WITH this org (owned by other orgs).
+      // When this org is deleted its backlogs and work items in those trees must be
+      // transferred to the tree-owning org so the other org retains all data.
+      const { data: incomingShares } = await supabase
+        .from("backlog_tree_shares" as any)
+        .select("tree_id")
+        .eq("organization_id", activeOrgId);
+
+      const incomingTreeIds = (incomingShares ?? []).map((s: any) => s.tree_id as string);
+
+      if (incomingTreeIds.length > 0) {
+        const { data: incomingTrees } = await supabase
+          .from("backlog_trees")
+          .select("id, organization_id")
+          .in("id", incomingTreeIds);
+
+        // Fetch all items owned by this org once; filter per tree and remove transferred items
+        // to avoid re-transferring items that have assignments to multiple shared trees.
+        const { data: remainingSharedItems } = await supabase
+          .from("work_items")
+          .select("id, backlog_assignments")
+          .eq("organization_id", activeOrgId);
+
+        let pendingItems: any[] = remainingSharedItems ?? [];
+
+        for (const tree of (incomingTrees ?? []) as any[]) {
+          const treeOwnerOrgId = tree.organization_id as string;
+
+          // Transfer backlogs in this tree that are owned by the deleting org
+          await supabase
+            .from("backlogs")
+            .update({ organization_id: treeOwnerOrgId })
+            .eq("tree_id", tree.id)
+            .eq("organization_id", activeOrgId);
+
+          // Transfer work items with assignments to this tree owned by the deleting org
+          const sharedItemsInTree = pendingItems.filter((item: any) => {
+            const assignments = item.backlog_assignments as Record<string, string>;
+            return assignments[tree.id] !== undefined;
+          });
+
+          if (sharedItemsInTree.length > 0) {
+            const sharedItemIds = sharedItemsInTree.map((i: any) => i.id as string);
+            await supabase.from("work_items").update({ organization_id: treeOwnerOrgId }).in("id", sharedItemIds);
+            // Transfer hyperlinks so the org FK constraint is not violated on deletion
+            await supabase.from("work_item_hyperlinks").update({ organization_id: treeOwnerOrgId }).in("work_item_id", sharedItemIds);
+            // Remove transferred items so they are not processed again for other shared trees
+            const transferred = new Set(sharedItemIds);
+            pendingItems = pendingItems.filter((i: any) => !transferred.has(i.id));
+          }
+        }
+      }
+
+      // 3. Now delete the organization (non-shared trees/backlogs/items will cascade or be cleaned up)
       // Delete remaining work items owned by this org
       await supabase.from("work_items").delete().eq("organization_id", activeOrgId);
       // Delete remaining backlogs owned by this org
