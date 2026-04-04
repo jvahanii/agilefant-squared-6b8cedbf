@@ -50,13 +50,15 @@ export function HyperlinksDialog({
     }
   }, [editingId]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes; auto-enter adding mode when it opens
   useEffect(() => {
     if (!open) {
       setIsAdding(false);
       setNewUrl("");
       setNewAltText("");
       setEditingId(null);
+    } else {
+      setIsAdding(true);
     }
   }, [open]);
 
@@ -69,6 +71,7 @@ export function HyperlinksDialog({
     setNewUrl("");
     setNewAltText("");
     setIsAdding(false);
+    onOpenChange(false);
   };
 
   const handleStartEdit = (linkId: string, url: string, altText: string) => {
