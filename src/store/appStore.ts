@@ -677,7 +677,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (wi.id === workItemId) return;
         if (wi.parentId !== newParentId) return;
         const isInSameContext = Object.entries(item.backlogAssignments).some(
-          ([tid, blId]) => wi.backlogAssignments[tid] === blId,
+          ([treeId, backlogId]) => wi.backlogAssignments[treeId] === backlogId,
         );
         if (isInSameContext && wi.rank > maxRank) maxRank = wi.rank;
       });
