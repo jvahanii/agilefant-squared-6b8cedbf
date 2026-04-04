@@ -195,9 +195,9 @@ function WorkItemNode({
   }, [assignmentCount, deleteWorkItem, item, workItemId]);
 
   const handleEditHyperlinks = useCallback(() => {
-    if (selectedWorkItemIds[0] !== workItemId) return;
+    if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
     setShowHyperlinksDialog(true);
-  }, [selectedWorkItemIds, workItemId]);
+  }, [workItemId]);
 
   const {
     attributes,
@@ -266,7 +266,7 @@ function WorkItemNode({
       window.removeEventListener("shortcut:delete-selected", handleDelete);
       window.removeEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     };
-  }, [expanded, handleDeleteClick, handleEditHyperlinks, isSelected, selectedWorkItemIds, toggleExpand, workItemId]);
+  }, [expanded, handleDeleteClick, handleEditHyperlinks, isSelected, toggleExpand, workItemId]);
 
   // On mount, if this is the first selected item, scroll it into view so
   // the previously-selected item is visible after restore (especially on mobile
