@@ -210,6 +210,13 @@ export default function AppLayout() {
           }
           break;
         }
+        case "h": {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("shortcut:edit-hyperlinks"));
+          }
+          break;
+        }
         case "enter": {
           if (e.shiftKey) {
             e.preventDefault();
@@ -834,6 +841,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["P"], description: "Set status: Pending" },
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["N"], description: "Set status: Not Started" },
+    { keys: ["H"], description: "Edit hyperlinks" },
   ];
 
   return (
