@@ -259,6 +259,109 @@ describe("reparentWorkItem", () => {
     expect(parent.childrenIds).toContain(item2Id);
     expect(child.parentId).toBe(`${ORG}::wi-1`);
   });
+
+  it("assigns a non-duplicate rank when reparented to a parent with existing children", () => {
+    seedStore();
+    const s = useAppStore.getState();
+    // Give wi-1 a child at rank 0
+    s.addWorkItem("Child A", `${ORG}::wi-1`, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    // Add a second root item (will get rank 1 after the shift in addWorkItem)
+    s.addWorkItem("Item 2", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    const item2Id = Object.keys(useAppStore.getState().workItems).find(
+      (id) => useAppStore.getState().workItems[id].title === "Item 2",
+    )!;
+    const childAId = Object.keys(useAppStore.getState().workItems).find(
+      (id) => useAppStore.getState().workItems[id].title === "Child A",
+    )!;
+    // Record Child A's rank before the reparent
+    const childARank = useAppStore.getState().workItems[childAId].rank;
+    // Reparent Item 2 under wi-1 — it should NOT receive the same rank as Child A
+    s.reparentWorkItem(item2Id, `${ORG}::wi-1`);
+    const movedItem = useAppStore.getState().workItems[item2Id];
+    expect(movedItem.rank).not.toBe(childARank);
+  });
+
+  it("assigns rank 0 when reparented to a parent with no existing children", () => {
+    seedStore();
+    const s = useAppStore.getState();
+    s.addWorkItem("Item 2", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    const item2Id = Object.keys(useAppStore.getState().workItems).find(
+      (id) => useAppStore.getState().workItems[id].title === "Item 2",
+    )!;
+    // wi-1 currently has no children
+    s.reparentWorkItem(item2Id, `${ORG}::wi-1`);
+    const movedItem = useAppStore.getState().workItems[item2Id];
+    expect(movedItem.rank).toBe(0);
+  });
+});
+
+// ─── MOVE WORK ITEM TO BACKLOG ─────────────────────────────────────────
+
+describe("moveWorkItemToBacklog", () => {
+  function seedTwoBacklogStore() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Item 1", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+        [`${ORG}::wi-2`]: {
+          id: `${ORG}::wi-2`, title: "Item 2", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, rank: 0,
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+  }
+
+  it("updates backlog assignment of the moved item", () => {
+    seedTwoBacklogStore();
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+    const moved = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+  });
+
+  it("assigns a non-duplicate rank when target backlog already has an item with the same rank", () => {
+    seedTwoBacklogStore();
+    // wi-1 (rank 0) is in bl-1; wi-2 (rank 0) is in bl-2.
+    // Moving wi-1 to bl-2 must not result in two rank-0 root items in bl-2.
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+    const movedItem = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    const existingItem = useAppStore.getState().workItems[`${ORG}::wi-2`];
+    expect(movedItem.rank).not.toBe(existingItem.rank);
+  });
+
+  it("also moves child items' backlog assignment recursively", () => {
+    seedTwoBacklogStore();
+    // Give wi-1 a child
+    useAppStore.setState({
+      workItems: {
+        ...useAppStore.getState().workItems,
+        [`${ORG}::wi-1`]: {
+          ...useAppStore.getState().workItems[`${ORG}::wi-1`],
+          childrenIds: [`${ORG}::wi-child`],
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child", status: "not_started" as const,
+          parentId: `${ORG}::wi-1`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0,
+        },
+      },
+    });
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+    const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
+    expect(child.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+  });
 });
 
 // ─── RESPAWN ITEM ──────────────────────────────────────────────────────

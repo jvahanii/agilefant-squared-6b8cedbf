@@ -386,21 +386,33 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
 
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
+
+      // Compute a rank for the root item that avoids conflicts in the target backlog context.
+      let maxRank = -1;
+      Object.values(state.workItems).forEach((wi) => {
+        if (wi.id === workItemId) return;
+        if (wi.parentId === item.parentId && wi.backlogAssignments[treeId] === cleanTargetBl) {
+          if (wi.rank > maxRank) maxRank = wi.rank;
+        }
+      });
+      const newRootRank = maxRank + 1;
+
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
 
-      const moveRecursive = (id: string) => {
+      const moveRecursive = (id: string, isRoot: boolean) => {
         const wi = updatedItems[id];
         if (!wi) return;
         updatedItems[id] = {
           ...wi,
           backlogAssignments: { ...wi.backlogAssignments, [treeId]: cleanTargetBl },
+          ...(isRoot ? { rank: newRootRank } : {}),
         };
         changed.push(updatedItems[id]);
-        wi.childrenIds.forEach(moveRecursive);
+        wi.childrenIds.forEach((childId) => moveRecursive(childId, false));
       };
 
-      moveRecursive(workItemId);
+      moveRecursive(workItemId, true);
       upsertWorkItems(changed, orgId);
       internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title });
       set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
@@ -659,7 +671,17 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
         };
       }
-      updatedItems[workItemId] = { ...item, parentId: newParentId };
+      // Assign a rank that avoids conflicts with existing siblings in the new parent's context.
+      let maxRank = -1;
+      Object.values(state.workItems).forEach((wi) => {
+        if (wi.id === workItemId) return;
+        if (wi.parentId !== newParentId) return;
+        const isInSameContext = Object.entries(item.backlogAssignments).some(
+          ([treeId, backlogId]) => wi.backlogAssignments[treeId] === backlogId,
+        );
+        if (isInSameContext && wi.rank > maxRank) maxRank = wi.rank;
+      });
+      updatedItems[workItemId] = { ...item, parentId: newParentId, rank: maxRank + 1 };
       const changed = [updatedItems[workItemId]];
       if (item.parentId && updatedItems[item.parentId]) changed.push(updatedItems[item.parentId]);
       if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
