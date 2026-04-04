@@ -15,6 +15,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useOrgStore } from "@/store/orgStore";
+import { isPointsEnabled } from "@/hooks/usePointsEnabled";
 
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
@@ -166,6 +168,8 @@ function WorkItemNode({
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isMobile = useIsMobile();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const pointsVisible = isPointsEnabled(activeOrgId);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -515,7 +519,7 @@ function WorkItemNode({
           )}
 
           <div className="flex items-start gap-1 mt-0.5">
-            {isEditingPoints ? (
+            {pointsVisible && (isEditingPoints ? (
               <input
                 ref={pointsRef}
                 className="w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
@@ -561,7 +565,7 @@ function WorkItemNode({
                   </span>
                 );
               })()
-            )}
+            ))}
 
             <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
               <button

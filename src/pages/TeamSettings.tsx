@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
+import { isPointsEnabled as isPointsEnabledSetting, setPointsEnabled as setPointsEnabledSetting } from "@/hooks/usePointsEnabled";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -54,6 +55,9 @@ export default function TeamSettings() {
   // Auto-check state
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
   const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
+
+  // Points state
+  const [pointsEnabled, setPointsEnabled] = useState(() => isPointsEnabledSetting(activeOrgId));
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -432,6 +436,34 @@ export default function TeamSettings() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Hash className="w-4 h-4" /> Points
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable story points</p>
+                <p className="text-xs text-muted-foreground">
+                  Show story points on work items and backlogs.
+                </p>
+              </div>
+              <Switch
+                checked={pointsEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setPointsEnabledSetting(activeOrgId, checked);
+                    setPointsEnabled(checked);
+                    toast({ title: checked ? "Points enabled" : "Points disabled" });
+                  }
+                }}
+              />
             </div>
           </CardContent>
         </Card>
