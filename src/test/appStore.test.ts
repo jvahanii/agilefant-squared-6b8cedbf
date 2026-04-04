@@ -518,6 +518,221 @@ describe("sanitizeData", () => {
 
 // ─── HYPERLINKS ────────────────────────────────────────────────────────
 
+// ─── REORDER WORK ITEMS ────────────────────────────────────────────────
+
+describe("reorderWorkItemAmongSiblings", () => {
+  function seedThreeItems() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0 },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 1 },
+        [`${ORG}::wi-c`]: { id: `${ORG}::wi-c`, title: "C", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 2 },
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+  }
+
+  function rankedOrder() {
+    return Object.values(useAppStore.getState().workItems)
+      .sort((a, b) => a.rank - b.rank)
+      .map((wi) => wi.title);
+  }
+
+  it("moves first item to end", () => {
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 3, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["B", "C", "A"]);
+  });
+
+  it("moves last item to beginning", () => {
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-c`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["C", "A", "B"]);
+  });
+
+  it("moves middle item to beginning", () => {
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-b`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["B", "A", "C"]);
+  });
+
+  it("clamps out-of-range index to end", () => {
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 999, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["B", "C", "A"]);
+  });
+
+  it("pushes to undo stack", () => {
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 3, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── REORDER BACKLOGS ──────────────────────────────────────────────────
+
+describe("reorderBacklogAmongSiblings", () => {
+  function seedThreeBacklogs() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: {
+          id: `${ORG}::bt-1`,
+          name: "Tree 1",
+          rootBacklogIds: [`${ORG}::bl-a`, `${ORG}::bl-b`, `${ORG}::bl-c`],
+          rank: 0,
+        },
+      },
+      backlogs: {
+        [`${ORG}::bl-a`]: { id: `${ORG}::bl-a`, name: "A", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-b`]: { id: `${ORG}::bl-b`, name: "B", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-c`]: { id: `${ORG}::bl-c`, name: "C", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 2 },
+      },
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+  }
+
+  function rootOrder() {
+    const tree = useAppStore.getState().backlogTrees[`${ORG}::bt-1`];
+    return tree.rootBacklogIds.map((id) => useAppStore.getState().backlogs[id]?.name);
+  }
+
+  it("moves first backlog to end", () => {
+    seedThreeBacklogs();
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-a`, 3, null, `${ORG}::bt-1`);
+    expect(rootOrder()).toEqual(["B", "C", "A"]);
+  });
+
+  it("moves last backlog to beginning", () => {
+    seedThreeBacklogs();
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-c`, 0, null, `${ORG}::bt-1`);
+    expect(rootOrder()).toEqual(["C", "A", "B"]);
+  });
+
+  it("moves middle backlog to beginning", () => {
+    seedThreeBacklogs();
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-b`, 0, null, `${ORG}::bt-1`);
+    expect(rootOrder()).toEqual(["B", "A", "C"]);
+  });
+
+  it("reorders child backlogs within their parent", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-root`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-root`]: { id: `${ORG}::bl-root`, name: "Root", parentId: null, childrenIds: [`${ORG}::bl-x`, `${ORG}::bl-y`], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-x`]: { id: `${ORG}::bl-x`, name: "X", parentId: `${ORG}::bl-root`, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-y`]: { id: `${ORG}::bl-y`, name: "Y", parentId: `${ORG}::bl-root`, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-x`, 2, `${ORG}::bl-root`, `${ORG}::bt-1`);
+    const parent = useAppStore.getState().backlogs[`${ORG}::bl-root`];
+    expect(parent.childrenIds).toEqual([`${ORG}::bl-y`, `${ORG}::bl-x`]);
+  });
+
+  it("cross-parent: moveBacklog then reorderBacklogAmongSiblings moves to new parent at correct position", () => {
+    // BL-root has children [BL-x, BL-y]. BL-z is a root sibling of BL-root.
+    // Simulate what handleDragEnd does: moveBacklog(BL-z, BL-root) then reorder at index 1.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: {
+          id: `${ORG}::bt-1`,
+          name: "Tree 1",
+          rootBacklogIds: [`${ORG}::bl-root`, `${ORG}::bl-z`],
+          rank: 0,
+        },
+      },
+      backlogs: {
+        [`${ORG}::bl-root`]: { id: `${ORG}::bl-root`, name: "Root", parentId: null, childrenIds: [`${ORG}::bl-x`, `${ORG}::bl-y`], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-x`]: { id: `${ORG}::bl-x`, name: "X", parentId: `${ORG}::bl-root`, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-y`]: { id: `${ORG}::bl-y`, name: "Y", parentId: `${ORG}::bl-root`, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-z`]: { id: `${ORG}::bl-z`, name: "Z", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    // Move BL-z under BL-root, then reorder it to position 1 (between X and Y)
+    useAppStore.getState().moveBacklog(`${ORG}::bl-z`, `${ORG}::bl-root`, `${ORG}::bt-1`);
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-z`, 1, `${ORG}::bl-root`, `${ORG}::bt-1`);
+    const parent = useAppStore.getState().backlogs[`${ORG}::bl-root`];
+    expect(parent.childrenIds).toEqual([`${ORG}::bl-x`, `${ORG}::bl-z`, `${ORG}::bl-y`]);
+  });
+
+  it("pushes to undo stack", () => {
+    seedThreeBacklogs();
+    useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-a`, 3, null, `${ORG}::bt-1`);
+    expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── REORDER BACKLOG TREES ─────────────────────────────────────────────
+
+describe("reorderBacklogTree", () => {
+  function seedThreeTrees() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [], rank: 1 },
+        [`${ORG}::bt-3`]: { id: `${ORG}::bt-3`, name: "Tree 3", rootBacklogIds: [], rank: 2 },
+      },
+      backlogs: {},
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+  }
+
+  function treeOrder() {
+    return Object.values(useAppStore.getState().backlogTrees)
+      .sort((a, b) => a.rank - b.rank)
+      .map((t) => t.name);
+  }
+
+  it("moves first tree to end", () => {
+    seedThreeTrees();
+    useAppStore.getState().reorderBacklogTree(`${ORG}::bt-1`, 3);
+    expect(treeOrder()).toEqual(["Tree 2", "Tree 3", "Tree 1"]);
+  });
+
+  it("moves last tree to beginning", () => {
+    seedThreeTrees();
+    useAppStore.getState().reorderBacklogTree(`${ORG}::bt-3`, 0);
+    expect(treeOrder()).toEqual(["Tree 3", "Tree 1", "Tree 2"]);
+  });
+
+  it("moves middle tree to beginning", () => {
+    seedThreeTrees();
+    useAppStore.getState().reorderBacklogTree(`${ORG}::bt-2`, 0);
+    expect(treeOrder()).toEqual(["Tree 2", "Tree 1", "Tree 3"]);
+  });
+
+  it("pushes to undo stack", () => {
+    seedThreeTrees();
+    useAppStore.getState().reorderBacklogTree(`${ORG}::bt-1`, 3);
+    expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── HYPERLINKS ────────────────────────────────────────────────────────
+
 describe("addHyperlink", () => {
   it("adds a hyperlink to a work item", () => {
     seedStore();

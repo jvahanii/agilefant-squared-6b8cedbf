@@ -483,12 +483,17 @@ export default function AppLayout() {
         const treeId = overData.treeId as string;
         const targetIndex = overData.index as number;
         const store = useAppStore.getState();
+        const bl = store.backlogs[backlogId];
+        if (!bl) return;
         const isDescendant = (parentId: string | null, checkId: string): boolean => {
           if (!parentId) return false;
           if (parentId === checkId) return true;
           return isDescendant(store.backlogs[parentId]?.parentId ?? null, checkId);
         };
         if (targetParentId && isDescendant(targetParentId, backlogId)) return;
+        if (bl.parentId !== targetParentId) {
+          moveBacklog(backlogId, targetParentId, treeId);
+        }
         reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog") {
         const backlogId = activeData.backlogId as string;
