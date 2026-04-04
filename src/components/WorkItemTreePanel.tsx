@@ -244,15 +244,21 @@ function WorkItemNode({
     };
     const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
+    const handleEditHyperlinks = () => {
+      if (selectedWorkItemIds[0] !== workItemId) return;
+      setShowHyperlinksDialog(true);
+    };
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
+    window.addEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     return () => {
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
       window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
+      window.removeEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     };
-  }, [isSelected, workItemId, expanded]);
+  }, [expanded, handleDeleteClick, isSelected, selectedWorkItemIds, toggleExpand, workItemId]);
 
   // On mount, if this is the first selected item, scroll it into view so
   // the previously-selected item is visible after restore (especially on mobile
@@ -595,7 +601,7 @@ function WorkItemNode({
                   e.stopPropagation();
                   setShowHyperlinksDialog(true);
                 }}
-                title="Manage hyperlinks"
+                title="Manage hyperlinks (H)"
               >
                 <Link2 className="w-3.5 h-3.5" />
               </button>
