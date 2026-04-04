@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -26,10 +27,10 @@ export default function Auth() {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
-              <LoginForm loading={loading} setLoading={setLoading} />
+              <LoginForm loading={loading} setLoading={setLoading} email={email} setEmail={setEmail} />
             </TabsContent>
             <TabsContent value="signup">
-              <SignupForm loading={loading} setLoading={setLoading} />
+              <SignupForm loading={loading} setLoading={setLoading} email={email} setEmail={setEmail} />
             </TabsContent>
           </Tabs>
           <div className="mt-4">
@@ -64,8 +65,7 @@ export default function Auth() {
   );
 }
 
-function LoginForm({ loading, setLoading }: { loading: boolean; setLoading: (v: boolean) => void }) {
-  const [email, setEmail] = useState("");
+function LoginForm({ loading, setLoading, email, setEmail }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void }) {
   const [password, setPassword] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -125,8 +125,7 @@ function LoginForm({ loading, setLoading }: { loading: boolean; setLoading: (v: 
   );
 }
 
-function SignupForm({ loading, setLoading }: { loading: boolean; setLoading: (v: boolean) => void }) {
-  const [email, setEmail] = useState("");
+function SignupForm({ loading, setLoading, email, setEmail }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void }) {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
