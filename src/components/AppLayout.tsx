@@ -851,7 +851,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["P"], description: "Set status: Pending" },
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["N"], description: "Set status: Not Started" },
-    { keys: ["H", "Ctrl+K"], description: "Edit hyperlinks" },
+    { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
   ];
 
   return (
