@@ -7,6 +7,8 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  pointerWithin,
+  rectIntersection,
 } from "@dnd-kit/core";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
@@ -77,6 +79,26 @@ export default function AppLayout() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
+
+  // Custom collision detection: prefer pointer-within (exact pointer position) over rect
+  // intersection. When multiple droppables contain the pointer, prefer the smaller/more
+  // specific ones (e.g. thin reorder zones over large item rows) by sorting by area.
+  const collisionDetectionStrategy = useCallback(
+    (args: Parameters<typeof rectIntersection>[0]) => {
+      const pointerCollisions = pointerWithin(args);
+      if (pointerCollisions.length > 0) {
+        return [...pointerCollisions].sort((a, b) => {
+          const rA = args.droppableRects.get(a.id);
+          const rB = args.droppableRects.get(b.id);
+          const areaA = rA ? rA.width * rA.height : Infinity;
+          const areaB = rB ? rB.width * rB.height : Infinity;
+          return areaA - areaB;
+        });
+      }
+      return rectIntersection(args);
+    },
+    [],
   );
 
   useEffect(() => {
@@ -601,7 +623,7 @@ export default function AppLayout() {
   const [showResetDialog, setShowResetDialog] = useState(false);
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col overflow-hidden bg-background">
         {/* HEADER */}
         <header className="h-14 md:h-16 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-card shrink-0 shadow-sm z-10">
