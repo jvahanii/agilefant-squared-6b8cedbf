@@ -3,7 +3,7 @@ import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
@@ -187,7 +187,6 @@ function WorkItemNode({
     attributes,
     listeners,
     setNodeRef: setDragRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: `workitem-${workItemId}`,
@@ -316,11 +315,7 @@ function WorkItemNode({
     <>
       <div
         ref={combinedRef}
-        style={
-          transform
-            ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 }
-            : undefined
-        }
+        style={isDragging ? { opacity: 0.4 } : undefined}
         className="animate-fade-in-up"
       >
         <div

@@ -2,7 +2,6 @@ import { useAppStore } from "@/store/appStore";
 import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { CSS } from "@dnd-kit/utilities";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ShareTreeDialog } from "./ShareTreeDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -201,7 +200,6 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
     attributes,
     listeners,
     setNodeRef: setDragRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: `backlog-drag-${backlogId}`,
@@ -277,9 +275,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
       className="animate-fade-in-up"
       style={{
         animationDelay: `${depth * 40}ms`,
-        ...(transform
-          ? { transform: CSS.Translate.toString(transform), zIndex: 50, opacity: isDragging ? 0.5 : 1 }
-          : {}),
+        ...(isDragging ? { opacity: 0.4 } : {}),
       }}
     >
       <div
@@ -551,7 +547,6 @@ function DraggableTreeHeader({
     attributes,
     listeners,
     setNodeRef: setDragRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: `tree-drag-${tree.id}`,
@@ -562,9 +557,8 @@ function DraggableTreeHeader({
     <div
       ref={setDragRef}
       {...attributes}
-      className={`px-2 py-1 flex flex-col group select-none
-        ${isDragging ? "opacity-50" : ""}`}
-      style={transform ? { transform: CSS.Translate.toString(transform), zIndex: 50 } : undefined}
+      className="px-2 py-1 flex flex-col group select-none"
+      style={isDragging ? { opacity: 0.4 } : undefined}
       onPointerDown={(e) => {
         dragStartedRef.current = false;
         dragStartPosRef.current = { x: e.clientX, y: e.clientY };
