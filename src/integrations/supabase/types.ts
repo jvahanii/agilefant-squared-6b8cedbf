@@ -353,6 +353,10 @@ export type Database = {
         Args: { _tree_id: string; _user_id: string }
         Returns: boolean
       }
+      is_work_item_accessible: {
+        Args: { _user_id: string; _work_item_id: string }
+        Returns: boolean
+      }
       remove_tree_share_with_copy: {
         Args: { _share_id: string }
         Returns: undefined
