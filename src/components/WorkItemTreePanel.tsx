@@ -8,6 +8,7 @@ import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -164,6 +165,7 @@ function WorkItemNode({
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
+  const isMobile = useIsMobile();
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -210,6 +212,10 @@ function WorkItemNode({
     },
     [setDragRef, setDropRef],
   );
+
+  // On desktop: apply dnd-kit listeners to the entire row. Extract onPointerDown so
+  // it can be merged with our custom tracking handler.
+  const { onPointerDown: dndPointerDown, ...restListeners } = !isMobile ? (listeners ?? {}) : {};
 
   useEffect(() => {
     if (isEditingTitle && titleRef.current) {
@@ -319,10 +325,12 @@ function WorkItemNode({
       >
         <div
           {...attributes}
+          {...restListeners}
           className={`
             flex items-start gap-1.5 px-3 py-2 rounded-md
             transition-all duration-150 ease-out group
             border select-none
+            ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
             ${isChildBacklog ? "text-muted-foreground" : ""}
             ${
               isSelected
@@ -334,6 +342,7 @@ function WorkItemNode({
           `}
           style={{ paddingLeft: `${depth * 20 + 12}px` }}
           onPointerDown={(e) => {
+            dndPointerDown?.(e);
             dragStartedRef.current = false;
             pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
           }}
@@ -356,9 +365,11 @@ function WorkItemNode({
             onSelect(workItemId, isMulti, isShift);
           }}
         >
+          {/* On mobile: drag handle is the only drag target (preserves row-scroll).
+              On desktop: the entire row is draggable; handle is a visual affordance. */}
           <div
-            {...listeners}
-            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 touch-none cursor-grab active:cursor-grabbing ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"}`}
+            {...(isMobile ? listeners : {})}
+            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"} ${isMobile ? "touch-none cursor-grab active:cursor-grabbing" : ""}`}
           >
             <GripVertical className="w-3.5 h-3.5" />
           </div>

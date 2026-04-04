@@ -1,6 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CSS } from "@dnd-kit/utilities";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ShareTreeDialog } from "./ShareTreeDialog";
@@ -186,6 +187,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   const addBacklog = useAppStore((s) => s.addBacklog);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
+  const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -211,6 +213,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
     id: `backlog-drop-${backlogId}`,
     data: { type: "backlog", backlogId, treeId: backlog?.treeId },
   });
+
+  // On desktop: apply dnd-kit listeners to the entire row. Extract onPointerDown so
+  // it can be merged with our custom tracking handler.
+  const { onPointerDown: dndPointerDown, ...restListeners } = !isMobile ? (listeners ?? {}) : {};
 
   const combinedRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -279,15 +285,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
       <div
         ref={combinedRef}
         {...attributes}
+        {...restListeners}
         className={`
           flex items-center gap-1.5 px-2 py-1.5 rounded-md
           transition-all duration-150 ease-out select-none group
+          ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
           ${isOver && !isDragging ? "drag-over" : ""}
           ${isDragging ? "shadow-lg bg-card" : ""}
         `}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onPointerDown={(e) => {
+          dndPointerDown?.(e);
           dragStartedRef.current = false;
           dragStartPosRef.current = { x: e.clientX, y: e.clientY };
         }}
@@ -304,7 +313,12 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           selectBacklog(backlogId, backlog.treeId, e.ctrlKey || e.metaKey);
         }}
       >
-        <div {...listeners} className="w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40 touch-none cursor-grab active:cursor-grabbing">
+        {/* On mobile: drag handle is the only drag target (preserves row-scroll).
+            On desktop: the entire row is draggable; handle is a visual affordance. */}
+        <div
+          {...(isMobile ? listeners : {})}
+          className={`w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40 ${isMobile ? "touch-none cursor-grab active:cursor-grabbing" : ""}`}
+        >
           <GripVertical className="w-3 h-3" />
         </div>
         <button
