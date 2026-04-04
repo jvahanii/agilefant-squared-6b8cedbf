@@ -743,7 +743,7 @@ export default function AppLayout() {
 
       <DragOverlay dropAnimation={null}>
         {activeDrag && (
-          <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background">
+          <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background opacity-60">
             {activeDrag.title}
           </div>
         )}
