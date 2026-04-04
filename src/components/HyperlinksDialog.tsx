@@ -37,6 +37,11 @@ export function HyperlinksDialog({
   const [editAltText, setEditAltText] = useState("");
   const urlInputRef = useRef<HTMLInputElement>(null);
   const editUrlRef = useRef<HTMLInputElement>(null);
+  const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  // Keep a ref so the open-effect can read the current hyperlinks length
+  // without adding hyperlinks to its dependency array.
+  const hyperlinksRef = useRef(hyperlinks);
+  hyperlinksRef.current = hyperlinks;
 
   useEffect(() => {
     if (isAdding) {
@@ -50,16 +55,23 @@ export function HyperlinksDialog({
     }
   }, [editingId]);
 
-  // Reset form when dialog closes; auto-enter adding mode when it opens
+  // Reset form when dialog closes; set initial mode when it opens.
   useEffect(() => {
     if (!open) {
       setIsAdding(false);
       setNewUrl("");
       setNewAltText("");
       setEditingId(null);
-    } else {
-      setIsAdding(true);
+      return;
     }
+    const hasLinks = hyperlinksRef.current.length > 0;
+    setIsAdding(!hasLinks);
+    if (hasLinks) {
+      // Focus the first hyperlink so Enter opens it and Tab navigates the list.
+      setTimeout(() => firstLinkRef.current?.focus(), 0);
+    }
+    // Intentionally only runs when `open` changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!item) return null;
@@ -94,7 +106,11 @@ export function HyperlinksDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        className="sm:max-w-md"
+        onClick={(e) => e.stopPropagation()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Hyperlinks</DialogTitle>
         </DialogHeader>
@@ -109,7 +125,7 @@ export function HyperlinksDialog({
               No hyperlinks yet. Add one below.
             </p>
           )}
-          {hyperlinks.map((link) =>
+          {hyperlinks.map((link, index) =>
             editingId === link.id ? (
               <div key={link.id} className="space-y-2 p-2 rounded-md border bg-muted/30">
                 <div className="space-y-1">
@@ -156,6 +172,7 @@ export function HyperlinksDialog({
                 <ExternalLink className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
                   <a
+                    ref={index === 0 ? firstLinkRef : undefined}
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -170,7 +187,7 @@ export function HyperlinksDialog({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0">
                   <button
                     className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     onClick={() => handleStartEdit(link.id, link.url, link.altText)}
@@ -203,7 +220,10 @@ export function HyperlinksDialog({
                 placeholder="https://..."
                 className="h-8 text-sm"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAdd();
+                  if (e.key === "Enter") {
+                    if (newUrl.trim()) handleAdd();
+                    else onOpenChange(false);
+                  }
                   if (e.key === "Escape") setIsAdding(false);
                 }}
               />
@@ -221,12 +241,13 @@ export function HyperlinksDialog({
                 }}
               />
             </div>
+            {/* Add comes first in DOM (tab-first) but second visually via CSS order */}
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!newUrl.trim()}>
+              <Button size="sm" onClick={handleAdd} disabled={!newUrl.trim()} className="order-2">
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="order-1">
+                Cancel
               </Button>
             </div>
           </div>
