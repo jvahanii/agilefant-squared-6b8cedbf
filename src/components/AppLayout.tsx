@@ -123,23 +123,68 @@ export default function AppLayout() {
           break;
         }
         case "b": {
-          // Rank to Bottom
-          if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            const treeId = state.selectedTreeId;
-            const selectedBacklogId = state.selectedBacklogIds[0];
-            const backlogIds: string[] = [];
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(selectedBacklogId);
+          if (e.shiftKey) {
+            // Rank to Bottom (Shift+B)
+            if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+              e.preventDefault();
+              const treeId = state.selectedTreeId;
+              const selectedBacklogId = state.selectedBacklogIds[0];
+              const backlogIds: string[] = [];
+              const collectBacklogs = (id: string) => {
+                backlogIds.push(id);
+                state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+              };
+              collectBacklogs(selectedBacklogId);
 
-            // Move each to a very high index to force bottom placement
-            state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
-            });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
+              // Move each to a very high index to force bottom placement
+              state.selectedWorkItemIds.forEach((id) => {
+                state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+              });
+              toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
+            }
+          } else {
+            // Set status to Blocked
+            if (state.selectedWorkItemIds.length > 0) {
+              e.preventDefault();
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
+              toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Blocked` });
+            }
+          }
+          break;
+        }
+        case "d": {
+          // Set status to Done
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
+            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Done` });
+          }
+          break;
+        }
+        case "i": {
+          // Set status to In Progress
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
+            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as In Progress` });
+          }
+          break;
+        }
+        case "p": {
+          // Set status to Pending
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
+            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Pending` });
+          }
+          break;
+        }
+        case "n": {
+          // Set status to Not Started
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
           }
           break;
         }
@@ -753,10 +798,15 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
     { keys: ["↑", "↓"], description: "Move selection up/down" },
     { keys: ["T"], description: "Move selection to Top" },
-    { keys: ["B"], description: "Move selection to Bottom" },
+    { keys: ["Shift", "B"], description: "Move selection to Bottom" },
     { keys: ["Esc"], description: "Deselect items" },
     { keys: ["Ctrl", "Z"], description: "Undo action" },
     { keys: ["?"], description: "Toggle help" },
+    { keys: ["D"], description: "Set status: Done" },
+    { keys: ["I"], description: "Set status: In Progress" },
+    { keys: ["P"], description: "Set status: Pending" },
+    { keys: ["B"], description: "Set status: Blocked" },
+    { keys: ["N"], description: "Set status: Not Started" },
   ];
 
   return (
