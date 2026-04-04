@@ -755,8 +755,8 @@ function ReorderDropZone({
   });
 
   return (
-    <div ref={setNodeRef} className="relative py-1" style={{ marginLeft: `${depth * 20 + 12}px` }}>
-      <div className={`h-0.5 rounded-full transition-all ${isOver ? "bg-selection" : ""}`} />
+    <div ref={setNodeRef} className="relative py-2" style={{ marginLeft: `${depth * 20 + 12}px` }}>
+      <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : "h-px bg-muted-foreground/20"}`} />
     </div>
   );
 }
