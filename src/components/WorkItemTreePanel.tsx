@@ -186,6 +186,18 @@ function WorkItemNode({
   const dragStartedRef = useRef(false);
   const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const assignmentCount = item ? Object.keys(item.backlogAssignments).length : 0;
+
+  const handleDeleteClick = useCallback(() => {
+    if (!item) return;
+    if (assignmentCount > 1) setShowDeletePrompt(true);
+    else deleteWorkItem(workItemId);
+  }, [assignmentCount, deleteWorkItem, item, workItemId]);
+
+  const handleEditHyperlinks = useCallback(() => {
+    if (selectedWorkItemIds[0] !== workItemId) return;
+    setShowHyperlinksDialog(true);
+  }, [selectedWorkItemIds, workItemId]);
 
   const {
     attributes,
@@ -244,10 +256,6 @@ function WorkItemNode({
     };
     const handleAddSibling = () => setIsAddingSibling(true);
     const handleDelete = () => handleDeleteClick();
-    const handleEditHyperlinks = () => {
-      if (selectedWorkItemIds[0] !== workItemId) return;
-      setShowHyperlinksDialog(true);
-    };
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
@@ -258,7 +266,7 @@ function WorkItemNode({
       window.removeEventListener("shortcut:delete-selected", handleDelete);
       window.removeEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     };
-  }, [expanded, handleDeleteClick, isSelected, selectedWorkItemIds, toggleExpand, workItemId]);
+  }, [expanded, handleDeleteClick, handleEditHyperlinks, isSelected, selectedWorkItemIds, toggleExpand, workItemId]);
 
   // On mount, if this is the first selected item, scroll it into view so
   // the previously-selected item is visible after restore (especially on mobile
@@ -273,7 +281,6 @@ function WorkItemNode({
   if (!item) return null;
 
   const hasChildren = item.childrenIds.length > 0;
-  const assignmentCount = Object.keys(item.backlogAssignments).length;
 
   const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
     const path: { id: string; name: string }[] = [];
@@ -288,11 +295,6 @@ function WorkItemNode({
   const backlogPaths = Object.entries(item.backlogAssignments)
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
-
-  const handleDeleteClick = () => {
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(workItemId);
-  };
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
