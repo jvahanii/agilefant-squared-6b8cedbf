@@ -118,6 +118,16 @@ export default function AppLayout() {
         return;
       }
 
+      // Ctrl+K / Cmd+K opens the hyperlink dialog
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        const state = useAppStore.getState();
+        if (state.selectedWorkItemIds.length > 0) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("shortcut:edit-hyperlinks"));
+        }
+        return;
+      }
+
       if (isInput) return;
 
       const state = useAppStore.getState();
@@ -841,7 +851,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["P"], description: "Set status: Pending" },
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["N"], description: "Set status: Not Started" },
-    { keys: ["H"], description: "Edit hyperlinks" },
+    { keys: ["H", "Ctrl+K"], description: "Edit hyperlinks" },
   ];
 
   return (
