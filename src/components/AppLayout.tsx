@@ -29,12 +29,13 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { UserGuideDialog } from "@/components/UserGuideDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -73,6 +74,7 @@ export default function AppLayout() {
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showUserGuide, setShowUserGuide] = useState(false);
 
   const isMobile = useIsMobile();
 
@@ -954,6 +956,14 @@ export default function AppLayout() {
                 <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" onClick={() => setShowShortcuts((s) => !s)}>
                   <Keyboard className="w-4 h-4" />
                 </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" onClick={() => setShowUserGuide(true)}>
+                      <HelpCircle className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>User Guide</TooltipContent>
+                </Tooltip>
               </div>
             </div>
 
@@ -972,6 +982,8 @@ export default function AppLayout() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setShowUserGuide(true)}><HelpCircle className="w-4 h-4 mr-2" />User Guide</DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export data</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
@@ -1050,6 +1062,8 @@ export default function AppLayout() {
       )}
 
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+
+      <UserGuideDialog open={showUserGuide} onOpenChange={setShowUserGuide} />
     </DndContext>
   );
 }
