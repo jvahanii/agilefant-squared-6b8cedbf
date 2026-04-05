@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
+import { useTeamStore } from '@/store/teamStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,11 +12,15 @@ const Index = () => {
   const setOrganizationId = useAppStore(s => s.setOrganizationId);
   const loadData = useAppStore(s => s.loadFromSupabase);
   const activeOrgId = useOrgStore(s => s.activeOrgId);
+  const loadTeams = useTeamStore(s => s.loadTeams);
+  const loadWorkItemTeams = useTeamStore(s => s.loadWorkItemTeams);
 
   useEffect(() => {
     if (activeOrgId) {
       setOrganizationId(activeOrgId);
       loadData();
+      loadTeams(activeOrgId);
+      loadWorkItemTeams(activeOrgId);
     }
   }, [activeOrgId]);
 

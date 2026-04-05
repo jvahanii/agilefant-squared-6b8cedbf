@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -527,6 +528,9 @@ function WorkItemNode({
           )}
 
           <div className="flex items-start gap-1 mt-0.5">
+            <div className="hidden md:block shrink-0">
+              <TeamAssignmentCell workItemId={workItemId} />
+            </div>
             {pointsVisible && (isEditingPoints ? (
               <input
                 ref={pointsRef}

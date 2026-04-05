@@ -59,7 +59,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
     });
     if (error) throw error;
     const orgId = data as string;
-    await resetOrgData(orgId, structuredClone(staticMockData));
+    await resetOrgData(orgId, structuredClone(staticMockData) as any);
     return orgId;
   },
 
