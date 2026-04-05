@@ -496,6 +496,8 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        <TeamManagement />
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
