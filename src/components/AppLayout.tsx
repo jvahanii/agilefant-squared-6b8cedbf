@@ -318,7 +318,7 @@ export default function AppLayout() {
 
   // Mobile swipe gesture handlers
   useEffect(() => {
-    const SWIPE_THRESHOLD = 60;
+    const SWIPE_THRESHOLD = 40;
     // Dominant axis must be at least this many times larger than the other to
     // avoid diagonal gestures (which are often scrolling) triggering commands.
     const DIRECTION_RATIO = 2;
@@ -330,8 +330,8 @@ export default function AppLayout() {
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
     // Long-press parameters for vertical swipe activation.
-    const LONG_PRESS_DURATION = 500; // ms of held touch before long press fires
-    const LONG_PRESS_CANCEL_THRESHOLD = 10; // px of movement that cancels the long press
+    const LONG_PRESS_DURATION = 350; // ms of held touch before long press fires
+    const LONG_PRESS_CANCEL_THRESHOLD = 20; // px of movement that cancels the long press
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
     let longPressed = false;
 
