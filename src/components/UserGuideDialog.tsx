@@ -195,7 +195,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             <ShortcutRow keys={["Esc"]} description="Deselect all items" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Creating &amp; Deleting</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Creating & Deleting</p>
             <ShortcutRow keys={["Enter"]} description="New root work item" />
             <ShortcutRow keys={["Shift", "Enter"]} description="New child item under selection" />
             <ShortcutRow keys={["Del / Bksp"]} description="Delete selected item(s)" />
@@ -261,7 +261,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             ))}
           </div>
           <Tip>
-            On mobile, press and hold an item for ~200 ms to start dragging it. You can also swipe left/right on a
+            On mobile, press and hold an item briefly to start dragging it. You can also swipe left/right on a
             work item to quickly move it to the top or bottom of its backlog.
           </Tip>
         </div>
