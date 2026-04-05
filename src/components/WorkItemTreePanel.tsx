@@ -528,7 +528,7 @@ function WorkItemNode({
           )}
 
           <div className="flex items-start gap-1 mt-0.5">
-            <div className="hidden md:block shrink-0">
+            <div className="shrink-0">
               <TeamAssignmentCell workItemId={workItemId} />
             </div>
             {pointsVisible && (isEditingPoints ? (

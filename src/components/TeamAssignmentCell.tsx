@@ -48,7 +48,7 @@ export function TeamAssignmentCell({ workItemId }: TeamAssignmentCellProps) {
               </Badge>
             ))
           ) : (
-            <Users className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+            <Users className="w-3 h-3 opacity-40 md:opacity-0 md:group-hover:opacity-40 transition-opacity" />
           )}
         </button>
       </DropdownMenuTrigger>
