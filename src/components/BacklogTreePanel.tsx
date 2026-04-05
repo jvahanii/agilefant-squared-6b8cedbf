@@ -128,13 +128,18 @@ function BacklogReorderDropZone({
   treeId: string;
   depth: number;
 }) {
+  const isMobile = useIsMobile();
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "backlog-reorder", index, parentId, treeId },
   });
 
   return (
-    <div ref={setNodeRef} className="relative py-2" style={{ marginLeft: `${depth * 16 + 8}px` }}>
+    <div
+      ref={setNodeRef}
+      className={`relative ${isMobile ? "py-5" : "py-2"}`}
+      style={{ marginLeft: `${depth * 16 + 8}px` }}
+    >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
@@ -519,13 +524,14 @@ function EditableTreeName({ treeId, name }: { treeId: string; name: string }) {
 }
 
 function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
+  const isMobile = useIsMobile();
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "tree-reorder", index },
   });
 
   return (
-    <div ref={setNodeRef} className="relative py-2 mx-2">
+    <div ref={setNodeRef} className={`relative ${isMobile ? "py-5" : "py-2"} mx-2`}>
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );

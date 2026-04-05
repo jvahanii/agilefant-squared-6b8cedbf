@@ -761,13 +761,18 @@ function ReorderDropZone({
   parentId: string | null;
   depth: number;
 }) {
+  const isMobile = useIsMobile();
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "workitem-reorder", index, treeId, backlogIds, parentId },
   });
 
   return (
-    <div ref={setNodeRef} className="relative py-2" style={{ marginLeft: `${depth * 20 + 12}px` }}>
+    <div
+      ref={setNodeRef}
+      className={`relative ${isMobile ? "py-5" : "py-2"}`}
+      style={{ marginLeft: `${depth * 20 + 12}px` }}
+    >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
