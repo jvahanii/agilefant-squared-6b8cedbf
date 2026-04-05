@@ -288,6 +288,24 @@ export default function AppLayout() {
           }
           break;
         }
+        case "arrowleft": {
+          if (state.selectedWorkItemIds.length > 0) {
+            const wiId = state.selectedWorkItemIds[0];
+            const wi = state.workItems[wiId];
+            if (wi && wi.childrenIds.length > 0 && state.expandedWorkItems.has(wiId)) {
+              e.preventDefault();
+              useAppStore.getState().toggleWorkItemExpand(wiId);
+            }
+          } else if (state.selectedBacklogIds.length > 0) {
+            const backlogId = state.selectedBacklogIds[0];
+            const backlog = state.backlogs[backlogId];
+            if (backlog && backlog.childrenIds.length > 0 && state.expandedBacklogs.has(backlogId)) {
+              e.preventDefault();
+              useAppStore.getState().toggleBacklogExpand(backlogId);
+            }
+          }
+          break;
+        }
         case "arrowup":
         case "arrowdown": {
           if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
