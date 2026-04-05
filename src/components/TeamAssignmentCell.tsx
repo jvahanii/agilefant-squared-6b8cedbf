@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTeamStore } from "@/store/teamStore";
 import { useOrgStore } from "@/store/orgStore";
 import { Badge } from "@/components/ui/badge";
@@ -13,16 +14,21 @@ interface TeamAssignmentCellProps {
   workItemId: string;
 }
 
+const EMPTY_ARRAY: string[] = [];
+
 export function TeamAssignmentCell({ workItemId }: TeamAssignmentCellProps) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const teams = useTeamStore((s) => s.teams);
-  const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? []);
+  const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? EMPTY_ARRAY);
   const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
   const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
-  if (teams.length === 0) return null;
+  const assignedTeams = useMemo(
+    () => teams.filter((t) => workItemTeams.includes(t.id)),
+    [teams, workItemTeams]
+  );
 
-  const assignedTeams = teams.filter((t) => workItemTeams.includes(t.id));
+  if (teams.length === 0) return null;
 
   return (
     <DropdownMenu>
