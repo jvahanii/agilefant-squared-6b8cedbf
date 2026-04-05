@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { resetOrgData } from './supabaseSync';
+import { mockData as staticMockData } from './mockData';
 
 export interface Organization {
   id: string;
@@ -56,7 +58,9 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       _user_id: userId,
     });
     if (error) throw error;
-    return data as string;
+    const orgId = data as string;
+    await resetOrgData(orgId, structuredClone(staticMockData));
+    return orgId;
   },
 
   getActiveOrg: () => {
