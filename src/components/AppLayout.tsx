@@ -419,7 +419,7 @@ export default function AppLayout() {
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("scroll", handleScroll, { passive: true, capture: true });
+      window.removeEventListener("scroll", handleScroll, { capture: true });
     };
     // Empty dep array is intentional: all store functions are accessed via
     // useAppStore.getState() at call-time, so there are no stale closure issues.
