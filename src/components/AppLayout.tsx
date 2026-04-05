@@ -76,6 +76,12 @@ export default function AppLayout() {
 
   const isMobile = useIsMobile();
 
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const activeDragRef = useRef(activeDrag);
+  useEffect(() => {
+    activeDragRef.current = activeDrag;
+  }, [activeDrag]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -309,6 +315,99 @@ export default function AppLayout() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [undo, redo, moveWorkItemToBacklog, reorderWorkItemAmongSiblings]);
+
+  // Mobile swipe gesture handlers
+  useEffect(() => {
+    const SWIPE_THRESHOLD = 50;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (activeDragRef.current) return;
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStartRef.current || activeDragRef.current) {
+        touchStartRef.current = null;
+        return;
+      }
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartRef.current.x;
+      const dy = touch.clientY - touchStartRef.current.y;
+      touchStartRef.current = null;
+
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return;
+
+      const state = useAppStore.getState();
+
+      if (absDy > absDx) {
+        // Vertical swipe
+        const backlogIds: string[] = [];
+        if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+          const collectBacklogs = (id: string) => {
+            backlogIds.push(id);
+            state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+          };
+          collectBacklogs(state.selectedBacklogIds[0]);
+        }
+
+        if (dy < 0) {
+          // Swipe up → move to top (like T)
+          if (backlogIds.length > 0) {
+            state.selectedWorkItemIds.forEach((id) => {
+              state.reorderWorkItemAmongSiblings(id, 0, state.selectedTreeId!, backlogIds);
+            });
+            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
+          }
+        } else {
+          // Swipe down → move to bottom (like Shift-B)
+          if (backlogIds.length > 0) {
+            state.selectedWorkItemIds.forEach((id) => {
+              state.reorderWorkItemAmongSiblings(id, 999999, state.selectedTreeId!, backlogIds);
+            });
+            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
+          }
+        }
+      } else {
+        // Horizontal swipe
+        if (dx < 0) {
+          // Swipe left → same as Escape
+          if (state.selectedWorkItemIds.length > 0) {
+            state.clearWorkItemSelection();
+          }
+        } else {
+          // Swipe right → expand branch
+          if (state.selectedWorkItemIds.length > 0) {
+            state.selectedWorkItemIds.forEach((id) => {
+              const wi = state.workItems[id];
+              if (wi && wi.childrenIds.length > 0 && !state.expandedWorkItems.has(id)) {
+                state.toggleWorkItemExpand(id);
+              }
+            });
+          } else if (state.selectedBacklogIds.length > 0) {
+            state.selectedBacklogIds.forEach((id) => {
+              const backlog = state.backlogs[id];
+              if (backlog && backlog.childrenIds.length > 0 && !state.expandedBacklogs.has(id)) {
+                state.toggleBacklogExpand(id);
+              }
+            });
+          }
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+    // Empty dep array is intentional: all store functions are accessed via
+    // useAppStore.getState() at call-time, so there are no stale closure issues.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto integrity check on data changes
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
