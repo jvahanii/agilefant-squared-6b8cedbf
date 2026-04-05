@@ -429,24 +429,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       let finalRank: number;
       if (requestedRank != null) {
         finalRank = requestedRank;
-      } else {
-        let maxRank = -1;
-        Object.values(state.workItems).forEach((wi) => {
-          if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
-            if (wi.rank > maxRank) maxRank = wi.rank;
+        Object.values(updatedWorkItems).forEach((wi) => {
+          const isSameContext = wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId;
+          if (isSameContext && wi.rank >= finalRank) {
+            const updatedItem = { ...wi, rank: wi.rank + 1 };
+            updatedWorkItems[wi.id] = updatedItem;
+            itemsToUpdateInDB.push(updatedItem);
           }
         });
-        finalRank = maxRank + 1;
+      } else {
+        let minRank = Infinity;
+        Object.values(state.workItems).forEach((wi) => {
+          if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
+            if (wi.rank < minRank) minRank = wi.rank;
+          }
+        });
+        finalRank = minRank === Infinity ? 0 : minRank - 1;
       }
-
-      Object.values(updatedWorkItems).forEach((wi) => {
-        const isSameContext = wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId;
-        if (isSameContext && wi.rank >= finalRank) {
-          const updatedItem = { ...wi, rank: wi.rank + 1 };
-          updatedWorkItems[wi.id] = updatedItem;
-          itemsToUpdateInDB.push(updatedItem);
-        }
-      });
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
@@ -467,7 +466,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
           ...updatedWorkItems[parentId],
-          childrenIds: [...updatedWorkItems[parentId].childrenIds, id],
+          childrenIds: [id, ...updatedWorkItems[parentId].childrenIds],
         };
       }
 
@@ -787,12 +786,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (parentId && updatedBacklogs[parentId]) {
         updatedBacklogs[parentId] = {
           ...updatedBacklogs[parentId],
-          childrenIds: [...updatedBacklogs[parentId].childrenIds, id],
+          childrenIds: [id, ...updatedBacklogs[parentId].childrenIds],
         };
       } else if (updatedTrees[treeId]) {
         updatedTrees[treeId] = {
           ...updatedTrees[treeId],
-          rootBacklogIds: [...updatedTrees[treeId].rootBacklogIds, id],
+          rootBacklogIds: [id, ...updatedTrees[treeId].rootBacklogIds],
         };
       }
       upsertBacklog(newBacklog, orgId);
