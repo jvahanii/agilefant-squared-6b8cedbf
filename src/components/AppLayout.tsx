@@ -329,66 +329,71 @@ export default function AppLayout() {
     // gestures where the user started moving horizontally then went vertical.
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
-    // Whether the gesture started with exactly two fingers (required for vertical swipes).
-    let twoFinger = false;
+    // Long-press parameters for vertical swipe activation.
+    const LONG_PRESS_DURATION = 500; // ms of held touch before long press fires
+    const LONG_PRESS_CANCEL_THRESHOLD = 10; // px of movement that cancels the long press
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let longPressed = false;
 
     const resetState = () => {
       touchStartRef.current = null;
       touchScrolled = false;
       lockedDirection = null;
-      twoFinger = false;
+      longPressed = false;
+      if (longPressTimer !== null) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
     };
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
-      if (e.touches.length === 2) {
-        // Two-finger touch: track midpoint for vertical swipe detection.
-        const t0 = e.touches[0];
-        const t1 = e.touches[1];
-        touchStartRef.current = {
-          x: (t0.clientX + t1.clientX) / 2,
-          y: (t0.clientY + t1.clientY) / 2,
-        };
-        touchScrolled = false;
-        lockedDirection = null;
-        twoFinger = true;
-      } else if (e.touches.length === 1) {
-        // Single-finger touch: track for horizontal swipe detection.
+      if (e.touches.length === 1) {
+        // Single-finger touch: track for swipe detection.
         const touch = e.touches[0];
         touchStartRef.current = { x: touch.clientX, y: touch.clientY };
         touchScrolled = false;
         lockedDirection = null;
-        twoFinger = false;
+        longPressed = false;
+        // Start long-press timer; if the finger is held still long enough,
+        // vertical swipes become available to move items to top/bottom.
+        longPressTimer = setTimeout(() => {
+          longPressed = true;
+          longPressTimer = null;
+          // Reset scroll and direction-lock flags so that incidental scrolling
+          // during the hold period does not block the subsequent swipe.
+          touchScrolled = false;
+          lockedDirection = null;
+          // Provide haptic feedback if the browser supports it.
+          if (navigator.vibrate) {
+            navigator.vibrate(50);
+          }
+        }, LONG_PRESS_DURATION);
       } else {
-        // Three or more fingers: ignore.
+        // Two or more fingers: ignore.
         resetState();
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartRef.current) return;
-      if (twoFinger) {
-        // For two-finger gestures, cancel if finger count changes.
-        if (e.touches.length !== 2) {
-          resetState();
-          return;
-        }
-      } else {
-        // For single-finger gestures, cancel if more fingers join mid-swipe.
-        if (e.touches.length > 1) {
-          resetState();
-          return;
+      // Cancel if more fingers join mid-swipe.
+      if (e.touches.length > 1) {
+        resetState();
+        return;
+      }
+      const clientX = e.touches[0].clientX;
+      const clientY = e.touches[0].clientY;
+      const absDx = Math.abs(clientX - touchStartRef.current.x);
+      const absDy = Math.abs(clientY - touchStartRef.current.y);
+      // If the long press has not fired yet, cancel it if the finger moves too much.
+      if (!longPressed && longPressTimer !== null) {
+        if (Math.max(absDx, absDy) > LONG_PRESS_CANCEL_THRESHOLD) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
         }
       }
       if (lockedDirection !== null) return;
-      const clientX = twoFinger
-        ? (e.touches[0].clientX + e.touches[1].clientX) / 2
-        : e.touches[0].clientX;
-      const clientY = twoFinger
-        ? (e.touches[0].clientY + e.touches[1].clientY) / 2
-        : e.touches[0].clientY;
-      const absDx = Math.abs(clientX - touchStartRef.current.x);
-      const absDy = Math.abs(clientY - touchStartRef.current.y);
       const moved = Math.max(absDx, absDy);
       if (moved < LOCK_THRESHOLD) return;
       // Lock in direction based on the first significant movement.
@@ -406,17 +411,11 @@ export default function AppLayout() {
         resetState();
         return;
       }
-      const wasTwoFinger = twoFinger;
+      const wasLongPressed = longPressed;
       const wasScrolled = touchScrolled;
       const wasLockedDirection = lockedDirection;
-      let endX: number, endY: number;
-      if (wasTwoFinger && e.changedTouches.length >= 2) {
-        endX = (e.changedTouches[0].clientX + e.changedTouches[1].clientX) / 2;
-        endY = (e.changedTouches[0].clientY + e.changedTouches[1].clientY) / 2;
-      } else {
-        endX = e.changedTouches[0].clientX;
-        endY = e.changedTouches[0].clientY;
-      }
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
       const dx = endX - touchStartRef.current.x;
       const dy = endY - touchStartRef.current.y;
       resetState();
@@ -430,10 +429,10 @@ export default function AppLayout() {
       // Require the dominant axis to be at least DIRECTION_RATIO× the other
       // axis so that diagonal or ambiguous gestures are ignored.
       if (absDy >= absDx * DIRECTION_RATIO) {
-        // Vertical swipes require two fingers.
-        if (!wasTwoFinger) return;
+        // Vertical swipes require a prior long press to activate.
+        if (!wasLongPressed) return;
         // If the page actually scrolled during this touch, the user was
-        // scrolling – not issuing a swipe command.  Bail out to avoid
+        // scrolling – not issuing a swipe command. Bail out to avoid
         // accidentally reordering items while scrolling.
         if (wasScrolled) return;
         // Reject if the user's first movement was primarily horizontal – that
