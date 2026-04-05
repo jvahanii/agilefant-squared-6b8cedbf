@@ -270,6 +270,24 @@ export default function AppLayout() {
           }
           break;
         }
+        case "arrowright": {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            const wiId = state.selectedWorkItemIds[0];
+            const wi = state.workItems[wiId];
+            if (wi && wi.childrenIds.length > 0 && !state.expandedWorkItems.has(wiId)) {
+              useAppStore.getState().toggleWorkItemExpand(wiId);
+            }
+          } else if (state.selectedBacklogIds.length > 0) {
+            e.preventDefault();
+            const backlogId = state.selectedBacklogIds[0];
+            const backlog = state.backlogs[backlogId];
+            if (backlog && backlog.childrenIds.length > 0 && !state.expandedBacklogs.has(backlogId)) {
+              useAppStore.getState().toggleBacklogExpand(backlogId);
+            }
+          }
+          break;
+        }
         case "arrowup":
         case "arrowdown": {
           if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
@@ -1036,6 +1054,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Del", "Bksp"], description: "Delete selected" },
     { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
     { keys: ["↑", "↓"], description: "Move selection up/down" },
+    { keys: ["→"], description: "Expand selected item or backlog branch" },
     { keys: ["T"], description: "Move selection to Top" },
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
     { keys: ["Esc"], description: "Deselect items" },
