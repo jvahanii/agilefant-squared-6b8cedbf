@@ -319,11 +319,21 @@ export default function AppLayout() {
   // Mobile swipe gesture handlers
   useEffect(() => {
     const SWIPE_THRESHOLD = 50;
+    // Track whether a scroll event fired during the current touch interaction.
+    // If it did, the user was scrolling, so vertical swipes should be ignored.
+    let touchScrolled = false;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      touchScrolled = false;
+    };
+
+    const handleScroll = () => {
+      if (touchStartRef.current) {
+        touchScrolled = true;
+      }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -343,6 +353,10 @@ export default function AppLayout() {
       const state = useAppStore.getState();
 
       if (absDy > absDx) {
+        // If the page actually scrolled during this touch, the user was
+        // scrolling – not issuing a swipe command.  Bail out to avoid
+        // accidentally reordering items while scrolling.
+        if (touchScrolled) return;
         // Vertical swipe
         const backlogIds: string[] = [];
         if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
@@ -400,9 +414,12 @@ export default function AppLayout() {
 
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    // capture: true catches scroll on any element, not just window
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("scroll", handleScroll, { passive: true, capture: true });
     };
     // Empty dep array is intentional: all store functions are accessed via
     // useAppStore.getState() at call-time, so there are no stale closure issues.
