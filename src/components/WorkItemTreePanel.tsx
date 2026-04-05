@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
