@@ -318,16 +318,52 @@ export default function AppLayout() {
 
   // Mobile swipe gesture handlers
   useEffect(() => {
-    const SWIPE_THRESHOLD = 50;
+    const SWIPE_THRESHOLD = 60;
+    // Dominant axis must be at least this many times larger than the other to
+    // avoid diagonal gestures (which are often scrolling) triggering commands.
+    const DIRECTION_RATIO = 2;
     // Track whether a scroll event fired during the current touch interaction.
     // If it did, the user was scrolling, so vertical swipes should be ignored.
     let touchScrolled = false;
+    // Direction locked in on first significant touchmove, used to reject
+    // gestures where the user started moving horizontally then went vertical.
+    let lockedDirection: "vertical" | "horizontal" | null = null;
+    const LOCK_THRESHOLD = 8; // px before direction is locked
+
+    const resetState = () => {
+      touchStartRef.current = null;
+      touchScrolled = false;
+      lockedDirection = null;
+    };
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
+      // Ignore multi-touch gestures (pinch/zoom etc.)
+      if (e.touches.length > 1) {
+        resetState();
+        return;
+      }
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
       touchScrolled = false;
+      lockedDirection = null;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+      // Cancel gesture on new fingers joining mid-swipe, even after direction is locked.
+      if (e.touches.length > 1) {
+        resetState();
+        return;
+      }
+      if (lockedDirection !== null) return;
+      const touch = e.touches[0];
+      const absDx = Math.abs(touch.clientX - touchStartRef.current.x);
+      const absDy = Math.abs(touch.clientY - touchStartRef.current.y);
+      const moved = Math.max(absDx, absDy);
+      if (moved < LOCK_THRESHOLD) return;
+      // Lock in direction based on the first significant movement.
+      lockedDirection = absDy >= absDx ? "vertical" : "horizontal";
     };
 
     const handleScroll = () => {
@@ -338,13 +374,13 @@ export default function AppLayout() {
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!touchStartRef.current || activeDragRef.current) {
-        touchStartRef.current = null;
+        resetState();
         return;
       }
       const touch = e.changedTouches[0];
       const dx = touch.clientX - touchStartRef.current.x;
       const dy = touch.clientY - touchStartRef.current.y;
-      touchStartRef.current = null;
+      resetState();
 
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
@@ -352,11 +388,16 @@ export default function AppLayout() {
 
       const state = useAppStore.getState();
 
-      if (absDy > absDx) {
+      // Require the dominant axis to be at least DIRECTION_RATIO× the other
+      // axis so that diagonal or ambiguous gestures are ignored.
+      if (absDy >= absDx * DIRECTION_RATIO) {
         // If the page actually scrolled during this touch, the user was
         // scrolling – not issuing a swipe command.  Bail out to avoid
         // accidentally reordering items while scrolling.
         if (touchScrolled) return;
+        // Reject if the user's first movement was primarily horizontal – that
+        // pattern matches a scroll that curves, not an intentional vertical swipe.
+        if (lockedDirection === "horizontal") return;
         // Vertical swipe
         const backlogIds: string[] = [];
         if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
@@ -384,7 +425,7 @@ export default function AppLayout() {
             toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
           }
         }
-      } else {
+      } else if (absDx >= absDy * DIRECTION_RATIO) {
         // Horizontal swipe
         if (dx < 0) {
           // Swipe left → same as Escape
@@ -410,15 +451,24 @@ export default function AppLayout() {
           }
         }
       }
+      // Diagonal gestures (neither axis dominant) are intentionally ignored.
+    };
+
+    const handleTouchCancel = () => {
+      resetState();
     };
 
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchCancel, { passive: true });
     // capture: true catches scroll on any element, not just window
     window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchCancel);
       window.removeEventListener("scroll", handleScroll, { capture: true });
     };
     // Empty dep array is intentional: all store functions are accessed via
