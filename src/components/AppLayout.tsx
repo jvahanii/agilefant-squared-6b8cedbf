@@ -329,37 +329,66 @@ export default function AppLayout() {
     // gestures where the user started moving horizontally then went vertical.
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
+    // Whether the gesture started with exactly two fingers (required for vertical swipes).
+    let twoFinger = false;
 
     const resetState = () => {
       touchStartRef.current = null;
       touchScrolled = false;
       lockedDirection = null;
+      twoFinger = false;
     };
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
-      // Ignore multi-touch gestures (pinch/zoom etc.)
-      if (e.touches.length > 1) {
+      if (e.touches.length === 2) {
+        // Two-finger touch: track midpoint for vertical swipe detection.
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        touchStartRef.current = {
+          x: (t0.clientX + t1.clientX) / 2,
+          y: (t0.clientY + t1.clientY) / 2,
+        };
+        touchScrolled = false;
+        lockedDirection = null;
+        twoFinger = true;
+      } else if (e.touches.length === 1) {
+        // Single-finger touch: track for horizontal swipe detection.
+        const touch = e.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+        touchScrolled = false;
+        lockedDirection = null;
+        twoFinger = false;
+      } else {
+        // Three or more fingers: ignore.
         resetState();
-        return;
       }
-      const touch = e.touches[0];
-      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-      touchScrolled = false;
-      lockedDirection = null;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartRef.current) return;
-      // Cancel gesture on new fingers joining mid-swipe, even after direction is locked.
-      if (e.touches.length > 1) {
-        resetState();
-        return;
+      if (twoFinger) {
+        // For two-finger gestures, cancel if finger count changes.
+        if (e.touches.length !== 2) {
+          resetState();
+          return;
+        }
+      } else {
+        // For single-finger gestures, cancel if more fingers join mid-swipe.
+        if (e.touches.length > 1) {
+          resetState();
+          return;
+        }
       }
       if (lockedDirection !== null) return;
-      const touch = e.touches[0];
-      const absDx = Math.abs(touch.clientX - touchStartRef.current.x);
-      const absDy = Math.abs(touch.clientY - touchStartRef.current.y);
+      const clientX = twoFinger
+        ? (e.touches[0].clientX + e.touches[1].clientX) / 2
+        : e.touches[0].clientX;
+      const clientY = twoFinger
+        ? (e.touches[0].clientY + e.touches[1].clientY) / 2
+        : e.touches[0].clientY;
+      const absDx = Math.abs(clientX - touchStartRef.current.x);
+      const absDy = Math.abs(clientY - touchStartRef.current.y);
       const moved = Math.max(absDx, absDy);
       if (moved < LOCK_THRESHOLD) return;
       // Lock in direction based on the first significant movement.
@@ -377,9 +406,19 @@ export default function AppLayout() {
         resetState();
         return;
       }
-      const touch = e.changedTouches[0];
-      const dx = touch.clientX - touchStartRef.current.x;
-      const dy = touch.clientY - touchStartRef.current.y;
+      const wasTwoFinger = twoFinger;
+      const wasScrolled = touchScrolled;
+      const wasLockedDirection = lockedDirection;
+      let endX: number, endY: number;
+      if (wasTwoFinger && e.changedTouches.length >= 2) {
+        endX = (e.changedTouches[0].clientX + e.changedTouches[1].clientX) / 2;
+        endY = (e.changedTouches[0].clientY + e.changedTouches[1].clientY) / 2;
+      } else {
+        endX = e.changedTouches[0].clientX;
+        endY = e.changedTouches[0].clientY;
+      }
+      const dx = endX - touchStartRef.current.x;
+      const dy = endY - touchStartRef.current.y;
       resetState();
 
       const absDx = Math.abs(dx);
@@ -391,13 +430,15 @@ export default function AppLayout() {
       // Require the dominant axis to be at least DIRECTION_RATIO× the other
       // axis so that diagonal or ambiguous gestures are ignored.
       if (absDy >= absDx * DIRECTION_RATIO) {
+        // Vertical swipes require two fingers.
+        if (!wasTwoFinger) return;
         // If the page actually scrolled during this touch, the user was
         // scrolling – not issuing a swipe command.  Bail out to avoid
         // accidentally reordering items while scrolling.
-        if (touchScrolled) return;
+        if (wasScrolled) return;
         // Reject if the user's first movement was primarily horizontal – that
         // pattern matches a scroll that curves, not an intentional vertical swipe.
-        if (lockedDirection === "horizontal") return;
+        if (wasLockedDirection === "horizontal") return;
         // Vertical swipe
         const backlogIds: string[] = [];
         if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
