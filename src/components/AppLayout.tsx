@@ -873,11 +873,8 @@ export default function AppLayout() {
 
             {/* Desktop: show all buttons */}
             <div className="hidden md:flex items-center gap-2">
-              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportChangelog}>
-                <FileText className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export Changelog</span>
-              </button>
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportMock}>
-                <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export Mock</span>
+                <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export data</span>
               </button>
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleCheckData}>
                 <SearchCheck className="w-3.5 h-3.5" /><span className="hidden lg:inline">Check Data</span>
@@ -889,11 +886,6 @@ export default function AppLayout() {
                 <FlaskConical className="w-3.5 h-3.5" /><span className="hidden lg:inline">Run Tests</span>
               </button>
               <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                <AlertDialogTrigger asChild>
-                  <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5">
-                    <RotateCcw className="w-3.5 h-3.5" /><span className="hidden lg:inline">Reset Data</span>
-                  </button>
-                </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
@@ -944,14 +936,11 @@ export default function AppLayout() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleExportChangelog}><FileText className="w-4 h-4 mr-2" />Export Changelog</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export Mock</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export data</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleRunTests}><FlaskConical className="w-4 h-4 mr-2" />Run Tests</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowResetDialog(true)} className="text-destructive"><RotateCcw className="w-4 h-4 mr-2" />Reset Data</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
