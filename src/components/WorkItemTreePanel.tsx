@@ -968,9 +968,17 @@ export function WorkItemTreePanel() {
             </div>
           ) : (
             <div className="flex flex-col">
+              {isAdding && (
+                <InlineWorkItemInput
+                  depth={0}
+                  onSubmit={(title) => {
+                    addWorkItem(title, null, selectedBacklogId, selectedTreeId);
+                  }}
+                  onCancel={() => setIsAdding(false)}
+                />
+              )}
               {rootWorkItems.map((item, index) => {
                 const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
-                const isSelected = selectedWorkItemIds.includes(item.id);
                 return (
                   <div key={item.id}>
                     <ReorderDropZone
@@ -990,15 +998,6 @@ export function WorkItemTreePanel() {
                       isChildBacklog={itemBacklogId !== selectedBacklogId}
                       onSelect={handleSelect}
                     />
-                    {isAdding && isSelected && item.parentId === null && (
-                      <InlineWorkItemInput
-                        depth={0}
-                        onSubmit={(title) => {
-                          addWorkItem(title, null, selectedBacklogId, selectedTreeId, item.rank + 1);
-                        }}
-                        onCancel={() => setIsAdding(false)}
-                      />
-                    )}
                   </div>
                 );
               })}
@@ -1010,15 +1009,6 @@ export function WorkItemTreePanel() {
                 parentId={null}
                 depth={0}
               />
-              {isAdding && !selectedWorkItemIds.length && (
-                <InlineWorkItemInput
-                  depth={0}
-                  onSubmit={(title) => {
-                    addWorkItem(title, null, selectedBacklogId, selectedTreeId);
-                  }}
-                  onCancel={() => setIsAdding(false)}
-                />
-              )}
             </div>
           )}
         </div>
