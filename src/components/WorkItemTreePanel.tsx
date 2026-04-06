@@ -335,7 +335,7 @@ function WorkItemNode({
           {...attributes}
           {...restListeners}
           className={`
-            flex items-start gap-1.5 px-3 py-1 rounded-md
+            flex items-start gap-1.5 px-3 py-0.5 md:py-1 rounded-md
             transition-all duration-150 ease-out group
             border select-none
             ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
@@ -774,7 +774,7 @@ function ReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative ${isMobile ? "py-5" : "py-1"}`}
+      className={`relative ${isMobile ? "py-2" : "py-1"}`}
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
