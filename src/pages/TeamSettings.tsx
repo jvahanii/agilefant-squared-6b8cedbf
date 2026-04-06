@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
+import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { isPointsEnabled as isPointsEnabledSetting, setPointsEnabled as setPointsEnabledSetting } from "@/hooks/usePointsEnabled";
