@@ -499,6 +499,18 @@ export default function TeamSettings() {
 
         <TeamManagement />
 
+        {/* Billing / Subscription */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Billing & Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PricingCards />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
