@@ -101,7 +101,7 @@ function InlineInput({
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
+    <div className="flex items-center gap-1 px-2 py-0.5" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
       <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
       <input
         ref={inputRef}
@@ -295,7 +295,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         {...attributes}
         {...restListeners}
         className={`
-          flex items-center gap-1.5 px-2 py-1.5 rounded-md
+          flex items-center gap-1.5 px-2 py-1 rounded-md
           transition-all duration-150 ease-out select-none group
           ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
