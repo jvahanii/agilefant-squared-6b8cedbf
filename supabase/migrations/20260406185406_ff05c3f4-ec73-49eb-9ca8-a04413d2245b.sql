@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN stripe_customer_id text DEFAULT null;
