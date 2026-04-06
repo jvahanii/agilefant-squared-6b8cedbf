@@ -10,9 +10,10 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
  * An item is considered due when:
  *   - respawnEnabled is true
  *   - respawnIntervalDays and respawnHour are set
- *   - The current local hour matches respawnHour
- *   - Either the item has never been triggered, OR the last trigger was at least
- *     respawnIntervalDays days ago
+ *   - For the first trigger: the current local hour has reached respawnHour
+ *   - For subsequent triggers: now >= (lastTriggeredAt + intervalDays), aligned to
+ *     respawnHour on that day. This allows catch-up if the app was not open at the
+ *     exact scheduled hour.
  */
 export function useRespawnCheck() {
   const respawnItem = useAppStore((s) => s.respawnItem);
@@ -28,18 +29,30 @@ export function useRespawnCheck() {
   useEffect(() => {
     const runCheck = () => {
       const now = new Date();
-      const currentHour = now.getHours();
 
       Object.values(workItemsRef.current).forEach((item) => {
         if (!item.respawnEnabled) return;
         if (item.respawnIntervalDays == null || item.respawnHour == null) return;
-        if (currentHour !== item.respawnHour) return;
-
-        const intervalMs = item.respawnIntervalDays * 24 * 60 * 60 * 1000;
 
         if (item.respawnLastTriggeredAt) {
-          const lastTriggered = new Date(item.respawnLastTriggeredAt).getTime();
-          if (now.getTime() - lastTriggered < intervalMs) return;
+          // Compute next due time: lastTriggeredAt + intervalDays, then align to
+          // respawnHour on that day. Aligning via setHours ensures catch-up if the
+          // app was closed during the exact scheduled hour.
+          // If setHours moves the date backward (last trigger was after respawnHour),
+          // advance by one day so the effective interval is never shorter than intervalDays.
+          const baseNextDue = new Date(
+            new Date(item.respawnLastTriggeredAt).getTime() +
+              item.respawnIntervalDays * 24 * 60 * 60 * 1000,
+          );
+          const nextDue = new Date(baseNextDue);
+          nextDue.setHours(item.respawnHour, 0, 0, 0);
+          if (nextDue < baseNextDue) {
+            nextDue.setDate(nextDue.getDate() + 1);
+          }
+          if (now < nextDue) return;
+        } else {
+          // First trigger: only fire once we reach the configured hour of day.
+          if (now.getHours() < item.respawnHour) return;
         }
 
         respawnItem(item.id);
