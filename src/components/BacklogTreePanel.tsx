@@ -141,7 +141,7 @@ function BacklogReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative ${isMobile ? "py-5" : "py-2"}`}
+      className={`relative ${isMobile ? "py-5" : "py-1"}`}
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -535,7 +535,7 @@ function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   });
 
   return (
-    <div ref={setNodeRef} className={`relative ${isMobile ? "py-5" : "py-2"} mx-2`}>
+    <div ref={setNodeRef} className={`relative ${isMobile ? "py-5" : "py-1"} mx-2`}>
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
@@ -692,7 +692,7 @@ export function BacklogTreePanel() {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-1 pb-2">
+      <div className="flex-1 overflow-y-auto px-1 pb-1">
         {isAddingTree && (
           <div className="mb-2 px-2">
             <InlineInput
@@ -706,7 +706,7 @@ export function BacklogTreePanel() {
           </div>
         )}
         {sortedTrees.map((tree, treeIndex) => (
-          <div key={tree.id} className="mb-2">
+          <div key={tree.id} className="mb-1">
             <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
             <DraggableTreeHeader
               tree={tree}
