@@ -51,11 +51,6 @@ interface TeamRow {
   created_at: string;
 }
 
-const MOCK_PLANS = [
-  { orgId: "1", plan: "Pro", status: "active", nextBilling: "2026-05-01", amount: "$49/mo" },
-  { orgId: "2", plan: "Starter", status: "active", nextBilling: "2026-05-15", amount: "$9/mo" },
-  { orgId: "3", plan: "Enterprise", status: "past_due", nextBilling: "2026-04-10", amount: "$199/mo" },
-];
 
 export default function ManagerScreen() {
   const { user } = useAuth();
