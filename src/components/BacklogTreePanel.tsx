@@ -9,6 +9,10 @@ import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { isPointsEnabled } from "@/hooks/usePointsEnabled";
 
+const INDENT_PER_LEVEL = 12;
+const BASE_INDENT = 8;
+const BASE_INDENT_INLINE = 24;
+
 interface TreeShare {
   orgId: string;
   orgName: string;
@@ -97,7 +101,7 @@ function InlineInput({
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: `${depth * 16 + 28}px` }}>
+    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
       <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
       <input
         ref={inputRef}
@@ -138,7 +142,7 @@ function BacklogReorderDropZone({
     <div
       ref={setNodeRef}
       className={`relative ${isMobile ? "py-5" : "py-2"}`}
-      style={{ marginLeft: `${depth * 16 + 8}px` }}
+      style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
@@ -298,7 +302,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
           ${isOver && !isDragging ? "drag-over" : ""}
           ${isDragging ? "shadow-lg bg-card" : ""}
         `}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
         onPointerDown={(e) => {
           dndPointerDown?.(e);
           dragStartedRef.current = false;
@@ -566,7 +570,7 @@ function DraggableTreeHeader({
     <div
       ref={setDragRef}
       {...attributes}
-      className="px-2 py-1 flex flex-col group select-none"
+      className="px-1 py-0.5 flex flex-col group select-none"
       style={isDragging ? { opacity: 0.4 } : undefined}
       onPointerDown={(e) => {
         dragStartedRef.current = false;
@@ -678,7 +682,7 @@ export function BacklogTreePanel() {
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
-      <div className="p-4 pb-2 flex items-center justify-between">
+      <div className="p-2 pb-1.5 flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
         <button
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -688,9 +692,9 @@ export function BacklogTreePanel() {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="flex-1 overflow-y-auto px-1 pb-2">
         {isAddingTree && (
-          <div className="mb-4 px-2">
+          <div className="mb-2 px-2">
             <InlineInput
               depth={0}
               onSubmit={(name) => {
@@ -702,7 +706,7 @@ export function BacklogTreePanel() {
           </div>
         )}
         {sortedTrees.map((tree, treeIndex) => (
-          <div key={tree.id} className="mb-4">
+          <div key={tree.id} className="mb-2">
             <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
             <DraggableTreeHeader
               tree={tree}
