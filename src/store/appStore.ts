@@ -214,36 +214,48 @@ function buildCascadedShiftSet(
   excludeId: string | null,
   initialCheck: (wi: WorkItem) => boolean,
 ): Set<string> {
+  // Pre-filter to only siblings (same parentId, not excluded) to avoid scanning
+  // the entire item map repeatedly.
+  const siblings = Object.values(allItems).filter(
+    (wi) => wi.parentId === parentId && !(excludeId && wi.id === excludeId),
+  );
+
+  // Build a rank → sibling index for O(1) lookup during cascade.
+  const byRank = new Map<number, WorkItem[]>();
+  for (const wi of siblings) {
+    const bucket = byRank.get(wi.rank);
+    if (bucket) bucket.push(wi);
+    else byRank.set(wi.rank, [wi]);
+  }
+
   const toShift = new Set<string>();
 
   // Initial pass: items that pass the context check and sit at or above insertRank.
-  Object.values(allItems).forEach((wi) => {
-    if (excludeId && wi.id === excludeId) return;
-    if (wi.parentId !== parentId) return;
+  for (const wi of siblings) {
     if (initialCheck(wi) && wi.rank >= insertRank) toShift.add(wi.id);
-  });
+  }
 
-  // Cascade: shifting wi from rank R to R+1 might collide with wj at rank R+1 that
-  // shares a context with wi but not with the original triggering item.  Keep
-  // expanding the shift set until it stabilises.
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const id of [...toShift]) {
-      const wi = allItems[id];
-      if (!wi) continue;
-      const newRank = wi.rank + 1;
-      Object.values(allItems).forEach((wj) => {
-        if (toShift.has(wj.id) || (excludeId && wj.id === excludeId)) return;
-        if (wj.parentId !== parentId || wj.rank !== newRank) return;
-        const isSiblingOfWi = Object.entries(wi.backlogAssignments).some(
-          ([treeId, backlogId]) => wj.backlogAssignments[treeId] === backlogId,
-        );
-        if (isSiblingOfWi) {
-          toShift.add(wj.id);
-          changed = true;
-        }
-      });
+  // Cascade using a work-list of newly added items.  Shifting wi from rank R to R+1
+  // might collide with wj at rank R+1 that shares a context with wi but not with the
+  // original triggering item.  Process only newly added items; traversal order does not
+  // affect the final set, so we use a stack (pop) for O(1) removal.
+  const queue = [...toShift];
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    const wi = allItems[id];
+    if (!wi) continue;
+    const newRank = wi.rank + 1;
+    const candidates = byRank.get(newRank);
+    if (!candidates) continue;
+    for (const wj of candidates) {
+      if (toShift.has(wj.id)) continue;
+      const isSiblingOfWi = Object.entries(wi.backlogAssignments).some(
+        ([treeId, backlogId]) => wj.backlogAssignments[treeId] === backlogId,
+      );
+      if (isSiblingOfWi) {
+        toShift.add(wj.id);
+        queue.push(wj.id);
+      }
     }
   }
 
