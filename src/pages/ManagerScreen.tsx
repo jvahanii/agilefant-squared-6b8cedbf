@@ -22,8 +22,6 @@ import {
   Shield,
   CreditCard,
   ExternalLink,
-  CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
