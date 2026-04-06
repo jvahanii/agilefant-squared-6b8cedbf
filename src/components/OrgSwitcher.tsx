@@ -7,14 +7,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Building2, ChevronDown, Settings, LogOut, Plus } from "lucide-react";
+import { Building2, ChevronDown, Settings, LogOut, Plus, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export function OrgSwitcher() {
   const { user, signOut } = useAuth();
@@ -25,6 +26,17 @@ export function OrgSwitcher() {
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [creating, setCreating] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("profiles")
+      .select("is_superuser")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
+  }, [user?.id]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +85,14 @@ export function OrgSwitcher() {
           <DropdownMenuItem onClick={() => navigate("/settings/team")}>
             <Settings className="w-4 h-4 mr-2" /> Org Settings
           </DropdownMenuItem>
+          {isSuperuser && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/manager")}>
+                <Shield className="w-4 h-4 mr-2" /> Manager Screen
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut} className="text-destructive">
             <LogOut className="w-4 h-4 mr-2" /> Sign Out
