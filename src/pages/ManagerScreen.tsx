@@ -356,107 +356,45 @@ export default function ManagerScreen() {
 
           {/* Billing */}
           <TabsContent value="billing">
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" /> Subscription Plans
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    {[
-                      { name: "Starter", price: "$9/mo", features: ["Up to 5 users", "3 teams", "Basic support"] },
-                      {
-                        name: "Pro",
-                        price: "$49/mo",
-                        features: ["Up to 50 users", "Unlimited teams", "Priority support"],
-                        highlighted: true,
-                      },
-                      {
-                        name: "Enterprise",
-                        price: "$199/mo",
-                        features: ["Unlimited users", "Unlimited teams", "Dedicated support"],
-                      },
-                    ].map((plan) => (
-                      <div
-                        key={plan.name}
-                        className={`rounded-lg border p-4 space-y-3 ${plan.highlighted ? "border-primary bg-primary/5" : ""}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold">{plan.name}</p>
-                          {plan.highlighted && <Badge>Popular</Badge>}
-                        </div>
-                        <p className="text-2xl font-bold">{plan.price}</p>
-                        <ul className="space-y-1">
-                          {plan.features.map((f) => (
-                            <li key={f} className="text-sm text-muted-foreground flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Organization Billing Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Organization</TableHead>
-                        <TableHead>Plan</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Next Billing</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" /> Organization Plans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Billing is managed per-organization from each org's settings page.
+                  Navigate to an organization to manage its plan.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Organization</TableHead>
+                      <TableHead>Members</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orgs.map((org) => (
+                      <TableRow key={org.id}>
+                        <TableCell className="font-medium">{org.name}</TableCell>
+                        <TableCell>{org.memberCount}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleNavigateToOrg(org.id)}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orgs.slice(0, 5).map((org, idx) => {
-                        const billing = MOCK_PLANS[idx % MOCK_PLANS.length];
-                        const isPastDue = billing.status === "past_due";
-                        return (
-                          <TableRow key={org.id}>
-                            <TableCell className="font-medium">{org.name}</TableCell>
-                            <TableCell>{billing.plan}</TableCell>
-                            <TableCell>
-                              {isPastDue ? (
-                                <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                  <AlertCircle className="w-3 h-3" /> Past Due
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                                  <CheckCircle2 className="w-3 h-3" /> Active
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{billing.amount}</TableCell>
-                            <TableCell className="text-muted-foreground text-sm">{billing.nextBilling}</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="outline" size="sm" disabled>
-                                Manage
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Billing data shown above is mock. Connect a payment provider (e.g. Stripe) to enable live billing
-                    management.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
