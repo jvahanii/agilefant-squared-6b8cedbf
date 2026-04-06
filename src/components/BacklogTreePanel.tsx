@@ -141,7 +141,7 @@ function BacklogReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative ${isMobile ? "py-5" : "py-1"}`}
+      className={`relative ${isMobile ? "py-2" : "py-1"}`}
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -295,7 +295,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
         {...attributes}
         {...restListeners}
         className={`
-          flex items-center gap-1.5 px-2 py-1 rounded-md
+          flex items-center gap-1.5 px-2 py-0.5 md:py-1 rounded-md
           transition-all duration-150 ease-out select-none group
           ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
@@ -535,7 +535,7 @@ function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   });
 
   return (
-    <div ref={setNodeRef} className={`relative ${isMobile ? "py-5" : "py-1"} mx-2`}>
+    <div ref={setNodeRef} className={`relative ${isMobile ? "py-2" : "py-1"} mx-2`}>
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
