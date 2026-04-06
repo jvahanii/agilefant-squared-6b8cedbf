@@ -54,7 +54,7 @@ interface SubscriptionState {
 
 export function useSubscription() {
   const { user } = useAuth();
-  const activeOrg = useOrgStore((s) => s.activeOrg);
+  const activeOrg = useOrgStore((s) => s.activeOrgId);
   const [state, setState] = useState<SubscriptionState>({
     loading: true,
     subscribed: false,
