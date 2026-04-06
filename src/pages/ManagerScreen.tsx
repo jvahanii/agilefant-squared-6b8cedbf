@@ -195,7 +195,7 @@ export default function ManagerScreen() {
           </Card>
           <Card>
             <CardContent className="pt-4 flex items-center gap-3">
-              <CreditCard className="w-8 h-8 text-muted-foreground" />
+              <Shield className="w-8 h-8 text-muted-foreground" />
               <div>
                 <p className="text-2xl font-bold">{teams.length}</p>
                 <p className="text-sm text-muted-foreground">Teams</p>
