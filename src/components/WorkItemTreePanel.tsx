@@ -109,7 +109,7 @@ function InlineWorkItemInput({
   };
 
   return (
-    <div className="flex items-start gap-1.5 px-3 py-2" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
+    <div className="flex items-start gap-1.5 px-3 py-1" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
       <FileText className="w-3.5 h-3.5 text-primary/50 shrink-0 mt-1" />
       <textarea
         ref={textAreaRef}
@@ -335,7 +335,7 @@ function WorkItemNode({
           {...attributes}
           {...restListeners}
           className={`
-            flex items-start gap-1.5 px-3 py-2 rounded-md
+            flex items-start gap-1.5 px-3 py-1 rounded-md
             transition-all duration-150 ease-out group
             border select-none
             ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
@@ -926,7 +926,7 @@ export function WorkItemTreePanel() {
         lastSelectedId.current = null;
       }}
     >
-      <div className="p-4 pb-2 border-b flex items-start justify-between shrink-0">
+      <div className="p-3 pb-1.5 border-b flex items-start justify-between shrink-0">
         <div className="min-w-0 flex-1">
           <EditableBacklogName backlogId={selectedBacklogId} />
           <p className="text-xs text-muted-foreground mt-0.5">
