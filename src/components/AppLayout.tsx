@@ -892,7 +892,7 @@ export default function AppLayout() {
     <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col overflow-hidden bg-background">
         {/* HEADER */}
-        <header className="h-14 md:h-16 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-card shrink-0 shadow-sm z-10">
+        <header className="h-14 md:h-16 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-[#f5f5f5] shrink-0 shadow-sm z-10">
           <img
             alt="Agilefant"
             className="h-8 md:h-10 w-auto"
