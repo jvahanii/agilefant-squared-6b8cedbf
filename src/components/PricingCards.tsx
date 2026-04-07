@@ -35,7 +35,7 @@ export function PricingCards() {
     );
   }
 
-  const planKeys: PlanKey[] = ["free", "supporter", "enterprise"];
+  const planKeys: PlanKey[] = ["free", "starter", "pro", "enterprise"];
 
   return (
     <div className="space-y-6">
