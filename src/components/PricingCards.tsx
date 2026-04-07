@@ -39,7 +39,7 @@ export function PricingCards() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {planKeys.map((key) => {
           const plan = PLANS[key];
           const isCurrent = currentPlan === key;
