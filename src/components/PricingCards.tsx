@@ -35,15 +35,15 @@ export function PricingCards() {
     );
   }
 
-  const planKeys: PlanKey[] = ["free", "starter", "pro", "enterprise"];
+  const planKeys: PlanKey[] = ["free", "starter"];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
         {planKeys.map((key) => {
           const plan = PLANS[key];
           const isCurrent = currentPlan === key;
-          const isHighlighted = key === "pro";
+          const isHighlighted = key === "starter";
 
           return (
             <Card

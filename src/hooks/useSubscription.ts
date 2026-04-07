@@ -17,21 +17,7 @@ export const PLANS = {
     price: "$9 / month",
     product_id: "prod_UHs01l5M3TFxGQ",
     price_id: "price_1TJIGCBRMLkyTCtAKXA3imQq",
-    features: ["Up to 5 users", "3 teams", "Basic support"],
-  },
-  pro: {
-    name: "Pro",
-    price: "$49 / month",
-    product_id: "prod_UHs0EPNB8R7ErG",
-    price_id: "price_1TJIGWBRMLkyTCtANR9TDsys",
-    features: ["Up to 50 users", "Unlimited teams", "Priority support"],
-  },
-  enterprise: {
-    name: "Enterprise",
-    price: "$199 / month",
-    product_id: "prod_UHs0HVSLL2t4sc",
-    price_id: "price_1TJIGvBRMLkyTCtABKNOkZlZ",
-    features: ["Unlimited users", "Unlimited teams", "Dedicated support"],
+    features: ["Support the further development of Agilefant"],
   },
 } as const;
 
