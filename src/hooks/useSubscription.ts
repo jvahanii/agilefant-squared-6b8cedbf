@@ -13,7 +13,7 @@ export const PLANS = {
     features: ["Free forever", "Community support"],
   },
   starter: {
-    name: "Starter",
+    name: "Supporter",
     price: "$9 / month",
     product_id: "prod_UHs01l5M3TFxGQ",
     price_id: "price_1TJIGCBRMLkyTCtAKXA3imQq",
