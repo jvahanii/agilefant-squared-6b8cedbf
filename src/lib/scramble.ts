@@ -39,14 +39,19 @@ const MOOMIN_WORDS = [
  * Returns a stable numeric hash for a string (djb2 variant).
  * Input is normalised to lowercase so that capitalisation variants of the
  * same word always map to the same Moomin word.
+ *
+ * Math.imul is used for multiplication so that the arithmetic stays within
+ * 32-bit integer bounds — matching the djb2 spec and avoiding floating-point
+ * precision loss that would otherwise shift the word mapping for longer inputs.
  */
 function hashString(s: string): number {
   const lower = s.toLowerCase();
   let h = 5381;
   for (let i = 0; i < lower.length; i++) {
-    h = (h * 33) ^ lower.charCodeAt(i);
+    h = Math.imul(h, 33) ^ lower.charCodeAt(i);
   }
-  return Math.abs(h);
+  // Treat as unsigned 32-bit value so the modulo is always non-negative.
+  return h >>> 0;
 }
 
 /**
