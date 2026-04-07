@@ -83,16 +83,7 @@ export function PricingCards() {
                       Current
                     </Button>
                   )
-                ) : key === "free" ? null : key === "enterprise" ? (
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => { window.location.href = "mailto:contact@agilefant.com"; }}
-                  >
-                    Contact us
-                  </Button>
-                ) : (
+                ) : key === "free" ? null : (
                   <Button
                     size="sm"
                     className="w-full"
