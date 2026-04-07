@@ -58,22 +58,31 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   if (backlogsRes.error) throw backlogsRes.error;
   if (itemsRes.error) throw itemsRes.error;
 
-  // Also load work items from other orgs that reference any accessible tree.
-  // This covers both trees shared TO this org and trees this org OWNS that have been
-  // shared OUT (so the owner sees items created by the sharing partner).
+  // Also load work items from partner orgs that own trees shared TO this org.
+  // Scope strictly to the orgs that own those shared trees so no other org's
+  // data is ever fetched (preventing cross-org data pollution).
   let sharedWorkItems: any[] = [];
-  if (allTreeIds.length > 0) {
-    const allTreeIdSet = new Set(allTreeIds);
-    // Load all work items that reference accessible trees (from other orgs)
-    const { data: allSharedItems } = await supabase
-      .from('work_items')
-      .select('*')
-      .neq('organization_id', organizationId);
-    // Filter to items that have assignments to any accessible tree
-    sharedWorkItems = (allSharedItems ?? []).filter((item: any) => {
-      const assignments = item.backlog_assignments as Record<string, string>;
-      return Object.keys(assignments).some(treeId => allTreeIdSet.has(treeId));
-    });
+  if (sharedTreeIds.length > 0) {
+    const sharedTreeIdSet = new Set(sharedTreeIds);
+    // Derive the org IDs from the tree rows we already fetched for shared trees.
+    const partnerOrgIds = [
+      ...new Set(
+        (sharedTreesRes.data ?? [])
+          .map((t: any) => t.organization_id as string)
+          .filter((id: string) => id !== organizationId)
+      ),
+    ];
+    if (partnerOrgIds.length > 0) {
+      const { data: partnerItems } = await supabase
+        .from('work_items')
+        .select('*')
+        .in('organization_id', partnerOrgIds);
+      // Keep only items that are actually assigned to one of the shared trees.
+      sharedWorkItems = (partnerItems ?? []).filter((item: any) => {
+        const assignments = item.backlog_assignments as Record<string, string>;
+        return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
+      });
+    }
   }
 
   // Auto-cleanup malformed (double-prefixed) tree IDs
