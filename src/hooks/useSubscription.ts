@@ -10,7 +10,7 @@ export const PLANS = {
     price: "$0",
     product_id: null,
     price_id: null,
-    features: ["Free forever", "Community support"],
+    features: ["Free forever"],
   },
   starter: {
     name: "Supporter",
