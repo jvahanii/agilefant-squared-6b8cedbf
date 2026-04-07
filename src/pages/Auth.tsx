@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PLANS, type PlanKey } from "@/hooks/useSubscription";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
@@ -31,6 +34,7 @@ export default function Auth() {
             </TabsContent>
             <TabsContent value="signup">
               <SignupForm loading={loading} setLoading={setLoading} email={email} setEmail={setEmail} />
+              <StaticPricingCards />
             </TabsContent>
           </Tabs>
           <div className="mt-4">
@@ -173,5 +177,48 @@ function SignupForm({ loading, setLoading, email, setEmail }: { loading: boolean
         {loading ? "Creating account..." : "Sign Up"}
       </Button>
     </form>
+  );
+}
+
+function StaticPricingCards() {
+  const planKeys: PlanKey[] = ["free", "starter"];
+
+  return (
+    <div className="mt-6 space-y-3">
+      <p className="text-sm font-medium text-center text-muted-foreground">Plans &amp; Pricing</p>
+      <div className="grid grid-cols-2 gap-3">
+        {planKeys.map((key) => {
+          const plan = PLANS[key];
+          const isHighlighted = key === "starter";
+
+          return (
+            <Card
+              key={key}
+              className={`relative ${isHighlighted ? "border-primary/50" : ""}`}
+            >
+              {isHighlighted && (
+                <Badge variant="secondary" className="absolute -top-2.5 left-4 text-xs">
+                  Popular
+                </Badge>
+              )}
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm">{plan.name}</CardTitle>
+                <p className="text-lg font-bold">{plan.price}</p>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <ul className="space-y-1">
+                  {plan.features.map((f) => (
+                    <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
