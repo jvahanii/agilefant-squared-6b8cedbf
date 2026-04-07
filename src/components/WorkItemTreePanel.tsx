@@ -841,7 +841,14 @@ export function WorkItemTreePanel() {
         _tree_id: selectedTreeId,
         _exclude_org_id: activeOrgId,
       })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("WorkItemTreePanel: failed to fetch tree sharing info", error);
+          // Default to treating the tree as shared (not scrambled) on error, to avoid
+          // accidentally exposing names when share status is unknown.
+          setSelectedTreeIsShared(true);
+          return;
+        }
         setSelectedTreeIsShared(Array.isArray(data) && data.length > 0);
       });
   }, [selectedTreeId, activeOrgId]);

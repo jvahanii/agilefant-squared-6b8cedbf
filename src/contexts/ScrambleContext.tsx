@@ -26,7 +26,13 @@ export function ScrambleProvider({ children }: { children: ReactNode }) {
       .select("is_superuser")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("ScrambleContext: failed to fetch superuser status", error);
+          return;
+        }
+        setIsSuperuser(data?.is_superuser ?? false);
+      });
   }, [user?.id]);
 
   return (
