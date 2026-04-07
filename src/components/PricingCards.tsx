@@ -43,7 +43,7 @@ export function PricingCards() {
         {planKeys.map((key) => {
           const plan = PLANS[key];
           const isCurrent = currentPlan === key;
-          const isHighlighted = key === "supporter";
+          const isHighlighted = key === "pro";
 
           return (
             <Card
