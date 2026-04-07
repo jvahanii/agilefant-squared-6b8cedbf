@@ -1024,6 +1024,84 @@ describe("updateHyperlink", () => {
   });
 });
 
+// ─── BULK ADD WORK ITEMS ───────────────────────────────────────────────
+
+describe("bulkAddWorkItems", () => {
+  it("assigns unique sequential ranks starting after the existing max rank", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Existing", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 2,
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    useAppStore.getState().bulkAddWorkItems(["A", "B", "C"], null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const newItems = items.filter((wi) => wi.title !== "Existing");
+    const ranks = newItems.map((wi) => wi.rank).sort((a, b) => a - b);
+    // All ranks must be unique and all above the existing max rank of 2
+    expect(new Set(ranks).size).toBe(ranks.length);
+    expect(ranks.every((r) => r > 2)).toBe(true);
+  });
+
+  it("does not produce duplicate ranks when child backlogs have items at higher ranks", () => {
+    // bl-parent has an item at rank=1; bl-child (child of bl-parent) has an item at rank=3.
+    // The combined panel shows both at the same level, sorted by rank.
+    // Pasting into bl-parent must start ranks AFTER rank=3 (the child-backlog max),
+    // not after rank=1 (the parent-backlog max) which would collide with the child item.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-parent`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-parent`]: {
+          id: `${ORG}::bl-parent`, name: "Parent BL", parentId: null,
+          childrenIds: [`${ORG}::bl-child`], treeId: `${ORG}::bt-1`, rank: 0,
+        },
+        [`${ORG}::bl-child`]: {
+          id: `${ORG}::bl-child`, name: "Child BL", parentId: `${ORG}::bl-parent`,
+          childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1,
+        },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent item", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-parent` }, rank: 1,
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child item", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-child` }, rank: 3,
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    useAppStore.getState().bulkAddWorkItems(["X", "Y"], null, `${ORG}::bl-parent`, `${ORG}::bt-1`);
+    const allItems = Object.values(useAppStore.getState().workItems);
+    const pastedItems = allItems.filter((wi) => wi.title === "X" || wi.title === "Y");
+    const childItem = useAppStore.getState().workItems[`${ORG}::wi-child`];
+    // Pasted items must not share a rank with the child-backlog item (rank=3)
+    expect(pastedItems.every((pi) => pi.rank !== childItem.rank)).toBe(true);
+    // All pasted ranks must be unique
+    const pastedRanks = pastedItems.map((pi) => pi.rank);
+    expect(new Set(pastedRanks).size).toBe(pastedRanks.length);
+    // Pasted items should appear after ALL existing items (rank > 3)
+    expect(pastedItems.every((pi) => pi.rank > 3)).toBe(true);
+  });
+});
+
 describe("removeHyperlink", () => {
   it("removes a hyperlink from a work item", () => {
     seedStore();
