@@ -179,28 +179,59 @@ describe("Duplicate Rank", () => {
 // ─── CHECK: Cross-Org Pollution ────────────────────────────────────────
 
 describe("Cross-Org Pollution", () => {
-  it("detects cross-org backlog assignment", () => {
+  it("detects cross-org backlog assignment when backlog is missing from store", () => {
     const data = baseData();
-    data.workItems[p("wi-1")].backlogAssignments = { ["other-org::bt-1"]: p("bl-1") };
-    // Also need the tree to exist for it to not be "missing tree"
+    // Tree from another org exists in store, but the assigned backlog does NOT –
+    // this is a genuinely dangling / polluted assignment.
+    data.workItems[p("wi-1")].backlogAssignments = { ["other-org::bt-1"]: "other-org::bl-nonexistent" };
     data.backlogTrees["other-org::bt-1"] = { id: "other-org::bt-1", name: "Other Tree", rootBacklogIds: [], rank: 0 };
     const issues = checkDataIntegrity(data);
     expect(issues.some((i) => i.category === "Cross-Org Pollution")).toBe(true);
   });
 
-  it("cleanse removes cross-org assignments", () => {
+  it("cleanse removes cross-org assignments where backlog is dangling", () => {
     const data = baseData();
-    // Add valid + cross-org assignment
+    // Valid assignment + dangling cross-org assignment (tree exists, backlog does NOT)
     data.workItems[p("wi-1")].backlogAssignments = {
       [p("bt-1")]: p("bl-1"),
-      ["other-org::bt-x"]: "other-org::bl-x",
+      ["other-org::bt-x"]: "other-org::bl-nonexistent",
     };
     data.backlogTrees["other-org::bt-x"] = { id: "other-org::bt-x", name: "X", rootBacklogIds: [], rank: 0 };
-    data.backlogs["other-org::bl-x"] = { id: "other-org::bl-x", name: "X", parentId: null, childrenIds: [], treeId: "other-org::bt-x", rank: 0 };
     const result = cleanseData(data);
     const wi = result.data.workItems[p("wi-1")];
     expect(wi).toBeDefined();
     expect(wi.backlogAssignments["other-org::bt-x"]).toBeUndefined();
+  });
+
+  it("does NOT flag partner-org items contributed to a shared tree (outgoing share)", () => {
+    // Scenario: active org owns bt-1/bl-1, partner org created an item assigned there.
+    // This is a legitimate outgoing-share contribution and must NOT be flagged.
+    const data = baseData();
+    const PARTNER = "partner-org";
+    data.workItems[`${PARTNER}::wi-shared`] = {
+      id: `${PARTNER}::wi-shared`, title: "Shared item", status: "not_started" as const,
+      parentId: null, childrenIds: [],
+      backlogAssignments: { [p("bt-1")]: p("bl-1") },
+      rank: 5,
+    };
+    const issues = checkDataIntegrity(data);
+    expect(
+      issues.filter((i) => i.id === `${PARTNER}::wi-shared` && i.category === "Cross-Org Pollution")
+    ).toHaveLength(0);
+  });
+
+  it("cleanse preserves partner-org items in shared trees (outgoing share)", () => {
+    const data = baseData();
+    const PARTNER = "partner-org";
+    data.workItems[`${PARTNER}::wi-shared`] = {
+      id: `${PARTNER}::wi-shared`, title: "Shared", status: "not_started" as const,
+      parentId: null, childrenIds: [],
+      backlogAssignments: { [p("bt-1")]: p("bl-1") },
+      rank: 5,
+    };
+    const result = cleanseData(data);
+    expect(result.data.workItems[`${PARTNER}::wi-shared`]).toBeDefined();
+    expect(result.data.workItems[`${PARTNER}::wi-shared`].backlogAssignments[p("bt-1")]).toBe(p("bl-1"));
   });
 });
 
