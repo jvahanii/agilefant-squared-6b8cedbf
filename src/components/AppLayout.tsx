@@ -29,7 +29,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
@@ -38,6 +38,7 @@ import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { UserGuideDialog } from "@/components/UserGuideDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ScrambleProvider, useScramble } from "@/contexts/ScrambleContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,14 @@ interface PendingCrossTreeDrop {
 }
 
 export default function AppLayout() {
+  return (
+    <ScrambleProvider>
+      <AppLayoutInner />
+    </ScrambleProvider>
+  );
+}
+
+function AppLayoutInner() {
   const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
@@ -887,6 +896,7 @@ export default function AppLayout() {
   };
 
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const { isSuperuser, scrambleEnabled, toggleScramble } = useScramble();
 
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -937,6 +947,20 @@ export default function AppLayout() {
               </AlertDialog>
 
               <div className="flex items-center gap-1 border-l pl-2">
+                {isSuperuser && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${scrambleEnabled ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+                        onClick={toggleScramble}
+                        title="Scramble names"
+                      >
+                        {scrambleEnabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{scrambleEnabled ? "Unscramble names" : "Scramble names"}</TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`} onClick={undo} disabled={undoStackLength === 0}>
@@ -989,6 +1013,15 @@ export default function AppLayout() {
                   <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleRunTests}><FlaskConical className="w-4 h-4 mr-2" />Run Tests</DropdownMenuItem>
+                  {isSuperuser && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={toggleScramble}>
+                        {scrambleEnabled ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                        {scrambleEnabled ? "Unscramble names" : "Scramble names"}
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

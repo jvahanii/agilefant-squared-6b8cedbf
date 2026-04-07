@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { isPointsEnabled } from "@/hooks/usePointsEnabled";
+import { useScramble } from "@/contexts/ScrambleContext";
+import { scrambleName } from "@/lib/scramble";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -76,6 +78,7 @@ interface BacklogNodeProps {
   index: number;
   parentId: string | null;
   treeId: string;
+  isScrambled: boolean;
 }
 
 function InlineInput({
@@ -187,7 +190,7 @@ function useBacklogPoints(backlogId: string, treeId: string) {
 
 const DRAG_THRESHOLD = 5; // pixels — minimum movement to count as a drag vs. a tap
 
-function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeProps) {
+function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }: BacklogNodeProps) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const isSelected = useAppStore((s) => s.selectedBacklogIds.includes(backlogId));
   const expanded = useAppStore((s) => s.expandedBacklogs.has(backlogId));
@@ -369,7 +372,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
               startEditing();
             }}
           >
-            {backlog.name}
+            {isScrambled ? scrambleName(backlog.name) : backlog.name}
           </span>
         )}
         {pointsVisible && totalPoints > 0 && (
@@ -432,6 +435,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
                   index={i}
                   parentId={backlogId}
                   treeId={backlog.treeId}
+                  isScrambled={isScrambled}
                 />
               </div>
             ))}
@@ -476,7 +480,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId }: BacklogNodeP
   );
 }
 
-function EditableTreeName({ treeId, name }: { treeId: string; name: string }) {
+function EditableTreeName({ treeId, name, isScrambled }: { treeId: string; name: string; isScrambled: boolean }) {
   const renameBacklogTree = useAppStore((s) => s.renameBacklogTree);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -522,7 +526,7 @@ function EditableTreeName({ treeId, name }: { treeId: string; name: string }) {
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
       onDoubleClick={startEditing}
     >
-      {name}
+      {isScrambled ? scrambleName(name) : name}
     </span>
   );
 }
@@ -547,12 +551,14 @@ function DraggableTreeHeader({
   onDeleteTree,
   onShareTree,
   shares,
+  isScrambled,
 }: {
   tree: { id: string; name: string; rank: number; rootBacklogIds: string[] };
   onAddBacklog: () => void;
   onDeleteTree: () => void;
   onShareTree: () => void;
   shares: TreeShare[];
+  isScrambled: boolean;
 }) {
   const dragStartedRef = useRef(false);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -590,7 +596,7 @@ function DraggableTreeHeader({
           <div {...listeners} className="touch-none cursor-grab active:cursor-grabbing flex items-center">
             <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
           </div>
-          <EditableTreeName treeId={tree.id} name={tree.name} />
+          <EditableTreeName treeId={tree.id} name={tree.name} isScrambled={isScrambled} />
           {shares.length > 0 && (
             <TooltipProvider delayDuration={200}>
               <Tooltip>
@@ -680,6 +686,12 @@ export function BacklogTreePanel() {
   const treeIds = useMemo(() => sortedTrees.map((t) => t.id), [sortedTrees]);
   const treeShares = useTreeShares(treeIds);
 
+  const { scrambleEnabled } = useScramble();
+
+  // A tree is scrambled only when scramble is enabled AND it has no shares with any org.
+  const isTreeScrambled = (treeId: string) =>
+    scrambleEnabled && !(treeShares[treeId]?.length > 0);
+
   return (
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-2 pb-1.5 flex items-center justify-between">
@@ -705,47 +717,51 @@ export function BacklogTreePanel() {
             />
           </div>
         )}
-        {sortedTrees.map((tree, treeIndex) => (
-          <div key={tree.id} className="mb-1">
-            <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
-            <DraggableTreeHeader
-              tree={tree}
-              onAddBacklog={() => setAddingToTree(tree.id)}
-              onDeleteTree={() => deleteBacklogTree(tree.id)}
-              onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
-              shares={treeShares[tree.id] ?? []}
-            />
-            {tree.rootBacklogIds.map((backlogId, i) => (
-              <div key={backlogId}>
-                <BacklogReorderDropZone
-                  id={`backlog-reorder-root-${tree.id}-${i}`}
-                  index={i}
-                  parentId={null}
-                  treeId={tree.id}
-                  depth={0}
-                />
-                <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} />
-              </div>
-            ))}
-            <BacklogReorderDropZone
-              id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
-              index={tree.rootBacklogIds.length}
-              parentId={null}
-              treeId={tree.id}
-              depth={0}
-            />
-            {addingToTree === tree.id && (
-              <InlineInput
-                depth={0}
-                onSubmit={(name) => {
-                  addBacklog(name, null, tree.id);
-                  setAddingToTree(null);
-                }}
-                onCancel={() => setAddingToTree(null)}
+        {sortedTrees.map((tree, treeIndex) => {
+          const treeIsScrambled = isTreeScrambled(tree.id);
+          return (
+            <div key={tree.id} className="mb-1">
+              <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
+              <DraggableTreeHeader
+                tree={tree}
+                onAddBacklog={() => setAddingToTree(tree.id)}
+                onDeleteTree={() => deleteBacklogTree(tree.id)}
+                onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
+                shares={treeShares[tree.id] ?? []}
+                isScrambled={treeIsScrambled}
               />
-            )}
-          </div>
-        ))}
+              {tree.rootBacklogIds.map((backlogId, i) => (
+                <div key={backlogId}>
+                  <BacklogReorderDropZone
+                    id={`backlog-reorder-root-${tree.id}-${i}`}
+                    index={i}
+                    parentId={null}
+                    treeId={tree.id}
+                    depth={0}
+                  />
+                  <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} isScrambled={treeIsScrambled} />
+                </div>
+              ))}
+              <BacklogReorderDropZone
+                id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
+                index={tree.rootBacklogIds.length}
+                parentId={null}
+                treeId={tree.id}
+                depth={0}
+              />
+              {addingToTree === tree.id && (
+                <InlineInput
+                  depth={0}
+                  onSubmit={(name) => {
+                    addBacklog(name, null, tree.id);
+                    setAddingToTree(null);
+                  }}
+                  onCancel={() => setAddingToTree(null)}
+                />
+              )}
+            </div>
+          );
+        })}
         <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
       </div>
 
