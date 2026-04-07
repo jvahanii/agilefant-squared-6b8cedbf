@@ -18,13 +18,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
 import { isPointsEnabled } from "@/hooks/usePointsEnabled";
+import { supabase } from "@/integrations/supabase/client";
+import { useScramble } from "@/contexts/ScrambleContext";
+import { scrambleName } from "@/lib/scramble";
 
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
 const DRAG_THRESHOLD_PX = 5;
 const DRAG_THRESHOLD_PX_SQUARED = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
 
-function EditableBacklogName({ backlogId }: { backlogId: string }) {
+function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,7 +79,7 @@ function EditableBacklogName({ backlogId }: { backlogId: string }) {
         startEditing();
       }}
     >
-      {backlog.name}
+      {isScrambled ? scrambleName(backlog.name) : backlog.name}
     </h2>
   );
 }
@@ -142,6 +145,7 @@ interface WorkItemNodeProps {
   backlogId: string;
   allBacklogIds: string[];
   isChildBacklog?: boolean;
+  isScrambled: boolean;
   onSelect: (id: string, multi: boolean, shift: boolean) => void;
 }
 
@@ -152,6 +156,7 @@ function WorkItemNode({
   backlogId,
   allBacklogIds,
   isChildBacklog,
+  isScrambled,
   onSelect,
 }: WorkItemNodeProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
@@ -460,7 +465,7 @@ function WorkItemNode({
                 startEditingTitle();
               }}
             >
-              {item.title}
+              {isScrambled ? scrambleName(item.title) : item.title}
             </span>
           )}
 
@@ -518,7 +523,7 @@ function WorkItemNode({
                           selectBacklog(seg.id, tid);
                         }}
                       >
-                        {seg.name}
+                        {isScrambled ? scrambleName(seg.name) : seg.name}
                       </button>
                     </span>
                   ))}
@@ -658,6 +663,7 @@ function WorkItemNode({
                           backlogId={childBacklogId}
                           allBacklogIds={allBacklogIds}
                           isChildBacklog={isChildBacklog}
+                          isScrambled={isScrambled}
                           onSelect={onSelect}
                         />
                       </div>
@@ -818,6 +824,37 @@ export function WorkItemTreePanel() {
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+
+  // Scramble support: check whether the currently selected tree is shared with any org.
+  // If it is shared, names in it are NOT scrambled even when scramble is enabled.
+  const { scrambleEnabled } = useScramble();
+  const [selectedTreeIsShared, setSelectedTreeIsShared] = useState(false);
+
+  useEffect(() => {
+    if (!selectedTreeId || !activeOrgId) {
+      setSelectedTreeIsShared(false);
+      return;
+    }
+    supabase
+      .rpc("get_tree_sharing_info", {
+        _tree_id: selectedTreeId,
+        _exclude_org_id: activeOrgId,
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("WorkItemTreePanel: failed to fetch tree sharing info", error);
+          // Default to treating the tree as shared (not scrambled) on error, to avoid
+          // accidentally exposing names when share status is unknown.
+          setSelectedTreeIsShared(true);
+          return;
+        }
+        setSelectedTreeIsShared(Array.isArray(data) && data.length > 0);
+      });
+  }, [selectedTreeId, activeOrgId]);
+
+  // A tree's content is scrambled only when scramble is enabled AND the tree is not shared.
+  const isScrambled = scrambleEnabled && !selectedTreeIsShared;
 
   const handlePasteFromClipboard = async () => {
     if (!selectedBacklogId || !selectedTreeId) return;
@@ -928,7 +965,7 @@ export function WorkItemTreePanel() {
     >
       <div className="p-2 pb-1 border-b flex items-start justify-between shrink-0">
         <div className="min-w-0 flex-1">
-          <EditableBacklogName backlogId={selectedBacklogId} />
+          <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
           <p className="text-xs text-muted-foreground mt-0.5">
             {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
           </p>
@@ -1000,6 +1037,7 @@ export function WorkItemTreePanel() {
                       backlogId={itemBacklogId}
                       allBacklogIds={allBacklogIds}
                       isChildBacklog={itemBacklogId !== selectedBacklogId}
+                      isScrambled={isScrambled}
                       onSelect={handleSelect}
                     />
                   </div>
