@@ -70,7 +70,7 @@ export function ShareTreeDialog({
     const { data: org, error: orgErr } = await supabase
       .from('organizations')
       .select('id, name')
-      .eq('slug', slug.trim())
+      .eq('slug', slug.trim().toLowerCase())
       .maybeSingle();
 
     if (orgErr || !org) {

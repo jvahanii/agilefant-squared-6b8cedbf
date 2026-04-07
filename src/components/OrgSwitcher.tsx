@@ -125,7 +125,7 @@ export function OrgSwitcher() {
             </div>
             <div className="space-y-2">
               <Label>Slug</Label>
-              <Input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} required pattern="[a-z0-9\-]+" />
+              <Input value={newSlug} onChange={(e) => setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} required pattern="[a-z0-9\-]+" />
             </div>
             <Button type="submit" className="w-full" disabled={creating}>
               {creating ? "Creating..." : "Create"}
