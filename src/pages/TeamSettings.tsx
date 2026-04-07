@@ -385,7 +385,7 @@ export default function TeamSettings() {
                   </div>
                   <div className="space-y-1">
                     <Label>Slug</Label>
-                    <Input value={orgSlug} onChange={(e) => setOrgSlug(e.target.value)} required />
+                    <Input value={orgSlug} onChange={(e) => setOrgSlug(e.target.value.toLowerCase())} required />
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" size="sm" disabled={renameLoading}>
