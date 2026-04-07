@@ -564,10 +564,22 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId;
       if (!orgId || titles.length === 0) return;
 
+      // Collect all backlog IDs in the subtree rooted at backlogId so that pasted
+      // items are placed after every item currently visible in the combined panel
+      // (which shows items from the selected backlog AND all its descendants).
+      // Without this, items pasted into a parent backlog could share ranks with
+      // items in child backlogs, causing them to be interleaved instead of appended.
+      const allBacklogIds = new Set<string>();
+      const collectDescendants = (id: string) => {
+        allBacklogIds.add(id);
+        state.backlogs[id]?.childrenIds.forEach(collectDescendants);
+      };
+      collectDescendants(backlogId);
+
       const updatedWorkItems = { ...state.workItems };
       let maxRank = -1;
       Object.values(updatedWorkItems).forEach((wi) => {
-        if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
+        if (wi.parentId === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
           if (wi.rank > maxRank) maxRank = wi.rank;
         }
       });
