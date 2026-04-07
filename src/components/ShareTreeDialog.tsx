@@ -66,12 +66,10 @@ export function ShareTreeDialog({
     if (!slug.trim()) return;
     setLoading(true);
 
-    // Find org by slug
-    const { data: org, error: orgErr } = await supabase
-      .from('organizations')
-      .select('id, name')
-      .eq('slug', slug.trim())
-      .maybeSingle();
+    // Find org by slug via a security-definer RPC so that the organizations
+    // RLS policy (members-only) does not block lookup of external orgs.
+    const { data: orgs, error: orgErr } = await (supabase as any).rpc('find_org_by_slug', { _slug: slug.trim() });
+    const org = (orgs && (orgs as any[]).length > 0) ? (orgs as any[])[0] : null;
 
     if (orgErr || !org) {
       toast({ title: 'Not found', description: 'No organization with that slug.', variant: 'destructive' });
