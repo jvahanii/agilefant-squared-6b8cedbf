@@ -197,12 +197,19 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   });
 
   // === 7. Cross-Pollinated Organization IDs ===
-  // Check if item ID prefix mismatches its backlog assignment org prefix
+  // Check if item ID prefix mismatches its backlog assignment org prefix.
+  // Skip the check when the assigned tree AND backlog both exist in the store:
+  // that combination indicates a legitimate partner-org contribution to a shared
+  // tree (outgoing share scenario) rather than accidental data pollution.
   Object.values(workItems).forEach((wi) => {
     const wiOrgPrefix = wi.id.includes("::") ? wi.id.split("::")[0] : null;
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const treeOrgPrefix = treeId.includes("::") ? treeId.split("::")[0] : null;
       const blOrgPrefix = blId.includes("::") ? blId.split("::")[0] : null;
+      // If the tree and backlog both exist in the store the assignment is valid
+      // (shared-tree collaboration); only flag truly dangling cross-org refs.
+      const assignmentExists = !!backlogTrees[treeId] && !!backlogs[blId];
+      if (assignmentExists) return;
       if (wiOrgPrefix && treeOrgPrefix && wiOrgPrefix !== treeOrgPrefix) {
         issues.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: `item org prefix "${wiOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
       }
@@ -223,11 +230,13 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   Object.values(backlogs).forEach((bl) => checkIdFormat(bl.id, bl.name, "backlog"));
   Object.values(backlogTrees).forEach((t) => checkIdFormat(t.id, t.name, "backlog_tree"));
 
-  // Also check consistency: if a backlog has an org prefix, its treeId should share it
+  // Also check consistency: if a backlog has an org prefix, its treeId should share it.
+  // Skip when the tree actually exists in the store: a backlog from a partner org in
+  // the active org's shared tree is a legitimate outgoing-share contribution.
   Object.values(backlogs).forEach((bl) => {
     const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
     const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
-    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix) {
+    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix && !backlogTrees[bl.treeId]) {
       issues.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org prefix "${blOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
     }
   });
@@ -457,6 +466,10 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Remove cross-org polluted assignments (work items) ---
+  // A cross-org assignment is only pollution when the tree or backlog referenced
+  // by the assignment does not actually exist in the store.  If both exist the
+  // assignment was placed there legitimately (e.g. a partner org contributing
+  // items to a shared tree) and must be preserved.
   Object.values(workItems).forEach((wi) => {
     const wiOrgPrefix = wi.id.includes("::") ? wi.id.split("::")[0] : null;
     if (!wiOrgPrefix) return;
@@ -464,7 +477,10 @@ export function cleanseData(data: StoreData): CleanseResult {
     let changed = false;
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const treeOrgPrefix = treeId.includes("::") ? treeId.split("::")[0] : null;
-      if (treeOrgPrefix && treeOrgPrefix !== wiOrgPrefix) {
+      // Keep the assignment when the tree and backlog both exist (legitimate
+      // shared-tree contribution) or when the org prefixes already match.
+      const assignmentExists = !!backlogTrees[treeId] && !!backlogs[blId];
+      if (treeOrgPrefix && treeOrgPrefix !== wiOrgPrefix && !assignmentExists) {
         fixed.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: `removed cross-org assignment to tree "${treeId}"` });
         changed = true;
       } else {
@@ -481,12 +497,15 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Remove cross-org polluted backlogs (backlog org prefix vs tree org prefix) ---
+  // As with work items, only remove the backlog if the tree it references does not
+  // exist in the store (i.e. it is genuinely orphaned / polluted).  If the tree
+  // exists, the backlog was legitimately created by a partner org in a shared tree.
   Object.keys(backlogs).forEach((id) => {
     const bl = backlogs[id];
     if (!bl) return;
     const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
     const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
-    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix) {
+    if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix && !backlogTrees[bl.treeId]) {
       removed.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org "${blOrgPrefix}" mismatches tree org "${treeOrgPrefix}"` });
       delete backlogs[id];
     }

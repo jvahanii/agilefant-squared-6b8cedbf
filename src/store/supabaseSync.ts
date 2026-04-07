@@ -58,30 +58,65 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   if (backlogsRes.error) throw backlogsRes.error;
   if (itemsRes.error) throw itemsRes.error;
 
-  // Also load work items from partner orgs that own trees shared TO this org.
-  // Scope strictly to the orgs that own those shared trees so no other org's
-  // data is ever fetched (preventing cross-org data pollution).
+  // Also load work items from partner orgs that participate in tree sharing.
+  // This covers two directions:
+  //   (A) Incoming shares: other orgs own trees shared TO this org – their items
+  //       live under their own organization_id but are assigned to those trees.
+  //   (B) Outgoing shares: this org owns trees shared WITH other orgs – items
+  //       those orgs created in our trees live under their organization_id.
   let sharedWorkItems: any[] = [];
+
+  // (A) Incoming: orgs that own the trees shared to us.
   if (sharedTreeIds.length > 0) {
     const sharedTreeIdSet = new Set(sharedTreeIds);
-    // Derive the org IDs from the tree rows we already fetched for shared trees.
-    const partnerOrgIds = [
+    const incomingPartnerOrgIds = [
       ...new Set(
         (sharedTreesRes.data ?? [])
           .map((t: any) => t.organization_id as string)
           .filter((id: string) => id !== organizationId)
       ),
     ];
-    if (partnerOrgIds.length > 0) {
-      const { data: partnerItems } = await supabase
+    if (incomingPartnerOrgIds.length > 0) {
+      const { data: incomingItems } = await supabase
         .from('work_items')
         .select('*')
-        .in('organization_id', partnerOrgIds);
+        .in('organization_id', incomingPartnerOrgIds);
       // Keep only items that are actually assigned to one of the shared trees.
-      sharedWorkItems = (partnerItems ?? []).filter((item: any) => {
+      const filtered = (incomingItems ?? []).filter((item: any) => {
         const assignments = item.backlog_assignments as Record<string, string>;
         return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
       });
+      sharedWorkItems = [...sharedWorkItems, ...filtered];
+    }
+  }
+
+  // (B) Outgoing: orgs that have been granted access to our own trees.
+  const ownTreeIds = (ownTreesRes.data ?? []).map((t: any) => t.id as string);
+  if (ownTreeIds.length > 0) {
+    const { data: outgoingShares } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('backlog_tree_shares' as any)
+      .select('organization_id')
+      .in('tree_id', ownTreeIds);
+    const outgoingPartnerOrgIds = [
+      ...new Set(
+        (outgoingShares ?? [])
+          .map((s: any) => s.organization_id as string)
+          .filter((id: string) => id !== organizationId)
+      ),
+    ];
+    if (outgoingPartnerOrgIds.length > 0) {
+      const ownTreeIdSet = new Set(ownTreeIds);
+      const { data: outgoingItems } = await supabase
+        .from('work_items')
+        .select('*')
+        .in('organization_id', outgoingPartnerOrgIds);
+      // Keep only items assigned to one of our own trees.
+      const filtered = (outgoingItems ?? []).filter((item: any) => {
+        const assignments = item.backlog_assignments as Record<string, string>;
+        return Object.keys(assignments).some(treeId => ownTreeIdSet.has(treeId));
+      });
+      sharedWorkItems = [...sharedWorkItems, ...filtered];
     }
   }
 
