@@ -17,35 +17,35 @@ interface TermsOfServiceDialogProps {
 
 export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServiceDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onCancel();
+      }}
+    >
       <DialogContent className="max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Terms of Service</DialogTitle>
           <DialogDescription>
-            {onAccept
-              ? "Please read and accept our terms before continuing."
-              : "Our terms of service."}
+            {onAccept ? "Please read and accept our terms before continuing." : "Our terms of service."}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-72 rounded-md border p-4 text-sm text-muted-foreground space-y-3">
           <div className="space-y-3">
             <p>
-              Welcome to <strong>Agilefant²</strong>. By creating an account you agree to these
-              simple terms of service.
+              Welcome to <strong>Agilefant²</strong>. By creating an account you agree to these terms of service.
             </p>
             <p>
-              We will do our best to provide a reliable and useful service, but we cannot accept
-              responsibility for any loss of data, interruption of service, or other damages that
-              may arise from your use of Agilefant².
+              We will do our best to provide a reliable and useful service, but we cannot accept responsibility for any
+              loss of data, interruption of service, or other damages that may arise from your use of Agilefant².
             </p>
             <p>
-              <strong>Your data belongs to you.</strong> You can export all your data at any time
-              using the <em>Export Data</em> button available in the application settings.
+              <strong>Your data belongs to you.</strong> You can export all your data at any time using the{" "}
+              <em>Export Data</em> button available in the application settings.
             </p>
             <p>
               Agilefant² is free and open-source software licensed under the{" "}
-              <strong>GNU General Public License v3 (GPLv3)</strong>. The source code is publicly
-              available on GitHub:{" "}
+              <strong>GNU General Public License v3 (GPLv3)</strong>. The source code is publicly available on GitHub:{" "}
               <a
                 href="https://github.com/agilefant/agilefant-squared"
                 target="_blank"
@@ -57,8 +57,8 @@ export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServic
               . You are free to inspect, modify, and self-host your own instance at any time.
             </p>
             <p>
-              We reserve the right to update these terms. Continued use of the service constitutes
-              acceptance of any changes.
+              We reserve the right to update these terms. Continued use of the service constitutes acceptance of any
+              changes.
             </p>
           </div>
         </ScrollArea>
