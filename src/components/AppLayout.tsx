@@ -822,14 +822,11 @@ function AppLayoutInner() {
   const handleExportChangelog = () => {
     if (changeLog.length === 0) { toast({ title: "No changes logged yet" }); return; }
     const csv = exportChangeLogAsCsv(changeLog);
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: `Exported ${changeLog.length} change log entries` });
+    navigator.clipboard.writeText(csv).then(() => {
+      toast({ title: `${changeLog.length} change log entries copied to clipboard` });
+    }).catch(() => {
+      toast({ title: "Failed to copy change log to clipboard", variant: "destructive" });
+    });
   };
 
   const handleExportMock = () => {
