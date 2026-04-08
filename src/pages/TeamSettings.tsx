@@ -318,6 +318,10 @@ export default function TeamSettings() {
       }
 
       // 3. Now delete the organization (non-shared trees/backlogs/items will cascade or be cleaned up)
+      // Capture member user IDs before memberships are deleted so we can clean up
+      // accounts that no longer belong to any organization after this org is gone.
+      const memberUserIds = members.map((m) => m.user_id);
+
       // Delete remaining work items owned by this org
       await supabase.from("work_items").delete().eq("organization_id", activeOrgId);
       // Delete remaining backlogs owned by this org
@@ -335,10 +339,47 @@ export default function TeamSettings() {
         return;
       }
 
-      toast({
-        title: "Organization deleted",
-        description: "Shared backlog trees were transferred to their shared organizations.",
-      });
+      // Delete users who no longer belong to any organization
+      if (memberUserIds.length > 0) {
+        // Determine before cleanup whether the current user has any remaining memberships.
+        // We do this now (after this org's memberships are gone) to avoid querying the DB
+        // after the current user's auth session may have been invalidated by cleanup.
+        const { data: currentUserRemaining } = await supabase
+          .from("memberships")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+        const currentUserWillBeOrphaned = !currentUserRemaining || currentUserRemaining.length === 0;
+
+        const { error: cleanupError } = await supabase.rpc("cleanup_orphaned_users", {
+          p_user_ids: memberUserIds,
+        });
+        if (cleanupError) {
+          console.error("cleanup_orphaned_users:", cleanupError);
+          toast({
+            title: "Organization deleted",
+            description: "Organization data was deleted, but user account cleanup encountered an error.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Organization deleted",
+            description: "All organization data has been permanently deleted. Members with no remaining organizations were also removed.",
+          });
+        }
+
+        if (currentUserWillBeOrphaned) {
+          await supabase.auth.signOut();
+          navigate("/auth");
+          return;
+        }
+      } else {
+        toast({
+          title: "Organization deleted",
+          description: "All organization data has been permanently deleted.",
+        });
+      }
+
       await loadMemberships(user.id);
       navigate("/");
     } catch (err: any) {
@@ -622,8 +663,7 @@ export default function TeamSettings() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{activeOrg?.organization_name}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. All backlogs, work items, and memberships will be permanently
-                        deleted.
+                        This action cannot be undone. All backlog trees, backlogs, work items, hyperlinks, and memberships will be permanently deleted. Members who do not belong to any other organization will also have their accounts deleted.
                         <br />
                         <br />
                         Type <strong>{activeOrg?.organization_slug}</strong> to confirm:
