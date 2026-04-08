@@ -344,12 +344,14 @@ export default function TeamSettings() {
         // Determine before cleanup whether the current user has any remaining memberships.
         // We do this now (after this org's memberships are gone) to avoid querying the DB
         // after the current user's auth session may have been invalidated by cleanup.
+        // Superusers are never deleted by cleanup, so they are never "orphaned".
         const { data: currentUserRemaining } = await supabase
           .from("memberships")
           .select("id")
           .eq("user_id", user.id)
           .limit(1);
-        const currentUserWillBeOrphaned = !currentUserRemaining || currentUserRemaining.length === 0;
+        const currentUserWillBeOrphaned =
+          !isSuperuser && (!currentUserRemaining || currentUserRemaining.length === 0);
 
         const { error: cleanupError } = await supabase.rpc("cleanup_orphaned_users", {
           p_user_ids: memberUserIds,
