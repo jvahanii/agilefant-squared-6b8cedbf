@@ -339,12 +339,28 @@ export default function TeamSettings() {
         return;
       }
 
-      // Delete users who no longer belong to any organization
-      if (memberUserIds.length > 0) {
+      // Delete users who no longer belong to any organization.
+      // Superusers must never be deleted, so fetch their is_superuser flag and
+      // exclude them from the list before sending it to the cleanup function.
+      const { data: superuserProfiles, error: superuserCheckError } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("id", memberUserIds)
+        .eq("is_superuser", true);
+      if (superuserCheckError) {
+        // Abort: we cannot safely determine which members are superusers.
+        toast({ title: "Error", description: "Could not verify member roles before cleanup. Aborting.", variant: "destructive" });
+        setDeleteLoading(false);
+        return;
+      }
+      const superuserIds = new Set((superuserProfiles ?? []).map((p) => p.id));
+      const nonSuperuserMemberIds = memberUserIds.filter((id) => !superuserIds.has(id));
+
+      if (nonSuperuserMemberIds.length > 0) {
         // Determine before cleanup whether the current user has any remaining memberships.
         // We do this now (after this org's memberships are gone) to avoid querying the DB
         // after the current user's auth session may have been invalidated by cleanup.
-        // Superusers are never deleted by cleanup, so they are never "orphaned".
+        // Superusers are excluded from cleanup, so they are never "orphaned".
         const { data: currentUserRemaining } = await supabase
           .from("memberships")
           .select("id")
@@ -354,7 +370,7 @@ export default function TeamSettings() {
           !isSuperuser && (!currentUserRemaining || currentUserRemaining.length === 0);
 
         const { error: cleanupError } = await supabase.rpc("cleanup_orphaned_users", {
-          p_user_ids: memberUserIds,
+          p_user_ids: nonSuperuserMemberIds,
         });
         if (cleanupError) {
           console.error("cleanup_orphaned_users:", cleanupError);
