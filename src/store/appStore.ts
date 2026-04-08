@@ -486,7 +486,10 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       moveRecursive(workItemId, true);
       upsertWorkItems(changed, orgId);
-      internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title });
+      const oldBacklogId = item.backlogAssignments[treeId];
+      const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
+      const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
+      internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `backlog: "${oldBacklogName}" → "${newBacklogName}"` });
       set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
     },
 
@@ -557,7 +560,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         redoStack: [],
       });
 
-      internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title });
+      const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
+      internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
     },
 
     bulkAddWorkItems: (titles, parentId, backlogId, treeId) => {
@@ -661,7 +665,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
       const updated = { ...item, title };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title });
+      internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title, details: `"${item.title}" → "${title}"` });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -676,7 +680,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!item) return;
       const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
       upsertWorkItem(updatedWorkItems[workItemId], orgId);
-      internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, details: status });
+      internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
       if (status === "in_progress") {
         const visited = new Set<string>([workItemId]);
         let ancestorId = item.parentId;
@@ -687,7 +691,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           if (ancestor.status !== "in_progress") {
             updatedWorkItems[ancestorId] = { ...ancestor, status: "in_progress" };
             upsertWorkItem(updatedWorkItems[ancestorId], orgId);
-            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, details: "in_progress" });
+            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "in_progress" (auto)` });
           }
           ancestorId = ancestor.parentId;
         }
@@ -710,7 +714,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         action: "Set Points",
         entityType: "work_item",
         entityId: workItemId,
-        details: String(points ?? "none"),
+        entityName: item.title,
+        details: `${item.points ?? "none"} → ${points ?? "none"}`,
       });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
@@ -732,7 +737,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       const updated = { ...item, backlogAssignments: newAssignments };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId });
+      const treeName = state.backlogTrees[treeId]?.name ?? treeId;
+      internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `tree: "${treeName}"` });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -773,7 +779,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (item.parentId && updatedItems[item.parentId]) changed.push(updatedItems[item.parentId]);
       if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
       upsertWorkItems(changed, orgId);
-      internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId });
+      const oldParentName = item.parentId ? (state.workItems[item.parentId]?.title ?? item.parentId) : "none";
+      const newParentName = newParentId ? (state.workItems[newParentId]?.title ?? newParentId) : "none";
+      internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `parent: "${oldParentName}" → "${newParentName}"` });
       set({
         workItems: updatedItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -793,7 +801,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         respawnHour: respawnEnabled ? respawnHour : undefined,
       };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Set Respawn", entityType: "work_item", entityId: workItemId });
+      internalLog({ action: "Set Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `enabled: ${respawnEnabled}, interval: ${respawnIntervalDays ?? 'n/a'}d, hour: ${respawnHour ?? 'n/a'}` });
       set({ workItems: { ...state.workItems, [workItemId]: updated } });
     },
 
@@ -976,7 +984,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!bl) return;
       const updated = { ...bl, name };
       upsertBacklog(updated, orgId);
-      internalLog({ action: "Rename", entityType: "backlog", entityId: backlogId, entityName: name });
+      internalLog({ action: "Rename", entityType: "backlog", entityId: backlogId, entityName: name, details: `"${bl.name}" → "${name}"` });
       set({
         backlogs: { ...state.backlogs, [backlogId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
@@ -1060,7 +1068,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
       updatedBacklogs[backlogId] = { ...bl, parentId: targetParentId, treeId, rank: maxRank + 1 };
       upsertBacklog(updatedBacklogs[backlogId], orgId);
-      internalLog({ action: "Move", entityType: "backlog", entityId: backlogId });
+      internalLog({ action: "Move", entityType: "backlog", entityId: backlogId, entityName: bl.name, details: `parent: "${bl.parentId ? state.backlogs[bl.parentId]?.name ?? bl.parentId : 'root'}" → "${targetParentId ? state.backlogs[targetParentId]?.name ?? targetParentId : 'root'}"` });
       set({
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
@@ -1113,7 +1121,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       deleteWorkItems(wiIdsToDelete);
       deleteBacklogs(blIdsToDelete);
       deleteBacklogTreeDB(treeId);
-      internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId });
+      internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId, entityName: state.backlogTrees[treeId]?.name });
       set({
         workItems: updatedItems,
         backlogs: updatedBacklogs,
@@ -1130,7 +1138,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!tree) return;
       const updated = { ...tree, name };
       upsertBacklogTree(updated, orgId);
-      internalLog({ action: "Rename", entityType: "backlog_tree", entityId: treeId, entityName: name });
+      internalLog({ action: "Rename", entityType: "backlog_tree", entityId: treeId, entityName: name, details: `"${tree.name}" → "${name}"` });
       set({
         backlogTrees: { ...state.backlogTrees, [treeId]: updated },
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
