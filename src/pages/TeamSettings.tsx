@@ -695,7 +695,7 @@ export default function TeamSettings() {
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        disabled={deleteConfirmText !== activeOrg?.organization_slug || deleteLoading}
+                        disabled={deleteConfirmText.toLowerCase() !== activeOrg?.organization_slug?.toLowerCase() || deleteLoading}
                         onClick={handleDeleteOrg}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
