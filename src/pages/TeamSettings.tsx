@@ -373,7 +373,8 @@ export default function TeamSettings() {
         const currentUserWillBeOrphaned =
           !isSuperuser && (!currentUserRemaining || currentUserRemaining.length === 0);
 
-        const { error: cleanupError } = await supabase.rpc("cleanup_orphaned_users", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: cleanupError } = await (supabase as any).rpc("cleanup_orphaned_users", {
           p_user_ids: nonSuperuserMemberIds,
         });
         if (cleanupError) {

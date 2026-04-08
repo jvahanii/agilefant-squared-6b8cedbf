@@ -399,6 +399,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_orphaned_users: {
+        Args: { p_user_ids: string[] }
+        Returns: undefined
+      }
       create_organization_with_owner: {
         Args: { _name: string; _slug: string; _user_id: string }
         Returns: string
