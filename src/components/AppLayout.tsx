@@ -29,7 +29,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff } from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
@@ -924,6 +924,9 @@ function AppLayoutInner() {
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportMock}>
                 <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export data</span>
               </button>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportChangelog}>
+                <ClipboardList className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export log</span>
+              </button>
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleCheckData}>
                 <SearchCheck className="w-3.5 h-3.5" /><span className="hidden lg:inline">Check Data</span>
               </button>
@@ -1009,6 +1012,7 @@ function AppLayoutInner() {
                   <DropdownMenuItem onClick={() => setShowUserGuide(true)}><HelpCircle className="w-4 h-4 mr-2" />User Guide</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportChangelog}><ClipboardList className="w-4 h-4 mr-2" />Export log</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
