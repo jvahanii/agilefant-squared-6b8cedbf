@@ -295,6 +295,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({ isLoading: false });
         return;
       }
+      set({ isLoading: true });
       try {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
