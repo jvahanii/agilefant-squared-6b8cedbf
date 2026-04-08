@@ -6,6 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { PLANS, type PlanKey } from "@/hooks/useSubscription";
@@ -13,9 +22,30 @@ import { PLANS, type PlanKey } from "@/hooks/useSubscription";
 export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [tosOpen, setTosOpen] = useState(false);
+  const [pendingSignupFn, setPendingSignupFn] = useState<(() => Promise<void>) | null>(null);
+
+  const handleTosAccept = async () => {
+    setTosOpen(false);
+    if (pendingSignupFn) {
+      await pendingSignupFn();
+      setPendingSignupFn(null);
+    }
+  };
+
+  const handleTosCancel = () => {
+    setTosOpen(false);
+    setPendingSignupFn(null);
+    window.location.href = "https://www.agilefant.org";
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <TermsOfServiceDialog
+        open={tosOpen}
+        onAccept={handleTosAccept}
+        onCancel={handleTosCancel}
+      />
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
@@ -33,7 +63,16 @@ export default function Auth() {
               <LoginForm loading={loading} setLoading={setLoading} email={email} setEmail={setEmail} />
             </TabsContent>
             <TabsContent value="signup">
-              <SignupForm loading={loading} setLoading={setLoading} email={email} setEmail={setEmail} />
+              <SignupForm
+                loading={loading}
+                setLoading={setLoading}
+                email={email}
+                setEmail={setEmail}
+                onShowTos={(signupFn) => {
+                  setPendingSignupFn(() => signupFn);
+                  setTosOpen(true);
+                }}
+              />
               <StaticPricingCards />
             </TabsContent>
           </Tabs>
@@ -129,27 +168,30 @@ function LoginForm({ loading, setLoading, email, setEmail }: { loading: boolean;
   );
 }
 
-function SignupForm({ loading, setLoading, email, setEmail }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void }) {
+function SignupForm({ loading, setLoading, email, setEmail, onShowTos }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void; onShowTos: (signupFn: () => Promise<void>) => void }) {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Check your email", description: "We sent you a confirmation link." });
-    }
-    setLoading(false);
+    const doSignup = async () => {
+      setLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Check your email", description: "We sent you a confirmation link." });
+      }
+      setLoading(false);
+    };
+    onShowTos(doSignup);
   };
 
   return (
@@ -220,5 +262,69 @@ function StaticPricingCards() {
         })}
       </div>
     </div>
+  );
+}
+
+function TermsOfServiceDialog({
+  open,
+  onAccept,
+  onCancel,
+}: {
+  open: boolean;
+  onAccept: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
+      <DialogContent className="max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Terms of Service</DialogTitle>
+          <DialogDescription>
+            Please read and accept our terms before continuing.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-72 rounded-md border p-4 text-sm text-muted-foreground space-y-3">
+          <div className="space-y-3">
+            <p>
+              Welcome to <strong>Agilefant²</strong>. By creating an account you agree to these
+              simple terms of service.
+            </p>
+            <p>
+              We will do our best to provide a reliable and useful service, but we cannot accept
+              responsibility for any loss of data, interruption of service, or other damages that
+              may arise from your use of Agilefant².
+            </p>
+            <p>
+              <strong>Your data belongs to you.</strong> You can export all your data at any time
+              using the <em>Export Data</em> button available in the application settings.
+            </p>
+            <p>
+              Agilefant² is free and open-source software licensed under the{" "}
+              <strong>GNU General Public License v3 (GPLv3)</strong>. The source code is publicly
+              available on GitHub:{" "}
+              <a
+                href="https://github.com/agilefant/agilefant-squared"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                github.com/agilefant/agilefant-squared
+              </a>
+              . You are free to inspect, modify, and self-host your own instance at any time.
+            </p>
+            <p>
+              We reserve the right to update these terms. Continued use of the service constitutes
+              acceptance of any changes.
+            </p>
+          </div>
+        </ScrollArea>
+        <DialogFooter className="flex gap-2 sm:justify-end">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onAccept}>Accept</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
