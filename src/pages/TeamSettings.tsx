@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { isPointsEnabled as isPointsEnabledSetting, setPointsEnabled as setPointsEnabledSetting } from "@/hooks/usePointsEnabled";
 import { useNavigate } from "react-router-dom";
+import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +65,9 @@ export default function TeamSettings() {
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Terms of Service state
+  const [tosOpen, setTosOpen] = useState(false);
 
   const currentRole = activeOrg?.role;
   const canManage = currentRole === "owner" || currentRole === "admin";
@@ -654,6 +658,26 @@ export default function TeamSettings() {
             <ChangePasswordForm />
           </CardContent>
         </Card>
+
+        {/* Terms of Service */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Terms of Service
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                View the terms you agreed to when creating your account.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setTosOpen(true)}>
+                View
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <TermsOfServiceDialog open={tosOpen} onCancel={() => setTosOpen(false)} />
 
         {/* Danger Zone — Superuser only */}
         {isSuperuser && (
