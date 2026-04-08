@@ -24,9 +24,10 @@ export function clearChangeLog() {
   changeLog.length = 0;
 }
 
-export function exportChangeLogAsCsv(): string {
+export function exportChangeLogAsCsv(entries?: ChangeLogEntry[]): string {
+  const source = entries ?? changeLog;
   const headers = ['Timestamp', 'Action', 'Entity Type', 'Entity ID', 'Entity Name', 'Details'];
-  const rows = changeLog.map(e => [
+  const rows = source.map(e => [
     e.timestamp,
     e.action,
     e.entityType,

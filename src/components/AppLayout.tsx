@@ -32,7 +32,7 @@ import { ActionPrompt } from "@/components/ActionPrompt";
 import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
-import { exportChangeLogAsCsv, getChangeLog } from "@/store/changeLog";
+import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { UserGuideDialog } from "@/components/UserGuideDialog";
@@ -79,6 +79,7 @@ function AppLayoutInner() {
   const redo = useAppStore((s) => s.redo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
   const redoStackLength = useAppStore((s) => s.redoStack.length);
+  const changeLog = useAppStore((s) => s.changeLog);
 
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
@@ -819,9 +820,8 @@ function AppLayoutInner() {
 
   // Extract handler functions for reuse in mobile menu
   const handleExportChangelog = () => {
-    const log = getChangeLog();
-    if (log.length === 0) { toast({ title: "No changes logged yet" }); return; }
-    const csv = exportChangeLogAsCsv();
+    if (changeLog.length === 0) { toast({ title: "No changes logged yet" }); return; }
+    const csv = exportChangeLogAsCsv(changeLog);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -829,7 +829,7 @@ function AppLayoutInner() {
     a.download = `changelog-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: `Exported ${log.length} change log entries` });
+    toast({ title: `Exported ${changeLog.length} change log entries` });
   };
 
   const handleExportMock = () => {
