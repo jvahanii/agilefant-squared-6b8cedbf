@@ -822,8 +822,11 @@ function AppLayoutInner() {
   const handleExportChangelog = () => {
     if (changeLog.length === 0) { toast({ title: "No changes logged yet" }); return; }
     const csv = exportChangeLogAsCsv(changeLog);
-    navigator.clipboard.writeText(csv);
-    toast({ title: `${changeLog.length} change log entries copied to clipboard` });
+    navigator.clipboard.writeText(csv).then(() => {
+      toast({ title: `${changeLog.length} change log entries copied to clipboard` });
+    }).catch(() => {
+      toast({ title: "Failed to copy change log to clipboard", variant: "destructive" });
+    });
   };
 
   const handleExportMock = () => {
