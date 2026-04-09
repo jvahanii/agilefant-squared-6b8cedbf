@@ -2,6 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 
+/** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
+const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
+
 type WorkItemUpsertRow = {
   id: string;
   title: string;
@@ -242,7 +245,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   const row: WorkItemUpsertRow = {
     id: item.id, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: item.rank,
+    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
     organization_id: ownerOrgOf(item.id, organizationId),
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -252,8 +255,8 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItem:', error);
-    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    console.error('upsertWorkItem:', error, 'row:', row);
+    toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
 }
 
@@ -273,7 +276,7 @@ export async function deleteWorkItems(ids: string[]) {
 
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
   const { error } = await supabase.from('backlogs').upsert({
-    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
+    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: safeRank(bl.rank),
     organization_id: ownerOrgOf(bl.id, organizationId),
   });
   if (error) console.error('upsertBacklog:', error);
@@ -295,7 +298,7 @@ export async function deleteBacklogs(ids: string[]) {
 
 export async function upsertBacklogTree(tree: BacklogTree, organizationId: string) {
   const { error } = await supabase.from('backlog_trees').upsert({
-    id: tree.id, name: tree.name, rank: tree.rank,
+    id: tree.id, name: tree.name, rank: safeRank(tree.rank),
     organization_id: ownerOrgOf(tree.id, organizationId),
   });
   if (error) console.error('upsertBacklogTree:', error);
@@ -317,7 +320,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   const rows: WorkItemUpsertRow[] = items.map(item => ({
     id: item.id, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: item.rank,
+    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
     organization_id: ownerOrgOf(item.id, organizationId),
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -327,15 +330,15 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItems:', error);
-    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    console.error('upsertWorkItems:', error, 'rows:', rows);
+    toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
   if (bls.length === 0) return;
   const rows = bls.map(bl => ({
-    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
+    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: safeRank(bl.rank),
     organization_id: ownerOrgOf(bl.id, organizationId),
   }));
   const { error } = await supabase.from('backlogs').upsert(rows);
@@ -345,7 +348,7 @@ export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
 export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: string) {
   if (trees.length === 0) return;
   const rows = trees.map(t => ({
-    id: t.id, name: t.name, rank: t.rank,
+    id: t.id, name: t.name, rank: safeRank(t.rank),
     organization_id: ownerOrgOf(t.id, organizationId),
   }));
   const { error } = await supabase.from('backlog_trees').upsert(rows);
@@ -451,7 +454,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
   const treeRows = Object.values(scopedMockData.backlogTrees).map((tree) => ({
     id: tree.id,
     name: tree.name,
-    rank: tree.rank,
+    rank: safeRank(tree.rank),
     organization_id: organizationId,
   }));
   if (treeRows.length > 0) {
@@ -464,7 +467,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     name: backlog.name,
     parent_id: backlog.parentId,
     tree_id: backlog.treeId,
-    rank: backlog.rank,
+    rank: safeRank(backlog.rank),
     organization_id: organizationId,
   }));
   if (backlogRows.length > 0) {
@@ -480,7 +483,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
-    rank: item.rank,
+    rank: safeRank(item.rank),
     organization_id: organizationId,
   }));
   if (itemRows.length > 0) {
@@ -518,7 +521,7 @@ export async function upsertHyperlink(link: Hyperlink, organizationId: string) {
     work_item_id: link.workItemId,
     url: link.url,
     alt_text: link.altText,
-    rank: link.rank,
+    rank: safeRank(link.rank),
     organization_id: ownerOrgOf(link.workItemId, organizationId),
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
