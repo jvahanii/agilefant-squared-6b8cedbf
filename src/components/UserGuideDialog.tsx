@@ -375,7 +375,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           </div>
           <Tip>
             Export your data at any time with the <strong>Export data</strong> header button — it copies a CSV of your
-            change log to the clipboard.
+            history to the clipboard.
           </Tip>
         </div>
       ),
