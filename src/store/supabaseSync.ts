@@ -521,7 +521,7 @@ export async function upsertHyperlink(link: Hyperlink, organizationId: string) {
     work_item_id: link.workItemId,
     url: link.url,
     alt_text: link.altText,
-    rank: link.rank,
+    rank: safeRank(link.rank),
     organization_id: ownerOrgOf(link.workItemId, organizationId),
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
