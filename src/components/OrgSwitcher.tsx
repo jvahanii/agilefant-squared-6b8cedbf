@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function OrgSwitcher() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { memberships, activeOrgId, setActiveOrg, createOrganization, loadMemberships } = useOrgStore();
+  const { memberships, activeOrgId, activeOrgName, setActiveOrg, createOrganization, loadMemberships } = useOrgStore();
   const activeOrg = memberships.find((m) => m.organization_id === activeOrgId);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -62,7 +62,7 @@ export function OrgSwitcher() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium max-w-48 truncate">
             <Building2 className="w-4 h-4 shrink-0" />
-            <span className="truncate">{activeOrg?.organization_name ?? "Select org"}</span>
+            <span className="truncate">{activeOrg?.organization_name ?? activeOrgName ?? "Select org"}</span>
             <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>

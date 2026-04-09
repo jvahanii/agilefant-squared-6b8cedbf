@@ -128,6 +128,7 @@ export default function ManagerScreen() {
 
   const handleNavigateToOrg = async (orgId: string) => {
     // Switch active org and navigate to main app
+    const org = orgs.find((o) => o.id === orgId);
     const isMember = memberships.some((m) => m.organization_id === orgId);
     if (isMember) {
       setActiveOrg(orgId);
@@ -135,7 +136,7 @@ export default function ManagerScreen() {
     } else {
       // Superuser may not be a member; reload memberships first
       if (user?.id) await loadMemberships(user.id);
-      setActiveOrg(orgId);
+      setActiveOrg(orgId, org?.name);
       navigate("/");
     }
   };
