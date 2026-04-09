@@ -2,6 +2,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 
+/** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
+const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
+
 type WorkItemUpsertRow = {
   id: string;
   title: string;
