@@ -17,19 +17,13 @@ import {
   deleteHyperlink as deleteHyperlinkDB,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
+import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
 }
 
-export interface ChangeLogEntry {
-  timestamp: string;
-  action: string;
-  entityType: string;
-  entityId?: string;
-  entityName?: string;
-  details?: string;
-}
+export type { ChangeLogEntry } from "./changeLog";
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
