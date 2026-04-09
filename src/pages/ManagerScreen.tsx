@@ -22,8 +22,19 @@ import {
   Shield,
   CreditCard,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface OrgRow {
   id: string;
@@ -60,6 +71,8 @@ export default function ManagerScreen() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "user"; id: string; name: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Check superuser status
   useEffect(() => {
@@ -124,6 +137,98 @@ export default function ManagerScreen() {
       toast({ title: "Error loading data", description: err.message, variant: "destructive" });
     }
     setLoading(false);
+  };
+
+  const handleDeleteOrg = async (orgId: string) => {
+    if (!user?.id) return;
+    setDeleteLoading(true);
+    try {
+      // 1. Collect member user IDs before memberships are removed (for orphan cleanup)
+      const { data: orgMemberships } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("organization_id", orgId);
+      const memberUserIds = (orgMemberships ?? []).map((m) => m.user_id);
+
+      // 2. Delete shares for trees owned by this org (no FK cascade from trees to shares)
+      const { data: ownedTrees } = await supabase
+        .from("backlog_trees")
+        .select("id")
+        .eq("organization_id", orgId);
+      const ownedTreeIds = (ownedTrees ?? []).map((t) => t.id);
+      if (ownedTreeIds.length > 0) {
+        await supabase
+          .from("backlog_tree_shares" as any)
+          .delete()
+          .in("tree_id", ownedTreeIds);
+      }
+
+      // 3. Delete work item hyperlinks (organization_id FK without ON DELETE CASCADE)
+      await supabase.from("work_item_hyperlinks").delete().eq("organization_id", orgId);
+
+      // 4. Delete change_log entries (no FK constraint)
+      await (supabase as any).from("change_log").delete().eq("organization_id", orgId);
+
+      // 5. Delete the organization (cascades: work_items, backlogs, backlog_trees,
+      //    memberships, teams, backlog_tree_shares[recipient])
+      const { error } = await supabase.from("organizations").delete().eq("id", orgId);
+      if (error) {
+        toast({ title: "Error deleting organization", description: error.message, variant: "destructive" });
+        setDeleteLoading(false);
+        setDeleteTarget(null);
+        return;
+      }
+
+      // 6. Cleanup orphaned users (non-superusers with no remaining memberships)
+      const { data: superuserProfiles } = await supabase
+        .from("profiles")
+        .select("id")
+        .in("id", memberUserIds)
+        .eq("is_superuser", true);
+      const superuserIds = new Set((superuserProfiles ?? []).map((p) => p.id));
+      const nonSuperuserMemberIds = memberUserIds.filter((id) => !superuserIds.has(id));
+
+      if (nonSuperuserMemberIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).rpc("cleanup_orphaned_users", { p_user_ids: nonSuperuserMemberIds });
+      }
+
+      toast({ title: "Organization deleted", description: "The organization and all its data have been permanently deleted." });
+      await loadData();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setDeleteLoading(false);
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeleteLoading(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc("admin_delete_user", { p_user_id: userId });
+      if (error) {
+        toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
+        setDeleteLoading(false);
+        setDeleteTarget(null);
+        return;
+      }
+      toast({ title: "User deleted", description: "The user account has been permanently deleted." });
+      await loadData();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setDeleteLoading(false);
+    setDeleteTarget(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "org") {
+      handleDeleteOrg(deleteTarget.id);
+    } else {
+      handleDeleteUser(deleteTarget.id);
+    }
   };
 
   const handleNavigateToOrg = async (orgId: string) => {
@@ -234,7 +339,7 @@ export default function ManagerScreen() {
                         <TableHead>Slug</TableHead>
                         <TableHead>Members</TableHead>
                         <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Navigate</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -247,13 +352,23 @@ export default function ManagerScreen() {
                             {new Date(org.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleNavigateToOrg(org.id)}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleNavigateToOrg(org.id)}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget({ type: "org", id: org.id, name: org.name })}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -283,6 +398,7 @@ export default function ManagerScreen() {
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Joined</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -301,6 +417,18 @@ export default function ManagerScreen() {
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {new Date(u.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!u.is_superuser && u.id !== user?.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteTarget({ type: "user", id: u.id, name: u.full_name || u.email || u.id })}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -397,6 +525,32 @@ export default function ManagerScreen() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteTarget?.type === "org" ? "Delete organization?" : "Delete user?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.type === "org"
+                ? `This will permanently delete the organization "${deleteTarget?.name}", all its data (backlog trees, backlogs, work items, teams), and remove all memberships. Members with no other organizations will also have their accounts deleted. This action cannot be undone.`
+                : `This will permanently delete the user account "${deleteTarget?.name}" and remove them from all organizations. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteLoading}
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
