@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { PLANS, type PlanKey } from "@/hooks/useSubscription";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
@@ -15,14 +16,12 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [tosOpen, setTosOpen] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [pendingSignupFn, setPendingSignupFn] = useState<(() => Promise<void>) | null>(null);
 
-  const handleTosAccept = async () => {
+  const handleTosAccept = () => {
     setTosOpen(false);
-    if (pendingSignupFn) {
-      await pendingSignupFn();
-      setPendingSignupFn(null);
-    }
+    setPlanDialogOpen(true);
   };
 
   const handleTosCancel = () => {
@@ -31,12 +30,33 @@ export default function Auth() {
     window.location.href = "https://www.agilefant.org";
   };
 
+  const handlePlanChosen = async (planKey: PlanKey) => {
+    setPlanDialogOpen(false);
+    if (planKey !== "free") {
+      localStorage.setItem("pendingPlan", planKey);
+    }
+    if (pendingSignupFn) {
+      await pendingSignupFn();
+      setPendingSignupFn(null);
+    }
+  };
+
+  const handlePlanCancel = () => {
+    setPlanDialogOpen(false);
+    setPendingSignupFn(null);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <TermsOfServiceDialog
         open={tosOpen}
         onAccept={handleTosAccept}
         onCancel={handleTosCancel}
+      />
+      <PlanChoosingDialog
+        open={planDialogOpen}
+        onPlanChosen={handlePlanChosen}
+        onCancel={handlePlanCancel}
       />
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -65,7 +85,6 @@ export default function Auth() {
                   setTosOpen(true);
                 }}
               />
-              <StaticPricingCards />
             </TabsContent>
           </Tabs>
           <div className="mt-4">
@@ -214,47 +233,52 @@ function SignupForm({ loading, setLoading, email, setEmail, onShowTos }: { loadi
   );
 }
 
-function StaticPricingCards() {
+function PlanChoosingDialog({ open, onPlanChosen, onCancel }: { open: boolean; onPlanChosen: (planKey: PlanKey) => void; onCancel: () => void }) {
   const planKeys: PlanKey[] = ["free", "starter"];
 
   return (
-    <div className="mt-6 space-y-3">
-      <p className="text-sm font-medium text-center text-muted-foreground">Plans &amp; Pricing</p>
-      <div className="grid grid-cols-2 gap-3">
-        {planKeys.map((key) => {
-          const plan = PLANS[key];
-          const isHighlighted = key === "starter";
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
+      <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Choose your plan</DialogTitle>
+          <DialogDescription>Select a plan to continue. You can change it later.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 py-2">
+          {planKeys.map((key) => {
+            const plan = PLANS[key];
+            const isHighlighted = key === "starter";
 
-          return (
-            <Card
-              key={key}
-              className={`relative ${isHighlighted ? "border-primary/50" : ""}`}
-            >
-              {isHighlighted && (
-                <Badge variant="secondary" className="absolute -top-2.5 left-4 text-xs">
-                  Popular
-                </Badge>
-              )}
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm">{plan.name}</CardTitle>
-                <p className="text-lg font-bold">{plan.price}</p>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <ul className="space-y-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+            return (
+              <Card
+                key={key}
+                className={`relative cursor-pointer hover:border-primary transition-colors ${isHighlighted ? "border-primary/50" : ""}`}
+                onClick={() => onPlanChosen(key)}
+              >
+                {isHighlighted && (
+                  <Badge variant="secondary" className="absolute -top-2.5 left-4 text-xs">
+                    Popular
+                  </Badge>
+                )}
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm">{plan.name}</CardTitle>
+                  <p className="text-lg font-bold">{plan.price}</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <ul className="space-y-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
-
 
