@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgStore } from '@/store/orgStore';
+import { supabase } from '@/integrations/supabase/client';
+import { PLANS, type PlanKey } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
 
 function slugify(value: string): string {
@@ -50,8 +52,29 @@ export default function Onboarding() {
 
       for (const attempt of attempts) {
         try {
-          await createOrganization(attempt.name, attempt.slug, currentUser.id);
+          const orgId = await createOrganization(attempt.name, attempt.slug, currentUser.id);
           await loadMemberships(currentUser.id);
+
+          const pendingPlan = localStorage.getItem('pendingPlan') as PlanKey | null;
+          localStorage.removeItem('pendingPlan');
+
+          if (pendingPlan && pendingPlan !== 'free' && PLANS[pendingPlan]?.price_id) {
+            try {
+              const { data, error } = await supabase.functions.invoke('create-checkout', {
+                body: { price_id: PLANS[pendingPlan].price_id, organization_id: orgId },
+              });
+              if (error) throw error;
+              if (data?.url) {
+                const win = window.open(data.url, '_blank');
+                if (!win) {
+                  toast({ title: 'Popup blocked', description: 'Please allow popups to complete your plan upgrade, or visit the billing settings later.', variant: 'destructive' });
+                }
+              }
+            } catch (err: any) {
+              toast({ title: 'Checkout error', description: err.message, variant: 'destructive' });
+            }
+          }
+
           navigate('/', { replace: true });
           return;
         } catch (err: any) {
