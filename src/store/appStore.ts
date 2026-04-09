@@ -356,6 +356,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({
           ...cleanData,
           hyperlinks,
+          changeLog: dbChangeLog,
           isLoading: false,
           undoStack: [],
           redoStack: [],
