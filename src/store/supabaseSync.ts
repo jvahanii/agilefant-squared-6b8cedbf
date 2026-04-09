@@ -255,8 +255,8 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItem:', error);
-    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    console.error('upsertWorkItem:', error, 'row:', row);
+    toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
 }
 
@@ -330,8 +330,8 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItems:', error);
-    toast({ title: 'Failed to save', description: 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    console.error('upsertWorkItems:', error, 'rows:', rows);
+    toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
 }
 
