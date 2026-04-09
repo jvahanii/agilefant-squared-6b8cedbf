@@ -40,12 +40,12 @@ export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServic
               loss of data, interruption of service, or other damages.
             </p>
             <p>
-              <strong>Your data belongs to you.</strong> You can export all your data at any time using the{" "}
-              <em>Export Data</em> button available in the application settings.
+              <strong>Your data belongs to you</strong> and you can export it at any time using the <em>Export Data</em>{" "}
+              button.
             </p>
             <p>
-              Agilefant² is free and open-source software licensed under the{" "}
-              <strong>GNU General Public License v3 (GPLv3)</strong>. The source code is publicly available on GitHub:{" "}
+              Agilefant² is licensed under the <strong>GNU General Public License v3 (GPLv3)</strong>. The source code
+              is available on GitHub:{" "}
               <a
                 href="https://github.com/agilefant/agilefant-squared"
                 target="_blank"
