@@ -326,6 +326,10 @@ export default function TeamSettings() {
       // accounts that no longer belong to any organization after this org is gone.
       const memberUserIds = members.map((m) => m.user_id);
 
+      // Delete remaining work item hyperlinks owned by this org.
+      // work_item_hyperlinks.organization_id references organizations(id) without ON DELETE CASCADE,
+      // so the hyperlinks must be explicitly removed before the organization row is deleted.
+      await supabase.from("work_item_hyperlinks").delete().eq("organization_id", activeOrgId);
       // Delete remaining work items owned by this org
       await supabase.from("work_items").delete().eq("organization_id", activeOrgId);
       // Delete remaining backlogs owned by this org
@@ -334,6 +338,8 @@ export default function TeamSettings() {
       await supabase.from("backlog_trees").delete().eq("organization_id", activeOrgId);
       // Delete memberships
       await supabase.from("memberships").delete().eq("organization_id", activeOrgId);
+      // Delete change log entries for this org
+      await (supabase as any).from("change_log").delete().eq("organization_id", activeOrgId);
       // Delete the org itself
       const { error } = await supabase.from("organizations").delete().eq("id", activeOrgId);
 
