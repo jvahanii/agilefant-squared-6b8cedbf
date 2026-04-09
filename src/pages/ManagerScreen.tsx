@@ -535,7 +535,7 @@ export default function ManagerScreen() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.type === "org"
-                ? `This will permanently delete the organization "${deleteTarget?.name}", all its data (backlog trees, backlogs, work items, teams), and remove all memberships. Members with no other organizations will also have their accounts deleted. This action cannot be undone.`
+                ? `This will permanently delete the organization "${deleteTarget?.name}", all its data (backlog trees, backlogs, work items, teams), and remove all memberships. Non-superuser members who no longer belong to any other organization will also have their accounts deleted. This action cannot be undone.`
                 : `This will permanently delete the user account "${deleteTarget?.name}" and remove them from all organizations. This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
