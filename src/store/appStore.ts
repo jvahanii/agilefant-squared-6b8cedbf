@@ -434,8 +434,32 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const itemsToMoveIds = state.selectedWorkItemIds.includes(workItemId) ? state.selectedWorkItemIds : [workItemId];
       const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
+
+      // Determine if mainItem is a "root-visible" item in this view: its parent is absent
+      // from the backlog context (or has no parent at all).  Items like sub-tasks of a
+      // "Collab AI" project that are also tagged for "Today" fall into this category –
+      // they appear at the root level of the flat view even though parentId is non-null.
+      // In that case we must treat ALL root-visible items as siblings so that moving to
+      // top/bottom ranks the item relative to every item shown at that visual level, not
+      // just the tiny group that shares the same parentId.
+      const mainParentInContext =
+        mainItem.parentId !== null &&
+        backlogIdSet.has(state.workItems[mainItem.parentId]?.backlogAssignments[treeId]);
+
       const allSiblings = Object.values(state.workItems)
-        .filter((wi) => backlogIdSet.has(wi.backlogAssignments[treeId]) && wi.parentId === mainItem.parentId)
+        .filter((wi) => {
+          if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
+          if (mainParentInContext) {
+            // mainItem is a true child inside this context – use standard same-parent matching.
+            return wi.parentId === mainItem.parentId;
+          }
+          // mainItem is root-visible: include every item whose parent is also absent from
+          // the backlog context (covers both parentId=null and cross-context sub-tasks).
+          const wiParentInContext =
+            wi.parentId !== null &&
+            backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId]);
+          return !wiParentInContext;
+        })
         .sort((a, b) => a.rank - b.rank);
 
       const movingSet = new Set(itemsToMoveIds);
