@@ -309,9 +309,12 @@ export const useAppStore = create<AppState>()((set, get) => {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
 
-        // Load hyperlinks for all work items
+        // Load hyperlinks and change log in parallel
         const workItemIds = Object.keys(cleanData.workItems);
-        const hyperlinks = await loadHyperlinksForWorkItems(workItemIds);
+        const [hyperlinks, dbChangeLog] = await Promise.all([
+          loadHyperlinksForWorkItems(workItemIds),
+          loadChangeLog(orgId),
+        ]);
 
         const parseStoredIds = (key: string): string[] => {
           try {
