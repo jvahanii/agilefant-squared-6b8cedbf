@@ -19,9 +19,10 @@ export interface Membership {
 interface OrgState {
   memberships: Membership[];
   activeOrgId: string | null;
+  activeOrgName: string | null;
   loading: boolean;
   loadMemberships: (userId: string) => Promise<void>;
-  setActiveOrg: (orgId: string) => void;
+  setActiveOrg: (orgId: string, orgName?: string) => void;
   createOrganization: (name: string, slug: string, userId: string) => Promise<string>;
   getActiveOrg: () => Membership | null;
 }
@@ -29,6 +30,7 @@ interface OrgState {
 export const useOrgStore = create<OrgState>()((set, get) => ({
   memberships: [],
   activeOrgId: null,
+  activeOrgName: null,
   loading: true,
 
   loadMemberships: async (userId: string) => {
@@ -46,9 +48,9 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
     set({ memberships, activeOrgId, loading: false });
   },
 
-  setActiveOrg: (orgId: string) => {
+  setActiveOrg: (orgId: string, orgName?: string) => {
     localStorage.setItem('activeOrgId', orgId);
-    set({ activeOrgId: orgId });
+    set({ activeOrgId: orgId, activeOrgName: orgName ?? null });
   },
 
   createOrganization: async (name: string, slug: string, userId: string) => {
