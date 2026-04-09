@@ -19,9 +19,10 @@ export interface Membership {
 interface OrgState {
   memberships: Membership[];
   activeOrgId: string | null;
+  activeOrgName: string | null;
   loading: boolean;
   loadMemberships: (userId: string) => Promise<void>;
-  setActiveOrg: (orgId: string) => void;
+  setActiveOrg: (orgId: string, orgName?: string) => void;
   createOrganization: (name: string, slug: string, userId: string) => Promise<string>;
   getActiveOrg: () => Membership | null;
 }
@@ -29,6 +30,7 @@ interface OrgState {
 export const useOrgStore = create<OrgState>()((set, get) => ({
   memberships: [],
   activeOrgId: null,
+  activeOrgName: null,
   loading: true,
 
   loadMemberships: async (userId: string) => {
@@ -40,15 +42,19 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
     }
     const memberships = (data ?? []) as Membership[];
     const stored = localStorage.getItem('activeOrgId');
-    const activeOrgId = memberships.find(m => m.organization_id === stored)
+    const resolvedMembership = memberships.find(m => m.organization_id === stored);
+    const activeOrgId = resolvedMembership
       ? stored
       : memberships[0]?.organization_id ?? null;
-    set({ memberships, activeOrgId, loading: false });
+    const activeOrgName = (resolvedMembership ?? memberships[0])?.organization_name ?? null;
+    set({ memberships, activeOrgId, activeOrgName, loading: false });
   },
 
-  setActiveOrg: (orgId: string) => {
+  setActiveOrg: (orgId: string, orgName?: string) => {
     localStorage.setItem('activeOrgId', orgId);
-    set({ activeOrgId: orgId });
+    const { memberships } = get();
+    const membership = memberships.find(m => m.organization_id === orgId);
+    set({ activeOrgId: orgId, activeOrgName: orgName ?? membership?.organization_name ?? null });
   },
 
   createOrganization: async (name: string, slug: string, userId: string) => {

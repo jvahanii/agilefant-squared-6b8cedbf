@@ -126,7 +126,7 @@ export default function ManagerScreen() {
     setLoading(false);
   };
 
-  const handleNavigateToOrg = async (orgId: string) => {
+  const handleNavigateToOrg = async (orgId: string, orgName: string) => {
     // Switch active org and navigate to main app
     const isMember = memberships.some((m) => m.organization_id === orgId);
     if (isMember) {
@@ -135,7 +135,7 @@ export default function ManagerScreen() {
     } else {
       // Superuser may not be a member; reload memberships first
       if (user?.id) await loadMemberships(user.id);
-      setActiveOrg(orgId);
+      setActiveOrg(orgId, orgName);
       navigate("/");
     }
   };
@@ -249,7 +249,7 @@ export default function ManagerScreen() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleNavigateToOrg(org.id)}
+                              onClick={() => handleNavigateToOrg(org.id, org.name)}
                             >
                               <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
                             </Button>
@@ -382,7 +382,7 @@ export default function ManagerScreen() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleNavigateToOrg(org.id)}
+                            onClick={() => handleNavigateToOrg(org.id, org.name)}
                           >
                             <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
                           </Button>
