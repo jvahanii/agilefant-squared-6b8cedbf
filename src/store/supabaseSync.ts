@@ -320,7 +320,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   const rows: WorkItemUpsertRow[] = items.map(item => ({
     id: item.id, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: item.rank,
+    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
     organization_id: ownerOrgOf(item.id, organizationId),
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -338,7 +338,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
   if (bls.length === 0) return;
   const rows = bls.map(bl => ({
-    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: bl.rank,
+    id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: safeRank(bl.rank),
     organization_id: ownerOrgOf(bl.id, organizationId),
   }));
   const { error } = await supabase.from('backlogs').upsert(rows);
@@ -348,7 +348,7 @@ export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
 export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: string) {
   if (trees.length === 0) return;
   const rows = trees.map(t => ({
-    id: t.id, name: t.name, rank: t.rank,
+    id: t.id, name: t.name, rank: safeRank(t.rank),
     organization_id: ownerOrgOf(t.id, organizationId),
   }));
   const { error } = await supabase.from('backlog_trees').upsert(rows);
