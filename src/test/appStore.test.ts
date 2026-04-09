@@ -776,6 +776,70 @@ describe("reorderWorkItemAmongSiblings", () => {
     useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 3, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
     expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
   });
+
+  it("moves cross-context sub-task to top of flat view (rank issue regression)", () => {
+    // wi-a and wi-b are root items (parentId=null) in bl-1 with negative ranks from
+    // addWorkItem default (minRank-1).  wi-cross has a non-null parentId whose parent
+    // (wi-ext) is NOT in bl-1, so wi-cross appears at root level in the flat view.
+    // Before the fix, reorderWorkItemAmongSiblings with targetIndex=0 would only
+    // consider wi-cross's own parentId group (just itself), assign rank=0, and leave
+    // wi-a(rank=-2) and wi-b(rank=-1) sorting before it.  After the fix all three
+    // root-visible items are treated as siblings and wi-cross correctly reaches rank 0.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        // wi-ext is the parent of wi-cross but is NOT assigned to bl-1.
+        [`${ORG}::wi-ext`]: { id: `${ORG}::wi-ext`, title: "Ext", status: "not_started" as const, parentId: null, childrenIds: [`${ORG}::wi-cross`], backlogAssignments: {}, rank: 0 },
+        // wi-cross is a sub-task of wi-ext AND also in bl-1 → appears as root in flat view.
+        [`${ORG}::wi-cross`]: { id: `${ORG}::wi-cross`, title: "Cross", status: "not_started" as const, parentId: `${ORG}::wi-ext`, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 5 },
+        // wi-a and wi-b are true root items in bl-1 with negative ranks.
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: -2 },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: -1 },
+      },
+      selectedWorkItemIds: [`${ORG}::wi-cross`],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-cross`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+    const items = useAppStore.getState().workItems;
+    // wi-cross must have the lowest rank so it sorts first in the flat view.
+    expect(items[`${ORG}::wi-cross`].rank).toBeLessThan(items[`${ORG}::wi-a`].rank);
+    expect(items[`${ORG}::wi-cross`].rank).toBeLessThan(items[`${ORG}::wi-b`].rank);
+  });
+
+  it("moves cross-context sub-task to bottom of flat view (rank issue regression)", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-ext`]: { id: `${ORG}::wi-ext`, title: "Ext", status: "not_started" as const, parentId: null, childrenIds: [`${ORG}::wi-cross`], backlogAssignments: {}, rank: 0 },
+        [`${ORG}::wi-cross`]: { id: `${ORG}::wi-cross`, title: "Cross", status: "not_started" as const, parentId: `${ORG}::wi-ext`, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: -5 },
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 0 },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, rank: 1 },
+      },
+      selectedWorkItemIds: [`${ORG}::wi-cross`],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-cross`, 999999, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+    const items = useAppStore.getState().workItems;
+    // wi-cross must have the highest rank so it sorts last in the flat view.
+    expect(items[`${ORG}::wi-cross`].rank).toBeGreaterThan(items[`${ORG}::wi-a`].rank);
+    expect(items[`${ORG}::wi-cross`].rank).toBeGreaterThan(items[`${ORG}::wi-b`].rank);
+  });
 });
 
 // ─── REORDER BACKLOGS ──────────────────────────────────────────────────
