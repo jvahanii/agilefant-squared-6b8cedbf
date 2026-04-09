@@ -121,6 +121,45 @@ export type Database = {
           },
         ]
       }
+      change_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          organization_id: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          organization_id: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          organization_id?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       memberships: {
         Row: {
           created_at: string
