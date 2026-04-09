@@ -454,7 +454,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
   const treeRows = Object.values(scopedMockData.backlogTrees).map((tree) => ({
     id: tree.id,
     name: tree.name,
-    rank: tree.rank,
+    rank: safeRank(tree.rank),
     organization_id: organizationId,
   }));
   if (treeRows.length > 0) {
@@ -467,7 +467,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     name: backlog.name,
     parent_id: backlog.parentId,
     tree_id: backlog.treeId,
-    rank: backlog.rank,
+    rank: safeRank(backlog.rank),
     organization_id: organizationId,
   }));
   if (backlogRows.length > 0) {
@@ -483,7 +483,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
-    rank: item.rank,
+    rank: safeRank(item.rank),
     organization_id: organizationId,
   }));
   if (itemRows.length > 0) {
