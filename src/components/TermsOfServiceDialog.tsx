@@ -54,7 +54,7 @@ export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServic
               >
                 github.com/agilefant/agilefant-squared
               </a>
-              . You are free to inspect, modify, and self-host your own instance at any time.
+              .
             </p>
             <p>
               We reserve the right to update these terms. Continued use of the service constitutes acceptance of any
