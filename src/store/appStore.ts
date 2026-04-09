@@ -44,9 +44,12 @@ interface AppState extends DataSnapshot {
   redoStack: DataSnapshot[];
   isLoading: boolean;
   organizationId: string | null;
+  userId: string | null;
+  userEmail: string | null;
   setOrganizationId: (orgId: string) => void;
+  setUser: (userId: string, userEmail: string) => void;
   loadFromSupabase: () => Promise<void>;
-  logChange: (entry: Omit<ChangeLogEntry, "timestamp">) => void;
+  logChange: (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => void;
   clearChangeLog: () => void;
   selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
   selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
