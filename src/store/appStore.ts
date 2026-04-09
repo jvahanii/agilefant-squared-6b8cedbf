@@ -17,19 +17,13 @@ import {
   deleteHyperlink as deleteHyperlinkDB,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
+import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
 }
 
-export interface ChangeLogEntry {
-  timestamp: string;
-  action: string;
-  entityType: string;
-  entityId?: string;
-  entityName?: string;
-  details?: string;
-}
+export type { ChangeLogEntry } from "./changeLog";
 
 interface DataSnapshot {
   workItems: Record<string, WorkItem>;
@@ -50,9 +44,12 @@ interface AppState extends DataSnapshot {
   redoStack: DataSnapshot[];
   isLoading: boolean;
   organizationId: string | null;
+  userId: string | null;
+  userEmail: string | null;
   setOrganizationId: (orgId: string) => void;
+  setUser: (userId: string, userEmail: string) => void;
   loadFromSupabase: () => Promise<void>;
-  logChange: (entry: Omit<ChangeLogEntry, "timestamp">) => void;
+  logChange: (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => void;
   clearChangeLog: () => void;
   selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
   selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
@@ -263,10 +260,19 @@ function buildCascadedShiftSet(
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
-  const internalLog = (entry: Omit<ChangeLogEntry, "timestamp">) => {
-    set((state) => ({
-      changeLog: [...state.changeLog, { ...entry, timestamp: new Date().toISOString() }],
+  const internalLog = (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => {
+    const state = get();
+    const orgId = state.organizationId;
+    const userId = state.userId;
+    const userEmail = state.userEmail ?? '';
+    const fullEntry: ChangeLogEntry = { ...entry, timestamp: new Date().toISOString(), userEmail };
+    set((s) => ({
+      changeLog: [fullEntry, ...s.changeLog].slice(0, 5000),
     }));
+    // Fire-and-forget persist to DB
+    if (orgId && userId) {
+      insertChangeLogEntry(orgId, userId, userEmail, entry).catch(() => {});
+    }
   };
 
   return {
@@ -284,8 +290,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     redoStack: [],
     isLoading: true,
     organizationId: null,
+    userId: null,
+    userEmail: null,
 
     setOrganizationId: (orgId) => set({ organizationId: orgId }),
+    setUser: (userId, userEmail) => set({ userId, userEmail }),
     logChange: (entry) => internalLog(entry),
     clearChangeLog: () => set({ changeLog: [] }),
 
@@ -300,9 +309,12 @@ export const useAppStore = create<AppState>()((set, get) => {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
 
-        // Load hyperlinks for all work items
+        // Load hyperlinks and change log in parallel
         const workItemIds = Object.keys(cleanData.workItems);
-        const hyperlinks = await loadHyperlinksForWorkItems(workItemIds);
+        const [hyperlinks, dbChangeLog] = await Promise.all([
+          loadHyperlinksForWorkItems(workItemIds),
+          loadChangeLog(orgId),
+        ]);
 
         const parseStoredIds = (key: string): string[] => {
           try {
@@ -344,6 +356,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({
           ...cleanData,
           hyperlinks,
+          changeLog: dbChangeLog,
           isLoading: false,
           undoStack: [],
           redoStack: [],

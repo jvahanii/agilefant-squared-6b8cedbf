@@ -6,14 +6,23 @@ import { useTeamStore } from '@/store/teamStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
   const setOrganizationId = useAppStore(s => s.setOrganizationId);
+  const setUser = useAppStore(s => s.setUser);
   const loadData = useAppStore(s => s.loadFromSupabase);
   const activeOrgId = useOrgStore(s => s.activeOrgId);
   const loadTeams = useTeamStore(s => s.loadTeams);
   const loadWorkItemTeams = useTeamStore(s => s.loadWorkItemTeams);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      setUser(user.id, user.email ?? '');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (activeOrgId) {
