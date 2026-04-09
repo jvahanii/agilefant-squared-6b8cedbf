@@ -37,7 +37,7 @@ export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServic
             </p>
             <p>
               We will do our best to provide a reliable and useful service, but we cannot accept responsibility for any
-              loss of data, interruption of service, or other damages that may arise from your use of Agilefant².
+              loss of data, interruption of service, or other damages.
             </p>
             <p>
               <strong>Your data belongs to you.</strong> You can export all your data at any time using the{" "}
