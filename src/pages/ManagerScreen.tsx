@@ -205,14 +205,31 @@ export default function ManagerScreen() {
   const handleDeleteUser = async (userId: string) => {
     setDeleteLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).rpc("admin_delete_user", { p_user_id: userId });
-      if (error) {
-        toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
+      // Delete all memberships for this user so they become orphaned,
+      // then call the existing cleanup_orphaned_users RPC which will
+      // remove the profile and auth user for any non-superuser with no memberships.
+      const { error: membershipsError } = await supabase
+        .from("memberships")
+        .delete()
+        .eq("user_id", userId);
+      if (membershipsError) {
+        toast({ title: "Error deleting user", description: membershipsError.message, variant: "destructive" });
         setDeleteLoading(false);
         setDeleteTarget(null);
         return;
       }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: cleanupError } = await (supabase as any).rpc("cleanup_orphaned_users", {
+        p_user_ids: [userId],
+      });
+      if (cleanupError) {
+        toast({ title: "Error deleting user", description: cleanupError.message, variant: "destructive" });
+        setDeleteLoading(false);
+        setDeleteTarget(null);
+        return;
+      }
+
       toast({ title: "User deleted", description: "The user account has been permanently deleted." });
       await loadData();
     } catch (err: any) {
