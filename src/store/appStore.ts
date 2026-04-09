@@ -56,6 +56,10 @@ interface AppState extends DataSnapshot {
   clearWorkItemSelection: () => void;
   toggleWorkItemExpand: (workItemId: string) => void;
   toggleBacklogExpand: (backlogId: string) => void;
+  expandWorkItemsRecursive: (workItemId: string) => void;
+  collapseWorkItemsRecursive: (workItemId: string) => void;
+  expandBacklogsRecursive: (backlogId: string) => void;
+  collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
@@ -382,6 +386,56 @@ export const useAppStore = create<AppState>()((set, get) => {
       set((s) => {
         const next = new Set(s.expandedBacklogs);
         next.has(id) ? next.delete(id) : next.add(id);
+        return { expandedBacklogs: next };
+      }),
+
+    expandWorkItemsRecursive: (id) =>
+      set((s) => {
+        const next = new Set(s.expandedWorkItems);
+        const collect = (wId: string) => {
+          const item = s.workItems[wId];
+          if (!item || item.childrenIds.length === 0) return;
+          next.add(wId);
+          item.childrenIds.forEach(collect);
+        };
+        collect(id);
+        return { expandedWorkItems: next };
+      }),
+
+    collapseWorkItemsRecursive: (id) =>
+      set((s) => {
+        const next = new Set(s.expandedWorkItems);
+        const collect = (wId: string) => {
+          next.delete(wId);
+          const item = s.workItems[wId];
+          if (item) item.childrenIds.forEach(collect);
+        };
+        collect(id);
+        return { expandedWorkItems: next };
+      }),
+
+    expandBacklogsRecursive: (id) =>
+      set((s) => {
+        const next = new Set(s.expandedBacklogs);
+        const collect = (bId: string) => {
+          const backlog = s.backlogs[bId];
+          if (!backlog || backlog.childrenIds.length === 0) return;
+          next.add(bId);
+          backlog.childrenIds.forEach(collect);
+        };
+        collect(id);
+        return { expandedBacklogs: next };
+      }),
+
+    collapseBacklogsRecursive: (id) =>
+      set((s) => {
+        const next = new Set(s.expandedBacklogs);
+        const collect = (bId: string) => {
+          next.delete(bId);
+          const backlog = s.backlogs[bId];
+          if (backlog) backlog.childrenIds.forEach(collect);
+        };
+        collect(id);
         return { expandedBacklogs: next };
       }),
 
