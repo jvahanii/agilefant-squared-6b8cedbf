@@ -455,7 +455,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         reordered.map((s) => updatedItems[s.id]),
         orgId,
       );
-      internalLog({ action: "Reorder", entityType: "work_item", details: `${itemsToMoveIds.length} items moved` });
+      internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
         workItems: updatedItems,
@@ -1032,7 +1032,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         remaining.map((s) => updatedBacklogs[s.id]),
         orgId,
       );
-      internalLog({ action: "Reorder", entityType: "backlog" });
+      internalLog({ action: "Reorder", entityType: "backlog", entityId: backlogId, entityName: bl.name });
       set({
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
@@ -1176,7 +1176,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         remaining.map((t) => updatedTrees[t.id]),
         orgId,
       );
-      internalLog({ action: "Reorder", entityType: "backlog_tree" });
+      internalLog({ action: "Reorder", entityType: "backlog_tree", entityId: treeId, entityName: tree.name });
       set({
         backlogTrees: updatedTrees,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
