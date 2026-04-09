@@ -823,9 +823,9 @@ function AppLayoutInner() {
     if (changeLog.length === 0) { toast({ title: "No changes logged yet" }); return; }
     const csv = exportChangeLogAsCsv(changeLog);
     navigator.clipboard.writeText(csv).then(() => {
-      toast({ title: `${changeLog.length} change log entries copied to clipboard` });
+      toast({ title: `${changeLog.length} history entries copied to clipboard` });
     }).catch(() => {
-      toast({ title: "Failed to copy change log to clipboard", variant: "destructive" });
+      toast({ title: "Failed to copy history to clipboard", variant: "destructive" });
     });
   };
 
@@ -922,7 +922,7 @@ function AppLayoutInner() {
                 <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export data</span>
               </button>
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportChangelog}>
-                <ClipboardList className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export log</span>
+                <ClipboardList className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export history</span>
               </button>
               <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleCheckData}>
                 <SearchCheck className="w-3.5 h-3.5" /><span className="hidden lg:inline">Check Data</span>
@@ -1009,7 +1009,7 @@ function AppLayoutInner() {
                   <DropdownMenuItem onClick={() => setShowUserGuide(true)}><HelpCircle className="w-4 h-4 mr-2" />User Guide</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export data</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportChangelog}><ClipboardList className="w-4 h-4 mr-2" />Export log</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportChangelog}><ClipboardList className="w-4 h-4 mr-2" />Export history</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
