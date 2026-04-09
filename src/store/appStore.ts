@@ -260,10 +260,19 @@ function buildCascadedShiftSet(
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
-  const internalLog = (entry: Omit<ChangeLogEntry, "timestamp">) => {
-    set((state) => ({
-      changeLog: [...state.changeLog, { ...entry, timestamp: new Date().toISOString() }],
+  const internalLog = (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => {
+    const state = get();
+    const orgId = state.organizationId;
+    const userId = state.userId;
+    const userEmail = state.userEmail ?? '';
+    const fullEntry: ChangeLogEntry = { ...entry, timestamp: new Date().toISOString(), userEmail };
+    set((s) => ({
+      changeLog: [fullEntry, ...s.changeLog].slice(0, 5000),
     }));
+    // Fire-and-forget persist to DB
+    if (orgId && userId) {
+      insertChangeLogEntry(orgId, userId, userEmail, entry).catch(() => {});
+    }
   };
 
   return {
@@ -281,8 +290,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     redoStack: [],
     isLoading: true,
     organizationId: null,
+    userId: null,
+    userEmail: null,
 
     setOrganizationId: (orgId) => set({ organizationId: orgId }),
+    setUser: (userId, userEmail) => set({ userId, userEmail }),
     logChange: (entry) => internalLog(entry),
     clearChangeLog: () => set({ changeLog: [] }),
 
