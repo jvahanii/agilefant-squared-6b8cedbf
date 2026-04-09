@@ -94,6 +94,28 @@ export default function TeamSettings() {
     }
   }, [activeOrg?.organization_name, activeOrg?.organization_slug]);
 
+  // For non-member superusers the org is not in the memberships list so activeOrg
+  // is null. Fetch the org name/slug directly so the Danger Zone can display the
+  // correct confirmation prompt and the delete flow can proceed.
+  useEffect(() => {
+    if (activeOrg || !activeOrgId || !isSuperuser) return;
+    supabase
+      .from("organizations")
+      .select("name, slug")
+      .eq("id", activeOrgId)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Failed to fetch org details for non-member superuser:", error);
+          return;
+        }
+        if (data) {
+          setOrgName(data.name);
+          setOrgSlug(data.slug);
+        }
+      });
+  }, [activeOrg, activeOrgId, isSuperuser]);
+
   const loadMembers = async () => {
     if (!activeOrgId) return;
     const { data, error } = await supabase
@@ -435,7 +457,7 @@ export default function TeamSettings() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <h1 className="text-xl font-bold">Organization Settings — {activeOrg?.organization_name}</h1>
+          <h1 className="text-xl font-bold">Organization Settings — {activeOrg?.organization_name ?? orgName}</h1>
         </div>
 
         {/* Organization Settings */}
@@ -687,7 +709,7 @@ export default function TeamSettings() {
         <TermsOfServiceDialog open={tosOpen} onCancel={() => setTosOpen(false)} />
 
         {/* Danger Zone — Superuser only */}
-        {isSuperuser && (
+        {isSuperuser && orgSlug && (
           <Card className="border-destructive/50">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2 text-destructive">
@@ -710,23 +732,23 @@ export default function TeamSettings() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete "{activeOrg?.organization_name}"?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete "{activeOrg?.organization_name ?? orgName}"?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This action cannot be undone. All backlog trees, backlogs, work items, hyperlinks, and memberships will be permanently deleted. Members who do not belong to any other organization will also have their accounts deleted.
                         <br />
                         <br />
-                        Type <strong>{activeOrg?.organization_slug}</strong> to confirm:
+                        Type <strong>{activeOrg?.organization_slug ?? orgSlug}</strong> to confirm:
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <Input
                       value={deleteConfirmText}
                       onChange={(e) => setDeleteConfirmText(e.target.value)}
-                      placeholder={activeOrg?.organization_slug}
+                      placeholder={activeOrg?.organization_slug ?? orgSlug}
                     />
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        disabled={deleteConfirmText.toLowerCase() !== activeOrg?.organization_slug?.toLowerCase() || deleteLoading}
+                        disabled={deleteConfirmText.toLowerCase() !== (activeOrg?.organization_slug ?? orgSlug).toLowerCase() || deleteLoading}
                         onClick={handleDeleteOrg}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
