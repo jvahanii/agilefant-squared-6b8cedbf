@@ -415,9 +415,38 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Fix duplicate rank collisions ---
+  // Helper: for a set of rank groups, ensure no two siblings share the same
+  // rank by bumping the later item to prevRank + 1.  Ranks only ever increase
+  // (never decrease) which guarantees convergence.
+  function dedupRanks<T extends { rank: number }>(
+    groups: Map<string, string[]>,
+    store: Record<string, T>,
+    type: DataIssue["type"],
+    nameOf: (item: T) => string,
+  ): boolean {
+    let changed = false;
+    groups.forEach((ids) => {
+      // Build (id, item) pairs so we can track the ID alongside the item.
+      const pairs = ids
+        .map((id) => ({ id, item: store[id] }))
+        .filter((p) => p.item != null)
+        .sort((a, b) => a.item.rank - b.item.rank);
+      for (let i = 1; i < pairs.length; i++) {
+        if (pairs[i].item.rank <= pairs[i - 1].item.rank) {
+          const newRank = pairs[i - 1].item.rank + 1;
+          const itemId = pairs[i].id;
+          fixed.push({ category: "Duplicate Rank", type, id: itemId, name: nameOf(pairs[i].item), detail: `rank ${pairs[i].item.rank} → ${newRank}` });
+          store[itemId] = { ...store[itemId], rank: newRank };
+          pairs[i] = { id: itemId, item: store[itemId] };
+          changed = true;
+        }
+      }
+    });
+    return changed;
+  }
+
   // Work items – iterate until stable because fixing one group may create a
-  // duplicate in another group when an item appears in multiple backlog
-  // contexts.  Ranks only ever increase (never decrease) so this converges.
+  // duplicate in another group when an item appears in multiple backlog contexts.
   const wiRankGroups = new Map<string, string[]>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
@@ -426,47 +455,16 @@ export function cleanseData(data: StoreData): CleanseResult {
       wiRankGroups.get(key)!.push(wi.id);
     });
   });
-  let wiRankChanged = true;
-  while (wiRankChanged) {
-    wiRankChanged = false;
-    wiRankGroups.forEach((ids) => {
-      const sorted = ids
-        .map((id) => workItems[id])
-        .filter(Boolean)
-        .sort((a, b) => a.rank - b.rank);
-      for (let i = 1; i < sorted.length; i++) {
-        if (sorted[i].rank <= sorted[i - 1].rank) {
-          const newRank = sorted[i - 1].rank + 1;
-          fixed.push({ category: "Duplicate Rank", type: "work_item", id: sorted[i].id, name: sorted[i].title, detail: `rank ${sorted[i].rank} → ${newRank}` });
-          workItems[sorted[i].id] = { ...workItems[sorted[i].id], rank: newRank };
-          sorted[i] = workItems[sorted[i].id];
-          wiRankChanged = true;
-        }
-      }
-    });
-  }
+  while (dedupRanks(wiRankGroups, workItems, "work_item", (wi) => wi.title)) { /* iterate until stable */ }
 
-  // Backlogs (single-tree, no cross-context cascading needed)
+  // Backlogs (single-tree, no cross-context cascading needed — single pass suffices)
   const blRankGroups = new Map<string, string[]>();
   Object.values(backlogs).forEach((bl) => {
     const key = `${bl.treeId}::${bl.parentId ?? "ROOT"}`;
     if (!blRankGroups.has(key)) blRankGroups.set(key, []);
     blRankGroups.get(key)!.push(bl.id);
   });
-  blRankGroups.forEach((ids) => {
-    const sorted = ids
-      .map((id) => backlogs[id])
-      .filter(Boolean)
-      .sort((a, b) => a.rank - b.rank);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i].rank <= sorted[i - 1].rank) {
-        const newRank = sorted[i - 1].rank + 1;
-        fixed.push({ category: "Duplicate Rank", type: "backlog", id: sorted[i].id, name: sorted[i].name, detail: `rank ${sorted[i].rank} → ${newRank}` });
-        backlogs[sorted[i].id] = { ...backlogs[sorted[i].id], rank: newRank };
-        sorted[i] = backlogs[sorted[i].id];
-      }
-    }
-  });
+  dedupRanks(blRankGroups, backlogs, "backlog", (bl) => bl.name);
 
   // --- Remove cross-org polluted assignments (work items) ---
   // A cross-org assignment is only pollution when the tree or backlog referenced

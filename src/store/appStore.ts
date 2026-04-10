@@ -622,7 +622,10 @@ export const useAppStore = create<AppState>()((set, get) => {
           updatedItems[wi.id] = { ...updatedItems[wi.id], rank: maxCtxRank + 1 };
           additionallyShifted.push(updatedItems[wi.id]);
           hasConflicts = true;
-          break; // restart – the push may have cascaded
+          // Restart the outer scan: pushing this item to a higher rank may
+          // create new collisions in other contexts that share it, so we need
+          // another full pass to detect any cascading conflicts.
+          break;
         }
       }
 
