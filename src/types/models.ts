@@ -19,6 +19,9 @@ export interface WorkItem {
   /** Maps backlogTreeId -> backlogId */
   backlogAssignments: Record<string, string>;
   rank: number;
+  /** The actual organization_id stored in the DB row. Used for upserts to avoid
+   *  deriving org ownership from a potentially stale ID prefix. */
+  organizationId?: string;
   respawnEnabled?: boolean;
   respawnIntervalDays?: number;
   /** Hour of the day (0-23) when the respawn copy is created */
