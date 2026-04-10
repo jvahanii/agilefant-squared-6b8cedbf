@@ -40,8 +40,7 @@ export function TermsOfServiceDialog({ open, onAccept, onCancel }: TermsOfServic
               loss of data, interruption of service, or other damages.
             </p>
             <p>
-              <strong>Your data belongs to you</strong> and you can export it at any time using the <em>Export Data</em>{" "}
-              button.
+              <strong>You can export your data</strong> at any time using the <em>Export Data</em> button.
             </p>
             <p>
               Agilefant² is licensed under the <strong>GNU General Public License v3 (GPLv3)</strong>. The source code
