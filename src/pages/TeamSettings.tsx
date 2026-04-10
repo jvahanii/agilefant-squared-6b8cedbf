@@ -276,9 +276,15 @@ export default function TeamSettings() {
 
           if (itemsInTree.length > 0) {
             const itemIds = itemsInTree.map((i: any) => i.id);
-            await supabase.from("work_items").update({ organization_id: newOwnerId }).in("id", itemIds);
-            // Transfer hyperlinks so the org FK constraint is not violated on deletion
-            await supabase.from("work_item_hyperlinks").update({ organization_id: newOwnerId }).in("work_item_id", itemIds);
+            // Rename item IDs to use the new owner's org prefix and update organization_id.
+            // A plain `update { organization_id }` would leave the old org UUID embedded in
+            // each item's ID, causing ownerOrgOf() to re-derive the (now-deleted) org on the
+            // next upsert and fail the FK constraint.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any).rpc("rename_work_items_org_prefix", {
+              _item_ids: itemIds,
+              _new_org_id: newOwnerId,
+            });
           }
 
           // Remove the share entry for the new owner (they now own it)
@@ -333,9 +339,12 @@ export default function TeamSettings() {
 
           if (sharedItemsInTree.length > 0) {
             const sharedItemIds = sharedItemsInTree.map((i: any) => i.id as string);
-            await supabase.from("work_items").update({ organization_id: treeOwnerOrgId }).in("id", sharedItemIds);
-            // Transfer hyperlinks so the org FK constraint is not violated on deletion
-            await supabase.from("work_item_hyperlinks").update({ organization_id: treeOwnerOrgId }).in("work_item_id", sharedItemIds);
+            // Rename item IDs to use the tree-owner's org prefix and update organization_id.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any).rpc("rename_work_items_org_prefix", {
+              _item_ids: sharedItemIds,
+              _new_org_id: treeOwnerOrgId,
+            });
             // Remove transferred items so they are not processed again for other shared trees
             const transferred = new Set(sharedItemIds);
             pendingItems = pendingItems.filter((i: any) => !transferred.has(i.id));
