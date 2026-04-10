@@ -12,7 +12,7 @@
 --      that atomically renames item IDs, fixes parent_id back-references, and
 --      updates work_item_hyperlinks.work_item_id.
 --   2. Runs a DO block that calls the function for every work item whose ID
---      prefix no longer maps to an existing organisation (the "8 items").
+--      prefix no longer maps to an existing organization (the "8 items").
 
 -- ── 1. Reusable function ─────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ BEGIN
   -- Build old_id → new_id arrays.
   FOR rec IN SELECT id FROM work_items WHERE id = ANY(_item_ids) LOOP
     _old_id := rec.id;
-    IF position('::' IN _old_id) > 0 THEN
+    IF strpos(_old_id, '::') > 0 THEN
       _new_id := _new_org_id::text || '::' || split_part(_old_id, '::', 2);
     ELSE
       _new_id := _new_org_id::text || '::' || _old_id;
