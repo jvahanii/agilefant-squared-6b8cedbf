@@ -15,6 +15,7 @@ import {
   loadHyperlinksForWorkItems,
   upsertHyperlink,
   deleteHyperlink as deleteHyperlinkDB,
+  registerWorkItemRenameCallback,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -193,6 +194,52 @@ const snapshot = (state: DataSnapshot): DataSnapshot => ({
 const MAX_UNDO = 100;
 
 /**
+ * Applies a batch of work-item ID renames (old → new) to the store's data
+ * snapshot.  Rewires every item's own `id`, `parentId` back-references,
+ * `childrenIds`, the `hyperlinks` map, and the selected-work-item list.
+ * Returns a partial state object suitable for passing directly to `set()`.
+ */
+function applyWorkItemIdRenames(
+  state: Pick<AppState, 'workItems' | 'hyperlinks' | 'selectedWorkItemIds'>,
+  oldToNew: Record<string, string>,
+): Pick<AppState, 'workItems' | 'hyperlinks' | 'selectedWorkItemIds'> {
+  if (Object.keys(oldToNew).length === 0) return {
+    workItems: state.workItems,
+    hyperlinks: state.hyperlinks,
+    selectedWorkItemIds: state.selectedWorkItemIds,
+  };
+
+  const updatedWorkItems: Record<string, WorkItem> = {};
+  for (const [id, item] of Object.entries(state.workItems)) {
+    const newId = oldToNew[id] ?? id;
+    updatedWorkItems[newId] = {
+      ...item,
+      id: newId,
+      organizationId: item.organizationId, // preserve
+      parentId: item.parentId ? (oldToNew[item.parentId] ?? item.parentId) : null,
+      childrenIds: item.childrenIds.map(cid => oldToNew[cid] ?? cid),
+    };
+  }
+
+  const updatedHyperlinks: Record<string, Hyperlink[]> = {};
+  for (const [workItemId, links] of Object.entries(state.hyperlinks)) {
+    const newWorkItemId = oldToNew[workItemId] ?? workItemId;
+    updatedHyperlinks[newWorkItemId] = links.map(link => ({
+      ...link,
+      workItemId: newWorkItemId,
+    }));
+  }
+
+  const updatedSelectedWorkItemIds = state.selectedWorkItemIds.map(id => oldToNew[id] ?? id);
+
+  return {
+    workItems: updatedWorkItems,
+    hyperlinks: updatedHyperlinks,
+    selectedWorkItemIds: updatedSelectedWorkItemIds,
+  };
+}
+
+/**
  * Compute the full set of work-item IDs whose rank must be incremented by 1 so that
  * inserting (or copying) an item at `insertRank` does not leave any duplicate ranks in
  * any backlog context.
@@ -264,6 +311,13 @@ function buildCascadedShiftSet(
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
+  // Register a callback so supabaseSync can notify us when work-item IDs are
+  // renamed (stale org prefix repaired).  This keeps local state consistent
+  // without requiring each individual store action to be made async.
+  registerWorkItemRenameCallback((oldToNew) => {
+    set(state => applyWorkItemIdRenames(state, oldToNew));
+  });
+
   const internalLog = (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => {
     const state = get();
     const orgId = state.organizationId;
@@ -1305,7 +1359,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         altText,
         rank: existing.length,
       };
-      upsertHyperlink(newLink, orgId);
+      const itemOrgId = state.workItems[workItemId]?.organizationId;
+      upsertHyperlink(newLink, orgId, itemOrgId);
       internalLog({ action: "Add Hyperlink", entityType: "hyperlink", entityId: workItemId, details: url });
       set({
         hyperlinks: { ...state.hyperlinks, [workItemId]: [...existing, newLink] },
@@ -1322,7 +1377,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       const idx = existing.findIndex((l) => l.id === linkId);
       if (idx === -1) return;
       const updated: Hyperlink = { ...existing[idx], url, altText };
-      upsertHyperlink(updated, orgId);
+      const itemOrgId = state.workItems[workItemId]?.organizationId;
+      upsertHyperlink(updated, orgId, itemOrgId);
       internalLog({ action: "Update Hyperlink", entityType: "hyperlink", entityId: workItemId, details: url });
       const newList = [...existing];
       newList[idx] = updated;
@@ -1382,6 +1438,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: state.workItems[id]?.childrenIds ?? [],
           backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
           rank: row.rank as number,
+          organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
           respawnHour: (row.respawn_hour as number | null) ?? undefined,
