@@ -18,7 +18,8 @@ export interface WorkItem {
   childrenIds: string[];
   /** Maps backlogTreeId -> backlogId */
   backlogAssignments: Record<string, string>;
-  rank: number;
+  /** Maps backlogId -> rank within that backlog */
+  ranks: Record<string, number>;
   /** The actual organization_id stored in the DB row. Used for upserts to avoid
    *  deriving org ownership from a potentially stale ID prefix. */
   organizationId?: string;

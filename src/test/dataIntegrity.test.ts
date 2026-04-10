@@ -8,7 +8,7 @@ const p = (id: string) => `${ORG}::${id}`;
 function makeWi(overrides: Partial<WorkItem> & { id: string; title: string }): WorkItem {
   return {
     status: "not_started", parentId: null, childrenIds: [],
-    backlogAssignments: { [p("bt-1")]: p("bl-1") }, rank: 0,
+    backlogAssignments: { [p("bt-1")]: p("bl-1") }, ranks: { [p("bl-1")]: 0 },
     ...overrides,
   };
 }
@@ -162,41 +162,42 @@ describe("Tree-Backlog Desync", () => {
 describe("Duplicate Rank", () => {
   it("detects duplicate ranks among siblings", () => {
     const data = baseData();
-    data.workItems[p("wi-2")] = makeWi({ id: p("wi-2"), title: "Item 2", rank: 0 });
+    data.workItems[p("wi-2")] = makeWi({ id: p("wi-2"), title: "Item 2", ranks: { [p("bl-1")]: 0 } });
     const issues = checkDataIntegrity(data);
     expect(issues.some((i) => i.category === "Duplicate Rank")).toBe(true);
   });
 
   it("cleanse re-ranks siblings", () => {
     const data = baseData();
-    data.workItems[p("wi-2")] = makeWi({ id: p("wi-2"), title: "Item 2", rank: 0 });
+    data.workItems[p("wi-2")] = makeWi({ id: p("wi-2"), title: "Item 2", ranks: { [p("bl-1")]: 0 } });
     const result = cleanseData(data);
-    const ranks = Object.values(result.data.workItems).map((wi) => wi.rank);
+    const ranks = Object.values(result.data.workItems).map((wi) => wi.ranks[p("bl-1")] ?? 0);
     expect(new Set(ranks).size).toBe(ranks.length);
   });
 
   it("cleanse converges when fixing one group creates a duplicate in another", () => {
-    // wi-a: rank 0, in bt-1:bl-1 AND bt-2:bl-2
-    // wi-b: rank 0, in bt-1:bl-1 only        → dup in group bt-1:bl-1
-    // wi-c: rank 1, in bt-2:bl-2 only
-    // Fixing bt-1:bl-1 group by pushing wi-b to rank 1 could naively set
-    // wi-a to rank 0 (unchanged), leaving wi-b at 1.  But if the cleanse
-    // re-ranks wi-a to 0 and wi-b to 1, then wi-a(0) in bt-2:bl-2 is fine.
-    // The important thing is that the result has NO duplicates in ANY group.
+    // wi-a: ranks[bl-1]=0 AND ranks[bl-2]=0 (in both backlogs independently)
+    // wi-b: ranks[bl-1]=0 (dup in bl-1 group)
+    // wi-c: ranks[bl-2]=1 (no dup in bl-2 group initially)
+    // Per-backlog ranks: fixing bt-1:bl-1 group (wi-a=0, wi-b=1) does NOT
+    // affect bt-2:bl-2 — wi-a keeps ranks[bl-2]=0, wi-c=1 is still unique.
     const data = baseData();
     data.backlogTrees[p("bt-2")] = { id: p("bt-2"), name: "Tree 2", rootBacklogIds: [p("bl-2")], rank: 1 };
     data.backlogs[p("bl-2")] = makeBl({ id: p("bl-2"), name: "BL 2", treeId: p("bt-2") });
     data.workItems[p("wi-a")] = makeWi({
-      id: p("wi-a"), title: "A", rank: 0,
+      id: p("wi-a"), title: "A",
       backlogAssignments: { [p("bt-1")]: p("bl-1"), [p("bt-2")]: p("bl-2") },
+      ranks: { [p("bl-1")]: 0, [p("bl-2")]: 0 },
     });
     data.workItems[p("wi-b")] = makeWi({
-      id: p("wi-b"), title: "B", rank: 0,
+      id: p("wi-b"), title: "B",
       backlogAssignments: { [p("bt-1")]: p("bl-1") },
+      ranks: { [p("bl-1")]: 0 },
     });
     data.workItems[p("wi-c")] = makeWi({
-      id: p("wi-c"), title: "C", rank: 1,
+      id: p("wi-c"), title: "C",
       backlogAssignments: { [p("bt-2")]: p("bl-2") },
+      ranks: { [p("bl-2")]: 1 },
     });
     // Remove the default wi-1 to keep things clean
     delete data.workItems[p("wi-1")];
@@ -209,7 +210,7 @@ describe("Duplicate Rank", () => {
       Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
         const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
         if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(wi.rank);
+        groups.get(key)!.push(wi.ranks[blId] ?? 0);
       });
     });
     groups.forEach((ranks, key) => {
@@ -254,7 +255,7 @@ describe("Cross-Org Pollution", () => {
       id: `${PARTNER}::wi-shared`, title: "Shared item", status: "not_started" as const,
       parentId: null, childrenIds: [],
       backlogAssignments: { [p("bt-1")]: p("bl-1") },
-      rank: 5,
+      ranks: { [p("bl-1")]: 5 },
     };
     const issues = checkDataIntegrity(data);
     expect(
@@ -269,7 +270,7 @@ describe("Cross-Org Pollution", () => {
       id: `${PARTNER}::wi-shared`, title: "Shared", status: "not_started" as const,
       parentId: null, childrenIds: [],
       backlogAssignments: { [p("bt-1")]: p("bl-1") },
-      rank: 5,
+      ranks: { [p("bl-1")]: 5 },
     };
     const result = cleanseData(data);
     expect(result.data.workItems[`${PARTNER}::wi-shared`]).toBeDefined();

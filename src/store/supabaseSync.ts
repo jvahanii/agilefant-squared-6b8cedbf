@@ -5,6 +5,25 @@ import { toast } from '@/hooks/use-toast';
 /** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
 const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
 
+/** Derive a single legacy rank from a per-backlog ranks map (use max, or 0 if empty). */
+function deriveLegacyRank(ranks: Record<string, number>): number {
+  const vals = Object.values(ranks);
+  return vals.length > 0 ? Math.max(...vals) : 0;
+}
+
+/** Build a per-backlog ranks map from a legacy rank and backlog_assignments.
+ *  Used when loading rows that predate the `ranks` column. */
+function buildRanksFromLegacy(
+  legacyRank: number,
+  backlogAssignments: Record<string, string>,
+): Record<string, number> {
+  const ranks: Record<string, number> = {};
+  for (const backlogId of Object.values(backlogAssignments)) {
+    ranks[backlogId] = legacyRank;
+  }
+  return ranks;
+}
+
 type WorkItemUpsertRow = {
   id: string;
   title: string;
@@ -14,6 +33,7 @@ type WorkItemUpsertRow = {
   parent_id: string | null;
   backlog_assignments: Record<string, string>;
   rank: number;
+  ranks: Record<string, number>;
   organization_id: string;
   respawn_enabled: boolean;
   respawn_interval_days: number | null;
@@ -205,12 +225,17 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
     const r = row as any;
+    const assignments: Record<string, string> = (row.backlog_assignments as Record<string, string>) ?? {};
+    const rawRanks = r.ranks as Record<string, number> | null | undefined;
+    const ranks: Record<string, number> = rawRanks && typeof rawRanks === 'object'
+      ? rawRanks
+      : buildRanksFromLegacy(row.rank as number ?? 0, assignments);
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
-      backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
-      rank: row.rank,
+      backlogAssignments: assignments,
+      ranks,
       organizationId: r.organization_id ?? undefined,
       respawnEnabled: r.respawn_enabled ?? false,
       respawnIntervalDays: r.respawn_interval_days ?? undefined,
@@ -224,7 +249,10 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     }
   }
   for (const wi of Object.values(workItems)) {
-    wi.childrenIds.sort((a, b) => (workItems[a]?.rank ?? 0) - (workItems[b]?.rank ?? 0));
+    wi.childrenIds.sort((a, b) => {
+      const backlogId = wi.backlogAssignments[Object.keys(wi.backlogAssignments)[0]];
+      return (workItems[a]?.ranks[backlogId] ?? 0) - (workItems[b]?.ranks[backlogId] ?? 0);
+    });
   }
 
   // ── Repair stale org prefixes at load time ────────────────────────────────
@@ -378,7 +406,9 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
+    backlog_assignments: item.backlogAssignments,
+    ranks: item.ranks,
+    rank: safeRank(deriveLegacyRank(item.ranks)),
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -460,7 +490,9 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     return {
       id: resolvedId, title: item.title, description: item.description ?? null,
       points: item.points ?? null, status: item.status, parent_id: item.parentId,
-      backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
+      backlog_assignments: item.backlogAssignments,
+      ranks: item.ranks,
+      rank: safeRank(deriveLegacyRank(item.ranks)),
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,
       respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -563,6 +595,12 @@ function scopeMockDataToOrganization(organizationId: string, mockData: MockDataS
               backlogIdMap[backlogId],
             ])
           ),
+          ranks: Object.fromEntries(
+            Object.entries(item.ranks ?? {}).map(([backlogId, rank]) => [
+              backlogIdMap[backlogId] ?? backlogId,
+              rank,
+            ])
+          ),
         },
       ];
     })
@@ -624,7 +662,8 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     status: item.status,
     parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments,
-    rank: safeRank(item.rank),
+    ranks: item.ranks,
+    rank: safeRank(deriveLegacyRank(item.ranks)),
     organization_id: organizationId,
   }));
   if (itemRows.length > 0) {

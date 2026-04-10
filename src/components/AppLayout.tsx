@@ -348,7 +348,7 @@ function AppLayoutInner() {
                 }
                 return w.parentId === wi.parentId;
               })
-              .sort((a, b) => a.rank - b.rank);
+              .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
 
             const idx = siblings.findIndex((s) => s.id === wiId);
             if (idx === -1) break;

@@ -142,13 +142,13 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   });
 
   // === 6. Duplicate Rank Collisions ===
-  // Work items: group by (parentId, backlogId in each tree)
-  const wiRankGroups = new Map<string, { id: string; title: string; rank: number }[]>();
+  // Work items: group by (parentId, backlogId in each tree), check per-backlog rank
+  const wiRankGroups = new Map<string, { id: string; title: string; blId: string; rank: number }[]>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
-      wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, rank: wi.rank });
+      wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, blId, rank: wi.ranks?.[blId] ?? 0 });
     });
   });
   wiRankGroups.forEach((items, key) => {
@@ -415,18 +415,38 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Fix duplicate rank collisions ---
-  // Helper: for a set of rank groups, ensure no two siblings share the same
-  // rank by bumping the later item to prevRank + 1.  Ranks only ever increase
-  // (never decrease) which guarantees convergence.
-  function dedupRanks<T extends { rank: number }>(
+  // Work items: per-backlog ranks — fixing one group can never affect another group,
+  // so a single pass is sufficient (no cross-context cascade).
+  const wiRankGroupsForFix = new Map<string, { id: string; blId: string }[]>();
+  Object.values(workItems).forEach((wi) => {
+    Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
+      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
+      if (!wiRankGroupsForFix.has(key)) wiRankGroupsForFix.set(key, []);
+      wiRankGroupsForFix.get(key)!.push({ id: wi.id, blId });
+    });
+  });
+  wiRankGroupsForFix.forEach((entries) => {
+    const pairs = entries
+      .map(({ id, blId }) => ({ id, blId, rank: workItems[id]?.ranks?.[blId] ?? 0 }))
+      .filter((p) => workItems[p.id] != null)
+      .sort((a, b) => a.rank - b.rank);
+    for (let i = 1; i < pairs.length; i++) {
+      if (pairs[i].rank <= pairs[i - 1].rank) {
+        const newRank = pairs[i - 1].rank + 1;
+        const { id, blId } = pairs[i];
+        fixed.push({ category: "Duplicate Rank", type: "work_item", id, name: workItems[id].title, detail: `rank ${pairs[i].rank} → ${newRank} in backlog ${blId}` });
+        workItems[id] = { ...workItems[id], ranks: { ...workItems[id].ranks, [blId]: newRank } };
+        pairs[i] = { id, blId, rank: newRank };
+      }
+    }
+  });
+
+  // Backlogs (single-tree, no cross-context cascading needed — single pass suffices)
+  function dedupBacklogRanks(
     groups: Map<string, string[]>,
-    store: Record<string, T>,
-    type: DataIssue["type"],
-    nameOf: (item: T) => string,
-  ): boolean {
-    let changed = false;
+    store: Record<string, Backlog>,
+  ): void {
     groups.forEach((ids) => {
-      // Build (id, item) pairs so we can track the ID alongside the item.
       const pairs = ids
         .map((id) => ({ id, item: store[id] }))
         .filter((p) => p.item != null)
@@ -435,36 +455,21 @@ export function cleanseData(data: StoreData): CleanseResult {
         if (pairs[i].item.rank <= pairs[i - 1].item.rank) {
           const newRank = pairs[i - 1].item.rank + 1;
           const itemId = pairs[i].id;
-          fixed.push({ category: "Duplicate Rank", type, id: itemId, name: nameOf(pairs[i].item), detail: `rank ${pairs[i].item.rank} → ${newRank}` });
+          fixed.push({ category: "Duplicate Rank", type: "backlog", id: itemId, name: pairs[i].item.name, detail: `rank ${pairs[i].item.rank} → ${newRank}` });
           store[itemId] = { ...store[itemId], rank: newRank };
           pairs[i] = { id: itemId, item: store[itemId] };
-          changed = true;
         }
       }
     });
-    return changed;
   }
 
-  // Work items – iterate until stable because fixing one group may create a
-  // duplicate in another group when an item appears in multiple backlog contexts.
-  const wiRankGroups = new Map<string, string[]>();
-  Object.values(workItems).forEach((wi) => {
-    Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
-      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
-      if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
-      wiRankGroups.get(key)!.push(wi.id);
-    });
-  });
-  while (dedupRanks(wiRankGroups, workItems, "work_item", (wi) => wi.title)) { /* iterate until stable */ }
-
-  // Backlogs (single-tree, no cross-context cascading needed — single pass suffices)
   const blRankGroups = new Map<string, string[]>();
   Object.values(backlogs).forEach((bl) => {
     const key = `${bl.treeId}::${bl.parentId ?? "ROOT"}`;
     if (!blRankGroups.has(key)) blRankGroups.set(key, []);
     blRankGroups.get(key)!.push(bl.id);
   });
-  dedupRanks(blRankGroups, backlogs, "backlog", (bl) => bl.name);
+  dedupBacklogRanks(blRankGroups, backlogs);
 
   // --- Remove cross-org polluted assignments (work items) ---
   // A cross-org assignment is only pollution when the tree or backlog referenced

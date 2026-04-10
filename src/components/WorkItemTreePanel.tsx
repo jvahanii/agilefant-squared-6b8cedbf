@@ -643,7 +643,7 @@ function WorkItemNode({
                 {[...item.childrenIds]
                   .map((id) => workItems[id])
                   .filter(Boolean)
-                  .sort((a, b) => a.rank - b.rank)
+                  .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0))
                   .map((child, index) => {
                     const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
                     return (
@@ -712,7 +712,7 @@ function WorkItemNode({
         <InlineWorkItemInput
           depth={depth}
           onSubmit={(title) => {
-            addWorkItem(title, item.parentId, backlogId, treeId, item.rank + 1);
+            addWorkItem(title, item.parentId, backlogId, treeId);
             setIsAddingSibling(false);
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
@@ -901,7 +901,7 @@ export function WorkItemTreePanel() {
           backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
           (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId ?? ""]?.backlogAssignments[selectedTreeId])),
       )
-      .sort((a, b) => a.rank - b.rank);
+      .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0));
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
   const visibleItemIds = useMemo(() => {
@@ -914,7 +914,7 @@ export function WorkItemTreePanel() {
           [...item.childrenIds]
             .map((cid) => workItems[cid])
             .filter(Boolean)
-            .sort((a, b) => a.rank - b.rank)
+            .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0))
             .forEach((child) => traverse(child.id));
         }
       }

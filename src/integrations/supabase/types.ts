@@ -379,6 +379,8 @@ export type Database = {
           parent_id: string | null
           points: number | null
           rank: number
+          /** Per-backlog rank map: backlogId -> rank. Added in migration v2. */
+          ranks: Json | null
           respawn_enabled: boolean
           respawn_hour: number | null
           respawn_interval_days: number | null
@@ -394,6 +396,7 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          ranks?: Json | null
           respawn_enabled?: boolean
           respawn_hour?: number | null
           respawn_interval_days?: number | null
@@ -409,6 +412,7 @@ export type Database = {
           parent_id?: string | null
           points?: number | null
           rank?: number
+          ranks?: Json | null
           respawn_enabled?: boolean
           respawn_hour?: number | null
           respawn_interval_days?: number | null

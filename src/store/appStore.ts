@@ -158,6 +158,11 @@ export function sanitizeData(data: any, orgId: string) {
       parentId: wi.parentId ? ensureCleanId(wi.parentId, orgId) : null,
       backlogAssignments: validAssignments,
       childrenIds: [],
+      ranks: Object.fromEntries(
+        Object.entries(wi.ranks ?? {})
+          .map(([bId, rank]) => [ensureCleanId(bId, orgId), rank] as [string, number])
+          .filter(([cleanBId]) => !!cleanBacklogs[cleanBId]),
+      ),
     };
   });
 
@@ -237,77 +242,6 @@ function applyWorkItemIdRenames(
     hyperlinks: updatedHyperlinks,
     selectedWorkItemIds: updatedSelectedWorkItemIds,
   };
-}
-
-/**
- * Compute the full set of work-item IDs whose rank must be incremented by 1 so that
- * inserting (or copying) an item at `insertRank` does not leave any duplicate ranks in
- * any backlog context.
- *
- * The cascade is necessary because shifting item X to rank R+1 can collide with item Y
- * at rank R+1 that shares a *different* backlog context with X – Y was not a sibling of
- * the original triggering item and would otherwise be missed by a single-pass scan.
- *
- * @param allItems       Current work-item map (will NOT be mutated).
- * @param parentId       Parent ID shared by all relevant siblings (null = root level).
- * @param insertRank     The rank being "occupied" by the new/copied item.
- * @param excludeId      ID to skip (the source item being respawned, if any).
- * @param initialCheck   Returns true for items that are direct siblings of the
- *                       triggering item in at least one backlog context.
- */
-function buildCascadedShiftSet(
-  allItems: Record<string, WorkItem>,
-  parentId: string | null,
-  insertRank: number,
-  excludeId: string | null,
-  initialCheck: (wi: WorkItem) => boolean,
-): Set<string> {
-  // Pre-filter to only siblings (same parentId, not excluded) to avoid scanning
-  // the entire item map repeatedly.
-  const siblings = Object.values(allItems).filter(
-    (wi) => wi.parentId === parentId && !(excludeId && wi.id === excludeId),
-  );
-
-  // Build a rank → sibling index for O(1) lookup during cascade.
-  const byRank = new Map<number, WorkItem[]>();
-  for (const wi of siblings) {
-    const bucket = byRank.get(wi.rank);
-    if (bucket) bucket.push(wi);
-    else byRank.set(wi.rank, [wi]);
-  }
-
-  const toShift = new Set<string>();
-
-  // Initial pass: items that pass the context check and sit at or above insertRank.
-  for (const wi of siblings) {
-    if (initialCheck(wi) && wi.rank >= insertRank) toShift.add(wi.id);
-  }
-
-  // Cascade using a work-list of newly added items.  Shifting wi from rank R to R+1
-  // might collide with wj at rank R+1 that shares a context with wi but not with the
-  // original triggering item.  Process only newly added items; traversal order does not
-  // affect the final set, so we use a stack (pop) for O(1) removal.
-  const queue = [...toShift];
-  while (queue.length > 0) {
-    const id = queue.pop()!;
-    const wi = allItems[id];
-    if (!wi) continue;
-    const newRank = wi.rank + 1;
-    const candidates = byRank.get(newRank);
-    if (!candidates) continue;
-    for (const wj of candidates) {
-      if (toShift.has(wj.id)) continue;
-      const isSiblingOfWi = Object.entries(wi.backlogAssignments).some(
-        ([treeId, backlogId]) => wj.backlogAssignments[treeId] === backlogId,
-      );
-      if (isSiblingOfWi) {
-        toShift.add(wj.id);
-        queue.push(wj.id);
-      }
-    }
-  }
-
-  return toShift;
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
@@ -568,7 +502,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId]);
           return !wiParentInContext;
         })
-        .sort((a, b) => a.rank - b.rank);
+        .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
 
       const movingSet = new Set(itemsToMoveIds);
       const remaining = allSiblings.filter((s) => !movingSet.has(s.id));
@@ -580,65 +514,11 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const updatedItems = { ...state.workItems };
       reordered.forEach((s, i) => {
-        updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
+        const backlogId = s.backlogAssignments[treeId];
+        updatedItems[s.id] = { ...updatedItems[s.id], ranks: { ...updatedItems[s.id].ranks, [backlogId]: i } };
       });
 
-      // ── Cross-context collision repair ──────────────────────────────────
-      // Reordered items may appear in multiple backlog trees.  Their new
-      // sequential ranks can collide with non-reordered items that share a
-      // (treeId, backlogId, parentId) context in a different tree.  Detect
-      // such collisions and push the non-reordered items to a safe rank.
-      const reorderedIds = new Set(reordered.map((s) => s.id));
-      const additionallyShifted: WorkItem[] = [];
-      let hasConflicts = true;
-      while (hasConflicts) {
-        hasConflicts = false;
-        for (const wi of Object.values(updatedItems)) {
-          if (reorderedIds.has(wi.id)) continue;
-          // Check if wi shares a (treeId, backlogId) context AND parentId
-          // AND rank with any reordered or previously-shifted item.
-          let collision = false;
-          for (const r of reordered) {
-            const ri = updatedItems[r.id];
-            if (ri.parentId !== wi.parentId) continue;
-            if (ri.rank !== wi.rank) continue;
-            const sharesCtx = Object.entries(ri.backlogAssignments).some(
-              ([tid, bid]) => wi.backlogAssignments[tid] === bid,
-            );
-            if (sharesCtx) { collision = true; break; }
-          }
-          if (!collision) continue;
-          // Find the max rank across all contexts wi participates in so that
-          // the new rank is guaranteed unique in every context.
-          let maxCtxRank = wi.rank;
-          for (const s of Object.values(updatedItems)) {
-            if (s.id === wi.id) continue;
-            if (s.parentId !== wi.parentId) continue;
-            const shares = Object.entries(wi.backlogAssignments).some(
-              ([tid, bid]) => s.backlogAssignments[tid] === bid,
-            );
-            if (shares && s.rank > maxCtxRank) maxCtxRank = s.rank;
-          }
-          updatedItems[wi.id] = { ...updatedItems[wi.id], rank: maxCtxRank + 1 };
-          additionallyShifted.push(updatedItems[wi.id]);
-          hasConflicts = true;
-          // Restart the outer scan: pushing this item to a higher rank may
-          // create new collisions in other contexts that share it, so we need
-          // another full pass to detect any cascading conflicts.
-          break;
-        }
-      }
-
       const itemsToUpsert = reordered.map((s) => updatedItems[s.id]);
-      if (additionallyShifted.length > 0) {
-        const upsertIds = new Set(itemsToUpsert.map((i) => i.id));
-        for (const shifted of additionallyShifted) {
-          if (!upsertIds.has(shifted.id)) {
-            itemsToUpsert.push(updatedItems[shifted.id]);
-            upsertIds.add(shifted.id);
-          }
-        }
-      }
       upsertWorkItems(itemsToUpsert, orgId);
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
@@ -657,21 +537,16 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
 
-      // Compute a rank for the root item that avoids conflicts in ALL backlog
-      // contexts where the item will appear after the move (not just the target).
-      // The item keeps its existing assignments and gains/changes the target one,
-      // so we must check siblings in every resulting context.
-      const newAssignments = { ...item.backlogAssignments, [treeId]: cleanTargetBl };
-      let maxRank = -1;
+      // Compute a per-backlog rank for the root item in the target backlog.
+      let maxRankInTarget = -1;
       Object.values(state.workItems).forEach((wi) => {
         if (wi.id === workItemId) return;
         if (wi.parentId !== item.parentId) return;
-        const sharesContext = Object.entries(newAssignments).some(
-          ([tid, bid]) => wi.backlogAssignments[tid] === bid,
-        );
-        if (sharesContext && wi.rank > maxRank) maxRank = wi.rank;
+        if (wi.backlogAssignments[treeId] !== cleanTargetBl) return;
+        const r = wi.ranks[cleanTargetBl] ?? 0;
+        if (r > maxRankInTarget) maxRankInTarget = r;
       });
-      const newRootRank = maxRank + 1;
+      const newRootRank = maxRankInTarget + 1;
 
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
@@ -679,10 +554,22 @@ export const useAppStore = create<AppState>()((set, get) => {
       const moveRecursive = (id: string, isRoot: boolean) => {
         const wi = updatedItems[id];
         if (!wi) return;
+        const oldBacklogId = wi.backlogAssignments[treeId];
+        const newRanks = { ...wi.ranks };
+        if (isRoot) {
+          newRanks[cleanTargetBl] = newRootRank;
+        } else {
+          // Preserve relative order by copying the old backlog's rank to the new backlog key.
+          newRanks[cleanTargetBl] = wi.ranks[oldBacklogId] ?? 0;
+        }
+        // Remove the old backlog rank entry if the backlog is changing.
+        if (oldBacklogId && oldBacklogId !== cleanTargetBl) {
+          delete newRanks[oldBacklogId];
+        }
         updatedItems[id] = {
           ...wi,
           backlogAssignments: { ...wi.backlogAssignments, [treeId]: cleanTargetBl },
-          ...(isRoot ? { rank: newRootRank } : {}),
+          ranks: newRanks,
         };
         changed.push(updatedItems[id]);
         wi.childrenIds.forEach((childId) => moveRecursive(childId, false));
@@ -690,10 +577,9 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       moveRecursive(workItemId, true);
 
-      // Fix rank duplicates that arise when siblings were previously in different
-      // backlogs of treeId and are now all consolidated into cleanTargetBl.
-      // Children that had independent rank sequences in their separate groups may
-      // now share a rank in the merged (treeId, cleanTargetBl, parentId) group.
+      // Deduplicate ranks within each (parentId) group that ended up in cleanTargetBl.
+      // Children from different backlogs may have had overlapping rank sequences;
+      // renumber them to ensure unique per-backlog ranks.
       const movedByParent = new Map<string | null, string[]>();
       for (const wi of changed) {
         if (wi.id === workItemId) continue; // root already has a safe rank
@@ -703,33 +589,24 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       for (const ids of movedByParent.values()) {
         if (ids.length < 2) continue;
-        // Sort by current rank ascending, then bump any ties using maxCtxRank+1
-        // to stay safe across all contexts the sibling appears in.
         const sorted = [...ids].sort(
-          (a, b) => (updatedItems[a]?.rank ?? 0) - (updatedItems[b]?.rank ?? 0),
+          (a, b) => (updatedItems[a]?.ranks[cleanTargetBl] ?? 0) - (updatedItems[b]?.ranks[cleanTargetBl] ?? 0),
         );
-        let prevEffective = -Infinity;
+        const seen = new Set<number>();
+        let nextFree = 0;
         for (const id of sorted) {
-          const sibling = updatedItems[id];
-          if (!sibling) continue;
-          if (sibling.rank <= prevEffective) {
-            // Tie: bump to maxCtxRank+1 across all of sibling's contexts.
-            let maxCtxRank = prevEffective;
-            for (const s of Object.values(updatedItems)) {
-              if (s.id === id) continue;
-              if (s.parentId !== sibling.parentId) continue;
-              const shares = Object.entries(sibling.backlogAssignments).some(
-                ([tid, bid]) => s.backlogAssignments[tid] === bid,
-              );
-              if (shares && s.rank > maxCtxRank) maxCtxRank = s.rank;
-            }
-            const newRank = maxCtxRank + 1;
-            updatedItems[id] = { ...updatedItems[id], rank: newRank };
+          const wi = updatedItems[id];
+          if (!wi) continue;
+          let r = wi.ranks[cleanTargetBl] ?? 0;
+          if (seen.has(r)) {
+            while (seen.has(nextFree)) nextFree++;
+            r = nextFree;
+          }
+          seen.add(r);
+          if (r !== (wi.ranks[cleanTargetBl] ?? 0)) {
+            updatedItems[id] = { ...wi, ranks: { ...wi.ranks, [cleanTargetBl]: r } };
             const idx = changed.findIndex((c) => c.id === id);
             if (idx >= 0) changed[idx] = updatedItems[id];
-            prevEffective = newRank;
-          } else {
-            prevEffective = sibling.rank;
           }
         }
       }
@@ -747,32 +624,36 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId;
       if (!orgId) return;
 
+      const cleanBacklogId = ensureCleanId(backlogId, orgId);
       const updatedWorkItems = { ...state.workItems };
       const itemsToUpdateInDB: WorkItem[] = [];
 
       let finalRank: number;
       if (requestedRank != null) {
         finalRank = requestedRank;
-        const toShift = buildCascadedShiftSet(
-          updatedWorkItems,
-          parentId,
-          finalRank,
-          null,
-          (wi) => wi.backlogAssignments[treeId] === backlogId,
-        );
-        toShift.forEach((id) => {
-          const updatedItem = { ...updatedWorkItems[id], rank: updatedWorkItems[id].rank + 1 };
-          updatedWorkItems[id] = updatedItem;
-          itemsToUpdateInDB.push(updatedItem);
-        });
-      } else {
-        let minRank = Infinity;
-        Object.values(state.workItems).forEach((wi) => {
-          if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
-            if (wi.rank < minRank) minRank = wi.rank;
+        // Shift only siblings in this specific backlog whose rank >= requestedRank.
+        // No cross-context cascade is needed because ranks are now per-backlog.
+        Object.values(updatedWorkItems).forEach((wi) => {
+          if (wi.parentId !== parentId) return;
+          if (wi.backlogAssignments[treeId] !== cleanBacklogId) return;
+          if ((wi.ranks[cleanBacklogId] ?? 0) >= finalRank) {
+            const updatedItem = {
+              ...wi,
+              ranks: { ...wi.ranks, [cleanBacklogId]: (wi.ranks[cleanBacklogId] ?? 0) + 1 },
+            };
+            updatedWorkItems[wi.id] = updatedItem;
+            itemsToUpdateInDB.push(updatedItem);
           }
         });
-        finalRank = minRank === Infinity ? 0 : minRank - 1;
+      } else {
+        let maxRank = -1;
+        Object.values(state.workItems).forEach((wi) => {
+          if (wi.parentId === parentId && wi.backlogAssignments[treeId] === cleanBacklogId) {
+            const r = wi.ranks[cleanBacklogId] ?? 0;
+            if (r > maxRank) maxRank = r;
+          }
+        });
+        finalRank = maxRank + 1;
       }
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
@@ -780,8 +661,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         id,
         title,
         parentId,
-        rank: finalRank,
-        backlogAssignments: { [treeId]: backlogId },
+        ranks: { [cleanBacklogId]: finalRank },
+        backlogAssignments: { [treeId]: cleanBacklogId },
         status: "not_started" as WorkItemStatus,
         childrenIds: [],
         points: undefined,
@@ -809,7 +690,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         redoStack: [],
       });
 
-      const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
+      const backlogName = state.backlogs[cleanBacklogId]?.name ?? backlogId;
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
     },
 
@@ -818,23 +699,16 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId;
       if (!orgId || titles.length === 0) return;
 
-      // Collect all backlog IDs in the subtree rooted at backlogId so that pasted
-      // items are placed after every item currently visible in the combined panel
-      // (which shows items from the selected backlog AND all its descendants).
-      // Without this, items pasted into a parent backlog could share ranks with
-      // items in child backlogs, causing them to be interleaved instead of appended.
-      const allBacklogIds = new Set<string>();
-      const collectDescendants = (id: string) => {
-        allBacklogIds.add(id);
-        state.backlogs[id]?.childrenIds.forEach(collectDescendants);
-      };
-      collectDescendants(backlogId);
-
+      const cleanBacklogId = ensureCleanId(backlogId, orgId);
       const updatedWorkItems = { ...state.workItems };
+
+      // Find the max rank for items in this specific backlog (not across child backlogs).
+      // Per-backlog ranks are independent, so we only need to know the max within cleanBacklogId.
       let maxRank = -1;
       Object.values(updatedWorkItems).forEach((wi) => {
-        if (wi.parentId === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
-          if (wi.rank > maxRank) maxRank = wi.rank;
+        if (wi.parentId === parentId && wi.backlogAssignments[treeId] === cleanBacklogId) {
+          const r = wi.ranks[cleanBacklogId] ?? 0;
+          if (r > maxRank) maxRank = r;
         }
       });
 
@@ -845,8 +719,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           id,
           title,
           parentId,
-          rank: maxRank + 1 + i,
-          backlogAssignments: { [treeId]: backlogId },
+          ranks: { [cleanBacklogId]: maxRank + 1 + i },
+          backlogAssignments: { [treeId]: cleanBacklogId },
           status: "not_started" as WorkItemStatus,
           childrenIds: [],
           points: undefined,
@@ -978,13 +852,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
       if (!item) return;
+      const oldBacklogId = item.backlogAssignments[treeId];
       const newAssignments = { ...item.backlogAssignments };
       delete newAssignments[treeId];
       if (Object.keys(newAssignments).length === 0) {
         get().deleteWorkItem(workItemId);
         return;
       }
-      const updated = { ...item, backlogAssignments: newAssignments };
+      // Remove the rank entry for the backlog being removed.
+      const newRanks = { ...item.ranks };
+      if (oldBacklogId) delete newRanks[oldBacklogId];
+      const updated = { ...item, backlogAssignments: newAssignments, ranks: newRanks };
       upsertWorkItem(updated, orgId);
       const treeName = state.backlogTrees[treeId]?.name ?? treeId;
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `tree: "${treeName}"` });
@@ -1013,17 +891,21 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
         };
       }
-      // Assign a rank that avoids conflicts with existing siblings in the new parent's context.
-      let maxRank = -1;
-      Object.values(state.workItems).forEach((wi) => {
-        if (wi.id === workItemId) return;
-        if (wi.parentId !== newParentId) return;
-        const isInSameContext = Object.entries(item.backlogAssignments).some(
-          ([treeId, backlogId]) => wi.backlogAssignments[treeId] === backlogId,
-        );
-        if (isInSameContext && wi.rank > maxRank) maxRank = wi.rank;
+      // Assign per-backlog ranks that avoid conflicts with existing siblings under the new parent.
+      const newRanks = { ...item.ranks };
+      Object.entries(item.backlogAssignments).forEach(([tId, backlogId]) => {
+        let maxRank = -1;
+        Object.values(state.workItems).forEach((wi) => {
+          if (wi.id === workItemId) return;
+          if (wi.parentId !== newParentId) return;
+          if (wi.backlogAssignments[tId] === backlogId) {
+            const r = wi.ranks[backlogId] ?? 0;
+            if (r > maxRank) maxRank = r;
+          }
+        });
+        newRanks[backlogId] = maxRank + 1;
       });
-      updatedItems[workItemId] = { ...item, parentId: newParentId, rank: maxRank + 1 };
+      updatedItems[workItemId] = { ...item, parentId: newParentId, ranks: newRanks };
       const changed = [updatedItems[workItemId]];
       if (item.parentId && updatedItems[item.parentId]) changed.push(updatedItems[item.parentId]);
       if (newParentId && updatedItems[newParentId]) changed.push(updatedItems[newParentId]);
@@ -1066,24 +948,22 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       if (Object.keys(item.backlogAssignments).length === 0) return;
 
-      const insertRank = item.rank + 1;
-
-      // Shift siblings below the original item down across ALL backlog tree contexts,
-      // cascading to cover siblings that share a context with any shifted item (not just
-      // with the original item) to prevent cross-context rank collisions.
-      const toShift = buildCascadedShiftSet(
-        updatedWorkItems,
-        item.parentId,
-        insertRank,
-        workItemId,
-        (wi) => Object.entries(item.backlogAssignments).some(
-          ([treeId, backlogId]) => wi.backlogAssignments[treeId] === backlogId,
-        ),
-      );
-      toShift.forEach((id) => {
-        const shifted = { ...updatedWorkItems[id], rank: updatedWorkItems[id].rank + 1 };
-        updatedWorkItems[id] = shifted;
-        itemsToUpdateInDB.push(shifted);
+      // Compute the rank of the new copy in each backlog = item's rank + 1.
+      // Shift siblings in each backlog independently – no cross-context cascade needed.
+      const newRanks: Record<string, number> = {};
+      Object.entries(item.backlogAssignments).forEach(([treeId, backlogId]) => {
+        const insertRank = (item.ranks[backlogId] ?? 0) + 1;
+        newRanks[backlogId] = insertRank;
+        Object.values(updatedWorkItems).forEach((wi) => {
+          if (wi.id === workItemId) return;
+          if (wi.parentId !== item.parentId) return;
+          if (wi.backlogAssignments[treeId] !== backlogId) return;
+          if ((wi.ranks[backlogId] ?? 0) >= insertRank) {
+            const shifted = { ...wi, ranks: { ...wi.ranks, [backlogId]: (wi.ranks[backlogId] ?? 0) + 1 } };
+            updatedWorkItems[wi.id] = shifted;
+            itemsToUpdateInDB.push(shifted);
+          }
+        });
       });
 
       const newId = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
@@ -1093,7 +973,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         description: item.description,
         points: item.points,
         parentId: item.parentId,
-        rank: insertRank,
+        ranks: newRanks,
         backlogAssignments: { ...item.backlogAssignments },
         status: "not_started" as WorkItemStatus,
         childrenIds: [],
@@ -1182,7 +1062,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (Object.keys(newAssignments).length === 0) {
           wiIdsToDelete.push(wi.id);
         } else if (Object.keys(newAssignments).length !== Object.keys(wi.backlogAssignments).length) {
-          updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
+          // Also remove rank entries for deleted backlogs
+          const newRanks = { ...wi.ranks };
+          blIdsToDelete.forEach((blId) => delete newRanks[blId]);
+          updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
         }
       });
 
@@ -1360,7 +1243,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           if (blIdSet.has(bId)) delete newAssignments[tId];
         });
         if (Object.keys(newAssignments).length === 0) wiIdsToDelete.push(wi.id);
-        else updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments };
+        else {
+          // Also remove rank entries for the deleted backlogs
+          const newRanks = { ...wi.ranks };
+          blIdsToDelete.forEach((blId) => delete newRanks[blId]);
+          updatedItems[wi.id] = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+        }
       });
       wiIdsToDelete.forEach((id) => delete updatedItems[id]);
       const updatedBacklogs = { ...state.backlogs };
@@ -1531,7 +1419,14 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { workItems: updatedWorkItems };
         }
 
-        // INSERT or UPDATE: preserve existing childrenIds from current state
+        // INSERT or UPDATE: preserve existing childrenIds from current state.
+        // Build ranks from the new `ranks` column if available, or fall back to legacy `rank`.
+        const assignments: Record<string, string> = (row.backlog_assignments as Record<string, string>) ?? {};
+        const rawRanks = row.ranks as Record<string, number> | null | undefined;
+        const ranks: Record<string, number> = rawRanks && typeof rawRanks === 'object'
+          ? rawRanks
+          : Object.fromEntries(Object.values(assignments).map((blId) => [blId, row.rank as number ?? 0]));
+
         const newItem: WorkItem = {
           id,
           title: row.title as string,
@@ -1540,8 +1435,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
           childrenIds: state.workItems[id]?.childrenIds ?? [],
-          backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
-          rank: row.rank as number,
+          backlogAssignments: assignments,
+          ranks,
           organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
@@ -1551,8 +1446,15 @@ export const useAppStore = create<AppState>()((set, get) => {
 
         const updatedWorkItems = { ...state.workItems, [id]: newItem };
 
+        // For childrenIds ordering, sort by first available rank value.
         const sortWorkItemIds = (ids: string[]) =>
-          [...ids].sort((a, b) => (updatedWorkItems[a]?.rank ?? 0) - (updatedWorkItems[b]?.rank ?? 0));
+          [...ids].sort((a, b) => {
+            const wa = updatedWorkItems[a];
+            const wb = updatedWorkItems[b];
+            const ra = wa ? Math.min(...Object.values(wa.ranks)) : 0;
+            const rb = wb ? Math.min(...Object.values(wb.ranks)) : 0;
+            return ra - rb;
+          });
 
         const oldItem = state.workItems[id];
         const oldParentId = oldItem?.parentId ?? null;
@@ -1574,8 +1476,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
         } else if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
           // Same non-null parent: re-sort childrenIds in case rank changed.
-          // Note: root work items (parentId=null) have no childrenIds container – they are
-          // rendered by querying work items directly sorted by rank, so no array update is needed.
           const parent = updatedWorkItems[newItem.parentId];
           updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
         }
