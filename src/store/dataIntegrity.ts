@@ -415,7 +415,9 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Fix duplicate rank collisions ---
-  // Work items
+  // Work items – iterate until stable because fixing one group may create a
+  // duplicate in another group when an item appears in multiple backlog
+  // contexts.  Ranks only ever increase (never decrease) so this converges.
   const wiRankGroups = new Map<string, string[]>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
@@ -424,24 +426,27 @@ export function cleanseData(data: StoreData): CleanseResult {
       wiRankGroups.get(key)!.push(wi.id);
     });
   });
-  wiRankGroups.forEach((ids) => {
-    const sorted = ids
-      .map((id) => workItems[id])
-      .filter(Boolean)
-      .sort((a, b) => a.rank - b.rank);
-    const ranks = sorted.map((s) => s.rank);
-    const hasDupes = new Set(ranks).size !== ranks.length;
-    if (hasDupes) {
-      sorted.forEach((wi, i) => {
-        if (wi.rank !== i) {
-          fixed.push({ category: "Duplicate Rank", type: "work_item", id: wi.id, name: wi.title, detail: `rank ${wi.rank} → ${i}` });
-          workItems[wi.id] = { ...workItems[wi.id], rank: i };
+  let wiRankChanged = true;
+  while (wiRankChanged) {
+    wiRankChanged = false;
+    wiRankGroups.forEach((ids) => {
+      const sorted = ids
+        .map((id) => workItems[id])
+        .filter(Boolean)
+        .sort((a, b) => a.rank - b.rank);
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].rank <= sorted[i - 1].rank) {
+          const newRank = sorted[i - 1].rank + 1;
+          fixed.push({ category: "Duplicate Rank", type: "work_item", id: sorted[i].id, name: sorted[i].title, detail: `rank ${sorted[i].rank} → ${newRank}` });
+          workItems[sorted[i].id] = { ...workItems[sorted[i].id], rank: newRank };
+          sorted[i] = workItems[sorted[i].id];
+          wiRankChanged = true;
         }
-      });
-    }
-  });
+      }
+    });
+  }
 
-  // Backlogs
+  // Backlogs (single-tree, no cross-context cascading needed)
   const blRankGroups = new Map<string, string[]>();
   Object.values(backlogs).forEach((bl) => {
     const key = `${bl.treeId}::${bl.parentId ?? "ROOT"}`;
@@ -453,15 +458,13 @@ export function cleanseData(data: StoreData): CleanseResult {
       .map((id) => backlogs[id])
       .filter(Boolean)
       .sort((a, b) => a.rank - b.rank);
-    const ranks = sorted.map((s) => s.rank);
-    const hasDupes = new Set(ranks).size !== ranks.length;
-    if (hasDupes) {
-      sorted.forEach((bl, i) => {
-        if (bl.rank !== i) {
-          fixed.push({ category: "Duplicate Rank", type: "backlog", id: bl.id, name: bl.name, detail: `rank ${bl.rank} → ${i}` });
-          backlogs[bl.id] = { ...backlogs[bl.id], rank: i };
-        }
-      });
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].rank <= sorted[i - 1].rank) {
+        const newRank = sorted[i - 1].rank + 1;
+        fixed.push({ category: "Duplicate Rank", type: "backlog", id: sorted[i].id, name: sorted[i].name, detail: `rank ${sorted[i].rank} → ${newRank}` });
+        backlogs[sorted[i].id] = { ...backlogs[sorted[i].id], rank: newRank };
+        sorted[i] = backlogs[sorted[i].id];
+      }
     }
   });
 

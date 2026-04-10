@@ -583,10 +583,60 @@ export const useAppStore = create<AppState>()((set, get) => {
         updatedItems[s.id] = { ...updatedItems[s.id], rank: i };
       });
 
-      upsertWorkItems(
-        reordered.map((s) => updatedItems[s.id]),
-        orgId,
-      );
+      // ── Cross-context collision repair ──────────────────────────────────
+      // Reordered items may appear in multiple backlog trees.  Their new
+      // sequential ranks can collide with non-reordered items that share a
+      // (treeId, backlogId, parentId) context in a different tree.  Detect
+      // such collisions and push the non-reordered items to a safe rank.
+      const reorderedIds = new Set(reordered.map((s) => s.id));
+      const additionallyShifted: WorkItem[] = [];
+      let hasConflicts = true;
+      while (hasConflicts) {
+        hasConflicts = false;
+        for (const wi of Object.values(updatedItems)) {
+          if (reorderedIds.has(wi.id)) continue;
+          // Check if wi shares a (treeId, backlogId) context AND parentId
+          // AND rank with any reordered or previously-shifted item.
+          let collision = false;
+          for (const r of reordered) {
+            const ri = updatedItems[r.id];
+            if (ri.parentId !== wi.parentId) continue;
+            if (ri.rank !== wi.rank) continue;
+            const sharesCtx = Object.entries(ri.backlogAssignments).some(
+              ([tid, bid]) => wi.backlogAssignments[tid] === bid,
+            );
+            if (sharesCtx) { collision = true; break; }
+          }
+          if (!collision) continue;
+          // Find the max rank across all contexts wi participates in so that
+          // the new rank is guaranteed unique in every context.
+          let maxCtxRank = wi.rank;
+          for (const s of Object.values(updatedItems)) {
+            if (s.id === wi.id) continue;
+            if (s.parentId !== wi.parentId) continue;
+            const shares = Object.entries(wi.backlogAssignments).some(
+              ([tid, bid]) => s.backlogAssignments[tid] === bid,
+            );
+            if (shares && s.rank > maxCtxRank) maxCtxRank = s.rank;
+          }
+          updatedItems[wi.id] = { ...updatedItems[wi.id], rank: maxCtxRank + 1 };
+          additionallyShifted.push(updatedItems[wi.id]);
+          hasConflicts = true;
+          break; // restart – the push may have cascaded
+        }
+      }
+
+      const itemsToUpsert = reordered.map((s) => updatedItems[s.id]);
+      if (additionallyShifted.length > 0) {
+        const upsertIds = new Set(itemsToUpsert.map((i) => i.id));
+        for (const shifted of additionallyShifted) {
+          if (!upsertIds.has(shifted.id)) {
+            itemsToUpsert.push(updatedItems[shifted.id]);
+            upsertIds.add(shifted.id);
+          }
+        }
+      }
+      upsertWorkItems(itemsToUpsert, orgId);
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -604,13 +654,19 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
 
-      // Compute a rank for the root item that avoids conflicts in the target backlog context.
+      // Compute a rank for the root item that avoids conflicts in ALL backlog
+      // contexts where the item will appear after the move (not just the target).
+      // The item keeps its existing assignments and gains/changes the target one,
+      // so we must check siblings in every resulting context.
+      const newAssignments = { ...item.backlogAssignments, [treeId]: cleanTargetBl };
       let maxRank = -1;
       Object.values(state.workItems).forEach((wi) => {
         if (wi.id === workItemId) return;
-        if (wi.parentId === item.parentId && wi.backlogAssignments[treeId] === cleanTargetBl) {
-          if (wi.rank > maxRank) maxRank = wi.rank;
-        }
+        if (wi.parentId !== item.parentId) return;
+        const sharesContext = Object.entries(newAssignments).some(
+          ([tid, bid]) => wi.backlogAssignments[tid] === bid,
+        );
+        if (sharesContext && wi.rank > maxRank) maxRank = wi.rank;
       });
       const newRootRank = maxRank + 1;
 
