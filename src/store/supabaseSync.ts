@@ -21,6 +21,32 @@ type WorkItemUpsertRow = {
   respawn_last_triggered_at: string | null;
 };
 
+// ─── Pure helpers (used by both load and sync) ────────────────────────────
+
+/**
+ * Return the organization that owns an entity, derived from its ID prefix
+ * (format: "<orgId>::<rawId>").  Falls back to `defaultOrgId` for unprefixed
+ * legacy/mock IDs so that newly-created entities are always attributed to the
+ * active org.
+ *
+ * `sep > 0` (not `>= 0`) is intentional: an ID starting with '::' has an
+ * empty org prefix and is treated as unprefixed, falling back to defaultOrgId.
+ */
+function ownerOrgOf(entityId: string, defaultOrgId: string): string {
+  const sep = entityId.indexOf('::');
+  return sep > 0 ? entityId.slice(0, sep) : defaultOrgId;
+}
+
+/**
+ * Returns true when an item's ID prefix embeds a different org than the item's
+ * actual `organization_id`.  This happens when items were transferred to a new
+ * org but their ID string was not yet renamed.
+ */
+function isStalePrefix(id: string, effectiveOrgId: string): boolean {
+  const sep = id.indexOf('::');
+  return sep > 0 && id.slice(0, sep) !== effectiveOrgId;
+}
+
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
 export async function loadFromSupabase(organizationId: string): Promise<{
@@ -201,23 +227,123 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     wi.childrenIds.sort((a, b) => (workItems[a]?.rank ?? 0) - (workItems[b]?.rank ?? 0));
   }
 
+  // ── Repair stale org prefixes at load time ────────────────────────────────
+  // Items whose ID prefix embeds a deleted/old org UUID (but whose
+  // organization_id column is already correct) are renamed in the DB now so
+  // the local state is clean from the start.  We do this directly instead of
+  // going through repairStaleOrgPrefixes() so we can patch the in-memory map
+  // without triggering the store callback (the store hasn't consumed this data
+  // yet).
+  const staleAtLoad = Object.values(workItems).filter(
+    wi => wi.organizationId && isStalePrefix(wi.id, wi.organizationId),
+  );
+  if (staleAtLoad.length > 0) {
+    const byOrg = new Map<string, string[]>();
+    for (const wi of staleAtLoad) {
+      const orgId = wi.organizationId!;
+      if (!byOrg.has(orgId)) byOrg.set(orgId, []);
+      byOrg.get(orgId)!.push(wi.id);
+    }
+
+    const loadOldToNew: Record<string, string> = {};
+    for (const [orgId, ids] of byOrg) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc('rename_work_items_org_prefix', {
+        _item_ids: ids,
+        _new_org_id: orgId,
+      });
+      if (error) {
+        console.error('loadFromSupabase: repair stale prefix failed:', error);
+        continue;
+      }
+      Object.assign(loadOldToNew, data as Record<string, string>);
+    }
+
+    if (Object.keys(loadOldToNew).length > 0) {
+      // Re-key items in the in-memory map using the new IDs.
+      for (const [oldId, newId] of Object.entries(loadOldToNew)) {
+        const item = workItems[oldId];
+        if (!item) continue;
+        workItems[newId] = {
+          ...item,
+          id: newId,
+          parentId: item.parentId ? (loadOldToNew[item.parentId] ?? item.parentId) : null,
+          childrenIds: item.childrenIds.map(cid => loadOldToNew[cid] ?? cid),
+        };
+        delete workItems[oldId];
+      }
+      // Update parentId references in items that were not themselves renamed.
+      for (const item of Object.values(workItems)) {
+        if (item.parentId && loadOldToNew[item.parentId]) {
+          item.parentId = loadOldToNew[item.parentId];
+        }
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   return { workItems, backlogs, backlogTrees };
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 /**
- * Return the organization that owns an entity, derived from its ID prefix
- * (format: "<orgId>::<rawId>").  Falls back to `defaultOrgId` for unprefixed
- * legacy/mock IDs so that newly-created entities are always attributed to the
- * active org.
- *
- * `sep > 0` (not `>= 0`) is intentional: an ID starting with '::' has an
- * empty org prefix and is treated as unprefixed, falling back to defaultOrgId.
+ * Callback invoked after a batch of work-item IDs has been renamed in the DB
+ * so that callers (e.g. the Zustand store) can update their local state.
+ * Maps old ID → new ID.
  */
-function ownerOrgOf(entityId: string, defaultOrgId: string): string {
-  const sep = entityId.indexOf('::');
-  return sep > 0 ? entityId.slice(0, sep) : defaultOrgId;
+export type WorkItemRenameCallback = (oldToNew: Record<string, string>) => void;
+let renameCallback: WorkItemRenameCallback | null = null;
+
+/** Register a store-level callback to be notified when work-item IDs are renamed. */
+export function registerWorkItemRenameCallback(cb: WorkItemRenameCallback): void {
+  renameCallback = cb;
+}
+
+/**
+ * Calls the `rename_work_items_org_prefix` RPC for items whose ID prefix does
+ * not match their effective `organization_id`, then notifies the registered
+ * callback so the local store can update its references.
+ *
+ * Returns a map of old ID → new ID for all items that were renamed.
+ */
+async function repairStaleOrgPrefixes(
+  items: Array<{ id: string; organizationId?: string }>,
+  activeOrgId: string,
+): Promise<Record<string, string>> {
+  // Filter items whose ID prefix doesn't match their actual org.
+  const stale = items.filter(item => {
+    const effectiveOrg = item.organizationId ?? activeOrgId;
+    return isStalePrefix(item.id, effectiveOrg);
+  });
+  if (stale.length === 0) return {};
+
+  // Group by effective org (should normally all be the same org after transfer).
+  const byOrg = new Map<string, string[]>();
+  for (const item of stale) {
+    const orgId = item.organizationId ?? activeOrgId;
+    if (!byOrg.has(orgId)) byOrg.set(orgId, []);
+    byOrg.get(orgId)!.push(item.id);
+  }
+
+  const oldToNew: Record<string, string> = {};
+  for (const [orgId, ids] of byOrg) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('rename_work_items_org_prefix', {
+      _item_ids: ids,
+      _new_org_id: orgId,
+    });
+    if (error) {
+      console.error('repairStaleOrgPrefixes RPC failed:', error);
+      continue;
+    }
+    Object.assign(oldToNew, data as Record<string, string>);
+  }
+
+  if (Object.keys(oldToNew).length > 0) {
+    renameCallback?.(oldToNew);
+  }
+  return oldToNew;
 }
 
 // ─── Sync helpers ──────────────────────────────────────────────────────────
@@ -243,11 +369,17 @@ async function withSessionRetry(
 }
 
 export async function upsertWorkItem(item: WorkItem, organizationId: string) {
+  // Repair stale org prefix (if any) before writing.  This renames the DB row
+  // and notifies the store callback so local state stays consistent.
+  const oldToNew = await repairStaleOrgPrefixes([item], organizationId);
+  const resolvedId = oldToNew[item.id] ?? item.id;
+  const effectiveOrgId = item.organizationId ?? organizationId;
+
   const row: WorkItemUpsertRow = {
-    id: item.id, title: item.title, description: item.description ?? null,
+    id: resolvedId, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
-    organization_id: item.organizationId || ownerOrgOf(item.id, organizationId),
+    organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
     respawn_hour: item.respawnHour ?? null,
@@ -318,16 +450,24 @@ export async function deleteBacklogTree(id: string) {
 
 export async function upsertWorkItems(items: WorkItem[], organizationId: string) {
   if (items.length === 0) return;
-  const rows: WorkItemUpsertRow[] = items.map(item => ({
-    id: item.id, title: item.title, description: item.description ?? null,
-    points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
-    organization_id: item.organizationId || ownerOrgOf(item.id, organizationId),
-    respawn_enabled: item.respawnEnabled ?? false,
-    respawn_interval_days: item.respawnIntervalDays ?? null,
-    respawn_hour: item.respawnHour ?? null,
-    respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
-  }));
+
+  // Repair any stale org prefixes before writing.
+  const oldToNew = await repairStaleOrgPrefixes(items, organizationId);
+
+  const rows: WorkItemUpsertRow[] = items.map(item => {
+    const resolvedId = oldToNew[item.id] ?? item.id;
+    const effectiveOrgId = item.organizationId ?? organizationId;
+    return {
+      id: resolvedId, title: item.title, description: item.description ?? null,
+      points: item.points ?? null, status: item.status, parent_id: item.parentId,
+      backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
+      organization_id: effectiveOrgId,
+      respawn_enabled: item.respawnEnabled ?? false,
+      respawn_interval_days: item.respawnIntervalDays ?? null,
+      respawn_hour: item.respawnHour ?? null,
+      respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
+    };
+  });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
   if (error) {
@@ -516,14 +656,26 @@ export async function loadHyperlinksForWorkItems(workItemIds: string[]): Promise
   return result;
 }
 
-export async function upsertHyperlink(link: Hyperlink, organizationId: string) {
+export async function upsertHyperlink(link: Hyperlink, organizationId: string, itemOrgId?: string) {
+  // Prefer the item's stored organization_id (passed by the caller) so we never
+  // try to assign a hyperlink to a deleted org derived from a stale ID prefix.
+  const effectiveOrgId = itemOrgId ?? ownerOrgOf(link.workItemId, organizationId);
+
+  // If the work item has a stale prefix, rename it first so the FK for
+  // work_item_id stays valid after the repair.
+  const oldToNew = await repairStaleOrgPrefixes(
+    [{ id: link.workItemId, organizationId: itemOrgId }],
+    organizationId,
+  );
+  const resolvedWorkItemId = oldToNew[link.workItemId] ?? link.workItemId;
+
   const row = {
     id: link.id,
-    work_item_id: link.workItemId,
+    work_item_id: resolvedWorkItemId,
     url: link.url,
     alt_text: link.altText,
     rank: safeRank(link.rank),
-    organization_id: ownerOrgOf(link.workItemId, organizationId),
+    organization_id: effectiveOrgId,
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_item_hyperlinks' as any).upsert(row as any).select().then(r => r));

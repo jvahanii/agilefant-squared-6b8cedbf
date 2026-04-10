@@ -17,6 +17,7 @@ vi.mock("@/store/supabaseSync", () => ({
   loadHyperlinksForWorkItems: vi.fn().mockResolvedValue({}),
   upsertHyperlink: vi.fn(),
   deleteHyperlink: vi.fn(),
+  registerWorkItemRenameCallback: vi.fn(),
 }));
 
 vi.mock("@/store/mockData", () => ({
