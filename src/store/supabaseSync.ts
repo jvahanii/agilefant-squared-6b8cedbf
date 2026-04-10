@@ -185,6 +185,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
       parentId: row.parent_id, childrenIds: [],
       backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
       rank: row.rank,
+      organizationId: r.organization_id ?? undefined,
       respawnEnabled: r.respawn_enabled ?? false,
       respawnIntervalDays: r.respawn_interval_days ?? undefined,
       respawnHour: r.respawn_hour ?? undefined,
