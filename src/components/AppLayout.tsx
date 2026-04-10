@@ -286,16 +286,16 @@ function AppLayoutInner() {
           if (state.selectedWorkItemIds.length > 0) {
             const wiId = state.selectedWorkItemIds[0];
             const wi = state.workItems[wiId];
-            if (wi && wi.childrenIds.length > 0 && !state.expandedWorkItems.has(wiId)) {
+            if (wi && wi.childrenIds.length > 0) {
               e.preventDefault();
-              useAppStore.getState().toggleWorkItemExpand(wiId);
+              useAppStore.getState().expandWorkItemsRecursive(wiId);
             }
           } else if (state.selectedBacklogIds.length > 0) {
             const backlogId = state.selectedBacklogIds[0];
             const backlog = state.backlogs[backlogId];
-            if (backlog && backlog.childrenIds.length > 0 && !state.expandedBacklogs.has(backlogId)) {
+            if (backlog && backlog.childrenIds.length > 0) {
               e.preventDefault();
-              useAppStore.getState().toggleBacklogExpand(backlogId);
+              useAppStore.getState().expandBacklogsRecursive(backlogId);
             }
           }
           break;
@@ -304,16 +304,16 @@ function AppLayoutInner() {
           if (state.selectedWorkItemIds.length > 0) {
             const wiId = state.selectedWorkItemIds[0];
             const wi = state.workItems[wiId];
-            if (wi && wi.childrenIds.length > 0 && state.expandedWorkItems.has(wiId)) {
+            if (wi && wi.childrenIds.length > 0) {
               e.preventDefault();
-              useAppStore.getState().toggleWorkItemExpand(wiId);
+              useAppStore.getState().collapseWorkItemsRecursive(wiId);
             }
           } else if (state.selectedBacklogIds.length > 0) {
             const backlogId = state.selectedBacklogIds[0];
             const backlog = state.backlogs[backlogId];
-            if (backlog && backlog.childrenIds.length > 0 && state.expandedBacklogs.has(backlogId)) {
+            if (backlog && backlog.childrenIds.length > 0) {
               e.preventDefault();
-              useAppStore.getState().toggleBacklogExpand(backlogId);
+              useAppStore.getState().collapseBacklogsRecursive(backlogId);
             }
           }
           break;
