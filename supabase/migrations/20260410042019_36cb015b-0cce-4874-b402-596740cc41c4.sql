@@ -1,0 +1,1 @@
+ALTER TABLE work_items DROP CONSTRAINT work_items_parent_id_fkey;

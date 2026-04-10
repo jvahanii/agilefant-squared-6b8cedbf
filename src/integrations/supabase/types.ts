@@ -424,13 +424,6 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "work_items_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "work_items"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
