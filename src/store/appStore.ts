@@ -689,6 +689,51 @@ export const useAppStore = create<AppState>()((set, get) => {
       };
 
       moveRecursive(workItemId, true);
+
+      // Fix rank duplicates that arise when siblings were previously in different
+      // backlogs of treeId and are now all consolidated into cleanTargetBl.
+      // Children that had independent rank sequences in their separate groups may
+      // now share a rank in the merged (treeId, cleanTargetBl, parentId) group.
+      const movedByParent = new Map<string | null, string[]>();
+      for (const wi of changed) {
+        if (wi.id === workItemId) continue; // root already has a safe rank
+        const pid = wi.parentId ?? null;
+        if (!movedByParent.has(pid)) movedByParent.set(pid, []);
+        movedByParent.get(pid)!.push(wi.id);
+      }
+      for (const ids of movedByParent.values()) {
+        if (ids.length < 2) continue;
+        // Sort by current rank ascending, then bump any ties using maxCtxRank+1
+        // to stay safe across all contexts the sibling appears in.
+        const sorted = [...ids].sort(
+          (a, b) => (updatedItems[a]?.rank ?? 0) - (updatedItems[b]?.rank ?? 0),
+        );
+        let prevEffective = -Infinity;
+        for (const id of sorted) {
+          const sibling = updatedItems[id];
+          if (!sibling) continue;
+          if (sibling.rank <= prevEffective) {
+            // Tie: bump to maxCtxRank+1 across all of sibling's contexts.
+            let maxCtxRank = prevEffective;
+            for (const s of Object.values(updatedItems)) {
+              if (s.id === id) continue;
+              if (s.parentId !== sibling.parentId) continue;
+              const shares = Object.entries(sibling.backlogAssignments).some(
+                ([tid, bid]) => s.backlogAssignments[tid] === bid,
+              );
+              if (shares && s.rank > maxCtxRank) maxCtxRank = s.rank;
+            }
+            const newRank = maxCtxRank + 1;
+            updatedItems[id] = { ...updatedItems[id], rank: newRank };
+            const idx = changed.findIndex((c) => c.id === id);
+            if (idx >= 0) changed[idx] = updatedItems[id];
+            prevEffective = newRank;
+          } else {
+            prevEffective = sibling.rank;
+          }
+        }
+      }
+
       upsertWorkItems(changed, orgId);
       const oldBacklogId = item.backlogAssignments[treeId];
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
