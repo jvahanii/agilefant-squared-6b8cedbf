@@ -114,8 +114,8 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           <div className="space-y-2">
             {[
               { action: "Create a tree", how: 'Click the "+" button at the top of the left panel.' },
-              { action: "Add a backlog node", how: "Select an existing node and click the add child button, or use the inline context menu." },
-              { action: "Rename a node", how: "Double-click the node name to edit it in-place." },
+              { action: "Add a backlog node", how: "Select an existing node and press Shift+Enter, or hover the node row and click the + icon." },
+              { action: "Rename a node", how: "Double-click the node name to edit it in-place. Tree headers can also be renamed by double-clicking." },
               { action: "Delete a node", how: "Select the node and press Delete / Backspace." },
               { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
               { action: "Expand / collapse", how: "Click the expand arrow or press → to open a branch." },
@@ -146,14 +146,15 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           </p>
           <div className="space-y-2">
             {[
-              { action: "New root item", how: "Press Enter or click the + button." },
-              { action: "New child item", how: "Select a parent item and press Shift+Enter." },
+              { action: "New root item", how: "Select a backlog and press Enter, or click the + button in the panel header." },
+              { action: "New child item", how: "Select a parent item and press Shift+Enter, or click the + icon on the item row." },
               { action: "Rename an item", how: "Double-click the item title to edit in-place." },
-              { action: "Delete item(s)", how: "Select item(s) and press Delete or Backspace." },
-              { action: "Multi-select", how: "Shift+Click to select a range of items (Explorer style)." },
-              { action: "Set story points", how: "Click the story-points badge on the item row." },
+              { action: "Delete item(s)", how: "Select item(s) and press Delete or Backspace, or click the trash icon on the row." },
+              { action: "Multi-select", how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items." },
+              { action: "Set story points", how: "Double-click the story-points value on the item row." },
+              { action: "Paste items", how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add." },
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
-              { action: "Set recurring", how: "Use the respawn settings on a work item to make it recur." },
+              { action: "Set recurring", how: "Click the settings icon on the item row to open respawn settings and configure the schedule." },
             ].map((row) => (
               <div key={row.action} className="flex gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
                 <span className="font-medium text-foreground shrink-0 w-36">{row.action}</span>
@@ -192,6 +193,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Navigation</p>
             <ShortcutRow keys={["↑", "↓"]} description="Move selection up / down" />
             <ShortcutRow keys={["→"]} description="Expand selected item or backlog branch" />
+            <ShortcutRow keys={["←"]} description="Collapse selected item or backlog branch" />
             <ShortcutRow keys={["Esc"]} description="Deselect all items" />
           </div>
           <div className="space-y-1">
@@ -216,7 +218,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other</p>
             <ShortcutRow keys={["Ctrl", "Z"]} description="Undo" />
-            <ShortcutRow keys={["Ctrl", "Y"]} description="Redo" />
+            <ShortcutRow keys={["Ctrl", "Y"]} description="Redo (also Ctrl+Shift+Z)" />
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
@@ -261,8 +263,9 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             ))}
           </div>
           <Tip>
-            On mobile, press and hold an item briefly to start dragging it. You can also swipe left/right on a
-            work item to quickly move it to the top or bottom of its backlog.
+            On mobile, press and hold an item briefly to start dragging it. After a long-press, swipe up or down
+            to move the selected item to the top or bottom of its backlog. Swipe left to deselect, swipe right
+            to expand the selected branch.
           </Tip>
         </div>
       ),
@@ -309,7 +312,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           </p>
           <div className="space-y-2">
             {[
-              { action: "Share a tree", how: "Open the tree's context menu (⋯) and choose Share. Enter the target organisation's ID." },
+              { action: "Share a tree", how: "Hover the tree header in the left panel to reveal the share icon (↗), then enter the target organisation's ID." },
               { action: "Mirror work items", how: "When drag-dropping across trees, choose Mirror to keep the item visible in both views." },
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
             ].map((row) => (
@@ -356,12 +359,17 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
               {
                 icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
                 title: "Data Integrity",
-                body: 'Use the "Check Data" button in the header to run automated integrity tests on your data. The report is copied to your clipboard.',
+                body: 'Use the "Check Data" button in the header to run automated integrity checks on your data. The report is copied to your clipboard.',
               },
               {
                 icon: <Settings className="w-4 h-4 text-primary" />,
                 title: "Cleanse Data",
                 body: 'The "Cleanse Data" header button removes orphaned records that no longer belong to any tree or backlog.',
+              },
+              {
+                icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
+                title: "Run Tests",
+                body: 'The "Run Tests" header button runs structured pass/fail data integrity tests and copies the full report to your clipboard.',
               },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
@@ -374,8 +382,8 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             ))}
           </div>
           <Tip>
-            Export your data at any time with the <strong>Export data</strong> header button — it copies a CSV of your
-            history to the clipboard.
+            Use <strong>Export data</strong> to copy the current data snapshot to the clipboard, or{" "}
+            <strong>Export history</strong> to copy a CSV of all recorded changes.
           </Tip>
         </div>
       ),
