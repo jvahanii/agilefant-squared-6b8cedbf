@@ -10,7 +10,7 @@ export const mockData = {
       backlogAssignments: {
         "bt-f6e09d2d": "bl-7bb1aafd",
       },
-      rank: 0,
+      ranks: { "bl-7bb1aafd": 0 },
       respawnEnabled: false,
     },
     "wi-50a1e734": {
@@ -22,7 +22,7 @@ export const mockData = {
       backlogAssignments: {
         "bt-f6e09d2d": "bl-7bb1aafd",
       },
-      rank: 1,
+      ranks: { "bl-7bb1aafd": 1 },
       respawnEnabled: false,
     },
     "wi-e65f9217": {
@@ -34,7 +34,7 @@ export const mockData = {
       backlogAssignments: {
         "bt-f6e09d2d": "bl-7bb1aafd",
       },
-      rank: 2,
+      ranks: { "bl-7bb1aafd": 2 },
       respawnEnabled: false,
     },
     "wi-e57477cd": {
@@ -47,7 +47,7 @@ export const mockData = {
       backlogAssignments: {
         "bt-f6e09d2d": "bl-7bb1aafd",
       },
-      rank: 3,
+      ranks: { "bl-7bb1aafd": 3 },
       respawnEnabled: false,
     },
   },
