@@ -148,7 +148,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
-      wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, rank: wi.rank });
+      wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, rank: wi.ranks[blId] ?? 0 });
     });
   });
   wiRankGroups.forEach((items, key) => {
@@ -415,9 +415,34 @@ export function cleanseData(data: StoreData): CleanseResult {
   });
 
   // --- Fix duplicate rank collisions ---
-  // Helper: for a set of rank groups, ensure no two siblings share the same
-  // rank by bumping the later item to prevRank + 1.  Ranks only ever increase
-  // (never decrease) which guarantees convergence.
+  // Work items: per-backlog ranks. For each (treeId, backlogId, parentId) group,
+  // ensure no two siblings share the same rank in that backlog.
+  function dedupWorkItemRanks(
+    groups: Map<string, { ids: string[]; backlogId: string }>,
+  ): boolean {
+    let changed = false;
+    groups.forEach(({ ids, backlogId }) => {
+      const pairs = ids
+        .map((id) => ({ id, item: workItems[id] }))
+        .filter((p) => p.item != null)
+        .sort((a, b) => (a.item.ranks[backlogId] ?? 0) - (b.item.ranks[backlogId] ?? 0));
+      for (let i = 1; i < pairs.length; i++) {
+        const prevRank = pairs[i - 1].item.ranks[backlogId] ?? 0;
+        const curRank = pairs[i].item.ranks[backlogId] ?? 0;
+        if (curRank <= prevRank) {
+          const newRank = prevRank + 1;
+          const itemId = pairs[i].id;
+          fixed.push({ category: "Duplicate Rank", type: "work_item", id: itemId, name: pairs[i].item.title, detail: `rank ${curRank} → ${newRank} in backlog ${backlogId}` });
+          workItems[itemId] = { ...workItems[itemId], ranks: { ...workItems[itemId].ranks, [backlogId]: newRank } };
+          pairs[i] = { id: itemId, item: workItems[itemId] };
+          changed = true;
+        }
+      }
+    });
+    return changed;
+  }
+
+  // Helper for backlogs (flat rank)
   function dedupRanks<T extends { rank: number }>(
     groups: Map<string, string[]>,
     store: Record<string, T>,
@@ -426,7 +451,6 @@ export function cleanseData(data: StoreData): CleanseResult {
   ): boolean {
     let changed = false;
     groups.forEach((ids) => {
-      // Build (id, item) pairs so we can track the ID alongside the item.
       const pairs = ids
         .map((id) => ({ id, item: store[id] }))
         .filter((p) => p.item != null)
@@ -447,15 +471,15 @@ export function cleanseData(data: StoreData): CleanseResult {
 
   // Work items – iterate until stable because fixing one group may create a
   // duplicate in another group when an item appears in multiple backlog contexts.
-  const wiRankGroups = new Map<string, string[]>();
+  const wiRankGroups = new Map<string, { ids: string[]; backlogId: string }>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
-      if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
-      wiRankGroups.get(key)!.push(wi.id);
+      if (!wiRankGroups.has(key)) wiRankGroups.set(key, { ids: [], backlogId: blId });
+      wiRankGroups.get(key)!.ids.push(wi.id);
     });
   });
-  while (dedupRanks(wiRankGroups, workItems, "work_item", (wi) => wi.title)) { /* iterate until stable */ }
+  while (dedupWorkItemRanks(wiRankGroups)) { /* iterate until stable */ }
 
   // Backlogs (single-tree, no cross-context cascading needed — single pass suffices)
   const blRankGroups = new Map<string, string[]>();

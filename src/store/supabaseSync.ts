@@ -12,7 +12,7 @@ type WorkItemUpsertRow = {
   points: number | null;
   status: string;
   parent_id: string | null;
-  backlog_assignments: Record<string, string>;
+  backlog_assignments: Record<string, { backlogId: string; rank: number }>;
   rank: number;
   organization_id: string;
   respawn_enabled: boolean;
@@ -20,6 +20,41 @@ type WorkItemUpsertRow = {
   respawn_hour: number | null;
   respawn_last_triggered_at: string | null;
 };
+
+/** Build the enriched backlog_assignments JSON from item fields. */
+function buildEnrichedAssignments(
+  backlogAssignments: Record<string, string>,
+  ranks: Record<string, number>,
+): Record<string, { backlogId: string; rank: number }> {
+  const result: Record<string, { backlogId: string; rank: number }> = {};
+  for (const [treeId, backlogId] of Object.entries(backlogAssignments)) {
+    result[treeId] = { backlogId, rank: safeRank(ranks[backlogId]) };
+  }
+  return result;
+}
+
+/** Parse backlog_assignments from DB (supports both old flat and new enriched format). */
+function parseBacklogAssignments(
+  raw: Record<string, unknown> | null | undefined,
+  fallbackRank: number,
+): { backlogAssignments: Record<string, string>; ranks: Record<string, number> } {
+  const backlogAssignments: Record<string, string> = {};
+  const ranks: Record<string, number> = {};
+  if (!raw) return { backlogAssignments, ranks };
+  for (const [treeId, value] of Object.entries(raw)) {
+    if (typeof value === 'string') {
+      // Old format: { treeId: "backlogId" }
+      backlogAssignments[treeId] = value;
+      ranks[value] = fallbackRank;
+    } else if (value && typeof value === 'object' && 'backlogId' in value) {
+      // New format: { treeId: { backlogId: "...", rank: N } }
+      const entry = value as { backlogId: string; rank: number };
+      backlogAssignments[treeId] = entry.backlogId;
+      ranks[entry.backlogId] = typeof entry.rank === 'number' ? entry.rank : fallbackRank;
+    }
+  }
+  return { backlogAssignments, ranks };
+}
 
 // ─── Pure helpers (used by both load and sync) ────────────────────────────
 
@@ -205,12 +240,16 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
     const r = row as any;
+    const { backlogAssignments, ranks } = parseBacklogAssignments(
+      row.backlog_assignments as Record<string, unknown>,
+      row.rank ?? 0,
+    );
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
-      backlogAssignments: (row.backlog_assignments as Record<string, string>) ?? {},
-      rank: row.rank,
+      backlogAssignments,
+      ranks,
       organizationId: r.organization_id ?? undefined,
       respawnEnabled: r.respawn_enabled ?? false,
       respawnIntervalDays: r.respawn_interval_days ?? undefined,
@@ -224,7 +263,13 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     }
   }
   for (const wi of Object.values(workItems)) {
-    wi.childrenIds.sort((a, b) => (workItems[a]?.rank ?? 0) - (workItems[b]?.rank ?? 0));
+    wi.childrenIds.sort((a, b) => {
+      const wiA = workItems[a];
+      const wiB = workItems[b];
+      const rankA = wiA ? Math.min(...Object.values(wiA.ranks), 0) : 0;
+      const rankB = wiB ? Math.min(...Object.values(wiB.ranks), 0) : 0;
+      return rankA - rankB;
+    });
   }
 
   // ── Repair stale org prefixes at load time ────────────────────────────────
@@ -378,7 +423,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
+    backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks), rank: 0,
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -460,7 +505,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     return {
       id: resolvedId, title: item.title, description: item.description ?? null,
       points: item.points ?? null, status: item.status, parent_id: item.parentId,
-      backlog_assignments: item.backlogAssignments, rank: safeRank(item.rank),
+      backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks), rank: 0,
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,
       respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -563,6 +608,12 @@ function scopeMockDataToOrganization(organizationId: string, mockData: MockDataS
               backlogIdMap[backlogId],
             ])
           ),
+          ranks: Object.fromEntries(
+            Object.entries(item.ranks).map(([backlogId, rank]) => [
+              backlogIdMap[backlogId] ?? backlogId,
+              rank,
+            ])
+          ),
         },
       ];
     })
@@ -623,8 +674,8 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     points: item.points ?? null,
     status: item.status,
     parent_id: item.parentId,
-    backlog_assignments: item.backlogAssignments,
-    rank: safeRank(item.rank),
+    backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks),
+    rank: 0,
     organization_id: organizationId,
   }));
   if (itemRows.length > 0) {
