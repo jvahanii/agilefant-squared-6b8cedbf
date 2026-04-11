@@ -12,7 +12,7 @@ type WorkItemUpsertRow = {
   points: number | null;
   status: string;
   parent_id: string | null;
-  backlog_assignments: Record<string, { backlogId: string; rank: number }>;
+  backlog_assignments: Record<string, string>;
   rank: number;
   organization_id: string;
   respawn_enabled: boolean;
@@ -20,41 +20,6 @@ type WorkItemUpsertRow = {
   respawn_hour: number | null;
   respawn_last_triggered_at: string | null;
 };
-
-/** Build the enriched backlog_assignments JSON from item fields. */
-function buildEnrichedAssignments(
-  backlogAssignments: Record<string, string>,
-  ranks: Record<string, number>,
-): Record<string, { backlogId: string; rank: number }> {
-  const result: Record<string, { backlogId: string; rank: number }> = {};
-  for (const [treeId, backlogId] of Object.entries(backlogAssignments)) {
-    result[treeId] = { backlogId, rank: safeRank(ranks[backlogId]) };
-  }
-  return result;
-}
-
-/** Parse backlog_assignments from DB (supports both old flat and new enriched format). */
-function parseBacklogAssignments(
-  raw: Record<string, unknown> | null | undefined,
-  fallbackRank: number,
-): { backlogAssignments: Record<string, string>; ranks: Record<string, number> } {
-  const backlogAssignments: Record<string, string> = {};
-  const ranks: Record<string, number> = {};
-  if (!raw) return { backlogAssignments, ranks };
-  for (const [treeId, value] of Object.entries(raw)) {
-    if (typeof value === 'string') {
-      // Old format: { treeId: "backlogId" }
-      backlogAssignments[treeId] = value;
-      ranks[value] = fallbackRank;
-    } else if (value && typeof value === 'object' && 'backlogId' in value) {
-      // New format: { treeId: { backlogId: "...", rank: N } }
-      const entry = value as { backlogId: string; rank: number };
-      backlogAssignments[treeId] = entry.backlogId;
-      ranks[entry.backlogId] = typeof entry.rank === 'number' ? entry.rank : fallbackRank;
-    }
-  }
-  return { backlogAssignments, ranks };
-}
 
 // ─── Pure helpers (used by both load and sync) ────────────────────────────
 
@@ -237,13 +202,30 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   }
   const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
 
+  // Load per-backlog ranks from the work_item_backlog_ranks table.
+  const workItemIds = cleanItemRows.map(r => r.id);
+  const ranksMap = await loadWorkItemBacklogRanks(workItemIds);
+
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
     const r = row as any;
-    const { backlogAssignments, ranks } = parseBacklogAssignments(
-      row.backlog_assignments as Record<string, unknown>,
-      row.rank ?? 0,
-    );
+    const rawAssignments = (row.backlog_assignments ?? {}) as Record<string, unknown>;
+    const backlogAssignments: Record<string, string> = {};
+    for (const [treeId, value] of Object.entries(rawAssignments)) {
+      if (typeof value === 'string') {
+        backlogAssignments[treeId] = value;
+      } else if (value && typeof value === 'object' && 'backlogId' in value) {
+        // Legacy enriched format – extract plain backlogId
+        backlogAssignments[treeId] = (value as { backlogId: string }).backlogId;
+      }
+    }
+    const ranks = ranksMap[row.id] ?? {};
+    // Fallback: if no ranks from the table, use the deprecated global rank column
+    if (Object.keys(ranks).length === 0 && typeof row.rank === 'number') {
+      for (const backlogId of Object.values(backlogAssignments)) {
+        ranks[backlogId] = row.rank;
+      }
+    }
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
@@ -423,7 +405,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
-    backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks), rank: 0,
+    backlog_assignments: item.backlogAssignments, rank: 0,
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -436,6 +418,8 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
+  // Persist per-backlog ranks to the dedicated table
+  upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
 }
 
 export async function deleteWorkItems(ids: string[]) {
@@ -505,7 +489,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     return {
       id: resolvedId, title: item.title, description: item.description ?? null,
       points: item.points ?? null, status: item.status, parent_id: item.parentId,
-      backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks), rank: 0,
+      backlog_assignments: item.backlogAssignments, rank: 0,
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,
       respawn_interval_days: item.respawnIntervalDays ?? null,
@@ -519,6 +503,8 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     console.error('upsertWorkItems:', error, 'rows:', rows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
+  // Persist per-backlog ranks to the dedicated table
+  upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
@@ -625,6 +611,10 @@ function scopeMockDataToOrganization(organizationId: string, mockData: MockDataS
 export async function resetOrgData(organizationId: string, mockData: MockDataSnapshot) {
   const scopedMockData = scopeMockDataToOrganization(organizationId, mockData);
 
+  // Delete ranks first (FK to work_items)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await supabase.from('work_item_backlog_ranks' as any).delete().eq('organization_id', organizationId);
+
   const { error: deleteItemsError } = await supabase
     .from('work_items')
     .delete()
@@ -674,7 +664,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     points: item.points ?? null,
     status: item.status,
     parent_id: item.parentId,
-    backlog_assignments: buildEnrichedAssignments(item.backlogAssignments, item.ranks),
+    backlog_assignments: item.backlogAssignments,
     rank: 0,
     organization_id: organizationId,
   }));
@@ -682,6 +672,87 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     const { error } = await supabase.from('work_items').insert(itemRows);
     if (error) throw error;
   }
+
+  // Insert per-backlog ranks
+  const rankRows: Array<{ work_item_id: string; backlog_id: string; rank: number; organization_id: string }> = [];
+  for (const item of Object.values(scopedMockData.workItems)) {
+    for (const [backlogId, rank] of Object.entries(item.ranks)) {
+      rankRows.push({
+        work_item_id: item.id,
+        backlog_id: backlogId,
+        rank: safeRank(rank),
+        organization_id: organizationId,
+      });
+    }
+  }
+  if (rankRows.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from('work_item_backlog_ranks' as any).insert(rankRows);
+    if (error) throw error;
+  }
+}
+
+// ─── Work Item Backlog Ranks CRUD ─────────────────────────────────────────
+
+/** Load per-backlog ranks for a set of work items from the work_item_backlog_ranks table. */
+async function loadWorkItemBacklogRanks(
+  workItemIds: string[],
+): Promise<Record<string, Record<string, number>>> {
+  if (workItemIds.length === 0) return {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await supabase.from('work_item_backlog_ranks' as any).select('*').in('work_item_id', workItemIds);
+  if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
+  const result: Record<string, Record<string, number>> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    const wiId = row.work_item_id as string;
+    if (!result[wiId]) result[wiId] = {};
+    result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+  }
+  return result;
+}
+
+/** Upsert per-backlog ranks for a single work item. */
+async function upsertWorkItemBacklogRanks(
+  workItemId: string,
+  ranks: Record<string, number>,
+  organizationId: string,
+): Promise<void> {
+  const rows = Object.entries(ranks).map(([backlogId, rank]) => ({
+    work_item_id: workItemId,
+    backlog_id: backlogId,
+    rank: safeRank(rank),
+    organization_id: organizationId,
+  }));
+  if (rows.length === 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  if (error) console.error('upsertWorkItemBacklogRanks:', error);
+}
+
+/** Upsert per-backlog ranks for a batch of work items. */
+async function upsertWorkItemBacklogRanksBatch(
+  items: WorkItem[],
+  oldToNew: Record<string, string>,
+  organizationId: string,
+): Promise<void> {
+  const rows: Array<{ work_item_id: string; backlog_id: string; rank: number; organization_id: string }> = [];
+  for (const item of items) {
+    const resolvedId = oldToNew[item.id] ?? item.id;
+    const effectiveOrgId = item.organizationId ?? organizationId;
+    for (const [backlogId, rank] of Object.entries(item.ranks)) {
+      rows.push({
+        work_item_id: resolvedId,
+        backlog_id: backlogId,
+        rank: safeRank(rank),
+        organization_id: effectiveOrgId,
+      });
+    }
+  }
+  if (rows.length === 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
 }
 
 // ─── Hyperlink CRUD ───────────────────────────────────────────────────────

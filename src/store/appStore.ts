@@ -101,6 +101,7 @@ interface AppState extends DataSnapshot {
   removeHyperlink: (linkId: string, workItemId: string) => void;
   loadHyperlinksForItem: (workItemId: string) => Promise<void>;
   applyRealtimeWorkItem: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeWorkItemRank: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklog: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklogTree: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeHyperlink: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
@@ -1469,21 +1470,18 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { workItems: updatedWorkItems };
         }
 
-        // INSERT or UPDATE: preserve existing childrenIds from current state
-        // Parse the enriched backlog_assignments format
+        // INSERT or UPDATE: preserve existing childrenIds and ranks from current state.
+        // Ranks live in the separate work_item_backlog_ranks table and arrive
+        // via applyRealtimeWorkItemRank; we keep the existing local ranks here.
         const rawAssignments = row.backlog_assignments as Record<string, unknown> | null;
-        const fallbackRank = (row.rank as number) ?? 0;
         const parsedAssignments: Record<string, string> = {};
-        const parsedRanks: Record<string, number> = {};
         if (rawAssignments) {
           for (const [tId, value] of Object.entries(rawAssignments)) {
             if (typeof value === 'string') {
               parsedAssignments[tId] = value;
-              parsedRanks[value] = fallbackRank;
             } else if (value && typeof value === 'object' && 'backlogId' in value) {
-              const entry = value as { backlogId: string; rank: number };
-              parsedAssignments[tId] = entry.backlogId;
-              parsedRanks[entry.backlogId] = typeof entry.rank === 'number' ? entry.rank : fallbackRank;
+              // Legacy enriched format – extract plain backlogId
+              parsedAssignments[tId] = (value as { backlogId: string }).backlogId;
             }
           }
         }
@@ -1497,7 +1495,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           parentId: (row.parent_id as string | null) ?? null,
           childrenIds: state.workItems[id]?.childrenIds ?? [],
           backlogAssignments: parsedAssignments,
-          ranks: parsedRanks,
+          ranks: state.workItems[id]?.ranks ?? {},
           organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
@@ -1536,10 +1534,45 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
         } else if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
           // Same non-null parent: re-sort childrenIds in case rank changed.
-          // Note: root work items (parentId=null) have no childrenIds container – they are
-          // rendered by querying work items directly sorted by rank, so no array update is needed.
           const parent = updatedWorkItems[newItem.parentId];
           updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
+        }
+
+        return { workItems: updatedWorkItems };
+      });
+    },
+
+    applyRealtimeWorkItemRank: (eventType, row) => {
+      set((state) => {
+        const workItemId = row.work_item_id as string;
+        const backlogId = row.backlog_id as string;
+        const wi = state.workItems[workItemId];
+        if (!wi) return state;
+
+        if (eventType === 'DELETE') {
+          const newRanks = { ...wi.ranks };
+          delete newRanks[backlogId];
+          const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
+          return { workItems: updatedWorkItems };
+        }
+
+        // INSERT or UPDATE
+        const newRank = (row.rank as number) ?? 0;
+        const newRanks = { ...wi.ranks, [backlogId]: newRank };
+        const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
+
+        // Re-sort parent's childrenIds if this item has a parent
+        if (wi.parentId && updatedWorkItems[wi.parentId]) {
+          const parent = updatedWorkItems[wi.parentId];
+          const sortWorkItemIds = (ids: string[]) =>
+            [...ids].sort((a, b) => {
+              const wiA = updatedWorkItems[a];
+              const wiB = updatedWorkItems[b];
+              const rankA = wiA ? Math.min(...Object.values(wiA.ranks), 0) : 0;
+              const rankB = wiB ? Math.min(...Object.values(wiB.ranks), 0) : 0;
+              return rankA - rankB;
+            });
+          updatedWorkItems[wi.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
         }
 
         return { workItems: updatedWorkItems };
