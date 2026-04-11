@@ -282,6 +282,21 @@ function buildCascadedShiftSet(
   return toShift;
 }
 
+/**
+ * Given an original and fixed store dictionary, return the items that were
+ * mutated (reference changed) and the IDs of items that were removed.
+ * cleanseData shallow-copies the top-level record and creates new objects
+ * only for modified entries, so reference inequality reliably identifies changes.
+ */
+function diffStoreDict<T extends { id: string }>(
+  original: Record<string, T>,
+  fixed: Record<string, T>,
+): { changed: T[]; deletedIds: string[] } {
+  const changed = Object.values(fixed).filter((item) => original[item.id] !== item);
+  const deletedIds = Object.keys(original).filter((id) => !fixed[id]);
+  return { changed, deletedIds };
+}
+
 export const useAppStore = create<AppState>()((set, get) => {
   // Register a callback so supabaseSync can notify us when work-item IDs are
   // renamed (stale org prefix repaired).  This keeps local state consistent
@@ -1407,29 +1422,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       // cleanseData shallow-copies the top-level record but creates new objects
       // only for modified items, so reference inequality reliably identifies changes.
       if (orgId) {
-        const changedWorkItems = Object.values(result.data.workItems).filter(
-          (wi) => state.workItems[wi.id] !== wi,
-        );
-        const deletedWorkItemIds = Object.keys(state.workItems).filter(
-          (id) => !result.data.workItems[id],
-        );
+        const { changed: changedWorkItems, deletedIds: deletedWorkItemIds } = diffStoreDict(state.workItems, result.data.workItems);
         if (changedWorkItems.length > 0) upsertWorkItems(changedWorkItems, orgId);
         if (deletedWorkItemIds.length > 0) deleteWorkItems(deletedWorkItemIds);
 
         // Persist changed/deleted backlogs.
-        const changedBacklogs = Object.values(result.data.backlogs).filter(
-          (bl) => state.backlogs[bl.id] !== bl,
-        );
-        const deletedBacklogIds = Object.keys(state.backlogs).filter(
-          (id) => !result.data.backlogs[id],
-        );
+        const { changed: changedBacklogs, deletedIds: deletedBacklogIds } = diffStoreDict(state.backlogs, result.data.backlogs);
         if (changedBacklogs.length > 0) upsertBacklogs(changedBacklogs, orgId);
         if (deletedBacklogIds.length > 0) deleteBacklogs(deletedBacklogIds);
 
         // Persist changed backlog trees (cleanseData never deletes trees).
-        const changedTrees = Object.values(result.data.backlogTrees).filter(
-          (tree) => state.backlogTrees[tree.id] !== tree,
-        );
+        const { changed: changedTrees } = diffStoreDict(state.backlogTrees, result.data.backlogTrees);
         if (changedTrees.length > 0) upsertBacklogTrees(changedTrees, orgId);
       }
 
