@@ -19,6 +19,7 @@ import {
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
+import { cleanseData, type CleanseResult } from "./dataIntegrity";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -96,6 +97,7 @@ interface AppState extends DataSnapshot {
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
+  cleanseAndPersistData: () => CleanseResult;
   addHyperlink: (workItemId: string, url: string, altText: string) => void;
   updateHyperlink: (linkId: string, workItemId: string, url: string, altText: string) => void;
   removeHyperlink: (linkId: string, workItemId: string) => void;
@@ -1388,6 +1390,59 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (!next) return state;
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       }),
+
+    cleanseAndPersistData: (): CleanseResult => {
+      const state = get();
+      const orgId = state.organizationId;
+
+      const result = cleanseData({
+        workItems: state.workItems,
+        backlogs: state.backlogs,
+        backlogTrees: state.backlogTrees,
+      });
+
+      if (result.removed.length === 0 && result.fixed.length === 0) return result;
+
+      // Persist changed/deleted work items.
+      // cleanseData shallow-copies the top-level record but creates new objects
+      // only for modified items, so reference inequality reliably identifies changes.
+      if (orgId) {
+        const changedWorkItems = Object.values(result.data.workItems).filter(
+          (wi) => state.workItems[wi.id] !== wi,
+        );
+        const deletedWorkItemIds = Object.keys(state.workItems).filter(
+          (id) => !result.data.workItems[id],
+        );
+        if (changedWorkItems.length > 0) upsertWorkItems(changedWorkItems, orgId);
+        if (deletedWorkItemIds.length > 0) deleteWorkItems(deletedWorkItemIds);
+
+        // Persist changed/deleted backlogs.
+        const changedBacklogs = Object.values(result.data.backlogs).filter(
+          (bl) => state.backlogs[bl.id] !== bl,
+        );
+        const deletedBacklogIds = Object.keys(state.backlogs).filter(
+          (id) => !result.data.backlogs[id],
+        );
+        if (changedBacklogs.length > 0) upsertBacklogs(changedBacklogs, orgId);
+        if (deletedBacklogIds.length > 0) deleteBacklogs(deletedBacklogIds);
+
+        // Persist changed backlog trees (cleanseData never deletes trees).
+        const changedTrees = Object.values(result.data.backlogTrees).filter(
+          (tree) => state.backlogTrees[tree.id] !== tree,
+        );
+        if (changedTrees.length > 0) upsertBacklogTrees(changedTrees, orgId);
+      }
+
+      set({
+        workItems: result.data.workItems,
+        backlogs: result.data.backlogs,
+        backlogTrees: result.data.backlogTrees,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+
+      return result;
+    },
 
     addHyperlink: (workItemId, url, altText) => {
       const state = get();

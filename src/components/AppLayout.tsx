@@ -31,7 +31,7 @@ import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
+import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
@@ -862,14 +862,12 @@ function AppLayoutInner() {
   };
 
   const handleCleanseData = () => {
-    const state = useAppStore.getState();
-    const result = cleanseData({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+    const result = useAppStore.getState().cleanseAndPersistData();
     const allIssues = [...result.removed, ...result.fixed];
     if (allIssues.length === 0) { toast({ title: "✅ No invalid data found" }); return; }
     const report = formatIssueReport(allIssues);
     navigator.clipboard.writeText(report);
     console.log("Cleanse report:\n" + report);
-    useAppStore.setState(result.data);
     toast({ title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`, description: "Full report copied to clipboard." });
   };
 
