@@ -301,6 +301,33 @@ export type Database = {
           },
         ]
       }
+      work_item_backlog_ranks: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          rank: number
+          work_item_id: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          rank?: number
+          work_item_id: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          rank?: number
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       work_item_hyperlinks: {
         Row: {
           alt_text: string
