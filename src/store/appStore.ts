@@ -1561,15 +1561,19 @@ export const useAppStore = create<AppState>()((set, get) => {
         const newRanks = { ...wi.ranks, [backlogId]: newRank };
         const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
 
-        // Re-sort parent's childrenIds if this item has a parent
-        if (wi.parentId && updatedWorkItems[wi.parentId]) {
+        // Re-sort parent's childrenIds if this item has a parent.
+        // Use the updated backlog context instead of the minimum rank across all backlogs.
+        const treeId = state.backlogs[backlogId]?.treeId;
+        if (wi.parentId && updatedWorkItems[wi.parentId] && treeId) {
           const parent = updatedWorkItems[wi.parentId];
           const sortWorkItemIds = (ids: string[]) =>
             [...ids].sort((a, b) => {
               const wiA = updatedWorkItems[a];
               const wiB = updatedWorkItems[b];
-              const rankA = wiA ? Math.min(...Object.values(wiA.ranks), 0) : 0;
-              const rankB = wiB ? Math.min(...Object.values(wiB.ranks), 0) : 0;
+              const backlogA = wiA?.backlogAssignments[treeId];
+              const backlogB = wiB?.backlogAssignments[treeId];
+              const rankA = wiA && backlogA ? (wiA.ranks[backlogA] ?? 0) : 0;
+              const rankB = wiB && backlogB ? (wiB.ranks[backlogB] ?? 0) : 0;
               return rankA - rankB;
             });
           updatedWorkItems[wi.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
