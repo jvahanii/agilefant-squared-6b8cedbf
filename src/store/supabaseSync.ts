@@ -725,6 +725,9 @@ async function upsertWorkItemBacklogRanks(
     organization_id: organizationId,
   }));
   if (rows.length === 0) return;
+  // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
+  // row locks in the same order, preventing PostgreSQL deadlocks.
+  rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase
     .from('work_item_backlog_ranks' as any)
@@ -752,6 +755,9 @@ async function upsertWorkItemBacklogRanksBatch(
     }
   }
   if (rows.length === 0) return;
+  // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
+  // row locks in the same order, preventing PostgreSQL deadlocks.
+  rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase
     .from('work_item_backlog_ranks' as any)
