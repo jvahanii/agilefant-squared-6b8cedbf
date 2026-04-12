@@ -74,7 +74,7 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
   return (
     <h2
       className="text-base font-semibold cursor-text hover:text-primary transition-colors break-words whitespace-normal"
-      onClick={(e) => {
+      onDoubleClick={(e) => {
         e.stopPropagation();
         startEditing();
       }}
@@ -460,7 +460,7 @@ function WorkItemNode({
           ) : (
             <span
               className="flex-1 text-sm cursor-text break-words whitespace-normal py-0.5"
-              onClick={(e) => {
+              onDoubleClick={(e) => {
                 e.stopPropagation();
                 startEditingTitle();
               }}

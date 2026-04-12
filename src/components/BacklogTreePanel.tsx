@@ -367,7 +367,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         ) : (
           <span
             className="text-sm truncate flex-1"
-            onClick={(e) => {
+            onDoubleClick={(e) => {
               e.stopPropagation();
               startEditing();
             }}
@@ -524,7 +524,7 @@ function EditableTreeName({ treeId, name, isScrambled }: { treeId: string; name:
   return (
     <span
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
-      onClick={startEditing}
+      onDoubleClick={startEditing}
     >
       {isScrambled ? scrambleName(name) : name}
     </span>
