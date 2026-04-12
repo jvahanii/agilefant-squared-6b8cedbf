@@ -58,20 +58,25 @@ export default function Onboarding() {
           const pendingPlan = localStorage.getItem('pendingPlan') as PlanKey | null;
           localStorage.removeItem('pendingPlan');
 
-          if (pendingPlan && pendingPlan !== 'free' && PLANS[pendingPlan]?.price_id) {
-            try {
-              const { data, error } = await supabase.functions.invoke('create-checkout', {
-                body: { price_id: PLANS[pendingPlan].price_id, organization_id: orgId },
-              });
-              if (error) throw error;
-              if (data?.url) {
-                const win = window.open(data.url, '_blank');
-                if (!win) {
-                  toast({ title: 'Popup blocked', description: 'Please allow popups to complete your plan upgrade, or visit the billing settings later.', variant: 'destructive' });
+          if (pendingPlan && pendingPlan !== 'free') {
+            if (pendingPlan === 'enterprise') {
+              window.open('mailto:sales@agilefant.org?subject=Enterprise inquiry', '_blank');
+              toast({ title: 'Enterprise plan', description: 'Our team will be in touch to discuss your needs.' });
+            } else if (PLANS[pendingPlan]?.price_id) {
+              try {
+                const { data, error } = await supabase.functions.invoke('create-checkout', {
+                  body: { price_id: PLANS[pendingPlan].price_id, organization_id: orgId },
+                });
+                if (error) throw error;
+                if (data?.url) {
+                  const win = window.open(data.url, '_blank');
+                  if (!win) {
+                    toast({ title: 'Popup blocked', description: 'Please allow popups to complete your plan upgrade, or visit the billing settings later.', variant: 'destructive' });
+                  }
                 }
+              } catch (err: any) {
+                toast({ title: 'Checkout error', description: err.message, variant: 'destructive' });
               }
-            } catch (err: any) {
-              toast({ title: 'Checkout error', description: err.message, variant: 'destructive' });
             }
           }
 

@@ -234,16 +234,16 @@ function SignupForm({ loading, setLoading, email, setEmail, onShowTos }: { loadi
 }
 
 function PlanChoosingDialog({ open, onPlanChosen, onCancel }: { open: boolean; onPlanChosen: (planKey: PlanKey) => void; onCancel: () => void }) {
-  const planKeys: PlanKey[] = ["free", "starter"];
+  const planKeys: PlanKey[] = ["free", "starter", "enterprise"];
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
-      <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Choose your plan</DialogTitle>
           <DialogDescription>Select a plan to continue. You can change it later.</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 py-2">
+        <div className="grid grid-cols-3 gap-3 py-2">
           {planKeys.map((key) => {
             const plan = PLANS[key];
             const isHighlighted = key === "starter";

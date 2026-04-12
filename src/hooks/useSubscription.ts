@@ -19,6 +19,13 @@ export const PLANS = {
     price_id: "price_1TJIGCBRMLkyTCtAKXA3imQq",
     features: ["Support the further development of Agilefant"],
   },
+  enterprise: {
+    name: "Enterprise",
+    price: "Custom",
+    product_id: null,
+    price_id: null,
+    features: ["Dedicated support and organization design advice"],
+  },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;

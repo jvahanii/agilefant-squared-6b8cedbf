@@ -35,11 +35,11 @@ export function PricingCards() {
     );
   }
 
-  const planKeys: PlanKey[] = ["free", "starter"];
+  const planKeys: PlanKey[] = ["free", "starter", "enterprise"];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
         {planKeys.map((key) => {
           const plan = PLANS[key];
           const isCurrent = currentPlan === key;
@@ -83,7 +83,16 @@ export function PricingCards() {
                       Current
                     </Button>
                   )
-                ) : key === "free" ? null : (
+                ) : key === "free" ? null : key === "enterprise" ? (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    variant="outline"
+                    asChild
+                  >
+                    <a href="mailto:sales@agilefant.org?subject=Enterprise inquiry">Contact Us</a>
+                  </Button>
+                ) : (
                   <Button
                     size="sm"
                     className="w-full"
