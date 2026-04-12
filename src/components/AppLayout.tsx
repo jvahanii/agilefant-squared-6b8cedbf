@@ -396,21 +396,6 @@ function AppLayoutInner() {
       }
     };
 
-    // Collects the root backlog ID and all its recursive children IDs for the
-    // currently selected backlog context.  Returns an empty array when there is
-    // no valid selection to act on.
-    const getSelectedBacklogIds = (): string[] => {
-      const state = useAppStore.getState();
-      const backlogIds: string[] = [];
-      if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-        const collectBacklogs = (id: string) => {
-          backlogIds.push(id);
-          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-        };
-        collectBacklogs(state.selectedBacklogIds[0]);
-      }
-      return backlogIds;
-    };
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
@@ -421,7 +406,25 @@ function AppLayoutInner() {
         touchScrolled = false;
         lockedDirection = null;
         longPressHandled = false;
-        // Start long-press timer; fires bottom-rank command when the finger is
+
+        // Identify the work item row under the touch point so the long-press
+        // action targets that specific item rather than the selected item(s).
+        let touchedWorkItemId: string | null = null;
+        let touchedBacklogId: string | null = null;
+        let touchedTreeId: string | null = null;
+        let node: Element | null = document.elementFromPoint(touch.clientX, touch.clientY);
+        while (node) {
+          const wiId = node.getAttribute("data-work-item-id");
+          if (wiId) {
+            touchedWorkItemId = wiId;
+            touchedBacklogId = node.getAttribute("data-backlog-id");
+            touchedTreeId = node.getAttribute("data-tree-id");
+            break;
+          }
+          node = node.parentElement;
+        }
+
+        // Start long-press timer; fires top-rank command when the finger is
         // held still long enough.
         longPressTimer = setTimeout(() => {
           longPressTimer = null;
@@ -430,15 +433,18 @@ function AppLayoutInner() {
           if (navigator.vibrate) {
             navigator.vibrate(50);
           }
-          // Long press → move to top (like T)
+          // Long press → move the touched item to top (like T)
           const state = useAppStore.getState();
-          const backlogIds = getSelectedBacklogIds();
-          if (backlogIds.length > 0) {
+          if (touchedWorkItemId && touchedTreeId && touchedBacklogId) {
+            const backlogIds: string[] = [];
+            const collectBacklogs = (id: string) => {
+              backlogIds.push(id);
+              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+            };
+            collectBacklogs(touchedBacklogId);
             longPressHandled = true;
-            state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, TOP_POSITION, state.selectedTreeId!, backlogIds);
-            });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
+            state.reorderWorkItemAmongSiblings(touchedWorkItemId, TOP_POSITION, touchedTreeId, backlogIds);
+            toast({ title: "Moved item to top" });
           }
         }, LONG_PRESS_DURATION);
       } else {
