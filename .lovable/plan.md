@@ -1,58 +1,51 @@
 
-What I found
 
-- The client is already wired for realtime:
-  - `src/hooks/useRealtimeSync.ts` subscribes to `work_items`, `backlogs`, `backlog_trees`, and `work_item_hyperlinks`.
-  - `src/pages/Index.tsx` and `src/components/BacklogTreePanel.tsx` separately subscribe to `backlog_tree_shares`.
-- The database migrations do not match that setup yet:
-  - I only found one migration adding `public.work_item_hyperlinks` to `supabase_realtime`.
-  - I found no migration adding `public.work_items`, `public.backlogs`, or `public.backlog_trees` to the realtime publication.
-  - I found no migration setting `REPLICA IDENTITY FULL` on any of those tables.
+## Plan: Add Enterprise plan + fix build error
 
-Assessment of Copilot’s suggestion
+### 1. Fix build error in `src/components/AppLayout.tsx`
 
-- The suggestion is correct for the four entity tables:
-  - `work_items`
-  - `backlogs`
-  - `backlog_trees`
-  - `work_item_hyperlinks`
-- I would extend it slightly:
-  - also verify/add `backlog_tree_shares` to the realtime publication, because the app subscribes to it in two places and I found no migration proving it is published.
+Line 352 uses `a.rank - b.rank` but the `WorkItem` type now has `ranks` (a `Record<string, number>`) instead of `rank`. Since this sorting happens in the context of a specific backlog (the `backlogId` variable is available in scope), change the sort to use the per-backlog rank:
 
-Implementation plan
+```ts
+.sort((a, b) => (a.ranks[backlogId] ?? 0) - (b.ranks[backlogId] ?? 0));
+```
 
-1. Create one database migration to align Supabase Realtime with the client subscriptions.
-2. In that migration:
-   - add missing subscribed tables to `supabase_realtime`
-   - set `REPLICA IDENTITY FULL` on the entity tables used by the realtime store updates
-   - verify/add `backlog_tree_shares` publication support as needed
-3. Make the publication changes idempotent so the migration does not fail if a table is already in the publication.
-4. Leave the existing client realtime code as-is unless testing still shows failures afterward, because the store handlers and subscriptions are already present.
+Need to verify `backlogId` is in scope at that point — it should be since this is inside the keyboard reorder handler that already references `treeId` and `backlogIds`.
 
-Technical details
+### 2. Add Enterprise plan to `src/hooks/useSubscription.ts`
 
-- Planned SQL shape:
-  - safe `ALTER PUBLICATION supabase_realtime ADD TABLE ...` checks for:
-    - `public.work_items`
-    - `public.backlogs`
-    - `public.backlog_trees`
-    - `public.work_item_hyperlinks`
-    - likely `public.backlog_tree_shares`
-  - `ALTER TABLE ... REPLICA IDENTITY FULL` for:
-    - `public.work_items`
-    - `public.backlogs`
-    - `public.backlog_trees`
-    - `public.work_item_hyperlinks`
-- Why this is needed:
-  - publication membership is required for Supabase Realtime to emit changes at all
-  - `REPLICA IDENTITY FULL` is important for reliable `UPDATE`/`DELETE` payloads, especially since the client uses `payload.old` for deletes
-- I would not manually edit `src/integrations/supabase/types.ts`; it should stay generated from the database schema.
+Add an `enterprise` entry to the `PLANS` object:
+```ts
+enterprise: {
+  name: "Enterprise",
+  price: "Custom",
+  product_id: null,
+  price_id: null,
+  features: ["Dedicated support and organization design advice"],
+},
+```
 
-Validation after implementation
+### 3. Update `src/components/PricingCards.tsx`
 
-- Test in two tabs for:
-  - create/update/delete a work item
-  - create/update/delete a backlog
-  - create/update/delete a backlog tree
-  - add/edit/delete a hyperlink
-  - add/remove a tree share and confirm both share-related reload listeners react
+- Add `"enterprise"` to the `planKeys` array.
+- Widen grid to 3 columns: `sm:grid-cols-3`, `max-w-2xl`.
+- For the enterprise card button: render a "Contact Us" button that opens a mailto link (e.g. `mailto:sales@agilefant.org`) instead of calling `startCheckout`. No special handling needed — it's just a link.
+
+### 4. Update `src/pages/Auth.tsx` — `PlanChoosingDialog`
+
+- Add `"enterprise"` to the `planKeys` array in the dialog.
+- Widen grid to 3 columns.
+- The enterprise card should behave identically to the other plans — clicking it calls `onPlanChosen("enterprise")`, which stores `"enterprise"` as `pendingPlan` in localStorage, proceeds with signup, and the Onboarding page auto-creates the org. The Onboarding logic already skips checkout for plans without a `price_id`, so no changes needed there.
+- After org creation completes for enterprise, open a mailto link so the user can contact sales.
+
+### 5. Update Onboarding flow for enterprise (`src/pages/Onboarding.tsx`)
+
+After org creation, if `pendingPlan === "enterprise"`, open a mailto link (e.g. `window.open("mailto:sales@agilefant.org?subject=Enterprise inquiry")`) and show a toast informing the user that the team will be in touch.
+
+### Summary of files changed
+- `src/hooks/useSubscription.ts` — add enterprise plan
+- `src/components/PricingCards.tsx` — add enterprise card with mailto CTA
+- `src/pages/Auth.tsx` — add enterprise to plan chooser dialog
+- `src/pages/Onboarding.tsx` — handle enterprise pendingPlan with mailto
+- `src/components/AppLayout.tsx` — fix `.rank` → `.ranks[backlogId]` build error
+
