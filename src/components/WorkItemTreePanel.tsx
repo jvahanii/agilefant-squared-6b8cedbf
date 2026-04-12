@@ -460,7 +460,7 @@ function WorkItemNode({
           ) : (
             <span
               className="flex-1 text-sm cursor-text break-words whitespace-normal py-0.5"
-              onDoubleClick={(e) => {
+              onClick={(e) => {
                 e.stopPropagation();
                 startEditingTitle();
               }}
@@ -568,14 +568,14 @@ function WorkItemNode({
                 return (
                   <span
                     className={`text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                    onDoubleClick={(e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
                       startEditingPoints();
                     }}
                     title={
                       isRolledUp
                         ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}`
-                        : "Story points (double-click to edit)"
+                        : "Story points (click to edit)"
                     }
                   >
                     {totalPoints > 0 ? totalPoints : "–"}
