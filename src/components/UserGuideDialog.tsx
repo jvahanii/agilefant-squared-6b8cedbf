@@ -115,7 +115,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             {[
               { action: "Create a tree", how: 'Click the "+" button at the top of the left panel.' },
               { action: "Add a backlog node", how: "Select an existing node and press Shift+Enter, or hover the node row and click the + icon." },
-              { action: "Rename a node", how: "Double-click the node name to edit it in-place. Tree headers can also be renamed by double-clicking." },
+              { action: "Rename a node", how: "Click the node name to edit it in-place. Tree headers can also be renamed by clicking." },
               { action: "Delete a node", how: "Select the node and press Delete / Backspace." },
               { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
               { action: "Expand / collapse", how: "Click the expand arrow or press → to open a branch." },
@@ -148,10 +148,10 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             {[
               { action: "New root item", how: "Select a backlog and press Enter, or click the + button in the panel header." },
               { action: "New child item", how: "Select a parent item and press Shift+Enter, or click the + icon on the item row." },
-              { action: "Rename an item", how: "Double-click the item title to edit in-place." },
+              { action: "Rename an item", how: "Click the item title to edit in-place." },
               { action: "Delete item(s)", how: "Select item(s) and press Delete or Backspace, or click the trash icon on the row." },
               { action: "Multi-select", how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items." },
-              { action: "Set story points", how: "Double-click the story-points value on the item row." },
+              { action: "Set story points", how: "Click the story-points value on the item row." },
               { action: "Paste items", how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add." },
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
               { action: "Set recurring", how: "Click the settings icon on the item row to open respawn settings and configure the schedule." },
