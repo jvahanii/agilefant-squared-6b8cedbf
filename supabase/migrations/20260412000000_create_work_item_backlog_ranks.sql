@@ -1,4 +1,3 @@
-
 -- Create work_item_backlog_ranks table to store per-backlog ranks for work items.
 -- This replaces the single global `rank` column on work_items with per-backlog
 -- granularity, enabling a work item to have independent orderings in each backlog
