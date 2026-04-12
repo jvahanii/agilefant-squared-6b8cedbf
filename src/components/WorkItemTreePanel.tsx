@@ -339,6 +339,9 @@ function WorkItemNode({
         <div
           {...attributes}
           {...restListeners}
+          data-work-item-id={workItemId}
+          data-backlog-id={backlogId}
+          data-tree-id={treeId}
           className={`
             flex items-start gap-1.5 px-3 py-0.5 md:py-1 rounded-md
             transition-all duration-150 ease-out group
