@@ -89,6 +89,7 @@ function AppLayoutInner() {
   const isMobile = useIsMobile();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const activeDragRef = useRef(activeDrag);
   useEffect(() => {
     activeDragRef.current = activeDrag;
@@ -377,44 +378,72 @@ function AppLayoutInner() {
     // gestures where the user started moving horizontally then went vertical.
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
-    // Long-press parameters for vertical swipe activation.
+    // Long-press parameters: fires bottom-rank command when held.
     const LONG_PRESS_DURATION = 350; // ms of held touch before long press fires
     const LONG_PRESS_CANCEL_THRESHOLD = 20; // px of movement that cancels the long press
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    let longPressed = false;
+    let longPressHandled = false;
+    // Double-tap parameters for top-rank command.
+    const DOUBLE_TAP_INTERVAL = 300; // ms within which a second tap counts as double
+    const DOUBLE_TAP_RADIUS = 30; // px within which the second tap must land
+    // Sentinel rank values for moving to the top or bottom of the list.
+    const TOP_POSITION = 0;
+    const BOTTOM_POSITION = 999999;
 
     const resetState = () => {
       touchStartRef.current = null;
       touchScrolled = false;
       lockedDirection = null;
-      longPressed = false;
+      longPressHandled = false;
       if (longPressTimer !== null) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
       }
     };
 
+    // Collects the root backlog ID and all its recursive children IDs for the
+    // currently selected backlog context.  Returns an empty array when there is
+    // no valid selection to act on.
+    const getSelectedBacklogIds = (): string[] => {
+      const state = useAppStore.getState();
+      const backlogIds: string[] = [];
+      if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+        const collectBacklogs = (id: string) => {
+          backlogIds.push(id);
+          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+        };
+        collectBacklogs(state.selectedBacklogIds[0]);
+      }
+      return backlogIds;
+    };
+
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
       if (e.touches.length === 1) {
-        // Single-finger touch: track for swipe detection.
+        // Single-finger touch: track for swipe / double-tap detection.
         const touch = e.touches[0];
         touchStartRef.current = { x: touch.clientX, y: touch.clientY };
         touchScrolled = false;
         lockedDirection = null;
-        longPressed = false;
-        // Start long-press timer; if the finger is held still long enough,
-        // vertical swipes become available to move items to top/bottom.
+        longPressHandled = false;
+        // Start long-press timer; fires bottom-rank command when the finger is
+        // held still long enough.
         longPressTimer = setTimeout(() => {
-          longPressed = true;
           longPressTimer = null;
-          // Reset scroll and direction-lock flags so that incidental scrolling
-          // during the hold period does not block the subsequent swipe.
-          touchScrolled = false;
-          lockedDirection = null;
+          if (touchScrolled) return;
           // Provide haptic feedback if the browser supports it.
           if (navigator.vibrate) {
             navigator.vibrate(50);
+          }
+          // Long press → move to bottom (like B)
+          const state = useAppStore.getState();
+          const backlogIds = getSelectedBacklogIds();
+          if (backlogIds.length > 0) {
+            longPressHandled = true;
+            state.selectedWorkItemIds.forEach((id) => {
+              state.reorderWorkItemAmongSiblings(id, BOTTOM_POSITION, state.selectedTreeId!, backlogIds);
+            });
+            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
           }
         }, LONG_PRESS_DURATION);
       } else {
@@ -434,8 +463,8 @@ function AppLayoutInner() {
       const clientY = e.touches[0].clientY;
       const absDx = Math.abs(clientX - touchStartRef.current.x);
       const absDy = Math.abs(clientY - touchStartRef.current.y);
-      // If the long press has not fired yet, cancel it if the finger moves too much.
-      if (!longPressed && longPressTimer !== null) {
+      // Cancel the long-press timer if the finger moves too much.
+      if (longPressTimer !== null) {
         if (Math.max(absDx, absDy) > LONG_PRESS_CANCEL_THRESHOLD) {
           clearTimeout(longPressTimer);
           longPressTimer = null;
@@ -459,61 +488,51 @@ function AppLayoutInner() {
         resetState();
         return;
       }
-      const wasLongPressed = longPressed;
-      const wasScrolled = touchScrolled;
-      const wasLockedDirection = lockedDirection;
+      const wasLongPressHandled = longPressHandled;
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       const dx = endX - touchStartRef.current.x;
       const dy = endY - touchStartRef.current.y;
       resetState();
 
+      // If the long press already handled an action, don't process further.
+      if (wasLongPressHandled) return;
+
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
-      if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) return;
+
+      // Short tap (didn't exceed swipe threshold): check for double tap → top rank.
+      if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) {
+        const now = Date.now();
+        const last = lastTapRef.current;
+        if (
+          last !== null &&
+          now - last.time <= DOUBLE_TAP_INTERVAL &&
+          Math.abs(endX - last.x) <= DOUBLE_TAP_RADIUS &&
+          Math.abs(endY - last.y) <= DOUBLE_TAP_RADIUS
+        ) {
+          // Double tap → move to top (like T)
+          lastTapRef.current = null;
+          const state = useAppStore.getState();
+          const backlogIds = getSelectedBacklogIds();
+          if (backlogIds.length > 0) {
+            state.selectedWorkItemIds.forEach((id) => {
+              state.reorderWorkItemAmongSiblings(id, TOP_POSITION, state.selectedTreeId!, backlogIds);
+            });
+            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
+          }
+        } else {
+          // Record this tap as the first of a potential double tap.
+          lastTapRef.current = { x: endX, y: endY, time: now };
+        }
+        return;
+      }
 
       const state = useAppStore.getState();
 
       // Require the dominant axis to be at least DIRECTION_RATIO× the other
       // axis so that diagonal or ambiguous gestures are ignored.
-      if (absDy >= absDx * DIRECTION_RATIO) {
-        // Vertical swipes require a prior long press to activate.
-        if (!wasLongPressed) return;
-        // If the page actually scrolled during this touch, the user was
-        // scrolling – not issuing a swipe command. Bail out to avoid
-        // accidentally reordering items while scrolling.
-        if (wasScrolled) return;
-        // Reject if the user's first movement was primarily horizontal – that
-        // pattern matches a scroll that curves, not an intentional vertical swipe.
-        if (wasLockedDirection === "horizontal") return;
-        // Vertical swipe
-        const backlogIds: string[] = [];
-        if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-          const collectBacklogs = (id: string) => {
-            backlogIds.push(id);
-            state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-          };
-          collectBacklogs(state.selectedBacklogIds[0]);
-        }
-
-        if (dy < 0) {
-          // Swipe up → move to top (like T)
-          if (backlogIds.length > 0) {
-            state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, 0, state.selectedTreeId!, backlogIds);
-            });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
-          }
-        } else {
-          // Swipe down → move to bottom (like Shift-B)
-          if (backlogIds.length > 0) {
-            state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, 999999, state.selectedTreeId!, backlogIds);
-            });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
-          }
-        }
-      } else if (absDx >= absDy * DIRECTION_RATIO) {
+      if (absDx >= absDy * DIRECTION_RATIO) {
         // Horizontal swipe
         if (dx < 0) {
           // Swipe left → same as Escape
@@ -539,7 +558,7 @@ function AppLayoutInner() {
           }
         }
       }
-      // Diagonal gestures (neither axis dominant) are intentionally ignored.
+      // Diagonal gestures and vertical swipes are intentionally ignored.
     };
 
     const handleTouchCancel = () => {

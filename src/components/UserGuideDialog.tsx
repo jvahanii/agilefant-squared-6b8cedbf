@@ -263,9 +263,9 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
             ))}
           </div>
           <Tip>
-            On mobile, press and hold an item briefly to start dragging it. After a long-press, swipe up or down
-            to move the selected item to the top or bottom of its backlog. Swipe left to deselect, swipe right
-            to expand the selected branch.
+            On mobile, press and hold an item briefly to start dragging it. Double-tap a selected item to move it
+            to the top of its backlog, or long-press it to move it to the bottom. Swipe left to deselect, swipe
+            right to expand the selected branch.
           </Tip>
         </div>
       ),
