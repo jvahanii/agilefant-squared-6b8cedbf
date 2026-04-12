@@ -612,8 +612,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
   const scopedMockData = scopeMockDataToOrganization(organizationId, mockData);
 
   // Delete ranks first (FK to work_items)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await supabase.from('work_item_backlog_ranks' as any).delete().eq('organization_id', organizationId);
+  await supabase.from('work_item_backlog_ranks').delete().eq('organization_id', organizationId);
 
   const { error: deleteItemsError } = await supabase
     .from('work_items')
@@ -686,8 +685,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     }
   }
   if (rankRows.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await supabase.from('work_item_backlog_ranks' as any).insert(rankRows);
+    const { error } = await supabase.from('work_item_backlog_ranks').insert(rankRows);
     if (error) throw error;
   }
 }
@@ -699,8 +697,7 @@ async function loadWorkItemBacklogRanks(
   workItemIds: string[],
 ): Promise<Record<string, Record<string, number>>> {
   if (workItemIds.length === 0) return {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await supabase.from('work_item_backlog_ranks' as any).select('*').in('work_item_id', workItemIds);
+  const { data, error } = await supabase.from('work_item_backlog_ranks').select('*').in('work_item_id', workItemIds);
   if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
   const result: Record<string, Record<string, number>> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -725,8 +722,7 @@ async function upsertWorkItemBacklogRanks(
     organization_id: organizationId,
   }));
   if (rows.length === 0) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  const { error } = await supabase.from('work_item_backlog_ranks').upsert(rows);
   if (error) console.error('upsertWorkItemBacklogRanks:', error);
 }
 
@@ -750,8 +746,7 @@ async function upsertWorkItemBacklogRanksBatch(
     }
   }
   if (rows.length === 0) return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  const { error } = await supabase.from('work_item_backlog_ranks').upsert(rows);
   if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
 }
 

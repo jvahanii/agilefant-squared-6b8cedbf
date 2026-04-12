@@ -370,6 +370,42 @@ export type Database = {
           },
         ]
       }
+      work_item_backlog_ranks: {
+        Row: {
+          work_item_id: string
+          backlog_id: string
+          rank: number
+          organization_id: string
+        }
+        Insert: {
+          work_item_id: string
+          backlog_id: string
+          rank?: number
+          organization_id: string
+        }
+        Update: {
+          work_item_id?: string
+          backlog_id?: string
+          rank?: number
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_item_backlog_ranks_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_backlog_ranks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_items: {
         Row: {
           backlog_assignments: Json
