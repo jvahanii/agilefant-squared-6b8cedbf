@@ -419,7 +419,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
   // Persist per-backlog ranks to the dedicated table
-  upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
+  await upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
 }
 
 export async function deleteWorkItems(ids: string[]) {
@@ -504,7 +504,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
   // Persist per-backlog ranks to the dedicated table
-  upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
+  await upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
@@ -726,7 +726,9 @@ async function upsertWorkItemBacklogRanks(
   }));
   if (rows.length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  const { error } = await supabase
+    .from('work_item_backlog_ranks' as any)
+    .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
   if (error) console.error('upsertWorkItemBacklogRanks:', error);
 }
 
@@ -751,7 +753,9 @@ async function upsertWorkItemBacklogRanksBatch(
   }
   if (rows.length === 0) return;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from('work_item_backlog_ranks' as any).upsert(rows);
+  const { error } = await supabase
+    .from('work_item_backlog_ranks' as any)
+    .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
   if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
 }
 
