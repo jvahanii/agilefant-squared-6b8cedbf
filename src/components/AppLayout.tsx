@@ -386,6 +386,9 @@ function AppLayoutInner() {
     // Double-tap parameters for top-rank command.
     const DOUBLE_TAP_INTERVAL = 300; // ms within which a second tap counts as double
     const DOUBLE_TAP_RADIUS = 30; // px within which the second tap must land
+    // Sentinel rank values for moving to the top or bottom of the list.
+    const TOP_POSITION = 0;
+    const BOTTOM_POSITION = 999999;
 
     const resetState = () => {
       touchStartRef.current = null;
@@ -396,6 +399,22 @@ function AppLayoutInner() {
         clearTimeout(longPressTimer);
         longPressTimer = null;
       }
+    };
+
+    // Collects the root backlog ID and all its recursive children IDs for the
+    // currently selected backlog context.  Returns an empty array when there is
+    // no valid selection to act on.
+    const getSelectedBacklogIds = (): string[] => {
+      const state = useAppStore.getState();
+      const backlogIds: string[] = [];
+      if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+        const collectBacklogs = (id: string) => {
+          backlogIds.push(id);
+          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+        };
+        collectBacklogs(state.selectedBacklogIds[0]);
+      }
+      return backlogIds;
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -418,18 +437,11 @@ function AppLayoutInner() {
           }
           // Long press → move to bottom (like B)
           const state = useAppStore.getState();
-          const backlogIds: string[] = [];
-          if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(state.selectedBacklogIds[0]);
-          }
+          const backlogIds = getSelectedBacklogIds();
           if (backlogIds.length > 0) {
             longPressHandled = true;
             state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, 999999, state.selectedTreeId!, backlogIds);
+              state.reorderWorkItemAmongSiblings(id, BOTTOM_POSITION, state.selectedTreeId!, backlogIds);
             });
             toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
           }
@@ -502,17 +514,10 @@ function AppLayoutInner() {
           // Double tap → move to top (like T)
           lastTapRef.current = null;
           const state = useAppStore.getState();
-          const backlogIds: string[] = [];
-          if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(state.selectedBacklogIds[0]);
-          }
+          const backlogIds = getSelectedBacklogIds();
           if (backlogIds.length > 0) {
             state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, 0, state.selectedTreeId!, backlogIds);
+              state.reorderWorkItemAmongSiblings(id, TOP_POSITION, state.selectedTreeId!, backlogIds);
             });
             toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
           }
