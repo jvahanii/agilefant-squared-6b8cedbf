@@ -89,7 +89,6 @@ function AppLayoutInner() {
   const isMobile = useIsMobile();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const activeDragRef = useRef(activeDrag);
   useEffect(() => {
     activeDragRef.current = activeDrag;
@@ -378,17 +377,13 @@ function AppLayoutInner() {
     // gestures where the user started moving horizontally then went vertical.
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
-    // Long-press parameters: fires bottom-rank command when held.
+    // Long-press parameters: fires top-rank command when held.
     const LONG_PRESS_DURATION = 350; // ms of held touch before long press fires
     const LONG_PRESS_CANCEL_THRESHOLD = 20; // px of movement that cancels the long press
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
     let longPressHandled = false;
-    // Double-tap parameters for top-rank command.
-    const DOUBLE_TAP_INTERVAL = 300; // ms within which a second tap counts as double
-    const DOUBLE_TAP_RADIUS = 30; // px within which the second tap must land
     // Sentinel rank values for moving to the top or bottom of the list.
     const TOP_POSITION = 0;
-    const BOTTOM_POSITION = 999999;
 
     const resetState = () => {
       touchStartRef.current = null;
@@ -435,15 +430,15 @@ function AppLayoutInner() {
           if (navigator.vibrate) {
             navigator.vibrate(50);
           }
-          // Long press → move to bottom (like B)
+          // Long press → move to top (like T)
           const state = useAppStore.getState();
           const backlogIds = getSelectedBacklogIds();
           if (backlogIds.length > 0) {
             longPressHandled = true;
             state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, BOTTOM_POSITION, state.selectedTreeId!, backlogIds);
+              state.reorderWorkItemAmongSiblings(id, TOP_POSITION, state.selectedTreeId!, backlogIds);
             });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
+            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
           }
         }, LONG_PRESS_DURATION);
       } else {
@@ -501,30 +496,8 @@ function AppLayoutInner() {
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
 
-      // Short tap (didn't exceed swipe threshold): check for double tap → top rank.
+      // Short tap (didn't exceed swipe threshold): no gesture action.
       if (Math.max(absDx, absDy) < SWIPE_THRESHOLD) {
-        const now = Date.now();
-        const last = lastTapRef.current;
-        if (
-          last !== null &&
-          now - last.time <= DOUBLE_TAP_INTERVAL &&
-          Math.abs(endX - last.x) <= DOUBLE_TAP_RADIUS &&
-          Math.abs(endY - last.y) <= DOUBLE_TAP_RADIUS
-        ) {
-          // Double tap → move to top (like T)
-          lastTapRef.current = null;
-          const state = useAppStore.getState();
-          const backlogIds = getSelectedBacklogIds();
-          if (backlogIds.length > 0) {
-            state.selectedWorkItemIds.forEach((id) => {
-              state.reorderWorkItemAmongSiblings(id, TOP_POSITION, state.selectedTreeId!, backlogIds);
-            });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
-          }
-        } else {
-          // Record this tap as the first of a potential double tap.
-          lastTapRef.current = { x: endX, y: endY, time: now };
-        }
         return;
       }
 
