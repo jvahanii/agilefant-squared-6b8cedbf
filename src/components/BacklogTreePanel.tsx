@@ -328,6 +328,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             On desktop: the entire row is draggable; handle is a visual affordance. */}
         <div
           {...(isMobile ? listeners : {})}
+          data-drag-handle="true"
           className={`w-4 h-4 flex items-center justify-center shrink-0 text-muted-foreground/40 ${isMobile ? "touch-none cursor-grab active:cursor-grabbing" : ""}`}
         >
           <GripVertical className="w-3 h-3" />
@@ -593,7 +594,7 @@ function DraggableTreeHeader({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <div {...listeners} className="touch-none cursor-grab active:cursor-grabbing flex items-center">
+          <div {...listeners} data-drag-handle="true" className="touch-none cursor-grab active:cursor-grabbing flex items-center">
             <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
           </div>
           <EditableTreeName treeId={tree.id} name={tree.name} isScrambled={isScrambled} />

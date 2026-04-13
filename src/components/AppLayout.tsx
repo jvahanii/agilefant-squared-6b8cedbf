@@ -409,11 +409,17 @@ function AppLayoutInner() {
 
         // Identify the work item row under the touch point so the long-press
         // action targets that specific item rather than the selected item(s).
+        // Also detect whether the touch started on a drag handle so we can
+        // suppress the long-press (dragging from the handle should not rank to top).
         let touchedWorkItemId: string | null = null;
         let touchedBacklogId: string | null = null;
         let touchedTreeId: string | null = null;
+        let touchedDragHandle = false;
         let node: Element | null = document.elementFromPoint(touch.clientX, touch.clientY);
         while (node) {
+          if (node.getAttribute("data-drag-handle") === "true") {
+            touchedDragHandle = true;
+          }
           const wiId = node.getAttribute("data-work-item-id");
           if (wiId) {
             touchedWorkItemId = wiId;
@@ -423,6 +429,10 @@ function AppLayoutInner() {
           }
           node = node.parentElement;
         }
+
+        // If the touch originated on a drag handle, skip the long-press timer:
+        // the user intends to drag, not to rank-to-top.
+        if (touchedDragHandle) return;
 
         // Start long-press timer; fires top-rank command when the finger is
         // held still long enough.
