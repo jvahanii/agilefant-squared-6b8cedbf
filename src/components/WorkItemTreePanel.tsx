@@ -385,6 +385,7 @@ function WorkItemNode({
               On desktop: the entire row is draggable; handle is a visual affordance. */}
           <div
             {...(isMobile ? listeners : {})}
+            data-drag-handle="true"
             className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/30" : "text-muted-foreground/40"} ${isMobile ? "touch-none cursor-grab active:cursor-grabbing" : ""}`}
           >
             <GripVertical className="w-3.5 h-3.5" />
