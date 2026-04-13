@@ -107,6 +107,60 @@ interface AppState extends DataSnapshot {
   applyRealtimeHyperlink: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
+/**
+ * Resolve duplicate work-item ranks in-place.  For each (treeId, backlogId,
+ * parentId) group, items sharing a rank are re-numbered sequentially (ties
+ * broken by ID for determinism).  Mutates `items` directly for performance.
+ */
+function dedupWorkItemRanksInPlace(items: Record<string, WorkItem>): void {
+  const groups = new Map<string, string[]>();
+  for (const wi of Object.values(items)) {
+    for (const [treeId, blId] of Object.entries(wi.backlogAssignments)) {
+      const key = `${treeId}::${blId}::${wi.parentId ?? 'ROOT'}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(wi.id);
+    }
+  }
+  groups.forEach((ids, key) => {
+    const backlogId = key.split('::').slice(-3, -1).join('::');  // extract backlogId from key
+    // Actually, the key format is `treeId::backlogId::parentId` but treeId and backlogId
+    // themselves contain '::'. Parse from the group entries instead.
+    if (ids.length < 2) return;
+    // Get backlogId from the first item's assignment
+    const firstItem = items[ids[0]];
+    if (!firstItem) return;
+    // Find the backlogId for this group by checking which treeId::blId matches
+    let blId: string | null = null;
+    for (const [_treeId, bId] of Object.entries(firstItem.backlogAssignments)) {
+      // Check if this assignment matches the group key
+      const testKey = `${_treeId}::${bId}::${firstItem.parentId ?? 'ROOT'}`;
+      if (testKey === key) { blId = bId; break; }
+    }
+    if (!blId) return;
+
+    const sorted = ids
+      .filter((id) => items[id])
+      .sort((a, b) => {
+        const rA = items[a].ranks[blId!] ?? 0;
+        const rB = items[b].ranks[blId!] ?? 0;
+        return rA !== rB ? rA - rB : a.localeCompare(b);
+      });
+
+    let prev = -Infinity;
+    for (const id of sorted) {
+      const r = items[id].ranks[blId] ?? 0;
+      if (r <= prev) {
+        const newRank = prev + 1;
+        items[id] = { ...items[id], ranks: { ...items[id].ranks, [blId]: newRank } };
+        prev = newRank;
+      } else {
+        prev = r;
+      }
+    }
+  });
+}
+
+
 const ensureCleanId = (id: string, orgId: string): string => {
   if (!id) return id;
   const parts = id.split("::");
@@ -186,6 +240,9 @@ export function sanitizeData(data: any, orgId: string) {
       if (!parent.childrenIds.includes(bl.id)) parent.childrenIds.push(bl.id);
     }
   });
+
+  // Resolve any duplicate ranks that arrived from the DB
+  dedupWorkItemRanksInPlace(cleanWorkItems);
 
   return { workItems: cleanWorkItems, backlogs: cleanBacklogs, backlogTrees: cleanTrees };
 }
@@ -1560,6 +1617,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         const newRank = (row.rank as number) ?? 0;
         const newRanks = { ...wi.ranks, [backlogId]: newRank };
         const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
+
+        // Resolve any duplicate ranks introduced by this realtime update
+        dedupWorkItemRanksInPlace(updatedWorkItems);
 
         // Re-sort parent's childrenIds if this item has a parent.
         // Use the updated backlog context instead of the minimum rank across all backlogs.
