@@ -380,6 +380,16 @@ function WorkItemNode({
             const isShift = e.shiftKey;
             onSelect(workItemId, isMulti, isShift);
           }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (dragStartedRef.current) return;
+            const newStatus: WorkItemStatus = item.status === "done" ? "not_started" : "done";
+            if (isSelected && selectedWorkItemIds.length > 1) {
+              selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+            } else {
+              setWorkItemStatus(workItemId, newStatus);
+            }
+          }}
         >
           {/* On mobile: drag handle is the only drag target (preserves row-scroll).
               On desktop: the entire row is draggable; handle is a visual affordance. */}

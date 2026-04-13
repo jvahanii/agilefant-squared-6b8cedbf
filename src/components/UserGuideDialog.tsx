@@ -148,6 +148,7 @@ function buildSections(): Section[] {
               { action: "New child item", how: "Select a parent item and press Shift+Enter, or click the + icon on the item row." },
               { action: "Select an item", how: "Click anywhere on the item row to select it." },
               { action: "Rename an item", how: "Double-click the item title to edit it directly in-place." },
+              { action: "Toggle done", how: "Double-click (desktop) or double-tap (mobile) the empty space on an item row — anywhere that is not the title text — to toggle its status to Done." },
               { action: "Delete item(s)", how: "Select item(s) and press Delete or Backspace, or click the trash icon on the row." },
               { action: "Multi-select", how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items." },
               { action: "Set story points", how: "Click the story-points value on the item row." },
