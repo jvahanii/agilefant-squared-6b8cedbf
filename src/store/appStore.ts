@@ -241,6 +241,9 @@ export function sanitizeData(data: any, orgId: string) {
     }
   });
 
+  // Resolve any duplicate ranks that arrived from the DB
+  dedupWorkItemRanksInPlace(cleanWorkItems);
+
   return { workItems: cleanWorkItems, backlogs: cleanBacklogs, backlogTrees: cleanTrees };
 }
 
