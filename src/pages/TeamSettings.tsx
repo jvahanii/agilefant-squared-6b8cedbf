@@ -96,7 +96,10 @@ export default function TeamSettings() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") navigate("/");
+      if (e.key === "Escape") {
+        e.preventDefault();
+        navigate("/");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
