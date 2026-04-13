@@ -551,6 +551,63 @@ describe("respawnItem", () => {
     expect(useAppStore.getState().workItems[copy.id].status).toBe("done");
     expect(Object.keys(useAppStore.getState().workItems[copy.id].backlogAssignments).length).toBe(2);
   });
+
+  function seedRespawnChildStore() {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`,
+          title: "Parent Item",
+          status: "not_started" as const,
+          parentId: null,
+          childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`,
+          title: "Child Item",
+          status: "done" as const,
+          parentId: `${ORG}::wi-parent`,
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+          respawnEnabled: true,
+          respawnIntervalDays: 7,
+          respawnHour: 9,
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+  }
+
+  it("respawned item inherits the same parentId as the original item", () => {
+    seedRespawnChildStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-child`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-child` && i.id !== `${ORG}::wi-parent`);
+    expect(copy).toBeDefined();
+    expect(copy!.parentId).toBe(`${ORG}::wi-parent`);
+  });
+
+  it("respawned item is added to the parent's childrenIds", () => {
+    seedRespawnChildStore();
+    useAppStore.getState().respawnItem(`${ORG}::wi-child`);
+    const items = Object.values(useAppStore.getState().workItems);
+    const copy = items.find((i) => i.id !== `${ORG}::wi-child` && i.id !== `${ORG}::wi-parent`);
+    expect(copy).toBeDefined();
+    const parent = useAppStore.getState().workItems[`${ORG}::wi-parent`];
+    expect(parent.childrenIds).toContain(copy!.id);
+  });
 });
 
 // ─── BACKLOG CRUD ──────────────────────────────────────────────────────
