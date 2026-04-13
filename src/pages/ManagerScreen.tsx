@@ -74,6 +74,15 @@ export default function ManagerScreen() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "user"; id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") navigate(-1);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
+
   // Check superuser status
   useEffect(() => {
     if (!user?.id) return;
