@@ -472,14 +472,16 @@ function WorkItemNode({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span
-              className="flex-1 text-sm cursor-text break-words whitespace-normal py-0.5"
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                startEditingTitle();
-              }}
-            >
-              {isScrambled ? scrambleName(item.title) : item.title}
+            <span className="flex-1 text-sm break-words whitespace-normal py-0.5">
+              <span
+                className="cursor-text"
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  startEditingTitle();
+                }}
+              >
+                {isScrambled ? scrambleName(item.title) : item.title}
+              </span>
             </span>
           )}
 
