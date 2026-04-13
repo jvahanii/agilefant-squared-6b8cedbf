@@ -1618,6 +1618,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         const newRanks = { ...wi.ranks, [backlogId]: newRank };
         const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
 
+        // Resolve any duplicate ranks introduced by this realtime update
+        dedupWorkItemRanksInPlace(updatedWorkItems);
+
         // Re-sort parent's childrenIds if this item has a parent.
         // Use the updated backlog context instead of the minimum rank across all backlogs.
         const treeId = state.backlogs[backlogId]?.treeId;
