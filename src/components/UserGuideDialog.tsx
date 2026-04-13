@@ -62,10 +62,8 @@ const Tip = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
-  const [activeSection, setActiveSection] = useState("overview");
-
-  const sections: Section[] = [
+function buildSections(): Section[] {
+  return [
     {
       id: "overview",
       icon: <BookOpen className="w-4 h-4" />,
@@ -390,9 +388,64 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
       ),
     },
   ];
+}
 
+export function UserGuideContent() {
+  const [activeSection, setActiveSection] = useState("overview");
+  const sections = buildSections();
   const active = sections.find((s) => s.id === activeSection) ?? sections[0];
 
+  return (
+    <div className="flex flex-1 min-h-0">
+      {/* Sidebar nav */}
+      <nav className="hidden sm:flex flex-col w-44 shrink-0 border-r py-3 gap-0.5 px-2">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
+              activeSection === section.id
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            {section.icon}
+            {section.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Mobile: horizontal pill tabs */}
+      <div className="sm:hidden flex overflow-x-auto gap-1 px-3 py-2 border-b shrink-0 w-full">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            onClick={() => setActiveSection(section.id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors shrink-0 ${
+              activeSection === section.id
+                ? "bg-primary text-primary-foreground font-medium"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            {section.icon}
+            {section.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 min-w-0 overflow-y-auto px-6 py-5">
+        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          {active.icon}
+          {active.label}
+        </h2>
+        {active.content}
+      </div>
+    </div>
+  );
+}
+
+export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -406,52 +459,7 @@ export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-1 min-h-0">
-          {/* Sidebar nav */}
-          <nav className="hidden sm:flex flex-col w-44 shrink-0 border-r py-3 gap-0.5 px-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left w-full ${
-                  activeSection === section.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {section.icon}
-                {section.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Mobile: horizontal pill tabs */}
-          <div className="sm:hidden flex overflow-x-auto gap-1 px-3 py-2 border-b shrink-0 w-full">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors shrink-0 ${
-                  activeSection === section.id
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                {section.icon}
-                {section.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Content area */}
-          <div className="flex-1 min-w-0 overflow-y-auto px-6 py-5">
-            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-              {active.icon}
-              {active.label}
-            </h2>
-            {active.content}
-          </div>
-        </div>
+        <UserGuideContent />
       </DialogContent>
     </Dialog>
   );
