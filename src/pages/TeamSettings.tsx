@@ -94,6 +94,14 @@ export default function TeamSettings() {
     }
   }, [activeOrg?.organization_name, activeOrg?.organization_slug]);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") navigate("/");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [navigate]);
+
   // For non-member superusers the org is not in the memberships list so activeOrg
   // is null. Fetch the org name/slug directly so the Danger Zone can display the
   // correct confirmation prompt and the delete flow can proceed.
