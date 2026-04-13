@@ -783,7 +783,7 @@ function ReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative ${isMobile ? "py-2" : "py-1"}`}
+      className={`relative py-1`}
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -966,7 +966,7 @@ export function WorkItemTreePanel() {
         lastSelectedId.current = null;
       }}
     >
-      <div className="p-2 pb-1 border-b flex items-start justify-between shrink-0">
+      <div className="p-1.5 pb-1 md:p-2 md:pb-1 border-b flex items-start justify-between shrink-0">
         <div className="min-w-0 flex-1">
           <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -997,7 +997,7 @@ export function WorkItemTreePanel() {
         </div>
       </div>
       <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-1 md:p-2">
           {rootWorkItems.length === 0 && isAdding ? (
             <InlineWorkItemInput
               depth={0}
