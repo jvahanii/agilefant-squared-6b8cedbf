@@ -29,17 +29,28 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
+
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { email: user.email });
+    logStep("User authenticated", { userId: user.id });
 
     const { price_id, organization_id } = await req.json();
     if (!price_id) throw new Error("price_id is required");
     if (!organization_id) throw new Error("organization_id is required");
+
+    // Verify the caller is a member of the organization
+    const { data: membership } = await supabaseClient
+      .from("memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("organization_id", organization_id)
+      .maybeSingle();
+    if (!membership) throw new Error("Forbidden: not a member of this organization");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -90,7 +101,7 @@ serve(async (req) => {
     logStep("ERROR", { message: msg });
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: msg.includes("Forbidden") ? 403 : 500,
     });
   }
 });
