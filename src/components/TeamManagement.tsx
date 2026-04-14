@@ -26,6 +26,7 @@ export function TeamManagement() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const activeOrg = useOrgStore((s) => s.getActiveOrg());
   const canManage = activeOrg?.role === "owner" || activeOrg?.role === "admin";
+  const isMember = !!activeOrg;
   const teams = useTeamStore((s) => s.teams);
   const teamMembers = useTeamStore((s) => s.teamMembers);
   const loadTeams = useTeamStore((s) => s.loadTeams);
