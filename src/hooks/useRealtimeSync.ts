@@ -54,10 +54,18 @@ export function useRealtimeSync() {
     const channels: ReturnType<typeof supabase.channel>[] = [];
     let destroyed = false;
 
+    // Track all partner org IDs that have been subscribed so far (both incoming
+    // and outgoing) to avoid creating duplicate channels if subscribeOutgoingPartners
+    // is called more than once (e.g. when new shares are created while the effect
+    // is still active).
+    const subscribedPartnerOrgIds = new Set<string>(incomingPartnerOrgIds);
+
     // Helper: subscribe a channel that monitors work_items, backlogs, and
     // work_item_hyperlinks for a partner org.  A JS-side filter ensures we only
     // apply changes that reference trees the active org can actually access.
     function subscribePartnerOrg(orgId: string) {
+      if (subscribedPartnerOrgIds.has(orgId)) return;
+      subscribedPartnerOrgIds.add(orgId);
       const channel = supabase
         .channel(`entity-realtime-${activeOrgId}-partner-${orgId}`)
         .on(
@@ -218,7 +226,8 @@ export function useRealtimeSync() {
     }
 
     // Async: fetch outgoing partner org IDs (orgs that have access to our trees)
-    // and subscribe to them as well.
+    // and subscribe to them as well.  May be called multiple times safely – the
+    // subscribedPartnerOrgIds set prevents duplicate channel creation.
     async function subscribeOutgoingPartners() {
       const ourTreeIds = [...accessibleTreeIds].filter((id) => id.startsWith(`${activeOrgId}::`));
       if (ourTreeIds.length === 0) return;
@@ -238,13 +247,34 @@ export function useRealtimeSync() {
 
       for (const row of (data ?? []) as Array<{ organization_id: string }>) {
         const orgId = row.organization_id;
-        // Skip if already subscribed (incoming partner) or is the active org.
-        if (orgId === activeOrgId || incomingPartnerOrgIds.has(orgId)) continue;
+        if (orgId === activeOrgId) continue;
+        // subscribePartnerOrg deduplicates via subscribedPartnerOrgIds.
         subscribePartnerOrg(orgId);
       }
     }
 
     subscribeOutgoingPartners();
+
+    // When a new share is created while this effect is active (e.g. org A shares
+    // a tree with org B after the app has already loaded), treeIdsKey does NOT
+    // change for the tree-owning org, so the effect would not re-run on its own.
+    // Listening for INSERT events on backlog_tree_shares and re-running
+    // subscribeOutgoingPartners picks up the new partner without a page reload.
+    // No row-level filter is applied here because subscribeOutgoingPartners
+    // already queries for partner orgs that own trees belonging to activeOrgId,
+    // so INSERT events for other orgs' shares are harmlessly ignored.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sharesChannel = (supabase as any)
+      .channel(`outgoing-shares-watch-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'backlog_tree_shares' },
+        () => {
+          if (!destroyed) subscribeOutgoingPartners();
+        },
+      )
+      .subscribe();
+    channels.push(sharesChannel);
 
     return () => {
       destroyed = true;
