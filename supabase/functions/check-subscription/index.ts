@@ -37,10 +37,20 @@ serve(async (req) => {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    logStep("User authenticated", { userId: user.id });
 
     const { organization_id } = await req.json();
     if (!organization_id) throw new Error("organization_id is required");
+
+    // Verify the caller is a member of the organization
+    const { data: membership } = await supabaseClient
+      .from("memberships")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("organization_id", organization_id)
+      .maybeSingle();
+    if (!membership) throw new Error("Forbidden: not a member of this organization");
+
     logStep("Checking org", { organization_id });
 
     // Get org's stripe_customer_id
@@ -94,7 +104,7 @@ serve(async (req) => {
     logStep("ERROR", { message: msg });
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: msg.includes("Forbidden") ? 403 : 500,
     });
   }
 });
