@@ -42,9 +42,7 @@ export function ShareTreeDialog({
     let orgMap = new Map<string, string>();
     if (orgIds.length > 0) {
       const { data: orgs } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .in('id', orgIds);
+        .rpc('get_org_names_by_ids', { _ids: orgIds });
       orgMap = new Map((orgs ?? []).map(o => [o.id, o.name]));
     }
 

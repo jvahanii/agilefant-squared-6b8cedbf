@@ -564,6 +564,13 @@ export type Database = {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
       }
+      get_org_names_by_ids: {
+        Args: { _ids: string[] }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       lookup_org_by_slug: {
         Args: { _slug: string }
         Returns: {
