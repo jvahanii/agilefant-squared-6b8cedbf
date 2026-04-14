@@ -67,11 +67,9 @@ export function ShareTreeDialog({
     setLoading(true);
 
     // Find org by slug
-    const { data: org, error: orgErr } = await supabase
-      .from('organizations')
-      .select('id, name')
-      .eq('slug', slug.trim().toLowerCase())
-      .maybeSingle();
+    const { data: orgRows, error: orgErr } = await supabase
+      .rpc('lookup_org_by_slug', { _slug: slug.trim().toLowerCase() });
+    const org = orgRows?.[0] ?? null;
 
     if (orgErr || !org) {
       toast({ title: 'Not found', description: 'No organization with that slug.', variant: 'destructive' });
