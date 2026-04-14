@@ -564,6 +564,13 @@ export type Database = {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
       }
+      lookup_org_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       redeem_invite: { Args: { _token: string }; Returns: Json }
       remove_tree_share_with_copy: {
         Args: { _share_id: string }
