@@ -105,7 +105,7 @@ export function ShareTreeDialog({
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Share removed', description: 'The organization now has its own independent copy of the tree.' });
+      toast({ title: 'Share removed', description: 'The organizations sharing the tree now have their own independent copies.' });
       await loadShares();
     }
     setLoading(false);
