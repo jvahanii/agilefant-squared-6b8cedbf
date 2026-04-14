@@ -26,6 +26,7 @@ export function TeamManagement() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const activeOrg = useOrgStore((s) => s.getActiveOrg());
   const canManage = activeOrg?.role === "owner" || activeOrg?.role === "admin";
+  const isMember = !!activeOrg;
   const teams = useTeamStore((s) => s.teams);
   const teamMembers = useTeamStore((s) => s.teamMembers);
   const loadTeams = useTeamStore((s) => s.loadTeams);
@@ -107,7 +108,7 @@ export function TeamManagement() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {canManage && (
+        {isMember && (
           <form onSubmit={handleCreate} className="flex gap-2">
             <Input
               placeholder="New team name"
