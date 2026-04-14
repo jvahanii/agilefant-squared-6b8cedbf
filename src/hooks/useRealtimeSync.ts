@@ -58,7 +58,10 @@ export function useRealtimeSync() {
     // and outgoing) to avoid creating duplicate channels if subscribeOutgoingPartners
     // is called more than once (e.g. when new shares are created while the effect
     // is still active).
-    const subscribedPartnerOrgIds = new Set<string>(incomingPartnerOrgIds);
+    // NOTE: Must start empty so that the incoming-partner loop below actually
+    // creates channels for them.  subscribeOutgoingPartners will naturally skip
+    // partners that are already in the set (populated by the incoming loop).
+    const subscribedPartnerOrgIds = new Set<string>();
 
     // Helper: subscribe a channel that monitors work_items, backlogs, and
     // work_item_hyperlinks for a partner org.  A JS-side filter ensures we only
