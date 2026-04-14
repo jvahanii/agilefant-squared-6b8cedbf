@@ -108,7 +108,7 @@ export function TeamManagement() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {canManage && (
+        {isMember && (
           <form onSubmit={handleCreate} className="flex gap-2">
             <Input
               placeholder="New team name"
