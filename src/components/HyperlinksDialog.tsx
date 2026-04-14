@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExternalLink, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 
+const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
+const safeHref = (url: string) => (isValidUrl(url) ? url : "#");
+
 interface HyperlinksDialogProps {
   workItemId: string;
   open: boolean;
@@ -79,6 +82,7 @@ export function HyperlinksDialog({
   const handleAdd = () => {
     const trimmedUrl = newUrl.trim();
     if (!trimmedUrl) return;
+    if (!isValidUrl(trimmedUrl)) return;
     addHyperlink(workItemId, trimmedUrl, newAltText.trim());
     setNewUrl("");
     setNewAltText("");
@@ -95,7 +99,7 @@ export function HyperlinksDialog({
   const handleSaveEdit = () => {
     if (!editingId) return;
     const trimmedUrl = editUrl.trim();
-    if (!trimmedUrl) return;
+    if (!trimmedUrl || !isValidUrl(trimmedUrl)) return;
     updateHyperlink(editingId, workItemId, trimmedUrl, editAltText.trim());
     setEditingId(null);
   };
@@ -173,7 +177,7 @@ export function HyperlinksDialog({
                 <div className="flex-1 min-w-0">
                   <a
                     ref={index === 0 ? firstLinkRef : undefined}
-                    href={link.url}
+                    href={safeHref(link.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-primary hover:underline truncate block"
