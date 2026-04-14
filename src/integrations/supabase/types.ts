@@ -192,6 +192,50 @@ export type Database = {
           },
         ]
       }
+      organization_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+          use_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+          use_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -520,6 +564,7 @@ export type Database = {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
       }
+      redeem_invite: { Args: { _token: string }; Returns: Json }
       remove_tree_share_with_copy: {
         Args: { _share_id: string }
         Returns: undefined
