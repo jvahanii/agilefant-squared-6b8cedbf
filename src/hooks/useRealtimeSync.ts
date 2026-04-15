@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
+import { useTimeEntryStore } from '@/store/timeEntryStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -28,6 +29,7 @@ export function useRealtimeSync() {
   const applyRealtimeBacklog = useAppStore((s) => s.applyRealtimeBacklog);
   const applyRealtimeBacklogTree = useAppStore((s) => s.applyRealtimeBacklogTree);
   const applyRealtimeHyperlink = useAppStore((s) => s.applyRealtimeHyperlink);
+  const applyRealtimeTimeEntry = useTimeEntryStore((s) => s.applyRealtimeTimeEntry);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -207,6 +209,19 @@ export function useRealtimeSync() {
         (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
           applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
+          filter: `organization_id=eq.${activeOrgId}`,
+        },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
       .subscribe();
