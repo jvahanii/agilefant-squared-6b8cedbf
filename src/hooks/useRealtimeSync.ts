@@ -211,6 +211,19 @@ export function useRealtimeSync() {
           applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
+          filter: `organization_id=eq.${activeOrgId}`,
+        },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
       .subscribe();
     channels.push(ownChannel);
 
