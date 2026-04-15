@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import { PLANS, type PlanKey } from "@/hooks/useSubscription";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 
 export default function Auth() {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [tosOpen, setTosOpen] = useState(false);
@@ -67,7 +69,7 @@ export default function Auth() {
           <CardDescription>Sign in to your account or create a new one</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login">
+          <Tabs defaultValue={defaultTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
