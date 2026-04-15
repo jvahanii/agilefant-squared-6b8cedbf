@@ -345,6 +345,42 @@ export type Database = {
           },
         ]
       }
+      time_entries: {
+        Row: {
+          backlog_id: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          note: string | null
+          organization_id: string
+          spent_date: string
+          user_id: string
+          work_item_id: string | null
+        }
+        Insert: {
+          backlog_id?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          note?: string | null
+          organization_id: string
+          spent_date?: string
+          user_id: string
+          work_item_id?: string | null
+        }
+        Update: {
+          backlog_id?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          note?: string | null
+          organization_id?: string
+          spent_date?: string
+          user_id?: string
+          work_item_id?: string | null
+        }
+        Relationships: []
+      }
       work_item_backlog_ranks: {
         Row: {
           backlog_id: string
