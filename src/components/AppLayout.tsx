@@ -29,22 +29,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
-import {
-  Undo2,
-  Redo2,
-  Keyboard,
-  RotateCcw,
-  Copy,
-  FileText,
-  SearchCheck,
-  Trash2,
-  FlaskConical,
-  MoreVertical,
-  HelpCircle,
-  Eye,
-  EyeOff,
-  ClipboardList,
-} from "lucide-react";
+import { Undo2, Redo2, Keyboard, RotateCcw, Copy, FileText, SearchCheck, Trash2, FlaskConical, MoreVertical, HelpCircle, Eye, EyeOff, ClipboardList } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv } from "@/store/changeLog";
@@ -117,19 +102,22 @@ function AppLayoutInner() {
   // Custom collision detection: prefer pointer-within (exact pointer position) over rect
   // intersection. When multiple droppables contain the pointer, prefer the smaller/more
   // specific ones (e.g. thin reorder zones over large item rows) by sorting by area.
-  const collisionDetectionStrategy = useCallback((args: Parameters<typeof rectIntersection>[0]) => {
-    const pointerCollisions = pointerWithin(args);
-    if (pointerCollisions.length > 0) {
-      return [...pointerCollisions].sort((a, b) => {
-        const rA = args.droppableRects.get(a.id);
-        const rB = args.droppableRects.get(b.id);
-        const areaA = rA ? rA.width * rA.height : Infinity;
-        const areaB = rB ? rB.width * rB.height : Infinity;
-        return areaA - areaB;
-      });
-    }
-    return rectIntersection(args);
-  }, []);
+  const collisionDetectionStrategy = useCallback(
+    (args: Parameters<typeof rectIntersection>[0]) => {
+      const pointerCollisions = pointerWithin(args);
+      if (pointerCollisions.length > 0) {
+        return [...pointerCollisions].sort((a, b) => {
+          const rA = args.droppableRects.get(a.id);
+          const rB = args.droppableRects.get(b.id);
+          const areaA = rA ? rA.width * rA.height : Infinity;
+          const areaB = rB ? rB.width * rB.height : Infinity;
+          return areaA - areaB;
+        });
+      }
+      return rectIntersection(args);
+    },
+    [],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -407,6 +395,7 @@ function AppLayoutInner() {
         longPressTimer = null;
       }
     };
+
 
     const handleTouchStart = (e: TouchEvent) => {
       if (activeDragRef.current) return;
@@ -839,62 +828,30 @@ function AppLayoutInner() {
 
   // Extract handler functions for reuse in mobile menu
   const handleExportChangelog = () => {
-    if (changeLog.length === 0) {
-      toast({ title: "No changes logged yet" });
-      return;
-    }
+    if (changeLog.length === 0) { toast({ title: "No changes logged yet" }); return; }
     const csv = exportChangeLogAsCsv(changeLog);
-    navigator.clipboard
-      .writeText(csv)
-      .then(() => {
-        toast({ title: `${changeLog.length} history entries copied to clipboard` });
-      })
-      .catch(() => {
-        toast({ title: "Failed to copy history to clipboard", variant: "destructive" });
-      });
+    navigator.clipboard.writeText(csv).then(() => {
+      toast({ title: `${changeLog.length} history entries copied to clipboard` });
+    }).catch(() => {
+      toast({ title: "Failed to copy history to clipboard", variant: "destructive" });
+    });
   };
 
   const handleExportMock = () => {
     const { workItems, backlogs, backlogTrees } = useAppStore.getState();
-    const strip = (id: string) => id.split("::").pop()!;
-    const rawItems = Object.fromEntries(
-      Object.values(workItems).map((wi) => {
-        const rawId = strip(wi.id);
-        return [
-          rawId,
-          {
-            ...wi,
-            id: rawId,
-            parentId: wi.parentId ? strip(wi.parentId) : null,
-            childrenIds: wi.childrenIds.map(strip),
-            backlogAssignments: Object.fromEntries(
-              Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)]),
-            ),
-          },
-        ];
-      }),
-    );
-    const rawBacklogs = Object.fromEntries(
-      Object.values(backlogs).map((bl) => {
-        const rawId = strip(bl.id);
-        return [
-          rawId,
-          {
-            ...bl,
-            id: rawId,
-            parentId: bl.parentId ? strip(bl.parentId) : null,
-            childrenIds: bl.childrenIds.map(strip),
-            treeId: strip(bl.treeId),
-          },
-        ];
-      }),
-    );
-    const rawTrees = Object.fromEntries(
-      Object.values(backlogTrees).map((bt) => {
-        const rawId = strip(bt.id);
-        return [rawId, { ...bt, id: rawId, rootBacklogIds: bt.rootBacklogIds.map(strip) }];
-      }),
-    );
+    const strip = (id: string) => id.split('::').pop()!;
+    const rawItems = Object.fromEntries(Object.values(workItems).map(wi => {
+      const rawId = strip(wi.id);
+      return [rawId, { ...wi, id: rawId, parentId: wi.parentId ? strip(wi.parentId) : null, childrenIds: wi.childrenIds.map(strip), backlogAssignments: Object.fromEntries(Object.entries(wi.backlogAssignments).map(([t, b]) => [strip(t), strip(b)])) }];
+    }));
+    const rawBacklogs = Object.fromEntries(Object.values(backlogs).map(bl => {
+      const rawId = strip(bl.id);
+      return [rawId, { ...bl, id: rawId, parentId: bl.parentId ? strip(bl.parentId) : null, childrenIds: bl.childrenIds.map(strip), treeId: strip(bl.treeId) }];
+    }));
+    const rawTrees = Object.fromEntries(Object.values(backlogTrees).map(bt => {
+      const rawId = strip(bt.id);
+      return [rawId, { ...bt, id: rawId, rootBacklogIds: bt.rootBacklogIds.map(strip) }];
+    }));
     const code = `// Auto-exported mock data\nexport const mockData = ${JSON.stringify({ workItems: rawItems, backlogs: rawBacklogs, backlogTrees: rawTrees }, null, 2)};\n`;
     navigator.clipboard.writeText(code);
     toast({ title: "Data copied to clipboard" });
@@ -902,68 +859,35 @@ function AppLayoutInner() {
 
   const handleCheckData = () => {
     const state = useAppStore.getState();
-    const issues = checkDataIntegrity({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
-    if (issues.length === 0) {
-      toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." });
-    } else {
+    const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+    if (issues.length === 0) { toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." }); }
+    else {
       const report = formatIssueReport(issues);
       navigator.clipboard.writeText(report);
       const categories = [...new Set(issues.map((i) => i.category))];
-      toast({
-        title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
-        description: `Categories: ${categories.join(", ")}. See console for full report.`,
-        variant: "destructive",
-      });
+      toast({ title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`, description: `Categories: ${categories.join(", ")}. See console for full report.`, variant: "destructive" });
     }
   };
 
   const handleCleanseData = () => {
     const state = useAppStore.getState();
-    const result = cleanseData({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
+    const result = cleanseData({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
     const allIssues = [...result.removed, ...result.fixed];
-    if (allIssues.length === 0) {
-      toast({ title: "✅ No invalid data found" });
-      return;
-    }
+    if (allIssues.length === 0) { toast({ title: "✅ No invalid data found" }); return; }
     const report = formatIssueReport(allIssues);
     navigator.clipboard.writeText(report);
     console.log("Cleanse report:\n" + report);
     useAppStore.setState(result.data);
-    toast({
-      title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`,
-      description: "Full report copied to clipboard.",
-    });
+    toast({ title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`, description: "Full report copied to clipboard." });
   };
 
   const handleRunTests = () => {
     const state = useAppStore.getState();
-    const issues = checkDataIntegrity({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
+    const issues = checkDataIntegrity({ workItems: state.workItems, backlogs: state.backlogs, backlogTrees: state.backlogTrees });
     const results: string[] = [];
     const pass = (name: string) => results.push(`✅ PASS: ${name}`);
     const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
-    const categories = [
-      "Ghost Parent",
-      "Orphaned Children",
-      "Circular Reference",
-      "Backlog Displacement",
-      "Tree-Backlog Desync",
-      "Duplicate Rank",
-      "Cross-Org Pollution",
-      "Malformed ID",
-      "Zombie Assignment",
-    ];
+    const categories = ["Ghost Parent", "Orphaned Children", "Circular Reference", "Backlog Displacement", "Tree-Backlog Desync", "Duplicate Rank", "Cross-Org Pollution", "Malformed ID", "Zombie Assignment"];
     categories.forEach((cat) => {
       const catIssues = issues.filter((i) => i.category === cat);
       catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
@@ -973,29 +897,20 @@ function AppLayoutInner() {
     const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
     const fullReport = issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
     navigator.clipboard.writeText(fullReport);
-    toast({
-      title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`,
-      description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
-      variant: failed > 0 ? "destructive" : undefined,
-    });
+    toast({ title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`, description: `${passed} passed, ${failed} failed. Report copied to clipboard.`, variant: failed > 0 ? "destructive" : undefined });
   };
 
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { isSuperuser, scrambleEnabled, toggleScramble } = useScramble();
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={collisionDetectionStrategy}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col overflow-hidden bg-background">
         {/* HEADER */}
         <header className="h-12 md:h-16 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-[#f5f5f5] shrink-0 shadow-sm z-10">
           <img
             alt="Agilefant"
-            className="h-11 md:h-13 w-auto"
+            className="h-8 md:h-10 w-auto"
             src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
           />
           <h1 className="text-sm font-bold tracking-tight hidden sm:block">
@@ -1011,59 +926,30 @@ function AppLayoutInner() {
 
             {/* Desktop: show all buttons */}
             <div className="hidden md:flex items-center gap-2">
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleExportMock}
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Export data</span>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportMock}>
+                <Copy className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export data</span>
               </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleExportChangelog}
-              >
-                <ClipboardList className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Export history</span>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleExportChangelog}>
+                <ClipboardList className="w-3.5 h-3.5" /><span className="hidden lg:inline">Export history</span>
               </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleCheckData}
-              >
-                <SearchCheck className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Check Data</span>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleCheckData}>
+                <SearchCheck className="w-3.5 h-3.5" /><span className="hidden lg:inline">Check Data</span>
               </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
-                onClick={handleCleanseData}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Cleanse Data</span>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5" onClick={handleCleanseData}>
+                <Trash2 className="w-3.5 h-3.5" /><span className="hidden lg:inline">Cleanse Data</span>
               </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleRunTests}
-              >
-                <FlaskConical className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Run Tests</span>
+              <button className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5" onClick={handleRunTests}>
+                <FlaskConical className="w-3.5 h-3.5" /><span className="hidden lg:inline">Run Tests</span>
               </button>
               <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Reset to mock data?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will replace all current data with the default mock dataset. This action cannot be undone.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription>This will replace all current data with the default mock dataset. This action cannot be undone.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        useAppStore.getState().resetToMockData();
-                        toast({ title: "Data reset to mock data" });
-                      }}
-                    >
-                      Reset
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={() => { useAppStore.getState().resetToMockData(); toast({ title: "Data reset to mock data" }); }}>Reset</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -1085,11 +971,7 @@ function AppLayoutInner() {
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                      onClick={undo}
-                      disabled={undoStackLength === 0}
-                    >
+                    <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`} onClick={undo} disabled={undoStackLength === 0}>
                       <Undo2 className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
@@ -1097,28 +979,18 @@ function AppLayoutInner() {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
-                      onClick={redo}
-                      disabled={redoStackLength === 0}
-                    >
+                    <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`} onClick={redo} disabled={redoStackLength === 0}>
                       <Redo2 className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
                 </Tooltip>
-                <button
-                  className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  onClick={() => setShowShortcuts((s) => !s)}
-                >
+                <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" onClick={() => setShowShortcuts((s) => !s)}>
                   <Keyboard className="w-4 h-4" />
                 </button>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      onClick={() => setShowUserGuide(true)}
-                    >
+                    <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" onClick={() => setShowUserGuide(true)}>
                       <HelpCircle className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
@@ -1129,18 +1001,10 @@ function AppLayoutInner() {
 
             {/* Mobile: undo/redo + overflow menu */}
             <div className="flex md:hidden items-center gap-0.5">
-              <button
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`}
-                onClick={undo}
-                disabled={undoStackLength === 0}
-              >
+              <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`} onClick={undo} disabled={undoStackLength === 0}>
                 <Undo2 className="w-4 h-4" />
               </button>
-              <button
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`}
-                onClick={redo}
-                disabled={redoStackLength === 0}
-              >
+              <button className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`} onClick={redo} disabled={redoStackLength === 0}>
                 <Redo2 className="w-4 h-4" />
               </button>
               <DropdownMenu>
@@ -1150,32 +1014,14 @@ function AppLayoutInner() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setShowUserGuide(true)}>
-                    <HelpCircle className="w-4 h-4 mr-2" />
-                    User Guide
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowUserGuide(true)}><HelpCircle className="w-4 h-4 mr-2" />User Guide</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleExportMock}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Export data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportChangelog}>
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Export history
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportMock}><Copy className="w-4 h-4 mr-2" />Export data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportChangelog}><ClipboardList className="w-4 h-4 mr-2" />Export history</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleCheckData}>
-                    <SearchCheck className="w-4 h-4 mr-2" />
-                    Check Data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCleanseData}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Cleanse Data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleRunTests}>
-                    <FlaskConical className="w-4 h-4 mr-2" />
-                    Run Tests
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCheckData}><SearchCheck className="w-4 h-4 mr-2" />Check Data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCleanseData}><Trash2 className="w-4 h-4 mr-2" />Cleanse Data</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRunTests}><FlaskConical className="w-4 h-4 mr-2" />Run Tests</DropdownMenuItem>
                   {isSuperuser && (
                     <>
                       <DropdownMenuSeparator />

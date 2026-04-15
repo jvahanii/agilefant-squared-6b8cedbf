@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Link2, Copy, Check } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
@@ -35,16 +35,6 @@ interface Member {
   email: string;
   full_name: string;
   role: "owner" | "admin" | "member";
-}
-
-interface OrganizationInvite {
-  id: string;
-  token: string;
-  role: "owner" | "admin" | "member";
-  expires_at: string | null;
-  max_uses: number | null;
-  use_count: number;
-  created_at: string;
 }
 
 export default function TeamSettings() {
@@ -79,21 +69,12 @@ export default function TeamSettings() {
   // Terms of Service state
   const [tosOpen, setTosOpen] = useState(false);
 
-  // Invite links state
-  const [invites, setInvites] = useState<OrganizationInvite[]>([]);
-  const [inviteLinkRole, setInviteLinkRole] = useState<"member" | "admin">("member");
-  const [inviteLinkMaxUses, setInviteLinkMaxUses] = useState("");
-  const [inviteLinkExpiry, setInviteLinkExpiry] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
   const currentRole = activeOrg?.role;
   const canManage = currentRole === "owner" || currentRole === "admin";
 
   useEffect(() => {
     if (!activeOrgId) return;
     loadMembers();
-    loadInvites();
   }, [activeOrgId]);
 
   useEffect(() => {
@@ -170,77 +151,6 @@ export default function TeamSettings() {
         role: m.role as Member["role"],
       })),
     );
-  };
-
-  const loadInvites = async () => {
-    if (!activeOrgId) return;
-    const { data, error } = await supabase
-      .from("organization_invites")
-      .select("id, token, role, expires_at, max_uses, use_count, created_at")
-      .eq("organization_id", activeOrgId)
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.error(error);
-      return;
-    }
-    setInvites(
-      (data ?? []).map((row) => ({
-        id: row.id,
-        token: row.token,
-        role: row.role as OrganizationInvite["role"],
-        expires_at: row.expires_at,
-        max_uses: row.max_uses,
-        use_count: row.use_count,
-        created_at: row.created_at,
-      })),
-    );
-  };
-
-  const handleCreateInviteLink = async () => {
-    if (!activeOrgId || !user?.id) return;
-    setCreatingInvite(true);
-    const insertData: {
-      organization_id: string;
-      created_by: string;
-      role: "member" | "admin";
-      max_uses?: number;
-      expires_at?: string;
-    } = {
-      organization_id: activeOrgId,
-      created_by: user.id,
-      role: inviteLinkRole,
-    };
-    if (inviteLinkMaxUses) insertData.max_uses = parseInt(inviteLinkMaxUses, 10);
-    if (inviteLinkExpiry) insertData.expires_at = new Date(inviteLinkExpiry).toISOString();
-
-    const { error } = await supabase.from("organization_invites").insert(insertData);
-    setCreatingInvite(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Invite link created" });
-      setInviteLinkMaxUses("");
-      setInviteLinkExpiry("");
-      await loadInvites();
-    }
-  };
-
-  const handleDeleteInvite = async (inviteId: string) => {
-    const { error } = await supabase.from("organization_invites").delete().eq("id", inviteId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Invite link revoked" });
-      setInvites((prev) => prev.filter((inv) => inv.id !== inviteId));
-    }
-  };
-
-  const handleCopyInviteLink = (invite: OrganizationInvite) => {
-    const url = `${window.location.origin}/invite/${invite.token}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedId(invite.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    });
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -648,104 +558,6 @@ export default function TeamSettings() {
                   {loading ? "Adding..." : "Add"}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {(canManage || isSuperuser) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Link2 className="w-4 h-4" /> Invite Links
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Create new invite link */}
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1">
-                  <Label>Role</Label>
-                  <Select value={inviteLinkRole} onValueChange={(v) => setInviteLinkRole(v as "member" | "admin")}>
-                    <SelectTrigger className="w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="member">Member</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Max uses (optional)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={inviteLinkMaxUses}
-                    onChange={(e) => setInviteLinkMaxUses(e.target.value)}
-                    placeholder="Unlimited"
-                    className="w-28"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Expires (optional)</Label>
-                  <Input
-                    type="datetime-local"
-                    value={inviteLinkExpiry}
-                    onChange={(e) => setInviteLinkExpiry(e.target.value)}
-                    className="w-48"
-                  />
-                </div>
-                <Button onClick={handleCreateInviteLink} disabled={creatingInvite}>
-                  {creatingInvite ? "Creating..." : "Create Link"}
-                </Button>
-              </div>
-
-              {/* Existing invite links */}
-              {invites.length > 0 && (
-                <div className="divide-y border rounded-md">
-                  {invites.map((invite) => (
-                    <div key={invite.id} className="flex items-center justify-between px-3 py-2 gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-mono truncate text-muted-foreground">
-                          {window.location.origin}/invite/{invite.token}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <Badge variant="outline" className="text-xs">{invite.role}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Used {invite.use_count}{invite.max_uses != null ? `/${invite.max_uses}` : ""}
-                          </span>
-                          {invite.expires_at && (
-                            <span className="text-xs text-muted-foreground">
-                              Expires {new Date(invite.expires_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyInviteLink(invite)}
-                          title="Copy link"
-                        >
-                          {copiedId === invite.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteInvite(invite.id)}
-                          className="text-destructive hover:text-destructive"
-                          title="Revoke link"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {invites.length === 0 && (
-                <p className="text-xs text-muted-foreground">No invite links yet. Create one above to share with new members.</p>
-              )}
             </CardContent>
           </Card>
         )}

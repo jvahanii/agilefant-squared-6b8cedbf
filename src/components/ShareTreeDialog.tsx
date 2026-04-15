@@ -32,25 +32,27 @@ export function ShareTreeDialog({
   const [loading, setLoading] = useState(false);
 
   const loadShares = async () => {
-    // First get share rows for IDs
-    const { data: shareRows, error: shareErr } = await supabase
-      .from('backlog_tree_shares')
+    const { data, error } = await supabase
+      .from('backlog_tree_shares' as any)
       .select('id, organization_id')
       .eq('tree_id', treeId);
-    if (shareErr) { console.error(shareErr); return; }
-    if (!shareRows || shareRows.length === 0) { setShares([]); return; }
+    if (error) { console.error(error); return; }
 
-    // Use RPC to get org names (bypasses RLS)
-    const { data: sharingInfo } = await supabase
-      .rpc('get_tree_sharing_info', { _tree_id: treeId, _exclude_org_id: activeOrgId! });
-
-    const nameMap = new Map((sharingInfo ?? []).map((s: any) => [s.org_id, s.org_name]));
+    const orgIds = (data ?? []).map((s: any) => s.organization_id as string);
+    let orgMap = new Map<string, string>();
+    if (orgIds.length > 0) {
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .in('id', orgIds);
+      orgMap = new Map((orgs ?? []).map(o => [o.id, o.name]));
+    }
 
     setShares(
-      shareRows.map((s) => ({
+      (data ?? []).map((s: any) => ({
         id: s.id,
         organization_id: s.organization_id,
-        org_name: nameMap.get(s.organization_id) ?? 'Unknown',
+        org_name: orgMap.get(s.organization_id) ?? 'Unknown',
       }))
     );
   };
@@ -65,9 +67,11 @@ export function ShareTreeDialog({
     setLoading(true);
 
     // Find org by slug
-    const { data: orgRows, error: orgErr } = await supabase
-      .rpc('lookup_org_by_slug', { _slug: slug.trim().toLowerCase() });
-    const org = orgRows?.[0] ?? null;
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('slug', slug.trim().toLowerCase())
+      .maybeSingle();
 
     if (orgErr || !org) {
       toast({ title: 'Not found', description: 'No organization with that slug.', variant: 'destructive' });
@@ -103,7 +107,7 @@ export function ShareTreeDialog({
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Share removed', description: 'The organizations sharing the tree now have their own independent copies.' });
+      toast({ title: 'Share removed', description: 'The organization now has its own independent copy of the tree.' });
       await loadShares();
     }
     setLoading(false);

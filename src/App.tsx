@@ -14,7 +14,6 @@ import TeamSettings from "./pages/TeamSettings";
 import ManagerScreen from "./pages/ManagerScreen";
 import ResetPassword from "./pages/ResetPassword";
 import UserGuide from "./pages/UserGuide";
-import InviteRedeem from "./pages/InviteRedeem";
 
 const queryClient = new QueryClient();
 
@@ -42,7 +41,6 @@ function AppRoutes() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/user-guide" element={<UserGuide />} />
-        <Route path="/invite/:token" element={<InviteRedeem />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
@@ -53,7 +51,6 @@ function AppRoutes() {
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/user-guide" element={<UserGuide />} />
-        <Route path="/invite/:token" element={<InviteRedeem />} />
         <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
@@ -65,7 +62,6 @@ function AppRoutes() {
       <Route path="/settings/team" element={<TeamSettings />} />
       <Route path="/manager" element={<ManagerScreen />} />
       <Route path="/user-guide" element={<UserGuide />} />
-      <Route path="/invite/:token" element={<InviteRedeem />} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
