@@ -19,13 +19,18 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
-  const { memberships, loading: orgLoading, loadMemberships } = useOrgStore();
+  const { memberships, loading: orgLoading, loadMemberships, getActiveOrg } = useOrgStore();
 
   useEffect(() => {
     if (user) {
       loadMemberships(user.id);
     }
   }, [user]);
+
+  useEffect(() => {
+    const activeOrg = getActiveOrg();
+    document.title = activeOrg ? `${activeOrg.organization_name} – Agilefant²` : "Agilefant²";
+  }, [memberships, getActiveOrg]);
 
   if (authLoading || (user && orgLoading)) {
     return (
