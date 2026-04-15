@@ -296,6 +296,11 @@ function treeDbDiffers(a: BacklogTree, b: BacklogTree): boolean {
   return a.name !== b.name || a.rank !== b.rank;
 }
 
+/** Returns true when any DB-persisted field of a Hyperlink differs between a and b. */
+function hyperlinkDbDiffers(a: Hyperlink, b: Hyperlink): boolean {
+  return a.url !== b.url || a.altText !== b.altText || a.rank !== b.rank || a.workItemId !== b.workItemId;
+}
+
 /**
  * Computes the diff between prevSnapshot and nextSnapshot and fires the
  * corresponding Supabase writes (upserts / deletes) so that partner orgs
@@ -389,7 +394,7 @@ function syncSnapshotDiff(
   for (const [, link] of nextLinks) {
     if (!isOwn(link.workItemId)) continue;
     const prev = prevLinks.get(link.id);
-    if (!prev || JSON.stringify(prev) !== JSON.stringify(link)) {
+    if (!prev || hyperlinkDbDiffers(prev, link)) {
       hyperlinksToUpsert.push(link);
     }
   }
