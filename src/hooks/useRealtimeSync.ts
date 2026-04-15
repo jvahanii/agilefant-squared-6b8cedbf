@@ -29,6 +29,7 @@ export function useRealtimeSync() {
   const applyRealtimeBacklog = useAppStore((s) => s.applyRealtimeBacklog);
   const applyRealtimeBacklogTree = useAppStore((s) => s.applyRealtimeBacklogTree);
   const applyRealtimeHyperlink = useAppStore((s) => s.applyRealtimeHyperlink);
+  const applyRealtimeTimeEntry = useTimeEntryStore((s) => s.applyRealtimeTimeEntry);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
