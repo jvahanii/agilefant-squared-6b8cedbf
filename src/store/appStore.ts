@@ -262,6 +262,180 @@ const snapshot = (state: DataSnapshot): DataSnapshot => ({
 
 const MAX_UNDO = 100;
 
+// ─── Undo/Redo DB sync helpers ────────────────────────────────────────────
+
+/** Returns true when any DB-persisted field of a WorkItem differs between a and b. */
+function workItemDbDiffers(a: WorkItem, b: WorkItem): boolean {
+  return (
+    a.title !== b.title ||
+    (a.description ?? null) !== (b.description ?? null) ||
+    (a.points ?? null) !== (b.points ?? null) ||
+    a.status !== b.status ||
+    (a.parentId ?? null) !== (b.parentId ?? null) ||
+    JSON.stringify(a.backlogAssignments) !== JSON.stringify(b.backlogAssignments) ||
+    JSON.stringify(a.ranks) !== JSON.stringify(b.ranks) ||
+    (a.respawnEnabled ?? false) !== (b.respawnEnabled ?? false) ||
+    (a.respawnIntervalDays ?? null) !== (b.respawnIntervalDays ?? null) ||
+    (a.respawnHour ?? null) !== (b.respawnHour ?? null) ||
+    (a.respawnLastTriggeredAt ?? null) !== (b.respawnLastTriggeredAt ?? null)
+  );
+}
+
+/** Returns true when any DB-persisted field of a Backlog differs between a and b. */
+function backlogDbDiffers(a: Backlog, b: Backlog): boolean {
+  return (
+    a.name !== b.name ||
+    (a.parentId ?? null) !== (b.parentId ?? null) ||
+    a.treeId !== b.treeId ||
+    a.rank !== b.rank
+  );
+}
+
+/** Returns true when any DB-persisted field of a BacklogTree differs between a and b. */
+function treeDbDiffers(a: BacklogTree, b: BacklogTree): boolean {
+  return a.name !== b.name || a.rank !== b.rank;
+}
+
+/**
+ * Computes the diff between prevSnapshot and nextSnapshot and fires the
+ * corresponding Supabase writes (upserts / deletes) so that partner orgs
+ * listening to shared trees via Realtime receive the matching DB events.
+ *
+ * Only entities whose effective owner is organizationId are written – RLS
+ * prevents writing data owned by other orgs, and there is no need to do so.
+ *
+ * This is called after every undo/redo to ensure the DB reflects the
+ * restored state.  All operations are fire-and-forget.
+ */
+function syncSnapshotDiff(
+  prevSnapshot: DataSnapshot,
+  nextSnapshot: DataSnapshot,
+  organizationId: string,
+): void {
+  // Derive owner org from an entity's ID prefix (format "<orgId>::<rawId>").
+  const ownerOf = (id: string): string => {
+    const sep = id.indexOf('::');
+    return sep > 0 ? id.slice(0, sep) : organizationId;
+  };
+  const isOwn = (id: string, explicitOrg?: string) =>
+    (explicitOrg ?? ownerOf(id)) === organizationId;
+
+  // ── Work Items ────────────────────────────────────────────────────────────
+  const prevItemIds = new Set(Object.keys(prevSnapshot.workItems));
+  const nextItemIds = new Set(Object.keys(nextSnapshot.workItems));
+
+  const itemsToDelete = [...prevItemIds].filter(
+    (id) => !nextItemIds.has(id) && isOwn(id, prevSnapshot.workItems[id]?.organizationId),
+  );
+
+  const itemsToUpsert: WorkItem[] = [];
+  for (const item of Object.values(nextSnapshot.workItems)) {
+    if (!isOwn(item.id, item.organizationId)) continue;
+    const prev = prevSnapshot.workItems[item.id];
+    if (!prev || workItemDbDiffers(prev, item)) {
+      itemsToUpsert.push(item);
+    }
+  }
+
+  // ── Backlogs ──────────────────────────────────────────────────────────────
+  const prevBacklogIds = new Set(Object.keys(prevSnapshot.backlogs));
+  const nextBacklogIds = new Set(Object.keys(nextSnapshot.backlogs));
+
+  const backlogsToDelete = [...prevBacklogIds].filter(
+    (id) => !nextBacklogIds.has(id) && isOwn(id),
+  );
+
+  const backlogsToUpsert: Backlog[] = [];
+  for (const bl of Object.values(nextSnapshot.backlogs)) {
+    if (!isOwn(bl.id)) continue;
+    const prev = prevSnapshot.backlogs[bl.id];
+    if (!prev || backlogDbDiffers(prev, bl)) {
+      backlogsToUpsert.push(bl);
+    }
+  }
+
+  // ── BacklogTrees ──────────────────────────────────────────────────────────
+  const prevTreeIds = new Set(Object.keys(prevSnapshot.backlogTrees));
+  const nextTreeIds = new Set(Object.keys(nextSnapshot.backlogTrees));
+
+  const treesToDelete = [...prevTreeIds].filter(
+    (id) => !nextTreeIds.has(id) && isOwn(id),
+  );
+
+  const treesToUpsert: BacklogTree[] = [];
+  for (const tree of Object.values(nextSnapshot.backlogTrees)) {
+    if (!isOwn(tree.id)) continue;
+    const prev = prevSnapshot.backlogTrees[tree.id];
+    if (!prev || treeDbDiffers(prev, tree)) {
+      treesToUpsert.push(tree);
+    }
+  }
+
+  // ── Hyperlinks ────────────────────────────────────────────────────────────
+  const prevLinks = new Map<string, Hyperlink>();
+  for (const links of Object.values(prevSnapshot.hyperlinks)) {
+    for (const link of links) prevLinks.set(link.id, link);
+  }
+  const nextLinks = new Map<string, Hyperlink>();
+  for (const links of Object.values(nextSnapshot.hyperlinks)) {
+    for (const link of links) nextLinks.set(link.id, link);
+  }
+
+  const hyperlinksToDelete = [...prevLinks.keys()].filter((id) => !nextLinks.has(id));
+  const hyperlinksToUpsert: Hyperlink[] = [];
+  for (const [, link] of nextLinks) {
+    const prev = prevLinks.get(link.id);
+    if (!prev || JSON.stringify(prev) !== JSON.stringify(link)) {
+      hyperlinksToUpsert.push(link);
+    }
+  }
+
+  // ── Fire DB operations (fire-and-forget) ─────────────────────────────────
+  if (itemsToDelete.length > 0) {
+    deleteWorkItems(itemsToDelete)?.catch((err) =>
+      console.error('undo/redo sync: deleteWorkItems', err),
+    );
+  }
+  if (itemsToUpsert.length > 0) {
+    upsertWorkItems(itemsToUpsert, organizationId)?.catch((err) =>
+      console.error('undo/redo sync: upsertWorkItems', err),
+    );
+  }
+  if (backlogsToDelete.length > 0) {
+    deleteBacklogs(backlogsToDelete)?.catch((err) =>
+      console.error('undo/redo sync: deleteBacklogs', err),
+    );
+  }
+  if (backlogsToUpsert.length > 0) {
+    upsertBacklogs(backlogsToUpsert, organizationId)?.catch((err) =>
+      console.error('undo/redo sync: upsertBacklogs', err),
+    );
+  }
+  for (const id of treesToDelete) {
+    deleteBacklogTreeDB(id)?.catch((err) =>
+      console.error('undo/redo sync: deleteBacklogTree', err),
+    );
+  }
+  if (treesToUpsert.length > 0) {
+    upsertBacklogTrees(treesToUpsert, organizationId)?.catch((err) =>
+      console.error('undo/redo sync: upsertBacklogTrees', err),
+    );
+  }
+  for (const link of hyperlinksToUpsert) {
+    const itemOrgId = nextSnapshot.workItems[link.workItemId]?.organizationId;
+    upsertHyperlink(link, organizationId, itemOrgId)?.catch((err) =>
+      console.error('undo/redo sync: upsertHyperlink', err),
+    );
+  }
+  for (const id of hyperlinksToDelete) {
+    deleteHyperlinkDB(id)?.catch((err) =>
+      console.error('undo/redo sync: deleteHyperlink', err),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Applies a batch of work-item ID renames (old → new) to the store's data
  * snapshot.  Rewires every item's own `id`, `parentId` back-references,
@@ -1430,21 +1604,39 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
     },
 
-    undo: () =>
+    undo: () => {
+      let prevState: DataSnapshot | undefined;
+      let nextState: DataSnapshot | undefined;
       set((state) => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
+        prevState = state;
+        nextState = prev;
         return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
-      }),
+      });
+      const orgId = get().organizationId;
+      if (prevState && nextState && orgId) {
+        syncSnapshotDiff(prevState, nextState, orgId);
+      }
+    },
 
-    redo: () =>
+    redo: () => {
+      let prevState: DataSnapshot | undefined;
+      let nextState: DataSnapshot | undefined;
       set((state) => {
         const stack = [...state.redoStack];
         const next = stack.pop();
         if (!next) return state;
+        prevState = state;
+        nextState = next;
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
-      }),
+      });
+      const orgId = get().organizationId;
+      if (prevState && nextState && orgId) {
+        syncSnapshotDiff(prevState, nextState, orgId);
+      }
+    },
 
     addHyperlink: (workItemId, url, altText) => {
       const state = get();
