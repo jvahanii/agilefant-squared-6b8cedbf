@@ -32,27 +32,25 @@ export function ShareTreeDialog({
   const [loading, setLoading] = useState(false);
 
   const loadShares = async () => {
-    const { data, error } = await supabase
-      .from('backlog_tree_shares' as any)
+    // First get share rows for IDs
+    const { data: shareRows, error: shareErr } = await supabase
+      .from('backlog_tree_shares')
       .select('id, organization_id')
       .eq('tree_id', treeId);
-    if (error) { console.error(error); return; }
+    if (shareErr) { console.error(shareErr); return; }
+    if (!shareRows || shareRows.length === 0) { setShares([]); return; }
 
-    const orgIds = (data ?? []).map((s: any) => s.organization_id as string);
-    let orgMap = new Map<string, string>();
-    if (orgIds.length > 0) {
-      const { data: orgs } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .in('id', orgIds);
-      orgMap = new Map((orgs ?? []).map(o => [o.id, o.name]));
-    }
+    // Use RPC to get org names (bypasses RLS)
+    const { data: sharingInfo } = await supabase
+      .rpc('get_tree_sharing_info', { _tree_id: treeId, _exclude_org_id: activeOrgId! });
+
+    const nameMap = new Map((sharingInfo ?? []).map((s: any) => [s.org_id, s.org_name]));
 
     setShares(
-      (data ?? []).map((s: any) => ({
+      shareRows.map((s) => ({
         id: s.id,
         organization_id: s.organization_id,
-        org_name: orgMap.get(s.organization_id) ?? 'Unknown',
+        org_name: nameMap.get(s.organization_id) ?? 'Unknown',
       }))
     );
   };
