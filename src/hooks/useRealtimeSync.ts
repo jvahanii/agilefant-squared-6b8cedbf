@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
+import { useTimeEntryStore } from '@/store/timeEntryStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
