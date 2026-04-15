@@ -381,9 +381,13 @@ function syncSnapshotDiff(
     for (const link of links) nextLinks.set(link.id, link);
   }
 
-  const hyperlinksToDelete = [...prevLinks.keys()].filter((id) => !nextLinks.has(id));
+  const hyperlinksToDelete = [...prevLinks.keys()].filter((id) => {
+    const link = prevLinks.get(id)!;
+    return !nextLinks.has(id) && isOwn(link.workItemId);
+  });
   const hyperlinksToUpsert: Hyperlink[] = [];
   for (const [, link] of nextLinks) {
+    if (!isOwn(link.workItemId)) continue;
     const prev = prevLinks.get(link.id);
     if (!prev || JSON.stringify(prev) !== JSON.stringify(link)) {
       hyperlinksToUpsert.push(link);
