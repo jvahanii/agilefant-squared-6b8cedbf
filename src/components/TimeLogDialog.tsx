@@ -304,7 +304,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
                 <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleAdd} disabled={!durationInput.trim()}>
+                <Button size="sm" onClick={async () => { if (await handleAdd()) onOpenChange(false); }} disabled={!durationInput.trim()}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> Log Time
                 </Button>
               </div>
