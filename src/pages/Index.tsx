@@ -3,10 +3,12 @@ import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useTeamStore } from '@/store/teamStore';
+import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isTimeLoggingEnabled } from '@/hooks/useTimeLoggingEnabled';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -16,6 +18,7 @@ const Index = () => {
   const activeOrgId = useOrgStore(s => s.activeOrgId);
   const loadTeams = useTeamStore(s => s.loadTeams);
   const loadWorkItemTeams = useTeamStore(s => s.loadWorkItemTeams);
+  const loadTimeEntries = useTimeEntryStore(s => s.loadTimeEntries);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -30,6 +33,9 @@ const Index = () => {
       loadData();
       loadTeams(activeOrgId);
       loadWorkItemTeams(activeOrgId);
+      if (isTimeLoggingEnabled(activeOrgId)) {
+        loadTimeEntries(activeOrgId);
+      }
     }
   }, [activeOrgId]);
 

@@ -15,6 +15,7 @@ import {
   Link,
   RefreshCw,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -327,6 +328,33 @@ function buildSections(): Section[] {
               </p>
             </div>
           </div>
+        </div>
+      ),
+    },
+    {
+      id: "timelogging",
+      icon: <Clock className="w-4 h-4" />,
+      label: "Time Logging",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Time logging</strong> lets team members record time spent on work items.
+            The feature is off by default and must be enabled by a superuser in <strong className="text-foreground">Settings → Time Logging</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              { action: "Enable time logging", how: "A superuser opens Settings and toggles the Time Logging switch on. The setting is per-organisation." },
+              { action: "Log time on an item", how: "Hover a work item row and click the clock icon (🕐) to open the Time Log dialog, then enter duration, date, and an optional note." },
+              { action: "Duration format", how: 'Accepts "30m", "1h", "1h 30m", or a plain number (interpreted as minutes).' },
+              { action: "View logged time", how: "Open the Time Log dialog on any item to see all entries, their dates, durations, notes, and who logged them." },
+              { action: "Delete an entry", how: "Hover an entry you created and click the trash icon. Only the person who logged the entry can delete it." },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
+            ))}
+          </div>
+          <Tip>
+            Time entries are synced in real time — your teammates will see logged time as soon as it is saved.
+          </Tip>
         </div>
       ),
     },
