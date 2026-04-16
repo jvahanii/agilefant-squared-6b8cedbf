@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useTimeEntryStore } from "@/store/timeEntryStore";
+import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 
@@ -240,6 +242,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? "");
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const backlogTotalMinutes = useMemo(() => {
+    if (!timeLoggingVisible) return 0;
+    return Object.values(timeEntries)
+      .filter((e) => e.backlogId === backlogId && e.workItemId === null)
+      .reduce((sum, e) => sum + e.durationMinutes, 0);
+  }, [timeEntries, backlogId, timeLoggingVisible]);
+  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
 
   useEffect(() => {
     if (isEditing) {
@@ -387,6 +398,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           ><Plus className="w-3.5 h-3.5" /></button>
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+            >
+              {backlogTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
@@ -404,6 +427,22 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTimeLogDialog(true);
+              }}
+              title="Log time"
+            >
+              {backlogTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => {
@@ -475,6 +514,13 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             }, 50);
           }}
           onCancel={() => setIsAddingSibling(false)}
+        />
+      )}
+      {timeLoggingVisible && (
+        <TimeLogDialog
+          backlogId={backlogId}
+          open={showTimeLogDialog}
+          onOpenChange={setShowTimeLogDialog}
         />
       )}
     </div>

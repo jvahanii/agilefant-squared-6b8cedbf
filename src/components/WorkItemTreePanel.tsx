@@ -876,6 +876,15 @@ export function WorkItemTreePanel() {
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const backlogTotalMinutes = useMemo(() => {
+    if (!timeLoggingVisible || !selectedBacklogId) return 0;
+    return Object.values(timeEntries)
+      .filter((e) => e.backlogId === selectedBacklogId && e.workItemId === null)
+      .reduce((sum, e) => sum + e.durationMinutes, 0);
+  }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
+  const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
@@ -1032,6 +1041,22 @@ export function WorkItemTreePanel() {
           >
             <ClipboardPaste className="w-4 h-4" />
           </button>
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowBacklogTimeLogDialog(true);
+              }}
+              title="Log time for this backlog"
+            >
+              {backlogTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-4 h-4" />
+              )}
+            </button>
+          )}
           <button
             className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
@@ -1106,6 +1131,13 @@ export function WorkItemTreePanel() {
           )}
         </div>
       </WorkItemRootDropZone>
+      {timeLoggingVisible && selectedBacklogId && (
+        <TimeLogDialog
+          backlogId={selectedBacklogId}
+          open={showBacklogTimeLogDialog}
+          onOpenChange={setShowBacklogTimeLogDialog}
+        />
+      )}
     </div>
   );
 }
