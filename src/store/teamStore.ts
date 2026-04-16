@@ -31,6 +31,8 @@ interface TeamState {
   assignTeamToWorkItem: (workItemId: string, teamId: string, orgId: string) => Promise<void>;
   unassignTeamFromWorkItem: (workItemId: string, teamId: string) => Promise<void>;
   getTeamsForWorkItem: (workItemId: string) => string[];
+  applyRealtimeTeamAssignment: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeTeam: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
 export const useTeamStore = create<TeamState>()((set, get) => ({
@@ -190,4 +192,60 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
   },
 
   getTeamsForWorkItem: (workItemId: string) => get().workItemTeams[workItemId] ?? [],
+
+  applyRealtimeTeamAssignment: (eventType, row) => {
+    set((s) => {
+      const workItemId = row.work_item_id as string;
+      const teamId = row.team_id as string;
+
+      if (eventType === 'DELETE') {
+        const current = s.workItemTeams[workItemId];
+        if (!current?.includes(teamId)) return s;
+        return {
+          workItemTeams: {
+            ...s.workItemTeams,
+            [workItemId]: current.filter((id) => id !== teamId),
+          },
+        };
+      }
+
+      // INSERT or UPDATE
+      const current = s.workItemTeams[workItemId] ?? [];
+      if (current.includes(teamId)) return s;
+      return {
+        workItemTeams: {
+          ...s.workItemTeams,
+          [workItemId]: [...current, teamId],
+        },
+      };
+    });
+  },
+
+  applyRealtimeTeam: (eventType, row) => {
+    set((s) => {
+      const id = row.id as string;
+
+      if (eventType === 'DELETE') {
+        if (!s.teams.some((t) => t.id === id)) return s;
+        return {
+          teams: s.teams.filter((t) => t.id !== id),
+          teamMembers: s.teamMembers.filter((m) => m.team_id !== id),
+          workItemTeams: Object.fromEntries(
+            Object.entries(s.workItemTeams).map(([wid, tids]) => [wid, tids.filter((tid) => tid !== id)])
+          ),
+        };
+      }
+
+      const team: Team = {
+        id,
+        name: row.name as string,
+        organization_id: row.organization_id as string,
+      };
+      const existing = s.teams.find((t) => t.id === id);
+      if (existing) {
+        return { teams: s.teams.map((t) => (t.id === id ? team : t)) };
+      }
+      return { teams: [...s.teams, team] };
+    });
+  },
 }));
