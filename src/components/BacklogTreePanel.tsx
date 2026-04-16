@@ -7,7 +7,7 @@ import { ShareTreeDialog } from "./ShareTreeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { isPointsEnabled } from "@/hooks/usePointsEnabled";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 
@@ -239,7 +239,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? "");
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = isPointsEnabled(activeOrgId);
+  const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
 
   useEffect(() => {
     if (isEditing) {
