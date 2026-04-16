@@ -928,7 +928,7 @@ export function WorkItemTreePanel() {
       if (titles.length === 0) return;
       const parentId = selectedWorkItemIds.length === 1 ? selectedWorkItemIds[0] : null;
       const parentBacklogId =
-        parentId && workItems[parentId]?.backlogAssignments[selectedTreeId]
+        parentId && workItems[parentId]?.backlogAssignments?.[selectedTreeId]
           ? workItems[parentId].backlogAssignments[selectedTreeId]
           : selectedBacklogId;
       bulkAddWorkItems(titles, parentId, parentBacklogId, selectedTreeId);
