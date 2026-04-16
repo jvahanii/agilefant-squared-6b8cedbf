@@ -79,16 +79,33 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Agilefant²</strong> is a hierarchical work management tool designed for
-            teams that think in trees. Organise your work into nested backlogs, track item status, collaborate across
-            organisations, and move fast with keyboard-first interactions.
+            <strong className="text-foreground">Agilefant²</strong> is a free, simple and powerful tool for backlog and
+            work item management. It scales from the individual to the enterprise. Organise your work into nested
+            backlogs, track item status, collaborate across organisations, and move fast with keyboard-first
+            interactions.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { icon: <ListTree className="w-4 h-4 text-primary" />, title: "Backlog Trees", body: "Organise work into hierarchical backlog trees shown in the left panel." },
-              { icon: <Layers className="w-4 h-4 text-primary" />, title: "Work Items", body: "Create and manage work items within any backlog node in the right panel." },
-              { icon: <Keyboard className="w-4 h-4 text-primary" />, title: "Keyboard-first", body: "Almost every action has a keyboard shortcut. Press ? to see the list." },
-              { icon: <Users className="w-4 h-4 text-primary" />, title: "Team Collaboration", body: "Assign team members to items, share trees across organisations." },
+              {
+                icon: <ListTree className="w-4 h-4 text-primary" />,
+                title: "Backlog Trees",
+                body: "Organise work into hierarchical backlog trees shown in the left panel.",
+              },
+              {
+                icon: <Layers className="w-4 h-4 text-primary" />,
+                title: "Work Items",
+                body: "Create and manage work items within any backlog node in the right panel.",
+              },
+              {
+                icon: <Keyboard className="w-4 h-4 text-primary" />,
+                title: "Keyboard-first",
+                body: "Almost every action has a keyboard shortcut. Press ? to see the list.",
+              },
+              {
+                icon: <Users className="w-4 h-4 text-primary" />,
+                title: "Team Collaboration",
+                body: "Assign team members to items, share trees across organisations.",
+              },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
                 <div className="mt-0.5 shrink-0">{card.icon}</div>
@@ -100,9 +117,8 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            New here? Start by creating a <strong>backlog tree</strong> in the left panel, then add a
-            {" "}<strong>work item</strong> by selecting a backlog node and pressing{" "}
-            <KbdKey>Enter</KbdKey>.
+            New here? Start by creating a <strong>backlog tree</strong> in the left panel, then add a{" "}
+            <strong>work item</strong> by selecting a backlog node and pressing <KbdKey>Enter</KbdKey>.
           </Tip>
         </div>
       ),
@@ -120,9 +136,18 @@ function buildSections(): Section[] {
           <div className="space-y-2">
             {[
               { action: "Create a tree", how: 'Click the "+" button at the top of the left panel.' },
-              { action: "Add a backlog node", how: "Select an existing node and press Shift+Enter, or hover the node row and click the + icon." },
-              { action: "Rename a node", how: "Double-click the node name to edit it in-place. Tree headers can also be renamed by double-clicking their name." },
-              { action: "Select a backlog", how: "Click anywhere on a backlog row to select it and load its work items in the right panel." },
+              {
+                action: "Add a backlog node",
+                how: "Select an existing node and press Shift+Enter, or hover the node row and click the + icon.",
+              },
+              {
+                action: "Rename a node",
+                how: "Double-click the node name to edit it in-place. Tree headers can also be renamed by double-clicking their name.",
+              },
+              {
+                action: "Select a backlog",
+                how: "Click anywhere on a backlog row to select it and load its work items in the right panel.",
+              },
               { action: "Delete a node", how: "Select the node and press Delete / Backspace." },
               { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
               { action: "Expand / collapse", how: "Click the expand arrow or press → to open a branch." },
@@ -131,8 +156,8 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            You can have multiple top-level backlog trees. Use them to separate unrelated workstreams
-            (e.g. "Product", "Engineering", "Marketing").
+            You can have multiple top-level backlog trees. Use them to separate unrelated workstreams (e.g. "Product",
+            "Engineering", "Marketing").
           </Tip>
         </div>
       ),
@@ -144,22 +169,43 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            The <strong className="text-foreground">right panel</strong> shows work items for the selected backlog. Items
-            can be nested into child items for fine-grained breakdown.
+            The <strong className="text-foreground">right panel</strong> shows work items for the selected backlog.
+            Items can be nested into child items for fine-grained breakdown.
           </p>
           <div className="space-y-2">
             {[
-              { action: "New root item", how: "Select a backlog and press Enter, or click the + button in the panel header." },
-              { action: "New child item", how: "Select a parent item and press Shift+Enter, or click the + icon on the item row." },
+              {
+                action: "New root item",
+                how: "Select a backlog and press Enter, or click the + button in the panel header.",
+              },
+              {
+                action: "New child item",
+                how: "Select a parent item and press Shift+Enter, or click the + icon on the item row.",
+              },
               { action: "Select an item", how: "Click anywhere on the item row to select it." },
               { action: "Rename an item", how: "Double-click the item title to edit it directly in-place." },
-              { action: "Toggle done", how: "Double-click (desktop) or double-tap (mobile) the empty space on an item row — anywhere that is not the title text — to toggle its status to Done." },
-              { action: "Delete item(s)", how: "Select item(s) and press Delete or Backspace, or click the trash icon on the row." },
-              { action: "Multi-select", how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items." },
+              {
+                action: "Toggle done",
+                how: "Double-click (desktop) or double-tap (mobile) the empty space on an item row — anywhere that is not the title text — to toggle its status to Done.",
+              },
+              {
+                action: "Delete item(s)",
+                how: "Select item(s) and press Delete or Backspace, or click the trash icon on the row.",
+              },
+              {
+                action: "Multi-select",
+                how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items.",
+              },
               { action: "Set story points", how: "Click the story-points value on the item row." },
-              { action: "Paste items", how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add." },
+              {
+                action: "Paste items",
+                how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add.",
+              },
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
-              { action: "Set recurring", how: "Click the settings icon on the item row to open respawn settings and configure the schedule." },
+              {
+                action: "Set recurring",
+                how: "Click the settings icon on the item row to open respawn settings and configure the schedule.",
+              },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
@@ -168,8 +214,14 @@ function buildSections(): Section[] {
             <p className="text-sm font-medium mb-2">Item Statuses</p>
             <div className="flex flex-wrap gap-2">
               <StatusBadge color="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" label="Not Started" />
-              <StatusBadge color="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" label="In Progress" />
-              <StatusBadge color="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" label="Pending" />
+              <StatusBadge
+                color="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                label="In Progress"
+              />
+              <StatusBadge
+                color="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                label="Pending"
+              />
               <StatusBadge color="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" label="Blocked" />
               <StatusBadge color="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" label="Done" />
             </div>
@@ -199,7 +251,9 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["Esc"]} description="Deselect all items" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Creating & Deleting</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Creating & Deleting
+            </p>
             <ShortcutRow keys={["Enter"]} description="New root work item" />
             <ShortcutRow keys={["Shift", "Enter"]} description="New child item under selection" />
             <ShortcutRow keys={["Del / Bksp"]} description="Delete selected item(s)" />
@@ -265,9 +319,8 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            On mobile, press and hold an item briefly to start dragging it. Long-press any item to move it
-            to the top of its backlog. Swipe left to deselect, swipe
-            right to expand the selected branch.
+            On mobile, press and hold an item briefly to start dragging it. Long-press any item to move it to the top of
+            its backlog. Swipe left to deselect, swipe right to expand the selected branch.
           </Tip>
         </div>
       ),
@@ -284,18 +337,22 @@ function buildSections(): Section[] {
           </p>
           <div className="space-y-2">
             {[
-              { action: "Switch organisation", how: "Click the organisation name next to the logo to open the switcher." },
+              {
+                action: "Switch organisation",
+                how: "Click the organisation name next to the logo to open the switcher.",
+              },
               { action: "Create organisation", how: 'Open the org switcher and choose "New Organisation".' },
-              { action: "Invite team members", how: 'Go to Settings → Team and use the invite field.' },
-              { action: "Assign item to member", how: "Click the avatar slot on a work item row to pick a team member." },
+              { action: "Invite team members", how: "Go to Settings → Team and use the invite field." },
+              {
+                action: "Assign item to member",
+                how: "Click the avatar slot on a work item row to pick a team member.",
+              },
               { action: "Manage roles", how: "Owners can manage member roles from the Team Settings page." },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
             ))}
           </div>
-          <Tip>
-            Team members must accept an invitation before they appear as assignable in your workspace.
-          </Tip>
+          <Tip>Team members must accept an invitation before they appear as assignable in your workspace.</Tip>
         </div>
       ),
     },
@@ -311,8 +368,14 @@ function buildSections(): Section[] {
           </p>
           <div className="space-y-2">
             {[
-              { action: "Share a tree", how: "Hover the tree header in the left panel to reveal the share icon (↗), then enter the target organisation's ID." },
-              { action: "Mirror work items", how: "When drag-dropping across trees, choose Mirror to keep the item visible in both views." },
+              {
+                action: "Share a tree",
+                how: "Hover the tree header in the left panel to reveal the share icon (↗), then enter the target organisation's ID.",
+              },
+              {
+                action: "Mirror work items",
+                how: "When drag-dropping across trees, choose Mirror to keep the item visible in both views.",
+              },
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
@@ -323,8 +386,8 @@ function buildSections(): Section[] {
             <div>
               <p className="font-medium">Hyperlinks on work items</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Attach external URLs (tickets, docs, PRs) to any work item with the{" "}
-                <strong>H</strong> shortcut or the link icon on the row. Links open in a new tab.
+                Attach external URLs (tickets, docs, PRs) to any work item with the <strong>H</strong> shortcut or the
+                link icon on the row. Links open in a new tab.
               </p>
             </div>
           </div>
@@ -339,22 +402,36 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Time logging</strong> lets team members record time spent on work items.
-            The feature is off by default and must be enabled by a superuser in <strong className="text-foreground">Settings → Time Logging</strong>.
+            The feature is off by default and must be enabled by a superuser in{" "}
+            <strong className="text-foreground">Settings → Time Logging</strong>.
           </p>
           <div className="space-y-2">
             {[
-              { action: "Enable time logging", how: "A superuser opens Settings and toggles the Time Logging switch on. The setting is per-organisation." },
-              { action: "Log time on an item", how: "Hover a work item row and click the clock icon (🕐) to open the Time Log dialog, then enter duration, date, and an optional note." },
-              { action: "Duration format", how: 'Accepts "30m", "1h", "1h 30m", or a plain number (interpreted as minutes).' },
-              { action: "View logged time", how: "Open the Time Log dialog on any item to see all entries, their dates, durations, notes, and who logged them." },
-              { action: "Delete an entry", how: "Hover an entry you created and click the trash icon. Only the person who logged the entry can delete it." },
+              {
+                action: "Enable time logging",
+                how: "A superuser opens Settings and toggles the Time Logging switch on. The setting is per-organisation.",
+              },
+              {
+                action: "Log time on an item",
+                how: "Hover a work item row and click the clock icon (🕐) to open the Time Log dialog, then enter duration, date, and an optional note.",
+              },
+              {
+                action: "Duration format",
+                how: 'Accepts "30m", "1h", "1h 30m", or a plain number (interpreted as minutes).',
+              },
+              {
+                action: "View logged time",
+                how: "Open the Time Log dialog on any item to see all entries, their dates, durations, notes, and who logged them.",
+              },
+              {
+                action: "Delete an entry",
+                how: "Hover an entry you created and click the trash icon. Only the person who logged the entry can delete it.",
+              },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
             ))}
           </div>
-          <Tip>
-            Time entries are synced in real time — your teammates will see logged time as soon as it is saved.
-          </Tip>
+          <Tip>Time entries are synced in real time — your teammates will see logged time as soon as it is saved.</Tip>
         </div>
       ),
     },
@@ -472,10 +549,7 @@ export function UserGuideContent() {
 export function UserGuideDialog({ open, onOpenChange }: UserGuideDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0" onClick={(e) => e.stopPropagation()}>
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <BookOpen className="w-4 h-4 text-primary" />
