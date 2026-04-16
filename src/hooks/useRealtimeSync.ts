@@ -141,6 +141,32 @@ export function useRealtimeSync() {
             applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_team_assignments',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeTeamAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'teams',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
         .subscribe();
       channels.push(channel);
     }
