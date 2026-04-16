@@ -575,6 +575,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_shared_tree_with_org: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_member_of: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
