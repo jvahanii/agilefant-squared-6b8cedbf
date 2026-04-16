@@ -43,8 +43,8 @@ const KbdKey = ({ children }: { children: React.ReactNode }) => (
 
 const ShortcutRow = ({ keys, description }: { keys: string[]; description: string }) => (
   <div className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-    <span className="text-sm text-muted-foreground">{description}</span>
-    <div className="flex items-center gap-1 ml-4 shrink-0">
+    <span className="text-sm text-muted-foreground mr-2">{description}</span>
+    <div className="flex items-center gap-1 shrink-0">
       {keys.map((k, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <span className="text-muted-foreground/50 text-xs">+</span>}
@@ -52,6 +52,13 @@ const ShortcutRow = ({ keys, description }: { keys: string[]; description: strin
         </span>
       ))}
     </div>
+  </div>
+);
+
+const ActionRow = ({ action, how, labelWidth = "sm:w-36" }: { action: string; how: string; labelWidth?: string }) => (
+  <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
+    <span className={`font-medium text-foreground sm:shrink-0 ${labelWidth}`}>{action}</span>
+    <span className="text-muted-foreground">{how}</span>
   </div>
 );
 
@@ -119,10 +126,7 @@ function buildSections(): Section[] {
               { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
               { action: "Expand / collapse", how: "Click the expand arrow or press → to open a branch." },
             ].map((row) => (
-              <div key={row.action} className="flex gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
-                <span className="font-medium text-foreground shrink-0 w-36">{row.action}</span>
-                <span className="text-muted-foreground">{row.how}</span>
-              </div>
+              <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
           </div>
           <Tip>
@@ -156,10 +160,7 @@ function buildSections(): Section[] {
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
               { action: "Set recurring", how: "Click the settings icon on the item row to open respawn settings and configure the schedule." },
             ].map((row) => (
-              <div key={row.action} className="flex gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
-                <span className="font-medium text-foreground shrink-0 w-36">{row.action}</span>
-                <span className="text-muted-foreground">{row.how}</span>
-              </div>
+              <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
           </div>
           <div>
@@ -288,10 +289,7 @@ function buildSections(): Section[] {
               { action: "Assign item to member", how: "Click the avatar slot on a work item row to pick a team member." },
               { action: "Manage roles", how: "Owners can manage member roles from the Team Settings page." },
             ].map((row) => (
-              <div key={row.action} className="flex gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
-                <span className="font-medium text-foreground shrink-0 w-44">{row.action}</span>
-                <span className="text-muted-foreground">{row.how}</span>
-              </div>
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
             ))}
           </div>
           <Tip>
@@ -316,10 +314,7 @@ function buildSections(): Section[] {
               { action: "Mirror work items", how: "When drag-dropping across trees, choose Mirror to keep the item visible in both views." },
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
             ].map((row) => (
-              <div key={row.action} className="flex gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
-                <span className="font-medium text-foreground shrink-0 w-36">{row.action}</span>
-                <span className="text-muted-foreground">{row.how}</span>
-              </div>
+              <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
           </div>
           <div className="flex gap-3 p-3 rounded-lg border bg-card text-sm">
@@ -397,7 +392,7 @@ export function UserGuideContent() {
   const active = sections.find((s) => s.id === activeSection) ?? sections[0];
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-col sm:flex-row flex-1 min-h-0">
       {/* Sidebar nav */}
       <nav className="hidden sm:flex flex-col w-44 shrink-0 border-r py-3 gap-0.5 px-2">
         {sections.map((section) => (
@@ -417,7 +412,7 @@ export function UserGuideContent() {
       </nav>
 
       {/* Mobile: horizontal pill tabs */}
-      <div className="sm:hidden flex overflow-x-auto gap-1 px-3 py-2 border-b shrink-0 w-full">
+      <div className="sm:hidden flex overflow-x-auto gap-1 px-3 py-2 border-b shrink-0">
         {sections.map((section) => (
           <button
             key={section.id}
@@ -435,7 +430,7 @@ export function UserGuideContent() {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-w-0 overflow-y-auto px-6 py-5">
+      <div className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
         <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
           {active.icon}
           {active.label}
