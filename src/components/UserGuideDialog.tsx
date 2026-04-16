@@ -79,9 +79,10 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Agilefant²</strong> is free, simple and powerful, scaling from the
-            individual one man team to the enterprise. Organise your work into nested backlogs, track item status,
-            collaborate across organisations, and move fast with keyboard-first interactions.
+            <strong className="text-foreground">Agilefant²</strong> is a free, simple and powerful tool for backlog and
+            work item management. It scales from the individual to the enterprise. Organise your work into nested
+            backlogs, track item status, collaborate across organisations, and move fast with keyboard-first
+            interactions.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
