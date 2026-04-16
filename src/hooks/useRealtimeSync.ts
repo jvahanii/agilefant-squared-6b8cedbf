@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
+import { useTeamStore } from '@/store/teamStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -30,6 +31,8 @@ export function useRealtimeSync() {
   const applyRealtimeBacklogTree = useAppStore((s) => s.applyRealtimeBacklogTree);
   const applyRealtimeHyperlink = useAppStore((s) => s.applyRealtimeHyperlink);
   const applyRealtimeTimeEntry = useTimeEntryStore((s) => s.applyRealtimeTimeEntry);
+  const applyRealtimeTeamAssignment = useTeamStore((s) => s.applyRealtimeTeamAssignment);
+  const applyRealtimeTeam = useTeamStore((s) => s.applyRealtimeTeam);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
