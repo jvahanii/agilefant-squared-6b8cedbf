@@ -18,8 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
-import { isPointsEnabled } from "@/hooks/usePointsEnabled";
-import { isTimeLoggingEnabled } from "@/hooks/useTimeLoggingEnabled";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -177,8 +176,9 @@ function WorkItemNode({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = isPointsEnabled(activeOrgId);
-  const timeLoggingVisible = isTimeLoggingEnabled(activeOrgId);
+  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
+  const pointsVisible = orgSettings.pointsEnabled;
+  const timeLoggingVisible = orgSettings.timeLoggingEnabled;
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
+import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -33,6 +34,7 @@ export function useRealtimeSync() {
   const applyRealtimeTimeEntry = useTimeEntryStore((s) => s.applyRealtimeTimeEntry);
   const applyRealtimeTeamAssignment = useTeamStore((s) => s.applyRealtimeTeamAssignment);
   const applyRealtimeTeam = useTeamStore((s) => s.applyRealtimeTeam);
+  const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -277,6 +279,18 @@ export function useRealtimeSync() {
         (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
           applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'organization_settings',
+          filter: `organization_id=eq.${activeOrgId}`,
+        },
+        (payload) => {
+          applyRealtimeSettings(payload as any);
         },
       )
       .subscribe();

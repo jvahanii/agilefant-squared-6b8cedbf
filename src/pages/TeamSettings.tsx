@@ -14,8 +14,7 @@ import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
-import { isPointsEnabled as isPointsEnabledSetting, setPointsEnabled as setPointsEnabledSetting } from "@/hooks/usePointsEnabled";
-import { isTimeLoggingEnabled as isTimeLoggingEnabledSetting, setTimeLoggingEnabled as setTimeLoggingEnabledSetting } from "@/hooks/useTimeLoggingEnabled";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import {
@@ -60,11 +59,10 @@ export default function TeamSettings() {
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
   const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
-  // Points state
-  const [pointsEnabled, setPointsEnabled] = useState(() => isPointsEnabledSetting(activeOrgId));
-
-  // Time logging state
-  const [timeLoggingEnabled, setTimeLoggingEnabled] = useState(() => isTimeLoggingEnabledSetting(activeOrgId));
+  // Org settings from backend
+  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false });
+  const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
+  const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -642,11 +640,10 @@ export default function TeamSettings() {
                 </p>
               </div>
               <Switch
-                checked={pointsEnabled}
+                checked={orgSettings.pointsEnabled}
                 onCheckedChange={(checked) => {
                   if (activeOrgId) {
                     setPointsEnabledSetting(activeOrgId, checked);
-                    setPointsEnabled(checked);
                     toast({ title: checked ? "Points enabled" : "Points disabled" });
                   }
                 }}
@@ -672,11 +669,10 @@ export default function TeamSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={timeLoggingEnabled}
+                  checked={orgSettings.timeLoggingEnabled}
                   onCheckedChange={(checked) => {
                     if (activeOrgId) {
                       setTimeLoggingEnabledSetting(activeOrgId, checked);
-                      setTimeLoggingEnabled(checked);
                       toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
                     }
                   }}

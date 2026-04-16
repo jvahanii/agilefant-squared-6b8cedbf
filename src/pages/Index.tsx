@@ -8,7 +8,7 @@ import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { isTimeLoggingEnabled } from '@/hooks/useTimeLoggingEnabled';
+import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -20,6 +20,7 @@ const Index = () => {
   const loadWorkItemTeams = useTeamStore(s => s.loadWorkItemTeams);
   const loadTimeEntries = useTimeEntryStore(s => s.loadTimeEntries);
   const { user } = useAuth();
+  const loadSettings = useOrgSettingsStore(s => s.loadSettings);
 
   useEffect(() => {
     if (user) {
@@ -33,9 +34,11 @@ const Index = () => {
       loadData();
       loadTeams(activeOrgId);
       loadWorkItemTeams(activeOrgId);
-      if (isTimeLoggingEnabled(activeOrgId)) {
-        loadTimeEntries(activeOrgId);
-      }
+      loadSettings(activeOrgId).then(() => {
+        if (isTimeLoggingEnabled(activeOrgId)) {
+          loadTimeEntries(activeOrgId);
+        }
+      });
     }
   }, [activeOrgId]);
 
