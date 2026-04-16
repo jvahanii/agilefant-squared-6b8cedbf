@@ -13,6 +13,7 @@ import {
 import { useState, useCallback, useEffect, useRef } from "react";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
+import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -254,6 +255,14 @@ function AppLayoutInner() {
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent("shortcut:edit-hyperlinks"));
+          }
+          break;
+        }
+        case "l": {
+          const orgId = useOrgStore.getState().activeOrgId;
+          if (state.selectedWorkItemIds.length > 0 && isTimeLoggingEnabled(orgId)) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("shortcut:log-time"));
           }
           break;
         }
@@ -1298,6 +1307,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["N"], description: "Set status: Not Started" },
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
+    { keys: ["L"], description: "Log spent time" },
   ];
 
   return (

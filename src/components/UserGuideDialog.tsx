@@ -277,6 +277,7 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["Ctrl", "Y"]} description="Redo (also Ctrl+Shift+Z)" />
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
+            <ShortcutRow keys={["L"]} description="Log spent time" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
           </div>
         </div>
