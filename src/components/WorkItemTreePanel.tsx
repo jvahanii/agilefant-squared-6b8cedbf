@@ -879,6 +879,7 @@ export function WorkItemTreePanel() {
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
+  const toggleWorkItemExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
@@ -932,7 +933,15 @@ export function WorkItemTreePanel() {
         .map((t) => t.trim())
         .filter(Boolean);
       if (titles.length === 0) return;
-      bulkAddWorkItems(titles, null, selectedBacklogId, selectedTreeId);
+      const parentId = selectedWorkItemIds.length === 1 ? selectedWorkItemIds[0] : null;
+      const parentBacklogId =
+        parentId && workItems[parentId]?.backlogAssignments?.[selectedTreeId]
+          ? workItems[parentId].backlogAssignments[selectedTreeId]
+          : selectedBacklogId;
+      bulkAddWorkItems(titles, parentId, parentBacklogId, selectedTreeId);
+      if (parentId && !expandedWorkItems.has(parentId)) {
+        toggleWorkItemExpand(parentId);
+      }
     } catch (err) {
       console.error("Failed to read clipboard:", err);
     }
