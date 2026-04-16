@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Clock, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,7 +31,8 @@ export function formatDuration(minutes: number): string {
 }
 
 export function parseDuration(input: string): number | null {
-  const trimmed = input.trim();
+  // Normalise comma decimal separator (e.g. "1,5" → "1.5")
+  const trimmed = input.trim().replace(/,/g, ".");
   if (!trimmed) return null;
 
   // Try "Xh Ym" or "XhYm" format (with optional m/min suffix)
@@ -52,6 +53,8 @@ export function parseDuration(input: string): number | null {
 
   return null;
 }
+
+const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
 
 export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
@@ -117,15 +120,26 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
       setDateInput(new Date().toISOString().slice(0, 10));
       return;
     }
-    // Propose a duration based on time since the user's last log entry
+    // Determine the reference time: the later of the user's last log entry and any
+    // stored clock-reset timestamp.
+    const clockResetStr = user?.id ? localStorage.getItem(CLOCK_RESET_KEY(user.id)) : null;
+    const clockResetTime = clockResetStr ? new Date(clockResetStr).getTime() : 0;
+
     const allEntries = Object.values(timeEntries);
     const lastUserEntry = allEntries
       .filter((e) => e.userId === user?.id)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-    if (lastUserEntry) {
-      const diffMinutes = Math.round((Date.now() - new Date(lastUserEntry.createdAt).getTime()) / 60000);
-      if (diffMinutes > 0) {
+
+    const lastEntryTime = lastUserEntry ? new Date(lastUserEntry.createdAt).getTime() : 0;
+    const refTime = Math.max(lastEntryTime, clockResetTime);
+
+    if (refTime > 0) {
+      const diffMinutes = Math.round((Date.now() - refTime) / 60000);
+      // Only propose a non-zero default when elapsed time is within 8 hours.
+      if (diffMinutes > 0 && diffMinutes <= 8 * 60) {
         setDurationInput(formatDuration(diffMinutes));
+      } else {
+        setDurationInput("");
       }
     }
     if (itemEntries.length === 0) {
@@ -160,6 +174,13 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
   };
 
   const canDelete = (entry: TimeEntry) => entry.userId === user?.id;
+
+  const handleResetClock = () => {
+    if (user?.id) {
+      localStorage.setItem(CLOCK_RESET_KEY(user.id), new Date().toISOString());
+    }
+    setDurationInput("");
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -232,7 +253,7 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
                   ref={durationRef}
                   value={durationInput}
                   onChange={(e) => setDurationInput(e.target.value)}
-                  placeholder='e.g. "1.5" or "1h 30m"'
+                  placeholder='e.g. "1.5", "1,5" or "1h 30m"'
                   className="h-8 text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAdd();
@@ -267,24 +288,44 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
                 }}
               />
             </div>
-            <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>
-                Cancel
+            <div className="flex justify-between gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetClock}
+                title="Reset clock – clears elapsed time and sets default to zero"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset clock
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!durationInput.trim()}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Log Time
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleAdd} disabled={!durationInput.trim()}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Log Time
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full mt-2"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Log time
-          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Log time
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetClock}
+              title="Reset clock – clears elapsed time and sets default to zero"
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reset clock
+            </Button>
+          </div>
         )}
       </DialogContent>
     </Dialog>
