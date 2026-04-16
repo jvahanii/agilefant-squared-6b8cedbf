@@ -61,25 +61,96 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
 
   loadTimeEntries: async (organizationId) => {
     set({ isLoading: true });
+
+    // Run own-org entries fetch, incoming-share lookup, and own-trees lookup in parallel.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
+    const ownEntriesPromise = (supabase as any)
       .from('time_entries')
       .select('*')
       .eq('organization_id', organizationId)
       .order('spent_date', { ascending: false })
       .limit(5000);
 
-    if (error) {
-      console.error('Failed to load time entries', error);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const incomingSharesPromise = (supabase as any)
+      .from('backlog_tree_shares')
+      .select('tree_id')
+      .eq('organization_id', organizationId);
+
+    const ownTreesPromise = supabase
+      .from('backlog_trees')
+      .select('id')
+      .eq('organization_id', organizationId);
+
+    const [ownEntriesRes, incomingSharesRes, ownTreesRes] = await Promise.all([
+      ownEntriesPromise,
+      incomingSharesPromise,
+      ownTreesPromise,
+    ]);
+
+    if (ownEntriesRes.error) {
+      console.error('Failed to load time entries', ownEntriesRes.error);
       set({ isLoading: false });
       return;
     }
 
     const entries: Record<string, TimeEntry> = {};
-    for (const row of (data ?? []) as Record<string, unknown>[]) {
+    for (const row of (ownEntriesRes.data ?? []) as Record<string, unknown>[]) {
       const entry = rowToTimeEntry(row);
       entries[entry.id] = entry;
     }
+
+    // Collect partner org IDs from both incoming and outgoing tree shares.
+    const partnerOrgIds = new Set<string>();
+
+    // Incoming partners: orgs that own trees shared TO this org.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const incomingTreeIds = ((incomingSharesRes.data ?? []) as any[]).map((s: any) => s.tree_id as string);
+    if (incomingTreeIds.length > 0) {
+      const { data: sharedTreesData } = await supabase
+        .from('backlog_trees')
+        .select('organization_id')
+        .in('id', incomingTreeIds);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const t of (sharedTreesData ?? []) as any[]) {
+        if (t.organization_id !== organizationId) partnerOrgIds.add(t.organization_id);
+      }
+    }
+
+    // Outgoing partners: orgs that have been granted access to our own trees.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ownTreeIds = ((ownTreesRes.data ?? []) as any[]).map((t: any) => t.id as string);
+    if (ownTreeIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: outgoingSharesData } = await (supabase as any)
+        .from('backlog_tree_shares')
+        .select('organization_id')
+        .in('tree_id', ownTreeIds);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const s of (outgoingSharesData ?? []) as any[]) {
+        if (s.organization_id !== organizationId) partnerOrgIds.add(s.organization_id);
+      }
+    }
+
+    // Load time entries from each partner org and merge them in.
+    if (partnerOrgIds.size > 0) {
+      await Promise.all(
+        [...partnerOrgIds].map(async (partnerOrgId) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: partnerData } = await (supabase as any)
+            .from('time_entries')
+            .select('*')
+            .eq('organization_id', partnerOrgId)
+            .order('spent_date', { ascending: false })
+            .limit(5000);
+          for (const row of (partnerData ?? []) as Record<string, unknown>[]) {
+            const entry = rowToTimeEntry(row);
+            entries[entry.id] = entry;
+          }
+        }),
+      );
+    }
+
     set({ timeEntries: entries, isLoading: false });
   },
 
