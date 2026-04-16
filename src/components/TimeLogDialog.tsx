@@ -144,22 +144,20 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
         setDurationInput("");
       }
     }
-    if (itemEntries.length === 0) {
-      setIsAdding(true);
-    }
+    setIsAdding(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!item && !backlog) return null;
   const displayTitle = item?.title ?? backlog?.name ?? "";
 
-  const handleAdd = async () => {
+  const handleAdd = async (): Promise<boolean> => {
     const minutes = parseDuration(durationInput);
     if (!minutes || minutes <= 0) {
       toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
-      return;
+      return false;
     }
-    if (!activeOrgId || !user?.id) return;
+    if (!activeOrgId || !user?.id) return false;
 
     await addTimeEntry({
       organizationId: activeOrgId,
@@ -175,6 +173,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
     setNoteInput("");
     setDateInput(new Date().toISOString().slice(0, 10));
     setIsAdding(false);
+    return true;
   };
 
   const canDelete = (entry: TimeEntry) => entry.userId === user?.id;
@@ -259,8 +258,8 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
                   onChange={(e) => setDurationInput(e.target.value)}
                   placeholder='e.g. "1.5", "1,5" or "1h 30m"'
                   className="h-8 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && await handleAdd()) onOpenChange(false);
                     if (e.key === "Escape") setIsAdding(false);
                   }}
                 />
@@ -272,8 +271,8 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
                   value={dateInput}
                   onChange={(e) => setDateInput(e.target.value)}
                   className="h-8 text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && await handleAdd()) onOpenChange(false);
                     if (e.key === "Escape") setIsAdding(false);
                   }}
                 />
@@ -286,8 +285,8 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
                 onChange={(e) => setNoteInput(e.target.value)}
                 placeholder="What did you work on?"
                 className="h-8 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAdd();
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter" && await handleAdd()) onOpenChange(false);
                   if (e.key === "Escape") setIsAdding(false);
                 }}
               />
