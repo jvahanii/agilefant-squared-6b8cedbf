@@ -148,6 +148,35 @@ export function useRealtimeSync() {
           {
             event: '*',
             schema: 'public',
+            table: 'time_entries',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            if (payload.eventType !== 'DELETE') {
+              // Only apply if the referenced work item or backlog is already in our
+              // store. The store is populated exclusively from accessible trees, so
+              // presence here is a sufficient proof of access – no extra tree check
+              // is needed.
+              const workItemId = row.work_item_id as string | null;
+              const backlogId = row.backlog_id as string | null;
+              const state = useAppStore.getState();
+              if (workItemId) {
+                if (!state.workItems[workItemId]) return;
+              } else if (backlogId) {
+                if (!state.backlogs[backlogId]) return;
+              } else {
+                return;
+              }
+            }
+            applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
             table: 'work_item_team_assignments',
             filter: `organization_id=eq.${orgId}`,
           },

@@ -44,6 +44,7 @@ const Index = () => {
 
   // Reload data whenever share membership changes so both the tree owner and
   // the newly-shared org see each other's trees and contents immediately.
+  // Also reload time entries so partner-org logged time becomes visible.
   useEffect(() => {
     if (!activeOrgId) return;
 
@@ -52,12 +53,18 @@ const Index = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'backlog_tree_shares' },
-        () => { loadData(); }
+        () => {
+          loadData().then(() => {
+            if (isTimeLoggingEnabled(activeOrgId)) {
+              loadTimeEntries(activeOrgId);
+            }
+          });
+        }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  // loadData is a stable Zustand action reference; omitting it is intentional.
+  // loadData and loadTimeEntries are stable Zustand action references; omitting them is intentional.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
