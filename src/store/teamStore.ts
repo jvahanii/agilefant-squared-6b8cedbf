@@ -41,8 +41,46 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
 
   loadTeams: async (orgId: string) => {
     set({ loading: true });
+    // Find partner org IDs via shared trees (both directions)
+    const [ownedShares, receivedShares] = await Promise.all([
+      supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id'),
+      supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id'),
+    ]);
+    // Trees owned by orgId that are shared → partner is the share's organization_id
+    // Trees shared WITH orgId → partner is the tree's owner org
+    const partnerOrgIds = new Set<string>();
+    // Get trees owned by orgId
+    const ownedTreesRes = await supabase
+      .from('backlog_trees' as any)
+      .select('id, organization_id')
+      .eq('organization_id', orgId);
+    const ownedTreeIds = new Set(((ownedTreesRes.data ?? []) as any[]).map((t: any) => t.id));
+    for (const share of ((ownedShares.data ?? []) as any[])) {
+      if (ownedTreeIds.has(share.tree_id) && share.organization_id !== orgId) {
+        partnerOrgIds.add(share.organization_id);
+      }
+    }
+    // Shares where orgId is the recipient → tree owner is the partner
+    for (const share of ((receivedShares.data ?? []) as any[])) {
+      if (share.organization_id === orgId) {
+        // Find the tree's owner org
+        const tree = ((ownedTreesRes.data ?? []) as any[]).find((t: any) => t.id === share.tree_id);
+        if (!tree) {
+          // Tree not owned by us, fetch its org
+          const { data } = await supabase
+            .from('backlog_trees' as any)
+            .select('organization_id')
+            .eq('id', share.tree_id)
+            .single();
+          if (data && (data as any).organization_id !== orgId) {
+            partnerOrgIds.add((data as any).organization_id);
+          }
+        }
+      }
+    }
+    const allOrgIds = [orgId, ...Array.from(partnerOrgIds)];
     const [teamsRes, membersRes] = await Promise.all([
-      supabase.from('teams' as any).select('*').eq('organization_id', orgId),
+      supabase.from('teams' as any).select('*').in('organization_id', allOrgIds),
       supabase.from('team_members' as any).select('*'),
     ]);
     const teams = ((teamsRes.data ?? []) as any[]).map((t: any) => ({
@@ -50,7 +88,6 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
       name: t.name,
       organization_id: t.organization_id,
     }));
-    // Filter members to teams in this org
     const teamIds = new Set(teams.map(t => t.id));
     const teamMembers = ((membersRes.data ?? []) as any[])
       .filter((m: any) => teamIds.has(m.team_id))
@@ -62,11 +99,11 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
     set({ teams, teamMembers, loading: false });
   },
 
-  loadWorkItemTeams: async (orgId: string) => {
+  loadWorkItemTeams: async (_orgId: string) => {
+    // RLS handles visibility; don't filter by org so shared items' assignments are included
     const { data } = await supabase
       .from('work_item_team_assignments' as any)
-      .select('work_item_id, team_id')
-      .eq('organization_id', orgId);
+      .select('work_item_id, team_id');
     const map: Record<string, string[]> = {};
     for (const row of (data ?? []) as any[]) {
       const wid = row.work_item_id as string;
