@@ -1,7 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2 } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -9,6 +9,7 @@ import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { TimeLogDialog } from "./TimeLogDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
 import { isPointsEnabled } from "@/hooks/usePointsEnabled";
+import { isTimeLoggingEnabled } from "@/hooks/useTimeLoggingEnabled";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -176,12 +178,14 @@ function WorkItemNode({
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = isPointsEnabled(activeOrgId);
+  const timeLoggingVisible = isTimeLoggingEnabled(activeOrgId);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
+  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -632,6 +636,18 @@ function WorkItemNode({
               >
                 <Link2 className="w-3.5 h-3.5" />
               </button>
+              {timeLoggingVisible && (
+                <button
+                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTimeLogDialog(true);
+                  }}
+                  title="Log time"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 onClick={(e) => {
@@ -768,6 +784,13 @@ function WorkItemNode({
         open={showHyperlinksDialog}
         onOpenChange={setShowHyperlinksDialog}
       />
+      {timeLoggingVisible && (
+        <TimeLogDialog
+          workItemId={workItemId}
+          open={showTimeLogDialog}
+          onOpenChange={setShowTimeLogDialog}
+        />
+      )}
     </>
   );
 }

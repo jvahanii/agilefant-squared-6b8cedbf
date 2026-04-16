@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { isPointsEnabled as isPointsEnabledSetting, setPointsEnabled as setPointsEnabledSetting } from "@/hooks/usePointsEnabled";
+import { isTimeLoggingEnabled as isTimeLoggingEnabledSetting, setTimeLoggingEnabled as setTimeLoggingEnabledSetting } from "@/hooks/useTimeLoggingEnabled";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import {
@@ -61,6 +62,9 @@ export default function TeamSettings() {
 
   // Points state
   const [pointsEnabled, setPointsEnabled] = useState(() => isPointsEnabledSetting(activeOrgId));
+
+  // Time logging state
+  const [timeLoggingEnabled, setTimeLoggingEnabled] = useState(() => isTimeLoggingEnabledSetting(activeOrgId));
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -650,6 +654,37 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Time Logging — Superuser only */}
+        {isSuperuser && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Time Logging
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Enable time logging</p>
+                  <p className="text-xs text-muted-foreground">
+                    Allow members to log time spent on work items. Only superusers can toggle this setting.
+                  </p>
+                </div>
+                <Switch
+                  checked={timeLoggingEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setTimeLoggingEnabledSetting(activeOrgId, checked);
+                      setTimeLoggingEnabled(checked);
+                      toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
