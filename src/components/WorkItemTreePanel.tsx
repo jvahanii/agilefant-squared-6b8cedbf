@@ -9,7 +9,8 @@ import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
-import { TimeLogDialog } from "./TimeLogDialog";
+import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
@@ -179,6 +180,13 @@ function WorkItemNode({
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const itemTotalMinutes = useMemo(() => {
+    if (!timeLoggingVisible) return 0;
+    return Object.values(timeEntries)
+      .filter((e) => e.workItemId === workItemId)
+      .reduce((sum, e) => sum + e.durationMinutes, 0);
+  }, [timeEntries, workItemId, timeLoggingVisible]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -638,14 +646,18 @@ function WorkItemNode({
               </button>
               {timeLoggingVisible && (
                 <button
-                  className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowTimeLogDialog(true);
                   }}
                   title="Log time"
                 >
-                  <Clock className="w-3.5 h-3.5" />
+                  {itemTotalMinutes > 0 ? (
+                    <span className="text-xs font-medium tabular-nums">{formatDuration(itemTotalMinutes)}</span>
+                  ) : (
+                    <Clock className="w-3.5 h-3.5" />
+                  )}
                 </button>
               )}
               <button
