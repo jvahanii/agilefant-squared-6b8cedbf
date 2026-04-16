@@ -1025,27 +1025,31 @@ function AppLayoutInner() {
                 <ClipboardList className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Export history</span>
               </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleCheckData}
-              >
-                <SearchCheck className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Check Data</span>
-              </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
-                onClick={handleCleanseData}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Cleanse Data</span>
-              </button>
-              <button
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                onClick={handleRunTests}
-              >
-                <FlaskConical className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Run Tests</span>
-              </button>
+              {isSuperuser && (
+                <>
+                  <button
+                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                    onClick={handleCheckData}
+                  >
+                    <SearchCheck className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">Check Data</span>
+                  </button>
+                  <button
+                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
+                    onClick={handleCleanseData}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">Cleanse Data</span>
+                  </button>
+                  <button
+                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                    onClick={handleRunTests}
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">Run Tests</span>
+                  </button>
+                </>
+              )}
               <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -1163,21 +1167,21 @@ function AppLayoutInner() {
                     <ClipboardList className="w-4 h-4 mr-2" />
                     Export history
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleCheckData}>
-                    <SearchCheck className="w-4 h-4 mr-2" />
-                    Check Data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCleanseData}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Cleanse Data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleRunTests}>
-                    <FlaskConical className="w-4 h-4 mr-2" />
-                    Run Tests
-                  </DropdownMenuItem>
                   {isSuperuser && (
                     <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleCheckData}>
+                        <SearchCheck className="w-4 h-4 mr-2" />
+                        Check Data
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleCleanseData}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Cleanse Data
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleRunTests}>
+                        <FlaskConical className="w-4 h-4 mr-2" />
+                        Run Tests
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={toggleScramble}>
                         {scrambleEnabled ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
