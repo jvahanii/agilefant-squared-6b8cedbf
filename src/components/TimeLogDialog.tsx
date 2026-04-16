@@ -22,7 +22,7 @@ interface TimeLogDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function formatDuration(minutes: number): string {
+export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}m`;
@@ -30,25 +30,25 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-function parseDuration(input: string): number | null {
+export function parseDuration(input: string): number | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  // Try "Xh Ym" or "XhYm" format
-  const hm = trimmed.match(/^(\d+)\s*h\s*(\d+)\s*m?$/i);
+  // Try "Xh Ym" or "XhYm" format (with optional m/min suffix)
+  const hm = trimmed.match(/^(\d+)\s*h\s*(\d+)(?:\s*m(?:in)?)?$/i);
   if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
 
-  // Try "Xh" format
+  // Try "Xh" format (supports decimals)
   const hOnly = trimmed.match(/^(\d+(?:\.\d+)?)\s*h$/i);
   if (hOnly) return Math.round(parseFloat(hOnly[1]) * 60);
 
-  // Try "Xm" format
-  const mOnly = trimmed.match(/^(\d+)\s*m$/i);
-  if (mOnly) return parseInt(mOnly[1], 10);
+  // Try "Xm" or "Xmin" format (supports decimals)
+  const mOnly = trimmed.match(/^(\d+(?:\.\d+)?)\s*m(?:in)?$/i);
+  if (mOnly) return Math.round(parseFloat(mOnly[1]));
 
-  // Plain number: treat as minutes
-  const num = parseInt(trimmed, 10);
-  if (!isNaN(num) && num > 0) return num;
+  // Plain number: treat as hours (supports decimals, e.g. 1.5 = 1h 30m)
+  const num = parseFloat(trimmed);
+  if (!isNaN(num) && num > 0) return Math.round(num * 60);
 
   return null;
 }
@@ -117,6 +117,17 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
       setDateInput(new Date().toISOString().slice(0, 10));
       return;
     }
+    // Propose a duration based on time since the user's last log entry
+    const allEntries = Object.values(timeEntries);
+    const lastUserEntry = allEntries
+      .filter((e) => e.userId === user?.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (lastUserEntry) {
+      const diffMinutes = Math.round((Date.now() - new Date(lastUserEntry.createdAt).getTime()) / 60000);
+      if (diffMinutes > 0) {
+        setDurationInput(formatDuration(diffMinutes));
+      }
+    }
     if (itemEntries.length === 0) {
       setIsAdding(true);
     }
@@ -128,7 +139,7 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
   const handleAdd = async () => {
     const minutes = parseDuration(durationInput);
     if (!minutes || minutes <= 0) {
-      toast({ title: "Invalid duration", description: 'Enter a value like "30m", "1h", or "1h 30m".', variant: "destructive" });
+      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
       return;
     }
     if (!activeOrgId || !user?.id) return;
@@ -221,7 +232,7 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
                   ref={durationRef}
                   value={durationInput}
                   onChange={(e) => setDurationInput(e.target.value)}
-                  placeholder='e.g. "1h 30m"'
+                  placeholder='e.g. "1.5" or "1h 30m"'
                   className="h-8 text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAdd();
