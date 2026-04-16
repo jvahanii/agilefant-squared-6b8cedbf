@@ -17,7 +17,8 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface TimeLogDialogProps {
-  workItemId: string;
+  workItemId?: string;
+  backlogId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -56,8 +57,9 @@ export function parseDuration(input: string): number | null {
 
 const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
 
-export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogProps) {
-  const item = useAppStore((s) => s.workItems[workItemId]);
+export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: TimeLogDialogProps) {
+  const item = useAppStore((s) => workItemId ? s.workItems[workItemId] : null);
+  const backlog = useAppStore((s) => backlogId ? s.backlogs[backlogId] : null);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const addTimeEntry = useTimeEntryStore((s) => s.addTimeEntry);
   const deleteTimeEntry = useTimeEntryStore((s) => s.deleteTimeEntry);
@@ -75,9 +77,9 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
 
   const itemEntries = useMemo(() => {
     return Object.values(timeEntries)
-      .filter((e) => e.workItemId === workItemId)
+      .filter((e) => workItemId ? e.workItemId === workItemId : e.backlogId === backlogId && e.workItemId === null)
       .sort((a, b) => b.spentDate.localeCompare(a.spentDate) || b.createdAt.localeCompare(a.createdAt));
-  }, [timeEntries, workItemId]);
+  }, [timeEntries, workItemId, backlogId]);
 
   const totalMinutes = useMemo(
     () => itemEntries.reduce((sum, e) => sum + e.durationMinutes, 0),
@@ -148,7 +150,8 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (!item) return null;
+  if (!item && !backlog) return null;
+  const displayTitle = item?.title ?? backlog?.name ?? "";
 
   const handleAdd = async () => {
     const minutes = parseDuration(durationInput);
@@ -161,7 +164,8 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
     await addTimeEntry({
       organizationId: activeOrgId,
       userId: user.id,
-      workItemId,
+      workItemId: workItemId ?? null,
+      backlogId: backlogId ?? null,
       durationMinutes: minutes,
       spentDate: dateInput,
       note: noteInput.trim() || null,
@@ -194,8 +198,8 @@ export function TimeLogDialog({ workItemId, open, onOpenChange }: TimeLogDialogP
             <Clock className="w-4 h-4" /> Time Log
           </DialogTitle>
         </DialogHeader>
-        <div className="text-sm text-muted-foreground mb-2 truncate" title={item.title}>
-          {item.title}
+        <div className="text-sm text-muted-foreground mb-2 truncate" title={displayTitle}>
+          {displayTitle}
         </div>
 
         {totalMinutes > 0 && (
