@@ -94,6 +94,13 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
       return;
     }
 
+    if (incomingSharesRes.error) {
+      console.error('Failed to load incoming tree shares for time entries', incomingSharesRes.error);
+    }
+    if (ownTreesRes.error) {
+      console.error('Failed to load own trees for time entries', ownTreesRes.error);
+    }
+
     const entries: Record<string, TimeEntry> = {};
     for (const row of (ownEntriesRes.data ?? []) as Record<string, unknown>[]) {
       const entry = rowToTimeEntry(row);
@@ -137,12 +144,16 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
       await Promise.all(
         [...partnerOrgIds].map(async (partnerOrgId) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: partnerData } = await (supabase as any)
+          const { data: partnerData, error: partnerError } = await (supabase as any)
             .from('time_entries')
             .select('*')
             .eq('organization_id', partnerOrgId)
             .order('spent_date', { ascending: false })
             .limit(5000);
+          if (partnerError) {
+            console.error(`Failed to load time entries for partner org ${partnerOrgId}`, partnerError);
+            return;
+          }
           for (const row of (partnerData ?? []) as Record<string, unknown>[]) {
             const entry = rowToTimeEntry(row);
             entries[entry.id] = entry;
