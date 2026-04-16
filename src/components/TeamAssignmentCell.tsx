@@ -24,7 +24,7 @@ interface TeamAssignmentCellProps {
 const EMPTY_ARRAY: string[] = [];
 
 export function TeamAssignmentCell({ workItemId }: TeamAssignmentCellProps) {
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId); // fallback only
   const teams = useTeamStore((s) => s.teams);
   const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? EMPTY_ARRAY);
   const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
@@ -87,7 +87,7 @@ export function TeamAssignmentCell({ workItemId }: TeamAssignmentCellProps) {
                       if (isAssigned) {
                         unassignTeam(workItemId, team.id);
                       } else {
-                        assignTeam(workItemId, team.id, activeOrgId!);
+                        assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
                       }
                     }}
                   >
@@ -134,7 +134,7 @@ export function TeamAssignmentCell({ workItemId }: TeamAssignmentCellProps) {
               checked={isAssigned}
               onCheckedChange={(checked) => {
                 if (checked) {
-                  assignTeam(workItemId, team.id, activeOrgId!);
+                  assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
                 } else {
                   unassignTeam(workItemId, team.id);
                 }
