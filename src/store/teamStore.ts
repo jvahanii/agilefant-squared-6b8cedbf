@@ -31,6 +31,8 @@ interface TeamState {
   assignTeamToWorkItem: (workItemId: string, teamId: string, orgId: string) => Promise<void>;
   unassignTeamFromWorkItem: (workItemId: string, teamId: string) => Promise<void>;
   getTeamsForWorkItem: (workItemId: string) => string[];
+  applyRealtimeTeamAssignment: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeTeam: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
 export const useTeamStore = create<TeamState>()((set, get) => ({
