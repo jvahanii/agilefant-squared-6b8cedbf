@@ -183,6 +183,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
       localStorage.setItem(CLOCK_RESET_KEY(user.id), new Date().toISOString());
     }
     setDurationInput("");
+    setTimeout(() => durationRef.current?.focus(), 0);
   };
 
   return (
