@@ -303,6 +303,15 @@ function WorkItemNode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-expand a collapsed branch when a drag is held over it for a short time.
+  useEffect(() => {
+    if (!isOver || isDragging || !item || item.childrenIds.length === 0 || expanded) return;
+    const timer = setTimeout(() => {
+      toggleExpand(workItemId);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [isOver, isDragging, item, expanded, toggleExpand, workItemId]);
+
   if (!item) return null;
 
   const hasChildren = item.childrenIds.length > 0;
