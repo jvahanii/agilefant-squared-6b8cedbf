@@ -5,6 +5,7 @@ import { useOrgStore } from '@/store/orgStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
+import { useLabelsStore } from '@/store/labelsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
