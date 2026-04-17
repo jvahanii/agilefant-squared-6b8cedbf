@@ -13,7 +13,6 @@ import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
-import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
 import { LabelPicker } from "./LabelPicker";
 
 const INDENT_PER_LEVEL = 12;
@@ -256,17 +255,17 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
 
   // Labels
-  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const labelsMap = useLabelsStore((s) => s.labels);
-  const assignments = useLabelsStore((s) => s.assignments);
+  const byEntity = useLabelsStore((s) => s.byEntity);
   const backlogLabels = useMemo(() => {
     if (!labelsVisible) return [];
-    const out = Object.values(assignments)
-      .filter((a) => a.entityType === "backlog" && a.entityId === backlogId)
-      .map((a) => labelsMap[a.labelId])
-      .filter(Boolean);
-    return out.sort((a, b) => a.name.localeCompare(b.name));
-  }, [labelsVisible, assignments, labelsMap, backlogId]);
+    const labelIds = byEntity[`backlog:${backlogId}`] ?? [];
+    return labelIds
+      .map((id) => labelsMap[id])
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [labelsVisible, byEntity, labelsMap, backlogId]);
 
   useEffect(() => {
     if (isEditing) {
@@ -434,9 +433,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           {labelsVisible && (
             <LabelPicker entityType="backlog" entityId={backlogId}>
               <button
-                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="flex items-center gap-0.5 h-6 px-0.5 min-w-[1.5rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => e.stopPropagation()}
-              ><Tag className="w-3.5 h-3.5" /></button>
+              >
+                {backlogLabels.length > 0 ? (
+                  <span className="text-[10px] font-medium tabular-nums leading-none">{backlogLabels.length}</span>
+                ) : (
+                  <Tag className="w-3.5 h-3.5" />
+                )}
+              </button>
             </LabelPicker>
           )}
           {timeLoggingVisible && (
@@ -471,11 +476,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           {labelsVisible && (
             <LabelPicker entityType="backlog" entityId={backlogId}>
               <button
-                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 title="Labels"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Tag className="w-3.5 h-3.5" />
+                {backlogLabels.length > 0 ? (
+                  <span className="text-[10px] font-medium tabular-nums leading-none">{backlogLabels.length}</span>
+                ) : (
+                  <Tag className="w-3.5 h-3.5" />
+                )}
               </button>
             </LabelPicker>
           )}

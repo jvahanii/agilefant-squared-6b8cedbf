@@ -1,11 +1,11 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2, Clock, Tag } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2, Clock, Tag, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
-import { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { createContext, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
@@ -24,8 +24,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
-import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
 import { LabelPicker } from "./LabelPicker";
+
+/**
+ * When a label filter is active, this context holds the Set of work item IDs
+ * that should be visible (matching items + their ancestors).  Null means "show
+ * all" (no filter active).
+ */
+const LabelFilterContext = createContext<Set<string> | null>(null);
 
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
@@ -192,17 +198,21 @@ function WorkItemNode({
   }, [timeEntries, workItemId, timeLoggingVisible]);
 
   // Labels
-  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const labelsMap = useLabelsStore((s) => s.labels);
-  const assignments = useLabelsStore((s) => s.assignments);
+  const byEntity = useLabelsStore((s) => s.byEntity);
   const itemLabels = useMemo(() => {
     if (!labelsVisible) return [];
-    const out = Object.values(assignments)
-      .filter((a) => a.entityType === "work_item" && a.entityId === workItemId)
-      .map((a) => labelsMap[a.labelId])
-      .filter(Boolean);
-    return out.sort((a, b) => a.name.localeCompare(b.name));
-  }, [labelsVisible, assignments, labelsMap, workItemId]);
+    const labelIds = byEntity[`work_item:${workItemId}`] ?? [];
+    return labelIds
+      .map((id) => labelsMap[id])
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [labelsVisible, byEntity, labelsMap, workItemId]);
+
+  // Hide this node when a label filter is active and it isn't in the visible set
+  const labelFilter = useContext(LabelFilterContext);
+  if (labelFilter !== null && !labelFilter.has(workItemId)) return null;
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -697,11 +707,15 @@ function WorkItemNode({
               {labelsVisible && (
                 <LabelPicker entityType="work_item" entityId={workItemId}>
                   <button
-                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     title="Labels"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Tag className="w-3.5 h-3.5" />
+                    {itemLabels.length > 0 ? (
+                      <span className="text-[10px] font-medium tabular-nums leading-none">{itemLabels.length}</span>
+                    ) : (
+                      <Tag className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </LabelPicker>
               )}
@@ -939,6 +953,7 @@ export function WorkItemTreePanel() {
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible || !selectedBacklogId) return 0;
@@ -947,6 +962,62 @@ export function WorkItemTreePanel() {
       .reduce((sum, e) => sum + e.durationMinutes, 0);
   }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
+
+  // Label filter state
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const byEntity = useLabelsStore((s) => s.byEntity);
+  const orgLabels = useMemo(
+    () =>
+      Object.values(labelsMap)
+        .filter((l) => l.organizationId === activeOrgId)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [labelsMap, activeOrgId],
+  );
+  const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+
+  // Clear filter when switching backlogs
+  useEffect(() => {
+    setFilterLabelIds(new Set());
+  }, [selectedBacklogId]);
+
+  // Compute the set of item IDs that should remain visible when a filter is active.
+  // Includes all items that directly have a filter label, plus all their ancestors
+  // (so the path to a matching item is preserved in the tree).
+  const visibleFilterSet = useMemo<Set<string> | null>(() => {
+    if (filterLabelIds.size === 0) return null;
+
+    const matching = new Set<string>();
+    for (const [key, labelIds] of Object.entries(byEntity)) {
+      if (!key.startsWith("work_item:")) continue;
+      if (labelIds.some((id) => filterLabelIds.has(id))) {
+        matching.add(key.slice("work_item:".length));
+      }
+    }
+
+    // Add ancestors up to the root so the tree path remains navigable
+    const visible = new Set(matching);
+    for (const itemId of matching) {
+      let curr = workItems[itemId];
+      while (curr?.parentId) {
+        visible.add(curr.parentId);
+        curr = workItems[curr.parentId];
+      }
+    }
+    return visible;
+  }, [filterLabelIds, byEntity, workItems]);
+
+  // Auto-expand ancestors of matching items when the filter changes
+  useEffect(() => {
+    if (!visibleFilterSet) return;
+    const state = useAppStore.getState();
+    for (const id of visibleFilterSet) {
+      const item = state.workItems[id];
+      const hasVisibleChild = item?.childrenIds.some((cid) => visibleFilterSet.has(cid));
+      if (hasVisibleChild && !state.expandedWorkItems.has(id)) {
+        state.toggleWorkItemExpand(id);
+      }
+    }
+  }, [visibleFilterSet]);
 
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
@@ -1034,6 +1105,12 @@ export function WorkItemTreePanel() {
       .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0));
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
+  // When filter is active, hide root items that have no matching descendant-or-self
+  const displayedRootItems = useMemo(() => {
+    if (!visibleFilterSet) return rootWorkItems;
+    return rootWorkItems.filter((wi) => visibleFilterSet.has(wi.id));
+  }, [rootWorkItems, visibleFilterSet]);
+
   const visibleItemIds = useMemo(() => {
     const ids: string[] = [];
     const traverse = (workItemId: string) => {
@@ -1049,9 +1126,9 @@ export function WorkItemTreePanel() {
         }
       }
     };
-    rootWorkItems.forEach((root) => traverse(root.id));
+    displayedRootItems.forEach((root) => traverse(root.id));
     return ids;
-  }, [rootWorkItems, expandedWorkItems, workItems, selectedTreeId]);
+  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId]);
 
   const handleSelect = useCallback(
     (id: string, multi: boolean, shift: boolean) => {
@@ -1086,128 +1163,173 @@ export function WorkItemTreePanel() {
   }
 
   return (
-    <div
-      className="h-full flex flex-col overflow-hidden"
-      onClick={() => {
-        clearWorkItemSelection();
-        lastSelectedId.current = null;
-      }}
-    >
-      <div className="p-1.5 pb-1 md:p-2 md:pb-1 border-b flex items-start justify-between shrink-0">
-        <div className="min-w-0 flex-1">
-          <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {rootWorkItems.length} item{rootWorkItems.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-1 shrink-0 ml-2">
-          <button
-            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePasteFromClipboard();
-            }}
-            title="Paste items from clipboard"
-          >
-            <ClipboardPaste className="w-4 h-4" />
-          </button>
-          {timeLoggingVisible && (
+    <LabelFilterContext.Provider value={visibleFilterSet}>
+      <div
+        className="h-full flex flex-col overflow-hidden"
+        onClick={() => {
+          clearWorkItemSelection();
+          lastSelectedId.current = null;
+        }}
+      >
+        <div className="p-1.5 pb-1 md:p-2 md:pb-1 border-b flex items-start justify-between shrink-0">
+          <div className="min-w-0 flex-1">
+            <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {visibleFilterSet
+                ? `${displayedRootItems.length} of ${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""} (filtered)`
+                : `${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
             <button
-              className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowBacklogTimeLogDialog(true);
+                handlePasteFromClipboard();
               }}
-              title="Log time for this backlog"
+              title="Paste items from clipboard"
             >
-              {backlogTotalMinutes > 0 ? (
-                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
-              ) : (
-                <Clock className="w-4 h-4" />
-              )}
+              <ClipboardPaste className="w-4 h-4" />
             </button>
-          )}
-          <button
-            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsAdding(true);
-            }}
-            title="Add work item (Enter)"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
-        <div className="flex-1 overflow-y-auto p-1 md:p-2">
-          {rootWorkItems.length === 0 && isAdding ? (
-            <InlineWorkItemInput
-              depth={0}
-              onSubmit={(title) => {
-                addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+            {timeLoggingVisible && (
+              <button
+                className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowBacklogTimeLogDialog(true);
+                }}
+                title="Log time for this backlog"
+              >
+                {backlogTotalMinutes > 0 ? (
+                  <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
+                ) : (
+                  <Clock className="w-4 h-4" />
+                )}
+              </button>
+            )}
+            <button
+              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAdding(true);
               }}
-              onCancel={() => setIsAdding(false)}
-            />
-          ) : rootWorkItems.length === 0 && !isAdding ? (
-            <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-              No work items in this backlog
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {isAdding && (
-                <InlineWorkItemInput
-                  depth={0}
-                  onSubmit={(title) => {
-                    addWorkItem(title, null, selectedBacklogId, selectedTreeId);
-                  }}
-                  onCancel={() => setIsAdding(false)}
-                />
-              )}
-              {rootWorkItems.map((item, index) => {
-                const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
-                return (
-                  <div key={item.id}>
-                    <ReorderDropZone
-                      id={`reorder-root-${index}`}
-                      index={index}
-                      treeId={selectedTreeId}
-                      backlogIds={allBacklogIds}
-                      parentId={null}
-                      depth={0}
-                    />
-                    <WorkItemNode
-                      workItemId={item.id}
-                      depth={0}
-                      treeId={selectedTreeId}
-                      backlogId={itemBacklogId}
-                      allBacklogIds={allBacklogIds}
-                      isChildBacklog={itemBacklogId !== selectedBacklogId}
-                      isScrambled={isScrambled}
-                      onSelect={handleSelect}
-                    />
-                  </div>
-                );
-              })}
-              <ReorderDropZone
-                id={`reorder-root-${rootWorkItems.length}`}
-                index={rootWorkItems.length}
-                treeId={selectedTreeId}
-                backlogIds={allBacklogIds}
-                parentId={null}
-                depth={0}
-              />
-            </div>
-          )}
+              title="Add work item (Enter)"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </WorkItemRootDropZone>
-      {timeLoggingVisible && selectedBacklogId && (
-        <TimeLogDialog
-          backlogId={selectedBacklogId}
-          open={showBacklogTimeLogDialog}
-          onOpenChange={setShowBacklogTimeLogDialog}
-        />
-      )}
-    </div>
+
+        {/* Label filter chip bar — only shown when labels are enabled and at least one label exists */}
+        {labelsVisible && orgLabels.length > 0 && (
+          <div className="px-2 py-1 flex flex-wrap gap-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
+            {orgLabels.map((label) => (
+              <button
+                key={label.id}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
+                  filterLabelIds.has(label.id)
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                    : "bg-muted text-muted-foreground hover:bg-muted/60"
+                }`}
+                onClick={() =>
+                  setFilterLabelIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(label.id)) next.delete(label.id);
+                    else next.add(label.id);
+                    return next;
+                  })
+                }
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: label.color }}
+                />
+                {label.name}
+              </button>
+            ))}
+            {filterLabelIds.size > 0 && (
+              <button
+                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
+                onClick={() => setFilterLabelIds(new Set())}
+                title="Clear label filter"
+              >
+                <X className="w-3 h-3" />
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
+        <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
+          <div className="flex-1 overflow-y-auto p-1 md:p-2">
+            {rootWorkItems.length === 0 && isAdding ? (
+              <InlineWorkItemInput
+                depth={0}
+                onSubmit={(title) => {
+                  addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+                }}
+                onCancel={() => setIsAdding(false)}
+              />
+            ) : rootWorkItems.length === 0 && !isAdding ? (
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                No work items in this backlog
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {isAdding && (
+                  <InlineWorkItemInput
+                    depth={0}
+                    onSubmit={(title) => {
+                      addWorkItem(title, null, selectedBacklogId, selectedTreeId);
+                    }}
+                    onCancel={() => setIsAdding(false)}
+                  />
+                )}
+                {displayedRootItems.map((item, index) => {
+                  const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
+                  return (
+                    <div key={item.id}>
+                      <ReorderDropZone
+                        id={`reorder-root-${index}`}
+                        index={index}
+                        treeId={selectedTreeId}
+                        backlogIds={allBacklogIds}
+                        parentId={null}
+                        depth={0}
+                      />
+                      <WorkItemNode
+                        workItemId={item.id}
+                        depth={0}
+                        treeId={selectedTreeId}
+                        backlogId={itemBacklogId}
+                        allBacklogIds={allBacklogIds}
+                        isChildBacklog={itemBacklogId !== selectedBacklogId}
+                        isScrambled={isScrambled}
+                        onSelect={handleSelect}
+                      />
+                    </div>
+                  );
+                })}
+                <ReorderDropZone
+                  id={`reorder-root-${displayedRootItems.length}`}
+                  index={displayedRootItems.length}
+                  treeId={selectedTreeId}
+                  backlogIds={allBacklogIds}
+                  parentId={null}
+                  depth={0}
+                />
+              </div>
+            )}
+          </div>
+        </WorkItemRootDropZone>
+        {timeLoggingVisible && selectedBacklogId && (
+          <TimeLogDialog
+            backlogId={selectedBacklogId}
+            open={showBacklogTimeLogDialog}
+            onOpenChange={setShowBacklogTimeLogDialog}
+          />
+        )}
+      </div>
+    </LabelFilterContext.Provider>
   );
 }
