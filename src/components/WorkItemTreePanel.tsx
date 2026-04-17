@@ -1,7 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2, Clock } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, Settings, RotateCcw, Link2, Clock, Tag } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -23,6 +23,9 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { useLabelsStore } from "@/store/labelsStore";
+import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
+import { LabelPicker } from "./LabelPicker";
 
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
@@ -187,6 +190,19 @@ function WorkItemNode({
       .filter((e) => e.workItemId === workItemId)
       .reduce((sum, e) => sum + e.durationMinutes, 0);
   }, [timeEntries, workItemId, timeLoggingVisible]);
+
+  // Labels
+  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const assignments = useLabelsStore((s) => s.assignments);
+  const itemLabels = useMemo(() => {
+    if (!labelsVisible) return [];
+    const out = Object.values(assignments)
+      .filter((a) => a.entityType === "work_item" && a.entityId === workItemId)
+      .map((a) => labelsMap[a.labelId])
+      .filter(Boolean);
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [labelsVisible, assignments, labelsMap, workItemId]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -513,6 +529,24 @@ function WorkItemNode({
             </span>
           )}
 
+          {labelsVisible && itemLabels.length > 0 && (
+            <div className="flex items-center gap-0.5 shrink-0 mt-0.5 flex-wrap">
+              {itemLabels.map((label) => (
+                <TooltipProvider key={label.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                        style={{ backgroundColor: label.color }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">{label.name}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          )}
+
           {item.respawnEnabled && (() => {
             const days = item.respawnIntervalDays ?? 7;
             return (
@@ -660,6 +694,17 @@ function WorkItemNode({
               >
                 <Link2 className="w-3.5 h-3.5" />
               </button>
+              {labelsVisible && (
+                <LabelPicker entityType="work_item" entityId={workItemId}>
+                  <button
+                    className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    title="Labels"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                  </button>
+                </LabelPicker>
+              )}
               {timeLoggingVisible && (
                 <button
                   className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
