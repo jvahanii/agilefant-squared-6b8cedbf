@@ -9,6 +9,7 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
+import { useLabelsStore } from '@/store/labelsStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -21,6 +22,8 @@ const Index = () => {
   const loadTimeEntries = useTimeEntryStore(s => s.loadTimeEntries);
   const { user } = useAuth();
   const loadSettings = useOrgSettingsStore(s => s.loadSettings);
+  const loadLabels = useLabelsStore(s => s.loadLabels);
+  const backlogTrees = useAppStore(s => s.backlogTrees);
 
   useEffect(() => {
     if (user) {
@@ -67,6 +70,19 @@ const Index = () => {
   // loadData and loadTimeEntries are stable Zustand action references; omitting them is intentional.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
+
+  // Load labels for active org + any partner orgs whose trees are accessible.
+  const treeIdsKey = Object.keys(backlogTrees).sort().join(',');
+  useEffect(() => {
+    if (!activeOrgId) return;
+    const orgIds = new Set<string>([activeOrgId]);
+    for (const treeId of Object.keys(backlogTrees)) {
+      const sep = treeId.indexOf('::');
+      if (sep > 0) orgIds.add(treeId.slice(0, sep));
+    }
+    loadLabels([...orgIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId, treeIdsKey]);
 
   useRespawnCheck();
   useRealtimeSync();
