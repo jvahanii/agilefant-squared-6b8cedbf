@@ -317,6 +317,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          labels_enabled: boolean
           organization_id: string
           points_enabled: boolean
           time_logging_enabled: boolean
@@ -325,6 +326,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          labels_enabled?: boolean
           organization_id: string
           points_enabled?: boolean
           time_logging_enabled?: boolean
@@ -333,6 +335,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          labels_enabled?: boolean
           organization_id?: string
           points_enabled?: boolean
           time_logging_enabled?: boolean
