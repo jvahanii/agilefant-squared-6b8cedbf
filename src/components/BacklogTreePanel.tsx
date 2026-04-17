@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -14,6 +14,7 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
+import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -253,6 +254,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
       .reduce((sum, e) => sum + e.durationMinutes, 0);
   }, [timeEntries, backlogId, timeLoggingVisible]);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -424,38 +426,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
         )}
+        {/* Mobile actions: Plus + rotor (attributes sheet) + Delete */}
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
           {pointsVisible && totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           ><Plus className="w-3.5 h-3.5" /></button>
-          {labelsVisible && (
-            <LabelPicker entityType="backlog" entityId={backlogId}>
-              <button
-                className="flex items-center gap-0.5 h-6 px-0.5 min-w-[1.5rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {backlogLabels.length > 0 ? (
-                  <span className="text-[10px] font-medium tabular-nums leading-none">{backlogLabels.length}</span>
-                ) : (
-                  <Tag className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </LabelPicker>
-          )}
-          {timeLoggingVisible && (
-            <button
-              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
-              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
-            >
-              {backlogTotalMinutes > 0 ? (
-                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
-              ) : (
-                <Clock className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
+          <button
+            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(e) => { e.stopPropagation(); setShowMobileAttributesSheet(true); }}
+            title="Attributes"
+          ><SlidersHorizontal className="w-3.5 h-3.5" /></button>
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
@@ -584,6 +566,13 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           onOpenChange={setShowTimeLogDialog}
         />
       )}
+      <MobileBacklogAttributesSheet
+        backlogId={backlogId}
+        totalPoints={totalPoints}
+        open={showMobileAttributesSheet}
+        onOpenChange={setShowMobileAttributesSheet}
+        onOpenTimeLog={() => setShowTimeLogDialog(true)}
+      />
     </div>
   );
 }
