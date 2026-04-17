@@ -176,7 +176,7 @@ export function LabelsManager() {
             <AlertDialogTitle>Delete label "{confirmDeleteLabel?.name}"?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove the label and all its assignments from every work item and
-              backlog in this organisation. This action cannot be undone.
+              backlog in this organization. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
