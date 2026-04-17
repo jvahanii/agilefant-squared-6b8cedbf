@@ -21,6 +21,7 @@ import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
 import { exportTimesheets } from "@/lib/exportTimesheets";
+import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,8 +75,9 @@ export default function TeamSettings() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // Timesheet export state
+  // Timesheet export/browse state
   const [exportLoading, setExportLoading] = useState(false);
+  const [timesheetBrowserOpen, setTimesheetBrowserOpen] = useState(false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -704,22 +706,40 @@ export default function TeamSettings() {
               />
             </div>
             {canManage && orgSettings.timeLoggingEnabled && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <div>
-                  <p className="text-sm font-medium">Export timesheets</p>
-                  <p className="text-xs text-muted-foreground">
-                    Download all logged time entries as an Excel file, in chronological order.
-                  </p>
+              <div className="mt-4 pt-4 border-t space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Browse time logs</p>
+                    <p className="text-xs text-muted-foreground">
+                      View and filter all logged time for users and backlogs, including shared.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTimesheetBrowserOpen(true)}
+                  >
+                    <Clock className="w-3.5 h-3.5 mr-1" />
+                    Browse
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportTimesheets}
-                  disabled={exportLoading}
-                >
-                  <Download className="w-3.5 h-3.5 mr-1" />
-                  {exportLoading ? "Exporting…" : "Export"}
-                </Button>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Export timesheets</p>
+                    <p className="text-xs text-muted-foreground">
+                      Download all logged time entries as an Excel file, in chronological order.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportTimesheets}
+                    disabled={exportLoading}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" />
+                    {exportLoading ? "Exporting…" : "Export"}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -837,6 +857,11 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
         <TermsOfServiceDialog open={tosOpen} onCancel={() => setTosOpen(false)} />
+        <TimesheetBrowserDialog
+          open={timesheetBrowserOpen}
+          onOpenChange={setTimesheetBrowserOpen}
+          orgName={activeOrg?.organization_name ?? orgName}
+        />
 
         {/* Danger Zone — Superuser only */}
         {isSuperuser && orgSlug && (
