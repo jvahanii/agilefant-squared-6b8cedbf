@@ -160,7 +160,13 @@ interface WorkItemNodeProps {
   onSelect: (id: string, multi: boolean, shift: boolean) => void;
 }
 
-function WorkItemNode({
+function WorkItemNode(props: WorkItemNodeProps) {
+  const labelFilter = useContext(LabelFilterContext);
+  if (labelFilter !== null && !labelFilter.has(props.workItemId)) return null;
+  return <WorkItemNodeContent {...props} />;
+}
+
+function WorkItemNodeContent({
   workItemId,
   depth,
   treeId,
@@ -209,10 +215,6 @@ function WorkItemNode({
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [labelsVisible, byEntity, labelsMap, workItemId]);
-
-  // Hide this node when a label filter is active and it isn't in the visible set
-  const labelFilter = useContext(LabelFilterContext);
-  if (labelFilter !== null && !labelFilter.has(workItemId)) return null;
 
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
