@@ -652,35 +652,32 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        {/* Time Logging — Superuser only */}
-        {isSuperuser && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Time Logging
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Enable time logging</p>
-                  <p className="text-xs text-muted-foreground">
-                    Allow members to log time spent on work items. Only superusers can toggle this setting.
-                  </p>
-                </div>
-                <Switch
-                  checked={orgSettings.timeLoggingEnabled}
-                  onCheckedChange={(checked) => {
-                    if (activeOrgId) {
-                      setTimeLoggingEnabledSetting(activeOrgId, checked);
-                      toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
-                    }
-                  }}
-                />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="w-4 h-4" /> Time Logging
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable time logging</p>
+                <p className="text-xs text-muted-foreground">
+                  Allow members to log time spent on work items.
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <Switch
+                checked={orgSettings.timeLoggingEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setTimeLoggingEnabledSetting(activeOrgId, checked);
+                    toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
