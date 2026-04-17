@@ -24,7 +24,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
-import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
 import { LabelPicker } from "./LabelPicker";
 
 // Minimum pointer movement (in px) required before treating an interaction as a
@@ -180,7 +179,7 @@ function WorkItemNode({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
+  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false, labelsEnabled: false });
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
@@ -192,7 +191,7 @@ function WorkItemNode({
   }, [timeEntries, workItemId, timeLoggingVisible]);
 
   // Labels
-  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsVisible = orgSettings.labelsEnabled;
   const labelsMap = useLabelsStore((s) => s.labels);
   const assignments = useLabelsStore((s) => s.assignments);
   const itemLabels = useMemo(() => {

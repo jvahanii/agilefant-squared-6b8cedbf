@@ -13,7 +13,6 @@ import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
-import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
 import { LabelPicker } from "./LabelPicker";
 
 const INDENT_PER_LEVEL = 12;
@@ -256,7 +255,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
 
   // Labels
-  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const labelsMap = useLabelsStore((s) => s.labels);
   const assignments = useLabelsStore((s) => s.assignments);
   const backlogLabels = useMemo(() => {
