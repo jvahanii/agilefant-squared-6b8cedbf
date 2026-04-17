@@ -160,6 +160,83 @@ export type Database = {
         }
         Relationships: []
       }
+      label_assignments: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          label_id: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          label_id: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          label_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      labels: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -565,6 +642,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_org_labels: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_orphaned_users: {
         Args: { p_user_ids: string[] }
         Returns: undefined
@@ -604,6 +685,10 @@ export type Database = {
       }
       has_shared_tree_with_org: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_label_entity_accessible: {
+        Args: { _entity_id: string; _entity_type: string; _user_id: string }
         Returns: boolean
       }
       is_member_of: {
