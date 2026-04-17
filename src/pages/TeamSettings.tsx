@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag, Download } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +18,9 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { LabelsManager } from "@/components/LabelsManager";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
+import { useTimeEntryStore } from "@/store/timeEntryStore";
+import { useAppStore } from "@/store/appStore";
+import { exportTimesheets } from "@/lib/exportTimesheets";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,6 +73,12 @@ export default function TeamSettings() {
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+  // Timesheet export state
+  const [exportLoading, setExportLoading] = useState(false);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const workItems = useAppStore((s) => s.workItems);
+  const backlogs = useAppStore((s) => s.backlogs);
 
   // Terms of Service state
   const [tosOpen, setTosOpen] = useState(false);
@@ -464,6 +473,21 @@ export default function TeamSettings() {
     setDeleteLoading(false);
   };
 
+  const handleExportTimesheets = async () => {
+    setExportLoading(true);
+    try {
+      await exportTimesheets(
+        Object.values(timeEntries),
+        workItems,
+        backlogs,
+        activeOrg?.organization_name ?? orgName,
+      );
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    }
+    setExportLoading(false);
+  };
+
   const roleBadgeColor = (role: string) => {
     switch (role) {
       case "owner":
@@ -679,6 +703,25 @@ export default function TeamSettings() {
                 }}
               />
             </div>
+            {canManage && orgSettings.timeLoggingEnabled && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div>
+                  <p className="text-sm font-medium">Export timesheets</p>
+                  <p className="text-xs text-muted-foreground">
+                    Download all logged time entries as an Excel file, in chronological order.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportTimesheets}
+                  disabled={exportLoading}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" />
+                  {exportLoading ? "Exporting…" : "Export"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
