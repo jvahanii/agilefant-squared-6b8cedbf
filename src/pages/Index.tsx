@@ -9,6 +9,7 @@ import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
+import { useLabelsStore } from '@/store/labelsStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
