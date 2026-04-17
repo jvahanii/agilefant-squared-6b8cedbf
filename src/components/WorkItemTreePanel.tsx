@@ -1,7 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -25,6 +25,7 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
+import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
 
 /**
  * When a label filter is active, this context holds the Set of work item IDs
@@ -222,6 +223,7 @@ function WorkItemNodeContent({
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -626,21 +628,7 @@ function WorkItemNodeContent({
             <div className="shrink-0">
               <TeamAssignmentCell workItemId={workItemId} />
             </div>
-            {pointsVisible && (isEditingPoints ? (
-              <input
-                ref={pointsRef}
-                className="w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
-                value={editPoints}
-                onChange={(e) => setEditPoints(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitPoints();
-                  if (e.key === "Escape") setIsEditingPoints(false);
-                }}
-                onBlur={commitPoints}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              (() => {
+            {pointsVisible && (() => {
                 const getEffectivePoints = (wi: any): number => {
                   const own = wi.points ?? 0;
                   const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
@@ -656,25 +644,79 @@ function WorkItemNodeContent({
                 }, 0);
                 const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
                 return (
-                  <span
-                    className={`text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startEditingPoints();
-                    }}
-                    title={
-                      isRolledUp
-                        ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}`
-                        : "Story points (click to edit)"
-                    }
-                  >
-                    {totalPoints > 0 ? totalPoints : "–"}
-                  </span>
+                  <>
+                    {/* Desktop: inline editable points */}
+                    {isEditingPoints ? (
+                      <input
+                        ref={pointsRef}
+                        className="hidden md:block w-10 text-xs text-center bg-transparent border-b border-primary/40 outline-none tabular-nums"
+                        value={editPoints}
+                        onChange={(e) => setEditPoints(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitPoints();
+                          if (e.key === "Escape") setIsEditingPoints(false);
+                        }}
+                        onBlur={commitPoints}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span
+                        className={`hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
+                        onClick={(e) => { e.stopPropagation(); startEditingPoints(); }}
+                        title={
+                          isRolledUp
+                            ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}`
+                            : "Story points (click to edit)"
+                        }
+                      >
+                        {totalPoints > 0 ? totalPoints : "–"}
+                      </span>
+                    )}
+                    {/* Mobile: read-only points display (edit via attributes sheet) */}
+                    <span
+                      className={`md:hidden text-xs tabular-nums shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
+                      title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Story points"}
+                    >
+                      {totalPoints > 0 ? totalPoints : "–"}
+                    </span>
+                  </>
                 );
-              })()
-            ))}
+              })()}
 
-            <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
+            {/* Mobile actions: Plus + rotor (attributes sheet) + Delete */}
+            <div className="flex md:hidden items-center gap-0.5 shrink-0">
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!expanded) toggleExpand(workItemId);
+                  setIsAdding(true);
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMobileAttributesSheet(true);
+                }}
+                title="Attributes"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick();
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {/* Desktop hover actions */}
+            <div className="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <button
                 className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -884,6 +926,14 @@ function WorkItemNodeContent({
           onOpenChange={setShowTimeLogDialog}
         />
       )}
+      <MobileWorkItemAttributesSheet
+        workItemId={workItemId}
+        open={showMobileAttributesSheet}
+        onOpenChange={setShowMobileAttributesSheet}
+        onOpenTimeLog={() => setShowTimeLogDialog(true)}
+        onOpenRespawn={() => setShowRespawnDialog(true)}
+        onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
+      />
     </>
   );
 }
