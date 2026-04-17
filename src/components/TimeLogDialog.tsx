@@ -62,6 +62,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
   const backlog = useAppStore((s) => backlogId ? s.backlogs[backlogId] : null);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const addTimeEntry = useTimeEntryStore((s) => s.addTimeEntry);
+  const updateTimeEntry = useTimeEntryStore((s) => s.updateTimeEntry);
   const deleteTimeEntry = useTimeEntryStore((s) => s.deleteTimeEntry);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const { user } = useAuth();
@@ -71,6 +72,13 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
   const [dateInput, setDateInput] = useState(() => new Date().toISOString().slice(0, 10));
   const [noteInput, setNoteInput] = useState("");
   const durationRef = useRef<HTMLInputElement>(null);
+
+  // Edit state for existing entries
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editDurationInput, setEditDurationInput] = useState("");
+  const [editDateInput, setEditDateInput] = useState("");
+  const [editNoteInput, setEditNoteInput] = useState("");
+  const editDurationRef = useRef<HTMLInputElement>(null);
 
   // Cache for user display names (userId -> display name)
   const [userNames, setUserNames] = useState<Record<string, string>>({});
@@ -115,11 +123,18 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
   }, [isAdding]);
 
   useEffect(() => {
+    if (editingEntryId) {
+      setTimeout(() => editDurationRef.current?.focus(), 0);
+    }
+  }, [editingEntryId]);
+
+  useEffect(() => {
     if (!open) {
       setIsAdding(false);
       setDurationInput("");
       setNoteInput("");
       setDateInput(new Date().toISOString().slice(0, 10));
+      setEditingEntryId(null);
       return;
     }
     // Determine the reference time: the later of the user's last log entry and any
@@ -178,6 +193,31 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
 
   const canDelete = (entry: TimeEntry) => entry.userId === user?.id;
 
+  const startEditing = (entry: TimeEntry) => {
+    setEditingEntryId(entry.id);
+    setEditDurationInput(formatDuration(entry.durationMinutes));
+    setEditDateInput(entry.spentDate);
+    setEditNoteInput(entry.note ?? "");
+  };
+
+  const cancelEditing = () => setEditingEntryId(null);
+
+  const handleSaveEdit = async (): Promise<boolean> => {
+    if (!editingEntryId) return false;
+    const minutes = parseDuration(editDurationInput);
+    if (!minutes || minutes <= 0) {
+      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
+      return false;
+    }
+    await updateTimeEntry(editingEntryId, {
+      durationMinutes: minutes,
+      spentDate: editDateInput,
+      note: editNoteInput.trim() || null,
+    });
+    setEditingEntryId(null);
+    return true;
+  };
+
   const handleResetClock = () => {
     if (user?.id) {
       localStorage.setItem(CLOCK_RESET_KEY(user.id), new Date().toISOString());
@@ -218,30 +258,93 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
           {itemEntries.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/30 transition-colors group"
+              className="rounded-md border transition-colors group"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium tabular-nums">{formatDuration(entry.durationMinutes)}</span>
-                  <span className="text-muted-foreground text-xs">{entry.spentDate}</span>
+              {editingEntryId === entry.id ? (
+                /* ── Inline edit form ── */
+                <div className="space-y-2 p-2 bg-muted/20">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Duration</Label>
+                      <Input
+                        ref={editDurationRef}
+                        value={editDurationInput}
+                        onChange={(e) => setEditDurationInput(e.target.value)}
+                        placeholder='e.g. "1.5", "1h 30m"'
+                        className="h-8 text-sm"
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") await handleSaveEdit();
+                          if (e.key === "Escape") cancelEditing();
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Date</Label>
+                      <Input
+                        type="date"
+                        value={editDateInput}
+                        onChange={(e) => setEditDateInput(e.target.value)}
+                        className="h-8 text-sm"
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter") await handleSaveEdit();
+                          if (e.key === "Escape") cancelEditing();
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Note (optional)</Label>
+                    <Input
+                      value={editNoteInput}
+                      onChange={(e) => setEditNoteInput(e.target.value)}
+                      placeholder="What did you work on?"
+                      className="h-8 text-sm"
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter") await handleSaveEdit();
+                        if (e.key === "Escape") cancelEditing();
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={cancelEditing}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSaveEdit} disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}>
+                      Save
+                    </Button>
+                  </div>
                 </div>
-                {entry.note && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate" title={entry.note}>
-                    {entry.note}
-                  </p>
-                )}
-                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-                  {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
-                </p>
-              </div>
-              {canDelete(entry) && (
-                <button
-                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
-                  onClick={() => deleteTimeEntry(entry.id)}
-                  title="Delete"
+              ) : (
+                /* ── Read-only entry row ── */
+                <div
+                  className={`flex items-center gap-2 p-2 hover:bg-muted/30 ${canDelete(entry) ? "cursor-pointer" : ""}`}
+                  onClick={() => canDelete(entry) && startEditing(entry)}
+                  title={canDelete(entry) ? "Click to edit" : undefined}
                 >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium tabular-nums">{formatDuration(entry.durationMinutes)}</span>
+                      <span className="text-muted-foreground text-xs">{entry.spentDate}</span>
+                    </div>
+                    {entry.note && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate" title={entry.note}>
+                        {entry.note}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                      {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
+                    </p>
+                  </div>
+                  {canDelete(entry) && (
+                    <button
+                      className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}
