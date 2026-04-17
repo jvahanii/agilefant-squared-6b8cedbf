@@ -23,6 +23,11 @@ interface LabelsState {
   labels: Record<string, Label>;
   /** All assignments visible to the current user, keyed by assignment id. */
   assignments: Record<string, LabelAssignment>;
+  /**
+   * O(1) index: `"entityType:entityId"` → array of assigned label IDs.
+   * Maintained in sync with `assignments` by every mutation.
+   */
+  byEntity: Record<string, string[]>;
   loading: boolean;
 
   /** Loads labels and assignments for the active org plus any orgs that own
@@ -54,6 +59,50 @@ interface LabelsState {
   applyRealtimeAssignment: (event: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
+// ── Index helpers ──────────────────────────────────────────────────────────────
+
+function entityKey(entityType: LabelEntityType, entityId: string): string {
+  return `${entityType}:${entityId}`;
+}
+
+function addToEntityIndex(
+  byEntity: Record<string, string[]>,
+  a: LabelAssignment,
+): Record<string, string[]> {
+  const key = entityKey(a.entityType, a.entityId);
+  const existing = byEntity[key] ?? [];
+  if (existing.includes(a.labelId)) return byEntity;
+  return { ...byEntity, [key]: [...existing, a.labelId] };
+}
+
+function removeFromEntityIndex(
+  byEntity: Record<string, string[]>,
+  a: LabelAssignment,
+): Record<string, string[]> {
+  const key = entityKey(a.entityType, a.entityId);
+  const existing = byEntity[key];
+  if (!existing) return byEntity;
+  const filtered = existing.filter((id) => id !== a.labelId);
+  if (filtered.length === 0) {
+    const next = { ...byEntity };
+    delete next[key];
+    return next;
+  }
+  return { ...byEntity, [key]: filtered };
+}
+
+function buildEntityIndex(assignments: Record<string, LabelAssignment>): Record<string, string[]> {
+  const byEntity: Record<string, string[]> = {};
+  for (const a of Object.values(assignments)) {
+    const key = entityKey(a.entityType, a.entityId);
+    if (!byEntity[key]) byEntity[key] = [];
+    if (!byEntity[key].includes(a.labelId)) byEntity[key].push(a.labelId);
+  }
+  return byEntity;
+}
+
+// ── Row mappers ────────────────────────────────────────────────────────────────
+
 function rowToLabel(row: Record<string, unknown>): Label {
   return {
     id: row.id as string,
@@ -73,9 +122,12 @@ function rowToAssignment(row: Record<string, unknown>): LabelAssignment {
   };
 }
 
+// ── Store ──────────────────────────────────────────────────────────────────────
+
 export const useLabelsStore = create<LabelsState>((set, get) => ({
   labels: {},
   assignments: {},
+  byEntity: {},
   loading: false,
 
   loadLabels: async (orgIds) => {
@@ -102,7 +154,7 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
       assignments[a.id] = a;
     }
 
-    set({ labels, assignments, loading: false });
+    set({ labels, assignments, byEntity: buildEntityIndex(assignments), loading: false });
   },
 
   createLabel: async (orgId, name, color) => {
@@ -138,7 +190,6 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
     const { error } = await supabase.from('labels').update(dbPatch).eq('id', id);
     if (error) {
       console.error('updateLabel failed', error);
-      // revert
       set((s) => ({ labels: { ...s.labels, [id]: prev } }));
     }
   },
@@ -152,7 +203,9 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
       delete labels[id];
       const assignments = { ...s.assignments };
       for (const a of prevAssignments) delete assignments[a.id];
-      return { labels, assignments };
+      let byEntity = s.byEntity;
+      for (const a of prevAssignments) byEntity = removeFromEntityIndex(byEntity, a);
+      return { labels, assignments, byEntity };
     });
     const { error } = await supabase.from('labels').delete().eq('id', id);
     if (error) {
@@ -161,7 +214,9 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
         set((s) => {
           const assignments = { ...s.assignments };
           for (const a of prevAssignments) assignments[a.id] = a;
-          return { labels: { ...s.labels, [id]: prev }, assignments };
+          let byEntity = s.byEntity;
+          for (const a of prevAssignments) byEntity = addToEntityIndex(byEntity, a);
+          return { labels: { ...s.labels, [id]: prev }, assignments, byEntity };
         });
       }
     }
@@ -169,10 +224,9 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
 
   assignLabel: async (labelId, entityType, entityId, organizationId) => {
     // Idempotent: skip if already present
-    const existing = Object.values(get().assignments).find(
-      (a) => a.labelId === labelId && a.entityType === entityType && a.entityId === entityId,
-    );
-    if (existing) return;
+    const key = entityKey(entityType, entityId);
+    const existingIds = get().byEntity[key] ?? [];
+    if (existingIds.includes(labelId)) return;
 
     const { data, error } = await supabase
       .from('label_assignments')
@@ -189,7 +243,10 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
       return;
     }
     const a = rowToAssignment(data as Record<string, unknown>);
-    set((s) => ({ assignments: { ...s.assignments, [a.id]: a } }));
+    set((s) => ({
+      assignments: { ...s.assignments, [a.id]: a },
+      byEntity: addToEntityIndex(s.byEntity, a),
+    }));
   },
 
   unassignLabel: async (labelId, entityType, entityId) => {
@@ -201,7 +258,7 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
     set((s) => {
       const assignments = { ...s.assignments };
       delete assignments[existing.id];
-      return { assignments };
+      return { assignments, byEntity: removeFromEntityIndex(s.byEntity, existing) };
     });
 
     const { error } = await supabase
@@ -212,20 +269,20 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
       .eq('entity_id', entityId);
     if (error) {
       console.error('unassignLabel failed', error);
-      set((s) => ({ assignments: { ...s.assignments, [existing.id]: existing } }));
+      set((s) => ({
+        assignments: { ...s.assignments, [existing.id]: existing },
+        byEntity: addToEntityIndex(s.byEntity, existing),
+      }));
     }
   },
 
   getLabelsForEntity: (entityType, entityId) => {
-    const { assignments, labels } = get();
-    const out: Label[] = [];
-    for (const a of Object.values(assignments)) {
-      if (a.entityType === entityType && a.entityId === entityId) {
-        const l = labels[a.labelId];
-        if (l) out.push(l);
-      }
-    }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+    const { byEntity, labels } = get();
+    const labelIds = byEntity[entityKey(entityType, entityId)] ?? [];
+    return labelIds
+      .map((id) => labels[id])
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name)) as Label[];
   },
 
   getLabelsForOrg: (orgId) => {
@@ -252,13 +309,18 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
     if (event === 'DELETE') {
       const id = row.id as string;
       set((s) => {
+        const existing = s.assignments[id];
         const assignments = { ...s.assignments };
         delete assignments[id];
-        return { assignments };
+        const byEntity = existing ? removeFromEntityIndex(s.byEntity, existing) : s.byEntity;
+        return { assignments, byEntity };
       });
       return;
     }
     const a = rowToAssignment(row);
-    set((s) => ({ assignments: { ...s.assignments, [a.id]: a } }));
+    set((s) => ({
+      assignments: { ...s.assignments, [a.id]: a },
+      byEntity: addToEntityIndex(s.byEntity, a),
+    }));
   },
 }));

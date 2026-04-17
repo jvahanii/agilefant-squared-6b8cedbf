@@ -64,6 +64,45 @@ export function useRealtimeSync() {
     const channels: ReturnType<typeof supabase.channel>[] = [];
     let destroyed = false;
 
+    /**
+     * Attaches `labels` and `label_assignments` Postgres CDC listeners to the
+     * provided channel builder.  Extracted here to eliminate the duplicate
+     * handler blocks that previously appeared in both `subscribePartnerOrg`
+     * and the own-org channel.
+     */
+    function addLabelHandlers(
+      channel: ReturnType<typeof supabase.channel>,
+      orgId: string,
+    ): ReturnType<typeof supabase.channel> {
+      return channel
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'labels',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeLabel(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'label_assignments',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        );
+    }
+
     // Helper: subscribe a channel that monitors work_items, backlogs, and
     // work_item_hyperlinks for a partner org.  A JS-side filter ensures we only
     // apply changes that reference trees the active org can actually access.
@@ -200,34 +239,8 @@ export function useRealtimeSync() {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'labels',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeLabel(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'label_assignments',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .subscribe();
+        );
+      addLabelHandlers(channel, orgId).subscribe();
       channels.push(channel);
     }
 
@@ -350,34 +363,8 @@ export function useRealtimeSync() {
         (payload) => {
           applyRealtimeSettings(payload as any);
         },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'labels',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeLabel(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'label_assignments',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .subscribe();
+      );
+    addLabelHandlers(ownChannel, activeOrgId).subscribe();
     channels.push(ownChannel);
 
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).

@@ -14,7 +14,6 @@ import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
-import { isLabelsEnabled, setLabelsEnabled } from "@/hooks/useLabelsEnabled";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { LabelsManager } from "@/components/LabelsManager";
 import { useNavigate } from "react-router-dom";
@@ -61,13 +60,12 @@ export default function TeamSettings() {
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
   const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
-  // Labels toggle (frontend-only, superuser-controlled)
-  const [labelsEnabled, setLabelsEnabledState] = useState(() => isLabelsEnabled(activeOrgId));
-
-  // Org settings from backend
-  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false });
+  // Org settings from backend (includes labels toggle)
+  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
+  const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
+  const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -704,8 +702,7 @@ export default function TeamSettings() {
                   checked={labelsEnabled}
                   onCheckedChange={(checked) => {
                     if (activeOrgId) {
-                      setLabelsEnabled(activeOrgId, checked);
-                      setLabelsEnabledState(checked);
+                      setLabelsEnabledSetting(activeOrgId, checked);
                       toast({ title: checked ? "Labels enabled" : "Labels disabled" });
                     }
                   }}

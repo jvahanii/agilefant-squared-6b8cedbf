@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Plus, Trash2, Check, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function LabelsManager() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -29,6 +39,9 @@ export function LabelsManager() {
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmDeleteLabel = confirmDeleteId ? labelsMap[confirmDeleteId] : null;
+
   const handleAdd = async () => {
     if (!activeOrgId || !newName.trim()) return;
     const label = await createLabel(activeOrgId, newName.trim(), newColor);
@@ -52,9 +65,11 @@ export function LabelsManager() {
     setEditingId(null);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteLabel(id);
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    await deleteLabel(confirmDeleteId);
     toast({ title: "Label deleted" });
+    setConfirmDeleteId(null);
   };
 
   return (
@@ -114,7 +129,7 @@ export function LabelsManager() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={() => handleDelete(label.id)}
+                onClick={() => setConfirmDeleteId(label.id)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>
@@ -154,6 +169,27 @@ export function LabelsManager() {
           <Plus className="w-3.5 h-3.5 mr-1" /> New label
         </Button>
       )}
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete label "{confirmDeleteLabel?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the label and all its assignments from every work item and
+              backlog in this organization. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
