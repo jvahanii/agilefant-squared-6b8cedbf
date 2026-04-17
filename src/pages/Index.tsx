@@ -71,6 +71,19 @@ const Index = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
+  // Load labels for active org + any partner orgs whose trees are accessible.
+  const treeIdsKey = Object.keys(backlogTrees).sort().join(',');
+  useEffect(() => {
+    if (!activeOrgId) return;
+    const orgIds = new Set<string>([activeOrgId]);
+    for (const treeId of Object.keys(backlogTrees)) {
+      const sep = treeId.indexOf('::');
+      if (sep > 0) orgIds.add(treeId.slice(0, sep));
+    }
+    loadLabels([...orgIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId, treeIdsKey]);
+
   useRespawnCheck();
   useRealtimeSync();
 
