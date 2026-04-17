@@ -1,23 +1,35 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, Plus, Search, X } from "lucide-react";
+import { Check, Minus, Plus, Search, X } from "lucide-react";
 import { useLabelsStore, LabelEntityType } from "@/store/labelsStore";
 import { useOrgStore } from "@/store/orgStore";
 
 interface LabelPickerProps {
   entityType: LabelEntityType;
   entityId: string;
+  /**
+   * When provided, all label toggle operations apply to every ID in this array
+   * (bulk multi-select mode). Falls back to the single `entityId` when absent.
+   */
+  entityIds?: string[];
   /** The trigger element (e.g. a button) that opens the popover. */
   children: React.ReactNode;
 }
 
-export function LabelPicker({ entityType, entityId, children }: LabelPickerProps) {
+export function LabelPicker({ entityType, entityId, entityIds, children }: LabelPickerProps) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
   const assignLabel = useLabelsStore((s) => s.assignLabel);
   const unassignLabel = useLabelsStore((s) => s.unassignLabel);
   const createLabel = useLabelsStore((s) => s.createLabel);
+
+  // Resolved list of IDs this picker operates on
+  const resolvedIds = useMemo(
+    () => (entityIds && entityIds.length > 0 ? entityIds : [entityId]),
+    [entityIds, entityId],
+  );
+  const isBulk = resolvedIds.length > 1;
 
   const orgLabels = useMemo(
     () =>
@@ -28,10 +40,24 @@ export function LabelPicker({ entityType, entityId, children }: LabelPickerProps
   );
 
   // O(1) lookup via byEntity index instead of O(n) assignment scan
+  // In single-entity mode: a Set of assigned label IDs.
+  // In bulk mode: keep a per-entity map for partial-state detection.
   const assignedIds = useMemo(
     () => new Set(byEntity[`${entityType}:${entityId}`] ?? []),
     [byEntity, entityType, entityId],
   );
+
+  // For bulk mode: count how many of the selected entities have each label
+  const bulkAssignedCounts = useMemo(() => {
+    if (!isBulk) return null;
+    const counts: Record<string, number> = {};
+    for (const id of resolvedIds) {
+      for (const labelId of byEntity[`${entityType}:${id}`] ?? []) {
+        counts[labelId] = (counts[labelId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [isBulk, resolvedIds, byEntity, entityType]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,10 +101,21 @@ export function LabelPicker({ entityType, entityId, children }: LabelPickerProps
   }, [searchQuery]);
 
   const handleToggle = (labelId: string, orgId: string) => {
-    if (assignedIds.has(labelId)) {
-      unassignLabel(labelId, entityType, entityId);
+    if (isBulk && bulkAssignedCounts) {
+      const assignedCount = bulkAssignedCounts[labelId] ?? 0;
+      if (assignedCount === resolvedIds.length) {
+        // All have it → remove from all
+        resolvedIds.forEach((id) => unassignLabel(labelId, entityType, id));
+      } else {
+        // Some or none have it → assign to all (assignLabel is idempotent)
+        resolvedIds.forEach((id) => assignLabel(labelId, entityType, id, orgId));
+      }
     } else {
-      assignLabel(labelId, entityType, entityId, orgId);
+      if (assignedIds.has(labelId)) {
+        unassignLabel(labelId, entityType, entityId);
+      } else {
+        assignLabel(labelId, entityType, entityId, orgId);
+      }
     }
   };
 
@@ -86,7 +123,11 @@ export function LabelPicker({ entityType, entityId, children }: LabelPickerProps
     if (!activeOrgId || !newName.trim()) return;
     const label = await createLabel(activeOrgId, newName.trim(), newColor);
     if (label) {
-      assignLabel(label.id, entityType, entityId, activeOrgId);
+      if (isBulk) {
+        resolvedIds.forEach((id) => assignLabel(label.id, entityType, id, activeOrgId));
+      } else {
+        assignLabel(label.id, entityType, entityId, activeOrgId);
+      }
     }
     setNewName("");
     setIsCreating(false);
@@ -117,7 +158,9 @@ export function LabelPicker({ entityType, entityId, children }: LabelPickerProps
         align="start"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-xs font-medium text-muted-foreground px-2 py-1">Labels</div>
+        <div className="text-xs font-medium text-muted-foreground px-2 py-1">
+          {isBulk ? `Labels (${resolvedIds.length} items)` : "Labels"}
+        </div>
 
         {/* Search input */}
         {!isCreating && (
@@ -151,25 +194,36 @@ export function LabelPicker({ entityType, entityId, children }: LabelPickerProps
         )}
 
         <div className="max-h-48 overflow-y-auto">
-          {filteredLabels.map((label, idx) => (
-            <button
-              key={label.id}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors ${
-                idx === focusedIdx ? "bg-accent" : "hover:bg-muted"
-              }`}
-              onMouseEnter={() => setFocusedIdx(idx)}
-              onClick={() => handleToggle(label.id, label.organizationId)}
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: label.color }}
-              />
-              <span className="flex-1 truncate">{label.name}</span>
-              {assignedIds.has(label.id) && (
-                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-              )}
-            </button>
-          ))}
+          {filteredLabels.map((label, idx) => {
+            const fullyAssigned = isBulk
+              ? (bulkAssignedCounts?.[label.id] ?? 0) === resolvedIds.length
+              : assignedIds.has(label.id);
+            const partiallyAssigned = isBulk
+              ? (bulkAssignedCounts?.[label.id] ?? 0) > 0 && !fullyAssigned
+              : false;
+            return (
+              <button
+                key={label.id}
+                className={`flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                  idx === focusedIdx ? "bg-accent" : "hover:bg-muted"
+                }`}
+                onMouseEnter={() => setFocusedIdx(idx)}
+                onClick={() => handleToggle(label.id, label.organizationId)}
+              >
+                <span
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: label.color }}
+                />
+                <span className="flex-1 truncate">{label.name}</span>
+                {fullyAssigned && (
+                  <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                )}
+                {partiallyAssigned && (
+                  <Minus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {isCreating ? (

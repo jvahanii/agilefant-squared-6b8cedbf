@@ -707,7 +707,11 @@ function WorkItemNodeContent({
                 <Link2 className="w-3.5 h-3.5" />
               </button>
               {labelsVisible && (
-                <LabelPicker entityType="work_item" entityId={workItemId}>
+                <LabelPicker
+                  entityType="work_item"
+                  entityId={workItemId}
+                  entityIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : undefined}
+                >
                   <button
                     className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     title="Labels"
