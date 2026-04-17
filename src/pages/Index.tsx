@@ -22,6 +22,8 @@ const Index = () => {
   const loadTimeEntries = useTimeEntryStore(s => s.loadTimeEntries);
   const { user } = useAuth();
   const loadSettings = useOrgSettingsStore(s => s.loadSettings);
+  const loadLabels = useLabelsStore(s => s.loadLabels);
+  const backlogTrees = useAppStore(s => s.backlogTrees);
 
   useEffect(() => {
     if (user) {
