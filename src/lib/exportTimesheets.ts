@@ -56,7 +56,7 @@ export async function exportTimesheets(
   headerRow.alignment = { vertical: "middle" };
 
   for (const entry of sorted) {
-    const userName = userNames[entry.userId] ?? entry.userId.slice(0, 8);
+    const userName = userNames[entry.userId] ?? `Unknown User (${entry.userId.slice(0, 8)})`;
 
     let subject = "(unlinked)";
     if (entry.workItemId && workItems[entry.workItemId]) {
@@ -87,7 +87,7 @@ export async function exportTimesheets(
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const safeOrgName = orgName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeOrgName = orgName.replace(/[^a-zA-Z0-9-]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   const date = new Date().toISOString().slice(0, 10);
   a.href = url;
   a.download = `timesheets_${safeOrgName}_${date}.xlsx`;
