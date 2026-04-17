@@ -531,6 +531,18 @@ function WorkItemNodeContent({
             />
           ) : (
             <span className="flex-1 text-sm break-words whitespace-normal py-0.5">
+              {labelsVisible && itemLabels.length > 0 && (
+                <span className="inline mr-1 text-xs align-baseline">
+                  <span className="text-muted-foreground">[</span>
+                  {itemLabels.map((label, i) => (
+                    <span key={label.id}>
+                      {i > 0 && <span className="text-muted-foreground">, </span>}
+                      <span style={{ color: label.color }}>{label.name}</span>
+                    </span>
+                  ))}
+                  <span className="text-muted-foreground">]</span>
+                </span>
+              )}
               <span
                 className="cursor-text"
                 onDoubleClick={(e) => {
@@ -541,24 +553,6 @@ function WorkItemNodeContent({
                 {isScrambled ? scrambleName(item.title) : item.title}
               </span>
             </span>
-          )}
-
-          {labelsVisible && itemLabels.length > 0 && (
-            <div className="flex items-center gap-0.5 shrink-0 mt-0.5 flex-wrap">
-              {itemLabels.map((label) => (
-                <TooltipProvider key={label.id}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                        style={{ backgroundColor: label.color }}
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">{label.name}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
           )}
 
           {item.respawnEnabled && (() => {

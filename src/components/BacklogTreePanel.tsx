@@ -401,25 +401,20 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
               startEditing();
             }}
           >
+            {labelsVisible && backlogLabels.length > 0 && (
+              <span className="inline mr-1 text-xs align-baseline">
+                <span className="text-muted-foreground">[</span>
+                {backlogLabels.map((label, i) => (
+                  <span key={label.id}>
+                    {i > 0 && <span className="text-muted-foreground">, </span>}
+                    <span style={{ color: label.color }}>{label.name}</span>
+                  </span>
+                ))}
+                <span className="text-muted-foreground">]</span>
+              </span>
+            )}
             {isScrambled ? scrambleName(backlog.name) : backlog.name}
           </span>
-        )}
-        {labelsVisible && backlogLabels.length > 0 && (
-          <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
-            {backlogLabels.map((label) => (
-              <TooltipProvider key={label.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                      style={{ backgroundColor: label.color }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">{label.name}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
-          </div>
         )}
         {pointsVisible && totalPoints > 0 && (
           <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">

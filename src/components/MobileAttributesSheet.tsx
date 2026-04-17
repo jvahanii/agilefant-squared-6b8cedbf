@@ -149,11 +149,15 @@ export function MobileWorkItemAttributesSheet({
                 <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded hover:bg-accent">
                   <Tag className="w-3.5 h-3.5" />
                   {itemLabels.length > 0 ? (
-                    <span className="flex items-center gap-1">
-                      {itemLabels.map((l) => (
-                        <span key={l.id} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                    <span className="flex items-center gap-0.5 text-xs">
+                      <span className="text-muted-foreground">[</span>
+                      {itemLabels.map((l, i) => (
+                        <span key={l.id}>
+                          {i > 0 && <span className="text-muted-foreground">, </span>}
+                          <span style={{ color: l.color }}>{l.name}</span>
+                        </span>
                       ))}
-                      <span className="text-xs tabular-nums">{itemLabels.length}</span>
+                      <span className="text-muted-foreground">]</span>
                     </span>
                   ) : (
                     <span className="text-xs">Add labels</span>
@@ -282,11 +286,15 @@ export function MobileBacklogAttributesSheet({
                 <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded hover:bg-accent">
                   <Tag className="w-3.5 h-3.5" />
                   {backlogLabels.length > 0 ? (
-                    <span className="flex items-center gap-1">
-                      {backlogLabels.map((l) => (
-                        <span key={l.id} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                    <span className="flex items-center gap-0.5 text-xs">
+                      <span className="text-muted-foreground">[</span>
+                      {backlogLabels.map((l, i) => (
+                        <span key={l.id}>
+                          {i > 0 && <span className="text-muted-foreground">, </span>}
+                          <span style={{ color: l.color }}>{l.name}</span>
+                        </span>
                       ))}
-                      <span className="text-xs tabular-nums">{backlogLabels.length}</span>
+                      <span className="text-muted-foreground">]</span>
                     </span>
                   ) : (
                     <span className="text-xs">Add labels</span>
