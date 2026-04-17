@@ -36,6 +36,8 @@ export function useRealtimeSync() {
   const applyRealtimeTeamAssignment = useTeamStore((s) => s.applyRealtimeTeamAssignment);
   const applyRealtimeTeam = useTeamStore((s) => s.applyRealtimeTeam);
   const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
+  const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
+  const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
