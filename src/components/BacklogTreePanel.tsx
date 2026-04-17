@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -12,6 +12,9 @@ import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { useLabelsStore } from "@/store/labelsStore";
+import { isLabelsEnabled } from "@/hooks/useLabelsEnabled";
+import { LabelPicker } from "./LabelPicker";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -252,6 +255,19 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   }, [timeEntries, backlogId, timeLoggingVisible]);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
 
+  // Labels
+  const labelsVisible = isLabelsEnabled(activeOrgId);
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const assignments = useLabelsStore((s) => s.assignments);
+  const backlogLabels = useMemo(() => {
+    if (!labelsVisible) return [];
+    const out = Object.values(assignments)
+      .filter((a) => a.entityType === "backlog" && a.entityId === backlogId)
+      .map((a) => labelsMap[a.labelId])
+      .filter(Boolean);
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [labelsVisible, assignments, labelsMap, backlogId]);
+
   useEffect(() => {
     if (isEditing) {
       editRef.current?.focus();
@@ -387,6 +403,23 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             {isScrambled ? scrambleName(backlog.name) : backlog.name}
           </span>
         )}
+        {labelsVisible && backlogLabels.length > 0 && (
+          <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
+            {backlogLabels.map((label) => (
+              <TooltipProvider key={label.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                      style={{ backgroundColor: label.color }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">{label.name}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </div>
+        )}
         {pointsVisible && totalPoints > 0 && (
           <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
@@ -398,6 +431,14 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           ><Plus className="w-3.5 h-3.5" /></button>
+          {labelsVisible && (
+            <LabelPicker entityType="backlog" entityId={backlogId}>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              ><Tag className="w-3.5 h-3.5" /></button>
+            </LabelPicker>
+          )}
           {timeLoggingVisible && (
             <button
               className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
@@ -427,6 +468,17 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
+          {labelsVisible && (
+            <LabelPicker entityType="backlog" entityId={backlogId}>
+              <button
+                className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                title="Labels"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Tag className="w-3.5 h-3.5" />
+              </button>
+            </LabelPicker>
+          )}
           {timeLoggingVisible && (
             <button
               className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
