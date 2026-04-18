@@ -648,6 +648,8 @@ function DraggableTreeHeader({
   onAddBacklog,
   onDeleteTree,
   onShareTree,
+  onEditStatuses,
+  canEditStatuses,
   shares,
   isScrambled,
 }: {
@@ -655,6 +657,8 @@ function DraggableTreeHeader({
   onAddBacklog: () => void;
   onDeleteTree: () => void;
   onShareTree: () => void;
+  onEditStatuses: () => void;
+  canEditStatuses: boolean;
   shares: TreeShare[];
   isScrambled: boolean;
 }) {
