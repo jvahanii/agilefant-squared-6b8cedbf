@@ -109,7 +109,7 @@ function InlineInput({
   };
 
   return (
-    <div className="flex items-center gap-1 px-2 py-0.5" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
+    <div className="flex items-center gap-1 px-2 py-px" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
       <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
       <input
         ref={inputRef}
@@ -149,7 +149,7 @@ function BacklogReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative py-0.5`}
+      className={`relative py-px`}
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -326,7 +326,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         {...attributes}
         {...restListeners}
         className={`
-          flex items-center gap-1.5 px-2 py-0.5 rounded-md
+          flex items-center gap-1.5 px-2 py-px rounded-md
           transition-all duration-150 ease-out select-none group
           ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
           ${isSelected ? "bg-selection/10 ring-1 ring-selection/40 text-foreground font-medium" : "hover:bg-muted"}
@@ -636,7 +636,7 @@ function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   });
 
   return (
-    <div ref={setNodeRef} className={`relative py-0.5 mx-2`}>
+    <div ref={setNodeRef} className={`relative py-px mx-2`}>
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
@@ -673,7 +673,7 @@ function DraggableTreeHeader({
     <div
       ref={setDragRef}
       {...attributes}
-      className="px-1 py-0.5 flex flex-col group select-none"
+      className="px-1 py-px flex flex-col group select-none"
       style={isDragging ? { opacity: 0.4 } : undefined}
       onPointerDown={(e) => {
         dragStartedRef.current = false;
@@ -791,7 +791,7 @@ export function BacklogTreePanel() {
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
-      <div className="p-1 pb-0.5 md:p-1.5 md:pb-1 flex items-center justify-between">
+      <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
         <button
           className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -801,7 +801,7 @@ export function BacklogTreePanel() {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-0.5 pb-0.5">
+      <div className="flex-1 overflow-y-auto px-0.5 pb-0">
         {isAddingTree && (
           <div className="mb-1 px-2">
             <InlineInput
