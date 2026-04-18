@@ -394,7 +394,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
       // a hung network request), unblock the UI so the app renders in an empty state
-      // rather than showing the loading spinner indefinitely.
+      // rather than showing the loading spinner indefinitely. The isLoading check
+      // prevents a no-op state update if the timeout fires after a successful load.
       const timeoutId = setTimeout(() => {
         if (get().isLoading) {
           set({ isLoading: false });
