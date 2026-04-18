@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Lock, Plus, Trash2 } from "lucide-react";
 import {
   useTreeStatusesStore,
-  DEFAULT_TREE_STATUSES,
+  isPinnedStatus,
   type TreeStatus,
 } from "@/store/treeStatusesStore";
 
@@ -93,7 +93,8 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
           <DialogTitle>Statuses — {treeName}</DialogTitle>
           <DialogDescription>
             Configure the statuses available for work items in this backlog tree. Anyone
-            with access to the tree can edit these.
+            with access to the tree can edit these. Statuses marked with a lock icon are
+            required and cannot be edited or removed.
           </DialogDescription>
         </DialogHeader>
 
@@ -109,6 +110,7 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
               status={s}
               isFirst={idx === 0}
               isLast={idx === list.length - 1}
+              locked={isPinnedStatus(s.key)}
               onLabel={(label) => updateStatus(s.id, { label })}
               onColor={(color) => updateStatus(s.id, { color })}
               onUp={() => moveUp(idx)}
@@ -161,6 +163,7 @@ function StatusRow({
   status,
   isFirst,
   isLast,
+  locked,
   onLabel,
   onColor,
   onUp,
@@ -171,6 +174,7 @@ function StatusRow({
   status: TreeStatus;
   isFirst: boolean;
   isLast: boolean;
+  locked: boolean;
   onLabel: (v: string) => void;
   onColor: (v: string) => void;
   onUp: () => void;
@@ -182,6 +186,7 @@ function StatusRow({
   useEffect(() => setLabel(status.label), [status.label]);
 
   const commit = () => {
+    if (locked) return;
     const trimmed = label.trim();
     if (trimmed && trimmed !== status.label) onLabel(trimmed);
     else if (!trimmed) setLabel(status.label);
@@ -193,8 +198,9 @@ function StatusRow({
         type="color"
         value={status.color}
         onChange={(e) => onColor(e.target.value)}
-        className="w-8 h-8 rounded border border-input bg-background cursor-pointer shrink-0"
-        title="Color"
+        disabled={locked}
+        className="w-8 h-8 rounded border border-input bg-background cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
+        title={locked ? "Required status — color cannot be changed" : "Color"}
       />
       <Input
         value={label}
@@ -203,24 +209,32 @@ function StatusRow({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="flex-1"
+        readOnly={locked}
+        className={`flex-1 ${locked ? "cursor-default opacity-80" : ""}`}
+        title={locked ? "Required status — label cannot be changed" : undefined}
       />
-      <Button variant="ghost" size="icon" onClick={onUp} disabled={isFirst} title="Move up">
-        <ArrowUp className="w-4 h-4" />
-      </Button>
-      <Button variant="ghost" size="icon" onClick={onDown} disabled={isLast} title="Move down">
-        <ArrowDown className="w-4 h-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onDelete}
-        disabled={!canDelete}
-        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        title={canDelete ? "Delete" : "Tree must keep at least one status"}
-      >
-        <Trash2 className="w-4 h-4" />
-      </Button>
+      {locked ? (
+        <Lock className="w-4 h-4 text-muted-foreground shrink-0" title="Required status — cannot be edited or removed" />
+      ) : (
+        <>
+          <Button variant="ghost" size="icon" onClick={onUp} disabled={isFirst} title="Move up">
+            <ArrowUp className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onDown} disabled={isLast} title="Move down">
+            <ArrowDown className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            disabled={!canDelete}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            title={canDelete ? "Delete" : "Tree must keep at least one status"}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </>
+      )}
     </div>
   );
 }
