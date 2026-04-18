@@ -1315,7 +1315,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         const movedBacklogIds = new Set<string>([backlogId]);
         const queue = [...(state.backlogs[backlogId]?.childrenIds ?? [])];
         while (queue.length) {
-          const childId = queue.shift()!;
+          const childId = queue.shift();
+          if (!childId) break;
           movedBacklogIds.add(childId);
           const child = state.backlogs[childId];
           if (child) queue.push(...child.childrenIds);
