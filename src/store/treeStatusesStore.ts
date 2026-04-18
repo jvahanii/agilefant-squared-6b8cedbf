@@ -69,7 +69,7 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
 
     const grouped: Record<string, TreeStatus[]> = {};
     for (const tid of treeIds) grouped[tid] = [];
-    for (const row of (data ?? []) as Record<string, unknown>[]) {
+    for (const row of ((data as unknown) ?? []) as Record<string, unknown>[]) {
       const s = rowToStatus(row);
       (grouped[s.treeId] ??= []).push(s);
     }
@@ -93,7 +93,7 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
       console.error('createStatus failed', error);
       return;
     }
-    const s = rowToStatus(data as Record<string, unknown>);
+    const s = rowToStatus(data as unknown as Record<string, unknown>);
     set((state) => ({
       statusesByTree: {
         ...state.statusesByTree,
