@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -15,6 +15,8 @@ import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
+import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { useScramble as useScrambleCtx } from "@/contexts/ScrambleContext";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
