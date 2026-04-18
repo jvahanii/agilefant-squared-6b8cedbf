@@ -16,7 +16,6 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
-import { useScramble as useScrambleCtx } from "@/contexts/ScrambleContext";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
