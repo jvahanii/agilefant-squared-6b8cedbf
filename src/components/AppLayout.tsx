@@ -1001,10 +1001,10 @@ function AppLayoutInner() {
     >
       <div className="h-screen flex flex-col overflow-hidden bg-background">
         {/* HEADER */}
-        <header className="h-10 md:h-12 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-[#f5f5f5] shrink-0 shadow-sm z-10">
+        <header className="h-8 md:h-10 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-[#f5f5f5] shrink-0 shadow-sm z-10">
           <img
             alt="Agilefant"
-            className="h-6 md:h-8 w-auto"
+            className="h-5 md:h-6 w-auto"
             src="/lovable-uploads/0c81b1b5-dc1d-489d-a1c4-51656484d393.png"
           />
           <h1 className="text-sm font-bold tracking-tight hidden sm:block">
