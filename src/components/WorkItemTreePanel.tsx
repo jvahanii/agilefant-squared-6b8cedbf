@@ -1,6 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
+import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
@@ -482,22 +483,22 @@ function WorkItemNodeContent({
                 className="w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125"
                 style={{
                   backgroundColor:
-                    WORK_ITEM_STATUSES.find((s) => s.value === item.status)?.color ?? "var(--status-not-started)",
+                    treeStatuses.find((s) => s.key === item.status)?.color ?? treeStatuses[0]?.color ?? "#94a3b8",
                 }}
                 onClick={(e) => e.stopPropagation()}
-                title={WORK_ITEM_STATUSES.find((s) => s.value === item.status)?.label ?? "Not Started"}
+                title={treeStatuses.find((s) => s.key === item.status)?.label ?? item.status}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[140px]">
-              {WORK_ITEM_STATUSES.map((s) => (
+              {treeStatuses.map((s) => (
                 <DropdownMenuItem
-                  key={s.value}
+                  key={s.key}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isSelected && selectedWorkItemIds.length > 1) {
-                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.value));
+                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
                     } else {
-                      setWorkItemStatus(workItemId, s.value);
+                      setWorkItemStatus(workItemId, s.key as WorkItemStatus);
                     }
                   }}
                   className="flex items-center gap-2 text-xs"
