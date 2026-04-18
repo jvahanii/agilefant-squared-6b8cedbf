@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Download } from "lucide-react";
+import { Check, Clock, Download, Pencil, Trash2, X } from "lucide-react";
 import { useTimeEntryStore, TimeEntry } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDuration } from "@/components/TimeLogDialog";
+import { formatDuration, parseDuration } from "@/components/TimeLogDialog";
 import { toast } from "@/hooks/use-toast";
 
 interface TimesheetBrowserDialogProps {
@@ -103,13 +104,23 @@ export function TimesheetBrowserDialog({
   orgName,
 }: TimesheetBrowserDialogProps) {
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const updateTimeEntry = useTimeEntryStore((s) => s.updateTimeEntry);
+  const deleteTimeEntry = useTimeEntryStore((s) => s.deleteTimeEntry);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
+  const { user } = useAuth();
 
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [filterUser, setFilterUser] = useState<string>("__all__");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+
+  // Edit state
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editDurationInput, setEditDurationInput] = useState("");
+  const [editDateInput, setEditDateInput] = useState("");
+  const [editNoteInput, setEditNoteInput] = useState("");
+  const editDurationRef = useRef<HTMLInputElement>(null);
 
   // Fetch user display names when dialog opens
   useEffect(() => {
@@ -132,6 +143,13 @@ export function TimesheetBrowserDialog({
         setUserNames((prev) => ({ ...prev, ...newNames }));
       });
   }, [open, timeEntries, userNames]);
+
+  // Focus duration input when edit mode activates
+  useEffect(() => {
+    if (editingEntryId) {
+      setTimeout(() => editDurationRef.current?.focus(), 0);
+    }
+  }, [editingEntryId]);
 
   // Sorted list of all entries (latest first)
   const allEntriesSorted = useMemo(
@@ -185,6 +203,32 @@ export function TimesheetBrowserDialog({
       return backlogs[entry.backlogId].name;
     }
     return "(unlinked)";
+  };
+
+  const canModify = (entry: TimeEntry) => entry.userId === user?.id;
+
+  const startEditing = (entry: TimeEntry) => {
+    setEditingEntryId(entry.id);
+    setEditDurationInput(formatDuration(entry.durationMinutes));
+    setEditDateInput(entry.spentDate);
+    setEditNoteInput(entry.note ?? "");
+  };
+
+  const cancelEditing = () => setEditingEntryId(null);
+
+  const handleSaveEdit = async () => {
+    if (!editingEntryId) return;
+    const minutes = parseDuration(editDurationInput);
+    if (!minutes || minutes <= 0) {
+      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
+      return;
+    }
+    await updateTimeEntry(editingEntryId, {
+      durationMinutes: minutes,
+      spentDate: editDateInput,
+      note: editNoteInput.trim() || null,
+    });
+    setEditingEntryId(null);
   };
 
   return (
@@ -271,33 +315,125 @@ export function TimesheetBrowserDialog({
                 <TableHead>Work Item / Backlog</TableHead>
                 <TableHead className="w-24 text-right">Duration</TableHead>
                 <TableHead>Note</TableHead>
+                <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No time entries found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
-                      {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
-                    </TableCell>
-                    <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
-                      {getSubject(entry)}
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums text-right">
-                      {formatDuration(entry.durationMinutes)}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
-                      {entry.note ?? ""}
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredEntries.map((entry) =>
+                  editingEntryId === entry.id ? (
+                    /* ── Inline edit row ── */
+                    <TableRow key={entry.id} className="bg-muted/20">
+                      <TableCell colSpan={6} className="py-2 px-3">
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Duration</Label>
+                            <Input
+                              ref={editDurationRef}
+                              value={editDurationInput}
+                              onChange={(e) => setEditDurationInput(e.target.value)}
+                              placeholder='e.g. "1.5", "1h 30m"'
+                              className="h-8 text-sm w-32"
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter") await handleSaveEdit();
+                                if (e.key === "Escape") cancelEditing();
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Date</Label>
+                            <Input
+                              type="date"
+                              value={editDateInput}
+                              onChange={(e) => setEditDateInput(e.target.value)}
+                              className="h-8 text-sm w-36"
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter") await handleSaveEdit();
+                                if (e.key === "Escape") cancelEditing();
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-1 flex-1 min-w-[140px]">
+                            <Label className="text-xs">Note (optional)</Label>
+                            <Input
+                              value={editNoteInput}
+                              onChange={(e) => setEditNoteInput(e.target.value)}
+                              placeholder="What did you work on?"
+                              className="h-8 text-sm"
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter") await handleSaveEdit();
+                                if (e.key === "Escape") cancelEditing();
+                              }}
+                            />
+                          </div>
+                          <div className="flex gap-1 pb-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={cancelEditing}
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={handleSaveEdit}
+                              disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    /* ── Read-only row ── */
+                    <TableRow key={entry.id} className="group">
+                      <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
+                        {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
+                      </TableCell>
+                      <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
+                        {getSubject(entry)}
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums text-right">
+                        {formatDuration(entry.durationMinutes)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
+                        {entry.note ?? ""}
+                      </TableCell>
+                      <TableCell className="text-right pr-2">
+                        {canModify(entry) && (
+                          <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              onClick={() => startEditing(entry)}
+                              title="Edit"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              onClick={() => deleteTimeEntry(entry.id)}
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                )
               )}
             </TableBody>
           </Table>
