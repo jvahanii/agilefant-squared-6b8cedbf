@@ -1306,11 +1306,57 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (isSiblingAtTarget && sibling.rank > maxRank) maxRank = sibling.rank;
       });
       updatedBacklogs[backlogId] = { ...bl, parentId: targetParentId, treeId, rank: maxRank + 1 };
+
+      const oldTreeId = bl.treeId;
+      let updatedWorkItems = state.workItems;
+
+      if (oldTreeId !== treeId) {
+        // Collect all backlog IDs in the moved subtree (BFS over children)
+        const movedBacklogIds = new Set<string>([backlogId]);
+        const queue = [...(state.backlogs[backlogId]?.childrenIds ?? [])];
+        while (queue.length) {
+          const childId = queue.shift()!;
+          movedBacklogIds.add(childId);
+          const child = state.backlogs[childId];
+          if (child) queue.push(...child.childrenIds);
+        }
+
+        // Update treeId for all descendant backlogs (the root was already updated above)
+        movedBacklogIds.forEach((id) => {
+          if (id !== backlogId) {
+            updatedBacklogs[id] = { ...updatedBacklogs[id], treeId };
+          }
+        });
+
+        // Remap work item backlog assignments: oldTreeId key → newTreeId key
+        const changedItems: WorkItem[] = [];
+        updatedWorkItems = { ...state.workItems };
+        Object.values(state.workItems).forEach((wi) => {
+          const blId = wi.backlogAssignments[oldTreeId];
+          if (blId && movedBacklogIds.has(blId)) {
+            const newAssignments = { ...wi.backlogAssignments };
+            delete newAssignments[oldTreeId];
+            newAssignments[treeId] = blId;
+            const updated = { ...wi, backlogAssignments: newAssignments };
+            updatedWorkItems[wi.id] = updated;
+            changedItems.push(updated);
+          }
+        });
+
+        // Persist descendant backlogs and changed work items
+        const descendantBacklogs = [...movedBacklogIds]
+          .filter((id) => id !== backlogId)
+          .map((id) => updatedBacklogs[id]);
+        if (descendantBacklogs.length) upsertBacklogs(descendantBacklogs, orgId);
+        if (changedItems.length) upsertWorkItems(changedItems, orgId);
+      }
+
       upsertBacklog(updatedBacklogs[backlogId], orgId);
       internalLog({ action: "Move", entityType: "backlog", entityId: backlogId, entityName: bl.name, details: `parent: "${bl.parentId ? state.backlogs[bl.parentId]?.name ?? bl.parentId : 'root'}" → "${targetParentId ? state.backlogs[targetParentId]?.name ?? targetParentId : 'root'}"` });
       set({
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
+        workItems: updatedWorkItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
