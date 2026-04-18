@@ -391,6 +391,16 @@ export const useAppStore = create<AppState>()((set, get) => {
         return;
       }
       set({ isLoading: true });
+
+      // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
+      // a hung network request), unblock the UI so the app renders in an empty state
+      // rather than showing the loading spinner indefinitely.
+      const timeoutId = setTimeout(() => {
+        if (get().isLoading) {
+          set({ isLoading: false });
+        }
+      }, 15000);
+
       try {
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
@@ -439,6 +449,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
         }
 
+        clearTimeout(timeoutId);
         set({
           ...cleanData,
           hyperlinks,
@@ -453,6 +464,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           expandedWorkItems,
         });
       } catch (err) {
+        clearTimeout(timeoutId);
         set({ isLoading: false });
       }
     },
