@@ -218,6 +218,16 @@ function WorkItemNodeContent({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [labelsVisible, byEntity, labelsMap, workItemId]);
 
+  // Per-tree status definitions (falls back to defaults if not loaded yet).
+  const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  const treeStatuses = useMemo(
+    () =>
+      treeStatusList && treeStatusList.length > 0
+        ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
+        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color })),
+    [treeStatusList],
+  );
+
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
