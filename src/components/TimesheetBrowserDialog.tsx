@@ -342,21 +342,6 @@ export function TimesheetBrowserDialog({
     }
   }, [editingEntryId]);
 
-  // Auto-expand top-level groups when dimensions or filtered entries change
-  useEffect(() => {
-    if (groupDims.length === 0) {
-      setExpandedPaths(new Set());
-      return;
-    }
-    const dim = groupDims[0];
-    const topKeys = new Set<string>();
-    for (const entry of filteredEntries) {
-      const key = getEntryGroupKey(entry, dim, workItems, backlogs);
-      topKeys.add(`${dim}:${key}`);
-    }
-    setExpandedPaths(topKeys);
-  }, [groupDims, filteredEntries, workItems, backlogs]);
-
   // Sorted list of all entries (latest first)
   const allEntriesSorted = useMemo(
     () =>
@@ -383,6 +368,21 @@ export function TimesheetBrowserDialog({
       return true;
     });
   }, [allEntriesSorted, filterUser, filterDateFrom, filterDateTo]);
+
+  // Auto-expand top-level groups when dimensions or filtered entries change
+  useEffect(() => {
+    if (groupDims.length === 0) {
+      setExpandedPaths(new Set());
+      return;
+    }
+    const dim = groupDims[0];
+    const topKeys = new Set<string>();
+    for (const entry of filteredEntries) {
+      const key = getEntryGroupKey(entry, dim, workItems, backlogs);
+      topKeys.add(`${dim}:${key}`);
+    }
+    setExpandedPaths(topKeys);
+  }, [groupDims, filteredEntries, workItems, backlogs]);
 
   const totalMinutes = useMemo(
     () => filteredEntries.reduce((sum, e) => sum + e.durationMinutes, 0),
