@@ -19,6 +19,7 @@ import {
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
+import { useTreeStatusesStore } from "./treeStatusesStore";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -1374,6 +1375,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       const rank = maxRank + 1;
       const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
       upsertBacklogTree(newTree, orgId);
+      // Seed the required pinned statuses for the new tree.
+      useTreeStatusesStore.getState().seedPinnedStatuses(id);
       internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
       set({
         backlogTrees: { ...state.backlogTrees, [id]: newTree },

@@ -10,6 +10,15 @@ export interface TreeStatus {
   rank: number;
 }
 
+/** Keys of the statuses that every tree must always have and that cannot be edited or deleted. */
+export const PINNED_STATUS_KEYS = ['not_started', 'in_progress', 'done'] as const;
+export type PinnedStatusKey = typeof PINNED_STATUS_KEYS[number];
+
+/** Returns true if the given status key is a required, non-editable pinned status. */
+export function isPinnedStatus(key: string): boolean {
+  return (PINNED_STATUS_KEYS as readonly string[]).includes(key);
+}
+
 /** Hard-coded fallback used when a tree has no rows in `tree_statuses`
  *  (e.g. immediately after creation, before realtime delivers them). */
 export const DEFAULT_TREE_STATUSES: Omit<TreeStatus, 'id' | 'treeId'>[] = [
@@ -20,12 +29,20 @@ export const DEFAULT_TREE_STATUSES: Omit<TreeStatus, 'id' | 'treeId'>[] = [
   { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4 },
 ];
 
+/** The pinned statuses seeded into every new tree, in canonical order. */
+const PINNED_STATUS_SEEDS: Omit<TreeStatus, 'id' | 'treeId'>[] = [
+  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
+  { key: 'in_progress', label: 'In Progress', color: '#3b82f6', rank: 1 },
+  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 999 },
+];
+
 interface TreeStatusesState {
   /** treeId -> ordered list */
   statusesByTree: Record<string, TreeStatus[]>;
   loading: boolean;
 
   loadStatusesForTrees: (treeIds: string[]) => Promise<void>;
+  seedPinnedStatuses: (treeId: string) => Promise<void>;
   createStatus: (treeId: string, key: string, label: string, color: string) => Promise<void>;
   updateStatus: (id: string, patch: Partial<Pick<TreeStatus, 'label' | 'color' | 'key'>>) => Promise<void>;
   deleteStatus: (id: string) => Promise<void>;
@@ -79,6 +96,46 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
       loading: false,
       statusesByTree: { ...state.statusesByTree, ...grouped },
     }));
+
+    // Ensure every tree has the required pinned statuses.
+    for (const tid of treeIds) {
+      await get().seedPinnedStatuses(tid);
+    }
+  },
+
+  seedPinnedStatuses: async (treeId) => {
+    const existing = get().statusesByTree[treeId] ?? [];
+    const existingKeys = new Set(existing.map((s) => s.key));
+    const missing = PINNED_STATUS_SEEDS.filter((s) => !existingKeys.has(s.key));
+    if (missing.length === 0) return;
+
+    // Compute a rank offset so new pinned statuses don't collide with existing ones.
+    const maxExistingRank = existing.length > 0 ? Math.max(...existing.map((s) => s.rank)) : -1;
+
+    await Promise.all(
+      missing.map(async (seed) => {
+        // Use canonical rank but offset to stay above existing if needed.
+        const rank = seed.key === 'done'
+          ? Math.max(seed.rank, maxExistingRank + 1)
+          : seed.rank;
+        const { data, error } = await supabase
+          .from('tree_statuses' as any)
+          .insert({ tree_id: treeId, key: seed.key, label: seed.label, color: seed.color, rank })
+          .select()
+          .single();
+        if (error) {
+          console.error('seedPinnedStatuses failed for', seed.key, error);
+          return;
+        }
+        const s = rowToStatus(data as unknown as Record<string, unknown>);
+        set((state) => ({
+          statusesByTree: {
+            ...state.statusesByTree,
+            [treeId]: sortByRank([...(state.statusesByTree[treeId] ?? []), s]),
+          },
+        }));
+      }),
+    );
   },
 
   createStatus: async (treeId, key, label, color) => {
@@ -103,6 +160,13 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
   },
 
   updateStatus: async (id, patch) => {
+    // Guard: pinned statuses cannot be edited.
+    const allLists = Object.values(get().statusesByTree);
+    for (const list of allLists) {
+      const status = list.find((s) => s.id === id);
+      if (status && isPinnedStatus(status.key)) return;
+    }
+
     // Optimistic
     set((state) => {
       const next = { ...state.statusesByTree };
@@ -125,6 +189,13 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
   },
 
   deleteStatus: async (id) => {
+    // Guard: pinned statuses cannot be deleted.
+    const allLists = Object.values(get().statusesByTree);
+    for (const list of allLists) {
+      const status = list.find((s) => s.id === id);
+      if (status && isPinnedStatus(status.key)) return;
+    }
+
     set((state) => {
       const next = { ...state.statusesByTree };
       for (const [tid, list] of Object.entries(next)) {
