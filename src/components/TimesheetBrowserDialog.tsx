@@ -486,7 +486,11 @@ export function TimesheetBrowserDialog({
             <Input
               type="date"
               value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilterDateFrom(val);
+                if (filterDateTo && val > filterDateTo) setFilterDateTo(val);
+              }}
               className="h-8 text-sm w-36"
             />
           </div>
@@ -495,7 +499,11 @@ export function TimesheetBrowserDialog({
             <Input
               type="date"
               value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilterDateTo(val);
+                if (filterDateFrom && val < filterDateFrom) setFilterDateFrom(val);
+              }}
               className="h-8 text-sm w-36"
             />
           </div>
