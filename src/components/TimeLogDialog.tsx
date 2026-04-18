@@ -59,6 +59,7 @@ const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
 
 export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: TimeLogDialogProps) {
   const item = useAppStore((s) => workItemId ? s.workItems[workItemId] : null);
+  const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const backlog = useAppStore((s) => backlogId ? s.backlogs[backlogId] : null);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const addTimeEntry = useTimeEntryStore((s) => s.addTimeEntry);
@@ -183,6 +184,10 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
       spentDate: dateInput,
       note: noteInput.trim() || null,
     });
+
+    if (workItemId && item?.status === "not_started") {
+      setWorkItemStatus(workItemId, "in_progress");
+    }
 
     setDurationInput("");
     setNoteInput("");
