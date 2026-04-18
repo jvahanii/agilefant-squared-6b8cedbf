@@ -795,6 +795,7 @@ export function BacklogTreePanel() {
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
+  const [editingStatusesTree, setEditingStatusesTree] = useState<{ id: string; name: string } | null>(null);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -804,7 +805,12 @@ export function BacklogTreePanel() {
   const treeIds = useMemo(() => sortedTrees.map((t) => t.id), [sortedTrees]);
   const treeShares = useTreeShares(treeIds);
 
-  const { scrambleEnabled } = useScramble();
+  const { scrambleEnabled, isSuperuser } = useScramble();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const customStatusesEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? false,
+  );
+  const canEditStatuses = customStatusesEnabled && isSuperuser;
 
   // A tree is scrambled only when scramble is enabled AND it has no shares with any org.
   const isTreeScrambled = (treeId: string) =>
@@ -845,6 +851,8 @@ export function BacklogTreePanel() {
                 onAddBacklog={() => setAddingToTree(tree.id)}
                 onDeleteTree={() => deleteBacklogTree(tree.id)}
                 onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
+                onEditStatuses={() => setEditingStatusesTree({ id: tree.id, name: tree.name })}
+                canEditStatuses={canEditStatuses}
                 shares={treeShares[tree.id] ?? []}
                 isScrambled={treeIsScrambled}
               />
@@ -890,6 +898,17 @@ export function BacklogTreePanel() {
           open={!!sharingTree}
           onOpenChange={(open) => {
             if (!open) setSharingTree(null);
+          }}
+        />
+      )}
+
+      {editingStatusesTree && (
+        <TreeStatusesDialog
+          treeId={editingStatusesTree.id}
+          treeName={editingStatusesTree.name}
+          open={!!editingStatusesTree}
+          onOpenChange={(open) => {
+            if (!open) setEditingStatusesTree(null);
           }}
         />
       )}
