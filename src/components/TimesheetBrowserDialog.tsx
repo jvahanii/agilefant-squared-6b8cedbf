@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Clock, Download, Trash2, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Check, ChevronDown, ChevronRight, Clock, Download, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimeEntryStore, TimeEntry } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
+import { WorkItem, Backlog, BacklogTree } from "@/types/models";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDuration, parseDuration } from "@/components/TimeLogDialog";
@@ -99,6 +101,188 @@ function exportToCsv(
   URL.revokeObjectURL(url);
 }
 
+// ── Summary grouping ──────────────────────────────────────────────────────────
+
+type GroupDimension = "tree" | "backlog" | "item" | "user" | "date";
+
+const ALL_DIMS: GroupDimension[] = ["tree", "backlog", "item", "user", "date"];
+
+const DIMENSION_LABELS: Record<GroupDimension, string> = {
+  tree: "Tree",
+  backlog: "Backlog",
+  item: "Work Item",
+  user: "Person",
+  date: "Date",
+};
+
+function getEntryGroupKey(
+  entry: TimeEntry,
+  dim: GroupDimension,
+  workItems: Record<string, WorkItem>,
+  backlogs: Record<string, Backlog>,
+): string {
+  switch (dim) {
+    case "date":
+      return entry.spentDate;
+    case "user":
+      return entry.userId;
+    case "item":
+      return entry.workItemId ?? "__none__";
+    case "backlog": {
+      if (entry.backlogId) return entry.backlogId;
+      if (entry.workItemId) {
+        const wi = workItems[entry.workItemId];
+        if (wi) {
+          const blIds = Object.values(wi.backlogAssignments);
+          if (blIds.length === 1) return blIds[0];
+          if (blIds.length > 1) return "__multiple__";
+        }
+      }
+      return "__none__";
+    }
+    case "tree": {
+      let blId = entry.backlogId;
+      if (!blId && entry.workItemId) {
+        const wi = workItems[entry.workItemId];
+        if (wi) {
+          const blIds = Object.values(wi.backlogAssignments);
+          if (blIds.length === 1) blId = blIds[0];
+          else if (blIds.length > 1) return "__multiple__";
+        }
+      }
+      if (blId && backlogs[blId]) return backlogs[blId].treeId;
+      return "__none__";
+    }
+  }
+}
+
+function getGroupLabel(
+  key: string,
+  dim: GroupDimension,
+  workItems: Record<string, WorkItem>,
+  backlogs: Record<string, Backlog>,
+  backlogTrees: Record<string, BacklogTree>,
+  userNames: Record<string, string>,
+): string {
+  if (key === "__none__") return "(none)";
+  if (key === "__multiple__") return "(multiple)";
+  switch (dim) {
+    case "date": return key;
+    case "user": return userNames[key] ?? key.slice(0, 8);
+    case "item": return workItems[key]?.title ?? "(deleted)";
+    case "backlog": return backlogs[key]?.name ?? "(deleted)";
+    case "tree": return backlogTrees[key]?.name ?? "(deleted)";
+  }
+}
+
+interface SummaryGroupRowsProps {
+  entries: TimeEntry[];
+  dims: GroupDimension[];
+  depth: number;
+  path: string;
+  expandedPaths: Set<string>;
+  onToggleExpand: (path: string) => void;
+  workItems: Record<string, WorkItem>;
+  backlogs: Record<string, Backlog>;
+  backlogTrees: Record<string, BacklogTree>;
+  userNames: Record<string, string>;
+}
+
+function SummaryGroupRows({
+  entries,
+  dims,
+  depth,
+  path,
+  expandedPaths,
+  onToggleExpand,
+  workItems,
+  backlogs,
+  backlogTrees,
+  userNames,
+}: SummaryGroupRowsProps) {
+  if (dims.length === 0 || entries.length === 0) return null;
+
+  const [dim, ...rest] = dims;
+
+  const groups = new Map<string, TimeEntry[]>();
+  for (const entry of entries) {
+    const key = getEntryGroupKey(entry, dim, workItems, backlogs);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(entry);
+  }
+
+  const sortedKeys = [...groups.keys()].sort((a, b) => {
+    if (a === "__none__" || a === "__multiple__") return 1;
+    if (b === "__none__" || b === "__multiple__") return -1;
+    if (dim === "date") return b.localeCompare(a);
+    const la = getGroupLabel(a, dim, workItems, backlogs, backlogTrees, userNames);
+    const lb = getGroupLabel(b, dim, workItems, backlogs, backlogTrees, userNames);
+    return la.localeCompare(lb);
+  });
+
+  return (
+    <>
+      {sortedKeys.map((key) => {
+        const groupEntries = groups.get(key)!;
+        const total = groupEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
+        const label = getGroupLabel(key, dim, workItems, backlogs, backlogTrees, userNames);
+        const groupPath = path ? `${path}||${dim}:${key}` : `${dim}:${key}`;
+        const isExpanded = expandedPaths.has(groupPath);
+        const hasChildren = rest.length > 0;
+
+        return (
+          <Fragment key={groupPath}>
+            <TableRow
+              className={cn(
+                depth === 0 ? "bg-muted/10" : "",
+                hasChildren && "cursor-pointer hover:bg-muted/30",
+                !hasChildren && "hover:bg-muted/10",
+              )}
+              onClick={() => hasChildren && onToggleExpand(groupPath)}
+            >
+              <TableCell
+                className="text-xs py-1.5"
+                style={{ paddingLeft: `${12 + depth * 20}px` }}
+              >
+                <span className="flex items-center gap-1.5">
+                  {hasChildren ? (
+                    isExpanded
+                      ? <ChevronDown className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+                      : <ChevronRight className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+                  ) : (
+                    <span className="w-3 h-3 flex-shrink-0" />
+                  )}
+                  <span className={cn(depth === 0 ? "font-medium" : "")}>{label}</span>
+                  <span className="text-muted-foreground text-[10px]">({groupEntries.length})</span>
+                </span>
+              </TableCell>
+              <TableCell className="text-xs tabular-nums text-right pr-4 py-1.5 font-medium">
+                {formatDuration(total)}
+              </TableCell>
+            </TableRow>
+            {hasChildren && isExpanded && (
+              <SummaryGroupRows
+                entries={groupEntries}
+                dims={rest}
+                depth={depth + 1}
+                path={groupPath}
+                expandedPaths={expandedPaths}
+                onToggleExpand={onToggleExpand}
+                workItems={workItems}
+                backlogs={backlogs}
+                backlogTrees={backlogTrees}
+                userNames={userNames}
+              />
+            )}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function TimesheetBrowserDialog({
   open,
   onOpenChange,
@@ -109,12 +293,18 @@ export function TimesheetBrowserDialog({
   const deleteTimeEntry = useTimeEntryStore((s) => s.deleteTimeEntry);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
   const { user } = useAuth();
 
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [filterUser, setFilterUser] = useState<string>("__all__");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+
+  // Summary tab state
+  const [activeTab, setActiveTab] = useState<"entries" | "summary">("entries");
+  const [groupDims, setGroupDims] = useState<GroupDimension[]>(["date"]);
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
 
   // Edit state
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -151,6 +341,21 @@ export function TimesheetBrowserDialog({
       setTimeout(() => editDurationRef.current?.focus(), 0);
     }
   }, [editingEntryId]);
+
+  // Auto-expand top-level groups when dimensions or filtered entries change
+  useEffect(() => {
+    if (groupDims.length === 0) {
+      setExpandedPaths(new Set());
+      return;
+    }
+    const dim = groupDims[0];
+    const topKeys = new Set<string>();
+    for (const entry of filteredEntries) {
+      const key = getEntryGroupKey(entry, dim, workItems, backlogs);
+      topKeys.add(`${dim}:${key}`);
+    }
+    setExpandedPaths(topKeys);
+  }, [groupDims, filteredEntries, workItems, backlogs]);
 
   // Sorted list of all entries (latest first)
   const allEntriesSorted = useMemo(
@@ -232,6 +437,23 @@ export function TimesheetBrowserDialog({
     setEditingEntryId(null);
   };
 
+  const toggleGroupDim = (dim: GroupDimension) => {
+    setGroupDims((prev) => {
+      const next = prev.includes(dim) ? prev.filter((d) => d !== dim) : [...prev, dim];
+      // Keep dims in the fixed ALL_DIMS order so toggling off/on doesn't change position
+      return next.sort((a, b) => ALL_DIMS.indexOf(a) - ALL_DIMS.indexOf(b));
+    });
+  };
+
+  const toggleExpand = (path: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
@@ -241,7 +463,7 @@ export function TimesheetBrowserDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Filters */}
+        {/* Shared Filters */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
             <Label className="text-xs">User</Label>
@@ -290,153 +512,239 @@ export function TimesheetBrowserDialog({
               Clear filters
             </Button>
           )}
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} —{" "}
-              <strong className="text-foreground">{formatDuration(totalMinutes)}</strong> total
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCsv}
-              disabled={filteredEntries.length === 0}
-            >
-              <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
-            </Button>
-          </div>
         </div>
 
-        {/* Table */}
-        <ScrollArea className="h-[420px] rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-24 text-right">Duration</TableHead>
-                <TableHead className="w-28">Date</TableHead>
-                <TableHead className="w-40">User</TableHead>
-                <TableHead>Work Item / Backlog</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEntries.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No time entries found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredEntries.map((entry) =>
-                  editingEntryId === entry.id ? (
-                    /* ── Inline edit row ── */
-                    <TableRow key={entry.id} className="bg-muted/20">
-                      <TableCell colSpan={6} className="py-2 px-3">
-                        <div className="flex flex-wrap items-end gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Duration</Label>
-                            <Input
-                              ref={editDurationRef}
-                              value={editDurationInput}
-                              onChange={(e) => setEditDurationInput(e.target.value)}
-                              placeholder='e.g. "1.5", "1h 30m"'
-                              className="h-8 text-sm w-32"
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") await handleSaveEdit();
-                                if (e.key === "Escape") cancelEditing();
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Date</Label>
-                            <Input
-                              type="date"
-                              value={editDateInput}
-                              onChange={(e) => setEditDateInput(e.target.value)}
-                              className="h-8 text-sm w-36"
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") await handleSaveEdit();
-                                if (e.key === "Escape") cancelEditing();
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-1 flex-1 min-w-[140px]">
-                            <Label className="text-xs">Note (optional)</Label>
-                            <Input
-                              value={editNoteInput}
-                              onChange={(e) => setEditNoteInput(e.target.value)}
-                              placeholder="What did you work on?"
-                              className="h-8 text-sm"
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter") await handleSaveEdit();
-                                if (e.key === "Escape") cancelEditing();
-                              }}
-                            />
-                          </div>
-                          <div className="flex gap-1 pb-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                              onClick={cancelEditing}
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={handleSaveEdit}
-                              disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}
-                              title="Save"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "entries" | "summary")}>
+          <TabsList className="h-8">
+            <TabsTrigger value="entries" className="text-xs px-3 h-6">Entries</TabsTrigger>
+            <TabsTrigger value="summary" className="text-xs px-3 h-6">Summary</TabsTrigger>
+          </TabsList>
+
+          {/* ── Entries tab ── */}
+          <TabsContent value="entries" className="mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">
+                {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} —{" "}
+                <strong className="text-foreground">{formatDuration(totalMinutes)}</strong> total
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={filteredEntries.length === 0}
+              >
+                <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+              </Button>
+            </div>
+            <ScrollArea className="h-[380px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24 text-right">Duration</TableHead>
+                    <TableHead className="w-28">Date</TableHead>
+                    <TableHead className="w-40">User</TableHead>
+                    <TableHead>Work Item / Backlog</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="w-16" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEntries.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No time entries found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    /* ── Read-only row ── */
-                    <TableRow
-                      key={entry.id}
-                      className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
-                      onClick={() => canModify(entry) && startEditing(entry)}
-                      title={canModify(entry) ? "Click to edit" : undefined}
-                    >
-                      <TableCell className="text-xs tabular-nums text-right">
-                        {formatDuration(entry.durationMinutes)}
-                      </TableCell>
-                      <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
-                      <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
-                        {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
-                      </TableCell>
-                      <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
-                        {getSubject(entry)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
-                        {entry.note ?? ""}
-                      </TableCell>
-                      <TableCell className="text-right pr-2">
-                        {canModify(entry) && (
-                          <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </span>
-                        )}
+                    filteredEntries.map((entry) =>
+                      editingEntryId === entry.id ? (
+                        /* ── Inline edit row ── */
+                        <TableRow key={entry.id} className="bg-muted/20">
+                          <TableCell colSpan={6} className="py-2 px-3">
+                            <div className="flex flex-wrap items-end gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Duration</Label>
+                                <Input
+                                  ref={editDurationRef}
+                                  value={editDurationInput}
+                                  onChange={(e) => setEditDurationInput(e.target.value)}
+                                  placeholder='e.g. "1.5", "1h 30m"'
+                                  className="h-8 text-sm w-32"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter") await handleSaveEdit();
+                                    if (e.key === "Escape") cancelEditing();
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Date</Label>
+                                <Input
+                                  type="date"
+                                  value={editDateInput}
+                                  onChange={(e) => setEditDateInput(e.target.value)}
+                                  className="h-8 text-sm w-36"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter") await handleSaveEdit();
+                                    if (e.key === "Escape") cancelEditing();
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-1 flex-1 min-w-[140px]">
+                                <Label className="text-xs">Note (optional)</Label>
+                                <Input
+                                  value={editNoteInput}
+                                  onChange={(e) => setEditNoteInput(e.target.value)}
+                                  placeholder="What did you work on?"
+                                  className="h-8 text-sm"
+                                  onKeyDown={async (e) => {
+                                    if (e.key === "Enter") await handleSaveEdit();
+                                    if (e.key === "Escape") cancelEditing();
+                                  }}
+                                />
+                              </div>
+                              <div className="flex gap-1 pb-0.5">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={cancelEditing}
+                                  title="Cancel"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={handleSaveEdit}
+                                  disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}
+                                  title="Save"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        /* ── Read-only row ── */
+                        <TableRow
+                          key={entry.id}
+                          className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
+                          onClick={() => canModify(entry) && startEditing(entry)}
+                          title={canModify(entry) ? "Click to edit" : undefined}
+                        >
+                          <TableCell className="text-xs tabular-nums text-right">
+                            {formatDuration(entry.durationMinutes)}
+                          </TableCell>
+                          <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
+                          <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
+                            {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
+                          </TableCell>
+                          <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
+                            {getSubject(entry)}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
+                            {entry.note ?? ""}
+                          </TableCell>
+                          <TableCell className="text-right pr-2">
+                            {canModify(entry) && (
+                              <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* ── Summary tab ── */}
+          <TabsContent value="summary" className="mt-2">
+            {/* Group-by dimension toggles */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground font-medium">Group by:</span>
+              {ALL_DIMS.map((dim) => {
+                const active = groupDims.includes(dim);
+                const order = active ? groupDims.indexOf(dim) + 1 : null;
+                return (
+                  <button
+                    key={dim}
+                    onClick={() => toggleGroupDim(dim)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-input hover:border-foreground hover:text-foreground",
+                    )}
+                  >
+                    {order !== null && (
+                      <span className="text-[10px] opacity-70">{order}</span>
+                    )}
+                    {DIMENSION_LABELS[dim]}
+                  </button>
+                );
+              })}
+              <span className="ml-auto text-xs text-muted-foreground">
+                <strong className="text-foreground">{formatDuration(totalMinutes)}</strong> total
+                {" · "}{filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"}
+              </span>
+            </div>
+
+            <ScrollArea className="h-[380px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      {groupDims.length > 0
+                        ? groupDims.map((d) => DIMENSION_LABELS[d]).join(" › ")
+                        : "Group"}
+                    </TableHead>
+                    <TableHead className="text-right w-28">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEntries.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                        No time entries found.
                       </TableCell>
                     </TableRow>
-                  )
-                )
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                  ) : groupDims.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-xs text-muted-foreground">All entries</TableCell>
+                      <TableCell className="text-xs tabular-nums text-right pr-4 font-medium">
+                        {formatDuration(totalMinutes)}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <SummaryGroupRows
+                      entries={filteredEntries}
+                      dims={groupDims}
+                      depth={0}
+                      path=""
+                      expandedPaths={expandedPaths}
+                      onToggleExpand={toggleExpand}
+                      workItems={workItems}
+                      backlogs={backlogs}
+                      backlogTrees={backlogTrees}
+                      userNames={userNames}
+                    />
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
