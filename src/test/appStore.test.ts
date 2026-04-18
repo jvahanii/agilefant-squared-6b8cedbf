@@ -1035,6 +1035,83 @@ describe("moveBacklog", () => {
     const existingBl = useAppStore.getState().backlogs[`${ORG}::bl-x`];
     expect(movedBl.rank).not.toBe(existingBl.rank);
   });
+
+  it("cross-tree: moves a root backlog to another tree's root", () => {
+    // bl-a is in tree-1. Moving it to tree-2 as root.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-a`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-a`]: { id: `${ORG}::bl-a`, name: "A", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Item 1", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-a` },
+          ranks: { [`${ORG}::bl-a`]: 0 },
+        },
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    useAppStore.getState().moveBacklog(`${ORG}::bl-a`, null, `${ORG}::bt-2`);
+    const s = useAppStore.getState();
+    // backlog moved to tree-2
+    expect(s.backlogs[`${ORG}::bl-a`].treeId).toBe(`${ORG}::bt-2`);
+    expect(s.backlogs[`${ORG}::bl-a`].parentId).toBeNull();
+    // tree membership updated
+    expect(s.backlogTrees[`${ORG}::bt-1`].rootBacklogIds).not.toContain(`${ORG}::bl-a`);
+    expect(s.backlogTrees[`${ORG}::bt-2`].rootBacklogIds).toContain(`${ORG}::bl-a`);
+    // work item backlog assignment remapped
+    const wi = s.workItems[`${ORG}::wi-1`];
+    expect(wi.backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    expect(wi.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-a`);
+  });
+
+  it("cross-tree: updates treeId of descendant backlogs and their work items", () => {
+    // bl-parent (tree-1) has child bl-child. Work items in bl-child also need remapping.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-parent`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-parent`]: { id: `${ORG}::bl-parent`, name: "Parent", parentId: null, childrenIds: [`${ORG}::bl-child`], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-child`]: { id: `${ORG}::bl-child`, name: "Child", parentId: `${ORG}::bl-parent`, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-p`]: {
+          id: `${ORG}::wi-p`, title: "In parent", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-parent` },
+          ranks: { [`${ORG}::bl-parent`]: 0 },
+        },
+        [`${ORG}::wi-c`]: {
+          id: `${ORG}::wi-c`, title: "In child", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-child` },
+          ranks: { [`${ORG}::bl-child`]: 0 },
+        },
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    useAppStore.getState().moveBacklog(`${ORG}::bl-parent`, null, `${ORG}::bt-2`);
+    const s = useAppStore.getState();
+    // Both backlogs in tree-2
+    expect(s.backlogs[`${ORG}::bl-parent`].treeId).toBe(`${ORG}::bt-2`);
+    expect(s.backlogs[`${ORG}::bl-child`].treeId).toBe(`${ORG}::bt-2`);
+    // Work items remapped
+    expect(s.workItems[`${ORG}::wi-p`].backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-parent`);
+    expect(s.workItems[`${ORG}::wi-p`].backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    expect(s.workItems[`${ORG}::wi-c`].backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-child`);
+    expect(s.workItems[`${ORG}::wi-c`].backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+  });
 });
 
 // ─── REORDER BACKLOG TREES ─────────────────────────────────────────────

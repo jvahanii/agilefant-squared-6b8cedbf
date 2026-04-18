@@ -790,7 +790,7 @@ function AppLayoutInner() {
           return isDescendant(store.backlogs[parentId]?.parentId ?? null, checkId);
         };
         if (targetParentId && isDescendant(targetParentId, backlogId)) return;
-        if (bl.parentId !== targetParentId) {
+        if (bl.parentId !== targetParentId || bl.treeId !== treeId) {
           moveBacklog(backlogId, targetParentId, treeId);
         }
         reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
