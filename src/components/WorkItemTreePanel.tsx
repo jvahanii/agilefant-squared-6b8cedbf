@@ -357,6 +357,7 @@ function WorkItemNodeContent({
   };
 
   const backlogPaths = Object.entries(item.backlogAssignments)
+    .filter(([tid]) => tid !== treeId)
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
 
@@ -605,6 +606,7 @@ function WorkItemNodeContent({
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
               {backlogPaths.map(({ treeId: tid, path }) => (
                 <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
+                  <span className="mr-0.5">also in</span>
                   {path.map((seg, i) => (
                     <span key={seg.id} className="flex items-center">
                       {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40" />}
