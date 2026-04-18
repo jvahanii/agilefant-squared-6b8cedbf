@@ -124,7 +124,7 @@ function InlineWorkItemInput({
   };
 
   return (
-    <div className="flex items-start gap-1.5 px-3 py-1" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
+    <div className="flex items-start gap-1.5 px-3 py-0.5" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
       <FileText className="w-3.5 h-3.5 text-primary/50 shrink-0 mt-1" />
       <textarea
         ref={textAreaRef}
@@ -402,7 +402,7 @@ function WorkItemNodeContent({
           data-backlog-id={backlogId}
           data-tree-id={treeId}
           className={`
-            flex items-start gap-1.5 px-3 py-0.5 md:py-1 rounded-md
+            flex items-start gap-1.5 px-3 py-0.5 rounded-md
             transition-all duration-150 ease-out group
             border select-none
             ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
@@ -964,7 +964,7 @@ function ReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative py-1`}
+      className={`relative py-0.5`}
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -1229,7 +1229,7 @@ export function WorkItemTreePanel() {
           lastSelectedId.current = null;
         }}
       >
-        <div className="p-1.5 pb-1 md:p-2 md:pb-1 border-b flex items-start justify-between shrink-0">
+        <div className="p-1 pb-0.5 md:p-1.5 md:pb-1 border-b flex items-start justify-between shrink-0">
           <div className="min-w-0 flex-1">
             <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -1319,7 +1319,7 @@ export function WorkItemTreePanel() {
         )}
 
         <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
-          <div className="flex-1 overflow-y-auto p-1 md:p-2">
+          <div className="flex-1 overflow-y-auto p-0.5 md:p-1">
             {rootWorkItems.length === 0 && isAdding ? (
               <InlineWorkItemInput
                 depth={0}
