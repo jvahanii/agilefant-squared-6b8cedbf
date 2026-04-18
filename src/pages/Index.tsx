@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
+import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -23,6 +24,7 @@ const Index = () => {
   const { user } = useAuth();
   const loadSettings = useOrgSettingsStore(s => s.loadSettings);
   const loadLabels = useLabelsStore(s => s.loadLabels);
+  const loadStatusesForTrees = useTreeStatusesStore(s => s.loadStatusesForTrees);
   const backlogTrees = useAppStore(s => s.backlogTrees);
 
   useEffect(() => {
@@ -81,6 +83,9 @@ const Index = () => {
       if (sep > 0) orgIds.add(treeId.slice(0, sep));
     }
     loadLabels([...orgIds]);
+    // Load per-tree status definitions for every accessible tree
+    const treeIds = Object.keys(backlogTrees);
+    if (treeIds.length > 0) loadStatusesForTrees(treeIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId, treeIdsKey]);
 
