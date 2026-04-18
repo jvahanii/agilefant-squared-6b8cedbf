@@ -6,6 +6,7 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
+import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -38,6 +39,7 @@ export function useRealtimeSync() {
   const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
   const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
+  const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -366,6 +368,26 @@ export function useRealtimeSync() {
       );
     addLabelHandlers(ownChannel, activeOrgId).subscribe();
     channels.push(ownChannel);
+
+    // Tree statuses: a single channel for all accessible trees. Filtering is done
+    // client-side because the rows are tree-scoped and RLS already restricts
+    // visibility to trees the user can access.
+    const statusChannel = supabase
+      .channel(`tree-statuses-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tree_statuses' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          const treeId = row?.tree_id as string | undefined;
+          if (!treeId) return;
+          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
+          if (!accessible.has(treeId)) return;
+          applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .subscribe();
+    channels.push(statusChannel);
 
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
     for (const orgId of incomingPartnerOrgIds) {

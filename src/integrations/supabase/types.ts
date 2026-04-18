@@ -316,6 +316,7 @@ export type Database = {
       organization_settings: {
         Row: {
           created_at: string
+          custom_statuses_enabled: boolean
           id: string
           labels_enabled: boolean
           organization_id: string
@@ -325,6 +326,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_statuses_enabled?: boolean
           id?: string
           labels_enabled?: boolean
           organization_id: string
@@ -334,6 +336,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_statuses_enabled?: boolean
           id?: string
           labels_enabled?: boolean
           organization_id?: string
@@ -485,6 +488,39 @@ export type Database = {
           spent_date?: string
           user_id?: string
           work_item_id?: string | null
+        }
+        Relationships: []
+      }
+      tree_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          key: string
+          label: string
+          rank: number
+          tree_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          rank?: number
+          tree_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          rank?: number
+          tree_id?: string
+          updated_at?: string
         }
         Relationships: []
       }

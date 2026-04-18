@@ -5,6 +5,7 @@ interface OrgSettings {
   timeLoggingEnabled: boolean;
   pointsEnabled: boolean;
   labelsEnabled: boolean;
+  customStatusesEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -15,6 +16,7 @@ interface OrgSettingsState {
   setTimeLoggingEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setPointsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setLabelsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setCustomStatusesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -22,6 +24,7 @@ const defaults: OrgSettings = {
   timeLoggingEnabled: false,
   pointsEnabled: false,
   labelsEnabled: false,
+  customStatusesEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -32,7 +35,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -45,6 +48,8 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
               timeLoggingEnabled: data.time_logging_enabled,
               pointsEnabled: data.points_enabled,
               labelsEnabled: (data as { labels_enabled?: boolean }).labels_enabled ?? false,
+              customStatusesEnabled:
+                (data as { custom_statuses_enabled?: boolean }).custom_statuses_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -100,6 +105,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setCustomStatusesEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), customStatusesEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, custom_statuses_enabled: enabled, updated_at: new Date().toISOString() },
+        { onConflict: 'organization_id' },
+      );
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -110,6 +131,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           timeLoggingEnabled: row.time_logging_enabled,
           pointsEnabled: row.points_enabled,
           labelsEnabled: row.labels_enabled ?? false,
+          customStatusesEnabled: row.custom_statuses_enabled ?? false,
         },
       },
     }));

@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -15,6 +15,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
+import { TreeStatusesDialog } from "./TreeStatusesDialog";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -647,6 +648,8 @@ function DraggableTreeHeader({
   onAddBacklog,
   onDeleteTree,
   onShareTree,
+  onEditStatuses,
+  canEditStatuses,
   shares,
   isScrambled,
 }: {
@@ -654,6 +657,8 @@ function DraggableTreeHeader({
   onAddBacklog: () => void;
   onDeleteTree: () => void;
   onShareTree: () => void;
+  onEditStatuses: () => void;
+  canEditStatuses: boolean;
   shares: TreeShare[];
   isScrambled: boolean;
 }) {
@@ -716,6 +721,13 @@ function DraggableTreeHeader({
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
+          {canEditStatuses && (
+            <button
+              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
+              title="Edit statuses"
+            ><Settings2 className="w-3.5 h-3.5" /></button>
+          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); onShareTree(); }}
@@ -730,6 +742,15 @@ function DraggableTreeHeader({
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
+          {canEditStatuses && (
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
+              title="Edit statuses for this tree"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
@@ -774,6 +795,7 @@ export function BacklogTreePanel() {
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
+  const [editingStatusesTree, setEditingStatusesTree] = useState<{ id: string; name: string } | null>(null);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -783,7 +805,12 @@ export function BacklogTreePanel() {
   const treeIds = useMemo(() => sortedTrees.map((t) => t.id), [sortedTrees]);
   const treeShares = useTreeShares(treeIds);
 
-  const { scrambleEnabled } = useScramble();
+  const { scrambleEnabled, isSuperuser } = useScramble();
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const customStatusesEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? false,
+  );
+  const canEditStatuses = customStatusesEnabled && isSuperuser;
 
   // A tree is scrambled only when scramble is enabled AND it has no shares with any org.
   const isTreeScrambled = (treeId: string) =>
@@ -824,6 +851,8 @@ export function BacklogTreePanel() {
                 onAddBacklog={() => setAddingToTree(tree.id)}
                 onDeleteTree={() => deleteBacklogTree(tree.id)}
                 onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
+                onEditStatuses={() => setEditingStatusesTree({ id: tree.id, name: tree.name })}
+                canEditStatuses={canEditStatuses}
                 shares={treeShares[tree.id] ?? []}
                 isScrambled={treeIsScrambled}
               />
@@ -869,6 +898,17 @@ export function BacklogTreePanel() {
           open={!!sharingTree}
           onOpenChange={(open) => {
             if (!open) setSharingTree(null);
+          }}
+        />
+      )}
+
+      {editingStatusesTree && (
+        <TreeStatusesDialog
+          treeId={editingStatusesTree.id}
+          treeName={editingStatusesTree.name}
+          open={!!editingStatusesTree}
+          onOpenChange={(open) => {
+            if (!open) setEditingStatusesTree(null);
           }}
         />
       )}
