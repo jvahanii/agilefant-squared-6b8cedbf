@@ -6,6 +6,7 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
+import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -38,6 +39,7 @@ export function useRealtimeSync() {
   const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
   const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
+  const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
