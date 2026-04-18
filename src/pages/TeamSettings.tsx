@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag, Settings2 } from "lucide-react";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
@@ -64,9 +64,11 @@ export default function TeamSettings() {
   // Org settings from backend (includes labels toggle)
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
+  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
+  const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -738,6 +740,36 @@ export default function TeamSettings() {
                   <LabelsManager />
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Custom statuses — superuser-only toggle for now */}
+        {isSuperuser && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Custom Statuses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Enable per-tree statuses</p>
+                  <p className="text-xs text-muted-foreground">
+                    Show a gear icon on each backlog tree so users can configure its statuses and colors.
+                  </p>
+                </div>
+                <Switch
+                  checked={customStatusesEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setCustomStatusesEnabledSetting(activeOrgId, checked);
+                      toast({ title: checked ? "Custom statuses enabled" : "Custom statuses disabled" });
+                    }
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
         )}
