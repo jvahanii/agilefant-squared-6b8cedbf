@@ -311,10 +311,10 @@ export function TimesheetBrowserDialog({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-24 text-right">Duration</TableHead>
                 <TableHead className="w-28">Date</TableHead>
                 <TableHead className="w-40">User</TableHead>
                 <TableHead>Work Item / Backlog</TableHead>
-                <TableHead className="w-24 text-right">Duration</TableHead>
                 <TableHead>Note</TableHead>
                 <TableHead className="w-16" />
               </TableRow>
@@ -404,15 +404,15 @@ export function TimesheetBrowserDialog({
                       onClick={() => canModify(entry) && startEditing(entry)}
                       title={canModify(entry) ? "Click to edit" : undefined}
                     >
+                      <TableCell className="text-xs tabular-nums text-right">
+                        {formatDuration(entry.durationMinutes)}
+                      </TableCell>
                       <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
                       <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
                         {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
                       </TableCell>
                       <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
                         {getSubject(entry)}
-                      </TableCell>
-                      <TableCell className="text-xs tabular-nums text-right">
-                        {formatDuration(entry.durationMinutes)}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
                         {entry.note ?? ""}
