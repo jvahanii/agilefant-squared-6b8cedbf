@@ -24,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Clock, Download, Pencil, Trash2, X } from "lucide-react";
+import { Check, Clock, Download, Trash2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useTimeEntryStore, TimeEntry } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -397,7 +398,12 @@ export function TimesheetBrowserDialog({
                     </TableRow>
                   ) : (
                     /* ── Read-only row ── */
-                    <TableRow key={entry.id} className="group">
+                    <TableRow
+                      key={entry.id}
+                      className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
+                      onClick={() => canModify(entry) && startEditing(entry)}
+                      title={canModify(entry) ? "Click to edit" : undefined}
+                    >
                       <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
                       <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
                         {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
@@ -415,15 +421,8 @@ export function TimesheetBrowserDialog({
                         {canModify(entry) && (
                           <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                              onClick={() => startEditing(entry)}
-                              title="Edit"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                            <button
                               className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              onClick={() => deleteTimeEntry(entry.id)}
+                              onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
                               title="Delete"
                             >
                               <Trash2 className="w-3 h-3" />
