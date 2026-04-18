@@ -683,7 +683,7 @@ export default function TeamSettings() {
                 }}
               />
             </div>
-            {canManage && orgSettings.timeLoggingEnabled && (
+            {orgSettings.timeLoggingEnabled && (
               <div className="mt-4 pt-4 border-t space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
