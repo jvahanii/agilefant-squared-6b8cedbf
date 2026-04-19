@@ -27,6 +27,20 @@ import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
+import {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 /**
  * When a label filter is active, this context holds the Set of work item IDs
@@ -209,6 +223,8 @@ function WorkItemNodeContent({
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
+  const assignLabel = useLabelsStore((s) => s.assignLabel);
+  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
   const itemLabels = useMemo(() => {
     if (!labelsVisible) return [];
     const labelIds = byEntity[`work_item:${workItemId}`] ?? [];
@@ -217,6 +233,17 @@ function WorkItemNodeContent({
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [labelsVisible, byEntity, labelsMap, workItemId]);
+  const orgLabels = useMemo(
+    () =>
+      Object.values(labelsMap)
+        .filter((l) => l.organizationId === activeOrgId)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [labelsMap, activeOrgId],
+  );
+  const assignedIds = useMemo(
+    () => new Set(byEntity[`work_item:${workItemId}`] ?? []),
+    [byEntity, workItemId],
+  );
 
   // Per-tree status definitions (falls back to defaults if not loaded yet).
   const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
@@ -406,6 +433,8 @@ function WorkItemNodeContent({
         style={isDragging ? { opacity: 0.4 } : undefined}
         className="animate-fade-in-up"
       >
+        <ContextMenu>
+        <ContextMenuTrigger asChild>
         <div
           {...attributes}
           {...restListeners}
@@ -814,6 +843,100 @@ function WorkItemNodeContent({
             )}
           </div>
         </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
+          <ContextMenuSeparator />
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs">
+              <span
+                className="w-2 h-2 rounded-full mr-2 shrink-0 inline-block"
+                style={{ backgroundColor: treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8" }}
+              />
+              Status
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuRadioGroup
+                value={item.status}
+                onValueChange={(val) => {
+                  if (isSelected && selectedWorkItemIds.length > 1) {
+                    selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                  } else {
+                    setWorkItemStatus(workItemId, val as WorkItemStatus);
+                  }
+                }}
+              >
+                {treeStatuses.map((s) => (
+                  <ContextMenuRadioItem key={s.key} value={s.key} className="text-xs">
+                    <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: s.color }} />
+                    {s.label}
+                  </ContextMenuRadioItem>
+                ))}
+              </ContextMenuRadioGroup>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
+            Rename
+          </ContextMenuItem>
+          {pointsVisible && (
+            <ContextMenuItem className="text-xs" onSelect={startEditingPoints}>
+              Edit story points
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => {
+              if (!expanded) toggleExpand(workItemId);
+              setIsAdding(true);
+            }}
+          >
+            Add child item
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          {labelsVisible && orgLabels.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {orgLabels.map((label) => (
+                  <ContextMenuCheckboxItem
+                    key={label.id}
+                    className="text-xs"
+                    checked={assignedIds.has(label.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        assignLabel(label.id, "work_item", workItemId, label.organizationId);
+                      } else {
+                        unassignLabel(label.id, "work_item", workItemId);
+                      }
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
+                    {label.name}
+                  </ContextMenuCheckboxItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          {timeLoggingVisible && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
+              Log time
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
+            Respawn settings
+          </ContextMenuItem>
+          <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
+            Hyperlinks
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            className="text-xs text-destructive focus:text-destructive"
+            onSelect={handleDeleteClick}
+          >
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+        </ContextMenu>
         {(expanded || isAdding) && (
           <div className="relative">
             {expanded && hasChildren && (
