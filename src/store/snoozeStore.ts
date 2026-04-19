@@ -42,7 +42,7 @@ export function snoozeOptionNextWeek(): Date {
 export function snoozeOptionThisWeekend(): Date {
   const d = new Date();
   const day = d.getDay();
-  const daysUntilSaturday = ((6 - day + 7) % 7) || 7;
+  const daysUntilSaturday = ((6 - day) % 7) || 7;
   d.setDate(d.getDate() + daysUntilSaturday);
   d.setHours(7, 0, 0, 0);
   return d;

@@ -47,6 +47,15 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
   );
   const [isSaving, setIsSaving] = useState(false);
 
+  const customDate = customDatetime ? new Date(customDatetime) : null;
+  const customDateInvalid = !customDate || isNaN(customDate.getTime());
+  const customDateInPast = !customDateInvalid && customDate <= new Date();
+  const customDateError = customDateInvalid
+    ? "Enter a valid date and time."
+    : customDateInPast
+    ? "Please pick a future date and time."
+    : null;
+
   const doSnooze = async (until: Date) => {
     if (!activeOrgId) return;
     setIsSaving(true);
@@ -60,9 +69,8 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
   };
 
   const handleCustomSnooze = () => {
-    const d = new Date(customDatetime);
-    if (isNaN(d.getTime()) || d <= new Date()) return;
-    doSnooze(d);
+    if (!customDate || customDateInvalid || customDateInPast) return;
+    doSnooze(customDate);
   };
 
   return (
@@ -96,10 +104,13 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
             onChange={(e) => setCustomDatetime(e.target.value)}
             min={toDatetimeLocal(new Date())}
           />
+          {customDateError && (
+            <p className="text-xs text-destructive">{customDateError}</p>
+          )}
           <Button
             size="sm"
             onClick={handleCustomSnooze}
-            disabled={isSaving || !customDatetime}
+            disabled={isSaving || !!customDateError}
           >
             Snooze until selected time
           </Button>
