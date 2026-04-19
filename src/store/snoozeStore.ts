@@ -109,6 +109,8 @@ interface SnoozeState {
     note?: string | null;
   }) => Promise<void>;
   unsnoozeWorkItem: (workItemId: string) => Promise<void>;
+  /** Remove active snoozes for all given work item IDs in a single request. */
+  unsnoozeAll: (workItemIds: string[]) => Promise<void>;
   clearSnoozes: () => void;
 
   /** True if the item is currently snoozed by the current user. */
@@ -211,6 +213,29 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
       .eq('work_item_id', workItemId);
 
     if (error) console.error('Failed to unsnooze work item', error);
+  },
+
+  unsnoozeAll: async (workItemIds) => {
+    if (workItemIds.length === 0) return;
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) return;
+
+    // Optimistic remove
+    set((state) => {
+      const updated = { ...state.snoozes };
+      for (const id of workItemIds) delete updated[id];
+      return { snoozes: updated };
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('work_item_snoozes')
+      .delete()
+      .eq('user_id', userId)
+      .in('work_item_id', workItemIds);
+
+    if (error) console.error('Failed to unsnooze all', error);
   },
 
   clearSnoozes: () => set({ snoozes: {}, tick: 0 }),
