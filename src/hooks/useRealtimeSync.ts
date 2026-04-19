@@ -7,6 +7,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useSnoozeStore } from '@/store/snoozeStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -40,6 +41,7 @@ export function useRealtimeSync() {
   const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
   const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
+  const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -388,6 +390,31 @@ export function useRealtimeSync() {
       )
       .subscribe();
     channels.push(statusChannel);
+
+    // Per-user snoozes (RLS already restricts to current user; no org filter needed).
+    // Async: fetch the current user's id once, then subscribe filtered by it.
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId || destroyed) return;
+      const snoozeChannel = supabase
+        .channel(`work-item-snoozes-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_snoozes',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .subscribe();
+      channels.push(snoozeChannel);
+    })();
 
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
     for (const orgId of incomingPartnerOrgIds) {

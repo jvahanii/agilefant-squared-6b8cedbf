@@ -581,6 +581,39 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_snoozes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          organization_id: string
+          snoozed_until: string
+          updated_at: string
+          user_id: string
+          work_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization_id: string
+          snoozed_until: string
+          updated_at?: string
+          user_id: string
+          work_item_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          organization_id?: string
+          snoozed_until?: string
+          updated_at?: string
+          user_id?: string
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       work_item_team_assignments: {
         Row: {
           created_at: string
