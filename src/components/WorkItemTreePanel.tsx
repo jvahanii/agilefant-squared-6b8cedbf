@@ -1145,6 +1145,7 @@ function WorkItemNodeContent({
         onOpenTimeLog={() => setShowTimeLogDialog(true)}
         onOpenRespawn={() => setShowRespawnDialog(true)}
         onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
+        onOpenSnooze={() => setShowSnoozeDialog(true)}
       />
     </>
   );
