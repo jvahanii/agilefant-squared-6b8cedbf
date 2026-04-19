@@ -1234,11 +1234,22 @@ export function WorkItemTreePanel() {
   }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 
-  // Snooze filter — subscribe to snoozes + tick so the list reacts when items
-  // expire or are (un)snoozed.
-  const snoozeIsSnoozed = useSnoozeStore((s) => s.isSnoozed);
-  const snoozeSnoozes = useSnoozeStore((s) => s.snoozes);
-  const snoozeTick = useSnoozeStore((s) => s.tick);
+  // Compute the set of currently-snoozed item IDs. The selector returns a
+  // stable comma-joined string so zustand only triggers a re-render when the
+  // snoozed-ID set actually changes (new snooze, unsnooze, or expiry via tick).
+  const snoozedKey = useSnoozeStore((s) => {
+    void s.tick; // read tick so expiry wakes are reflected
+    const now = Date.now();
+    return Object.values(s.snoozes)
+      .filter((snooze) => new Date(snooze.snoozedUntil).getTime() > now)
+      .map((snooze) => snooze.workItemId)
+      .sort()
+      .join(',');
+  });
+  const snoozedItemIds = useMemo(
+    () => new Set(snoozedKey ? snoozedKey.split(',') : []),
+    [snoozedKey],
+  );
 
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
@@ -1396,8 +1407,8 @@ export function WorkItemTreePanel() {
   const displayedRootItems = useMemo(() => {
     let items = rootWorkItems;
     if (visibleFilterSet) items = items.filter((wi) => visibleFilterSet.has(wi.id));
-    return items.filter((wi) => !snoozeIsSnoozed(wi.id));
-  }, [rootWorkItems, visibleFilterSet, snoozeIsSnoozed, snoozeSnoozes, snoozeTick]);
+    return items.filter((wi) => !snoozedItemIds.has(wi.id));
+  }, [rootWorkItems, visibleFilterSet, snoozedItemIds]);
 
   const visibleItemIds = useMemo(() => {
     const ids: string[] = [];
