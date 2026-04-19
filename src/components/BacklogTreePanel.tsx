@@ -427,8 +427,8 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
         )}
-        {/* Mobile actions: Plus + rotor (attributes sheet) + Delete */}
-        <div className="flex md:hidden items-center gap-0.5 shrink-0">
+        {/* Mobile actions: Plus + rotor (attributes sheet) + Delete — only for selected backlog */}
+        <div className={`${isSelected ? "flex" : "hidden"} md:hidden items-center gap-0.5 shrink-0`}>
           {pointsVisible && totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
