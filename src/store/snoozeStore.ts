@@ -38,6 +38,35 @@ export function snoozeOptionNextWeek(): Date {
   return d;
 }
 
+/** One week from now at 7:00 AM local time */
+export function snoozeOptionOneWeekFromNow(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
+/** Same day next month at 7:00 AM local time */
+export function snoozeOptionNextMonth(): Date {
+  const d = new Date();
+  const currentMonth = d.getMonth();
+  d.setMonth(currentMonth + 1);
+  // Handle month overflow (e.g. Jan 31 -> Mar 3) by clamping to last day of target month
+  if (d.getMonth() !== ((currentMonth + 1) % 12)) {
+    d.setDate(0); // last day of the intended month
+  }
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
+/** Same date next year at 7:00 AM local time */
+export function snoozeOptionNextYear(): Date {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
 /** Next Saturday at 7:00 AM local time */
 export function snoozeOptionThisWeekend(): Date {
   const d = new Date();
