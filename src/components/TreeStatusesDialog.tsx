@@ -214,7 +214,9 @@ function StatusRow({
         title={locked ? "Required status — label cannot be changed" : undefined}
       />
       {locked ? (
-        <Lock className="w-4 h-4 text-muted-foreground shrink-0" title="Required status — cannot be edited or removed" />
+        <span title="Required status — cannot be edited or removed" className="shrink-0 inline-flex">
+          <Lock className="w-4 h-4 text-muted-foreground" />
+        </span>
       ) : (
         <>
           <Button variant="ghost" size="icon" onClick={onUp} disabled={isFirst} title="Move up">
