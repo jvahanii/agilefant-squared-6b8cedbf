@@ -765,7 +765,7 @@ function WorkItemNodeContent({
               })()}
 
             {/* Mobile actions: Plus + rotor (attributes sheet) + Delete */}
-            <div className="flex md:hidden items-center gap-0.5 shrink-0">
+            <div className={`flex md:hidden items-center gap-0.5 shrink-0 ${!isSelected ? "invisible" : ""}`}>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
