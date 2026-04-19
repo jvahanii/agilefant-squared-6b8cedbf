@@ -64,7 +64,7 @@ export default function TeamSettings() {
   // Org settings from backend (includes labels toggle)
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
-  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? true;
+  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
