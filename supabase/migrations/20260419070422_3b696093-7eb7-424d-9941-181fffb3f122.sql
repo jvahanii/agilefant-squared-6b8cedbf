@@ -1,0 +1,1 @@
+UPDATE public.tree_statuses SET color = '#f97316' WHERE key = 'in_progress' AND color = '#3b82f6';
