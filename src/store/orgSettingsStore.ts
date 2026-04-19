@@ -155,6 +155,6 @@ export function isLabelsEnabled(orgId: string | null): boolean {
 }
 
 export function isCustomStatusesEnabled(orgId: string | null): boolean {
-  if (!orgId) return true;
+  if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.customStatusesEnabled ?? true;
 }
