@@ -49,7 +49,6 @@ import {
   snoozeOptionNextWeek,
   snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
-
 /**
  * When a label filter is active, this context holds the Set of work item IDs
  * that should be visible (matching items + their ancestors).  Null means "show
@@ -277,9 +276,6 @@ function WorkItemNodeContent({
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
   const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
-  const othersSnooze = useSnoozeStore((s) => s.getOthersActiveSnooze(workItemId));
-  const snoozeUserNames = useSnoozeStore((s) => s.userNames);
-  const snoozeOthersSnoozerName = othersSnooze ? (snoozeUserNames[othersSnooze.userId] ?? "someone") : null;
 
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
@@ -470,7 +466,6 @@ function WorkItemNodeContent({
             border select-none
             ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
             ${isChildBacklog ? "text-muted-foreground" : ""}
-            ${othersSnooze ? "opacity-50" : ""}
             ${
               isSelected
                 ? "bg-selection/10 border-selection/30 ring-1 ring-selection/30"
@@ -658,21 +653,6 @@ function WorkItemNodeContent({
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
                   Snoozed until {new Date(activeSnooze.snoozedUntil).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} (click to unsnooze)
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {othersSnooze && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="shrink-0 mt-0.5 text-muted-foreground/60" onClick={(e) => e.stopPropagation()}>
-                    <BellOff className="w-3 h-3" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Snoozed until {new Date(othersSnooze.snoozedUntil).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} by {snoozeOthersSnoozerName}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

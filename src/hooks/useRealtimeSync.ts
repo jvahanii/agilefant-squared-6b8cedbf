@@ -42,7 +42,6 @@ export function useRealtimeSync() {
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
   const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
-  const applyRealtimeOrgSnooze = useSnoozeStore((s) => s.applyRealtimeOrgSnooze);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -415,27 +414,6 @@ export function useRealtimeSync() {
         )
         .subscribe();
       channels.push(snoozeChannel);
-
-      // Also subscribe to OTHER org members' snoozes (for the grey-out feature).
-      if (activeOrgId) {
-        const orgSnoozeChannel = supabase
-          .channel(`work-item-snoozes-org-${activeOrgId}-${userId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'work_item_snoozes',
-              filter: `organization_id=eq.${activeOrgId}`,
-            },
-            (payload) => {
-              const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-              applyRealtimeOrgSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row, userId);
-            },
-          )
-          .subscribe();
-        channels.push(orgSnoozeChannel);
-      }
     })();
 
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
