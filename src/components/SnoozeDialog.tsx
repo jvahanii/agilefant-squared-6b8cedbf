@@ -12,6 +12,9 @@ import {
   snoozeOptionTomorrowMorning,
   snoozeOptionNextWeek,
   snoozeOptionThisWeekend,
+  snoozeOptionOneWeekFromNow,
+  snoozeOptionNextMonth,
+  snoozeOptionNextYear,
   useSnoozeStore,
 } from "@/store/snoozeStore";
 import { useOrgStore } from "@/store/orgStore";
@@ -36,6 +39,9 @@ const QUICK_OPTIONS = [
   { label: "Tomorrow Morning", sublabel: "7:00 AM", fn: snoozeOptionTomorrowMorning },
   { label: "This Weekend", sublabel: "Saturday 7:00 AM", fn: snoozeOptionThisWeekend },
   { label: "Next Week", sublabel: "Monday 7:00 AM", fn: snoozeOptionNextWeek },
+  { label: "One Week from Now", sublabel: "7 days, 7:00 AM", fn: snoozeOptionOneWeekFromNow },
+  { label: "Next Month", sublabel: "In 1 month, 7:00 AM", fn: snoozeOptionNextMonth },
+  { label: "Next Year", sublabel: "In 1 year, 7:00 AM", fn: snoozeOptionNextYear },
 ];
 
 export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogProps) {
