@@ -42,14 +42,21 @@ serve(async (req) => {
     const { organization_id } = await req.json();
     if (!organization_id) throw new Error("organization_id is required");
 
-    // Verify the caller is a member of the organization
-    const { data: membership } = await supabaseClient
-      .from("memberships")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("organization_id", organization_id)
+    // Superusers may check any org; regular users must be members
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("is_superuser")
+      .eq("id", user.id)
       .maybeSingle();
-    if (!membership) throw new Error("Forbidden: not a member of this organization");
+    if (!profile?.is_superuser) {
+      const { data: membership } = await supabaseClient
+        .from("memberships")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("organization_id", organization_id)
+        .maybeSingle();
+      if (!membership) throw new Error("Forbidden: not a member of this organization");
+    }
 
     logStep("Checking org", { organization_id });
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
+import { getPlanByProductId, PLANS, type PlanKey } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,8 @@ export default function ManagerScreen() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "user"; id: string; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [orgPlans, setOrgPlans] = useState<Record<string, PlanKey>>({});
+  const [plansLoading, setPlansLoading] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -146,6 +149,26 @@ export default function ManagerScreen() {
       toast({ title: "Error loading data", description: err.message, variant: "destructive" });
     }
     setLoading(false);
+  };
+
+  const loadOrgPlans = async (orgIds: string[]) => {
+    if (orgIds.length === 0) return;
+    // Skip if already loaded for these orgs
+    if (orgIds.every((id) => id in orgPlans)) return;
+    setPlansLoading(true);
+    const results = await Promise.all(
+      orgIds.map((id) =>
+        supabase.functions
+          .invoke("check-subscription", { body: { organization_id: id } })
+          .then(({ data }) => ({ id, plan: getPlanByProductId(data?.product_id ?? null) }))
+          .catch((err) => {
+            console.error(`Failed to load plan for org ${id}:`, err);
+            return { id, plan: "free" as PlanKey };
+          }),
+      ),
+    );
+    setOrgPlans((prev) => ({ ...prev, ...Object.fromEntries(results.map(({ id, plan }) => [id, plan])) }));
+    setPlansLoading(false);
   };
 
   const handleDeleteOrg = async (orgId: string) => {
@@ -330,7 +353,7 @@ export default function ManagerScreen() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="organizations">
+        <Tabs defaultValue="organizations" onValueChange={(v) => { if (v === "billing") loadOrgPlans(orgs.map((o) => o.id)); }}>
           <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="organizations">
               <Building2 className="w-4 h-4 mr-1.5" /> Organizations
@@ -525,25 +548,38 @@ export default function ManagerScreen() {
                     <TableRow>
                       <TableHead>Organization</TableHead>
                       <TableHead>Members</TableHead>
+                      <TableHead>Plan</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orgs.map((org) => (
-                      <TableRow key={org.id}>
-                        <TableCell className="font-medium">{org.name}</TableCell>
-                        <TableCell>{org.memberCount}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleNavigateToOrg(org.id)}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {orgs.map((org) => {
+                      const plan = orgPlans[org.id];
+                      return (
+                        <TableRow key={org.id}>
+                          <TableCell className="font-medium">{org.name}</TableCell>
+                          <TableCell>{org.memberCount}</TableCell>
+                          <TableCell>
+                            {plansLoading && !plan ? (
+                              <span className="text-xs text-muted-foreground">Loading…</span>
+                            ) : plan ? (
+                              <Badge variant={plan === "free" ? "secondary" : "default"}>
+                                {PLANS[plan].name}
+                              </Badge>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleNavigateToOrg(org.id)}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
