@@ -13,6 +13,41 @@ export interface WorkItemSnooze {
   updatedAt: string;
 }
 
+// ─── Snooze date helpers ────────────────────────────────────────────────────
+
+/** 3 hours from now */
+export function snoozeOptionLaterToday(): Date {
+  return new Date(Date.now() + 3 * 60 * 60 * 1000);
+}
+
+/** Tomorrow at 7:00 AM local time */
+export function snoozeOptionTomorrowMorning(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
+/** Next Monday at 7:00 AM local time */
+export function snoozeOptionNextWeek(): Date {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysUntilMonday = ((8 - day) % 7) || 7;
+  d.setDate(d.getDate() + daysUntilMonday);
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
+/** Next Saturday at 7:00 AM local time */
+export function snoozeOptionThisWeekend(): Date {
+  const d = new Date();
+  const day = d.getDay();
+  const daysUntilSaturday = ((6 - day) % 7) || 7;
+  d.setDate(d.getDate() + daysUntilSaturday);
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
 function rowToSnooze(row: Record<string, unknown>): WorkItemSnooze {
   return {
     id: row.id as string,
@@ -27,7 +62,7 @@ function rowToSnooze(row: Record<string, unknown>): WorkItemSnooze {
 }
 
 interface SnoozeState {
-  /** Map of workItemId -> snooze (one per user per item). */
+  /** Map of workItemId -> current user's snooze (one per user per item). */
   snoozes: Record<string, WorkItemSnooze>;
   /** Monotonic clock tick to force re-renders when a snooze expires. */
   tick: number;
@@ -47,9 +82,9 @@ interface SnoozeState {
   unsnoozeWorkItem: (workItemId: string) => Promise<void>;
   clearSnoozes: () => void;
 
-  /** True if the item is currently snoozed (snoozedUntil > now). */
+  /** True if the item is currently snoozed by the current user. */
   isSnoozed: (workItemId: string) => boolean;
-  /** Returns the snooze record only if currently active. */
+  /** Returns the snooze record only if currently active (current user). */
   getActiveSnooze: (workItemId: string) => WorkItemSnooze | undefined;
 
   applyRealtimeSnooze: (
