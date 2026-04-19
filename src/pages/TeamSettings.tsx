@@ -708,41 +708,39 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        {/* Labels — superuser-only toggle */}
-        {isSuperuser && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Tag className="w-4 h-4" /> Labels
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Enable labels</p>
-                  <p className="text-xs text-muted-foreground">
-                    Attach color-coded labels to work items and backlogs.
-                  </p>
-                </div>
-                <Switch
-                  checked={labelsEnabled}
-                  onCheckedChange={(checked) => {
-                    if (activeOrgId) {
-                      setLabelsEnabledSetting(activeOrgId, checked);
-                      toast({ title: checked ? "Labels enabled" : "Labels disabled" });
-                    }
-                  }}
-                />
+        {/* Labels */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Tag className="w-4 h-4" /> Labels
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable labels</p>
+                <p className="text-xs text-muted-foreground">
+                  Attach color-coded labels to work items and backlogs.
+                </p>
               </div>
-              {labelsEnabled && (
-                <div className="pt-2 border-t">
-                  <p className="text-xs font-medium text-muted-foreground mb-3">Manage labels</p>
-                  <LabelsManager />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              <Switch
+                checked={labelsEnabled}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    setLabelsEnabledSetting(activeOrgId, checked);
+                    toast({ title: checked ? "Labels enabled" : "Labels disabled" });
+                  }
+                }}
+              />
+            </div>
+            {labelsEnabled && (
+              <div className="pt-2 border-t">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Manage labels</p>
+                <LabelsManager />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Custom statuses — available to org admins and owners */}
         {canManage && (
