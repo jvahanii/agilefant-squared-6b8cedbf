@@ -7,6 +7,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useSnoozeStore } from '@/store/snoozeStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
