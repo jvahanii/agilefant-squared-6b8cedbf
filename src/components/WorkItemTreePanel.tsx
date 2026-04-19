@@ -185,6 +185,8 @@ interface WorkItemNodeProps {
 
 function WorkItemNode(props: WorkItemNodeProps) {
   const labelFilter = useContext(LabelFilterContext);
+  const isSnoozed = useSnoozeStore((s) => s.isSnoozed(props.workItemId));
+  if (isSnoozed) return null;
   if (labelFilter !== null && !labelFilter.has(props.workItemId)) return null;
   return <WorkItemNodeContent {...props} />;
 }
@@ -1232,6 +1234,12 @@ export function WorkItemTreePanel() {
   }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 
+  // Snooze filter — subscribe to snoozes + tick so the list reacts when items
+  // expire or are (un)snoozed.
+  const snoozeIsSnoozed = useSnoozeStore((s) => s.isSnoozed);
+  const snoozeSnoozes = useSnoozeStore((s) => s.snoozes);
+  const snoozeTick = useSnoozeStore((s) => s.tick);
+
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
@@ -1383,11 +1391,13 @@ export function WorkItemTreePanel() {
       .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0));
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
-  // When filter is active, hide root items that have no matching descendant-or-self
+  // When filter is active, hide root items that have no matching descendant-or-self.
+  // Also hide root items that are currently snoozed by the current user.
   const displayedRootItems = useMemo(() => {
-    if (!visibleFilterSet) return rootWorkItems;
-    return rootWorkItems.filter((wi) => visibleFilterSet.has(wi.id));
-  }, [rootWorkItems, visibleFilterSet]);
+    let items = rootWorkItems;
+    if (visibleFilterSet) items = items.filter((wi) => visibleFilterSet.has(wi.id));
+    return items.filter((wi) => !snoozeIsSnoozed(wi.id));
+  }, [rootWorkItems, visibleFilterSet, snoozeIsSnoozed, snoozeSnoozes, snoozeTick]);
 
   const visibleItemIds = useMemo(() => {
     const ids: string[] = [];
