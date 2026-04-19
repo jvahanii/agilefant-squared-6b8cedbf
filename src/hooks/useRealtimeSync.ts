@@ -391,6 +391,31 @@ export function useRealtimeSync() {
       .subscribe();
     channels.push(statusChannel);
 
+    // Per-user snoozes (RLS already restricts to current user; no org filter needed).
+    // Async: fetch the current user's id once, then subscribe filtered by it.
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId || destroyed) return;
+      const snoozeChannel = supabase
+        .channel(`work-item-snoozes-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_snoozes',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .subscribe();
+      channels.push(snoozeChannel);
+    })();
+
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
     for (const orgId of incomingPartnerOrgIds) {
       subscribePartnerOrg(orgId);
