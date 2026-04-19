@@ -808,7 +808,6 @@ function AppLayoutInner() {
           return false;
         };
         if (isDescendant(targetBacklogId)) return;
-        if (activeData.treeId !== treeId) return;
         moveBacklog(backlogId, targetBacklogId, treeId);
       } else if (activeData?.type === "tree-node" && overData?.type === "tree-reorder") {
         const treeId = activeData.treeId as string;
