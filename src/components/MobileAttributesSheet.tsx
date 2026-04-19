@@ -12,7 +12,8 @@ import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
-import { Clock, Link2, RotateCcw, Tag } from "lucide-react";
+import { Bell, BellOff, Clock, Link2, RotateCcw, Tag } from "lucide-react";
+import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 
 // ─── Work Item Attributes Sheet ──────────────────────────────────────────────
@@ -24,6 +25,7 @@ interface MobileWorkItemAttributesSheetProps {
   onOpenTimeLog: () => void;
   onOpenRespawn: () => void;
   onOpenHyperlinks: () => void;
+  onOpenSnooze: () => void;
 }
 
 export function MobileWorkItemAttributesSheet({
@@ -33,6 +35,7 @@ export function MobileWorkItemAttributesSheet({
   onOpenTimeLog,
   onOpenRespawn,
   onOpenHyperlinks,
+  onOpenSnooze,
 }: MobileWorkItemAttributesSheetProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
@@ -65,6 +68,10 @@ export function MobileWorkItemAttributesSheet({
   }, [labelsVisible, byEntity, labelsMap, workItemId]);
 
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
+
+  const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
+  const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
+  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
 
   const [isEditingPoints, setIsEditingPoints] = useState(false);
   const [editPoints, setEditPoints] = useState("");
@@ -204,6 +211,31 @@ export function MobileWorkItemAttributesSheet({
               <Link2 className="w-3.5 h-3.5 mr-1" />
               {hyperlinkCount > 0 ? `${hyperlinkCount} link${hyperlinkCount !== 1 ? "s" : ""}` : "Manage"}
             </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Snooze</span>
+            {isSnoozed && activeSnooze ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-sm text-muted-foreground"
+                onClick={() => { onOpenChange(false); unsnoozeWorkItem(workItemId); }}
+              >
+                <Bell className="w-3.5 h-3.5 mr-1" />
+                {new Date(activeSnooze.snoozedUntil).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-sm text-muted-foreground"
+                onClick={() => { onOpenChange(false); onOpenSnooze(); }}
+              >
+                <BellOff className="w-3.5 h-3.5 mr-1" />
+                Snooze
+              </Button>
+            )}
           </div>
         </div>
       </SheetContent>
