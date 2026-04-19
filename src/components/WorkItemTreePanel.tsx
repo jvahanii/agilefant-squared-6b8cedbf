@@ -684,7 +684,7 @@ function WorkItemNodeContent({
           {backlogPaths.length > 0 && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
               {backlogPaths.map(({ treeId: tid, path }) => (
-                <div key={tid} className="flex items-center text-[10px] text-muted-foreground/70">
+                <div key={tid} className="flex items-center text-[10px] text-foreground">
                   <span className="mr-0.5">also in</span>
                   {path.map((seg, i) => (
                     <span key={seg.id} className="flex items-center">
@@ -1473,7 +1473,7 @@ export function WorkItemTreePanel() {
         <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
           <div className="min-w-0 flex-1">
             <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-foreground mt-0.5">
               {visibleFilterSet
                 ? `${displayedRootItems.length} of ${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""} (filtered)`
                 : `${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
