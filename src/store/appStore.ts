@@ -1222,8 +1222,21 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
+      // Items that lost at least one assignment but still belong to other trees must
+      // be persisted so the DB doesn't retain the stale backlog_assignments entry.
+      // Without this, a page reload silently drops the stale entry and the "also in"
+      // cross-tree badge disappears permanently for those items.
+      const wiIdsToUpsert = Object.values(updatedItems).filter(
+        (wi) =>
+          !wiIdsToDelete.includes(wi.id) &&
+          Object.keys(wi.backlogAssignments).length !==
+            Object.keys(state.workItems[wi.id]?.backlogAssignments ?? {}).length,
+      );
       deleteWorkItems(wiIdsToDelete)?.catch((err) => console.error("Delete work items failed", err));
       deleteBacklogs(blIdsToDelete)?.catch((err) => console.error("Delete backlogs failed", err));
+      if (wiIdsToUpsert.length > 0) {
+        upsertWorkItems(wiIdsToUpsert, orgId)?.catch((err) => console.error("Update work item assignments failed", err));
+      }
       internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
       set({
         workItems: updatedItems,
