@@ -7,10 +7,10 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
 import { lazy, Suspense, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 
-const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const TeamSettings = lazy(() => import("./pages/TeamSettings"));
 const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
