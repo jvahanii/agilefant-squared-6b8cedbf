@@ -64,7 +64,7 @@ export default function TeamSettings() {
   // Org settings from backend (includes labels toggle)
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
-  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
+  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? true;
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
@@ -744,8 +744,8 @@ export default function TeamSettings() {
           </Card>
         )}
 
-        {/* Custom statuses — superuser-only toggle for now */}
-        {isSuperuser && (
+        {/* Custom statuses — available to org admins and owners */}
+        {canManage && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">

@@ -807,10 +807,15 @@ export function BacklogTreePanel() {
 
   const { scrambleEnabled, isSuperuser } = useScramble();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrgRole = useOrgStore((s) => {
+    const m = s.memberships.find((m) => m.organization_id === s.activeOrgId);
+    return m?.role ?? null;
+  });
   const customStatusesEnabled = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? false,
+    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
-  const canEditStatuses = customStatusesEnabled && isSuperuser;
+  const canManage = activeOrgRole === "owner" || activeOrgRole === "admin" || isSuperuser;
+  const canEditStatuses = customStatusesEnabled && canManage;
 
   // A tree is scrambled only when scramble is enabled AND it has no shares with any org.
   const isTreeScrambled = (treeId: string) =>
