@@ -24,7 +24,7 @@ const defaults: OrgSettings = {
   timeLoggingEnabled: false,
   pointsEnabled: false,
   labelsEnabled: false,
-  customStatusesEnabled: false,
+  customStatusesEnabled: true,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -152,4 +152,9 @@ export function isPointsEnabled(orgId: string | null): boolean {
 export function isLabelsEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.labelsEnabled ?? false;
+}
+
+export function isCustomStatusesEnabled(orgId: string | null): boolean {
+  if (!orgId) return true;
+  return useOrgSettingsStore.getState().settings[orgId]?.customStatusesEnabled ?? true;
 }
