@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
