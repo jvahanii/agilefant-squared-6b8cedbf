@@ -1250,6 +1250,7 @@ export function WorkItemTreePanel() {
     () => new Set(snoozedKey ? snoozedKey.split(',') : []),
     [snoozedKey],
   );
+  const unsnoozeAll = useSnoozeStore((s) => s.unsnoozeAll);
 
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
@@ -1375,6 +1376,14 @@ export function WorkItemTreePanel() {
 
   const allBacklogIds = useMemo(() => Array.from(backlogIdSet), [backlogIdSet]);
 
+  // Work item IDs in the current backlog that are currently snoozed.
+  const snoozedInBacklog = useMemo(() => {
+    if (snoozedItemIds.size === 0 || backlogIdSet.size === 0 || !selectedTreeId) return [];
+    return Object.values(workItems)
+      .filter((wi) => snoozedItemIds.has(wi.id) && backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
+      .map((wi) => wi.id);
+  }, [workItems, snoozedItemIds, backlogIdSet, selectedTreeId]);
+
   // Labels used by work items that belong to the selected backlog (and its children).
   // Only these labels are shown in the filter chip bar.
   const backlogLabels = useMemo(() => {
@@ -1480,6 +1489,19 @@ export function WorkItemTreePanel() {
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
+            {snoozedInBacklog.length > 0 && (
+              <button
+                className="flex items-center gap-1 w-auto h-7 px-1.5 rounded-md text-amber-500/80 hover:text-amber-500 hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  unsnoozeAll(snoozedInBacklog);
+                }}
+                title={`${snoozedInBacklog.length} snoozed item${snoozedInBacklog.length !== 1 ? "s" : ""} \u2014 click to unsnooze all`}
+              >
+                <BellOff className="w-4 h-4" />
+                <span className="text-xs font-medium tabular-nums">{snoozedInBacklog.length}</span>
+              </button>
+            )}
             <button
               className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={(e) => {
