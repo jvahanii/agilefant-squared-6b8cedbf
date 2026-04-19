@@ -64,7 +64,19 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   loading: true,
 
   loadMemberships: async (userId: string) => {
+    // Safety timeout: if the RPC call hangs (e.g. Supabase unreachable), unblock
+    // the loading screen after 10 seconds so the app doesn't stay on "Loading..."
+    // indefinitely. App.tsx shows "Loading..." while orgLoading is true.
+    const timeoutId = setTimeout(() => {
+      if (get().loading) {
+        console.warn('loadMemberships: timed out after 10 s, clearing loading state');
+        set({ loading: false });
+      }
+    }, 10000);
+
     const { data, error } = await supabase.rpc('get_user_memberships', { _user_id: userId });
+    clearTimeout(timeoutId);
+
     if (error) {
       console.error('loadMemberships:', error);
       set({ loading: false });
