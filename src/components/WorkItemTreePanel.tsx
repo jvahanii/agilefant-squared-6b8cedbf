@@ -24,7 +24,7 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
-import { useLabelsStore } from "@/store/labelsStore";
+import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
 
@@ -1035,13 +1035,6 @@ export function WorkItemTreePanel() {
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
-  const orgLabels = useMemo(
-    () =>
-      Object.values(labelsMap)
-        .filter((l) => l.organizationId === activeOrgId)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [labelsMap, activeOrgId],
-  );
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
 
   // Clear filter when switching backlogs
@@ -1162,6 +1155,22 @@ export function WorkItemTreePanel() {
   }, [selectedBacklogId, backlogs]);
 
   const allBacklogIds = useMemo(() => Array.from(backlogIdSet), [backlogIdSet]);
+
+  // Labels used by work items that belong to the selected backlog (and its children).
+  // Only these labels are shown in the filter chip bar.
+  const backlogLabels = useMemo(() => {
+    if (!selectedTreeId || backlogIdSet.size === 0) return [];
+    const labelIdSet = new Set<string>();
+    for (const wi of Object.values(workItems)) {
+      if (!backlogIdSet.has(wi.backlogAssignments[selectedTreeId])) continue;
+      const ids = byEntity[`work_item:${wi.id}`];
+      if (ids) ids.forEach((id) => labelIdSet.add(id));
+    }
+    return Array.from(labelIdSet)
+      .map((id) => labelsMap[id])
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name)) as Label[];
+  }, [workItems, selectedTreeId, backlogIdSet, byEntity, labelsMap]);
 
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
@@ -1289,10 +1298,10 @@ export function WorkItemTreePanel() {
           </div>
         </div>
 
-        {/* Label filter chip bar — only shown when labels are enabled and at least one label exists */}
-        {labelsVisible && orgLabels.length > 0 && (
+        {/* Label filter chip bar — only shown when labels are enabled and this backlog has labeled items */}
+        {labelsVisible && backlogLabels.length > 0 && (
           <div className="px-2 py-0.5 flex flex-wrap gap-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
-            {orgLabels.map((label) => (
+            {backlogLabels.map((label) => (
               <button
                 key={label.id}
                 className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
