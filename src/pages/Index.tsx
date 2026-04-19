@@ -28,6 +28,7 @@ const Index = () => {
   const loadStatusesForTrees = useTreeStatusesStore(s => s.loadStatusesForTrees);
   const backlogTrees = useAppStore(s => s.backlogTrees);
   const loadSnoozes = useSnoozeStore(s => s.loadSnoozes);
+  const loadOrgSnoozes = useSnoozeStore(s => s.loadOrgSnoozes);
   const clearSnoozes = useSnoozeStore(s => s.clearSnoozes);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ const Index = () => {
       loadData();
       loadTeams(activeOrgId);
       loadWorkItemTeams(activeOrgId);
+      loadOrgSnoozes(activeOrgId);
       loadSettings(activeOrgId).then(() => {
         if (isTimeLoggingEnabled(activeOrgId)) {
           loadTimeEntries(activeOrgId);

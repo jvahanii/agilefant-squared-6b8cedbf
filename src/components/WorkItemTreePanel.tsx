@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -11,6 +11,7 @@ import { ActionPrompt } from "./ActionPrompt";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -41,6 +42,13 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  useSnoozeStore,
+  snoozeOptionLaterToday,
+  snoozeOptionTomorrowMorning,
+  snoozeOptionNextWeek,
+  snoozeOptionThisWeekend,
+} from "@/store/snoozeStore";
 
 /**
  * When a label filter is active, this context holds the Set of work item IDs
@@ -261,7 +269,22 @@ function WorkItemNodeContent({
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
+
+  // Snooze store
+  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
+  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
+  const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
+  const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
+  const othersSnooze = useSnoozeStore((s) => s.getOthersActiveSnooze(workItemId));
+  const snoozeUserNames = useSnoozeStore((s) => s.userNames);
+  const snoozeOthersSnoozerName = othersSnooze ? (snoozeUserNames[othersSnooze.userId] ?? "someone") : null;
+
+  const handleQuickSnooze = useCallback(async (until: Date) => {
+    if (!activeOrgId) return;
+    await snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: until });
+  }, [workItemId, activeOrgId, snoozeWorkItem]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -447,6 +470,7 @@ function WorkItemNodeContent({
             border select-none
             ${!isMobile ? "cursor-grab active:cursor-grabbing" : ""}
             ${isChildBacklog ? "text-muted-foreground" : ""}
+            ${othersSnooze ? "opacity-50" : ""}
             ${
               isSelected
                 ? "bg-selection/10 border-selection/30 ring-1 ring-selection/30"
@@ -620,6 +644,39 @@ function WorkItemNodeContent({
               </TooltipProvider>
             );
           })()}
+
+          {isSnoozed && activeSnooze && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="shrink-0 mt-0.5 text-amber-500/80 hover:text-amber-500 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); unsnoozeWorkItem(workItemId); }}
+                  >
+                    <BellOff className="w-3 h-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Snoozed until {new Date(activeSnooze.snoozedUntil).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} (click to unsnooze)
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {othersSnooze && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="shrink-0 mt-0.5 text-muted-foreground/60" onClick={(e) => e.stopPropagation()}>
+                    <BellOff className="w-3 h-3" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Snoozed until {new Date(othersSnooze.snoozedUntil).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} by {snoozeOthersSnoozerName}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {hyperlinkCount > 0 && (
             <TooltipProvider>
@@ -922,6 +979,40 @@ function WorkItemNodeContent({
               Log time
             </ContextMenuItem>
           )}
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs">
+              <BellOff className="w-3 h-3 mr-2" />
+              Snooze
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionLaterToday())}>
+                <span className="flex-1">Later Today</span>
+                <span className="ml-4 text-muted-foreground text-[10px]">3h from now</span>
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionTomorrowMorning())}>
+                <span className="flex-1">Tomorrow Morning</span>
+                <span className="ml-4 text-muted-foreground text-[10px]">7:00 AM</span>
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionThisWeekend())}>
+                <span className="flex-1">This Weekend</span>
+                <span className="ml-4 text-muted-foreground text-[10px]">Sat 7:00 AM</span>
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionNextWeek())}>
+                <span className="flex-1">Next Week</span>
+                <span className="ml-4 text-muted-foreground text-[10px]">Mon 7:00 AM</span>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem className="text-xs" onSelect={() => setShowSnoozeDialog(true)}>
+                Pick Date / Time…
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          {isSnoozed && (
+            <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(workItemId)}>
+              <Bell className="w-3 h-3 mr-2" />
+              Unsnooze
+            </ContextMenuItem>
+          )}
           <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
             Respawn settings
           </ContextMenuItem>
@@ -1062,6 +1153,11 @@ function WorkItemNodeContent({
           onOpenChange={setShowTimeLogDialog}
         />
       )}
+      <SnoozeDialog
+        workItemId={workItemId}
+        open={showSnoozeDialog}
+        onOpenChange={setShowSnoozeDialog}
+      />
       <MobileWorkItemAttributesSheet
         workItemId={workItemId}
         open={showMobileAttributesSheet}
