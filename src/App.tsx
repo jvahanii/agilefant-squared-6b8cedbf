@@ -5,16 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import TeamSettings from "./pages/TeamSettings";
-import ManagerScreen from "./pages/ManagerScreen";
-import ResetPassword from "./pages/ResetPassword";
-import UserGuide from "./pages/UserGuide";
+
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const TeamSettings = lazy(() => import("./pages/TeamSettings"));
+const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const UserGuide = lazy(() => import("./pages/UserGuide"));
 
 const queryClient = new QueryClient();
 
@@ -41,36 +42,48 @@ function AppRoutes() {
     );
   }
 
+  const pageFallback = (
+    <div className="flex items-center justify-center h-screen bg-background">
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  );
+
   if (!user) {
     return (
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/user-guide" element={<UserGuide />} />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
-      </Routes>
+      <Suspense fallback={pageFallback}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/user-guide" element={<UserGuide />} />
+          <Route path="*" element={<Navigate to="/auth" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (memberships.length === 0) {
     return (
-      <Routes>
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/user-guide" element={<UserGuide />} />
-        <Route path="*" element={<Navigate to="/onboarding" replace />} />
-      </Routes>
+      <Suspense fallback={pageFallback}>
+        <Routes>
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/user-guide" element={<UserGuide />} />
+          <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/settings/team" element={<TeamSettings />} />
-      <Route path="/manager" element={<ManagerScreen />} />
-      <Route path="/user-guide" element={<UserGuide />} />
-      <Route path="/auth" element={<Navigate to="/" replace />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Suspense fallback={pageFallback}>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/settings/team" element={<TeamSettings />} />
+        <Route path="/manager" element={<ManagerScreen />} />
+        <Route path="/user-guide" element={<UserGuide />} />
+        <Route path="/auth" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 }
 
