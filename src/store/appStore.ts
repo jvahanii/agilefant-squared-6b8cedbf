@@ -921,14 +921,18 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
       upsertWorkItem(updatedWorkItems[workItemId], orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
-      if (status === "in_progress") {
+      if (status === "in_progress" || status === "done") {
         const visited = new Set<string>([workItemId]);
         let ancestorId = item.parentId;
         while (ancestorId && !visited.has(ancestorId)) {
           visited.add(ancestorId);
           const ancestor = updatedWorkItems[ancestorId];
           if (!ancestor) break;
-          if (ancestor.status !== "in_progress") {
+          // "done" only promotes not_started ancestors; "in_progress" promotes all non-in_progress ancestors.
+          const shouldUpdate = status === "done"
+            ? ancestor.status === "not_started"
+            : ancestor.status !== "in_progress";
+          if (shouldUpdate) {
             updatedWorkItems[ancestorId] = { ...ancestor, status: "in_progress" };
             upsertWorkItem(updatedWorkItems[ancestorId], orgId);
             internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "in_progress" (auto)` });
