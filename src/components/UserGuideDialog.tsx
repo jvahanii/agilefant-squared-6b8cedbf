@@ -16,6 +16,8 @@ import {
   RefreshCw,
   CheckCircle2,
   Clock,
+  Moon,
+  Tag,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -433,6 +435,102 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>Time entries are synced in real time — your teammates will see logged time as soon as it is saved.</Tip>
+        </div>
+      ),
+    },
+    {
+      id: "snooze",
+      icon: <Moon className="w-4 h-4" />,
+      label: "Snooze",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Snooze</strong> temporarily hides a work item until a future date and
+            time. Snoozed items disappear from the backlog view and automatically reappear when the snooze expires.
+            Snoozes are per-user — your teammates see items at all times.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Snooze an item",
+                how: "Right-click the item row to open the context menu, hover Snooze, then pick a quick option or choose \"More options\u2026\" to open the full snooze dialog.",
+              },
+              {
+                action: "Quick options",
+                how: "Later Today (3 hrs), Tomorrow Morning (7 AM), This Weekend (Sat 7 AM), Next Week (Mon 7 AM), One Week from Now (7 days), Next Month, Next Year.",
+              },
+              {
+                action: "Custom date / time",
+                how: "Open \"More options\u2026\" from the context menu or click \"Snooze\" on an item to open the dialog, then use the date-time picker and click \"Snooze until selected time\".",
+              },
+              {
+                action: "Unsnooze early",
+                how: "Click the snooze indicator (moon badge) shown on the item row, or right-click the item and choose Unsnooze.",
+              },
+              {
+                action: "Automatic wake-up",
+                how: "When the snooze time passes the item reappears automatically without any action needed.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Snooze is useful for items you cannot act on right now but don't want to lose — for example, items blocked
+            by an external dependency that resolves next week.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "labels",
+      icon: <Tag className="w-4 h-4" />,
+      label: "Labels",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Labels</strong> let you tag work items with colored badges for
+            categorization and filtering. The feature is off by default and must be enabled by a superuser in{" "}
+            <strong className="text-foreground">Settings → Labels</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Enable labels",
+                how: "A superuser opens Settings and toggles the Labels switch on. The setting is per-organisation.",
+              },
+              {
+                action: "Create a label",
+                how: "Go to Settings → Labels, enter a name, pick a color, and click Add.",
+              },
+              {
+                action: "Edit / delete a label",
+                how: "In Settings → Labels, click the pencil icon to rename or recolor a label, or the trash icon to remove it.",
+              },
+              {
+                action: "Assign a label",
+                how: "Right-click any work item and choose Labels, then click the label to toggle it on the item. On mobile, open the attributes sheet and tap the Labels row.",
+              },
+              {
+                action: "Bulk assign",
+                how: "Select multiple items, then right-click and choose Labels. Each label shows how many selected items already have it.",
+              },
+              {
+                action: "Filter by label",
+                how: "When labels are enabled a chip bar appears above the work item list. Click a label chip to filter the list to only items with that label (ancestors are shown for context).",
+              },
+              {
+                action: "Clear label filter",
+                how: "Click the × button at the right of the chip bar, or click the active chip again to deselect it.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Label chips in the filter bar are only shown for labels that appear on at least one item in the currently
+            selected backlog, keeping the bar compact.
+          </Tip>
         </div>
       ),
     },
