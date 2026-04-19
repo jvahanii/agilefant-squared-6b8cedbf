@@ -41,6 +41,7 @@ export function useRealtimeSync() {
   const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
   const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
+  const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
