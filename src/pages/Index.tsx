@@ -27,12 +27,23 @@ const Index = () => {
   const loadLabels = useLabelsStore(s => s.loadLabels);
   const loadStatusesForTrees = useTreeStatusesStore(s => s.loadStatusesForTrees);
   const backlogTrees = useAppStore(s => s.backlogTrees);
+  const loadSnoozes = useSnoozeStore(s => s.loadSnoozes);
+  const clearSnoozes = useSnoozeStore(s => s.clearSnoozes);
 
   useEffect(() => {
     if (user) {
       setUser(user.id, user.email ?? '');
+      loadSnoozes();
+    } else {
+      clearSnoozes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Periodically tick so expired snoozes wake up in the UI.
+  useEffect(() => {
+    return startSnoozeExpiryWatcher();
+  }, []);
 
   useEffect(() => {
     if (activeOrgId) {
