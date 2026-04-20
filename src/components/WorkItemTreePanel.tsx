@@ -718,12 +718,24 @@ function WorkItemNodeContent({
                   }, 0);
                   return Math.max(own, childrenSum);
                 };
+                const getCompletedPoints = (wi: any): number => {
+                  if (wi.status === 'done') return getEffectivePoints(wi);
+                  return wi.childrenIds.reduce((sum: number, cid: string) => {
+                    const child = workItems[cid];
+                    return sum + (child ? getCompletedPoints(child) : 0);
+                  }, 0);
+                };
                 const totalPoints = getEffectivePoints(item);
                 const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
                   const child = workItems[cid];
                   return sum + (child ? getEffectivePoints(child) : 0);
                 }, 0);
                 const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
+                const hasChildren = item.childrenIds.length > 0;
+                const completedPoints = hasChildren ? getCompletedPoints(item) : 0;
+                const pointsLabel = hasChildren && totalPoints > 0
+                  ? `${completedPoints}/${totalPoints}`
+                  : totalPoints > 0 ? String(totalPoints) : "–";
                 return (
                   <>
                     {/* Desktop: inline editable points */}
@@ -750,7 +762,7 @@ function WorkItemNodeContent({
                             : "Story points (click to edit)"
                         }
                       >
-                        {totalPoints > 0 ? totalPoints : "–"}
+                        {pointsLabel}
                       </span>
                     )}
                     {/* Mobile: read-only points display (edit via attributes sheet) — only shown when there are actual points */}
@@ -759,7 +771,7 @@ function WorkItemNodeContent({
                         className={`md:hidden text-xs tabular-nums shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
                         title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Story points"}
                       >
-                        {totalPoints}
+                        {pointsLabel}
                       </span>
                     )}
                   </>
