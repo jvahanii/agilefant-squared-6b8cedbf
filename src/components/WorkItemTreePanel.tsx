@@ -1329,16 +1329,20 @@ export function WorkItemTreePanel() {
 
         // Build full backlog ancestry path from root backlog down to the item's backlog.
         const backlogPath: string[] = [];
+        const visitedBacklogIds = new Set<string>();
         let bl = backlog;
-        while (bl) {
+        while (bl && !visitedBacklogIds.has(bl.id)) {
+          visitedBacklogIds.add(bl.id);
           backlogPath.unshift(bl.name);
           bl = bl.parentId ? backlogs[bl.parentId] : null;
         }
 
         // Build work item ancestor chain from root ancestor down to the direct parent.
         const workItemAncestors: string[] = [];
+        const visitedWorkItemIds = new Set<string>();
         let parent = wi.parentId ? workItems[wi.parentId] : null;
-        while (parent) {
+        while (parent && !visitedWorkItemIds.has(parent.id)) {
+          visitedWorkItemIds.add(parent.id);
           workItemAncestors.unshift(parent.title);
           parent = parent.parentId ? workItems[parent.parentId] : null;
         }
