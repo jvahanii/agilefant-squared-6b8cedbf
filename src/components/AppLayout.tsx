@@ -595,6 +595,7 @@ function AppLayoutInner() {
 
   // Auto integrity check on data changes
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
   const prevDataRef = useRef<string>("");
 
   useEffect(() => {
@@ -991,6 +992,7 @@ function AppLayoutInner() {
 
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { isSuperuser, scrambleEnabled, toggleScramble } = useScramble();
+  const effectiveSuperuser = isSuperuser && !roleOverride;
 
   return (
     <DndContext
@@ -1035,7 +1037,7 @@ function AppLayoutInner() {
                 <ClipboardList className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Export history</span>
               </button>
-              {isSuperuser && (
+              {effectiveSuperuser && (
                 <>
                   <button
                     className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
@@ -1083,7 +1085,7 @@ function AppLayoutInner() {
               </AlertDialog>
 
               <div className="flex items-center gap-1 border-l pl-2">
-                {isSuperuser && (
+                {effectiveSuperuser && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -1177,7 +1179,7 @@ function AppLayoutInner() {
                     <ClipboardList className="w-4 h-4 mr-2" />
                     Export history
                   </DropdownMenuItem>
-                  {isSuperuser && (
+                  {effectiveSuperuser && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleCheckData}>
