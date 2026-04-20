@@ -861,6 +861,8 @@ export function BacklogTreePanel() {
               if (e.key === "Escape") {
                 setSearchQuery("");
                 (e.target as HTMLInputElement).blur();
+              } else if (e.key === "Enter") {
+                (e.target as HTMLInputElement).blur();
               }
               e.stopPropagation();
             }}
