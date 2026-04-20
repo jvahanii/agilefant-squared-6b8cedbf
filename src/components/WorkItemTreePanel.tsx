@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -1225,6 +1225,8 @@ export function WorkItemTreePanel() {
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -1260,28 +1262,10 @@ export function WorkItemTreePanel() {
   const byEntity = useLabelsStore((s) => s.byEntity);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   // Clear search query when switching backlogs
   useEffect(() => {
     setSearchQuery("");
-  }, [selectedBacklogId]);
-
-  // Keyboard shortcut: '/' focuses the search input
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-      if (!isInput && e.key === "/") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [selectedBacklogId, setSearchQuery]);
 
   // Clear filter when switching backlogs
   useEffect(() => {
@@ -1518,25 +1502,6 @@ export function WorkItemTreePanel() {
   if (!isSearchMode && (!selectedBacklogId || !selectedTreeId)) {
     return (
       <div className="h-full flex flex-col overflow-hidden">
-        <div className="p-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="w-full h-7 pl-7 pr-2 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
-              placeholder="Search items… (/)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setSearchQuery("");
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-            />
-          </div>
-        </div>
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
@@ -1635,37 +1600,6 @@ export function WorkItemTreePanel() {
           </div>
         </div>
 
-        {/* Search bar — always visible */}
-        <div className="px-1 py-0.5 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="w-full h-7 pl-7 pr-6 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
-              placeholder="Search items… (/)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setSearchQuery("");
-                  (e.target as HTMLInputElement).blur();
-                }
-                e.stopPropagation();
-              }}
-            />
-            {searchQuery && (
-              <button
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setSearchQuery("")}
-                title="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* Label filter chip bar — only shown in normal mode when labels are enabled and this backlog has labeled items */}
         {!isSearchMode && labelsVisible && backlogLabels.length > 0 && (
           <div className="px-2 py-0.5 flex flex-wrap gap-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1736,6 +1670,24 @@ export function WorkItemTreePanel() {
                         key={item.id}
                         className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
                         onClick={() => {
+                          // Expand ancestor backlogs and work items so the item is visible
+                          useAppStore.setState((state) => {
+                            // Expand ancestor backlogs in the left panel
+                            const expandedBacklogs = new Set(state.expandedBacklogs);
+                            let bl = state.backlogs[backlogId];
+                            while (bl?.parentId) {
+                              expandedBacklogs.add(bl.parentId);
+                              bl = state.backlogs[bl.parentId];
+                            }
+                            // Expand ancestor work items in the right panel
+                            const expandedWorkItems = new Set(state.expandedWorkItems);
+                            let wi = state.workItems[item.id];
+                            while (wi?.parentId) {
+                              expandedWorkItems.add(wi.parentId);
+                              wi = state.workItems[wi.parentId];
+                            }
+                            return { expandedBacklogs, expandedWorkItems };
+                          });
                           selectBacklog(backlogId, treeId);
                           setSearchQuery("");
                           // Small delay lets the backlog panel re-render with the new selection

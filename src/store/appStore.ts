@@ -54,6 +54,8 @@ interface AppState extends DataSnapshot {
   organizationId: string | null;
   userId: string | null;
   userEmail: string | null;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
   setOrganizationId: (orgId: string) => void;
   setUser: (userId: string, userEmail: string) => void;
   loadFromSupabase: () => Promise<void>;
@@ -378,9 +380,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     organizationId: null,
     userId: null,
     userEmail: null,
+    searchQuery: "",
 
     setOrganizationId: (orgId) => set({ organizationId: orgId }),
     setUser: (userId, userEmail) => set({ userId, userEmail }),
+    setSearchQuery: (q) => set({ searchQuery: q }),
     logChange: (entry) => internalLog(entry),
     clearChangeLog: () => set({ changeLog: [] }),
 
