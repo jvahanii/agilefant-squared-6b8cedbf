@@ -753,13 +753,15 @@ function WorkItemNodeContent({
                         {totalPoints > 0 ? totalPoints : "–"}
                       </span>
                     )}
-                    {/* Mobile: read-only points display (edit via attributes sheet) */}
-                    <span
-                      className={`md:hidden text-xs tabular-nums shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                      title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Story points"}
-                    >
-                      {totalPoints > 0 ? totalPoints : "–"}
-                    </span>
+                    {/* Mobile: read-only points display (edit via attributes sheet) — only shown when there are actual points */}
+                    {totalPoints > 0 && (
+                      <span
+                        className={`md:hidden text-xs tabular-nums shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
+                        title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Story points"}
+                      >
+                        {totalPoints}
+                      </span>
+                    )}
                   </>
                 );
               })()}
