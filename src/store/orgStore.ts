@@ -21,10 +21,18 @@ interface OrgState {
   activeOrgId: string | null;
   activeOrgName: string | null;
   loading: boolean;
+  /**
+   * Superuser-only role override. When set, getActiveOrg() returns this role
+   * instead of the user's true membership role so superusers can preview how
+   * the app looks for owners/admins/members without creating new accounts.
+   * Persisted in sessionStorage so a refresh keeps the simulated role.
+   */
+  roleOverride: 'owner' | 'admin' | 'member' | null;
   loadMemberships: (userId: string) => Promise<void>;
   setActiveOrg: (orgId: string, orgName?: string) => void;
   createOrganization: (name: string, slug: string, userId: string) => Promise<string>;
   getActiveOrg: () => Membership | null;
+  setRoleOverride: (role: 'owner' | 'admin' | 'member' | null) => void;
 }
 
 async function ensureProfileExists(userId: string): Promise<void> {
