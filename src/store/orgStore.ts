@@ -128,7 +128,9 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   },
 
   getActiveOrg: () => {
-    const { memberships, activeOrgId } = get();
-    return memberships.find(m => m.organization_id === activeOrgId) ?? null;
+    const { memberships, activeOrgId, roleOverride } = get();
+    const m = memberships.find(m => m.organization_id === activeOrgId) ?? null;
+    if (m && roleOverride) return { ...m, role: roleOverride };
+    return m;
   },
 }));
