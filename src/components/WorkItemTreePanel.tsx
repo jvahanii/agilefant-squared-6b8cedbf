@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -1217,6 +1217,7 @@ export function WorkItemTreePanel() {
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
@@ -1258,6 +1259,29 @@ export function WorkItemTreePanel() {
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Clear search query when switching backlogs
+  useEffect(() => {
+    setSearchQuery("");
+  }, [selectedBacklogId]);
+
+  // Keyboard shortcut: '/' focuses the search input
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (!isInput && e.key === "/") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Clear filter when switching backlogs
   useEffect(() => {
@@ -1302,6 +1326,33 @@ export function WorkItemTreePanel() {
       }
     }
   }, [visibleFilterSet]);
+
+  // Search results: items from ALL trees matching the search query, with tree/backlog context.
+  // Returns null when no query is active (normal view mode).
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+
+    return Object.values(workItems)
+      .filter((wi) => wi.title.toLowerCase().includes(q))
+      .map((wi) => {
+        // Pick the first tree assignment to provide context labels.
+        const treeIds = Object.keys(wi.backlogAssignments);
+        const treeId = treeIds[0] ?? null;
+        const backlogId = treeId ? wi.backlogAssignments[treeId] : null;
+        const tree = treeId ? backlogTrees[treeId] : null;
+        const backlog = backlogId ? backlogs[backlogId] : null;
+        return {
+          item: wi,
+          treeId: treeId ?? "",
+          backlogId: backlogId ?? "",
+          treeName: tree?.name ?? "",
+          backlogName: backlog?.name ?? "",
+        };
+      })
+      .filter((r) => r.treeId)
+      .sort((a, b) => a.item.title.localeCompare(b.item.title));
+  }, [searchQuery, workItems, backlogTrees, backlogs]);
 
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
@@ -1461,19 +1512,45 @@ export function WorkItemTreePanel() {
     [visibleItemIds, selectWorkItem, clearWorkItemSelection],
   );
 
-  if (!selectedBacklogId || !selectedTreeId) {
+  const selectBacklog = useAppStore((s) => s.selectBacklog);
+  const isSearchMode = searchQuery.trim().length > 0;
+
+  if (!isSearchMode && (!selectedBacklogId || !selectedTreeId)) {
     return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
-        <div className="text-center">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">Select a backlog to view work items</p>
+      <div className="h-full flex flex-col overflow-hidden">
+        <div className="p-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="w-full h-7 pl-7 pr-2 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
+              placeholder="Search items… (/)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearchQuery("");
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="text-sm">Select a backlog to view work items</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <LabelFilterContext.Provider value={visibleFilterSet}>
+    // In search mode, pass null so all WorkItemNodes in the (hidden) normal view are unfiltered.
+    // Null already means "no filter active" per the LabelFilterContext contract (line 57).
+    <LabelFilterContext.Provider value={isSearchMode ? null : visibleFilterSet}>
       <div
         className="h-full flex flex-col overflow-hidden"
         onClick={() => {
@@ -1483,15 +1560,26 @@ export function WorkItemTreePanel() {
       >
         <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
           <div className="min-w-0 flex-1">
-            <EditableBacklogName backlogId={selectedBacklogId} isScrambled={isScrambled} />
-            <p className="text-xs text-foreground mt-0.5">
-              {visibleFilterSet
-                ? `${displayedRootItems.length} of ${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""} (filtered)`
-                : `${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
-            </p>
+            {isSearchMode ? (
+              <>
+                <h2 className="text-base font-semibold">Search results</h2>
+                <p className="text-xs text-foreground mt-0.5">
+                  {searchResults?.length ?? 0} item{searchResults?.length !== 1 ? "s" : ""} found
+                </p>
+              </>
+            ) : (
+              <>
+                <EditableBacklogName backlogId={selectedBacklogId!} isScrambled={isScrambled} />
+                <p className="text-xs text-foreground mt-0.5">
+                  {visibleFilterSet
+                    ? `${displayedRootItems.length} of ${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""} (filtered)`
+                    : `${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
+                </p>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {snoozedInBacklog.length > 0 && (
+            {!isSearchMode && snoozedInBacklog.length > 0 && (
               <button
                 className="flex items-center gap-1 w-auto h-7 px-1.5 rounded-md text-amber-500/80 hover:text-amber-500 hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -1504,17 +1592,19 @@ export function WorkItemTreePanel() {
                 <span className="text-xs font-medium tabular-nums">{snoozedInBacklog.length}</span>
               </button>
             )}
-            <button
-              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePasteFromClipboard();
-              }}
-              title="Paste items from clipboard"
-            >
-              <ClipboardPaste className="w-4 h-4" />
-            </button>
-            {timeLoggingVisible && (
+            {!isSearchMode && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePasteFromClipboard();
+                }}
+                title="Paste items from clipboard"
+              >
+                <ClipboardPaste className="w-4 h-4" />
+              </button>
+            )}
+            {!isSearchMode && timeLoggingVisible && (
               <button
                 className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
                 onClick={(e) => {
@@ -1530,21 +1620,54 @@ export function WorkItemTreePanel() {
                 )}
               </button>
             )}
-            <button
-              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsAdding(true);
-              }}
-              title="Add work item (Enter)"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+            {!isSearchMode && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAdding(true);
+                }}
+                title="Add work item (Enter)"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Label filter chip bar — only shown when labels are enabled and this backlog has labeled items */}
-        {labelsVisible && backlogLabels.length > 0 && (
+        {/* Search bar — always visible */}
+        <div className="px-1 py-0.5 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="w-full h-7 pl-7 pr-6 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
+              placeholder="Search items… (/)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearchQuery("");
+                  (e.target as HTMLInputElement).blur();
+                }
+                e.stopPropagation();
+              }}
+            />
+            {searchQuery && (
+              <button
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setSearchQuery("")}
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Label filter chip bar — only shown in normal mode when labels are enabled and this backlog has labeled items */}
+        {!isSearchMode && labelsVisible && backlogLabels.length > 0 && (
           <div className="px-2 py-0.5 flex flex-wrap gap-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
             {backlogLabels.map((label) => (
               <button
@@ -1583,13 +1706,74 @@ export function WorkItemTreePanel() {
           </div>
         )}
 
-        <WorkItemRootDropZone treeId={selectedTreeId} backlogId={selectedBacklogId}>
+        {isSearchMode ? (
+          /* Search results list: flat list of matching items with tree/backlog context */
+          <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
+            {searchResults && searchResults.length > 0 ? (
+              <div className="flex flex-col">
+                {(() => {
+                  // Compute query string once before mapping to avoid redundant string ops per item.
+                  const q = searchQuery.trim().toLowerCase();
+                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogName }) => {
+                    const statusColor =
+                      DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+                    const titleLower = item.title.toLowerCase();
+                    const matchIdx = titleLower.indexOf(q);
+                    const titleNode =
+                      matchIdx >= 0 ? (
+                        <>
+                          {item.title.slice(0, matchIdx)}
+                          <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
+                            {item.title.slice(matchIdx, matchIdx + q.length)}
+                          </mark>
+                          {item.title.slice(matchIdx + q.length)}
+                        </>
+                      ) : (
+                        item.title
+                      );
+                    return (
+                      <button
+                        key={item.id}
+                        className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
+                        onClick={() => {
+                          selectBacklog(backlogId, treeId);
+                          setSearchQuery("");
+                          // Small delay lets the backlog panel re-render with the new selection
+                          // before we try to highlight the work item row.
+                          setTimeout(() => selectWorkItem(item.id, false), 50);
+                        }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
+                          style={{ backgroundColor: statusColor }}
+                          title={item.status}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm leading-snug break-words">{titleNode}</span>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {isScrambled ? "···" : treeName}
+                            {backlogName ? ` › ${isScrambled ? "···" : backlogName}` : ""}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                No items match &ldquo;{searchQuery}&rdquo;
+              </div>
+            )}
+          </div>
+        ) : (
+          <WorkItemRootDropZone treeId={selectedTreeId!} backlogId={selectedBacklogId!}>
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5">
             {rootWorkItems.length === 0 && isAdding ? (
               <InlineWorkItemInput
                 depth={0}
                 onSubmit={(title) => {
-                  addWorkItem(title, null, selectedBacklogId, selectedTreeId, 0);
+                  addWorkItem(title, null, selectedBacklogId!, selectedTreeId!, 0);
                 }}
                 onCancel={() => setIsAdding(false)}
               />
@@ -1603,19 +1787,19 @@ export function WorkItemTreePanel() {
                   <InlineWorkItemInput
                     depth={0}
                     onSubmit={(title) => {
-                      addWorkItem(title, null, selectedBacklogId, selectedTreeId);
+                      addWorkItem(title, null, selectedBacklogId!, selectedTreeId!);
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
                 )}
                 {displayedRootItems.map((item, index) => {
-                  const itemBacklogId = item.backlogAssignments[selectedTreeId] ?? selectedBacklogId;
+                  const itemBacklogId = item.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
                   return (
                     <div key={item.id}>
                       <ReorderDropZone
                         id={`reorder-root-${index}`}
                         index={index}
-                        treeId={selectedTreeId}
+                        treeId={selectedTreeId!}
                         backlogIds={allBacklogIds}
                         parentId={null}
                         depth={0}
@@ -1623,7 +1807,7 @@ export function WorkItemTreePanel() {
                       <WorkItemNode
                         workItemId={item.id}
                         depth={0}
-                        treeId={selectedTreeId}
+                        treeId={selectedTreeId!}
                         backlogId={itemBacklogId}
                         allBacklogIds={allBacklogIds}
                         isChildBacklog={itemBacklogId !== selectedBacklogId}
@@ -1636,7 +1820,7 @@ export function WorkItemTreePanel() {
                 <ReorderDropZone
                   id={`reorder-root-${displayedRootItems.length}`}
                   index={displayedRootItems.length}
-                  treeId={selectedTreeId}
+                  treeId={selectedTreeId!}
                   backlogIds={allBacklogIds}
                   parentId={null}
                   depth={0}
@@ -1645,6 +1829,7 @@ export function WorkItemTreePanel() {
             )}
           </div>
         </WorkItemRootDropZone>
+        )}
         {timeLoggingVisible && selectedBacklogId && (
           <TimeLogDialog
             backlogId={selectedBacklogId}
