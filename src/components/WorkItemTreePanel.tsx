@@ -1548,6 +1548,8 @@ export function WorkItemTreePanel() {
   }
 
   return (
+    // In search mode, pass null so all WorkItemNodes in the (hidden) normal view are unfiltered.
+    // Null already means "no filter active" per the LabelFilterContext contract (line 57).
     <LabelFilterContext.Provider value={isSearchMode ? null : visibleFilterSet}>
       <div
         className="h-full flex flex-col overflow-hidden"
@@ -1709,49 +1711,54 @@ export function WorkItemTreePanel() {
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {searchResults && searchResults.length > 0 ? (
               <div className="flex flex-col">
-                {searchResults.map(({ item, treeId, backlogId, treeName, backlogName }) => {
-                  const statusColor =
-                    DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+                {(() => {
+                  // Compute query string once before mapping to avoid redundant string ops per item.
                   const q = searchQuery.trim().toLowerCase();
-                  const titleLower = item.title.toLowerCase();
-                  const matchIdx = titleLower.indexOf(q);
-                  const titleNode =
-                    matchIdx >= 0 ? (
-                      <>
-                        {item.title.slice(0, matchIdx)}
-                        <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
-                          {item.title.slice(matchIdx, matchIdx + q.length)}
-                        </mark>
-                        {item.title.slice(matchIdx + q.length)}
-                      </>
-                    ) : (
-                      item.title
+                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogName }) => {
+                    const statusColor =
+                      DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+                    const titleLower = item.title.toLowerCase();
+                    const matchIdx = titleLower.indexOf(q);
+                    const titleNode =
+                      matchIdx >= 0 ? (
+                        <>
+                          {item.title.slice(0, matchIdx)}
+                          <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
+                            {item.title.slice(matchIdx, matchIdx + q.length)}
+                          </mark>
+                          {item.title.slice(matchIdx + q.length)}
+                        </>
+                      ) : (
+                        item.title
+                      );
+                    return (
+                      <button
+                        key={item.id}
+                        className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
+                        onClick={() => {
+                          selectBacklog(backlogId, treeId);
+                          setSearchQuery("");
+                          // Small delay lets the backlog panel re-render with the new selection
+                          // before we try to highlight the work item row.
+                          setTimeout(() => selectWorkItem(item.id, false), 50);
+                        }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
+                          style={{ backgroundColor: statusColor }}
+                          title={item.status}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm leading-snug break-words">{titleNode}</span>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {isScrambled ? "···" : treeName}
+                            {backlogName ? ` › ${isScrambled ? "···" : backlogName}` : ""}
+                          </p>
+                        </div>
+                      </button>
                     );
-                  return (
-                    <button
-                      key={item.id}
-                      className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
-                      onClick={() => {
-                        selectBacklog(backlogId, treeId);
-                        setSearchQuery("");
-                        setTimeout(() => selectWorkItem(item.id, false), 50);
-                      }}
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
-                        style={{ backgroundColor: statusColor }}
-                        title={item.status}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm leading-snug break-words">{titleNode}</span>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                          {isScrambled ? "···" : treeName}
-                          {backlogName ? ` › ${isScrambled ? "···" : backlogName}` : ""}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                  });
+                })()}
               </div>
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
