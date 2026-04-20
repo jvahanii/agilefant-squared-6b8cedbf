@@ -807,14 +807,19 @@ export function BacklogTreePanel() {
 
   const { scrambleEnabled, isSuperuser } = useScramble();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
   const activeOrgRole = useOrgStore((s) => {
+    if (s.roleOverride) return s.roleOverride;
     const m = s.memberships.find((m) => m.organization_id === s.activeOrgId);
     return m?.role ?? null;
   });
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
-  const canManage = activeOrgRole === "owner" || activeOrgRole === "admin" || isSuperuser;
+  // When a superuser is simulating a non-privileged role, drop the superuser bypass
+  // so the UI accurately reflects what the simulated role would see.
+  const effectiveSuperuser = isSuperuser && !roleOverride;
+  const canManage = activeOrgRole === "owner" || activeOrgRole === "admin" || effectiveSuperuser;
   const canEditStatuses = customStatusesEnabled && canManage;
 
   // A tree is scrambled only when scramble is enabled AND it has no shares with any org.

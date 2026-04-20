@@ -21,10 +21,18 @@ interface OrgState {
   activeOrgId: string | null;
   activeOrgName: string | null;
   loading: boolean;
+  /**
+   * Superuser-only role override. When set, getActiveOrg() returns this role
+   * instead of the user's true membership role so superusers can preview how
+   * the app looks for owners/admins/members without creating new accounts.
+   * Persisted in sessionStorage so a refresh keeps the simulated role.
+   */
+  roleOverride: 'owner' | 'admin' | 'member' | null;
   loadMemberships: (userId: string) => Promise<void>;
   setActiveOrg: (orgId: string, orgName?: string) => void;
   createOrganization: (name: string, slug: string, userId: string) => Promise<string>;
   getActiveOrg: () => Membership | null;
+  setRoleOverride: (role: 'owner' | 'admin' | 'member' | null) => void;
 }
 
 async function ensureProfileExists(userId: string): Promise<void> {
@@ -62,6 +70,16 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   activeOrgId: null,
   activeOrgName: null,
   loading: true,
+  roleOverride: (() => {
+    const v = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('roleOverride') : null;
+    return v === 'owner' || v === 'admin' || v === 'member' ? v : null;
+  })(),
+
+  setRoleOverride: (role) => {
+    if (role) sessionStorage.setItem('roleOverride', role);
+    else sessionStorage.removeItem('roleOverride');
+    set({ roleOverride: role });
+  },
 
   loadMemberships: async (userId: string) => {
     // Safety timeout: if the RPC call hangs (e.g. Supabase unreachable), unblock
@@ -110,7 +128,9 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   },
 
   getActiveOrg: () => {
-    const { memberships, activeOrgId } = get();
-    return memberships.find(m => m.organization_id === activeOrgId) ?? null;
+    const { memberships, activeOrgId, roleOverride } = get();
+    const m = memberships.find(m => m.organization_id === activeOrgId) ?? null;
+    if (m && roleOverride) return { ...m, role: roleOverride };
+    return m;
   },
 }));

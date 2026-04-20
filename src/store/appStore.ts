@@ -1235,7 +1235,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       deleteWorkItems(wiIdsToDelete)?.catch((err) => console.error("Delete work items failed", err));
       deleteBacklogs(blIdsToDelete)?.catch((err) => console.error("Delete backlogs failed", err));
       if (wiIdsToUpsert.length > 0) {
-        upsertWorkItems(wiIdsToUpsert, orgId)?.catch((err) => console.error("Update work item assignments failed", err));
+        upsertWorkItems(wiIdsToUpsert, state.organizationId!)?.catch((err) => console.error("Update work item assignments failed", err));
       }
       internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
       set({
