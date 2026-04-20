@@ -1326,12 +1326,31 @@ export function WorkItemTreePanel() {
         const backlogId = treeId ? wi.backlogAssignments[treeId] : null;
         const tree = treeId ? backlogTrees[treeId] : null;
         const backlog = backlogId ? backlogs[backlogId] : null;
+
+        // Build full backlog ancestry path from root backlog down to the item's backlog.
+        const backlogPath: string[] = [];
+        let bl = backlog;
+        while (bl) {
+          backlogPath.unshift(bl.name);
+          bl = bl.parentId ? backlogs[bl.parentId] : null;
+        }
+
+        // Build work item ancestor chain from root ancestor down to the direct parent.
+        const workItemAncestors: string[] = [];
+        let parent = wi.parentId ? workItems[wi.parentId] : null;
+        while (parent) {
+          workItemAncestors.unshift(parent.title);
+          parent = parent.parentId ? workItems[parent.parentId] : null;
+        }
+
         return {
           item: wi,
           treeId: treeId ?? "",
           backlogId: backlogId ?? "",
           treeName: tree?.name ?? "",
           backlogName: backlog?.name ?? "",
+          backlogPath,
+          workItemAncestors,
         };
       })
       .filter((r) => r.treeId)
@@ -1648,7 +1667,7 @@ export function WorkItemTreePanel() {
                 {(() => {
                   // Compute query string once before mapping to avoid redundant string ops per item.
                   const q = searchQuery.trim().toLowerCase();
-                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogName }) => {
+                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }) => {
                     const statusColor =
                       DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
                     const titleLower = item.title.toLowerCase();
@@ -1700,11 +1719,17 @@ export function WorkItemTreePanel() {
                           style={{ backgroundColor: statusColor }}
                           title={item.status}
                         />
-                        <div className="min-w-0 flex-1">
+                         <div className="min-w-0 flex-1">
                           <span className="text-sm leading-snug break-words">{titleNode}</span>
+                          {workItemAncestors.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
+                              {isScrambled ? "···" : workItemAncestors.join(" › ")}
+                            </p>
+                          )}
                           <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {isScrambled ? "···" : treeName}
-                            {backlogName ? ` › ${isScrambled ? "···" : backlogName}` : ""}
+                            {isScrambled
+                              ? "···"
+                              : [treeName, ...backlogPath].join(" › ")}
                           </p>
                         </div>
                       </button>
