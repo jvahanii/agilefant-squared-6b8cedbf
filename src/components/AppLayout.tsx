@@ -51,6 +51,7 @@ import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/data
 import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { RoleSimulator } from "@/components/RoleSimulator";
 import { UserGuideDialog } from "@/components/UserGuideDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1011,6 +1012,7 @@ function AppLayoutInner() {
             <sup className="text-xs text-primary ml-0.5 font-mono">2</sup>
           </h1>
           <OrgSwitcher />
+          <RoleSimulator />
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">
             <span className="text-xs md:text-sm text-muted-foreground truncate max-w-[100px] md:max-w-none md:mr-2 md:border-r md:pr-3">
