@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
+import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, Search, X } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -792,10 +792,28 @@ export function BacklogTreePanel() {
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
   const [editingStatusesTree, setEditingStatusesTree] = useState<{ id: string; name: string } | null>(null);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut: '/' focuses the search input
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (!isInput && e.key === "/") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -828,6 +846,36 @@ export function BacklogTreePanel() {
 
   return (
     <div className="h-full flex flex-col bg-sidebar">
+      {/* Search bar — at the top of the left pane */}
+      <div className="px-1 pt-1 pb-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            className="w-full h-7 pl-7 pr-6 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
+            placeholder="Search items… (/)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setSearchQuery("");
+                (e.target as HTMLInputElement).blur();
+              }
+              e.stopPropagation();
+            }}
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setSearchQuery("")}
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
       <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
         <button
