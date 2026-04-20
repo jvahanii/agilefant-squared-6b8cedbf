@@ -70,6 +70,16 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   activeOrgId: null,
   activeOrgName: null,
   loading: true,
+  roleOverride: (() => {
+    const v = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('roleOverride') : null;
+    return v === 'owner' || v === 'admin' || v === 'member' ? v : null;
+  })(),
+
+  setRoleOverride: (role) => {
+    if (role) sessionStorage.setItem('roleOverride', role);
+    else sessionStorage.removeItem('roleOverride');
+    set({ roleOverride: role });
+  },
 
   loadMemberships: async (userId: string) => {
     // Safety timeout: if the RPC call hangs (e.g. Supabase unreachable), unblock
