@@ -148,6 +148,39 @@ export function BackupsCard() {
   );
 }
 
+const SCOPE_BADGE_CLS = "h-4 px-1.5 text-[10px]";
+
+function SelectionControls({
+  total,
+  label,
+  onSelectAll,
+  onClear,
+}: {
+  total: number;
+  label: string;
+  onSelectAll: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs text-muted-foreground">
+        {total === 0 ? `No ${label} found` : `${total} ${label}${total !== 1 ? "s" : ""} available`}
+      </Label>
+      {total > 0 && (
+        <div className="flex gap-2 text-xs">
+          <button type="button" className="text-primary hover:underline" onClick={onSelectAll}>
+            Select all
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button type="button" className="text-muted-foreground hover:underline" onClick={onClear}>
+            Clear
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRestore: boolean) => void }) {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -157,8 +190,24 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
   const [selectedBacklogs, setSelectedBacklogs] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
 
-  const trees = useMemo(() => Object.values(backlogTrees), [backlogTrees]);
-  const backlogList = useMemo(() => Object.values(backlogs), [backlogs]);
+  const trees = useMemo(() => Object.values(backlogTrees).sort((a, b) => a.rank - b.rank), [backlogTrees]);
+  const backlogList = useMemo(() => Object.values(backlogs).sort((a, b) => a.rank - b.rank), [backlogs]);
+
+  // Backlogs grouped by their parent tree, preserving tree rank order
+  const backlogsByTree = useMemo(() => {
+    const grouped: { tree: (typeof trees)[number]; backlogs: typeof backlogList }[] = [];
+    for (const tree of trees) {
+      const treeBacklogs = backlogList.filter((b) => b.treeId === tree.id);
+      if (treeBacklogs.length > 0) grouped.push({ tree, backlogs: treeBacklogs });
+    }
+    // Backlogs with no matching tree (shouldn't happen, but be safe)
+    const orphans = backlogList.filter((b) => !backlogTrees[b.treeId]);
+    if (orphans.length > 0) {
+      const orphanTree: (typeof trees)[number] = { id: "", name: "Other", rootBacklogIds: [], rank: Infinity };
+      grouped.push({ tree: orphanTree, backlogs: orphans });
+    }
+    return grouped;
+  }, [trees, backlogList, backlogTrees]);
 
   const toggle = (set: Set<string>, setter: (s: Set<string>) => void, id: string) => {
     const next = new Set(set);
@@ -208,30 +257,75 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Scope</Label>
             <RadioGroup value={scope} onValueChange={(v) => setScope(v as ScopeType)} className="mt-1">
               <div className="flex items-center gap-2"><RadioGroupItem value="all" id="s-all" /><Label htmlFor="s-all">Everything in the snapshot</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="trees" id="s-trees" /><Label htmlFor="s-trees">Selected backlog trees</Label></div>
-              <div className="flex items-center gap-2"><RadioGroupItem value="backlogs" id="s-backlogs" /><Label htmlFor="s-backlogs">Selected backlogs</Label></div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="trees" id="s-trees" />
+                <Label htmlFor="s-trees">Selected backlog trees</Label>
+                {scope === "trees" && selectedTrees.size > 0 && (
+                  <Badge variant="secondary" className={SCOPE_BADGE_CLS}>{selectedTrees.size}</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="backlogs" id="s-backlogs" />
+                <Label htmlFor="s-backlogs">Selected backlogs</Label>
+                {scope === "backlogs" && selectedBacklogs.size > 0 && (
+                  <Badge variant="secondary" className={SCOPE_BADGE_CLS}>{selectedBacklogs.size}</Badge>
+                )}
+              </div>
             </RadioGroup>
           </div>
 
           {scope === "trees" && (
-            <ScrollArea className="h-32 border rounded-md p-2">
-              {trees.map((t) => (
-                <label key={t.id} className="flex items-center gap-2 py-1 text-sm">
-                  <Checkbox checked={selectedTrees.has(t.id)} onCheckedChange={() => toggle(selectedTrees, setSelectedTrees, t.id)} />
-                  {t.name}
-                </label>
-              ))}
-            </ScrollArea>
+            <div className="space-y-1.5">
+              <SelectionControls
+                total={trees.length}
+                label="backlog tree"
+                onSelectAll={() => setSelectedTrees(new Set(trees.map((t) => t.id)))}
+                onClear={() => setSelectedTrees(new Set())}
+              />
+              {trees.length > 0 && (
+                <ScrollArea className="h-36 border rounded-md p-2">
+                  {trees.map((t) => (
+                    <label key={t.id} className="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-muted/50 rounded px-1">
+                      <Checkbox checked={selectedTrees.has(t.id)} onCheckedChange={() => toggle(selectedTrees, setSelectedTrees, t.id)} />
+                      {t.name}
+                    </label>
+                  ))}
+                </ScrollArea>
+              )}
+            </div>
           )}
+
           {scope === "backlogs" && (
-            <ScrollArea className="h-32 border rounded-md p-2">
-              {backlogList.map((b) => (
-                <label key={b.id} className="flex items-center gap-2 py-1 text-sm">
-                  <Checkbox checked={selectedBacklogs.has(b.id)} onCheckedChange={() => toggle(selectedBacklogs, setSelectedBacklogs, b.id)} />
-                  {b.name}
-                </label>
-              ))}
-            </ScrollArea>
+            <div className="space-y-1.5">
+              <SelectionControls
+                total={backlogList.length}
+                label="backlog"
+                onSelectAll={() => setSelectedBacklogs(new Set(backlogList.map((b) => b.id)))}
+                onClear={() => setSelectedBacklogs(new Set())}
+              />
+              {backlogList.length > 0 && (
+                <ScrollArea className="h-48 border rounded-md p-2">
+                  {backlogsByTree.map(({ tree, backlogs: treeBacklogs }) => (
+                    <div key={tree.id} className="mb-2 last:mb-0">
+                      <div className="flex items-center gap-1.5 mb-0.5 px-1">
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                          {tree.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          ({treeBacklogs.filter((b) => selectedBacklogs.has(b.id)).length}/{treeBacklogs.length})
+                        </span>
+                      </div>
+                      {treeBacklogs.map((b) => (
+                        <label key={b.id} className="flex items-center gap-2 py-0.5 pl-3 pr-1 text-sm cursor-pointer hover:bg-muted/50 rounded">
+                          <Checkbox checked={selectedBacklogs.has(b.id)} onCheckedChange={() => toggle(selectedBacklogs, setSelectedBacklogs, b.id)} />
+                          {b.name}
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </ScrollArea>
+              )}
+            </div>
           )}
 
           <div>
