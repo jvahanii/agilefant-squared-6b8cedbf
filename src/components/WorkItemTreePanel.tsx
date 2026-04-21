@@ -532,8 +532,7 @@ function WorkItemNodeContent({
               ) : (
                 <ChevronRight className="w-3.5 h-3.5" />
               )
-            ) : (
-            )}
+            ) : null}
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
