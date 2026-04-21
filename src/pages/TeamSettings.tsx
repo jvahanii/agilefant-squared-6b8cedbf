@@ -635,6 +635,13 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            While you really don't need any of these, you might think you do — enable them and find out for yourself. That being said, we strive to offer them as elegantly as possible.
+          </p>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
