@@ -18,6 +18,10 @@ import {
   Clock,
   Moon,
   Tag,
+  Search,
+  SlidersHorizontal,
+  Archive,
+  Eye,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -198,7 +202,7 @@ function buildSections(): Section[] {
                 action: "Multi-select",
                 how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items.",
               },
-              { action: "Set story points", how: "Click the story-points value on the item row." },
+              { action: "Set story points", how: "Click the story-points value on the item row. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically." },
               {
                 action: "Paste items",
                 how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add.",
@@ -227,6 +231,10 @@ function buildSections(): Section[] {
               <StatusBadge color="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" label="Blocked" />
               <StatusBadge color="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" label="Done" />
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              When you set a child item to <strong>In Progress</strong> or <strong>Done</strong>, its ancestors are
+              automatically promoted to <strong>In Progress</strong> so the hierarchy reflects active work.
+            </p>
           </div>
           <Tip>
             Select multiple items then press a status key (<KbdKey>D</KbdKey>, <KbdKey>I</KbdKey>, …) to bulk-update
@@ -280,6 +288,7 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
             <ShortcutRow keys={["L"]} description="Log spent time" />
+            <ShortcutRow keys={["/"]} description="Focus search bar" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
           </div>
         </div>
@@ -468,6 +477,10 @@ function buildSections(): Section[] {
                 how: "Click the snooze indicator (moon badge) shown on the item row, or right-click the item and choose Unsnooze.",
               },
               {
+                action: "Unsnooze All",
+                how: "When there are snoozed items in the current backlog a bell-off badge appears in the work items panel header showing the count. Click it to instantly wake all snoozed items in that backlog.",
+              },
+              {
                 action: "Automatic wake-up",
                 how: "When the snooze time passes the item reappears automatically without any action needed.",
               },
@@ -535,6 +548,150 @@ function buildSections(): Section[] {
       ),
     },
     {
+      id: "search",
+      icon: <Search className="w-4 h-4" />,
+      label: "Search",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The <strong className="text-foreground">search bar</strong> at the top of the left panel lets you find work
+            items by name across all backlog trees in your organisation. Results are shown in the right panel with full
+            context so you can navigate directly to any item.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Open search",
+                how: 'Click inside the search bar at the top of the left panel, or press "/" from anywhere (when no text input is focused) to jump to it.',
+              },
+              {
+                action: "Find items",
+                how: "Type any part of the work item title. Results update as you type and are sorted alphabetically.",
+              },
+              {
+                action: "Result context",
+                how: "Each result shows the matching title with the search term highlighted, the backlog tree and full backlog hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
+              },
+              {
+                action: "Navigate to an item",
+                how: "Click a search result to navigate directly to it: the left panel expands to the correct backlog, the right panel opens and selects the matching item.",
+              },
+              {
+                action: "Clear search",
+                how: 'Press Escape, click the × button in the search bar, or click a result — the search field clears and the normal backlog view returns.',
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Search is scoped to the current organisation. Switching organisations clears the search.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "statuses",
+      icon: <SlidersHorizontal className="w-4 h-4" />,
+      label: "Custom Statuses",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Custom statuses</strong> let each backlog tree define its own set of
+            colored work item statuses, replacing the default Not Started / In Progress / Pending / Blocked / Done
+            labels with names and colors that match your team's workflow. The feature is enabled by a superuser in{" "}
+            <strong className="text-foreground">Settings → Custom Statuses</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Enable",
+                how: "A superuser opens Settings and toggles the \"Enable per-tree statuses\" switch on. A gear (⚙) icon will then appear on each backlog tree header.",
+              },
+              {
+                action: "Open the editor",
+                how: "Hover a tree header in the left panel and click the ⚙ gear icon to open the Statuses dialog for that tree.",
+              },
+              {
+                action: "Add a status",
+                how: "Pick a color with the color picker, type a name, and press Enter or click Add.",
+              },
+              {
+                action: "Edit a status",
+                how: "Click the color swatch to change the color, or click the name field and type a new label.",
+              },
+              {
+                action: "Reorder statuses",
+                how: "Use the ↑ / ↓ arrow buttons to move a status up or down in the list.",
+              },
+              {
+                action: "Delete a status",
+                how: "Click the trash icon on the status row. At least one status must remain in the tree.",
+              },
+              {
+                action: "Locked statuses",
+                how: 'Statuses marked with a lock icon are required (e.g. "Not Started" and "Done") and cannot be renamed, recolored, or removed.',
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Custom statuses are per-tree and visible to everyone with access to that tree. Changes take effect
+            immediately without a page reload.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "backups",
+      icon: <Archive className="w-4 h-4" />,
+      label: "Backups",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Agilefant² takes <strong className="text-foreground">automatic daily snapshots</strong> of your entire
+            organisation and keeps them for 30 days. You can also create manual backups at any time and restore from
+            any snapshot — either the whole org, selected trees, or individual backlogs.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Open Backups",
+                how: "Go to Settings → Team and scroll to the Backups & Restore card.",
+              },
+              {
+                action: "Create a manual backup",
+                how: 'Click "Backup now". A snapshot is created immediately and appears in the list.',
+              },
+              {
+                action: "Restore from a snapshot",
+                how: 'Click the "Restore" button on any backup row to open the Restore dialog.',
+              },
+              {
+                action: "Restore scope",
+                how: "Choose Everything in the snapshot to restore the whole org, Selected backlog trees to pick one or more trees, or Selected backlogs to restore individual backlog nodes.",
+              },
+              {
+                action: "Restore mode",
+                how: "Restores run as a merge: items present in the snapshot are brought back to their saved state, while items that exist today but were absent from the snapshot are left untouched.",
+              },
+              {
+                action: "Delete a backup",
+                how: "Click the trash icon on a backup row. Automatic backups can also be deleted manually if storage is a concern.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Restore is non-destructive by default — it merges the snapshot back in rather than wiping your current
+            data. Use "Everything in the snapshot" only when you want a full rollback.
+          </Tip>
+        </div>
+      ),
+    },
+    {
       id: "advanced",
       icon: <Settings className="w-4 h-4" />,
       label: "Advanced",
@@ -569,6 +726,11 @@ function buildSections(): Section[] {
                 icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
                 title: "Run Tests",
                 body: 'The "Run Tests" header button runs structured pass/fail data integrity tests and copies the full report to your clipboard.',
+              },
+              {
+                icon: <Eye className="w-4 h-4 text-primary" />,
+                title: "Role Simulator (superusers only)",
+                body: 'Click the role-switcher pyramid icon in the header to simulate Owner, Admin, or Member. The UI hides superuser-only controls so you see exactly what your team members see. Click again and select "Superuser (real)" to restore your full permissions.',
               },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
