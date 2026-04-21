@@ -19,6 +19,7 @@ import { LabelsManager } from "@/components/LabelsManager";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
+import { BackupsCard } from "@/components/BackupsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -853,6 +854,8 @@ export default function TeamSettings() {
           onOpenChange={setTimesheetBrowserOpen}
           orgName={activeOrg?.organization_name ?? orgName}
         />
+
+        <BackupsCard />
 
         {/* Danger Zone — Superuser only */}
         {isSuperuser && orgSlug && (
