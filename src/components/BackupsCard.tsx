@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,7 +28,7 @@ interface BackupRow {
 }
 
 type ScopeType = "all" | "trees" | "backlogs";
-type Mode = "overwrite" | "merge" | "copy";
+type Mode = "merge";
 
 export function BackupsCard() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -185,7 +185,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const backlogs = useAppStore((s) => s.backlogs);
   const [scope, setScope] = useState<ScopeType>("all");
-  const [mode, setMode] = useState<Mode>("merge");
+  const mode: Mode = "merge";
   const [selectedTrees, setSelectedTrees] = useState<Set<string>>(new Set());
   const [selectedBacklogs, setSelectedBacklogs] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
@@ -330,35 +330,13 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
 
           <div>
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Mode</Label>
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="mt-1">
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="merge" id="m-merge" className="mt-1" />
-                <div>
-                  <Label htmlFor="m-merge">Merge</Label>
-                  <p className="text-xs text-muted-foreground">Upsert by id. Items missing from the snapshot survive.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="overwrite" id="m-overwrite" className="mt-1" />
-                <div>
-                  <Label htmlFor="m-overwrite" className="text-destructive">Overwrite</Label>
-                  <p className="text-xs text-muted-foreground">Delete current data in the scope, then restore. Destructive.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <RadioGroupItem value="copy" id="m-copy" className="mt-1" />
-                <div>
-                  <Label htmlFor="m-copy">Copy</Label>
-                  <p className="text-xs text-muted-foreground">Create a copy with new IDs. Existing data untouched.</p>
-                </div>
-              </div>
-            </RadioGroup>
+            <p className="text-xs text-muted-foreground mt-1">Upsert by id. Items missing from the snapshot survive.</p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onClose(false)}>Cancel</Button>
-          <Button onClick={handleRestore} disabled={running} variant={mode === "overwrite" ? "destructive" : "default"}>
+          <Button onClick={handleRestore} disabled={running}>
             {running && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
             Restore
           </Button>
