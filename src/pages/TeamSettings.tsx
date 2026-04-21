@@ -635,6 +635,19 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <KeyRound className="w-4 h-4" /> Change Password
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChangePasswordForm />
+          </CardContent>
+        </Card>
+
+        <BackupsCard />
+
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -826,16 +839,11 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <KeyRound className="w-4 h-4" /> Change Password
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChangePasswordForm />
-          </CardContent>
-        </Card>
+        <TimesheetBrowserDialog
+          open={timesheetBrowserOpen}
+          onOpenChange={setTimesheetBrowserOpen}
+          orgName={activeOrg?.organization_name ?? orgName}
+        />
 
         {/* Terms of Service */}
         <Card>
@@ -856,13 +864,6 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
         <TermsOfServiceDialog open={tosOpen} onCancel={() => setTosOpen(false)} />
-        <TimesheetBrowserDialog
-          open={timesheetBrowserOpen}
-          onOpenChange={setTimesheetBrowserOpen}
-          orgName={activeOrg?.organization_name ?? orgName}
-        />
-
-        <BackupsCard />
 
         {/* Danger Zone — Superuser only */}
         {isSuperuser && orgSlug && (
