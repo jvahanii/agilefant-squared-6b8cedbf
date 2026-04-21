@@ -147,7 +147,6 @@ function InlineWorkItemInput({
 
   return (
     <div className="flex items-start gap-1.5 px-3 py-px" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
-      <FileText className="w-3.5 h-3.5 text-primary/50 shrink-0 mt-1" />
       <textarea
         ref={textAreaRef}
         rows={1}
@@ -534,7 +533,6 @@ function WorkItemNodeContent({
                 <ChevronRight className="w-3.5 h-3.5" />
               )
             ) : (
-              <FileText className={`w-3.5 h-3.5 ${isChildBacklog ? "text-muted-foreground/40" : "text-primary/50"}`} />
             )}
           </button>
           <DropdownMenu>

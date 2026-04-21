@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, FolderKanban, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, Search, X } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, Search, X } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -111,7 +111,6 @@ function InlineInput({
 
   return (
     <div className="flex items-center gap-1 px-2 py-px" style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT_INLINE}px` }}>
-      <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
       <input
         ref={inputRef}
         className="flex-1 text-sm bg-transparent border-b border-primary/40 outline-none px-1 py-0.5 placeholder:text-muted-foreground/50"
@@ -379,7 +378,6 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             <span className="w-3.5" />
           )}
         </button>
-        <FolderKanban className="w-4 h-4 shrink-0 text-primary/70" />
         {isEditing ? (
           <input
             ref={editRef}
