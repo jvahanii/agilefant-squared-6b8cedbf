@@ -269,6 +269,39 @@ export type Database = {
           },
         ]
       }
+      organization_backups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          note: string | null
+          organization_id: string
+          size_bytes: number
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          organization_id: string
+          size_bytes?: number
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          organization_id?: string
+          size_bytes?: number
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       organization_invites: {
         Row: {
           created_at: string
@@ -714,6 +747,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      build_organization_snapshot: { Args: { _org_id: string }; Returns: Json }
       can_view_org_labels: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -721,6 +755,10 @@ export type Database = {
       cleanup_orphaned_users: {
         Args: { p_user_ids: string[] }
         Returns: undefined
+      }
+      create_organization_backup: {
+        Args: { _kind?: string; _note?: string; _org_id: string }
+        Returns: string
       }
       create_organization_with_owner: {
         Args: { _name: string; _slug: string; _user_id: string }
@@ -799,6 +837,10 @@ export type Database = {
       remove_tree_share_with_copy: {
         Args: { _share_id: string }
         Returns: undefined
+      }
+      restore_organization_backup: {
+        Args: { _backup_id: string; _mode?: string; _scope?: Json }
+        Returns: Json
       }
     }
     Enums: {
