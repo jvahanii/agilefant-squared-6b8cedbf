@@ -623,18 +623,6 @@ export default function TeamSettings() {
 
         <TeamManagement />
 
-        {/* Billing / Subscription */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CreditCard className="w-4 h-4" /> Billing & Plan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PricingCards />
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -793,6 +781,7 @@ export default function TeamSettings() {
           </Card>
         )}
 
+        {isSuperuser && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -838,12 +827,25 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <TimesheetBrowserDialog
           open={timesheetBrowserOpen}
           onOpenChange={setTimesheetBrowserOpen}
           orgName={activeOrg?.organization_name ?? orgName}
         />
+
+        {/* Billing / Subscription */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4" /> Billing & Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PricingCards />
+          </CardContent>
+        </Card>
 
         {/* Terms of Service */}
         <Card>
