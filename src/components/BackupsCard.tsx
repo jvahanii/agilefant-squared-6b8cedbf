@@ -28,7 +28,13 @@ interface BackupRow {
 }
 
 type ScopeType = "all" | "trees" | "backlogs";
-type Mode = "merge";
+type Mode = "merge" | "overwrite" | "copy";
+
+const MODE_DESCRIPTIONS: Record<Mode, string> = {
+  merge: "Upsert by id. Items missing from the snapshot survive.",
+  overwrite: "Delete current items in scope, then re-insert from the snapshot. Destructive — current changes within scope are lost.",
+  copy: "Create duplicates with new ids (names suffixed). Never touches existing items.",
+};
 
 export function BackupsCard() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -185,7 +191,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const backlogs = useAppStore((s) => s.backlogs);
   const [scope, setScope] = useState<ScopeType>("all");
-  const mode: Mode = "merge";
+  const [mode, setMode] = useState<Mode>("merge");
   const [selectedTrees, setSelectedTrees] = useState<Set<string>>(new Set());
   const [selectedBacklogs, setSelectedBacklogs] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
@@ -330,7 +336,21 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
 
           <div>
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Mode</Label>
-            <p className="text-xs text-muted-foreground mt-1">Upsert by id. Items missing from the snapshot survive.</p>
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="mt-1">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="merge" id="m-merge" />
+                <Label htmlFor="m-merge">Merge</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="overwrite" id="m-overwrite" />
+                <Label htmlFor="m-overwrite" className="text-destructive">Overwrite (destructive)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="copy" id="m-copy" />
+                <Label htmlFor="m-copy">Restore as copy</Label>
+              </div>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground mt-2">{MODE_DESCRIPTIONS[mode]}</p>
           </div>
         </div>
 
