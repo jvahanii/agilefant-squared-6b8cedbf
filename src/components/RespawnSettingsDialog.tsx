@@ -30,6 +30,47 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function computeNextRespawn(
+  enabled: boolean,
+  intervalDays: number,
+  hour: number,
+  lastTriggeredAt: string | undefined,
+): Date | null {
+  if (!enabled || isNaN(intervalDays) || intervalDays < 1 || isNaN(hour) || hour < 0 || hour > 23) return null;
+
+  const now = new Date();
+
+  if (lastTriggeredAt) {
+    const baseNextDue = new Date(
+      new Date(lastTriggeredAt).getTime() + intervalDays * 24 * 60 * 60 * 1000,
+    );
+    const nextDue = new Date(baseNextDue);
+    nextDue.setHours(hour, 0, 0, 0);
+    if (nextDue < baseNextDue) {
+      nextDue.setDate(nextDue.getDate() + 1);
+    }
+    return nextDue;
+  } else {
+    // First trigger: today at respawnHour if we haven't passed it yet, otherwise tomorrow.
+    const candidate = new Date(now);
+    candidate.setHours(hour, 0, 0, 0);
+    if (candidate <= now) {
+      candidate.setDate(candidate.getDate() + 1);
+    }
+    return candidate;
+  }
+}
+
+function formatNextRespawn(date: Date): string {
+  return date.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function RespawnSettingsDialog({
   workItemId,
   open,
@@ -63,7 +104,16 @@ export function RespawnSettingsDialog({
     onOpenChange(false);
   };
 
-  const intervalError = enabled && (isNaN(parseInt(intervalDays, 10)) || parseInt(intervalDays, 10) < 1);
+  const parsedIntervalDays = parseInt(intervalDays, 10);
+  const parsedHour = parseInt(hour, 10);
+  const intervalError = enabled && (isNaN(parsedIntervalDays) || parsedIntervalDays < 1);
+
+  const nextRespawn = computeNextRespawn(
+    enabled,
+    parsedIntervalDays,
+    parsedHour,
+    item.respawnLastTriggeredAt,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,6 +170,12 @@ export function RespawnSettingsDialog({
                 </SelectContent>
               </Select>
             </div>
+
+            {nextRespawn && (
+              <p className="text-sm text-muted-foreground">
+                Next respawn: <span className="font-medium text-foreground">{formatNextRespawn(nextRespawn)}</span>
+              </p>
+            )}
           </div>
         )}
 
