@@ -191,7 +191,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const backlogs = useAppStore((s) => s.backlogs);
   const [scope, setScope] = useState<ScopeType>("all");
-  const mode: Mode = "merge";
+  const [mode, setMode] = useState<Mode>("merge");
   const [selectedTrees, setSelectedTrees] = useState<Set<string>>(new Set());
   const [selectedBacklogs, setSelectedBacklogs] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
