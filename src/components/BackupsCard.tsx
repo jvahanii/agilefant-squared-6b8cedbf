@@ -28,7 +28,13 @@ interface BackupRow {
 }
 
 type ScopeType = "all" | "trees" | "backlogs";
-type Mode = "merge";
+type Mode = "merge" | "overwrite" | "copy";
+
+const MODE_DESCRIPTIONS: Record<Mode, string> = {
+  merge: "Upsert by id. Items missing from the snapshot survive.",
+  overwrite: "Delete current items in scope, then re-insert from the snapshot. Destructive — current changes within scope are lost.",
+  copy: "Create duplicates with new ids (names suffixed). Never touches existing items.",
+};
 
 export function BackupsCard() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
