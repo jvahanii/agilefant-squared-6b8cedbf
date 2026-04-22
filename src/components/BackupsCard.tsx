@@ -336,7 +336,21 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
 
           <div>
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Mode</Label>
-            <p className="text-xs text-muted-foreground mt-1">Upsert by id. Items missing from the snapshot survive.</p>
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="mt-1">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="merge" id="m-merge" />
+                <Label htmlFor="m-merge">Merge</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="overwrite" id="m-overwrite" />
+                <Label htmlFor="m-overwrite" className="text-destructive">Overwrite (destructive)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="copy" id="m-copy" />
+                <Label htmlFor="m-copy">Restore as copy</Label>
+              </div>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground mt-2">{MODE_DESCRIPTIONS[mode]}</p>
           </div>
         </div>
 
