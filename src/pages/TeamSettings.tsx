@@ -717,6 +717,36 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        {/* Custom statuses — available to org admins and owners */}
+        {canManage && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Custom Statuses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Enable per-tree statuses</p>
+                  <p className="text-xs text-muted-foreground">
+                    Show a gear icon on each backlog tree so users can configure its statuses and colors.
+                  </p>
+                </div>
+                <Switch
+                  checked={customStatusesEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setCustomStatusesEnabledSetting(activeOrgId, checked);
+                      toast({ title: checked ? "Custom statuses enabled" : "Custom statuses disabled" });
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div>
           <h2 className="text-lg font-semibold mb-1">Labs</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -757,36 +787,6 @@ export default function TeamSettings() {
             )}
           </CardContent>
         </Card>
-
-        {/* Custom statuses — available to org admins and owners */}
-        {canManage && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings2 className="w-4 h-4" /> Custom Statuses
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Enable per-tree statuses</p>
-                  <p className="text-xs text-muted-foreground">
-                    Show a gear icon on each backlog tree so users can configure its statuses and colors.
-                  </p>
-                </div>
-                <Switch
-                  checked={customStatusesEnabled}
-                  onCheckedChange={(checked) => {
-                    if (activeOrgId) {
-                      setCustomStatusesEnabledSetting(activeOrgId, checked);
-                      toast({ title: checked ? "Custom statuses enabled" : "Custom statuses disabled" });
-                    }
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {isSuperuser && (
         <Card>
