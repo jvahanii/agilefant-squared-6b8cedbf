@@ -639,7 +639,7 @@ export default function TeamSettings() {
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            While you really don't need any of these, you might think you do — enable them and find out for yourself. That being said, we strive to offer them as elegantly as possible.
+            You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
           </p>
         </div>
 
