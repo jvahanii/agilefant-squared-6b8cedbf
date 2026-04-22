@@ -717,6 +717,13 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Labs</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            These features are in progress. They sort of work but aren't yet great.
+          </p>
+        </div>
+
         {/* Labels */}
         <Card>
           <CardHeader>
