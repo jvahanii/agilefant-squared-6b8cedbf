@@ -140,7 +140,7 @@ export default function SuperuserYoutube() {
     try {
       const videoUrl = await fetchLatestVideoUrl(channel);
       if (!videoUrl) {
-        toast({ title: "Could not resolve latest video – opening videos page instead", variant: "destructive" });
+        toast({ title: "Could not resolve video – opening videos page instead", variant: "destructive" });
       }
       window.open(videoUrl ?? getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
     } finally {
@@ -185,7 +185,8 @@ export default function SuperuserYoutube() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Required for the <strong>Latest upload (direct)</strong> video selection mode. Create a key in the{" "}
+              Required for the <strong>Latest upload (direct)</strong>, <strong>Oldest</strong>, and{" "}
+              <strong>Most popular</strong> video selection modes. Create a key in the{" "}
               <a
                 href="https://console.cloud.google.com/apis/credentials"
                 target="_blank"
@@ -298,7 +299,7 @@ export default function SuperuserYoutube() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
-                      {channel.videoSelection === "latest-video" ? (
+                      {(channel.videoSelection ?? "latest") !== "latest" ? (
                         <button
                           onClick={() => handleOpenLatestVideo(channel)}
                           disabled={loadingLatest.has(channel.id)}

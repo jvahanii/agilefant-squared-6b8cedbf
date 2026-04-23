@@ -168,16 +168,20 @@ async function resolveChannelId(baseUrl: string, apiKey: string): Promise<string
 }
 
 /**
- * Fetches the most recently uploaded video ID for the given channel using the
- * YouTube Data API v3 search endpoint.  Returns `null` on any error.
+ * Fetches a video ID for the given channel using the YouTube Data API v3 search
+ * endpoint, sorted by the given order.  Returns `null` on any error.
  */
-async function fetchLatestVideoIdFromApi(channelId: string, apiKey: string): Promise<string | null> {
+async function fetchVideoIdFromApi(
+  channelId: string,
+  apiKey: string,
+  order: "date" | "viewCount",
+): Promise<string | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const url =
       `${YT_API_BASE}/search?part=id&channelId=${encodeURIComponent(channelId)}` +
-      `&type=video&order=date&maxResults=1&key=${encodeURIComponent(apiKey)}`;
+      `&type=video&order=${order}&maxResults=1&key=${encodeURIComponent(apiKey)}`;
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) return null;
     const json = await response.json();
@@ -190,8 +194,60 @@ async function fetchLatestVideoIdFromApi(channelId: string, apiKey: string): Pro
 }
 
 /**
- * Attempts to resolve the URL of the most recently uploaded video for the
- * channel using the YouTube Data API v3.  Returns `null` if:
+ * Fetches the oldest uploaded video ID for the given channel by paginating
+ * through the channel's uploads playlist (newest-first) until the last page.
+ * Limited to MAX_PAGES pages to avoid excessive API calls.  Returns `null` on
+ * any error or when the playlist cannot be found.
+ */
+async function fetchOldestVideoIdFromApi(channelId: string, apiKey: string): Promise<string | null> {
+  // The uploads playlist ID is derived from the channel ID by replacing the
+  // "UC" prefix with "UU".
+  if (!channelId.startsWith("UC")) return null;
+  // Replace the "UC" channel-ID prefix with "UU" to get the uploads playlist ID.
+  const uploadsPlaylistId = "UU" + channelId.substring(2);
+
+  const MAX_PAGES = 10; // cap at 10 pages × 50 videos = 500 videos to limit API quota usage
+  let pageToken: string | undefined;
+  let lastVideoId: string | null = null;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      let url =
+        `${YT_API_BASE}/playlistItems?part=contentDetails` +
+        `&playlistId=${encodeURIComponent(uploadsPlaylistId)}` +
+        `&maxResults=50&key=${encodeURIComponent(apiKey)}`;
+      if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) break;
+      const json = await response.json();
+      const items: { contentDetails?: { videoId?: string } }[] = json?.items ?? [];
+      if (items.length > 0) {
+        const id = items[items.length - 1]?.contentDetails?.videoId;
+        if (id) lastVideoId = id;
+      }
+      if (!json?.nextPageToken) break;
+      pageToken = json.nextPageToken as string;
+    } catch {
+      break;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  return lastVideoId;
+}
+
+/**
+ * Attempts to resolve a direct video URL for the channel using the YouTube
+ * Data API v3, honouring the channel's `videoSelection`:
+ *
+ *   - "latest" / "latest-video" → most recently uploaded video (`order=date`)
+ *   - "popular"                 → most-viewed video (`order=viewCount`)
+ *   - "oldest"                  → oldest uploaded video (uploads-playlist pagination)
+ *
+ * Returns `null` if:
  *   - no YouTube API key has been configured (via setYouTubeApiKey)
  *   - the channel cannot be resolved
  *   - the API request fails for any reason
@@ -217,8 +273,22 @@ export async function fetchLatestVideoUrl(channel: YouTubeChannel): Promise<stri
   const channelId = await resolveChannelId(baseUrl, apiKey);
   if (!channelId) return null;
 
-  const videoId = await fetchLatestVideoIdFromApi(channelId, apiKey);
-  if (!videoId) return null;
+  const selection = channel.videoSelection ?? DEFAULT_VIDEO_SELECTION;
+  let videoId: string | null;
+  switch (selection) {
+    case "popular":
+      videoId = await fetchVideoIdFromApi(channelId, apiKey, "viewCount");
+      break;
+    case "oldest":
+      videoId = await fetchOldestVideoIdFromApi(channelId, apiKey);
+      break;
+    case "latest":
+    case "latest-video":
+    default:
+      videoId = await fetchVideoIdFromApi(channelId, apiKey, "date");
+      break;
+  }
 
+  if (!videoId) return null;
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
