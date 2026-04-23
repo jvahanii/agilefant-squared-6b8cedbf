@@ -102,6 +102,9 @@ export function getChannelVideoUrl(channel: YouTubeChannel): string {
   }
 }
 
+/** Maximum ms to wait for any single CORS-proxy network request. */
+const FETCH_TIMEOUT_MS = 5000;
+
 /**
  * Fetches the first video ID from a YouTube RSS feed URL using a CORS proxy.
  * Returns `null` if the request fails or no video entry is found.
@@ -109,7 +112,7 @@ export function getChannelVideoUrl(channel: YouTubeChannel): string {
 async function fetchFirstVideoIdFromRss(rssUrl: string): Promise<string | null> {
   const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(proxyUrl, { signal: controller.signal });
     if (!response.ok) return null;
@@ -133,7 +136,7 @@ async function fetchFirstVideoIdFromRss(rssUrl: string): Promise<string | null> 
 async function resolveChannelIdFromPage(channelUrl: string): Promise<string | null> {
   const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(channelUrl)}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(proxyUrl, { signal: controller.signal });
     if (!response.ok) return null;
@@ -193,7 +196,7 @@ export async function fetchLatestVideoUrl(channel: YouTubeChannel): Promise<stri
 
   // /@handle → try user= RSS first (works when handle matches a legacy username),
   // then fall back to scraping the channel page to extract the channel ID.
-  const handleMatch = baseUrl.match(/\/@([a-zA-Z0-9_.-]+)/i);
+  const handleMatch = baseUrl.match(/\/@([a-zA-Z0-9_-]+)/i);
   if (handleMatch) {
     const handle = handleMatch[1];
 
