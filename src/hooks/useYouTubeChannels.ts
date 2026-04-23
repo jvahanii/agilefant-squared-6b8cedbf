@@ -1,8 +1,13 @@
+export type YouTubeVideoSelection = "latest" | "oldest" | "popular";
+
+export const DEFAULT_VIDEO_SELECTION: YouTubeVideoSelection = "latest";
+
 export interface YouTubeChannel {
   id: string;
   name: string;
   url: string;
   enabled: boolean;
+  videoSelection?: YouTubeVideoSelection;
 }
 
 const STORAGE_KEY = "youtubeChannels";
@@ -23,7 +28,11 @@ export function getYouTubeChannels(): YouTubeChannel[] {
   return getChannels();
 }
 
-export function addYouTubeChannel(name: string, url: string): YouTubeChannel {
+export function addYouTubeChannel(
+  name: string,
+  url: string,
+  videoSelection: YouTubeVideoSelection = DEFAULT_VIDEO_SELECTION,
+): YouTubeChannel {
   const channels = getChannels();
   const id =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -34,6 +43,7 @@ export function addYouTubeChannel(name: string, url: string): YouTubeChannel {
     name,
     url,
     enabled: true,
+    videoSelection,
   };
   saveChannels([...channels, channel]);
   return channel;
@@ -45,6 +55,10 @@ export function removeYouTubeChannel(id: string) {
 
 export function toggleYouTubeChannel(id: string) {
   saveChannels(getChannels().map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)));
+}
+
+export function setYouTubeChannelVideoSelection(id: string, videoSelection: YouTubeVideoSelection) {
+  saveChannels(getChannels().map((c) => (c.id === id ? { ...c, videoSelection } : c)));
 }
 
 export function getEnabledYouTubeChannels(): YouTubeChannel[] {
