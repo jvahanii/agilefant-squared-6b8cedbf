@@ -81,13 +81,13 @@ export function getChannelVideoUrl(channel: YouTubeChannel): string {
   const url = /^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`;
 
   // Already a specific video – return as-is
-  if (/\/watch(\?|$)/i.test(url) || /youtu\.be\//i.test(url)) {
+  if (/\/watch\?/i.test(url) || /youtu\.be\//i.test(url)) {
     return url;
   }
 
   // Strip any existing subpage suffix so we always start from the channel root
   const base = url
-    .replace(/\/(videos|streams|playlists|community|about|featured)(\/.*)?$/, "")
+    .replace(/\/(videos|streams|playlists|community|about|featured).*$/, "")
     .replace(/\/+$/, "");
 
   switch (channel.videoSelection ?? DEFAULT_VIDEO_SELECTION) {
