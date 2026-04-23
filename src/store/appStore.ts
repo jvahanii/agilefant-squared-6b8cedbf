@@ -1145,7 +1145,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             const oldBlId = wi.backlogAssignments[treeId];
             const descRanks = { ...wi.ranks };
             if (oldBlId && oldBlId !== cleanBlId) delete descRanks[oldBlId];
-            descRanks[cleanBlId] = descRanks[cleanBlId] ?? (wi.ranks[oldBlId ?? ""] ?? 0);
+            descRanks[cleanBlId] = descRanks[cleanBlId] ?? (oldBlId ? (wi.ranks[oldBlId] ?? 0) : 0);
             updatedItems[id] = {
               ...wi,
               backlogAssignments: { ...wi.backlogAssignments, [treeId]: cleanBlId },
