@@ -25,8 +25,12 @@ export function getYouTubeChannels(): YouTubeChannel[] {
 
 export function addYouTubeChannel(name: string, url: string): YouTubeChannel {
   const channels = getChannels();
+  const id =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const channel: YouTubeChannel = {
-    id: crypto.randomUUID(),
+    id,
     name,
     url,
     enabled: true,

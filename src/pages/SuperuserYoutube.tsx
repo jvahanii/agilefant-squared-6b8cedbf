@@ -54,12 +54,17 @@ export default function SuperuserYoutube() {
       .select("is_superuser")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          toast({ title: "Failed to verify permissions", variant: "destructive" });
+          navigate("/");
+          return;
+        }
         const su = data?.is_superuser ?? false;
         setIsSuperuser(su);
         if (!su) navigate("/");
       });
-  }, [user?.id]);
+  }, [user?.id, navigate]);
 
   // Load channels once superuser confirmed
   useEffect(() => {
@@ -190,7 +195,7 @@ export default function SuperuserYoutube() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
                       <a
-                        href={channel.url}
+                        href={/^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-muted-foreground hover:text-primary truncate block"
