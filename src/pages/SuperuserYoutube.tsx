@@ -136,6 +136,15 @@ export default function SuperuserYoutube() {
   };
 
   const handleOpenLatestVideo = async (channel: YouTubeChannel) => {
+    if (!getYouTubeApiKey()) {
+      toast({
+        title: "YouTube API key required",
+        description: "Configure a YouTube Data API key above to use Oldest and Most popular selections.",
+        variant: "destructive",
+      });
+      window.open(getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
+      return;
+    }
     setLoadingLatest((prev) => new Set(prev).add(channel.id));
     try {
       const videoUrl = await fetchLatestVideoUrl(channel);
