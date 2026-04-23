@@ -1,4 +1,4 @@
-export type YouTubeVideoSelection = "latest" | "oldest" | "popular" | "latest-video";
+export type YouTubeVideoSelection = "latest" | "oldest" | "popular";
 
 export const DEFAULT_VIDEO_SELECTION: YouTubeVideoSelection = "latest";
 
@@ -83,13 +83,11 @@ export function getEnabledYouTubeChannels(): YouTubeChannel[] {
 }
 
 /**
- * Returns a YouTube URL that navigates to the channel's video listing
- * sorted according to the channel's `videoSelection` setting, rather
- * than landing on the channel's front page.
- *
- * - "latest"  → /videos          (newest-first, YouTube default)
- * - "popular" → /videos?view=0&sort=p
- * - "oldest"  → /videos?view=0&sort=da
+ * Returns a YouTube URL that navigates to the channel's video listing.
+ * All selections fall back to the default newest-first /videos page because
+ * YouTube's URL-based sort parameters are unreliable; the `fetchLatestVideoUrl`
+ * function uses the YouTube Data API to resolve the correct video for "oldest"
+ * and "popular" selections.
  *
  * If the stored URL is already a direct video URL (watch / youtu.be),
  * it is returned unchanged.
@@ -107,16 +105,7 @@ export function getChannelVideoUrl(channel: YouTubeChannel): string {
     .replace(/\/(videos|streams|playlists|community|about|featured).*$/, "")
     .replace(/\/+$/, "");
 
-  switch (channel.videoSelection ?? DEFAULT_VIDEO_SELECTION) {
-    case "popular":
-      return `${base}/videos?view=0&sort=p`;
-    case "oldest":
-      return `${base}/videos?view=0&sort=da`;
-    case "latest-video":
-    case "latest":
-    default:
-      return `${base}/videos`;
-  }
+  return `${base}/videos`;
 }
 
 /** Maximum ms to wait for any single YouTube API request. */
@@ -243,8 +232,8 @@ async function fetchOldestVideoIdFromApi(channelId: string, apiKey: string): Pro
  * Attempts to resolve a direct video URL for the channel using the YouTube
  * Data API v3, honouring the channel's `videoSelection`:
  *
- *   - "latest" / "latest-video" → most recently uploaded video (`order=date`)
- *   - "popular"                 → most-viewed video (`order=viewCount`)
+ *   - "latest"   → most recently uploaded video (`order=date`)
+ *   - "popular"  → most-viewed video (`order=viewCount`)
  *   - "oldest"                  → oldest uploaded video (uploads-playlist pagination)
  *
  * Returns `null` if:
@@ -283,7 +272,6 @@ export async function fetchLatestVideoUrl(channel: YouTubeChannel): Promise<stri
       videoId = await fetchOldestVideoIdFromApi(channelId, apiKey);
       break;
     case "latest":
-    case "latest-video":
     default:
       videoId = await fetchVideoIdFromApi(channelId, apiKey, "date");
       break;
