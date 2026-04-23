@@ -22,6 +22,8 @@ import {
   SlidersHorizontal,
   Archive,
   Eye,
+  CreditCard,
+  FolderTree,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -209,6 +211,10 @@ function buildSections(): Section[] {
               },
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
               {
+                action: "Move under parent",
+                how: "Press M or right-click → \"Move under parent…\" to open a searchable dialog that lets you re-parent one or more items anywhere in your organisation. Choose \"Move to root\" to make an item top-level. If the target parent is in a different tree you will be prompted to either move the item fully to that tree or mirror it there.",
+              },
+              {
                 action: "Set recurring",
                 how: "Click the settings icon on the item row to open respawn settings and configure the schedule.",
               },
@@ -288,6 +294,7 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
             <ShortcutRow keys={["L"]} description="Log spent time" />
+            <ShortcutRow keys={["M"]} description="Move under parent…" />
             <ShortcutRow keys={["/"]} description="Focus search bar" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
           </div>
@@ -745,6 +752,121 @@ function buildSections(): Section[] {
           <Tip>
             Use <strong>Export data</strong> to copy the current data snapshot to the clipboard, or{" "}
             <strong>Export history</strong> to copy a CSV of all recorded changes.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "reparent",
+      icon: <FolderTree className="w-4 h-4" />,
+      label: "Move under Parent",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The <strong className="text-foreground">Move under parent</strong> dialog lets you re-parent one or more
+            work items anywhere in your organisation without drag-and-drop. It is especially useful for deeply nested
+            trees or when moving items across backlog trees.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Open the dialog",
+                how: 'Select one or more work items and press M, or right-click and choose "Move under parent…".',
+              },
+              {
+                action: "Search for a parent",
+                how: "Type any part of the target item's title. Results update as you type and show the full backlog and ancestor context so you can identify the right item.",
+              },
+              {
+                action: "Move to root",
+                how: 'Click "Move to root (no parent)" at the top of the list to make the selected items top-level in their backlog.',
+              },
+              {
+                action: "Same-tree reparent",
+                how: "When the chosen parent is in the same tree as the items being moved, reparenting happens immediately.",
+              },
+              {
+                action: "Cross-tree reparent",
+                how: 'When the chosen parent is in a different tree you will be prompted: "Move to \u2026 completely" removes the item from its original tree; "Mirror under new parent" keeps the item in both trees.',
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
+            ))}
+          </div>
+          <Tip>
+            You can move multiple selected items at once — all of them will be re-parented under the same new parent in
+            a single action, which can be undone with <KbdKey>Ctrl</KbdKey>+<KbdKey>Z</KbdKey>.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "plans",
+      icon: <CreditCard className="w-4 h-4" />,
+      label: "Plans",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Agilefant² is <strong className="text-foreground">free forever</strong> for all core features. Optional
+            paid plans let you support the project or get dedicated assistance for larger teams.
+          </p>
+          <div className="space-y-3">
+            {[
+              {
+                name: "Free",
+                price: "$0",
+                description:
+                  "Full access to all backlog management features, unlimited work items, team collaboration, and all advanced capabilities. No credit card required.",
+              },
+              {
+                name: "Supporter",
+                price: "$9 / month",
+                description:
+                  "Everything in Free, plus you directly support the continued development of Agilefant². Managed via Stripe — cancel any time.",
+              },
+              {
+                name: "Enterprise",
+                price: "Custom",
+                description:
+                  'Dedicated support and organisation design advice from the Agilefant team. Click "Contact Us" on the Plans page or email sales@agilefant.org to get a quote.',
+              },
+            ].map((plan) => (
+              <div key={plan.name} className="flex gap-3 p-3 rounded-lg border bg-card">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-sm font-medium">{plan.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{plan.price}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {[
+              {
+                action: "View / change plan",
+                how: "Go to Settings → Billing to see your current plan and upgrade or manage your subscription.",
+              },
+              {
+                action: "Upgrade to Supporter",
+                how: 'Click "Upgrade" on the Supporter card — you will be redirected to a Stripe checkout page.',
+              },
+              {
+                action: "Manage billing",
+                how: 'Click "Manage" on your current plan to open the Stripe customer portal where you can update payment details or cancel.',
+              },
+              {
+                action: "Enterprise enquiry",
+                how: 'Click "Contact Us" on the Enterprise card, or email sales@agilefant.org with your requirements.',
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
+            ))}
+          </div>
+          <Tip>
+            Choosing a plan during sign-up stores your preference. After your organisation is created the Supporter
+            checkout opens automatically, or for Enterprise a contact email is opened so you can reach the team.
           </Tip>
         </div>
       ),
