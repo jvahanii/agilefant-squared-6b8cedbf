@@ -136,22 +136,34 @@ export default function SuperuserYoutube() {
   };
 
   const handleOpenLatestVideo = async (channel: YouTubeChannel) => {
+    const selection = channel.videoSelection ?? DEFAULT_VIDEO_SELECTION;
+    const fallbackUrl = getChannelVideoUrl(channel);
+
     if (!getYouTubeApiKey()) {
-      toast({
-        title: "YouTube API key required",
-        description: "Configure a YouTube Data API key above to use Oldest and Most popular selections.",
-        variant: "destructive",
-      });
-      window.open(getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
+      if (selection !== "latest") {
+        toast({
+          title: "YouTube API key required",
+          description: "Configure a YouTube Data API key above to use Oldest and Most popular selections.",
+          variant: "destructive",
+        });
+      }
+      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
       return;
     }
+
+    // Open the tab synchronously within the user-gesture so browsers don't
+    // block it as a popup.  Start at the fallback /videos page; once the API
+    // resolves we redirect the already-open tab to the specific video.
+    const win = window.open(fallbackUrl, "_blank");
+
     setLoadingLatest((prev) => new Set(prev).add(channel.id));
     try {
       const videoUrl = await fetchLatestVideoUrl(channel);
       if (!videoUrl) {
         toast({ title: "Could not resolve video – opening videos page instead", variant: "destructive" });
+      } else if (win && !win.closed) {
+        win.location.href = videoUrl;
       }
-      window.open(videoUrl ?? getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
     } finally {
       setLoadingLatest((prev) => {
         const next = new Set(prev);
@@ -307,24 +319,13 @@ export default function SuperuserYoutube() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
-                      {(channel.videoSelection ?? "latest") !== "latest" ? (
-                        <button
-                          onClick={() => handleOpenLatestVideo(channel)}
-                          disabled={loadingLatest.has(channel.id)}
-                          className="text-xs text-muted-foreground hover:text-primary truncate block text-left disabled:opacity-50"
-                        >
-                          {loadingLatest.has(channel.id) ? "Loading…" : channel.url}
-                        </button>
-                      ) : (
-                        <a
-                          href={getChannelVideoUrl(channel)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-muted-foreground hover:text-primary truncate block"
-                        >
-                          {channel.url}
-                        </a>
-                      )}
+                      <button
+                        onClick={() => handleOpenLatestVideo(channel)}
+                        disabled={loadingLatest.has(channel.id)}
+                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left disabled:opacity-50"
+                      >
+                        {loadingLatest.has(channel.id) ? "Loading…" : channel.url}
+                      </button>
                     </div>
                     <Select
                       value={channel.videoSelection ?? DEFAULT_VIDEO_SELECTION}
