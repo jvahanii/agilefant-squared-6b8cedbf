@@ -11,6 +11,7 @@ import {
   removeYouTubeChannel,
   toggleYouTubeChannel,
   setYouTubeChannelVideoSelection,
+  getChannelVideoUrl,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,7 +229,7 @@ export default function SuperuserYoutube() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
                       <a
-                        href={/^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`}
+                        href={getChannelVideoUrl(channel)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-muted-foreground hover:text-primary truncate block"
