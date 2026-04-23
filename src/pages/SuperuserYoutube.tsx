@@ -13,6 +13,8 @@ import {
   setYouTubeChannelVideoSelection,
   getChannelVideoUrl,
   fetchLatestVideoUrl,
+  getYouTubeApiKey,
+  setYouTubeApiKey,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +52,8 @@ export default function SuperuserYoutube() {
   const [newVideoSelection, setNewVideoSelection] = useState<YouTubeVideoSelection>(DEFAULT_VIDEO_SELECTION);
   const [deleteTarget, setDeleteTarget] = useState<YouTubeChannel | null>(null);
   const [loadingLatest, setLoadingLatest] = useState<Set<string>>(new Set());
+  const [apiKey, setApiKeyState] = useState("");
+  const [apiKeySaved, setApiKeySaved] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -84,7 +88,15 @@ export default function SuperuserYoutube() {
   useEffect(() => {
     if (!isSuperuser) return;
     setChannels(getYouTubeChannels());
+    setApiKeyState(getYouTubeApiKey());
   }, [isSuperuser]);
+
+  const handleSaveApiKey = () => {
+    setYouTubeApiKey(apiKey);
+    setApiKeySaved(true);
+    setTimeout(() => setApiKeySaved(false), 2000);
+    toast({ title: apiKey.trim() ? "YouTube API key saved" : "YouTube API key cleared" });
+  };
 
   const handleAdd = () => {
     const name = newName.trim();
@@ -163,6 +175,44 @@ export default function SuperuserYoutube() {
       </header>
 
       <div className="max-w-2xl mx-auto p-6 space-y-6">
+        {/* YouTube API key */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Youtube className="w-4 h-4 text-red-500" />
+              YouTube Data API key
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Required for the <strong>Latest upload (direct)</strong> video selection mode. Create a key in the{" "}
+              <a
+                href="https://console.cloud.google.com/apis/credentials"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-primary"
+              >
+                Google Cloud Console
+              </a>{" "}
+              with the YouTube Data API v3 enabled.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                id="yt-api-key"
+                type="password"
+                placeholder="AIza…"
+                value={apiKey}
+                onChange={(e) => { setApiKeyState(e.target.value); setApiKeySaved(false); }}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveApiKey()}
+                className="font-mono text-xs"
+              />
+              <Button variant="secondary" onClick={handleSaveApiKey} className="shrink-0">
+                {apiKeySaved ? "Saved ✓" : "Save"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Add channel */}
         <Card>
           <CardHeader>

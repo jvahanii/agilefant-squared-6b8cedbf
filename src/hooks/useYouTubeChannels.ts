@@ -11,6 +11,23 @@ export interface YouTubeChannel {
 }
 
 const STORAGE_KEY = "youtubeChannels";
+const API_KEY_STORAGE_KEY = "youtubeApiKey";
+
+export function getYouTubeApiKey(): string {
+  // The YouTube Data API key is a public browser-side credential (restricted by
+  // referer/IP in the Google Cloud Console) and is intentionally stored in
+  // localStorage as plain text, consistent with other per-browser settings in
+  // this app.
+  return localStorage.getItem(API_KEY_STORAGE_KEY) ?? "";
+}
+
+export function setYouTubeApiKey(key: string) {
+  if (key.trim()) {
+    localStorage.setItem(API_KEY_STORAGE_KEY, key.trim());
+  } else {
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+  }
+}
 
 function getChannels(): YouTubeChannel[] {
   try {
@@ -102,26 +119,47 @@ export function getChannelVideoUrl(channel: YouTubeChannel): string {
   }
 }
 
-/** Maximum ms to wait for any single CORS-proxy network request. */
+/** Maximum ms to wait for any single YouTube API request. */
 const FETCH_TIMEOUT_MS = 5000;
 
+const YT_API_BASE = "https://www.googleapis.com/youtube/v3";
+
 /**
- * Fetches the first video ID from a YouTube RSS feed URL using a CORS proxy.
- * Returns `null` if the request fails or no video entry is found.
+ * Resolves the UCxxxxxxxx channel ID for a given channel URL fragment using
+ * the YouTube Data API v3.  Handles the following formats:
+ *   - /channel/UCxxxxxxxx  → returned as-is
+ *   - /user/USERNAME       → resolved via channels?forUsername=
+ *   - /@handle             → resolved via channels?forHandle=
+ *
+ * Returns `null` when the API key is missing, the API returns an error, or the
+ * channel cannot be found.
  */
-async function fetchFirstVideoIdFromRss(rssUrl: string): Promise<string | null> {
-  const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(rssUrl)}`;
+async function resolveChannelId(baseUrl: string, apiKey: string): Promise<string | null> {
+  // Direct channel ID – no API call needed
+  const channelIdMatch = baseUrl.match(/\/channel\/(UC[a-zA-Z0-9_-]+)/i);
+  if (channelIdMatch) return channelIdMatch[1];
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
-    const response = await fetch(proxyUrl, { signal: controller.signal });
+    let searchParam: string;
+    const handleMatch = baseUrl.match(/\/@([a-zA-Z0-9_-]+)/i);
+    const userMatch = baseUrl.match(/\/user\/([a-zA-Z0-9_-]+)/i);
+
+    if (handleMatch) {
+      searchParam = `forHandle=${encodeURIComponent(handleMatch[1])}`;
+    } else if (userMatch) {
+      searchParam = `forUsername=${encodeURIComponent(userMatch[1])}`;
+    } else {
+      return null;
+    }
+
+    const url = `${YT_API_BASE}/channels?part=id&${searchParam}&key=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) return null;
-    const text = await response.text();
-    const doc = new DOMParser().parseFromString(text, "text/xml");
-    // Each <entry> has an <id> like "yt:video:VIDEO_ID"
-    const idText = doc.querySelector("entry > id")?.textContent ?? "";
-    const videoId = idText.split(":").pop();
-    return videoId || null;
+    const json = await response.json();
+    return (json?.items?.[0]?.id as string) ?? null;
   } catch {
     return null;
   } finally {
@@ -130,19 +168,20 @@ async function fetchFirstVideoIdFromRss(rssUrl: string): Promise<string | null> 
 }
 
 /**
- * Fetches the channel page via CORS proxy and extracts the YouTube channel ID
- * from the embedded JSON-LD / page data.  Used as a fallback for @handle URLs.
+ * Fetches the most recently uploaded video ID for the given channel using the
+ * YouTube Data API v3 search endpoint.  Returns `null` on any error.
  */
-async function resolveChannelIdFromPage(channelUrl: string): Promise<string | null> {
-  const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(channelUrl)}`;
+async function fetchLatestVideoIdFromApi(channelId: string, apiKey: string): Promise<string | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(proxyUrl, { signal: controller.signal });
+    const url =
+      `${YT_API_BASE}/search?part=id&channelId=${encodeURIComponent(channelId)}` +
+      `&type=video&order=date&maxResults=1&key=${encodeURIComponent(apiKey)}`;
+    const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) return null;
-    const html = await response.text();
-    const match = html.match(/"channelId":"(UC[a-zA-Z0-9_-]+)"/);
-    return match ? match[1] : null;
+    const json = await response.json();
+    return (json?.items?.[0]?.id?.videoId as string) ?? null;
   } catch {
     return null;
   } finally {
@@ -152,18 +191,17 @@ async function resolveChannelIdFromPage(channelUrl: string): Promise<string | nu
 
 /**
  * Attempts to resolve the URL of the most recently uploaded video for the
- * channel by fetching its YouTube RSS feed.  Returns `null` if the channel
- * cannot be resolved or if the network request fails for any reason
- * (including CORS restrictions in some environments).
- *
- * Supports the following channel URL formats:
- *   - /channel/UCxxxxxxxx  (direct channel ID)
- *   - /user/USERNAME       (legacy username)
- *   - /@handle             (modern @handle — resolved via page scrape)
+ * channel using the YouTube Data API v3.  Returns `null` if:
+ *   - no YouTube API key has been configured (via setYouTubeApiKey)
+ *   - the channel cannot be resolved
+ *   - the API request fails for any reason
  *
  * Callers should fall back to `getChannelVideoUrl` when this returns `null`.
  */
 export async function fetchLatestVideoUrl(channel: YouTubeChannel): Promise<string | null> {
+  const apiKey = getYouTubeApiKey();
+  if (!apiKey) return null;
+
   const rawUrl = /^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`;
 
   // Already a specific video – return as-is
@@ -176,43 +214,11 @@ export async function fetchLatestVideoUrl(channel: YouTubeChannel): Promise<stri
     .replace(/\/(videos|streams|playlists|community|about|featured).*$/, "")
     .replace(/\/+$/, "");
 
-  // /channel/UCxxxxxxxx → use channel_id RSS feed directly
-  const channelIdMatch = baseUrl.match(/\/channel\/(UC[a-zA-Z0-9_-]+)/i);
-  if (channelIdMatch) {
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelIdMatch[1]}`;
-    const videoId = await fetchFirstVideoIdFromRss(rssUrl);
-    if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
-    return null;
-  }
+  const channelId = await resolveChannelId(baseUrl, apiKey);
+  if (!channelId) return null;
 
-  // /user/USERNAME → use user= RSS feed
-  const userMatch = baseUrl.match(/\/user\/([a-zA-Z0-9_-]+)/i);
-  if (userMatch) {
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?user=${userMatch[1]}`;
-    const videoId = await fetchFirstVideoIdFromRss(rssUrl);
-    if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
-    return null;
-  }
+  const videoId = await fetchLatestVideoIdFromApi(channelId, apiKey);
+  if (!videoId) return null;
 
-  // /@handle → try user= RSS first (works when handle matches a legacy username),
-  // then fall back to scraping the channel page to extract the channel ID.
-  const handleMatch = baseUrl.match(/\/@([a-zA-Z0-9_-]+)/i);
-  if (handleMatch) {
-    const handle = handleMatch[1];
-
-    // Attempt 1: user-based RSS (quick, no extra page fetch needed)
-    const userRssUrl = `https://www.youtube.com/feeds/videos.xml?user=${handle}`;
-    const videoIdFromUser = await fetchFirstVideoIdFromRss(userRssUrl);
-    if (videoIdFromUser) return `https://www.youtube.com/watch?v=${videoIdFromUser}`;
-
-    // Attempt 2: scrape the channel page to get the UC* channel ID
-    const channelId = await resolveChannelIdFromPage(baseUrl);
-    if (channelId) {
-      const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-      const videoId = await fetchFirstVideoIdFromRss(rssUrl);
-      if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
-    }
-  }
-
-  return null;
+  return `https://www.youtube.com/watch?v=${videoId}`;
 }
