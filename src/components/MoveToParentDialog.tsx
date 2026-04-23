@@ -10,6 +10,9 @@ import { useAppStore } from "@/store/appStore";
 import { ChevronRight } from "lucide-react";
 import { DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 
+const DEFAULT_STATUS_COLOR = "#94a3b8";
+const BREADCRUMB_MAX_WIDTH = "max-w-[120px]";
+
 interface MoveToParentDialogProps {
   /** The IDs of items that will be reparented. */
   workItemIds: string[];
@@ -153,7 +156,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
             <div className="flex flex-col">
               {candidates.map(({ item, treeName, backlogPath, ancestors }) => {
                 const statusColor =
-                  DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+                  DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? DEFAULT_STATUS_COLOR;
                 const q = query.trim().toLowerCase();
                 const titleLower = item.title.toLowerCase();
                 const matchIdx = q ? titleLower.indexOf(q) : -1;
@@ -192,7 +195,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
                           {ancestors.map((a, i) => (
                             <span key={i} className="flex items-center gap-0.5">
                               {i > 0 && <ChevronRight className="w-2.5 h-2.5 opacity-40 shrink-0" />}
-                              <span className="truncate max-w-[120px]">{a}</span>
+                              <span className={`truncate ${BREADCRUMB_MAX_WIDTH}`}>{a}</span>
                             </span>
                           ))}
                         </p>
@@ -202,7 +205,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
                         {breadcrumbParts.map((part, i) => (
                           <span key={i} className="flex items-center gap-0.5">
                             {i > 0 && <ChevronRight className="w-2.5 h-2.5 opacity-40 shrink-0" />}
-                            <span className="truncate max-w-[120px]">{part}</span>
+                            <span className={`truncate ${BREADCRUMB_MAX_WIDTH}`}>{part}</span>
                           </span>
                         ))}
                       </p>
