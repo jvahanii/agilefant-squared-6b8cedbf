@@ -185,7 +185,7 @@ export default function SuperuserYoutube() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              Required for the <strong>Latest upload (direct)</strong>, <strong>Oldest</strong>, and{" "}
+              Required for the <strong>Oldest</strong> and{" "}
               <strong>Most popular</strong> video selection modes. Create a key in the{" "}
               <a
                 href="https://console.cloud.google.com/apis/credentials"
@@ -256,7 +256,6 @@ export default function SuperuserYoutube() {
                   <SelectItem value="latest">Latest</SelectItem>
                   <SelectItem value="oldest">Oldest</SelectItem>
                   <SelectItem value="popular">Most popular</SelectItem>
-                  <SelectItem value="latest-video">Latest upload (direct)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -329,7 +328,6 @@ export default function SuperuserYoutube() {
                         <SelectItem value="latest">Latest</SelectItem>
                         <SelectItem value="oldest">Oldest</SelectItem>
                         <SelectItem value="popular">Most popular</SelectItem>
-                        <SelectItem value="latest-video">Latest upload (direct)</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
