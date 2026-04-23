@@ -185,28 +185,57 @@ async function fetchVideoIdFromApi(
 /**
  * Fetches the oldest uploaded video ID for the given channel by paginating
  * through the channel's uploads playlist (newest-first) until the last page.
- * Limited to MAX_PAGES pages to avoid excessive API calls.  Returns `null` on
- * any error or when the playlist cannot be found.
+ *
+ * Strategy:
+ *   1. Fetch the first page (maxResults=1) to read `pageInfo.totalResults`.
+ *   2. Calculate the total number of full pages needed using maxResults=50.
+ *   3. Follow `nextPageToken` until the last page is reached, then return the
+ *      last video ID on that page.
+ *
+ * Returns `null` on any error or when the playlist cannot be found.
  */
 async function fetchOldestVideoIdFromApi(channelId: string, apiKey: string): Promise<string | null> {
   // The uploads playlist ID is derived from the channel ID by replacing the
   // "UC" prefix with "UU".
   if (!channelId.startsWith("UC")) return null;
-  // Replace the "UC" channel-ID prefix with "UU" to get the uploads playlist ID.
   const uploadsPlaylistId = "UU" + channelId.substring(2);
 
-  const MAX_PAGES = 10; // cap at 10 pages × 50 videos = 500 videos to limit API quota usage
+  // Step 1: fetch first page (1 result) to learn the total video count.
+  const PAGE_SIZE = 50;
+  let totalResults = 0;
+  {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const url =
+        `${YT_API_BASE}/playlistItems?part=contentDetails` +
+        `&playlistId=${encodeURIComponent(uploadsPlaylistId)}` +
+        `&maxResults=1&key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return null;
+      const json = await response.json();
+      totalResults = (json?.pageInfo?.totalResults as number) ?? 0;
+      if (totalResults === 0) return null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // Step 2: paginate with maxResults=50 until we reach the last page.
+  const totalPages = Math.ceil(totalResults / PAGE_SIZE);
   let pageToken: string | undefined;
   let lastVideoId: string | null = null;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; page < totalPages; page++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       let url =
         `${YT_API_BASE}/playlistItems?part=contentDetails` +
         `&playlistId=${encodeURIComponent(uploadsPlaylistId)}` +
-        `&maxResults=50&key=${encodeURIComponent(apiKey)}`;
+        `&maxResults=${PAGE_SIZE}&key=${encodeURIComponent(apiKey)}`;
       if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) break;
