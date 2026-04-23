@@ -10,9 +10,17 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  static readonly RELOAD_KEY = "chunkErrorReloaded";
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null };
+  }
+
+  componentDidMount() {
+    // Clear the reload guard after a successful mount so that future chunk
+    // errors within the same browser session can still trigger an auto-reload.
+    sessionStorage.removeItem(ErrorBoundary.RELOAD_KEY);
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -21,6 +29,22 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error("ErrorBoundary caught a rendering error:", error, info);
+
+    // When a lazy-loaded chunk fails to fetch (e.g. after a new deployment
+    // invalidates old hashed filenames), reload the page once so the browser
+    // picks up the fresh HTML and new chunk URLs.
+    const isChunkError =
+      (typeof error.message === "string" &&
+        (error.message.includes("Failed to fetch dynamically imported module") ||
+          error.message.includes("Loading chunk"))) ||
+      error.name === "ChunkLoadError";
+
+    if (isChunkError) {
+      if (!sessionStorage.getItem(ErrorBoundary.RELOAD_KEY)) {
+        sessionStorage.setItem(ErrorBoundary.RELOAD_KEY, "1");
+        window.location.reload();
+      }
+    }
   }
 
   render() {
