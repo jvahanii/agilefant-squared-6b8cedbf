@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Trash2, Plus, Youtube, Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -202,222 +203,231 @@ export default function SuperuserYoutube() {
         <span className="text-xs text-muted-foreground ml-1">(superuser only)</span>
       </header>
 
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
-        {/* Add channel */}
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        {/* Combined add form */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Plus className="w-4 h-4" />
-              Add a channel
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="channel-name">Channel name</Label>
-              <Input
-                id="channel-name"
-                placeholder="e.g. Fireship"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="channel-url">Channel URL or handle</Label>
-              <Input
-                id="channel-url"
-                placeholder="e.g. https://www.youtube.com/@fireship"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              />
-            </div>
-            <Button onClick={handleAdd} disabled={!newName.trim() || !newUrl.trim()}>
-              <Plus className="w-4 h-4" />
-              Add channel
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Channel list */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Youtube className="w-4 h-4 text-red-500" />
-              Channels to watch
-              {channels.length > 0 && (
-                <span className="ml-auto text-xs font-normal text-muted-foreground">
-                  {channels.filter((c) => c.enabled).length} / {channels.length} enabled
-                </span>
-              )}
+              Add a source
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {channels.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No channels added yet. Add one above.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {channels.map((channel) => (
-                  <li
-                    key={channel.id}
-                    className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
+            <Tabs defaultValue="channel">
+              <TabsList className="mb-4">
+                <TabsTrigger value="channel" className="gap-1.5">
+                  <Youtube className="w-3.5 h-3.5" />
+                  Channel
+                </TabsTrigger>
+                <TabsTrigger value="search" className="gap-1.5">
+                  <Search className="w-3.5 h-3.5" />
+                  Search by keywords
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="channel" className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="channel-name">Channel name</Label>
+                  <Input
+                    id="channel-name"
+                    placeholder="e.g. Fireship"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="channel-url">Channel URL or handle</Label>
+                  <Input
+                    id="channel-url"
+                    placeholder="e.g. https://www.youtube.com/@fireship"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  />
+                </div>
+                <Button onClick={handleAdd} disabled={!newName.trim() || !newUrl.trim()}>
+                  <Plus className="w-4 h-4" />
+                  Add channel
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="search" className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="search-channel-name">Name</Label>
+                  <Input
+                    id="search-channel-name"
+                    placeholder="e.g. React tutorials"
+                    value={newSearchName}
+                    onChange={(e) => setNewSearchName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="search-keywords">Keywords</Label>
+                  <Input
+                    id="search-keywords"
+                    placeholder="e.g. react hooks tutorial"
+                    value={newSearchKeywords}
+                    onChange={(e) => setNewSearchKeywords(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="search-order">Sort results by</Label>
+                  <Select
+                    value={newSearchOrder}
+                    onValueChange={(v) => setNewSearchOrder(v as YouTubeSearchOrder)}
                   >
-                    <Switch
-                      checked={channel.enabled}
-                      onCheckedChange={() => handleToggle(channel.id)}
-                      aria-label={`Toggle ${channel.name}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{channel.name}</p>
-                      <button
-                        onClick={() => handleOpenChannel(channel)}
-                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
-                      >
-                        {channel.url}
-                      </button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTarget({ kind: "channel", item: channel })}
-                      aria-label={`Remove ${channel.name}`}
+                    <SelectTrigger id="search-order">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relevance">Most relevant</SelectItem>
+                      <SelectItem value="date">Most recent upload</SelectItem>
+                      <SelectItem value="viewCount">Most popular</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleAddSearch}
+                  disabled={!newSearchName.trim() || !newSearchKeywords.trim()}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add search channel
+                </Button>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        {/* Side-by-side lists */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Channel list */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Youtube className="w-4 h-4 text-red-500" />
+                Channels to watch
+                {channels.length > 0 && (
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    {channels.filter((c) => c.enabled).length} / {channels.length} enabled
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {channels.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No channels added yet. Add one above.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {channels.map((channel) => (
+                    <li
+                      key={channel.id}
+                      className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Add search channel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              Add a search channel
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="search-channel-name">Name</Label>
-              <Input
-                id="search-channel-name"
-                placeholder="e.g. React tutorials"
-                value={newSearchName}
-                onChange={(e) => setNewSearchName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="search-keywords">Keywords</Label>
-              <Input
-                id="search-keywords"
-                placeholder="e.g. react hooks tutorial"
-                value={newSearchKeywords}
-                onChange={(e) => setNewSearchKeywords(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="search-order">Sort results by</Label>
-              <Select
-                value={newSearchOrder}
-                onValueChange={(v) => setNewSearchOrder(v as YouTubeSearchOrder)}
-              >
-                <SelectTrigger id="search-order">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="relevance">Most relevant</SelectItem>
-                  <SelectItem value="date">Most recent upload</SelectItem>
-                  <SelectItem value="viewCount">Most popular</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={handleAddSearch}
-              disabled={!newSearchName.trim() || !newSearchKeywords.trim()}
-            >
-              <Plus className="w-4 h-4" />
-              Add search channel
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Search channel list */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              Search channels
-              {searchChannels.length > 0 && (
-                <span className="ml-auto text-xs font-normal text-muted-foreground">
-                  {searchChannels.filter((c) => c.enabled).length} / {searchChannels.length} enabled
-                </span>
+                      <Switch
+                        checked={channel.enabled}
+                        onCheckedChange={() => handleToggle(channel.id)}
+                        aria-label={`Toggle ${channel.name}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{channel.name}</p>
+                        <button
+                          onClick={() => handleOpenChannel(channel)}
+                          className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
+                        >
+                          {channel.url}
+                        </button>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteTarget({ kind: "channel", item: channel })}
+                        aria-label={`Remove ${channel.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {searchChannels.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No search channels added yet. Add one above.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {searchChannels.map((channel) => (
-                  <li
-                    key={channel.id}
-                    className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
-                  >
-                    <Switch
-                      checked={channel.enabled}
-                      onCheckedChange={() => handleToggleSearch(channel.id)}
-                      aria-label={`Toggle ${channel.name}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{channel.name}</p>
-                      <button
-                        onClick={() => handleOpenSearch(channel)}
-                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
+            </CardContent>
+          </Card>
+
+          {/* Search channel list */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Search channels
+                {searchChannels.length > 0 && (
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    {searchChannels.filter((c) => c.enabled).length} / {searchChannels.length} enabled
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {searchChannels.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No search channels added yet. Add one above.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {searchChannels.map((channel) => (
+                    <li
+                      key={channel.id}
+                      className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
+                    >
+                      <Switch
+                        checked={channel.enabled}
+                        onCheckedChange={() => handleToggleSearch(channel.id)}
+                        aria-label={`Toggle ${channel.name}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{channel.name}</p>
+                        <button
+                          onClick={() => handleOpenSearch(channel)}
+                          className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
+                        >
+                          {channel.keywords}
+                        </button>
+                      </div>
+                      <Select
+                        value={channel.searchOrder}
+                        onValueChange={(v) =>
+                          handleSearchOrderChange(channel.id, v as YouTubeSearchOrder)
+                        }
                       >
-                        {channel.keywords}
-                      </button>
-                    </div>
-                    <Select
-                      value={channel.searchOrder}
-                      onValueChange={(v) =>
-                        handleSearchOrderChange(channel.id, v as YouTubeSearchOrder)
-                      }
-                    >
-                      <SelectTrigger className="w-44 h-8 text-xs shrink-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="relevance">Most relevant</SelectItem>
-                        <SelectItem value="date">Most recent upload</SelectItem>
-                        <SelectItem value="viewCount">Most popular</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTarget({ kind: "search", item: channel })}
-                      aria-label={`Remove ${channel.name}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                        <SelectTrigger className="w-40 h-8 text-xs shrink-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="relevance">Most relevant</SelectItem>
+                          <SelectItem value="date">Most recent upload</SelectItem>
+                          <SelectItem value="viewCount">Most popular</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteTarget({ kind: "search", item: channel })}
+                        aria-label={`Remove ${channel.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
