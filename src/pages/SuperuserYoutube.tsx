@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   type YouTubeChannel,
+  type YouTubeVideoSelection,
+  DEFAULT_VIDEO_SELECTION,
   getYouTubeChannels,
   addYouTubeChannel,
   removeYouTubeChannel,
   toggleYouTubeChannel,
+  setYouTubeChannelVideoSelection,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SuperuserYoutube() {
   const { user } = useAuth();
@@ -35,6 +45,7 @@ export default function SuperuserYoutube() {
   const [channels, setChannels] = useState<YouTubeChannel[]>([]);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [newVideoSelection, setNewVideoSelection] = useState<YouTubeVideoSelection>(DEFAULT_VIDEO_SELECTION);
   const [deleteTarget, setDeleteTarget] = useState<YouTubeChannel | null>(null);
 
   // Close on Escape
@@ -83,15 +94,21 @@ export default function SuperuserYoutube() {
       toast({ title: "Channel URL is required", variant: "destructive" });
       return;
     }
-    addYouTubeChannel(name, url);
+    addYouTubeChannel(name, url, newVideoSelection);
     setChannels(getYouTubeChannels());
     setNewName("");
     setNewUrl("");
+    setNewVideoSelection(DEFAULT_VIDEO_SELECTION);
     toast({ title: `Added channel: ${name}` });
   };
 
   const handleToggle = (id: string) => {
     toggleYouTubeChannel(id);
+    setChannels(getYouTubeChannels());
+  };
+
+  const handleVideoSelectionChange = (id: string, value: YouTubeVideoSelection) => {
+    setYouTubeChannelVideoSelection(id, value);
     setChannels(getYouTubeChannels());
   };
 
@@ -155,6 +172,22 @@ export default function SuperuserYoutube() {
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="channel-video-selection">Auto-select video</Label>
+              <Select
+                value={newVideoSelection}
+                onValueChange={(v) => setNewVideoSelection(v as YouTubeVideoSelection)}
+              >
+                <SelectTrigger id="channel-video-selection">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="latest">Latest</SelectItem>
+                  <SelectItem value="oldest">Oldest</SelectItem>
+                  <SelectItem value="popular">Most popular</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleAdd} className="w-full gap-2">
               <Plus className="w-4 h-4" />
               Add channel
@@ -203,6 +236,19 @@ export default function SuperuserYoutube() {
                         {channel.url}
                       </a>
                     </div>
+                    <Select
+                      value={channel.videoSelection ?? DEFAULT_VIDEO_SELECTION}
+                      onValueChange={(v) => handleVideoSelectionChange(channel.id, v as YouTubeVideoSelection)}
+                    >
+                      <SelectTrigger className="w-36 h-8 text-xs shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">Latest</SelectItem>
+                        <SelectItem value="oldest">Oldest</SelectItem>
+                        <SelectItem value="popular">Most popular</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="ghost"
                       size="icon"
