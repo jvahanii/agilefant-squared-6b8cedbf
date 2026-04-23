@@ -156,13 +156,18 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
     onOpenChange(false);
   };
 
+  const handleDialogOpenChange = (v: boolean) => {
+    if (!v) setPendingCrossTree(null);
+    onOpenChange(v);
+  };
+
   const movingTitle =
     workItemIds.length === 1
       ? (workItems[workItemIds[0]]?.title ?? "item")
       : `${workItemIds.length} items`;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) setPendingCrossTree(null); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
         {pendingCrossTree ? (
           /* ── Cross-tree choice view ── */

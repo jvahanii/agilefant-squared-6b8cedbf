@@ -1081,7 +1081,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             const sibRank = sibling.ranks[cleanBlId] ?? 0;
             if (sibRank <= prevEffective) {
               const newRank = prevEffective + 1;
-              updatedItems[id] = { ...updatedItems[id], ranks: { [cleanBlId]: newRank } };
+              updatedItems[id] = { ...updatedItems[id], ranks: { ...updatedItems[id].ranks, [cleanBlId]: newRank } };
               prevEffective = newRank;
             } else {
               prevEffective = sibRank;
