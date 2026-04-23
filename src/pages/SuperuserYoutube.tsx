@@ -11,6 +11,8 @@ import {
   removeYouTubeChannel,
   toggleYouTubeChannel,
   setYouTubeChannelVideoSelection,
+  getChannelVideoUrl,
+  fetchLatestVideoUrl,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,7 @@ export default function SuperuserYoutube() {
   const [newUrl, setNewUrl] = useState("");
   const [newVideoSelection, setNewVideoSelection] = useState<YouTubeVideoSelection>(DEFAULT_VIDEO_SELECTION);
   const [deleteTarget, setDeleteTarget] = useState<YouTubeChannel | null>(null);
+  const [loadingLatest, setLoadingLatest] = useState<Set<string>>(new Set());
 
   // Close on Escape
   useEffect(() => {
@@ -120,6 +123,23 @@ export default function SuperuserYoutube() {
     setDeleteTarget(null);
   };
 
+  const handleOpenLatestVideo = async (channel: YouTubeChannel) => {
+    setLoadingLatest((prev) => new Set(prev).add(channel.id));
+    try {
+      const videoUrl = await fetchLatestVideoUrl(channel);
+      if (!videoUrl) {
+        toast({ title: "Could not resolve latest video – opening videos page instead", variant: "destructive" });
+      }
+      window.open(videoUrl ?? getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
+    } finally {
+      setLoadingLatest((prev) => {
+        const next = new Set(prev);
+        next.delete(channel.id);
+        return next;
+      });
+    }
+  };
+
   if (isSuperuser === null) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -185,10 +205,8 @@ export default function SuperuserYoutube() {
                   <SelectItem value="latest">Latest</SelectItem>
                   <SelectItem value="oldest">Oldest</SelectItem>
                   <SelectItem value="popular">Most popular</SelectItem>
+                  <SelectItem value="latest-video">Latest upload (direct)</SelectItem>
                 </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleAdd} className="w-full gap-2">
               <Plus className="w-4 h-4" />
               Add channel
             </Button>
@@ -227,14 +245,24 @@ export default function SuperuserYoutube() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
-                      <a
-                        href={/^https?:\/\//i.test(channel.url) ? channel.url : `https://${channel.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-muted-foreground hover:text-primary truncate block"
-                      >
-                        {channel.url}
-                      </a>
+                      {channel.videoSelection === "latest-video" ? (
+                        <button
+                          onClick={() => handleOpenLatestVideo(channel)}
+                          disabled={loadingLatest.has(channel.id)}
+                          className="text-xs text-muted-foreground hover:text-primary truncate block text-left disabled:opacity-50"
+                        >
+                          {loadingLatest.has(channel.id) ? "Loading…" : channel.url}
+                        </button>
+                      ) : (
+                        <a
+                          href={getChannelVideoUrl(channel)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground hover:text-primary truncate block"
+                        >
+                          {channel.url}
+                        </a>
+                      )}
                     </div>
                     <Select
                       value={channel.videoSelection ?? DEFAULT_VIDEO_SELECTION}
@@ -247,6 +275,7 @@ export default function SuperuserYoutube() {
                         <SelectItem value="latest">Latest</SelectItem>
                         <SelectItem value="oldest">Oldest</SelectItem>
                         <SelectItem value="popular">Most popular</SelectItem>
+                        <SelectItem value="latest-video">Latest upload (direct)</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
