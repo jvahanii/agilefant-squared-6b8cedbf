@@ -207,6 +207,9 @@ export default function SuperuserYoutube() {
                   <SelectItem value="popular">Most popular</SelectItem>
                   <SelectItem value="latest-video">Latest upload (direct)</SelectItem>
                 </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleAdd} disabled={!newName.trim() || !newUrl.trim()}>
               <Plus className="w-4 h-4" />
               Add channel
             </Button>
