@@ -8,6 +8,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 
 import { createContext, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
+import { MoveToParentDialog } from "./MoveToParentDialog";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
@@ -271,6 +272,7 @@ function WorkItemNodeContent({
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
+  const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
 
   // Snooze store
   const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
@@ -308,6 +310,11 @@ function WorkItemNodeContent({
   const handleLogTime = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
     setShowTimeLogDialog(true);
+  }, [workItemId]);
+
+  const handleMoveToParent = useCallback(() => {
+    if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
+    setShowMoveToParentDialog(true);
   }, [workItemId]);
 
   const {
@@ -372,14 +379,16 @@ function WorkItemNodeContent({
     window.addEventListener("shortcut:delete-selected", handleDelete);
     window.addEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     window.addEventListener("shortcut:log-time", handleLogTime);
+    window.addEventListener("shortcut:move-to-parent", handleMoveToParent);
     return () => {
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
       window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
       window.removeEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
       window.removeEventListener("shortcut:log-time", handleLogTime);
+      window.removeEventListener("shortcut:move-to-parent", handleMoveToParent);
     };
-  }, [expanded, handleDeleteClick, handleEditHyperlinks, handleLogTime, isSelected, toggleExpand, workItemId]);
+  }, [expanded, handleDeleteClick, handleEditHyperlinks, handleLogTime, handleMoveToParent, isSelected, toggleExpand, workItemId]);
 
   // On mount, if this is the first selected item, scroll it into view so
   // the previously-selected item is visible after restore (especially on mobile
@@ -942,6 +951,12 @@ function WorkItemNodeContent({
           >
             Add child item
           </ContextMenuItem>
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => setShowMoveToParentDialog(true)}
+          >
+            Move under parent…
+          </ContextMenuItem>
           <ContextMenuSeparator />
           {labelsVisible && orgLabels.length > 0 && (
             <ContextMenuSub>
@@ -1159,6 +1174,11 @@ function WorkItemNodeContent({
         onOpenRespawn={() => setShowRespawnDialog(true)}
         onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
         onOpenSnooze={() => setShowSnoozeDialog(true)}
+      />
+      <MoveToParentDialog
+        workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
+        open={showMoveToParentDialog}
+        onOpenChange={setShowMoveToParentDialog}
       />
     </>
   );

@@ -267,6 +267,13 @@ function AppLayoutInner() {
           }
           break;
         }
+        case "m": {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("shortcut:move-to-parent"));
+          }
+          break;
+        }
         case "enter": {
           if (e.shiftKey) {
             e.preventDefault();
@@ -1311,6 +1318,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["N"], description: "Set status: Not Started" },
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
     { keys: ["L"], description: "Log spent time" },
+    { keys: ["M"], description: "Move under parent…" },
   ];
 
   return (
