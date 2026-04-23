@@ -403,7 +403,7 @@ export default function SuperuserYoutube() {
                           handleSearchOrderChange(channel.id, v as YouTubeSearchOrder)
                         }
                       >
-                        <SelectTrigger className="w-40 h-8 text-xs shrink-0">
+                        <SelectTrigger className="w-44 h-8 text-xs shrink-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
