@@ -16,6 +16,7 @@ const TeamSettings = lazy(() => import("./pages/TeamSettings"));
 const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
+const SuperuserYoutube = lazy(() => import("./pages/SuperuserYoutube"));
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ function AppRoutes() {
         <Route path="/" element={<Index />} />
         <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/manager" element={<ManagerScreen />} />
+        <Route path="/superuser/youtube" element={<SuperuserYoutube />} />
         <Route path="/user-guide" element={<UserGuide />} />
         <Route path="/auth" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />

@@ -11,6 +11,7 @@ import {
   rectIntersection,
 } from "@dnd-kit/core";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
 import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
@@ -45,6 +46,7 @@ import {
   Eye,
   EyeOff,
   ClipboardList,
+  Youtube,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
@@ -1000,6 +1002,7 @@ function AppLayoutInner() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { isSuperuser, scrambleEnabled, toggleScramble } = useScramble();
   const effectiveSuperuser = isSuperuser && !roleOverride;
+  const navigate = useNavigate();
 
   return (
     <DndContext
@@ -1067,6 +1070,18 @@ function AppLayoutInner() {
                     <FlaskConical className="w-3.5 h-3.5" />
                     <span className="hidden lg:inline">Run Tests</span>
                   </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                        onClick={() => navigate("/superuser/youtube")}
+                      >
+                        <Youtube className="w-3.5 h-3.5 text-red-500" />
+                        <span className="hidden lg:inline">YouTube</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>YouTube channels</TooltipContent>
+                  </Tooltip>
                 </>
               )}
               <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
@@ -1200,6 +1215,10 @@ function AppLayoutInner() {
                       <DropdownMenuItem onClick={handleRunTests}>
                         <FlaskConical className="w-4 h-4 mr-2" />
                         Run Tests
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/superuser/youtube")}>
+                        <Youtube className="w-4 h-4 mr-2 text-red-500" />
+                        YouTube channels
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={toggleScramble}>
