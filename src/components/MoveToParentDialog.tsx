@@ -142,7 +142,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
       }
     }
 
-    workItemIds.forEach((id) => reparentWorkItem(id, newParentId));
+    workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
     onOpenChange(false);
   };
 

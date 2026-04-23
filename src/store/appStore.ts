@@ -1110,22 +1110,100 @@ export const useAppStore = create<AppState>()((set, get) => {
           ranks: { ...item.ranks, [cleanBlId]: maxRank + 1 },
         };
       } else {
-        // Same-tree reparent: assign a rank that avoids conflicts with existing
-        // siblings in the new parent's context for every backlog the item belongs to.
-        const newRanks = { ...item.ranks };
-        for (const [tId, blId] of Object.entries(item.backlogAssignments)) {
+        const cleanBlId = treeId && backlogId ? ensureCleanId(backlogId, orgId) : null;
+        const currentBlId = treeId ? item.backlogAssignments[treeId] : null;
+        const isBacklogChange = cleanBlId && treeId && currentBlId && currentBlId !== cleanBlId;
+
+        if (isBacklogChange) {
+          // Same-tree reparent into a different backlog: migrate the item and all
+          // its descendants to the new backlog, replacing the old assignment for
+          // this tree (same logic as move-to-tree but scoped to one tree).
           let maxRank = -1;
           Object.values(state.workItems).forEach((wi) => {
             if (wi.id === workItemId) return;
             if (wi.parentId !== newParentId) return;
-            if (wi.backlogAssignments[tId] === blId) {
-              const wiRank = wi.ranks[blId] ?? 0;
+            if (wi.backlogAssignments[treeId] === cleanBlId) {
+              const wiRank = wi.ranks[cleanBlId] ?? 0;
               if (wiRank > maxRank) maxRank = wiRank;
             }
           });
-          newRanks[blId] = maxRank + 1;
+
+          const newRanks = { ...item.ranks };
+          delete newRanks[currentBlId];
+          newRanks[cleanBlId] = maxRank + 1;
+          updatedItems[workItemId] = {
+            ...item,
+            parentId: newParentId,
+            backlogAssignments: { ...item.backlogAssignments, [treeId]: cleanBlId },
+            ranks: newRanks,
+          };
+
+          // Recursively migrate all descendants to the new backlog.
+          const migrateDescendants = (id: string) => {
+            const wi = updatedItems[id];
+            if (!wi) return;
+            const oldBlId = wi.backlogAssignments[treeId];
+            const descRanks = { ...wi.ranks };
+            if (oldBlId && oldBlId !== cleanBlId) delete descRanks[oldBlId];
+            descRanks[cleanBlId] = descRanks[cleanBlId] ?? (wi.ranks[oldBlId ?? ""] ?? 0);
+            updatedItems[id] = {
+              ...wi,
+              backlogAssignments: { ...wi.backlogAssignments, [treeId]: cleanBlId },
+              ranks: descRanks,
+            };
+            changedDescendantIds.push(id);
+            wi.childrenIds.forEach(migrateDescendants);
+          };
+          item.childrenIds.forEach(migrateDescendants);
+
+          // Dedup ranks for siblings that were previously in different backlogs and
+          // are now merged into cleanBlId (same approach as moveWorkItemToBacklog).
+          const movedByParent = new Map<string | null, string[]>();
+          for (const id of changedDescendantIds) {
+            const wi = updatedItems[id];
+            if (!wi) continue;
+            const pid = wi.parentId ?? null;
+            if (!movedByParent.has(pid)) movedByParent.set(pid, []);
+            movedByParent.get(pid)!.push(id);
+          }
+          for (const ids of movedByParent.values()) {
+            if (ids.length < 2) continue;
+            const sorted = [...ids].sort(
+              (a, b) => (updatedItems[a]?.ranks[cleanBlId] ?? 0) - (updatedItems[b]?.ranks[cleanBlId] ?? 0),
+            );
+            let prevEffective = -Infinity;
+            for (const id of sorted) {
+              const sibling = updatedItems[id];
+              if (!sibling) continue;
+              const sibRank = sibling.ranks[cleanBlId] ?? 0;
+              if (sibRank <= prevEffective) {
+                const newRank = prevEffective + 1;
+                updatedItems[id] = { ...updatedItems[id], ranks: { ...updatedItems[id].ranks, [cleanBlId]: newRank } };
+                prevEffective = newRank;
+              } else {
+                prevEffective = sibRank;
+              }
+            }
+          }
+        } else {
+          // Same-tree, same-backlog reparent: assign a rank that avoids conflicts
+          // with existing siblings in the new parent's context for every backlog
+          // the item belongs to.
+          const newRanks = { ...item.ranks };
+          for (const [tId, blId] of Object.entries(item.backlogAssignments)) {
+            let maxRank = -1;
+            Object.values(state.workItems).forEach((wi) => {
+              if (wi.id === workItemId) return;
+              if (wi.parentId !== newParentId) return;
+              if (wi.backlogAssignments[tId] === blId) {
+                const wiRank = wi.ranks[blId] ?? 0;
+                if (wiRank > maxRank) maxRank = wiRank;
+              }
+            });
+            newRanks[blId] = maxRank + 1;
+          }
+          updatedItems[workItemId] = { ...item, parentId: newParentId, ranks: newRanks };
         }
-        updatedItems[workItemId] = { ...item, parentId: newParentId, ranks: newRanks };
       }
 
       const changed = [updatedItems[workItemId]];
