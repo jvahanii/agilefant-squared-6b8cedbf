@@ -409,6 +409,134 @@ describe("reparentWorkItem", () => {
     expect(child.ranks[`${ORG}::bl-1`]).toBeUndefined();
   });
 
+  it("same tree, different backlog: migrates item to the target backlog", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Item 1 (Backlog 1)", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+    useAppStore.getState().reparentWorkItem(
+      `${ORG}::wi-1`,
+      `${ORG}::wi-parent`,
+      `${ORG}::bt-1`,
+      `${ORG}::bl-2`,
+    );
+    const moved = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    // Item should now be assigned to the new backlog only (for this tree)
+    expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+    // Rank in old backlog should be removed, new backlog rank should be set
+    expect(moved.ranks[`${ORG}::bl-1`]).toBeUndefined();
+    expect(moved.ranks[`${ORG}::bl-2`]).toBeDefined();
+    expect(moved.parentId).toBe(`${ORG}::wi-parent`);
+  });
+
+  it("same tree, different backlog: migrates item and all descendants to the target backlog", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Item 1 (Backlog 1)", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-child`], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child (Backlog 1)", status: "not_started" as const,
+          parentId: `${ORG}::wi-1`, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+    useAppStore.getState().reparentWorkItem(
+      `${ORG}::wi-1`,
+      `${ORG}::wi-parent`,
+      `${ORG}::bt-1`,
+      `${ORG}::bl-2`,
+    );
+    const moved = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
+    // Both item and its child should now be in the new backlog
+    expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+    expect(moved.ranks[`${ORG}::bl-1`]).toBeUndefined();
+    expect(moved.ranks[`${ORG}::bl-2`]).toBeDefined();
+    expect(child.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+    expect(child.ranks[`${ORG}::bl-1`]).toBeUndefined();
+    expect(child.ranks[`${ORG}::bl-2`]).toBeDefined();
+  });
+
+  it("same tree, different backlog: preserves assignments in other trees when migrating", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-3`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-3`]: { id: `${ORG}::bl-3`, name: "Backlog 3", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Item 1 (multi-tree)", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-3` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-3`]: 0 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+    useAppStore.getState().reparentWorkItem(
+      `${ORG}::wi-1`,
+      `${ORG}::wi-parent`,
+      `${ORG}::bt-1`,
+      `${ORG}::bl-2`,
+    );
+    const moved = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    // Tree 1 backlog should switch from bl-1 to bl-2
+    expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+    expect(moved.ranks[`${ORG}::bl-1`]).toBeUndefined();
+    expect(moved.ranks[`${ORG}::bl-2`]).toBeDefined();
+    // Tree 2 assignment should be unchanged
+    expect(moved.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-3`);
+    expect(moved.ranks[`${ORG}::bl-3`]).toBe(0);
+  });
+
   it("strategy=mirror: adds new tree assignment while keeping original", () => {
     useAppStore.setState({
       organizationId: ORG,
