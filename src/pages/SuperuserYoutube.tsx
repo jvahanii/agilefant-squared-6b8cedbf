@@ -4,23 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   type YouTubeChannel,
-  type YouTubeVideoSelection,
-  DEFAULT_VIDEO_SELECTION,
+  type YouTubeSearchChannel,
+  type YouTubeSearchOrder,
+  DEFAULT_SEARCH_ORDER,
   getYouTubeChannels,
   addYouTubeChannel,
   removeYouTubeChannel,
   toggleYouTubeChannel,
-  setYouTubeChannelVideoSelection,
   getChannelVideoUrl,
-  fetchLatestVideoUrl,
-  getYouTubeApiKey,
-  setYouTubeApiKey,
+  getYouTubeSearchChannels,
+  addYouTubeSearchChannel,
+  removeYouTubeSearchChannel,
+  toggleYouTubeSearchChannel,
+  setYouTubeSearchChannelOrder,
+  getSearchChannelUrl,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Trash2, Plus, Youtube } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Youtube, Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -41,6 +44,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type DeleteTarget =
+  | { kind: "channel"; item: YouTubeChannel }
+  | { kind: "search"; item: YouTubeSearchChannel };
+
 export default function SuperuserYoutube() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,11 +56,13 @@ export default function SuperuserYoutube() {
   const [channels, setChannels] = useState<YouTubeChannel[]>([]);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
-  const [newVideoSelection, setNewVideoSelection] = useState<YouTubeVideoSelection>(DEFAULT_VIDEO_SELECTION);
-  const [deleteTarget, setDeleteTarget] = useState<YouTubeChannel | null>(null);
-  const [loadingLatest, setLoadingLatest] = useState<Set<string>>(new Set());
-  const [apiKey, setApiKeyState] = useState("");
-  const [apiKeySaved, setApiKeySaved] = useState(false);
+
+  const [searchChannels, setSearchChannels] = useState<YouTubeSearchChannel[]>([]);
+  const [newSearchName, setNewSearchName] = useState("");
+  const [newSearchKeywords, setNewSearchKeywords] = useState("");
+  const [newSearchOrder, setNewSearchOrder] = useState<YouTubeSearchOrder>(DEFAULT_SEARCH_ORDER);
+
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   // Close on Escape
   useEffect(() => {
@@ -84,19 +93,14 @@ export default function SuperuserYoutube() {
       });
   }, [user?.id, navigate]);
 
-  // Load channels once superuser confirmed
+  // Load data once superuser confirmed
   useEffect(() => {
     if (!isSuperuser) return;
     setChannels(getYouTubeChannels());
-    setApiKeyState(getYouTubeApiKey());
+    setSearchChannels(getYouTubeSearchChannels());
   }, [isSuperuser]);
 
-  const handleSaveApiKey = () => {
-    setYouTubeApiKey(apiKey);
-    setApiKeySaved(true);
-    setTimeout(() => setApiKeySaved(false), 2000);
-    toast({ title: apiKey.trim() ? "YouTube API key saved" : "YouTube API key cleared" });
-  };
+  // --- Regular channels ---
 
   const handleAdd = () => {
     const name = newName.trim();
@@ -109,11 +113,10 @@ export default function SuperuserYoutube() {
       toast({ title: "Channel URL is required", variant: "destructive" });
       return;
     }
-    addYouTubeChannel(name, url, newVideoSelection);
+    addYouTubeChannel(name, url);
     setChannels(getYouTubeChannels());
     setNewName("");
     setNewUrl("");
-    setNewVideoSelection(DEFAULT_VIDEO_SELECTION);
     toast({ title: `Added channel: ${name}` });
   };
 
@@ -122,55 +125,59 @@ export default function SuperuserYoutube() {
     setChannels(getYouTubeChannels());
   };
 
-  const handleVideoSelectionChange = (id: string, value: YouTubeVideoSelection) => {
-    setYouTubeChannelVideoSelection(id, value);
-    setChannels(getYouTubeChannels());
+  const handleOpenChannel = (channel: YouTubeChannel) => {
+    window.open(getChannelVideoUrl(channel), "_blank", "noopener,noreferrer");
   };
+
+  // --- Search channels ---
+
+  const handleAddSearch = () => {
+    const name = newSearchName.trim();
+    const keywords = newSearchKeywords.trim();
+    if (!name) {
+      toast({ title: "Search channel name is required", variant: "destructive" });
+      return;
+    }
+    if (!keywords) {
+      toast({ title: "Keywords are required", variant: "destructive" });
+      return;
+    }
+    addYouTubeSearchChannel(name, keywords, newSearchOrder);
+    setSearchChannels(getYouTubeSearchChannels());
+    setNewSearchName("");
+    setNewSearchKeywords("");
+    setNewSearchOrder(DEFAULT_SEARCH_ORDER);
+    toast({ title: `Added search channel: ${name}` });
+  };
+
+  const handleToggleSearch = (id: string) => {
+    toggleYouTubeSearchChannel(id);
+    setSearchChannels(getYouTubeSearchChannels());
+  };
+
+  const handleSearchOrderChange = (id: string, value: YouTubeSearchOrder) => {
+    setYouTubeSearchChannelOrder(id, value);
+    setSearchChannels(getYouTubeSearchChannels());
+  };
+
+  const handleOpenSearch = (channel: YouTubeSearchChannel) => {
+    window.open(getSearchChannelUrl(channel), "_blank", "noopener,noreferrer");
+  };
+
+  // --- Delete ---
 
   const handleDeleteConfirm = () => {
     if (!deleteTarget) return;
-    removeYouTubeChannel(deleteTarget.id);
-    setChannels(getYouTubeChannels());
-    toast({ title: `Removed channel: ${deleteTarget.name}` });
+    if (deleteTarget.kind === "channel") {
+      removeYouTubeChannel(deleteTarget.item.id);
+      setChannels(getYouTubeChannels());
+      toast({ title: `Removed channel: ${deleteTarget.item.name}` });
+    } else {
+      removeYouTubeSearchChannel(deleteTarget.item.id);
+      setSearchChannels(getYouTubeSearchChannels());
+      toast({ title: `Removed search channel: ${deleteTarget.item.name}` });
+    }
     setDeleteTarget(null);
-  };
-
-  const handleOpenLatestVideo = async (channel: YouTubeChannel) => {
-    const selection = channel.videoSelection ?? DEFAULT_VIDEO_SELECTION;
-    const fallbackUrl = getChannelVideoUrl(channel);
-
-    if (!getYouTubeApiKey()) {
-      if (selection !== "latest") {
-        toast({
-          title: "YouTube API key required",
-          description: "Configure a YouTube Data API key above to use Oldest and Most popular selections.",
-          variant: "destructive",
-        });
-      }
-      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    // Open the tab synchronously within the user-gesture so browsers don't
-    // block it as a popup.  Start at the fallback /videos page; once the API
-    // resolves we redirect the already-open tab to the specific video.
-    const win = window.open(fallbackUrl, "_blank");
-
-    setLoadingLatest((prev) => new Set(prev).add(channel.id));
-    try {
-      const videoUrl = await fetchLatestVideoUrl(channel);
-      if (!videoUrl) {
-        toast({ title: "Could not resolve video – opening videos page instead", variant: "destructive" });
-      } else if (win && !win.closed) {
-        win.location.href = videoUrl;
-      }
-    } finally {
-      setLoadingLatest((prev) => {
-        const next = new Set(prev);
-        next.delete(channel.id);
-        return next;
-      });
-    }
   };
 
   if (isSuperuser === null) {
@@ -196,45 +203,6 @@ export default function SuperuserYoutube() {
       </header>
 
       <div className="max-w-2xl mx-auto p-6 space-y-6">
-        {/* YouTube API key */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Youtube className="w-4 h-4 text-red-500" />
-              YouTube Data API key
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Required for the <strong>Oldest</strong> and{" "}
-              <strong>Most popular</strong> video selection modes. Create a key in the{" "}
-              <a
-                href="https://console.cloud.google.com/apis/credentials"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-primary"
-              >
-                Google Cloud Console
-              </a>{" "}
-              with the YouTube Data API v3 enabled.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                id="yt-api-key"
-                type="password"
-                placeholder="AIza…"
-                value={apiKey}
-                onChange={(e) => { setApiKeyState(e.target.value); setApiKeySaved(false); }}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveApiKey()}
-                className="font-mono text-xs"
-              />
-              <Button variant="secondary" onClick={handleSaveApiKey} className="shrink-0">
-                {apiKeySaved ? "Saved ✓" : "Save"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Add channel */}
         <Card>
           <CardHeader>
@@ -263,22 +231,6 @@ export default function SuperuserYoutube() {
                 onChange={(e) => setNewUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="channel-video-selection">Auto-select video</Label>
-              <Select
-                value={newVideoSelection}
-                onValueChange={(v) => setNewVideoSelection(v as YouTubeVideoSelection)}
-              >
-                <SelectTrigger id="channel-video-selection">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="latest">Latest</SelectItem>
-                  <SelectItem value="oldest">Oldest</SelectItem>
-                  <SelectItem value="popular">Most popular</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <Button onClick={handleAdd} disabled={!newName.trim() || !newUrl.trim()}>
               <Plus className="w-4 h-4" />
@@ -320,31 +272,142 @@ export default function SuperuserYoutube() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{channel.name}</p>
                       <button
-                        onClick={() => handleOpenLatestVideo(channel)}
-                        disabled={loadingLatest.has(channel.id)}
-                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left disabled:opacity-50"
+                        onClick={() => handleOpenChannel(channel)}
+                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
                       >
-                        {loadingLatest.has(channel.id) ? "Loading…" : channel.url}
+                        {channel.url}
+                      </button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget({ kind: "channel", item: channel })}
+                      aria-label={`Remove ${channel.name}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Add search channel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Search className="w-4 h-4" />
+              Add a search channel
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="search-channel-name">Name</Label>
+              <Input
+                id="search-channel-name"
+                placeholder="e.g. React tutorials"
+                value={newSearchName}
+                onChange={(e) => setNewSearchName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="search-keywords">Keywords</Label>
+              <Input
+                id="search-keywords"
+                placeholder="e.g. react hooks tutorial"
+                value={newSearchKeywords}
+                onChange={(e) => setNewSearchKeywords(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="search-order">Sort results by</Label>
+              <Select
+                value={newSearchOrder}
+                onValueChange={(v) => setNewSearchOrder(v as YouTubeSearchOrder)}
+              >
+                <SelectTrigger id="search-order">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="relevance">Most relevant</SelectItem>
+                  <SelectItem value="date">Most recent upload</SelectItem>
+                  <SelectItem value="viewCount">Most popular</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleAddSearch}
+              disabled={!newSearchName.trim() || !newSearchKeywords.trim()}
+            >
+              <Plus className="w-4 h-4" />
+              Add search channel
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Search channel list */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Search className="w-4 h-4" />
+              Search channels
+              {searchChannels.length > 0 && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {searchChannels.filter((c) => c.enabled).length} / {searchChannels.length} enabled
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {searchChannels.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No search channels added yet. Add one above.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {searchChannels.map((channel) => (
+                  <li
+                    key={channel.id}
+                    className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
+                  >
+                    <Switch
+                      checked={channel.enabled}
+                      onCheckedChange={() => handleToggleSearch(channel.id)}
+                      aria-label={`Toggle ${channel.name}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{channel.name}</p>
+                      <button
+                        onClick={() => handleOpenSearch(channel)}
+                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
+                      >
+                        {channel.keywords}
                       </button>
                     </div>
                     <Select
-                      value={channel.videoSelection ?? DEFAULT_VIDEO_SELECTION}
-                      onValueChange={(v) => handleVideoSelectionChange(channel.id, v as YouTubeVideoSelection)}
+                      value={channel.searchOrder}
+                      onValueChange={(v) =>
+                        handleSearchOrderChange(channel.id, v as YouTubeSearchOrder)
+                      }
                     >
-                      <SelectTrigger className="w-36 h-8 text-xs shrink-0">
+                      <SelectTrigger className="w-44 h-8 text-xs shrink-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="latest">Latest</SelectItem>
-                        <SelectItem value="oldest">Oldest</SelectItem>
-                        <SelectItem value="popular">Most popular</SelectItem>
+                        <SelectItem value="relevance">Most relevant</SelectItem>
+                        <SelectItem value="date">Most recent upload</SelectItem>
+                        <SelectItem value="viewCount">Most popular</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTarget(channel)}
+                      onClick={() => setDeleteTarget({ kind: "search", item: channel })}
                       aria-label={`Remove ${channel.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -360,9 +423,11 @@ export default function SuperuserYoutube() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove channel?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Remove {deleteTarget?.kind === "search" ? "search channel" : "channel"}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              "{deleteTarget?.name}" will be removed from your watchlist. This cannot be undone.
+              "{deleteTarget?.item.name}" will be removed. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
