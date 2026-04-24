@@ -67,6 +67,67 @@ export function getEnabledYouTubeChannels(): YouTubeChannel[] {
   return getChannels().filter((c) => c.enabled);
 }
 
+// ---------------------------------------------------------------------------
+// Video links
+// ---------------------------------------------------------------------------
+
+export interface YouTubeVideoLink {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+}
+
+const VIDEO_LINKS_KEY = "youtubeVideoLinks";
+
+function getVideoLinks(): YouTubeVideoLink[] {
+  try {
+    return JSON.parse(localStorage.getItem(VIDEO_LINKS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveVideoLinks(links: YouTubeVideoLink[]) {
+  localStorage.setItem(VIDEO_LINKS_KEY, JSON.stringify(links));
+}
+
+export function getYouTubeVideoLinks(): YouTubeVideoLink[] {
+  return getVideoLinks();
+}
+
+export function addYouTubeVideoLink(name: string, url: string): YouTubeVideoLink {
+  const links = getVideoLinks();
+  const id =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const link: YouTubeVideoLink = { id, name, url, enabled: true };
+  saveVideoLinks([...links, link]);
+  return link;
+}
+
+export function removeYouTubeVideoLink(id: string) {
+  saveVideoLinks(getVideoLinks().filter((l) => l.id !== id));
+}
+
+export function toggleYouTubeVideoLink(id: string) {
+  saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, enabled: !l.enabled } : l)));
+}
+
+export function getEnabledYouTubeVideoLinks(): YouTubeVideoLink[] {
+  return getVideoLinks().filter((l) => l.enabled);
+}
+
+/**
+ * Returns the raw URL for a video link, normalising missing protocol.
+ */
+export function getVideoLinkUrl(link: YouTubeVideoLink): string {
+  return /^https?:\/\//i.test(link.url) ? link.url : `https://${link.url}`;
+}
+
+// ---------------------------------------------------------------------------
+
 /**
  * Returns the channel's /videos page URL.
  * If the stored URL is already a direct video URL it is returned unchanged.

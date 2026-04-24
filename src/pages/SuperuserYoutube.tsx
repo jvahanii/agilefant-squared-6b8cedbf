@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   type YouTubeChannel,
   type YouTubeSearchChannel,
+  type YouTubeVideoLink,
   type YouTubeSearchOrder,
   DEFAULT_SEARCH_ORDER,
   getYouTubeChannels,
@@ -18,13 +19,18 @@ import {
   toggleYouTubeSearchChannel,
   setYouTubeSearchChannelOrder,
   getSearchChannelUrl,
+  getYouTubeVideoLinks,
+  addYouTubeVideoLink,
+  removeYouTubeVideoLink,
+  toggleYouTubeVideoLink,
+  getVideoLinkUrl,
 } from "@/hooks/useYouTubeChannels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Trash2, Plus, Youtube, Search } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Youtube, Search, Link } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -47,7 +53,8 @@ import {
 
 type DeleteTarget =
   | { kind: "channel"; item: YouTubeChannel }
-  | { kind: "search"; item: YouTubeSearchChannel };
+  | { kind: "search"; item: YouTubeSearchChannel }
+  | { kind: "video"; item: YouTubeVideoLink };
 
 export default function SuperuserYoutube() {
   const { user } = useAuth();
@@ -62,6 +69,10 @@ export default function SuperuserYoutube() {
   const [newSearchName, setNewSearchName] = useState("");
   const [newSearchKeywords, setNewSearchKeywords] = useState("");
   const [newSearchOrder, setNewSearchOrder] = useState<YouTubeSearchOrder>(DEFAULT_SEARCH_ORDER);
+
+  const [videoLinks, setVideoLinks] = useState<YouTubeVideoLink[]>([]);
+  const [newVideoName, setNewVideoName] = useState("");
+  const [newVideoUrl, setNewVideoUrl] = useState("");
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
@@ -99,6 +110,7 @@ export default function SuperuserYoutube() {
     if (!isSuperuser) return;
     setChannels(getYouTubeChannels());
     setSearchChannels(getYouTubeSearchChannels());
+    setVideoLinks(getYouTubeVideoLinks());
   }, [isSuperuser]);
 
   // --- Regular channels ---
@@ -165,6 +177,35 @@ export default function SuperuserYoutube() {
     window.open(getSearchChannelUrl(channel), "_blank", "noopener,noreferrer");
   };
 
+  // --- Video links ---
+
+  const handleAddVideo = () => {
+    const name = newVideoName.trim();
+    const url = newVideoUrl.trim();
+    if (!name) {
+      toast({ title: "Video name is required", variant: "destructive" });
+      return;
+    }
+    if (!url) {
+      toast({ title: "Video URL is required", variant: "destructive" });
+      return;
+    }
+    addYouTubeVideoLink(name, url);
+    setVideoLinks(getYouTubeVideoLinks());
+    setNewVideoName("");
+    setNewVideoUrl("");
+    toast({ title: `Added video link: ${name}` });
+  };
+
+  const handleToggleVideo = (id: string) => {
+    toggleYouTubeVideoLink(id);
+    setVideoLinks(getYouTubeVideoLinks());
+  };
+
+  const handleOpenVideo = (link: YouTubeVideoLink) => {
+    window.open(getVideoLinkUrl(link), "_blank", "noopener,noreferrer");
+  };
+
   // --- Delete ---
 
   const handleDeleteConfirm = () => {
@@ -173,10 +214,14 @@ export default function SuperuserYoutube() {
       removeYouTubeChannel(deleteTarget.item.id);
       setChannels(getYouTubeChannels());
       toast({ title: `Removed channel: ${deleteTarget.item.name}` });
-    } else {
+    } else if (deleteTarget.kind === "search") {
       removeYouTubeSearchChannel(deleteTarget.item.id);
       setSearchChannels(getYouTubeSearchChannels());
       toast({ title: `Removed search channel: ${deleteTarget.item.name}` });
+    } else {
+      removeYouTubeVideoLink(deleteTarget.item.id);
+      setVideoLinks(getYouTubeVideoLinks());
+      toast({ title: `Removed video link: ${deleteTarget.item.name}` });
     }
     setDeleteTarget(null);
   };
@@ -222,6 +267,10 @@ export default function SuperuserYoutube() {
                 <TabsTrigger value="search" className="gap-1.5">
                   <Search className="w-3.5 h-3.5" />
                   Search by keywords
+                </TabsTrigger>
+                <TabsTrigger value="video" className="gap-1.5">
+                  <Link className="w-3.5 h-3.5" />
+                  Video link
                 </TabsTrigger>
               </TabsList>
 
@@ -295,6 +344,33 @@ export default function SuperuserYoutube() {
                 >
                   <Plus className="w-4 h-4" />
                   Add search channel
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="video" className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="video-name">Video name</Label>
+                  <Input
+                    id="video-name"
+                    placeholder="e.g. Intro to React"
+                    value={newVideoName}
+                    onChange={(e) => setNewVideoName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddVideo()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="video-url">Video URL</Label>
+                  <Input
+                    id="video-url"
+                    placeholder="e.g. https://www.youtube.com/watch?v=..."
+                    value={newVideoUrl}
+                    onChange={(e) => setNewVideoUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddVideo()}
+                  />
+                </div>
+                <Button onClick={handleAddVideo} disabled={!newVideoName.trim() || !newVideoUrl.trim()}>
+                  <Plus className="w-4 h-4" />
+                  Add video link
                 </Button>
               </TabsContent>
             </Tabs>
@@ -428,13 +504,68 @@ export default function SuperuserYoutube() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Video links list */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Link className="w-4 h-4" />
+              Video links
+              {videoLinks.length > 0 && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {videoLinks.filter((l) => l.enabled).length} / {videoLinks.length} enabled
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {videoLinks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No video links added yet. Add one above.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {videoLinks.map((link) => (
+                  <li
+                    key={link.id}
+                    className="flex items-center gap-3 rounded-md border px-3 py-2.5 bg-background"
+                  >
+                    <Switch
+                      checked={link.enabled}
+                      onCheckedChange={() => handleToggleVideo(link.id)}
+                      aria-label={`Toggle ${link.name}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{link.name}</p>
+                      <button
+                        onClick={() => handleOpenVideo(link)}
+                        className="text-xs text-muted-foreground hover:text-primary truncate block text-left"
+                      >
+                        {link.url}
+                      </button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget({ kind: "video", item: link })}
+                      aria-label={`Remove ${link.name}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove {deleteTarget?.kind === "search" ? "search channel" : "channel"}?
+              Remove {deleteTarget?.kind === "search" ? "search channel" : deleteTarget?.kind === "video" ? "video link" : "channel"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               "{deleteTarget?.item.name}" will be removed. This cannot be undone.
