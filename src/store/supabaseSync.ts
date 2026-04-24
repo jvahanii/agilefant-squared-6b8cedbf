@@ -422,6 +422,29 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
   await upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
 }
 
+/** Delete stale per-backlog rank rows for a set of (workItemId, backlogId) pairs. */
+export async function deleteWorkItemBacklogRanks(
+  pairs: Array<{ workItemId: string; backlogId: string }>,
+): Promise<void> {
+  if (pairs.length === 0) return;
+  // Build an OR filter: each pair is (work_item_id = X AND backlog_id = Y).
+  // Supabase doesn't support tuple IN directly, so we group by work_item_id.
+  const byItem = new Map<string, string[]>();
+  for (const { workItemId, backlogId } of pairs) {
+    if (!byItem.has(workItemId)) byItem.set(workItemId, []);
+    byItem.get(workItemId)!.push(backlogId);
+  }
+  for (const [workItemId, backlogIds] of byItem) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
+      .from('work_item_backlog_ranks' as any)
+      .delete()
+      .eq('work_item_id', workItemId)
+      .in('backlog_id', backlogIds);
+    if (error) console.error('deleteWorkItemBacklogRanks:', error);
+  }
+}
+
 export async function deleteWorkItems(ids: string[]) {
   if (ids.length === 0) return;
   // Also delete any double-prefixed variants that may exist in the DB

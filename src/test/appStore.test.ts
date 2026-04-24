@@ -7,6 +7,7 @@ vi.mock("@/store/supabaseSync", () => ({
   upsertWorkItem: vi.fn(),
   upsertWorkItems: vi.fn(),
   deleteWorkItems: vi.fn(),
+  deleteWorkItemBacklogRanks: vi.fn(),
   upsertBacklog: vi.fn(),
   upsertBacklogs: vi.fn(),
   deleteBacklogs: vi.fn(),
@@ -647,6 +648,53 @@ describe("moveWorkItemToBacklog", () => {
     useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
     const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
     expect(child.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+  });
+
+  it("moves an item that also resides in a non-shared backlog (cross-org scenario)", () => {
+    // Simulates: item owned by partner-org appears in a shared tree (bt-1) and
+    // also has an assignment in a non-shared tree (bt-nonshared). The active user
+    // (ORG) should be able to move it between backlogs within bt-1 without the
+    // stale non-shared rank interfering.
+    const PARTNER = "partner-org";
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Shared Tree", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
+        [`${PARTNER}::bt-nonshared`]: { id: `${PARTNER}::bt-nonshared`, name: "Non-shared", rootBacklogIds: [`${PARTNER}::bl-own`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Shared BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Shared BL 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${PARTNER}::bl-own`]: { id: `${PARTNER}::bl-own`, name: "Non-shared BL", parentId: null, childrenIds: [], treeId: `${PARTNER}::bt-nonshared`, rank: 0 },
+      },
+      workItems: {
+        [`${PARTNER}::wi-cross`]: {
+          id: `${PARTNER}::wi-cross`, title: "Cross-org item", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          organizationId: PARTNER,
+          backlogAssignments: {
+            [`${ORG}::bt-1`]: `${ORG}::bl-1`,
+            [`${PARTNER}::bt-nonshared`]: `${PARTNER}::bl-own`,
+          },
+          ranks: { [`${ORG}::bl-1`]: 3, [`${PARTNER}::bl-own`]: 7 },
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().moveWorkItemToBacklog(`${PARTNER}::wi-cross`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+
+    const moved = useAppStore.getState().workItems[`${PARTNER}::wi-cross`];
+    // Assignment in the shared tree must point to the new backlog
+    expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
+    // Assignment in the non-shared tree must be unchanged
+    expect(moved.backlogAssignments[`${PARTNER}::bt-nonshared`]).toBe(`${PARTNER}::bl-own`);
+    // Rank for the new shared backlog must be defined
+    expect(moved.ranks[`${ORG}::bl-2`]).toBeDefined();
+    // Rank for the OLD shared backlog must be removed
+    expect(moved.ranks[`${ORG}::bl-1`]).toBeUndefined();
+    // Rank for the non-shared backlog must be preserved
+    expect(moved.ranks[`${PARTNER}::bl-own`]).toBe(7);
   });
 });
 
