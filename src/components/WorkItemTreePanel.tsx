@@ -430,8 +430,10 @@ function WorkItemNodeContent({
 
   const parentItemChain: { id: string; title: string }[] = [];
   if (depth === 0 && item.parentId) {
+    const visited = new Set<string>();
     let cur = workItems[item.parentId];
-    while (cur) {
+    while (cur && !visited.has(cur.id)) {
+      visited.add(cur.id);
       parentItemChain.unshift({ id: cur.id, title: cur.title });
       cur = cur.parentId ? workItems[cur.parentId] : undefined;
     }
