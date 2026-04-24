@@ -428,6 +428,17 @@ function WorkItemNodeContent({
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
 
+  const parentItemChain: { id: string; title: string }[] = [];
+  if (depth === 0 && item.parentId) {
+    const visited = new Set<string>();
+    let cur = workItems[item.parentId];
+    while (cur && !visited.has(cur.id)) {
+      visited.add(cur.id);
+      parentItemChain.unshift({ id: cur.id, title: cur.title });
+      cur = cur.parentId ? workItems[cur.parentId] : undefined;
+    }
+  }
+
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemFromTree(workItemId, treeId);
@@ -685,6 +696,18 @@ function WorkItemNodeContent({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+
+          {parentItemChain.length > 0 && (
+            <div className="hidden md:flex items-center shrink-0 mt-0.5 text-[10px] text-muted-foreground/70 max-w-[200px]">
+              {parentItemChain.map((ancestor, i) => (
+                <span key={ancestor.id} className="flex items-center min-w-0">
+                  {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0" />}
+                  <span className="truncate">{isScrambled ? scrambleName(ancestor.title) : ancestor.title}</span>
+                </span>
+              ))}
+              <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0" />
+            </div>
           )}
 
           {backlogPaths.length > 0 && (
