@@ -393,7 +393,7 @@ export default function SuperuserYoutube() {
                 Channels to watch
                 {channels.length > 0 && (
                   <span className="ml-auto text-xs font-normal text-muted-foreground">
-                    {channels.filter((c) => c.enabled).length} / {channels.length} enabled
+                    {channels.filter((c) => c.enabled).length} / unlimited (free trial)
                   </span>
                 )}
               </CardTitle>
