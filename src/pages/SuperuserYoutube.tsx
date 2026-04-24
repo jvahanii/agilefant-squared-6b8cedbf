@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgStore } from "@/store/orgStore";
 import {
   type YouTubeChannel,
   type YouTubeSearchChannel,
@@ -105,17 +106,34 @@ export default function SuperuserYoutube() {
       });
   }, [user?.id, navigate]);
 
-  // Load data once superuser confirmed
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+
+  // Reload helpers (one per list) — bound to the active org
+  const reloadChannels = useCallback(async () => {
+    if (!activeOrgId) return;
+    setChannels(await getYouTubeChannels(activeOrgId));
+  }, [activeOrgId]);
+  const reloadSearchChannels = useCallback(async () => {
+    if (!activeOrgId) return;
+    setSearchChannels(await getYouTubeSearchChannels(activeOrgId));
+  }, [activeOrgId]);
+  const reloadVideoLinks = useCallback(async () => {
+    if (!activeOrgId) return;
+    setVideoLinks(await getYouTubeVideoLinks(activeOrgId));
+  }, [activeOrgId]);
+
+  // Load data once superuser confirmed and org is known
   useEffect(() => {
-    if (!isSuperuser) return;
-    setChannels(getYouTubeChannels());
-    setSearchChannels(getYouTubeSearchChannels());
-    setVideoLinks(getYouTubeVideoLinks());
-  }, [isSuperuser]);
+    if (!isSuperuser || !activeOrgId) return;
+    void reloadChannels();
+    void reloadSearchChannels();
+    void reloadVideoLinks();
+  }, [isSuperuser, activeOrgId, reloadChannels, reloadSearchChannels, reloadVideoLinks]);
 
   // --- Regular channels ---
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (!activeOrgId) return;
     const name = newName.trim();
     const url = newUrl.trim();
     if (!name) {
@@ -126,16 +144,17 @@ export default function SuperuserYoutube() {
       toast({ title: "Channel URL is required", variant: "destructive" });
       return;
     }
-    addYouTubeChannel(name, url);
-    setChannels(getYouTubeChannels());
+    await addYouTubeChannel(activeOrgId, name, url);
+    await reloadChannels();
     setNewName("");
     setNewUrl("");
     toast({ title: `Added channel: ${name}` });
   };
 
-  const handleToggle = (id: string) => {
-    toggleYouTubeChannel(id);
-    setChannels(getYouTubeChannels());
+  const handleToggle = async (id: string) => {
+    if (!activeOrgId) return;
+    await toggleYouTubeChannel(activeOrgId, id);
+    await reloadChannels();
   };
 
   const handleOpenChannel = (channel: YouTubeChannel) => {
@@ -144,7 +163,8 @@ export default function SuperuserYoutube() {
 
   // --- Search channels ---
 
-  const handleAddSearch = () => {
+  const handleAddSearch = async () => {
+    if (!activeOrgId) return;
     const name = newSearchName.trim();
     const keywords = newSearchKeywords.trim();
     if (!name) {
@@ -155,22 +175,24 @@ export default function SuperuserYoutube() {
       toast({ title: "Keywords are required", variant: "destructive" });
       return;
     }
-    addYouTubeSearchChannel(name, keywords, newSearchOrder);
-    setSearchChannels(getYouTubeSearchChannels());
+    await addYouTubeSearchChannel(activeOrgId, name, keywords, newSearchOrder);
+    await reloadSearchChannels();
     setNewSearchName("");
     setNewSearchKeywords("");
     setNewSearchOrder(DEFAULT_SEARCH_ORDER);
     toast({ title: `Added search channel: ${name}` });
   };
 
-  const handleToggleSearch = (id: string) => {
-    toggleYouTubeSearchChannel(id);
-    setSearchChannels(getYouTubeSearchChannels());
+  const handleToggleSearch = async (id: string) => {
+    if (!activeOrgId) return;
+    await toggleYouTubeSearchChannel(activeOrgId, id);
+    await reloadSearchChannels();
   };
 
-  const handleSearchOrderChange = (id: string, value: YouTubeSearchOrder) => {
-    setYouTubeSearchChannelOrder(id, value);
-    setSearchChannels(getYouTubeSearchChannels());
+  const handleSearchOrderChange = async (id: string, value: YouTubeSearchOrder) => {
+    if (!activeOrgId) return;
+    await setYouTubeSearchChannelOrder(activeOrgId, id, value);
+    await reloadSearchChannels();
   };
 
   const handleOpenSearch = (channel: YouTubeSearchChannel) => {
@@ -179,7 +201,8 @@ export default function SuperuserYoutube() {
 
   // --- Video links ---
 
-  const handleAddVideo = () => {
+  const handleAddVideo = async () => {
+    if (!activeOrgId) return;
     const name = newVideoName.trim();
     const url = newVideoUrl.trim();
     if (!name) {
@@ -190,16 +213,17 @@ export default function SuperuserYoutube() {
       toast({ title: "Video URL is required", variant: "destructive" });
       return;
     }
-    addYouTubeVideoLink(name, url);
-    setVideoLinks(getYouTubeVideoLinks());
+    await addYouTubeVideoLink(activeOrgId, name, url);
+    await reloadVideoLinks();
     setNewVideoName("");
     setNewVideoUrl("");
     toast({ title: `Added video link: ${name}` });
   };
 
-  const handleToggleVideo = (id: string) => {
-    toggleYouTubeVideoLink(id);
-    setVideoLinks(getYouTubeVideoLinks());
+  const handleToggleVideo = async (id: string) => {
+    if (!activeOrgId) return;
+    await toggleYouTubeVideoLink(activeOrgId, id);
+    await reloadVideoLinks();
   };
 
   const handleOpenVideo = (link: YouTubeVideoLink) => {
@@ -208,19 +232,19 @@ export default function SuperuserYoutube() {
 
   // --- Delete ---
 
-  const handleDeleteConfirm = () => {
-    if (!deleteTarget) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || !activeOrgId) return;
     if (deleteTarget.kind === "channel") {
-      removeYouTubeChannel(deleteTarget.item.id);
-      setChannels(getYouTubeChannels());
+      await removeYouTubeChannel(activeOrgId, deleteTarget.item.id);
+      await reloadChannels();
       toast({ title: `Removed channel: ${deleteTarget.item.name}` });
     } else if (deleteTarget.kind === "search") {
-      removeYouTubeSearchChannel(deleteTarget.item.id);
-      setSearchChannels(getYouTubeSearchChannels());
+      await removeYouTubeSearchChannel(activeOrgId, deleteTarget.item.id);
+      await reloadSearchChannels();
       toast({ title: `Removed search channel: ${deleteTarget.item.name}` });
     } else {
-      removeYouTubeVideoLink(deleteTarget.item.id);
-      setVideoLinks(getYouTubeVideoLinks());
+      await removeYouTubeVideoLink(activeOrgId, deleteTarget.item.id);
+      await reloadVideoLinks();
       toast({ title: `Removed video link: ${deleteTarget.item.name}` });
     }
     setDeleteTarget(null);
