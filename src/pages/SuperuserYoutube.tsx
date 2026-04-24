@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +59,63 @@ type DeleteTarget =
   | { kind: "search"; item: YouTubeSearchChannel }
   | { kind: "video"; item: YouTubeVideoLink };
 
+function InlineNameEditor({
+  initialValue,
+  onCommit,
+  onCancel,
+  ariaLabel,
+}: {
+  initialValue: string;
+  onCommit: (name: string) => void;
+  onCancel: () => void;
+  ariaLabel?: string;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const cancellingRef = useRef(false);
+
+  const handleBlur = () => {
+    if (cancellingRef.current) {
+      cancellingRef.current = false;
+      return;
+    }
+    const trimmed = value.trim();
+    if (trimmed) {
+      onCommit(trimmed);
+    } else {
+      onCancel();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      cancellingRef.current = false;
+      const trimmed = value.trim();
+      if (trimmed) {
+        onCommit(trimmed);
+      } else {
+        onCancel();
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancellingRef.current = true;
+      onCancel();
+    }
+  };
+
+  return (
+    <input
+      autoFocus
+      className="text-sm font-medium w-full bg-transparent border-b border-primary outline-none"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      aria-label={ariaLabel ?? "Edit name"}
+    />
+  );
+}
+
 export default function SuperuserYoutube() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +139,6 @@ export default function SuperuserYoutube() {
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingKind, setEditingKind] = useState<DeleteTarget["kind"] | null>(null);
-  const [editingName, setEditingName] = useState("");
 
   // Close on Escape
   useEffect(() => {
@@ -152,41 +208,31 @@ export default function SuperuserYoutube() {
 
   // --- Inline name editing ---
 
-  const handleStartEdit = (kind: DeleteTarget["kind"], id: string, name: string) => {
+  const handleStartEdit = (kind: DeleteTarget["kind"], id: string) => {
     setEditingKind(kind);
     setEditingId(id);
-    setEditingName(name);
   };
 
-  const handleCommitEdit = () => {
-    const trimmed = editingName.trim();
-    if (trimmed && editingId && editingKind) {
+  const handleCommitEdit = (newName: string) => {
+    if (editingId && editingKind) {
       if (editingKind === "channel") {
-        renameYouTubeChannel(editingId, trimmed);
+        renameYouTubeChannel(editingId, newName);
         setChannels(getYouTubeChannels());
       } else if (editingKind === "search") {
-        renameYouTubeSearchChannel(editingId, trimmed);
+        renameYouTubeSearchChannel(editingId, newName);
         setSearchChannels(getYouTubeSearchChannels());
       } else {
-        renameYouTubeVideoLink(editingId, trimmed);
+        renameYouTubeVideoLink(editingId, newName);
         setVideoLinks(getYouTubeVideoLinks());
       }
     }
     setEditingId(null);
     setEditingKind(null);
-    setEditingName("");
   };
 
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleCommitEdit();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setEditingId(null);
-      setEditingKind(null);
-      setEditingName("");
-    }
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingKind(null);
   };
 
   // --- Search channels ---
@@ -464,19 +510,16 @@ export default function SuperuserYoutube() {
                       />
                       <div className="flex-1 min-w-0">
                         {editingId === channel.id && editingKind === "channel" ? (
-                          <input
-                            autoFocus
-                            className="text-sm font-medium w-full bg-transparent border-b border-primary outline-none"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onBlur={handleCommitEdit}
-                            onKeyDown={handleEditKeyDown}
-                            aria-label="Edit channel name"
+                          <InlineNameEditor
+                            initialValue={channel.name}
+                            onCommit={handleCommitEdit}
+                            onCancel={handleCancelEdit}
+                            ariaLabel="Edit channel name"
                           />
                         ) : (
                           <p
                             className="text-sm font-medium truncate cursor-text hover:text-primary"
-                            onClick={() => handleStartEdit("channel", channel.id, channel.name)}
+                            onClick={() => handleStartEdit("channel", channel.id)}
                             title="Click to rename"
                           >
                             {channel.name}
@@ -537,19 +580,16 @@ export default function SuperuserYoutube() {
                       />
                       <div className="flex-1 min-w-0">
                         {editingId === channel.id && editingKind === "search" ? (
-                          <input
-                            autoFocus
-                            className="text-sm font-medium w-full bg-transparent border-b border-primary outline-none"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onBlur={handleCommitEdit}
-                            onKeyDown={handleEditKeyDown}
-                            aria-label="Edit channel name"
+                          <InlineNameEditor
+                            initialValue={channel.name}
+                            onCommit={handleCommitEdit}
+                            onCancel={handleCancelEdit}
+                            ariaLabel="Edit channel name"
                           />
                         ) : (
                           <p
                             className="text-sm font-medium truncate cursor-text hover:text-primary"
-                            onClick={() => handleStartEdit("search", channel.id, channel.name)}
+                            onClick={() => handleStartEdit("search", channel.id)}
                             title="Click to rename"
                           >
                             {channel.name}
@@ -626,19 +666,16 @@ export default function SuperuserYoutube() {
                     />
                     <div className="flex-1 min-w-0">
                       {editingId === link.id && editingKind === "video" ? (
-                        <input
-                          autoFocus
-                          className="text-sm font-medium w-full bg-transparent border-b border-primary outline-none"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onBlur={handleCommitEdit}
-                          onKeyDown={handleEditKeyDown}
-                          aria-label="Edit video link name"
+                        <InlineNameEditor
+                          initialValue={link.name}
+                          onCommit={handleCommitEdit}
+                          onCancel={handleCancelEdit}
+                          ariaLabel="Edit video link name"
                         />
                       ) : (
                         <p
                           className="text-sm font-medium truncate cursor-text hover:text-primary"
-                          onClick={() => handleStartEdit("video", link.id, link.name)}
+                          onClick={() => handleStartEdit("video", link.id)}
                           title="Click to rename"
                         >
                           {link.name}
