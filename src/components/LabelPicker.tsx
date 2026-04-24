@@ -214,7 +214,7 @@ export function LabelPicker({ entityType, entityId, entityIds, children }: Label
                   className="w-3 h-3 rounded-full shrink-0"
                   style={{ backgroundColor: label.color }}
                 />
-                <span className="flex-1 truncate">{label.name}</span>
+                <span className="flex-1 truncate font-bold">{label.name}</span>
                 {fullyAssigned && (
                   <Check className="w-3.5 h-3.5 text-primary shrink-0" />
                 )}

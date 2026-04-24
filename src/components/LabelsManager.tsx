@@ -115,7 +115,7 @@ export function LabelsManager() {
               className="w-4 h-4 rounded-full shrink-0"
               style={{ backgroundColor: label.color }}
             />
-            <span className="text-sm flex-1">{label.name}</span>
+            <span className="text-sm flex-1 font-bold">{label.name}</span>
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"

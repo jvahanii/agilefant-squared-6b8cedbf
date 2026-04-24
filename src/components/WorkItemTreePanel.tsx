@@ -622,14 +622,14 @@ function WorkItemNodeContent({
               {labelsVisible && itemLabels.length > 0 && (
                 <span className="ml-1">
                   {itemLabels.length === 1 ? (
-                    <span style={{ color: itemLabels[0].color }}>{itemLabels[0].name}</span>
+                    <span className="font-bold" style={{ color: itemLabels[0].color }}>{itemLabels[0].name}</span>
                   ) : (
                     <>
                       {"["}
                       {itemLabels.map((label, i) => (
                         <span key={label.id}>
                           {i > 0 && ", "}
-                          <span style={{ color: label.color }}>{label.name}</span>
+                          <span className="font-bold" style={{ color: label.color }}>{label.name}</span>
                         </span>
                       ))}
                       {"]"}
@@ -1707,7 +1707,7 @@ export function WorkItemTreePanel() {
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: label.color }}
                 />
-                {label.name}
+                <span className="font-bold">{label.name}</span>
               </button>
             ))}
             {filterLabelIds.size > 0 && (
