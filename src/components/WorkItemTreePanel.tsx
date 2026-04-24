@@ -997,7 +997,7 @@ function WorkItemNodeContent({
                       checked={fullyAssigned}
                       data-partially={partiallyAssigned || undefined}
                       onCheckedChange={(checked) => {
-                        if (checked || partiallyAssigned) {
+                        if (checked) {
                           contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
                         } else {
                           contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
