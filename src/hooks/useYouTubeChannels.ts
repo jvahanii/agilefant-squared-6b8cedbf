@@ -215,8 +215,6 @@ export function renameYouTubeVideoLink(id: string, name: string) {
   saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, name } : l)));
 }
 
-export function getEnabledYouTubeVideoLinks(): YouTubeVideoLink[] {
-  return getVideoLinks().filter((l) => l.enabled);
 export async function getEnabledYouTubeVideoLinks(orgId: string): Promise<YouTubeVideoLink[]> {
   return (await getYouTubeVideoLinks(orgId)).filter((l) => l.enabled);
 }
