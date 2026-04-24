@@ -985,23 +985,31 @@ function WorkItemNodeContent({
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                {orgLabels.map((label) => (
-                  <ContextMenuCheckboxItem
-                    key={label.id}
-                    className="text-xs"
-                    checked={assignedIds.has(label.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        assignLabel(label.id, "work_item", workItemId, label.organizationId);
-                      } else {
-                        unassignLabel(label.id, "work_item", workItemId);
-                      }
-                    }}
-                  >
-                    <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                    {label.name}
-                  </ContextMenuCheckboxItem>
-                ))}
+                {orgLabels.map((label) => {
+                  const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+                  const assignedCount = contextIds.filter((id) => (byEntity[`work_item:${id}`] ?? []).includes(label.id)).length;
+                  const fullyAssigned = assignedCount === contextIds.length;
+                  const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
+                  return (
+                    <ContextMenuCheckboxItem
+                      key={label.id}
+                      className="text-xs"
+                      checked={fullyAssigned}
+                      data-partially={partiallyAssigned || undefined}
+                      onCheckedChange={(checked) => {
+                        if (checked || partiallyAssigned) {
+                          contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
+                        } else {
+                          contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
+                        }
+                      }}
+                    >
+                      <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
+                      {label.name}
+                      {partiallyAssigned && <span className="ml-auto text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
+                    </ContextMenuCheckboxItem>
+                  );
+                })}
               </ContextMenuSubContent>
             </ContextMenuSub>
           )}
