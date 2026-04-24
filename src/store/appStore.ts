@@ -5,6 +5,7 @@ import {
   upsertWorkItem,
   upsertWorkItems,
   deleteWorkItems,
+  deleteWorkItemBacklogRanks,
   upsertBacklog,
   upsertBacklogs,
   deleteBacklogs,
@@ -670,6 +671,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
+      const removedRanks: Array<{ workItemId: string; backlogId: string }> = [];
 
       const moveRecursive = (id: string, isRoot: boolean) => {
         const wi = updatedItems[id];
@@ -677,7 +679,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         const oldBlId = wi.backlogAssignments[treeId];
         const newRanks = { ...wi.ranks };
         // Remove rank for old backlog, add rank for new backlog
-        if (oldBlId && oldBlId !== cleanTargetBl) delete newRanks[oldBlId];
+        if (oldBlId && oldBlId !== cleanTargetBl) {
+          delete newRanks[oldBlId];
+          removedRanks.push({ workItemId: id, backlogId: oldBlId });
+        }
         if (isRoot) {
           newRanks[cleanTargetBl] = newRootRank;
         } else {
@@ -727,6 +732,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
 
       upsertWorkItems(changed, orgId);
+      // Clean up stale rank rows in the DB for backlogs that items were moved out of.
+      deleteWorkItemBacklogRanks(removedRanks);
       const oldBacklogId = item.backlogAssignments[treeId];
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
       const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
