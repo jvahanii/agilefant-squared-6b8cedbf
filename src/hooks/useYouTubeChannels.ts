@@ -120,7 +120,7 @@ export function getEnabledYouTubeVideoLinks(): YouTubeVideoLink[] {
 }
 
 /**
- * Returns the raw URL for a video link, normalising missing protocol.
+ * Returns the raw URL for a video link, normalizing missing protocol.
  */
 export function getVideoLinkUrl(link: YouTubeVideoLink): string {
   return /^https?:\/\//i.test(link.url) ? link.url : `https://${link.url}`;

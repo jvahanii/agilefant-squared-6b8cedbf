@@ -226,6 +226,12 @@ export default function SuperuserYoutube() {
     setDeleteTarget(null);
   };
 
+  const deleteTargetLabel = (kind: DeleteTarget["kind"] | undefined) => {
+    if (kind === "search") return "search channel";
+    if (kind === "video") return "video link";
+    return "channel";
+  };
+
   if (isSuperuser === null) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -565,7 +571,7 @@ export default function SuperuserYoutube() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove {deleteTarget?.kind === "search" ? "search channel" : deleteTarget?.kind === "video" ? "video link" : "channel"}?
+              Remove {deleteTargetLabel(deleteTarget?.kind)}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               "{deleteTarget?.item.name}" will be removed. This cannot be undone.
