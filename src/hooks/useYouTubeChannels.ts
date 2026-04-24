@@ -154,8 +154,12 @@ export async function toggleYouTubeChannel(orgId: string, id: string): Promise<v
     .eq("id", id);
 }
 
-export async function getEnabledYouTubeChannels(orgId: string): Promise<YouTubeChannel[]> {
-  return (await getYouTubeChannels(orgId)).filter((c) => c.enabled);
+export function renameYouTubeChannel(id: string, name: string) {
+  saveChannels(getChannels().map((c) => (c.id === id ? { ...c, name } : c)));
+}
+
+export function getEnabledYouTubeChannels(): YouTubeChannel[] {
+  return getChannels().filter((c) => c.enabled);
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +211,12 @@ export async function toggleYouTubeVideoLink(orgId: string, id: string): Promise
     .eq("id", id);
 }
 
+export function renameYouTubeVideoLink(id: string, name: string) {
+  saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, name } : l)));
+}
+
+export function getEnabledYouTubeVideoLinks(): YouTubeVideoLink[] {
+  return getVideoLinks().filter((l) => l.enabled);
 export async function getEnabledYouTubeVideoLinks(orgId: string): Promise<YouTubeVideoLink[]> {
   return (await getYouTubeVideoLinks(orgId)).filter((l) => l.enabled);
 }
@@ -304,6 +314,18 @@ export async function setYouTubeSearchChannelOrder(
     .eq("id", id);
 }
 
+export function renameYouTubeSearchChannel(id: string, name: string) {
+  saveSearchChannels(getSearchChannels().map((c) => (c.id === id ? { ...c, name } : c)));
+}
+
+/**
+ * Returns a YouTube search URL for the given search channel.
+ * Sorting is done via YouTube's `sp` URL parameter (no API key required).
+ *
+ *   relevance  – default YouTube sort (no sp param)
+ *   date       – CAI= (sort by upload date, most recent first)
+ *   viewCount  – CAM= (sort by view count, most popular first)
+ */
 export function getSearchChannelUrl(channel: YouTubeSearchChannel): string {
   const query = encodeURIComponent(channel.keywords);
   const base = `https://www.youtube.com/results?search_query=${query}`;
