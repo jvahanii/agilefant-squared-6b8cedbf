@@ -63,6 +63,10 @@ export function toggleYouTubeChannel(id: string) {
   saveChannels(getChannels().map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c)));
 }
 
+export function renameYouTubeChannel(id: string, name: string) {
+  saveChannels(getChannels().map((c) => (c.id === id ? { ...c, name } : c)));
+}
+
 export function getEnabledYouTubeChannels(): YouTubeChannel[] {
   return getChannels().filter((c) => c.enabled);
 }
@@ -113,6 +117,10 @@ export function removeYouTubeVideoLink(id: string) {
 
 export function toggleYouTubeVideoLink(id: string) {
   saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, enabled: !l.enabled } : l)));
+}
+
+export function renameYouTubeVideoLink(id: string, name: string) {
+  saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, name } : l)));
 }
 
 export function getEnabledYouTubeVideoLinks(): YouTubeVideoLink[] {
@@ -195,6 +203,10 @@ export function setYouTubeSearchChannelOrder(id: string, searchOrder: YouTubeSea
   saveSearchChannels(
     getSearchChannels().map((c) => (c.id === id ? { ...c, searchOrder } : c)),
   );
+}
+
+export function renameYouTubeSearchChannel(id: string, name: string) {
+  saveSearchChannels(getSearchChannels().map((c) => (c.id === id ? { ...c, name } : c)));
 }
 
 /**
