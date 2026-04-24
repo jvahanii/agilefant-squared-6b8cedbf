@@ -742,6 +742,132 @@ export type Database = {
           },
         ]
       }
+      youtube_channels: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          organization_id: string
+          rank: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          organization_id: string
+          rank?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          organization_id?: string
+          rank?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_channels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_search_channels: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          keywords: string
+          name: string
+          organization_id: string
+          rank: number
+          search_order: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          keywords: string
+          name: string
+          organization_id: string
+          rank?: number
+          search_order?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          keywords?: string
+          name?: string
+          organization_id?: string
+          rank?: number
+          search_order?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_search_channels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_video_links: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          organization_id: string
+          rank: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          organization_id: string
+          rank?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          organization_id?: string
+          rank?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_video_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
