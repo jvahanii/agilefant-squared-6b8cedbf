@@ -1438,6 +1438,62 @@ export function WorkItemTreePanel() {
       .sort((a, b) => a.item.title.localeCompare(b.item.title));
   }, [searchQuery, workItems, backlogTrees, backlogs]);
 
+  // Label search results: items from ALL trees that have one of the active filter labels.
+  // Returns null when no label filter is active (normal view mode).
+  const labelSearchResults = useMemo(() => {
+    if (filterLabelIds.size === 0) return null;
+
+    const matchingItemIds = new Set<string>();
+    for (const [key, labelIds] of Object.entries(byEntity)) {
+      if (!key.startsWith("work_item:")) continue;
+      if (labelIds.some((id) => filterLabelIds.has(id))) {
+        matchingItemIds.add(key.slice("work_item:".length));
+      }
+    }
+
+    return Array.from(matchingItemIds)
+      .map((itemId) => {
+        const wi = workItems[itemId];
+        if (!wi) return null;
+
+        const treeIds = Object.keys(wi.backlogAssignments);
+        const treeId = treeIds[0] ?? null;
+        const backlogId = treeId ? wi.backlogAssignments[treeId] : null;
+        const tree = treeId ? backlogTrees[treeId] : null;
+        const backlog = backlogId ? backlogs[backlogId] : null;
+
+        const backlogPath: string[] = [];
+        const visitedBacklogIds = new Set<string>();
+        let bl = backlog;
+        while (bl && !visitedBacklogIds.has(bl.id)) {
+          visitedBacklogIds.add(bl.id);
+          backlogPath.unshift(bl.name);
+          bl = bl.parentId ? backlogs[bl.parentId] : null;
+        }
+
+        const workItemAncestors: string[] = [];
+        const visitedWorkItemIds = new Set<string>();
+        let parent = wi.parentId ? workItems[wi.parentId] : null;
+        while (parent && !visitedWorkItemIds.has(parent.id)) {
+          visitedWorkItemIds.add(parent.id);
+          workItemAncestors.unshift(parent.title);
+          parent = parent.parentId ? workItems[parent.parentId] : null;
+        }
+
+        return {
+          item: wi,
+          treeId: treeId ?? "",
+          backlogId: backlogId ?? "",
+          treeName: tree?.name ?? "",
+          backlogName: backlog?.name ?? "",
+          backlogPath,
+          workItemAncestors,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null && r.treeId !== "")
+      .sort((a, b) => a.item.title.localeCompare(b.item.title));
+  }, [filterLabelIds, byEntity, workItems, backlogTrees, backlogs]);
+
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
   const { scrambleEnabled } = useScramble();
@@ -1591,11 +1647,13 @@ export function WorkItemTreePanel() {
 
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isSearchMode = searchQuery.trim().length > 0;
+  const isLabelFilterMode = filterLabelIds.size > 0;
 
   return (
-    // In search mode, pass null so all WorkItemNodes in the (hidden) normal view are unfiltered.
+    // In search/label-filter mode the normal tree is replaced by a flat results list,
+    // so pass null (no tree-level filtering) to avoid hiding nodes in the hidden tree.
     // Null already means "no filter active" per the LabelFilterContext contract (line 57).
-    <LabelFilterContext.Provider value={isSearchMode ? null : visibleFilterSet}>
+    <LabelFilterContext.Provider value={isSearchMode || isLabelFilterMode ? null : visibleFilterSet}>
       <div
         className="h-full flex flex-col overflow-hidden"
         onClick={() => {
@@ -1675,7 +1733,7 @@ export function WorkItemTreePanel() {
           )}
         </div>
 
-        {!isSearchMode && (!selectedBacklogId || !selectedTreeId) ? (
+        {!isSearchMode && !isLabelFilterMode && (!selectedBacklogId || !selectedTreeId) ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
@@ -1693,19 +1751,24 @@ export function WorkItemTreePanel() {
                   {searchResults?.length ?? 0} item{searchResults?.length !== 1 ? "s" : ""} found
                 </p>
               </>
+            ) : isLabelFilterMode ? (
+              <>
+                <h2 className="text-base font-semibold">Label filter results</h2>
+                <p className="text-xs text-foreground mt-0.5">
+                  {labelSearchResults?.length ?? 0} item{labelSearchResults?.length !== 1 ? "s" : ""} found
+                </p>
+              </>
             ) : (
               <>
                 <EditableBacklogName backlogId={selectedBacklogId!} isScrambled={isScrambled} />
                 <p className="text-xs text-foreground mt-0.5">
-                  {visibleFilterSet
-                    ? `${displayedRootItems.length} of ${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""} (filtered)`
-                    : `${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
+                  {`${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
                 </p>
               </>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {!isSearchMode && snoozedInBacklog.length > 0 && (
+            {!isSearchMode && !isLabelFilterMode && snoozedInBacklog.length > 0 && (
               <button
                 className="flex items-center gap-1 w-auto h-7 px-1.5 rounded-md text-amber-500/80 hover:text-amber-500 hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -1718,7 +1781,7 @@ export function WorkItemTreePanel() {
                 <span className="text-xs font-medium tabular-nums">{snoozedInBacklog.length}</span>
               </button>
             )}
-            {!isSearchMode && (
+            {!isSearchMode && !isLabelFilterMode && (
               <button
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -1730,7 +1793,7 @@ export function WorkItemTreePanel() {
                 <ClipboardPaste className="w-4 h-4" />
               </button>
             )}
-            {!isSearchMode && timeLoggingVisible && (
+            {!isSearchMode && !isLabelFilterMode && timeLoggingVisible && (
               <button
                 className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
                 onClick={(e) => {
@@ -1746,7 +1809,7 @@ export function WorkItemTreePanel() {
                 )}
               </button>
             )}
-            {!isSearchMode && (
+            {!isSearchMode && !isLabelFilterMode && (
               <button
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -1842,6 +1905,68 @@ export function WorkItemTreePanel() {
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
                 No items match &ldquo;{searchQuery}&rdquo;
+              </div>
+            )}
+          </div>
+        ) : isLabelFilterMode ? (
+          /* Label filter results list: flat list of items with matching labels across all backlogs */
+          <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
+            {labelSearchResults && labelSearchResults.length > 0 ? (
+              <div className="flex flex-col">
+                {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }) => {
+                  const statusColor =
+                    DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+                  return (
+                    <button
+                      key={item.id}
+                      className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
+                      onClick={() => {
+                        // Expand ancestor backlogs and work items so the item is visible
+                        useAppStore.setState((state) => {
+                          const expandedBacklogs = new Set(state.expandedBacklogs);
+                          let bl = state.backlogs[backlogId];
+                          while (bl?.parentId) {
+                            expandedBacklogs.add(bl.parentId);
+                            bl = state.backlogs[bl.parentId];
+                          }
+                          const expandedWorkItems = new Set(state.expandedWorkItems);
+                          let wi = state.workItems[item.id];
+                          while (wi?.parentId) {
+                            expandedWorkItems.add(wi.parentId);
+                            wi = state.workItems[wi.parentId];
+                          }
+                          return { expandedBacklogs, expandedWorkItems };
+                        });
+                        selectBacklog(backlogId, treeId);
+                        setFilterLabelIds(new Set());
+                        setTimeout(() => selectWorkItem(item.id, false), 50);
+                      }}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
+                        style={{ backgroundColor: statusColor }}
+                        title={item.status}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm leading-snug break-words">{item.title}</span>
+                        {workItemAncestors.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
+                            {isScrambled ? "···" : workItemAncestors.join(" › ")}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          {isScrambled
+                            ? "···"
+                            : [treeName, ...backlogPath].join(" › ")}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                No items match the selected label{filterLabelIds.size !== 1 ? "s" : ""}
               </div>
             )}
           </div>
