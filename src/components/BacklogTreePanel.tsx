@@ -1,6 +1,6 @@
 import { useAppStore } from "@/store/appStore";
 import { ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
-import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ShareTreeDialog } from "./ShareTreeDialog";
@@ -141,6 +141,8 @@ function BacklogReorderDropZone({
   depth: number;
 }) {
   const isMobile = useIsMobile();
+  const { active } = useDndContext();
+  const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "backlog-reorder", index, parentId, treeId },
@@ -149,7 +151,7 @@ function BacklogReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative py-px`}
+      className={`relative transition-[padding] duration-100 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
@@ -629,13 +631,15 @@ function EditableTreeName({ treeId, name, isScrambled }: { treeId: string; name:
 
 function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   const isMobile = useIsMobile();
+  const { active } = useDndContext();
+  const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "tree-reorder", index },
   });
 
   return (
-    <div ref={setNodeRef} className={`relative py-px mx-2`}>
+    <div ref={setNodeRef} className={`relative transition-[padding] duration-100 mx-2 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}>
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );

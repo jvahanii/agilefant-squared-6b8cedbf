@@ -4,7 +4,7 @@ import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 
 import { createContext, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
@@ -1231,6 +1231,8 @@ function ReorderDropZone({
   depth: number;
 }) {
   const isMobile = useIsMobile();
+  const { active } = useDndContext();
+  const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: { type: "workitem-reorder", index, treeId, backlogIds, parentId },
@@ -1239,7 +1241,7 @@ function ReorderDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`relative py-px`}
+      className={`relative transition-[padding] duration-100 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
