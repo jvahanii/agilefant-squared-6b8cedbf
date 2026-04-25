@@ -1521,8 +1521,7 @@ export function WorkItemTreePanel() {
       .map((wi) => wi.id);
   }, [workItems, snoozedItemIds, backlogIdSet, selectedTreeId]);
 
-  // Labels used by work items that belong to the selected backlog (and its children).
-  // Only these labels are shown in the filter chip bar.
+  // All labels defined in the active organisation, shown in the filter chip bar.
   const allOrgLabels = useMemo(
     () =>
       Object.values(labelsMap)
