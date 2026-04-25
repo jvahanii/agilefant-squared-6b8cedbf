@@ -1523,19 +1523,13 @@ export function WorkItemTreePanel() {
 
   // Labels used by work items that belong to the selected backlog (and its children).
   // Only these labels are shown in the filter chip bar.
-  const backlogLabels = useMemo(() => {
-    if (!selectedTreeId || backlogIdSet.size === 0) return [];
-    const labelIdSet = new Set<string>();
-    for (const wi of Object.values(workItems)) {
-      if (!backlogIdSet.has(wi.backlogAssignments[selectedTreeId])) continue;
-      const ids = byEntity[`work_item:${wi.id}`];
-      if (ids) ids.forEach((id) => labelIdSet.add(id));
-    }
-    return Array.from(labelIdSet)
-      .map((id) => labelsMap[id])
-      .filter(Boolean)
-      .sort((a, b) => a.name.localeCompare(b.name)) as Label[];
-  }, [workItems, selectedTreeId, backlogIdSet, byEntity, labelsMap]);
+  const allOrgLabels = useMemo(
+    () =>
+      Object.values(labelsMap)
+        .filter((l) => l.organizationId === activeOrgId)
+        .sort((a, b) => a.name.localeCompare(b.name)) as Label[],
+    [labelsMap, activeOrgId],
+  );
 
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
@@ -1642,9 +1636,9 @@ export function WorkItemTreePanel() {
               </button>
             )}
           </div>
-          {!isSearchMode && labelsVisible && backlogLabels.length > 0 && (
+          {!isSearchMode && labelsVisible && allOrgLabels.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {backlogLabels.map((label) => (
+              {allOrgLabels.map((label) => (
                 <button
                   key={label.id}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
