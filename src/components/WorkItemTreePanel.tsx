@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
 import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 
@@ -1321,6 +1321,7 @@ export function WorkItemTreePanel() {
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+  const filterInputRef = useRef<HTMLInputElement>(null);
 
   // Clear search query when switching backlogs
   useEffect(() => {
@@ -1370,6 +1371,20 @@ export function WorkItemTreePanel() {
       }
     }
   }, [visibleFilterSet]);
+
+  // Keyboard shortcut: '/' focuses the unified filter input
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (!isInput && e.key === "/") {
+        e.preventDefault();
+        filterInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Search results: items from ALL trees matching the search query, with tree/backlog context.
   // Returns null when no query is active (normal view mode).
@@ -1582,19 +1597,6 @@ export function WorkItemTreePanel() {
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isSearchMode = searchQuery.trim().length > 0;
 
-  if (!isSearchMode && (!selectedBacklogId || !selectedTreeId)) {
-    return (
-      <div className="h-full flex flex-col overflow-hidden">
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm">Select a backlog to view work items</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     // In search mode, pass null so all WorkItemNodes in the (hidden) normal view are unfiltered.
     // Null already means "no filter active" per the LabelFilterContext contract (line 57).
@@ -1606,6 +1608,87 @@ export function WorkItemTreePanel() {
           lastSelectedId.current = null;
         }}
       >
+        {/* Unified filter bar — keyword search and label filters in one place */}
+        <div className="px-1 pt-1 pb-0.5 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+            <input
+              ref={filterInputRef}
+              type="text"
+              className="w-full h-7 pl-7 pr-6 text-xs bg-muted/50 rounded-md border border-transparent focus:border-primary/40 focus:bg-background outline-none transition-colors placeholder:text-muted-foreground/50"
+              placeholder="Filter items... (/)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearchQuery("");
+                  setFilterLabelIds(new Set());
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                }
+                e.stopPropagation();
+              }}
+            />
+            {(searchQuery || filterLabelIds.size > 0) && (
+              <button
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => { setSearchQuery(""); setFilterLabelIds(new Set()); }}
+                title="Clear all filters"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {!isSearchMode && labelsVisible && backlogLabels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {backlogLabels.map((label) => (
+                <button
+                  key={label.id}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
+                    filterLabelIds.has(label.id)
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                      : "bg-muted text-muted-foreground hover:bg-muted/60"
+                  }`}
+                  onClick={() =>
+                    setFilterLabelIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(label.id)) next.delete(label.id);
+                      else next.add(label.id);
+                      return next;
+                    })
+                  }
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  {label.name}
+                </button>
+              ))}
+              {filterLabelIds.size > 0 && (
+                <button
+                  className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
+                  onClick={() => setFilterLabelIds(new Set())}
+                  title="Clear label filter"
+                >
+                  <X className="w-3 h-3" />
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!isSearchMode && (!selectedBacklogId || !selectedTreeId) ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-sm">Select a backlog to view work items</p>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
           <div className="min-w-0 flex-1">
             {isSearchMode ? (
@@ -1682,46 +1765,6 @@ export function WorkItemTreePanel() {
             )}
           </div>
         </div>
-
-        {/* Label filter chip bar — only shown in normal mode when labels are enabled and this backlog has labeled items */}
-        {!isSearchMode && labelsVisible && backlogLabels.length > 0 && (
-          <div className="px-2 py-0.5 flex flex-wrap gap-1 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
-            {backlogLabels.map((label) => (
-              <button
-                key={label.id}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
-                  filterLabelIds.has(label.id)
-                    ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                    : "bg-muted text-muted-foreground hover:bg-muted/60"
-                }`}
-                onClick={() =>
-                  setFilterLabelIds((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(label.id)) next.delete(label.id);
-                    else next.add(label.id);
-                    return next;
-                  })
-                }
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: label.color }}
-                />
-                {label.name}
-              </button>
-            ))}
-            {filterLabelIds.size > 0 && (
-              <button
-                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
-                onClick={() => setFilterLabelIds(new Set())}
-                title="Clear label filter"
-              >
-                <X className="w-3 h-3" />
-                Clear
-              </button>
-            )}
-          </div>
-        )}
 
         {isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
@@ -1877,6 +1920,8 @@ export function WorkItemTreePanel() {
             open={showBacklogTimeLogDialog}
             onOpenChange={setShowBacklogTimeLogDialog}
           />
+        )}
+        </>
         )}
       </div>
     </LabelFilterContext.Provider>
