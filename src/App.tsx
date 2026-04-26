@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -29,6 +29,25 @@ function AppRoutes() {
       loadMemberships(user.id);
     }
   }, [user]);
+
+  // On mobile, iOS Safari can restore the page from bfcache while orgLoading
+  // is still true (the in-flight RPC was silently cancelled by the OS and the
+  // safety setTimeout is paused).  Re-trigger loadMemberships when the page
+  // becomes visible so the app doesn't stay stuck on the loading screen.
+  const orgLoadingRef = useRef(orgLoading);
+  orgLoadingRef.current = orgLoading;
+  useEffect(() => {
+    if (!user) return;
+    const userId = user.id;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !orgLoadingRef.current) return;
+      loadMemberships(userId);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // loadMemberships is a stable Zustand reference; user.id is the key dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     const activeOrg = memberships.find(m => m.organization_id === activeOrgId) ?? null;
