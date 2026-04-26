@@ -57,6 +57,12 @@ import {
  */
 const LabelFilterContext = createContext<Set<string> | null>(null);
 
+/**
+ * Maps each visible work item ID to its 1-based running number in the current
+ * displayed list (depth-first, top-to-bottom).  Null when no backlog is selected.
+ */
+const RunningNumberContext = createContext<Map<string, number> | null>(null);
+
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
 const DRAG_THRESHOLD_PX = 5;
@@ -201,6 +207,7 @@ function WorkItemNodeContent({
   isScrambled,
   onSelect,
 }: WorkItemNodeProps) {
+  const runningNumber = useContext(RunningNumberContext)?.get(workItemId);
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -586,6 +593,10 @@ function WorkItemNodeContent({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right select-none" aria-hidden="true">
+            {runningNumber}
+          </span>
 
           {isEditingTitle ? (
             <textarea
@@ -1624,6 +1635,30 @@ export function WorkItemTreePanel() {
     return ids;
   }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId]);
 
+  // Assign a 1-based running number to each item that will actually be rendered
+  // (i.e. not snoozed and not hidden by the label filter).  The numbers are
+  // contiguous with no gaps, matching the visual top-to-bottom order.
+  const runningNumbers = useMemo(() => {
+    const map = new Map<string, number>();
+    let counter = 1;
+    const traverse = (workItemId: string) => {
+      const item = workItems[workItemId];
+      if (!item) return;
+      if (snoozedItemIds.has(workItemId)) return;
+      if (visibleFilterSet !== null && !visibleFilterSet.has(workItemId)) return;
+      map.set(workItemId, counter++);
+      if (expandedWorkItems.has(workItemId) && selectedTreeId) {
+        [...item.childrenIds]
+          .map((cid) => workItems[cid])
+          .filter(Boolean)
+          .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0))
+          .forEach((child) => traverse(child.id));
+      }
+    };
+    displayedRootItems.forEach((root) => traverse(root.id));
+    return map;
+  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, snoozedItemIds, visibleFilterSet]);
+
   const handleSelect = useCallback(
     (id: string, multi: boolean, shift: boolean) => {
       if (shift && lastSelectedId.current && visibleItemIds.includes(lastSelectedId.current)) {
@@ -1654,6 +1689,7 @@ export function WorkItemTreePanel() {
     // so pass null (no tree-level filtering) to avoid hiding nodes in the hidden tree.
     // Null already means "no filter active" per the LabelFilterContext contract (line 57).
     <LabelFilterContext.Provider value={isSearchMode || isLabelFilterMode ? null : visibleFilterSet}>
+    <RunningNumberContext.Provider value={isSearchMode || isLabelFilterMode ? null : runningNumbers}>
       <div
         className="h-full flex flex-col overflow-hidden"
         onClick={() => {
@@ -1832,7 +1868,7 @@ export function WorkItemTreePanel() {
                 {(() => {
                   // Compute query string once before mapping to avoid redundant string ops per item.
                   const q = searchQuery.trim().toLowerCase();
-                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }) => {
+                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => {
                     const statusColor =
                       DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
                     const titleLower = item.title.toLowerCase();
@@ -1879,6 +1915,9 @@ export function WorkItemTreePanel() {
                           setTimeout(() => selectWorkItem(item.id, false), 50);
                         }}
                       >
+                        <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
+                          {idx + 1}
+                        </span>
                         <span
                           className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
                           style={{ backgroundColor: statusColor }}
@@ -1913,7 +1952,7 @@ export function WorkItemTreePanel() {
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {labelSearchResults && labelSearchResults.length > 0 ? (
               <div className="flex flex-col">
-                {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }) => {
+                {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => {
                   const statusColor =
                     DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
                   return (
@@ -1942,6 +1981,9 @@ export function WorkItemTreePanel() {
                         setTimeout(() => selectWorkItem(item.id, false), 50);
                       }}
                     >
+                      <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
+                        {idx + 1}
+                      </span>
                       <span
                         className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
                         style={{ backgroundColor: statusColor }}
@@ -2044,6 +2086,7 @@ export function WorkItemTreePanel() {
         </>
         )}
       </div>
+    </RunningNumberContext.Provider>
     </LabelFilterContext.Provider>
   );
 }
