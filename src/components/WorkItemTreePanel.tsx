@@ -561,7 +561,7 @@ function WorkItemNodeContent({
               )
             ) : null}
           </button>
-          <span className="text-sm tabular-nums text-muted-foreground/40 shrink-0 text-right select-none" aria-hidden="true">
+          <span className="text-sm tabular-nums text-muted-foreground/40 shrink-0 w-6 text-right select-none" aria-hidden="true">
             {runningNumber}
           </span>
 
