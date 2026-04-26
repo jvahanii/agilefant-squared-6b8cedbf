@@ -561,6 +561,10 @@ function WorkItemNodeContent({
               )
             ) : null}
           </button>
+          <span className="text-sm tabular-nums text-muted-foreground/40 shrink-0 text-right select-none" aria-hidden="true">
+            {runningNumber}
+          </span>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -593,10 +597,6 @@ function WorkItemNodeContent({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right select-none" aria-hidden="true">
-            {runningNumber}
-          </span>
 
           {isEditingTitle ? (
             <textarea
