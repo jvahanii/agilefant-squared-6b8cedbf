@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
@@ -100,6 +100,30 @@ const Index = () => {
     if (treeIds.length > 0) loadStatusesForTrees(treeIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId, treeIdsKey]);
+
+  // Keep a stable ref so the visibility handler always reads the latest
+  // isLoading value without needing it as an effect dependency (which would
+  // re-register the listener on every load-state change).
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+
+  // On mobile, iOS Safari may restore the page from bfcache (back-forward
+  // cache) or bring it out of background suspension with in-flight Supabase
+  // requests silently cancelled and the safety setTimeout still paused.  The
+  // result is a page stuck on "Loading…".  Re-triggering the data fetch when
+  // the document becomes visible again clears the stuck state.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !activeOrgId || !isLoadingRef.current) return;
+      setOrganizationId(activeOrgId);
+      loadData();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // activeOrgId is the only value used directly; setOrganizationId and loadData
+    // are stable Zustand references that never change identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId]);
 
   useRespawnCheck();
   useRealtimeSync();
