@@ -1319,11 +1319,15 @@ export function WorkItemTreePanel() {
   );
   const unsnoozeAll = useSnoozeStore((s) => s.unsnoozeAll);
 
+  const isMobile = useIsMobile();
+
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const filterInputRef = useRef<HTMLInputElement>(null);
+  const [isFilterBarHovered, setIsFilterBarHovered] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Clear search query when switching backlogs
   useEffect(() => {
@@ -1662,7 +1666,12 @@ export function WorkItemTreePanel() {
         }}
       >
         {/* Unified filter bar — keyword search and label filters in one place */}
-        <div className="px-1 pt-1 pb-0.5 border-b shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="px-1 pt-1 pb-0.5 border-b shrink-0"
+          onClick={(e) => e.stopPropagation()}
+          onMouseEnter={() => !isMobile && setIsFilterBarHovered(true)}
+          onMouseLeave={() => !isMobile && setIsFilterBarHovered(false)}
+        >
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
             <input
@@ -1672,6 +1681,8 @@ export function WorkItemTreePanel() {
               placeholder="Filter items... (/)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   setSearchQuery("");
@@ -1693,7 +1704,7 @@ export function WorkItemTreePanel() {
               </button>
             )}
           </div>
-          {!isSearchMode && labelsVisible && allOrgLabels.length > 0 && (
+          {!isSearchMode && labelsVisible && allOrgLabels.length > 0 && (isSearchFocused || isFilterBarHovered || filterLabelIds.size > 0) && (
             <div className="flex flex-wrap gap-1 mt-1">
               {allOrgLabels.map((label) => (
                 <button
