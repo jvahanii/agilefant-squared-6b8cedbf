@@ -36,7 +36,8 @@ export class ErrorBoundary extends Component<Props, State> {
     const isChunkError =
       (typeof error.message === "string" &&
         (error.message.includes("Failed to fetch dynamically imported module") ||
-          error.message.includes("Loading chunk"))) ||
+          error.message.includes("Loading chunk") ||
+          error.message.includes("is not a valid JavaScript MIME type"))) ||
       error.name === "ChunkLoadError";
 
     if (isChunkError) {
