@@ -628,6 +628,29 @@ describe("moveWorkItemToBacklog", () => {
     expect(movedItem.ranks[`${ORG}::bl-2`]).not.toBe(existingItem.ranks[`${ORG}::bl-2`]);
   });
 
+  it("places the moved item at the top of the target backlog", () => {
+    seedTwoBacklogStore();
+    // wi-2 is already in bl-2 with rank 0. Moving wi-1 to bl-2 should give it
+    // a rank lower than wi-2 (i.e. it sorts before wi-2).
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+    const movedItem = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    const existingItem = useAppStore.getState().workItems[`${ORG}::wi-2`];
+    expect(movedItem.ranks[`${ORG}::bl-2`]).toBeLessThan(existingItem.ranks[`${ORG}::bl-2`]!);
+  });
+
+  it("places the moved item at rank 0 when the target backlog is empty", () => {
+    seedTwoBacklogStore();
+    // Remove wi-2 from bl-2 so it is empty, then move wi-1 there.
+    useAppStore.setState({
+      workItems: {
+        [`${ORG}::wi-1`]: useAppStore.getState().workItems[`${ORG}::wi-1`],
+      },
+    });
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
+    const movedItem = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    expect(movedItem.ranks[`${ORG}::bl-2`]).toBe(0);
+  });
+
   it("also moves child items' backlog assignment recursively", () => {
     seedTwoBacklogStore();
     // Give wi-1 a child

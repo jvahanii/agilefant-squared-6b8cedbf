@@ -657,17 +657,17 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
 
-      // Compute rank as max+1 among siblings in the NEW backlog only.
-      let maxRank = -1;
+      // Compute rank as min-1 among siblings in the NEW backlog to place item at top.
+      let minRank = Infinity;
       Object.values(state.workItems).forEach((wi) => {
         if (wi.id === workItemId) return;
         if (wi.parentId !== item.parentId) return;
         if (wi.backlogAssignments[treeId] === cleanTargetBl) {
           const wiRank = wi.ranks[cleanTargetBl] ?? 0;
-          if (wiRank > maxRank) maxRank = wiRank;
+          if (wiRank < minRank) minRank = wiRank;
         }
       });
-      const newRootRank = maxRank + 1;
+      const newRootRank = minRank === Infinity ? 0 : minRank - 1;
 
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
