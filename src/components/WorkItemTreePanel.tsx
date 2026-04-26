@@ -1251,10 +1251,14 @@ function ReorderDropZone({
 
   return (
     <div
-      ref={setNodeRef}
-      className={`relative transition-[padding] duration-100 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}
+      className="relative py-px"
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
+      {/* Absolutely-positioned hit area: expands during drag without shifting layout */}
+      <div
+        ref={setNodeRef}
+        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-2 -bottom-2") : "inset-y-0"}`}
+      />
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );

@@ -150,10 +150,14 @@ function BacklogReorderDropZone({
 
   return (
     <div
-      ref={setNodeRef}
-      className={`relative transition-[padding] duration-100 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}
+      className="relative py-px"
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
+      {/* Absolutely-positioned hit area: expands during drag without shifting layout */}
+      <div
+        ref={setNodeRef}
+        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-2 -bottom-2") : "inset-y-0"}`}
+      />
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
@@ -639,7 +643,12 @@ function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   });
 
   return (
-    <div ref={setNodeRef} className={`relative transition-[padding] duration-100 mx-2 ${isDragActive ? (isMobile ? "py-3" : "py-2") : "py-px"}`}>
+    <div className="relative py-px mx-2">
+      {/* Absolutely-positioned hit area: expands during drag without shifting layout */}
+      <div
+        ref={setNodeRef}
+        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-2 -bottom-2") : "inset-y-0"}`}
+      />
       <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
     </div>
   );
