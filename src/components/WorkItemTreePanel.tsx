@@ -1865,7 +1865,11 @@ export function WorkItemTreePanel() {
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsAdding(true);
+                  if (isMobile && selectedWorkItemIds.length === 1) {
+                    window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                  } else {
+                    setIsAdding(true);
+                  }
                 }}
                 title="Add work item (Enter)"
               >
