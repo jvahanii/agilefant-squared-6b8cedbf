@@ -634,8 +634,6 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        <BackupsCard />
-
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
           <p className="text-sm text-muted-foreground mb-4">
@@ -882,7 +880,8 @@ export default function TeamSettings() {
                 <AlertTriangle className="w-4 h-4" /> Danger Zone
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-6">
+              <BackupsCard />
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Delete this organization</p>
