@@ -824,8 +824,7 @@ function WorkItemNodeContent({
                 className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!expanded) toggleExpand(workItemId);
-                  setIsAdding(true);
+                  setIsAddingSibling(true);
                 }}
               >
                 <Plus className="w-3.5 h-3.5" />
