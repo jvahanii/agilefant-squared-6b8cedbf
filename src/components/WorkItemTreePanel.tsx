@@ -726,7 +726,7 @@ function WorkItemNodeContent({
 
           {(isChildBacklog || backlogPaths.length > 0) && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
-              {isChildBacklog && backlogId !== parentBacklogId && backlogs[backlogId] && (
+              {isChildBacklog && (parentBacklogId === undefined || backlogId !== parentBacklogId) && backlogs[backlogId] && (
                 <div className="flex items-center text-[10px] text-muted-foreground/70">
                   <span className="mr-0.5">in</span>
                   <button
