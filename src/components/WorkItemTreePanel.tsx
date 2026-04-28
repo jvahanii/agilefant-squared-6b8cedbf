@@ -1124,44 +1124,52 @@ function WorkItemNodeContent({
               <>
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
-                {[...item.childrenIds]
-                  .map((id) => workItems[id])
-                  .filter(Boolean)
-                  .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0))
-                  .map((child, index) => {
-                    const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
-                    return (
-                      <div key={child.id}>
-                        <ReorderDropZone
-                          id={`reorder-${workItemId}-${index}`}
-                          index={index}
-                          treeId={treeId}
-                          backlogIds={allBacklogIds}
-                          parentId={workItemId}
-                          depth={depth + 1}
-                        />
-                        <WorkItemNode
-                          workItemId={child.id}
-                          depth={depth + 1}
-                          treeId={treeId}
-                          backlogId={childBacklogId}
-                          allBacklogIds={allBacklogIds}
-                          isChildBacklog={isChildBacklog}
-                          parentBacklogId={backlogId}
-                          isScrambled={isScrambled}
-                          onSelect={onSelect}
-                        />
-                      </div>
-                    );
-                  })}
-                <ReorderDropZone
-                  id={`reorder-${workItemId}-${item.childrenIds.length}`}
-                  index={item.childrenIds.length}
-                  treeId={treeId}
-                  backlogIds={allBacklogIds}
-                  parentId={workItemId}
-                  depth={depth + 1}
-                />
+                {(() => {
+                  const sortedChildren = [...item.childrenIds]
+                    .map((id) => workItems[id])
+                    .filter(Boolean)
+                    .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
+                  return (
+                    <>
+                      {sortedChildren.map((child, index) => {
+                        const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
+                        return (
+                          <div key={child.id}>
+                            <ReorderDropZone
+                              id={`reorder-${workItemId}-${index}`}
+                              index={index}
+                              treeId={treeId}
+                              backlogIds={allBacklogIds}
+                              parentId={workItemId}
+                              depth={depth + 1}
+                              targetBacklogId={allBacklogIds.length > 1 ? childBacklogId : undefined}
+                            />
+                            <WorkItemNode
+                              workItemId={child.id}
+                              depth={depth + 1}
+                              treeId={treeId}
+                              backlogId={childBacklogId}
+                              allBacklogIds={allBacklogIds}
+                              isChildBacklog={isChildBacklog}
+                              parentBacklogId={backlogId}
+                              isScrambled={isScrambled}
+                              onSelect={onSelect}
+                            />
+                          </div>
+                        );
+                      })}
+                      <ReorderDropZone
+                        id={`reorder-${workItemId}-${item.childrenIds.length}`}
+                        index={item.childrenIds.length}
+                        treeId={treeId}
+                        backlogIds={allBacklogIds}
+                        parentId={workItemId}
+                        depth={depth + 1}
+                        targetBacklogId={allBacklogIds.length > 1 ? (sortedChildren[sortedChildren.length - 1]?.backlogAssignments[treeId] ?? backlogId) : undefined}
+                      />
+                    </>
+                  );
+                })()}
                 {isAdding && (
                   <InlineWorkItemInput
                     depth={depth + 1}
@@ -1274,6 +1282,7 @@ function ReorderDropZone({
   backlogIds,
   parentId,
   depth,
+  targetBacklogId,
 }: {
   id: string;
   index: number;
@@ -1281,13 +1290,14 @@ function ReorderDropZone({
   backlogIds: string[];
   parentId: string | null;
   depth: number;
+  targetBacklogId?: string;
 }) {
   const isMobile = useIsMobile();
   const { active } = useDndContext();
   const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId },
+    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId, backlogId: targetBacklogId },
   });
 
   return (
@@ -2109,6 +2119,7 @@ export function WorkItemTreePanel() {
                         backlogIds={allBacklogIds}
                         parentId={null}
                         depth={0}
+                        targetBacklogId={allBacklogIds.length > 1 ? itemBacklogId : undefined}
                       />
                       <WorkItemNode
                         workItemId={item.id}
@@ -2131,6 +2142,7 @@ export function WorkItemTreePanel() {
                   backlogIds={allBacklogIds}
                   parentId={null}
                   depth={0}
+                  targetBacklogId={allBacklogIds.length > 1 ? (displayedRootItems[displayedRootItems.length - 1]?.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!) : undefined}
                 />
               </div>
             )}
