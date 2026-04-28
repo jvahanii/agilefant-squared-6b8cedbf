@@ -185,6 +185,7 @@ interface WorkItemNodeProps {
   backlogId: string;
   allBacklogIds: string[];
   isChildBacklog?: boolean;
+  parentBacklogId?: string;
   isScrambled: boolean;
   onSelect: (id: string, multi: boolean, shift: boolean) => void;
 }
@@ -204,6 +205,7 @@ function WorkItemNodeContent({
   backlogId,
   allBacklogIds,
   isChildBacklog,
+  parentBacklogId,
   isScrambled,
   onSelect,
 }: WorkItemNodeProps) {
@@ -219,6 +221,7 @@ function WorkItemNodeContent({
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
+  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
@@ -721,8 +724,22 @@ function WorkItemNodeContent({
             </div>
           )}
 
-          {backlogPaths.length > 0 && (
+          {(isChildBacklog || backlogPaths.length > 0) && (
             <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5">
+              {isChildBacklog && (parentBacklogId === undefined || backlogId !== parentBacklogId) && backlogs[backlogId] && (
+                <div className="flex items-center text-[10px] text-muted-foreground/70">
+                  <span className="mr-0.5">in</span>
+                  <button
+                    className="hover:text-foreground hover:underline transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectBacklog(backlogId, treeId);
+                    }}
+                  >
+                    {isScrambled ? scrambleName(backlogs[backlogId].name) : backlogs[backlogId].name}
+                  </button>
+                </div>
+              )}
               {backlogPaths.map(({ treeId: tid, path }) => (
                 <div key={tid} className="flex items-center text-[10px] text-foreground">
                   <span className="mr-0.5">also in</span>
@@ -991,6 +1008,29 @@ function WorkItemNodeContent({
           >
             Move under parent…
           </ContextMenuItem>
+          {allBacklogIds.length > 1 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                Move to backlog
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {allBacklogIds
+                  .filter((blId) => blId !== backlogId)
+                  .map((blId) => (
+                    <ContextMenuItem
+                      key={blId}
+                      className="text-xs"
+                      onSelect={() => {
+                        const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+                        ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                      }}
+                    >
+                      {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
+                    </ContextMenuItem>
+                  ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
           <ContextMenuSeparator />
           {labelsVisible && orgLabels.length > 0 && (
             <ContextMenuSub>
@@ -1107,6 +1147,7 @@ function WorkItemNodeContent({
                           backlogId={childBacklogId}
                           allBacklogIds={allBacklogIds}
                           isChildBacklog={isChildBacklog}
+                          parentBacklogId={backlogId}
                           isScrambled={isScrambled}
                           onSelect={onSelect}
                         />
@@ -2076,6 +2117,7 @@ export function WorkItemTreePanel() {
                         backlogId={itemBacklogId}
                         allBacklogIds={allBacklogIds}
                         isChildBacklog={itemBacklogId !== selectedBacklogId}
+                        parentBacklogId={selectedBacklogId!}
                         isScrambled={isScrambled}
                         onSelect={handleSelect}
                       />
