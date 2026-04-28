@@ -1129,6 +1129,7 @@ function WorkItemNodeContent({
                     .map((id) => workItems[id])
                     .filter(Boolean)
                     .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
+                  const isMultiBacklog = allBacklogIds.length > 1;
                   return (
                     <>
                       {sortedChildren.map((child, index) => {
@@ -1142,7 +1143,7 @@ function WorkItemNodeContent({
                               backlogIds={allBacklogIds}
                               parentId={workItemId}
                               depth={depth + 1}
-                              targetBacklogId={allBacklogIds.length > 1 ? childBacklogId : undefined}
+                              targetBacklogId={isMultiBacklog ? childBacklogId : undefined}
                             />
                             <WorkItemNode
                               workItemId={child.id}
@@ -1165,7 +1166,7 @@ function WorkItemNodeContent({
                         backlogIds={allBacklogIds}
                         parentId={workItemId}
                         depth={depth + 1}
-                        targetBacklogId={allBacklogIds.length > 1 ? (sortedChildren[sortedChildren.length - 1]?.backlogAssignments[treeId] ?? backlogId) : undefined}
+                        targetBacklogId={isMultiBacklog ? (sortedChildren[sortedChildren.length - 1]?.backlogAssignments[treeId] ?? backlogId) : undefined}
                       />
                     </>
                   );
@@ -2108,42 +2109,49 @@ export function WorkItemTreePanel() {
                     onCancel={() => setIsAdding(false)}
                   />
                 )}
-                {displayedRootItems.map((item, index) => {
-                  const itemBacklogId = item.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
+                {(() => {
+                  const isMultiBacklog = allBacklogIds.length > 1;
                   return (
-                    <div key={item.id}>
+                    <>
+                      {displayedRootItems.map((item, index) => {
+                        const itemBacklogId = item.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
+                        return (
+                          <div key={item.id}>
+                            <ReorderDropZone
+                              id={`reorder-root-${index}`}
+                              index={index}
+                              treeId={selectedTreeId!}
+                              backlogIds={allBacklogIds}
+                              parentId={null}
+                              depth={0}
+                              targetBacklogId={isMultiBacklog ? itemBacklogId : undefined}
+                            />
+                            <WorkItemNode
+                              workItemId={item.id}
+                              depth={0}
+                              treeId={selectedTreeId!}
+                              backlogId={itemBacklogId}
+                              allBacklogIds={allBacklogIds}
+                              isChildBacklog={itemBacklogId !== selectedBacklogId}
+                              parentBacklogId={selectedBacklogId!}
+                              isScrambled={isScrambled}
+                              onSelect={handleSelect}
+                            />
+                          </div>
+                        );
+                      })}
                       <ReorderDropZone
-                        id={`reorder-root-${index}`}
-                        index={index}
+                        id={`reorder-root-${displayedRootItems.length}`}
+                        index={displayedRootItems.length}
                         treeId={selectedTreeId!}
                         backlogIds={allBacklogIds}
                         parentId={null}
                         depth={0}
-                        targetBacklogId={allBacklogIds.length > 1 ? itemBacklogId : undefined}
+                        targetBacklogId={isMultiBacklog ? (displayedRootItems[displayedRootItems.length - 1]?.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!) : undefined}
                       />
-                      <WorkItemNode
-                        workItemId={item.id}
-                        depth={0}
-                        treeId={selectedTreeId!}
-                        backlogId={itemBacklogId}
-                        allBacklogIds={allBacklogIds}
-                        isChildBacklog={itemBacklogId !== selectedBacklogId}
-                        parentBacklogId={selectedBacklogId!}
-                        isScrambled={isScrambled}
-                        onSelect={handleSelect}
-                      />
-                    </div>
+                    </>
                   );
-                })}
-                <ReorderDropZone
-                  id={`reorder-root-${displayedRootItems.length}`}
-                  index={displayedRootItems.length}
-                  treeId={selectedTreeId!}
-                  backlogIds={allBacklogIds}
-                  parentId={null}
-                  depth={0}
-                  targetBacklogId={allBacklogIds.length > 1 ? (displayedRootItems[displayedRootItems.length - 1]?.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!) : undefined}
-                />
+                })()}
               </div>
             )}
           </div>

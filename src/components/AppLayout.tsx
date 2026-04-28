@@ -781,8 +781,9 @@ function AppLayoutInner() {
         // are shown together and dragging near items of a different sub-backlog should
         // reassign the item to that sub-backlog).
         if (targetBacklogId) {
+          const preMoveStore = useAppStore.getState();
           draggedIds.forEach((id) => {
-            const wi = useAppStore.getState().workItems[id];
+            const wi = preMoveStore.workItems[id];
             if (!wi) return;
             const currentBacklogId = wi.backlogAssignments[treeId];
             if (currentBacklogId && currentBacklogId !== targetBacklogId) {
@@ -791,6 +792,7 @@ function AppLayoutInner() {
           });
         }
 
+        // Re-read store after potential backlog moves so reparent/reorder see latest state.
         const store = useAppStore.getState();
         draggedIds.forEach((id) => {
           const wi = store.workItems[id];
