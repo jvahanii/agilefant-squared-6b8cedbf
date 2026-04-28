@@ -35,8 +35,8 @@ function toDatetimeLocal(d: Date): string {
 }
 
 const QUICK_OPTIONS = [
-  { label: "Later Today", sublabel: "3 hours from now", fn: snoozeOptionLaterToday },
   { label: "Tomorrow Morning", sublabel: "7:00 AM", fn: snoozeOptionTomorrowMorning },
+  { label: "Later Today", sublabel: "3 hours from now", fn: snoozeOptionLaterToday },
   { label: "This Weekend", sublabel: "Saturday 7:00 AM", fn: snoozeOptionThisWeekend },
   { label: "Next Week", sublabel: "Monday 7:00 AM", fn: snoozeOptionNextWeek },
   { label: "One Week from Now", sublabel: "7 days, 7:00 AM", fn: snoozeOptionOneWeekFromNow },
@@ -87,13 +87,14 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
         </DialogHeader>
 
         <div className="flex flex-col gap-2 pt-1">
-          {QUICK_OPTIONS.map((opt) => (
+          {QUICK_OPTIONS.map((opt, index) => (
             <Button
               key={opt.label}
               variant="outline"
               className="justify-between h-auto py-2 px-3"
               onClick={() => doSnooze(opt.fn())}
               disabled={isSaving}
+              autoFocus={index === 0}
             >
               <span className="font-medium text-sm">{opt.label}</span>
               <span className="text-xs text-muted-foreground">{opt.sublabel}</span>

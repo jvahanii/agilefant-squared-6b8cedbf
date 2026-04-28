@@ -13,7 +13,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
 import { Bell, BellOff, Clock, Link2, RotateCcw, Tag } from "lucide-react";
-import { useSnoozeStore } from "@/store/snoozeStore";
+import { useSnoozeStore, snoozeOptionTomorrowMorning } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 
 // ─── Work Item Attributes Sheet ──────────────────────────────────────────────
@@ -72,6 +72,7 @@ export function MobileWorkItemAttributesSheet({
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
   const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
+  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
 
   const [isEditingPoints, setIsEditingPoints] = useState(false);
   const [editPoints, setEditPoints] = useState("");
@@ -230,7 +231,11 @@ export function MobileWorkItemAttributesSheet({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-sm text-muted-foreground"
-                onClick={() => { onOpenChange(false); onOpenSnooze(); }}
+                onClick={() => {
+                  if (!activeOrgId) return;
+                  onOpenChange(false);
+                  snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: snoozeOptionTomorrowMorning() });
+                }}
               >
                 <BellOff className="w-3.5 h-3.5 mr-1" />
                 Snooze
