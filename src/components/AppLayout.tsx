@@ -774,13 +774,31 @@ function AppLayoutInner() {
         const targetParentId = overData.parentId as string | null;
         const treeId = overData.treeId as string;
         const backlogIds = overData.backlogIds as string[];
-        const store = useAppStore.getState();
+        const targetBacklogId = overData.backlogId as string | undefined;
 
+        // If the drop zone targets a specific sub-backlog, move items to that backlog first
+        // (handles the combined parent-backlog view where items from multiple sub-backlogs
+        // are shown together and dragging near items of a different sub-backlog should
+        // reassign the item to that sub-backlog).
+        if (targetBacklogId) {
+          const preMoveStore = useAppStore.getState();
+          draggedIds.forEach((id) => {
+            const wi = preMoveStore.workItems[id];
+            if (!wi) return;
+            const currentBacklogId = wi.backlogAssignments[treeId];
+            if (currentBacklogId && currentBacklogId !== targetBacklogId) {
+              moveWorkItemToBacklog(id, targetBacklogId, treeId);
+            }
+          });
+        }
+
+        // Re-read store after potential backlog moves so reparent/reorder see latest state.
+        const store = useAppStore.getState();
         draggedIds.forEach((id) => {
           const wi = store.workItems[id];
           if (!wi) return;
           if (wi.parentId !== targetParentId) {
-            const backlogId = backlogIds[0] ?? "";
+            const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
             reparentWorkItem(id, targetParentId, treeId, backlogId);
           }
         });
