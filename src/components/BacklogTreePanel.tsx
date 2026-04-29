@@ -302,6 +302,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
     };
   }, [isSelected, backlogId, deleteBacklog]);
 
+  // Auto-expand a collapsed branch when a drag is held over it for a short time.
+  useEffect(() => {
+    if (!isOver || isDragging || !backlog || backlog.childrenIds.length === 0 || expanded) return;
+    const timer = setTimeout(() => {
+      toggleExpand(backlogId);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [isOver, isDragging, backlog, expanded, toggleExpand, backlogId]);
+
   if (!backlog) return null;
 
   const hasChildren = backlog.childrenIds.length > 0;
