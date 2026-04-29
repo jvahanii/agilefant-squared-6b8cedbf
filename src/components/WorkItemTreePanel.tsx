@@ -1796,7 +1796,7 @@ export function WorkItemTreePanel() {
               </button>
             )}
           </div>
-          {!isSearchMode && labelsVisible && allOrgLabels.length > 0 && (isSearchFocused || isFilterBarHovered || filterLabelIds.size > 0) && (
+          {!isSearchMode && labelsVisible && allOrgLabels.length > 0 && (isMobile || isSearchFocused || isFilterBarHovered || filterLabelIds.size > 0) && (
             <div className="flex flex-wrap gap-1 mt-1">
               {allOrgLabels.map((label) => (
                 <button
