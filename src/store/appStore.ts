@@ -1008,7 +1008,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           if (removedBlId) delete newRanks[removedBlId];
           updatedItems[id] = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
           toUpsert.push(updatedItems[id]);
-          wi.childrenIds.forEach(processItem);
+          updatedItems[id].childrenIds.forEach(processItem);
         }
       };
 
