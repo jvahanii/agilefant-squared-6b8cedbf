@@ -312,6 +312,122 @@ describe("removeWorkItemFromTree", () => {
     useAppStore.getState().removeWorkItemFromTree(`${ORG}::wi-1`, `${ORG}::bt-1`);
     expect(useAppStore.getState().workItems[`${ORG}::wi-1`]).toBeUndefined();
   });
+
+  it("recursively removes tree assignment from children", () => {
+    seedStore();
+    // Give wi-1 two tree assignments and a child that also has both trees.
+    useAppStore.setState({
+      backlogTrees: {
+        ...useAppStore.getState().backlogTrees,
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        ...useAppStore.getState().backlogs,
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Parent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child", status: "not_started" as const,
+          parentId: `${ORG}::wi-1`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-2`]: 0 },
+        },
+      },
+    });
+    useAppStore.getState().removeWorkItemFromTree(`${ORG}::wi-1`, `${ORG}::bt-1`);
+    const parent = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
+    // Both items should still exist (they have bt-2 assignment remaining)
+    expect(parent).toBeDefined();
+    expect(child).toBeDefined();
+    // bt-1 assignment should be removed from both
+    expect(parent.backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    expect(child.backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    // bt-2 assignment should be preserved in both
+    expect(parent.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+    expect(child.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+  });
+
+  it("recursively deletes children that have no remaining assignments", () => {
+    seedStore();
+    // wi-1 has only bt-1, and wi-child also has only bt-1.
+    useAppStore.setState({
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          id: `${ORG}::wi-1`, title: "Parent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child", status: "not_started" as const,
+          parentId: `${ORG}::wi-1`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+      },
+    });
+    useAppStore.getState().removeWorkItemFromTree(`${ORG}::wi-1`, `${ORG}::bt-1`);
+    // Both items should be deleted since neither has any remaining assignments
+    expect(useAppStore.getState().workItems[`${ORG}::wi-1`]).toBeUndefined();
+    expect(useAppStore.getState().workItems[`${ORG}::wi-child`]).toBeUndefined();
+  });
+
+  it("cross-tree move: children are removed from source tree after move+remove", () => {
+    // Simulate what handleCrossTreeChoice does for a "move" action:
+    // 1. moveWorkItemToBacklog adds targetTree to root and all children
+    // 2. removeWorkItemFromTree removes sourceTree from root and (now) all children
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree A", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree B", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL A", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "BL B", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child", status: "not_started" as const,
+          parentId: `${ORG}::wi-parent`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 1 },
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    // Step 1: move parent (and children recursively) to target tree
+    useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-parent`, `${ORG}::bl-2`, `${ORG}::bt-2`);
+    // Step 2: remove parent (and children recursively) from source tree
+    useAppStore.getState().removeWorkItemFromTree(`${ORG}::wi-parent`, `${ORG}::bt-1`);
+
+    const parent = useAppStore.getState().workItems[`${ORG}::wi-parent`];
+    const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
+
+    // Both items must still exist (they have the target tree assignment)
+    expect(parent).toBeDefined();
+    expect(child).toBeDefined();
+    // Neither item should retain the source tree assignment
+    expect(parent.backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    expect(child.backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+    // Both items should be in the target backlog
+    expect(parent.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+    expect(child.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+  });
 });
 
 describe("reparentWorkItem", () => {

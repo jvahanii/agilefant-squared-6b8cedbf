@@ -984,21 +984,58 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
       if (!item) return;
-      const newAssignments = { ...item.backlogAssignments };
-      const removedBlId = newAssignments[treeId];
-      delete newAssignments[treeId];
-      if (Object.keys(newAssignments).length === 0) {
-        get().deleteWorkItem(workItemId);
-        return;
+
+      const updatedItems = { ...state.workItems };
+      const toUpsert: WorkItem[] = [];
+      const idsToDelete: string[] = [];
+
+      const processItem = (id: string) => {
+        const wi = updatedItems[id];
+        if (!wi) return;
+        const newAssignments = { ...wi.backlogAssignments };
+        const removedBlId = newAssignments[treeId];
+        delete newAssignments[treeId];
+        if (Object.keys(newAssignments).length === 0) {
+          // No remaining tree assignments: delete this item and its entire subtree.
+          const collectSubtree = (sid: string) => {
+            if (!updatedItems[sid]) return;
+            idsToDelete.push(sid);
+            updatedItems[sid].childrenIds.forEach(collectSubtree);
+          };
+          collectSubtree(id);
+        } else {
+          const newRanks = { ...wi.ranks };
+          if (removedBlId) delete newRanks[removedBlId];
+          updatedItems[id] = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+          toUpsert.push(updatedItems[id]);
+          wi.childrenIds.forEach(processItem);
+        }
+      };
+
+      processItem(workItemId);
+
+      if (idsToDelete.length > 0) {
+        const deleteSet = new Set(idsToDelete);
+        idsToDelete.forEach((deletedId) => {
+          const deletedItem = state.workItems[deletedId];
+          if (deletedItem?.parentId && !deleteSet.has(deletedItem.parentId) && updatedItems[deletedItem.parentId]) {
+            updatedItems[deletedItem.parentId] = {
+              ...updatedItems[deletedItem.parentId],
+              childrenIds: updatedItems[deletedItem.parentId].childrenIds.filter((id) => id !== deletedId),
+            };
+          }
+          delete updatedItems[deletedId];
+        });
+        deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       }
-      const newRanks = { ...item.ranks };
-      if (removedBlId) delete newRanks[removedBlId];
-      const updated = { ...item, backlogAssignments: newAssignments, ranks: newRanks };
-      upsertWorkItem(updated, orgId);
+      if (toUpsert.length > 0) {
+        upsertWorkItems(toUpsert, orgId);
+      }
+
       const treeName = state.backlogTrees[treeId]?.name ?? treeId;
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `tree: "${treeName}"` });
       set({
-        workItems: { ...state.workItems, [workItemId]: updated },
+        workItems: updatedItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
         redoStack: [],
       });
