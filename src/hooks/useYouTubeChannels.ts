@@ -154,12 +154,16 @@ export async function toggleYouTubeChannel(orgId: string, id: string): Promise<v
     .eq("id", id);
 }
 
-export function renameYouTubeChannel(id: string, name: string) {
-  saveChannels(getChannels().map((c) => (c.id === id ? { ...c, name } : c)));
+export async function renameYouTubeChannel(orgId: string, id: string, name: string): Promise<void> {
+  await supabase
+    .from("youtube_channels")
+    .update({ name })
+    .eq("organization_id", orgId)
+    .eq("id", id);
 }
 
-export function getEnabledYouTubeChannels(): YouTubeChannel[] {
-  return getChannels().filter((c) => c.enabled);
+export async function getEnabledYouTubeChannels(orgId: string): Promise<YouTubeChannel[]> {
+  return (await getYouTubeChannels(orgId)).filter((c) => c.enabled);
 }
 
 // ---------------------------------------------------------------------------
@@ -211,8 +215,12 @@ export async function toggleYouTubeVideoLink(orgId: string, id: string): Promise
     .eq("id", id);
 }
 
-export function renameYouTubeVideoLink(id: string, name: string) {
-  saveVideoLinks(getVideoLinks().map((l) => (l.id === id ? { ...l, name } : l)));
+export async function renameYouTubeVideoLink(orgId: string, id: string, name: string): Promise<void> {
+  await supabase
+    .from("youtube_video_links")
+    .update({ name })
+    .eq("organization_id", orgId)
+    .eq("id", id);
 }
 
 export async function getEnabledYouTubeVideoLinks(orgId: string): Promise<YouTubeVideoLink[]> {
@@ -312,8 +320,12 @@ export async function setYouTubeSearchChannelOrder(
     .eq("id", id);
 }
 
-export function renameYouTubeSearchChannel(id: string, name: string) {
-  saveSearchChannels(getSearchChannels().map((c) => (c.id === id ? { ...c, name } : c)));
+export async function renameYouTubeSearchChannel(orgId: string, id: string, name: string): Promise<void> {
+  await supabase
+    .from("youtube_search_channels")
+    .update({ name })
+    .eq("organization_id", orgId)
+    .eq("id", id);
 }
 
 /**

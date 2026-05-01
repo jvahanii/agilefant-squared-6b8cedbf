@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -233,17 +232,17 @@ export default function SuperuserYoutube() {
     setEditingId(id);
   };
 
-  const handleCommitEdit = (newName: string) => {
-    if (editingId && editingKind) {
+  const handleCommitEdit = async (newName: string) => {
+    if (editingId && editingKind && activeOrgId) {
       if (editingKind === "channel") {
-        renameYouTubeChannel(editingId, newName);
-        setChannels(getYouTubeChannels());
+        await renameYouTubeChannel(activeOrgId, editingId, newName);
+        setChannels(await getYouTubeChannels(activeOrgId));
       } else if (editingKind === "search") {
-        renameYouTubeSearchChannel(editingId, newName);
-        setSearchChannels(getYouTubeSearchChannels());
+        await renameYouTubeSearchChannel(activeOrgId, editingId, newName);
+        setSearchChannels(await getYouTubeSearchChannels(activeOrgId));
       } else {
-        renameYouTubeVideoLink(editingId, newName);
-        setVideoLinks(getYouTubeVideoLinks());
+        await renameYouTubeVideoLink(activeOrgId, editingId, newName);
+        setVideoLinks(await getYouTubeVideoLinks(activeOrgId));
       }
     }
     setEditingId(null);
