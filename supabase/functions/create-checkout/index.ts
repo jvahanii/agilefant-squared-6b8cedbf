@@ -79,7 +79,16 @@ serve(async (req) => {
         .eq("id", organization_id);
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    // Security: validate origin against an allowlist to prevent open-redirect
+    // abuse via attacker-supplied Origin headers (e.g. curl/Postman calls).
+    const ALLOWED_ORIGINS = [
+      "https://agilefant-squared.lovable.app",
+      "https://id-preview--132685af-14e8-4da2-be0f-12e1778c35df.lovable.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ];
+    const rawOrigin = req.headers.get("origin") ?? "";
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
