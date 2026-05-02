@@ -143,7 +143,8 @@ Deno.serve(async (req) => {
       const res = await fetch(url.toString());
       const data = await res.json();
       if (!res.ok) {
-        return json({ error: 'YouTube API error', details: data }, res.status);
+        console.error('YouTube API error (channelVideos)', res.status, data);
+        return json({ error: 'YouTube API error' }, res.status);
       }
       return json({ channelId, items: mapVideos(data.items) });
     }
@@ -151,7 +152,6 @@ Deno.serve(async (req) => {
     return json({ error: `Unknown action: ${String(action)}` }, 400);
   } catch (err) {
     console.error('youtube-proxy error', err);
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    return json({ error: msg }, 500);
+    return json({ error: 'Internal server error' }, 500);
   }
 });
