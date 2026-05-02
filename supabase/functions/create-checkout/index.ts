@@ -108,9 +108,13 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: msg });
-    return new Response(JSON.stringify({ error: msg }), {
+    const status = msg.includes("Forbidden") ? 403
+      : (msg.includes("authorization") || msg.includes("Authentication") || msg.includes("not authenticated")) ? 401
+      : 500;
+    const clientMsg = status === 403 ? "Forbidden" : status === 401 ? "Unauthorized" : "An internal error occurred";
+    return new Response(JSON.stringify({ error: clientMsg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: msg.includes("Forbidden") ? 403 : 500,
+      status,
     });
   }
 });
