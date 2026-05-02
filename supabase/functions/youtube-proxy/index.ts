@@ -123,8 +123,9 @@ Deno.serve(async (req) => {
         const lookupRes = await fetch(lookup.toString());
         const lookupData = await lookupRes.json();
         if (!lookupRes.ok || !lookupData.items?.length) {
+          console.error('Channel lookup failed', lookupRes.status, lookupData);
           return json(
-            { error: 'Could not resolve channel', details: lookupData },
+            { error: 'Could not resolve channel' },
             lookupRes.ok ? 404 : lookupRes.status,
           );
         }
