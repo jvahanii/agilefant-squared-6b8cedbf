@@ -31,7 +31,20 @@ export function ScrambleProvider({ children }: { children: ReactNode }) {
           console.error("ScrambleContext: failed to fetch superuser status", error);
           return;
         }
-        setIsSuperuser(data?.is_superuser ?? false);
+        const su = data?.is_superuser ?? false;
+        setIsSuperuser(su);
+        // Security: only superusers may have a role override. Clear any
+        // sessionStorage-injected override for non-superusers so that admin-only
+        // UI sections don't render for plain members who tampered with storage.
+        if (!su && typeof sessionStorage !== 'undefined') {
+          if (sessionStorage.getItem('roleOverride')) {
+            sessionStorage.removeItem('roleOverride');
+            // Also clear the in-memory state in the org store
+            import('@/store/orgStore').then(({ useOrgStore }) => {
+              useOrgStore.setState({ roleOverride: null });
+            });
+          }
+        }
       });
   }, [user?.id]);
 
