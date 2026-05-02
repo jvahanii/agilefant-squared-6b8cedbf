@@ -699,6 +699,7 @@ export type Database = {
           respawn_hour: number | null
           respawn_interval_days: number | null
           respawn_last_triggered_at: string | null
+          respawn_minute: number | null
           status: string
           title: string
         }
@@ -714,6 +715,7 @@ export type Database = {
           respawn_hour?: number | null
           respawn_interval_days?: number | null
           respawn_last_triggered_at?: string | null
+          respawn_minute?: number | null
           status?: string
           title: string
         }
@@ -729,6 +731,7 @@ export type Database = {
           respawn_hour?: number | null
           respawn_interval_days?: number | null
           respawn_last_triggered_at?: string | null
+          respawn_minute?: number | null
           status?: string
           title?: string
         }

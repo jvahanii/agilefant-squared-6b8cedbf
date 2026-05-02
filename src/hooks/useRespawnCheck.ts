@@ -36,23 +36,28 @@ export function useRespawnCheck() {
 
         if (item.respawnLastTriggeredAt) {
           // Compute next due time: lastTriggeredAt + intervalDays, then align to
-          // respawnHour on that day. Aligning via setHours ensures catch-up if the
-          // app was closed during the exact scheduled hour.
-          // If setHours moves the date backward (last trigger was after respawnHour),
-          // advance by one day so the effective interval is never shorter than intervalDays.
+          // respawnHour:respawnMinute on that day.  Aligning via setHours ensures
+          // catch-up if the app was closed during the exact scheduled time.
+          // If setHours moves the date backward (last trigger was after the
+          // scheduled time), advance by one day so the effective interval is
+          // never shorter than intervalDays.
+          const minute = item.respawnMinute ?? 0;
           const baseNextDue = new Date(
             new Date(item.respawnLastTriggeredAt).getTime() +
               item.respawnIntervalDays * 24 * 60 * 60 * 1000,
           );
           const nextDue = new Date(baseNextDue);
-          nextDue.setHours(item.respawnHour, 0, 0, 0);
+          nextDue.setHours(item.respawnHour, minute, 0, 0);
           if (nextDue < baseNextDue) {
             nextDue.setDate(nextDue.getDate() + 1);
           }
           if (now < nextDue) return;
         } else {
-          // First trigger: only fire once we reach the configured hour of day.
-          if (now.getHours() < item.respawnHour) return;
+          // First trigger: only fire once we reach the configured time of day.
+          const minute = item.respawnMinute ?? 0;
+          const nowMinutes = now.getHours() * 60 + now.getMinutes();
+          const scheduledMinutes = item.respawnHour * 60 + minute;
+          if (nowMinutes < scheduledMinutes) return;
         }
 
         respawnItem(item.id);

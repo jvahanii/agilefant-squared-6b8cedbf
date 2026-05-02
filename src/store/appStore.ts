@@ -81,7 +81,7 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
-  setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number) => void;
+  setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
   respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
@@ -1268,7 +1268,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    setWorkItemRespawn: (workItemId, respawnEnabled, respawnIntervalDays, respawnHour) => {
+    setWorkItemRespawn: (workItemId, respawnEnabled, respawnIntervalDays, respawnHour, respawnMinute) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
@@ -1278,9 +1278,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         respawnEnabled,
         respawnIntervalDays: respawnEnabled ? respawnIntervalDays : undefined,
         respawnHour: respawnEnabled ? respawnHour : undefined,
+        respawnMinute: respawnEnabled ? respawnMinute : undefined,
       };
       upsertWorkItem(updated, orgId);
-      internalLog({ action: "Set Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `enabled: ${respawnEnabled}, interval: ${respawnIntervalDays ?? 'n/a'}d, hour: ${respawnHour ?? 'n/a'}` });
+      internalLog({ action: "Set Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `enabled: ${respawnEnabled}, interval: ${respawnIntervalDays ?? 'n/a'}d, hour: ${respawnHour ?? 'n/a'}, minute: ${respawnMinute ?? 'n/a'}` });
       set({ workItems: { ...state.workItems, [workItemId]: updated } });
     },
 
@@ -1864,6 +1865,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
           respawnHour: (row.respawn_hour as number | null) ?? undefined,
+          respawnMinute: (row.respawn_minute as number | null) ?? undefined,
           respawnLastTriggeredAt: (row.respawn_last_triggered_at as string | null) ?? undefined,
         };
 
