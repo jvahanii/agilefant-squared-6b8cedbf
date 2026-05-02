@@ -9,13 +9,6 @@ import { useAppStore } from "@/store/appStore";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
 interface RespawnSettingsDialogProps {
@@ -23,8 +16,6 @@ interface RespawnSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -34,9 +25,11 @@ function computeNextRespawn(
   enabled: boolean,
   intervalDays: number,
   hour: number,
+  minute: number,
   lastTriggeredAt: string | undefined,
 ): Date | null {
   if (!enabled || isNaN(intervalDays) || intervalDays < 1 || isNaN(hour) || hour < 0 || hour > 23) return null;
+  const safeMinute = isNaN(minute) || minute < 0 || minute > 59 ? 0 : minute;
 
   const now = new Date();
 
@@ -45,15 +38,15 @@ function computeNextRespawn(
       new Date(lastTriggeredAt).getTime() + intervalDays * 24 * 60 * 60 * 1000,
     );
     const nextDue = new Date(baseNextDue);
-    nextDue.setHours(hour, 0, 0, 0);
+    nextDue.setHours(hour, safeMinute, 0, 0);
     if (nextDue < baseNextDue) {
       nextDue.setDate(nextDue.getDate() + 1);
     }
     return nextDue;
   } else {
-    // First trigger: today at respawnHour if we haven't passed it yet, otherwise tomorrow.
+    // First trigger: today at respawn time if we haven't passed it yet, otherwise tomorrow.
     const candidate = new Date(now);
-    candidate.setHours(hour, 0, 0, 0);
+    candidate.setHours(hour, safeMinute, 0, 0);
     if (candidate <= now) {
       candidate.setDate(candidate.getDate() + 1);
     }
@@ -82,36 +75,38 @@ export function RespawnSettingsDialog({
 
   const [enabled, setEnabled] = useState(false);
   const [intervalDays, setIntervalDays] = useState<string>("7");
-  const [hour, setHour] = useState<string>("9");
+  const [timeValue, setTimeValue] = useState<string>("09:00");
 
   // Sync local state when dialog opens
   useEffect(() => {
     if (open && item) {
       setEnabled(item.respawnEnabled ?? false);
       setIntervalDays(String(item.respawnIntervalDays ?? 7));
-      setHour(String(item.respawnHour ?? 9));
+      const h = item.respawnHour ?? 9;
+      const m = item.respawnMinute ?? 0;
+      setTimeValue(`${pad(h)}:${pad(m)}`);
     }
   }, [open, item]);
 
   if (!item) return null;
 
+  const parsedIntervalDays = parseInt(intervalDays, 10);
+  const [parsedHour, parsedMinute] = timeValue.split(":").map(Number);
+  const intervalError = enabled && (isNaN(parsedIntervalDays) || parsedIntervalDays < 1);
+
   const handleSave = () => {
-    const days = parseInt(intervalDays, 10);
-    const h = parseInt(hour, 10);
-    if (enabled && (isNaN(days) || days < 1)) return;
-    const validHour = !isNaN(h) && h >= 0 && h <= 23 ? h : 9;
-    setWorkItemRespawn(workItemId, enabled, enabled ? days : undefined, enabled ? validHour : undefined);
+    if (enabled && (isNaN(parsedIntervalDays) || parsedIntervalDays < 1)) return;
+    const validHour = !isNaN(parsedHour) && parsedHour >= 0 && parsedHour <= 23 ? parsedHour : 9;
+    const validMinute = !isNaN(parsedMinute) && parsedMinute >= 0 && parsedMinute <= 59 ? parsedMinute : 0;
+    setWorkItemRespawn(workItemId, enabled, enabled ? parsedIntervalDays : undefined, enabled ? validHour : undefined, enabled ? validMinute : undefined);
     onOpenChange(false);
   };
-
-  const parsedIntervalDays = parseInt(intervalDays, 10);
-  const parsedHour = parseInt(hour, 10);
-  const intervalError = enabled && (isNaN(parsedIntervalDays) || parsedIntervalDays < 1);
 
   const nextRespawn = computeNextRespawn(
     enabled,
     parsedIntervalDays,
     parsedHour,
+    parsedMinute,
     item.respawnLastTriggeredAt,
   );
 
@@ -156,19 +151,14 @@ export function RespawnSettingsDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Time of day</Label>
-              <Select value={hour} onValueChange={setHour}>
-                <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Select hour" />
-                </SelectTrigger>
-                <SelectContent>
-                  {HOURS.map((h) => (
-                    <SelectItem key={h} value={String(h)}>
-                      {pad(h)}:00
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="respawn-time" className="text-sm font-medium">Time of day</Label>
+              <Input
+                id="respawn-time"
+                type="time"
+                value={timeValue}
+                onChange={(e) => setTimeValue(e.target.value)}
+                className="h-8"
+              />
             </div>
 
             {nextRespawn && (
@@ -196,3 +186,4 @@ export function RespawnSettingsDialog({
     </Dialog>
   );
 }
+

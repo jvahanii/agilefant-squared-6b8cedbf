@@ -18,6 +18,7 @@ type WorkItemUpsertRow = {
   respawn_enabled: boolean;
   respawn_interval_days: number | null;
   respawn_hour: number | null;
+  respawn_minute: number | null;
   respawn_last_triggered_at: string | null;
 };
 
@@ -236,6 +237,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
       respawnEnabled: r.respawn_enabled ?? false,
       respawnIntervalDays: r.respawn_interval_days ?? undefined,
       respawnHour: r.respawn_hour ?? undefined,
+      respawnMinute: r.respawn_minute ?? undefined,
       respawnLastTriggeredAt: r.respawn_last_triggered_at ?? undefined,
     };
   }
@@ -410,6 +412,7 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string) {
     respawn_enabled: item.respawnEnabled ?? false,
     respawn_interval_days: item.respawnIntervalDays ?? null,
     respawn_hour: item.respawnHour ?? null,
+    respawn_minute: item.respawnMinute ?? null,
     respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -517,6 +520,7 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
       respawn_enabled: item.respawnEnabled ?? false,
       respawn_interval_days: item.respawnIntervalDays ?? null,
       respawn_hour: item.respawnHour ?? null,
+      respawn_minute: item.respawnMinute ?? null,
       respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
     };
   });

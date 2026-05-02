@@ -27,6 +27,8 @@ export interface WorkItem {
   respawnIntervalDays?: number;
   /** Hour of the day (0-23) when the respawn copy is created */
   respawnHour?: number;
+  /** Minute of the hour (0-59) when the respawn copy is created */
+  respawnMinute?: number;
   /** ISO timestamp of the last time this item was respawned */
   respawnLastTriggeredAt?: string;
 }
