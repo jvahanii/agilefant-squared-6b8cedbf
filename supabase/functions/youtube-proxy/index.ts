@@ -96,7 +96,8 @@ Deno.serve(async (req) => {
       const res = await fetch(url.toString());
       const data = await res.json();
       if (!res.ok) {
-        return json({ error: 'YouTube API error', details: data }, res.status);
+        console.error('YouTube API error (search)', res.status, data);
+        return json({ error: 'YouTube API error' }, res.status);
       }
       return json({ items: mapVideos(data.items) });
     }
