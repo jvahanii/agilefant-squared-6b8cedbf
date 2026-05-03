@@ -144,6 +144,62 @@ describe("deleteWorkItem", () => {
     useAppStore.getState().deleteWorkItem(childId);
     expect(useAppStore.getState().workItems[`${ORG}::wi-1`].childrenIds).toEqual([]);
   });
+
+  it("reparents orphaned children whose parentId points to the deleted item but were not in its childrenIds", () => {
+    // Reproduces the "becomes root after deletion from tree B" bug:
+    // X is in both trees (child in tree A, root in tree B).  X.childrenIds is
+    // empty (e.g. after a respawn), but Y has parentId=X and a tree-A assignment.
+    // Deleting X must not leave Y as an unexpected root — Y should be promoted
+    // to X's parent (P) instead.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree A", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree B", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL A", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "BL B", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-P`]: {
+          id: `${ORG}::wi-P`, title: "P", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-X`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-X`]: {
+          id: `${ORG}::wi-X`, title: "X", status: "not_started" as const,
+          parentId: `${ORG}::wi-P`,
+          // childrenIds is empty — Y is an orphaned child not listed here
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-Y`]: {
+          id: `${ORG}::wi-Y`, title: "Y", status: "not_started" as const,
+          parentId: `${ORG}::wi-X`, // orphaned — not in X.childrenIds
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 1 },
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().deleteWorkItem(`${ORG}::wi-X`);
+
+    // X should be gone
+    expect(useAppStore.getState().workItems[`${ORG}::wi-X`]).toBeUndefined();
+    // Y must survive (it has a tree-A assignment)
+    const y = useAppStore.getState().workItems[`${ORG}::wi-Y`];
+    expect(y).toBeDefined();
+    // Y must be promoted to X's parent (P), not become a root
+    expect(y.parentId).toBe(`${ORG}::wi-P`);
+    // P's childrenIds must now include Y
+    const p = useAppStore.getState().workItems[`${ORG}::wi-P`];
+    expect(p.childrenIds).toContain(`${ORG}::wi-Y`);
+  });
 });
 
 describe("renameWorkItem", () => {
@@ -427,6 +483,61 @@ describe("removeWorkItemFromTree", () => {
     // Both items should be in the target backlog
     expect(parent.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
     expect(child.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+  });
+
+  it("preserves children with other-tree assignments when parent has no remaining assignments", () => {
+    // Bug scenario: parent X has only bt-2 assignment; child Y has bt-1 AND bt-2.
+    // Removing X from bt-2 must delete X but keep Y (and reparent Y to X's parent).
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree A", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree B", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL A", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "BL B", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-gp`]: {
+          id: `${ORG}::wi-gp`, title: "Grandparent", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-X`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-X`]: {
+          id: `${ORG}::wi-X`, title: "X", status: "not_started" as const,
+          parentId: `${ORG}::wi-gp`, childrenIds: [`${ORG}::wi-Y`],
+          // X has only bt-2 — it will be deleted when bt-2 is removed
+          backlogAssignments: { [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-Y`]: {
+          id: `${ORG}::wi-Y`, title: "Y", status: "not_started" as const,
+          parentId: `${ORG}::wi-X`, childrenIds: [],
+          // Y has both trees — it must survive
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-2`]: 1 },
+        },
+      },
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().removeWorkItemFromTree(`${ORG}::wi-X`, `${ORG}::bt-2`);
+
+    // X should be gone (it only had bt-2)
+    expect(useAppStore.getState().workItems[`${ORG}::wi-X`]).toBeUndefined();
+    // Y must survive with its bt-1 assignment intact
+    const y = useAppStore.getState().workItems[`${ORG}::wi-Y`];
+    expect(y).toBeDefined();
+    expect(y.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    // bt-2 assignment should have been removed from Y as well
+    expect(y.backlogAssignments[`${ORG}::bt-2`]).toBeUndefined();
+    // Y should be reparented to X's parent (grandparent), not become a root
+    expect(y.parentId).toBe(`${ORG}::wi-gp`);
+    // Grandparent's childrenIds should now include Y
+    const gp = useAppStore.getState().workItems[`${ORG}::wi-gp`];
+    expect(gp.childrenIds).toContain(`${ORG}::wi-Y`);
   });
 });
 
