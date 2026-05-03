@@ -911,17 +911,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       for (const wi of Object.values(updatedItems)) {
         if (!wi.parentId || !deleteSet.has(wi.parentId)) continue;
         let newParentId: string | null = state.workItems[wi.parentId]?.parentId ?? null;
+        const visited = new Set<string>();
         while (newParentId && deleteSet.has(newParentId)) {
+          if (visited.has(newParentId)) { newParentId = null; break; }
+          visited.add(newParentId);
           newParentId = state.workItems[newParentId]?.parentId ?? null;
         }
         const updated = { ...wi, parentId: newParentId };
         updatedItems[wi.id] = updated;
         orphanRepairs.push(updated);
         if (newParentId && updatedItems[newParentId]) {
-          updatedItems[newParentId] = {
-            ...updatedItems[newParentId],
-            childrenIds: [...updatedItems[newParentId].childrenIds, wi.id],
-          };
+          const parent = updatedItems[newParentId];
+          if (!parent.childrenIds.includes(wi.id)) {
+            updatedItems[newParentId] = {
+              ...parent,
+              childrenIds: [...parent.childrenIds, wi.id],
+            };
+          }
         }
       }
       if (orphanRepairs.length > 0 && orgId) {
@@ -1060,17 +1066,23 @@ export const useAppStore = create<AppState>()((set, get) => {
         for (const wi of Object.values(updatedItems)) {
           if (!wi.parentId || !deleteSet.has(wi.parentId)) continue;
           let newParentId: string | null = state.workItems[wi.parentId]?.parentId ?? null;
+          const visited = new Set<string>();
           while (newParentId && deleteSet.has(newParentId)) {
+            if (visited.has(newParentId)) { newParentId = null; break; }
+            visited.add(newParentId);
             newParentId = state.workItems[newParentId]?.parentId ?? null;
           }
           const updated = { ...wi, parentId: newParentId };
           updatedItems[wi.id] = updated;
           toUpsert.push(updated);
           if (newParentId && updatedItems[newParentId]) {
-            updatedItems[newParentId] = {
-              ...updatedItems[newParentId],
-              childrenIds: [...updatedItems[newParentId].childrenIds, wi.id],
-            };
+            const parent = updatedItems[newParentId];
+            if (!parent.childrenIds.includes(wi.id)) {
+              updatedItems[newParentId] = {
+                ...parent,
+                childrenIds: [...parent.childrenIds, wi.id],
+              };
+            }
           }
         }
 
