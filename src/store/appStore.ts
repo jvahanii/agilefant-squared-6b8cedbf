@@ -272,6 +272,57 @@ const MAX_UNDO = 100;
  * `childrenIds`, the `hyperlinks` map, and the selected-work-item list.
  * Returns a partial state object suitable for passing directly to `set()`.
  */
+/**
+ * Walk up the parentId chain (using the original/pre-deletion items map) and
+ * return the id of the nearest ancestor that is NOT in `deleteSet`, or null
+ * if the item becomes a root.  A visited set prevents infinite loops on
+ * circular parentId data.
+ */
+function findSurvivingAncestor(
+  startParentId: string,
+  deleteSet: Set<string>,
+  originalItems: Record<string, WorkItem>,
+): string | null {
+  let current: string | null = startParentId;
+  const visited = new Set<string>();
+  while (current && deleteSet.has(current)) {
+    if (visited.has(current)) return null;
+    visited.add(current);
+    current = originalItems[current]?.parentId ?? null;
+  }
+  return current;
+}
+
+/**
+ * Scan `updatedItems` for items whose `parentId` points to a deleted item
+ * (i.e. an id in `deleteSet`).  For each such "orphaned survivor", reparent
+ * it to its nearest surviving ancestor via `findSurvivingAncestor`, then call
+ * `onRepaired` with the updated WorkItem so the caller can persist it.
+ */
+function repairOrphanedSurvivors(
+  updatedItems: Record<string, WorkItem>,
+  deleteSet: Set<string>,
+  originalItems: Record<string, WorkItem>,
+  onRepaired: (updated: WorkItem) => void,
+): void {
+  for (const wi of Object.values(updatedItems)) {
+    if (!wi.parentId || !deleteSet.has(wi.parentId)) continue;
+    const newParentId = findSurvivingAncestor(wi.parentId, deleteSet, originalItems);
+    const updated = { ...wi, parentId: newParentId };
+    updatedItems[wi.id] = updated;
+    onRepaired(updated);
+    if (newParentId && updatedItems[newParentId]) {
+      const parent = updatedItems[newParentId];
+      if (!parent.childrenIds.includes(wi.id)) {
+        updatedItems[newParentId] = {
+          ...parent,
+          childrenIds: [...parent.childrenIds, wi.id],
+        };
+      }
+    }
+  }
+}
+
 function applyWorkItemIdRenames(
   state: Pick<AppState, 'workItems' | 'hyperlinks' | 'selectedWorkItemIds'>,
   oldToNew: Record<string, string>,
@@ -908,28 +959,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       // the one that can arise after respawn).  Without this repair they would
       // appear as unexpected root items in other trees.
       const orphanRepairs: WorkItem[] = [];
-      for (const wi of Object.values(updatedItems)) {
-        if (!wi.parentId || !deleteSet.has(wi.parentId)) continue;
-        let newParentId: string | null = state.workItems[wi.parentId]?.parentId ?? null;
-        const visited = new Set<string>();
-        while (newParentId && deleteSet.has(newParentId)) {
-          if (visited.has(newParentId)) { newParentId = null; break; }
-          visited.add(newParentId);
-          newParentId = state.workItems[newParentId]?.parentId ?? null;
-        }
-        const updated = { ...wi, parentId: newParentId };
-        updatedItems[wi.id] = updated;
+      repairOrphanedSurvivors(updatedItems, deleteSet, state.workItems, (updated) => {
         orphanRepairs.push(updated);
-        if (newParentId && updatedItems[newParentId]) {
-          const parent = updatedItems[newParentId];
-          if (!parent.childrenIds.includes(wi.id)) {
-            updatedItems[newParentId] = {
-              ...parent,
-              childrenIds: [...parent.childrenIds, wi.id],
-            };
-          }
-        }
-      }
+      });
       if (orphanRepairs.length > 0 && orgId) {
         upsertWorkItems(orphanRepairs, orgId);
       }
@@ -1063,28 +1095,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Reparent orphaned survivors: kept items whose immediate parent was
         // deleted (because it had no remaining assignments).  Walk up the
         // original ancestor chain to find the nearest surviving ancestor.
-        for (const wi of Object.values(updatedItems)) {
-          if (!wi.parentId || !deleteSet.has(wi.parentId)) continue;
-          let newParentId: string | null = state.workItems[wi.parentId]?.parentId ?? null;
-          const visited = new Set<string>();
-          while (newParentId && deleteSet.has(newParentId)) {
-            if (visited.has(newParentId)) { newParentId = null; break; }
-            visited.add(newParentId);
-            newParentId = state.workItems[newParentId]?.parentId ?? null;
-          }
-          const updated = { ...wi, parentId: newParentId };
-          updatedItems[wi.id] = updated;
+        repairOrphanedSurvivors(updatedItems, deleteSet, state.workItems, (updated) => {
           toUpsert.push(updated);
-          if (newParentId && updatedItems[newParentId]) {
-            const parent = updatedItems[newParentId];
-            if (!parent.childrenIds.includes(wi.id)) {
-              updatedItems[newParentId] = {
-                ...parent,
-                childrenIds: [...parent.childrenIds, wi.id],
-              };
-            }
-          }
-        }
+        });
 
         deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       }
