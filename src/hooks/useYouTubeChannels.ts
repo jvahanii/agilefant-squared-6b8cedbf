@@ -41,6 +41,12 @@ async function migrateLegacyDataIfNeeded(orgId: string): Promise<void> {
   if (typeof localStorage === "undefined") return;
   if (localStorage.getItem(flagKey)) return;
 
+  // Set the flag synchronously before any async work so that concurrent callers
+  // (e.g. getYouTubeChannels / getYouTubeSearchChannels / getYouTubeVideoLinks
+  // all invoked in the same tick) see it immediately and skip the migration,
+  // preventing the same localStorage data from being inserted multiple times.
+  localStorage.setItem(flagKey, "1");
+
   try {
     const channelsRaw = localStorage.getItem(CHANNELS_KEY);
     const searchRaw = localStorage.getItem(SEARCH_CHANNELS_KEY);
@@ -95,11 +101,12 @@ async function migrateLegacyDataIfNeeded(orgId: string): Promise<void> {
     }
   } catch (err) {
     console.warn("YouTube localStorage migration failed", err);
-    return; // don't set the flag — try again next load
+    // Clear the flag so the migration is retried on the next load.
+    localStorage.removeItem(flagKey);
+    return;
   }
 
-  // Mark migrated and clear local copies
-  localStorage.setItem(flagKey, "1");
+  // Clear local copies now that data is safely in Supabase.
   localStorage.removeItem(CHANNELS_KEY);
   localStorage.removeItem(SEARCH_CHANNELS_KEY);
   localStorage.removeItem(VIDEO_LINKS_KEY);
