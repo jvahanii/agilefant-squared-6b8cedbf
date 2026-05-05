@@ -82,7 +82,7 @@ interface AppState extends DataSnapshot {
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
-  respawnItem: (workItemId: string, options?: { updateSchedule?: boolean }) => void;
+  respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
   renameBacklog: (backlogId: string, name: string) => void;
@@ -1358,7 +1358,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: { ...state.workItems, [workItemId]: updated } });
     },
 
-    respawnItem: (workItemId, options) => {
+    respawnItem: (workItemId) => {
       const state = get();
       const orgId = state.organizationId;
       if (!orgId) return;
@@ -1413,14 +1413,12 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
-      // Only update lastTriggeredAt when triggered by the scheduled check.
-      // Manual "Respawn now" should NOT alter the next scheduled respawn.
-      if (options?.updateSchedule) {
-        const now = new Date().toISOString();
-        const updatedSource: WorkItem = { ...item, respawnLastTriggeredAt: now };
-        updatedWorkItems[workItemId] = updatedSource;
-        itemsToUpdateInDB.push(updatedSource);
-      }
+      // Always update lastTriggeredAt so the scheduler does not immediately
+      // fire again after a manual "Respawn now" and create a duplicate item.
+      const now = new Date().toISOString();
+      const updatedSource: WorkItem = { ...item, respawnLastTriggeredAt: now };
+      updatedWorkItems[workItemId] = updatedSource;
+      itemsToUpdateInDB.push(updatedSource);
 
       upsertWorkItems(itemsToUpdateInDB, orgId);
       internalLog({ action: "Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title });
