@@ -524,10 +524,16 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
       respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
     };
   });
+  // Dedupe by id (last write wins) so a single upsert payload never contains
+  // two rows that conflict on the same primary key — Postgres rejects those
+  // with "ON CONFLICT DO UPDATE command cannot affect row a second time".
+  const dedupedById = new Map<string, WorkItemUpsertRow>();
+  for (const row of rows) dedupedById.set(row.id, row);
+  const dedupedRows = Array.from(dedupedById.values());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(dedupedRows as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItems:', error, 'rows:', rows);
+    console.error('upsertWorkItems:', error, 'rows:', dedupedRows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
   // Persist per-backlog ranks to the dedicated table
@@ -782,13 +788,19 @@ async function upsertWorkItemBacklogRanksBatch(
     }
   }
   if (rows.length === 0) return;
+  // Dedupe by (work_item_id, backlog_id) so a single payload never has two
+  // rows targeting the same conflict key (would raise "cannot affect row a
+  // second time"). Last write wins.
+  const dedup = new Map<string, typeof rows[number]>();
+  for (const r of rows) dedup.set(`${r.work_item_id}::${r.backlog_id}`, r);
+  const deduped = Array.from(dedup.values());
   // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
   // row locks in the same order, preventing PostgreSQL deadlocks.
-  rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
+  deduped.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase
     .from('work_item_backlog_ranks' as any)
-    .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
+    .upsert(deduped, { onConflict: 'work_item_id,backlog_id' });
   if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
 }
 
