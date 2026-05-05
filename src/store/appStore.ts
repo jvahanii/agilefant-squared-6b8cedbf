@@ -82,7 +82,7 @@ interface AppState extends DataSnapshot {
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
-  respawnItem: (workItemId: string) => void;
+  respawnItem: (workItemId: string, options?: { updateSchedule?: boolean }) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string) => void;
   renameBacklog: (backlogId: string, name: string) => void;
