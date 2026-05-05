@@ -60,7 +60,7 @@ export function useRespawnCheck() {
           if (nowMinutes < scheduledMinutes) return;
         }
 
-        respawnItem(item.id);
+        respawnItem(item.id, { updateSchedule: true });
       });
     };
 
