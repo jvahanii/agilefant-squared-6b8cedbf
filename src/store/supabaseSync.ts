@@ -524,10 +524,16 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
       respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
     };
   });
+  // Dedupe by id (last write wins) so a single upsert payload never contains
+  // two rows that conflict on the same primary key — Postgres rejects those
+  // with "ON CONFLICT DO UPDATE command cannot affect row a second time".
+  const dedupedById = new Map<string, WorkItemUpsertRow>();
+  for (const row of rows) dedupedById.set(row.id, row);
+  const dedupedRows = Array.from(dedupedById.values());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(rows as any).select().then(r => r));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(dedupedRows as any).select().then(r => r));
   if (error) {
-    console.error('upsertWorkItems:', error, 'rows:', rows);
+    console.error('upsertWorkItems:', error, 'rows:', dedupedRows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
   }
   // Persist per-backlog ranks to the dedicated table
