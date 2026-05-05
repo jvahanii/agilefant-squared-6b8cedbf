@@ -1358,7 +1358,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: { ...state.workItems, [workItemId]: updated } });
     },
 
-    respawnItem: (workItemId) => {
+    respawnItem: (workItemId, options) => {
       const state = get();
       const orgId = state.organizationId;
       if (!orgId) return;
