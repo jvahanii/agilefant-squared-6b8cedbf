@@ -1413,11 +1413,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
-      // Update lastTriggeredAt on the source item
-      const now = new Date().toISOString();
-      const updatedSource: WorkItem = { ...item, respawnLastTriggeredAt: now };
-      updatedWorkItems[workItemId] = updatedSource;
-      itemsToUpdateInDB.push(updatedSource);
+      // Only update lastTriggeredAt when triggered by the scheduled check.
+      // Manual "Respawn now" should NOT alter the next scheduled respawn.
+      if (options?.updateSchedule) {
+        const now = new Date().toISOString();
+        const updatedSource: WorkItem = { ...item, respawnLastTriggeredAt: now };
+        updatedWorkItems[workItemId] = updatedSource;
+        itemsToUpdateInDB.push(updatedSource);
+      }
 
       upsertWorkItems(itemsToUpdateInDB, orgId);
       internalLog({ action: "Respawn", entityType: "work_item", entityId: workItemId, entityName: item.title });
