@@ -1695,6 +1695,66 @@ export function WorkItemTreePanel() {
     return ids;
   }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId]);
 
+  // Keep a ref to the latest visible list so the Tab/Shift-Tab handler always
+  // operates on the current order without requiring the effect to re-register.
+  const visibleItemIdsRef = useRef<string[]>(visibleItemIds);
+  useEffect(() => {
+    visibleItemIdsRef.current = visibleItemIds;
+  }, [visibleItemIds]);
+
+  // Keyboard shortcuts: Tab = indent (make child of item above),
+  // Shift+Tab = outdent (elevate to parent's level).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (isInput) return;
+
+      const state = useAppStore.getState();
+      if (state.selectedWorkItemIds.length !== 1) return;
+      if (!state.selectedTreeId || !state.selectedBacklogIds[0]) return;
+
+      const workItemId = state.selectedWorkItemIds[0];
+      const item = state.workItems[workItemId];
+      if (!item) return;
+
+      e.preventDefault();
+
+      const treeId = state.selectedTreeId;
+      const backlogId = state.selectedBacklogIds[0];
+
+      if (e.shiftKey) {
+        // Outdent: move item up one level (child of grandparent).
+        if (!item.parentId) return;
+        const parent = state.workItems[item.parentId];
+        if (!parent) return;
+        const grandparentId = parent.parentId ?? null;
+        const targetBacklogId = grandparentId
+          ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
+          : backlogId;
+        state.reparentWorkItem(workItemId, grandparentId, treeId, targetBacklogId);
+      } else {
+        // Indent: make child of the item immediately above in the visible list.
+        const currentIds = visibleItemIdsRef.current;
+        const idx = currentIds.indexOf(workItemId);
+        if (idx <= 0) return;
+        const aboveId = currentIds[idx - 1];
+        const aboveItem = state.workItems[aboveId];
+        if (!aboveItem) return;
+        const targetBacklogId = aboveItem.backlogAssignments[treeId] ?? backlogId;
+        state.reparentWorkItem(workItemId, aboveId, treeId, targetBacklogId);
+        // Expand the new parent so the indented item stays visible.
+        if (!state.expandedWorkItems.has(aboveId)) {
+          state.toggleWorkItemExpand(aboveId);
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Assign a 1-based running number to each item that will actually be rendered
   // (i.e. not snoozed and not hidden by the label filter).  The numbers are
   // contiguous with no gaps, matching the visual top-to-bottom order.

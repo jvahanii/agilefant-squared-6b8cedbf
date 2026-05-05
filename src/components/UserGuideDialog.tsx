@@ -272,6 +272,8 @@ function buildSections(): Section[] {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reordering</p>
             <ShortcutRow keys={["T"]} description="Move selection to Top" />
             <ShortcutRow keys={["Shift", "B"]} description="Move selection to Bottom" />
+            <ShortcutRow keys={["Tab"]} description="Indent: make child of item above" />
+            <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
           </div>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Status</p>
