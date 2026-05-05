@@ -454,6 +454,34 @@ export function TimesheetBrowserDialog({
     });
   };
 
+  const applyPreset = (preset: "today" | "week" | "month" | "all") => {
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    if (preset === "today") {
+      const t = fmt(today);
+      setFilterDateFrom(t);
+      setFilterDateTo(t);
+    } else if (preset === "week") {
+      const dow = today.getDay(); // 0=Sun
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((dow + 6) % 7));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      setFilterDateFrom(fmt(monday));
+      setFilterDateTo(fmt(sunday));
+    } else if (preset === "month") {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      setFilterDateFrom(fmt(first));
+      setFilterDateTo(fmt(last));
+    } else {
+      setFilterDateFrom("");
+      setFilterDateTo("");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
@@ -465,6 +493,29 @@ export function TimesheetBrowserDialog({
 
         {/* Shared Filters */}
         <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Period</Label>
+            <div className="flex gap-1">
+              {(
+                [
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "This week" },
+                  { id: "month", label: "This month" },
+                  { id: "all", label: "All time" },
+                ] as const
+              ).map(({ id, label }) => (
+                <Button
+                  key={id}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs px-2"
+                  onClick={() => applyPreset(id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-1">
             <Label className="text-xs">User</Label>
             <Select value={filterUser} onValueChange={setFilterUser}>
