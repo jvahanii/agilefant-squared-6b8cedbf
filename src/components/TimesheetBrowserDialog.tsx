@@ -484,7 +484,7 @@ export function TimesheetBrowserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+      <DialogContent className="max-w-4xl w-full p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-4 h-4" /> Logged Time
@@ -492,18 +492,18 @@ export function TimesheetBrowserDialog({
         </DialogHeader>
 
         {/* Shared Filters */}
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Period</Label>
             <div className="flex gap-1">
               {(
                 [
-                  { id: "today", label: "Today" },
-                  { id: "week", label: "This week" },
-                  { id: "month", label: "This month" },
-                  { id: "all", label: "All time" },
+                  { id: "today", label: "Today", shortLabel: "Today" },
+                  { id: "week", label: "This week", shortLabel: "Week" },
+                  { id: "month", label: "This month", shortLabel: "Month" },
+                  { id: "all", label: "All time", shortLabel: "All" },
                 ] as const
-              ).map(({ id, label }) => (
+              ).map(({ id, label, shortLabel }) => (
                 <Button
                   key={id}
                   variant="outline"
@@ -511,15 +511,16 @@ export function TimesheetBrowserDialog({
                   className="h-8 text-xs px-2"
                   onClick={() => applyPreset(id)}
                 >
-                  {label}
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
                 </Button>
               ))}
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <Label className="text-xs">User</Label>
             <Select value={filterUser} onValueChange={setFilterUser}>
-              <SelectTrigger className="w-44 h-8 text-sm">
+              <SelectTrigger className="w-36 sm:w-44 h-8 text-sm">
                 <SelectValue placeholder="All users" />
               </SelectTrigger>
               <SelectContent>
@@ -542,7 +543,7 @@ export function TimesheetBrowserDialog({
                 setFilterDateFrom(val);
                 if (filterDateTo && val > filterDateTo) setFilterDateTo(val);
               }}
-              className="h-8 text-sm w-36"
+              className="h-8 text-sm w-32 sm:w-36"
             />
           </div>
           <div className="space-y-1">
@@ -555,7 +556,7 @@ export function TimesheetBrowserDialog({
                 setFilterDateTo(val);
                 if (filterDateFrom && val < filterDateFrom) setFilterDateFrom(val);
               }}
-              className="h-8 text-sm w-36"
+              className="h-8 text-sm w-32 sm:w-36"
             />
           </div>
           {(filterUser !== "__all__" || filterDateFrom || filterDateTo) && (
@@ -568,7 +569,7 @@ export function TimesheetBrowserDialog({
                 setFilterDateTo("");
               }}
             >
-              Clear filters
+              Clear
             </Button>
           )}
         </div>
@@ -596,134 +597,136 @@ export function TimesheetBrowserDialog({
               </Button>
             </div>
             <ScrollArea className="h-[380px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-24 text-right">Duration</TableHead>
-                    <TableHead className="w-28">Date</TableHead>
-                    <TableHead className="w-40">User</TableHead>
-                    <TableHead>Work Item / Backlog</TableHead>
-                    <TableHead>Note</TableHead>
-                    <TableHead className="w-16" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEntries.length === 0 ? (
+              <div className="overflow-x-auto">
+                <Table className="min-w-[480px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        No time entries found.
-                      </TableCell>
+                      <TableHead className="w-20 text-right">Duration</TableHead>
+                      <TableHead className="w-24">Date</TableHead>
+                      <TableHead className="w-32 hidden sm:table-cell">User</TableHead>
+                      <TableHead>Work Item / Backlog</TableHead>
+                      <TableHead className="hidden md:table-cell">Note</TableHead>
+                      <TableHead className="w-10" />
                     </TableRow>
-                  ) : (
-                    filteredEntries.map((entry) =>
-                      editingEntryId === entry.id ? (
-                        /* ── Inline edit row ── */
-                        <TableRow key={entry.id} className="bg-muted/20">
-                          <TableCell colSpan={6} className="py-2 px-3">
-                            <div className="flex flex-wrap items-end gap-2">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Duration</Label>
-                                <Input
-                                  ref={editDurationRef}
-                                  value={editDurationInput}
-                                  onChange={(e) => setEditDurationInput(e.target.value)}
-                                  placeholder='e.g. "1.5", "1h 30m"'
-                                  className="h-8 text-sm w-32"
-                                  onKeyDown={async (e) => {
-                                    if (e.key === "Enter") await handleSaveEdit();
-                                    if (e.key === "Escape") cancelEditing();
-                                  }}
-                                />
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEntries.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          No time entries found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredEntries.map((entry) =>
+                        editingEntryId === entry.id ? (
+                          /* ── Inline edit row ── */
+                          <TableRow key={entry.id} className="bg-muted/20">
+                            <TableCell colSpan={6} className="py-2 px-3">
+                              <div className="flex flex-wrap items-end gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Duration</Label>
+                                  <Input
+                                    ref={editDurationRef}
+                                    value={editDurationInput}
+                                    onChange={(e) => setEditDurationInput(e.target.value)}
+                                    placeholder='e.g. "1.5", "1h 30m"'
+                                    className="h-8 text-sm w-28 sm:w-32"
+                                    onKeyDown={async (e) => {
+                                      if (e.key === "Enter") await handleSaveEdit();
+                                      if (e.key === "Escape") cancelEditing();
+                                    }}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Date</Label>
+                                  <Input
+                                    type="date"
+                                    value={editDateInput}
+                                    onChange={(e) => setEditDateInput(e.target.value)}
+                                    className="h-8 text-sm w-32 sm:w-36"
+                                    onKeyDown={async (e) => {
+                                      if (e.key === "Enter") await handleSaveEdit();
+                                      if (e.key === "Escape") cancelEditing();
+                                    }}
+                                  />
+                                </div>
+                                <div className="space-y-1 flex-1 min-w-[140px]">
+                                  <Label className="text-xs">Note (optional)</Label>
+                                  <Input
+                                    value={editNoteInput}
+                                    onChange={(e) => setEditNoteInput(e.target.value)}
+                                    placeholder="What did you work on?"
+                                    className="h-8 text-sm"
+                                    onKeyDown={async (e) => {
+                                      if (e.key === "Enter") await handleSaveEdit();
+                                      if (e.key === "Escape") cancelEditing();
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex gap-1 pb-0.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                    onClick={cancelEditing}
+                                    title="Cancel"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={handleSaveEdit}
+                                    disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}
+                                    title="Save"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Date</Label>
-                                <Input
-                                  type="date"
-                                  value={editDateInput}
-                                  onChange={(e) => setEditDateInput(e.target.value)}
-                                  className="h-8 text-sm w-36"
-                                  onKeyDown={async (e) => {
-                                    if (e.key === "Enter") await handleSaveEdit();
-                                    if (e.key === "Escape") cancelEditing();
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-1 flex-1 min-w-[140px]">
-                                <Label className="text-xs">Note (optional)</Label>
-                                <Input
-                                  value={editNoteInput}
-                                  onChange={(e) => setEditNoteInput(e.target.value)}
-                                  placeholder="What did you work on?"
-                                  className="h-8 text-sm"
-                                  onKeyDown={async (e) => {
-                                    if (e.key === "Enter") await handleSaveEdit();
-                                    if (e.key === "Escape") cancelEditing();
-                                  }}
-                                />
-                              </div>
-                              <div className="flex gap-1 pb-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                  onClick={cancelEditing}
-                                  title="Cancel"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={handleSaveEdit}
-                                  disabled={!editDurationInput.trim() || (parseDuration(editDurationInput) ?? 0) <= 0}
-                                  title="Save"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        /* ── Read-only row ── */
-                        <TableRow
-                          key={entry.id}
-                          className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
-                          onClick={() => canModify(entry) && startEditing(entry)}
-                          title={canModify(entry) ? "Click to edit" : undefined}
-                        >
-                          <TableCell className="text-xs tabular-nums text-right">
-                            {formatDuration(entry.durationMinutes)}
-                          </TableCell>
-                          <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
-                          <TableCell className="text-xs truncate max-w-[160px]" title={userNames[entry.userId]}>
-                            {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
-                          </TableCell>
-                          <TableCell className="text-xs truncate max-w-[200px]" title={getSubject(entry)}>
-                            {getSubject(entry)}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={entry.note ?? ""}>
-                            {entry.note ?? ""}
-                          </TableCell>
-                          <TableCell className="text-right pr-2">
-                            {canModify(entry) && (
-                              <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                  onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          /* ── Read-only row ── */
+                          <TableRow
+                            key={entry.id}
+                            className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
+                            onClick={() => canModify(entry) && startEditing(entry)}
+                            title={canModify(entry) ? "Click to edit" : undefined}
+                          >
+                            <TableCell className="text-xs tabular-nums text-right">
+                              {formatDuration(entry.durationMinutes)}
+                            </TableCell>
+                            <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
+                            <TableCell className="text-xs truncate max-w-[128px] hidden sm:table-cell" title={userNames[entry.userId]}>
+                              {userNames[entry.userId] ?? entry.userId.slice(0, 8)}
+                            </TableCell>
+                            <TableCell className="text-xs truncate max-w-[160px]" title={getSubject(entry)}>
+                              {getSubject(entry)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground truncate max-w-[160px] hidden md:table-cell" title={entry.note ?? ""}>
+                              {entry.note ?? ""}
+                            </TableCell>
+                            <TableCell className="text-right pr-2">
+                              {canModify(entry) && (
+                                <span className="inline-flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); deleteTimeEntry(entry.id); }}
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
                       )
-                    )
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </ScrollArea>
           </TabsContent>
 
@@ -760,6 +763,7 @@ export function TimesheetBrowserDialog({
             </div>
 
             <ScrollArea className="h-[380px] rounded-md border">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -768,7 +772,7 @@ export function TimesheetBrowserDialog({
                         ? groupDims.map((d) => DIMENSION_LABELS[d]).join(" › ")
                         : "Group"}
                     </TableHead>
-                    <TableHead className="text-right w-28">Total</TableHead>
+                    <TableHead className="text-right w-24">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -801,6 +805,7 @@ export function TimesheetBrowserDialog({
                   )}
                 </TableBody>
               </Table>
+              </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
