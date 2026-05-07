@@ -26,7 +26,7 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
-import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
+import { computeBacklogTotalMinutes, computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
@@ -234,10 +234,8 @@ function WorkItemNodeContent({
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const itemTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible) return 0;
-    return Object.values(timeEntries)
-      .filter((e) => e.workItemId === workItemId)
-      .reduce((sum, e) => sum + e.durationMinutes, 0);
-  }, [timeEntries, workItemId, timeLoggingVisible]);
+    return computeWorkItemTotalMinutes(workItemId, workItems, timeEntries);
+  }, [timeEntries, workItemId, workItems, timeLoggingVisible]);
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
