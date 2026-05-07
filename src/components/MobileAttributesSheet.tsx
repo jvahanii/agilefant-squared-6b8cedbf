@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
+import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
@@ -51,10 +52,8 @@ export function MobileWorkItemAttributesSheet({
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const itemTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible) return 0;
-    return Object.values(timeEntries)
-      .filter((e) => e.workItemId === workItemId)
-      .reduce((sum, e) => sum + e.durationMinutes, 0);
-  }, [timeEntries, workItemId, timeLoggingVisible]);
+    return computeWorkItemTotalMinutes(workItemId, workItems, timeEntries);
+  }, [timeEntries, workItemId, workItems, timeLoggingVisible]);
 
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
