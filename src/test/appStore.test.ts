@@ -1376,6 +1376,36 @@ describe("reorderWorkItemAmongSiblings", () => {
     expect(rankedOrder()).toEqual(["B", "C", "A"]);
   });
 
+  it("moves first item to middle (before last)", () => {
+    // Drag zone 2 = "before the 3rd item (C)". A is currently first, so it should
+    // end up between B and C: [B, A, C]. Before the fix this produced [B, C, A].
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 2, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["B", "A", "C"]);
+  });
+
+  it("moves last item to middle (before first)", () => {
+    // Drag zone 1 = "before the 2nd item (B)". C is currently last, so it should
+    // end up between A and B: [A, C, B].
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-c`, 1, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["A", "C", "B"]);
+  });
+
+  it("no-op when dropped on own zone (same position)", () => {
+    // Drag zone 1 = "before B". B is already at index 1, so no change: [A, B, C].
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-b`, 1, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["A", "B", "C"]);
+  });
+
+  it("moves middle item to end (drop zone after last item)", () => {
+    // Drag zone 3 = after C. B should end up last: [A, C, B].
+    seedThreeItems();
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-b`, 3, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    expect(rankedOrder()).toEqual(["A", "C", "B"]);
+  });
+
   it("pushes to undo stack", () => {
     seedThreeItems();
     useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-a`, 3, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
