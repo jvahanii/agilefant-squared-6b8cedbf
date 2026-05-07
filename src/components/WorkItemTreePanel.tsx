@@ -1369,11 +1369,30 @@ export function WorkItemTreePanel() {
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible || !selectedBacklogId) return 0;
-    return Object.values(timeEntries)
-      .filter((e) => e.backlogId === selectedBacklogId && e.workItemId === null)
-      .reduce((sum, e) => sum + e.durationMinutes, 0);
-  }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
+    if (!timeLoggingVisible || !selectedBacklogId || !selectedTreeId) return 0;
+
+    const backlogIds = new Set<string>();
+    const collectBacklogs = (id: string) => {
+      backlogIds.add(id);
+      backlogs[id]?.childrenIds.forEach(collectBacklogs);
+    };
+    collectBacklogs(selectedBacklogId);
+
+    let total = 0;
+    for (const entry of Object.values(timeEntries)) {
+      if (entry.workItemId === null) {
+        if (entry.backlogId && backlogIds.has(entry.backlogId)) {
+          total += entry.durationMinutes;
+        }
+      } else {
+        const wi = workItems[entry.workItemId];
+        if (wi && backlogIds.has(wi.backlogAssignments[selectedTreeId])) {
+          total += entry.durationMinutes;
+        }
+      }
+    }
+    return total;
+  }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
