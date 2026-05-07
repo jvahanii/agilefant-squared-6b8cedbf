@@ -379,12 +379,14 @@ function AppLayoutInner() {
                 }
                 return w.parentId === wi.parentId;
               })
-              .sort((a, b) => (a.ranks[selectedBacklogId] ?? 0) - (b.ranks[selectedBacklogId] ?? 0));
+              .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
 
             const idx = siblings.findIndex((s) => s.id === wiId);
             if (idx === -1) break;
-            const newIdx = e.key === "ArrowUp" ? idx - 1 : idx + 1;
-            if (newIdx < 0 || newIdx >= siblings.length) break;
+            // Use drop-zone semantics: ArrowUp targets zone (idx-1), ArrowDown targets
+            // zone (idx+2) — one past the next item — so the item swaps with its neighbour.
+            const newIdx = e.key === "ArrowUp" ? idx - 1 : idx + 2;
+            if (newIdx < 0 || newIdx > siblings.length) break;
             useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
           }
           break;

@@ -669,7 +669,13 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const movingSet = new Set(itemsToMoveIds);
       const remaining = allSiblings.filter((s) => !movingSet.has(s.id));
-      const clampedIdx = Math.max(0, Math.min(targetIndex, remaining.length));
+      // targetIndex is a drop-zone index into the *full* sorted sibling list (0 = before
+      // the first item, allSiblings.length = after the last item).  To convert it to an
+      // insertion index into `remaining` we subtract the number of moving items whose
+      // original position in allSiblings was before the target zone.
+      const movingBeforeTarget = allSiblings.filter((s, i) => movingSet.has(s.id) && i < targetIndex).length;
+      const adjustedTarget = targetIndex - movingBeforeTarget;
+      const clampedIdx = Math.max(0, Math.min(adjustedTarget, remaining.length));
 
       const movingItems = allSiblings.filter((s) => movingSet.has(s.id));
       const reordered = [...remaining];
