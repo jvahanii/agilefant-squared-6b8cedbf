@@ -1340,6 +1340,14 @@ function WorkItemRootDropZone({
   );
 }
 
+function scrollWorkItemIntoView(itemId: string) {
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-work-item-id="${CSS.escape(itemId)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  });
+}
+
 export function WorkItemTreePanel() {
   const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
@@ -2043,7 +2051,11 @@ export function WorkItemTreePanel() {
                           setSearchQuery("");
                           // Small delay lets the backlog panel re-render with the new selection
                           // before we try to highlight the work item row.
-                          setTimeout(() => selectWorkItem(item.id, false), 50);
+                          setTimeout(() => {
+                            selectWorkItem(item.id, false);
+                            // Scroll the item into view after React re-renders the selection.
+                            scrollWorkItemIntoView(item.id);
+                          }, 50);
                         }}
                       >
                         <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
@@ -2109,7 +2121,11 @@ export function WorkItemTreePanel() {
                         });
                         selectBacklog(backlogId, treeId);
                         setFilterLabelIds(new Set());
-                        setTimeout(() => selectWorkItem(item.id, false), 50);
+                        setTimeout(() => {
+                          selectWorkItem(item.id, false);
+                          // Scroll the item into view after React re-renders the selection.
+                          scrollWorkItemIntoView(item.id);
+                        }, 50);
                       }}
                     >
                       <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
