@@ -26,6 +26,7 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
@@ -1369,11 +1370,9 @@ export function WorkItemTreePanel() {
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible || !selectedBacklogId) return 0;
-    return Object.values(timeEntries)
-      .filter((e) => e.backlogId === selectedBacklogId && e.workItemId === null)
-      .reduce((sum, e) => sum + e.durationMinutes, 0);
-  }, [timeEntries, selectedBacklogId, timeLoggingVisible]);
+    if (!timeLoggingVisible || !selectedBacklogId || !selectedTreeId) return 0;
+    return computeBacklogTotalMinutes(selectedBacklogId, selectedTreeId, backlogs, workItems, timeEntries);
+  }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 
   // Compute the set of currently-snoozed item IDs. The selector returns a

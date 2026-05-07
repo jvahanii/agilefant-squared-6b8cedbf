@@ -26,6 +26,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -173,6 +174,21 @@ function BacklogReorderDropZone({
   );
 }
 
+/** Compute total logged minutes for a backlog subtree (direct backlog entries +
+ *  descendant backlog entries + all work-item entries in those backlogs). */
+function useBacklogTotalMinutes(backlogId: string, treeId: string) {
+  const workItems = useAppStore((s) => s.workItems);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+
+  return useMemo(() => {
+    if (!timeLoggingVisible) return 0;
+    return computeBacklogTotalMinutes(backlogId, treeId, backlogs, workItems, timeEntries);
+  }, [timeEntries, workItems, backlogs, backlogId, treeId, timeLoggingVisible]);
+}
+
 /** Compute total points for a backlog (including descendant backlogs) */
 function useBacklogPoints(backlogId: string, treeId: string) {
   const workItems = useAppStore((s) => s.workItems);
@@ -263,13 +279,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const backlogTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return Object.values(timeEntries)
-      .filter((e) => e.backlogId === backlogId && e.workItemId === null)
-      .reduce((sum, e) => sum + e.durationMinutes, 0);
-  }, [timeEntries, backlogId, timeLoggingVisible]);
+  const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
 
