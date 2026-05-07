@@ -26,6 +26,7 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
@@ -1370,28 +1371,7 @@ export function WorkItemTreePanel() {
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible || !selectedBacklogId || !selectedTreeId) return 0;
-
-    const backlogIds = new Set<string>();
-    const collectBacklogs = (id: string) => {
-      backlogIds.add(id);
-      backlogs[id]?.childrenIds.forEach(collectBacklogs);
-    };
-    collectBacklogs(selectedBacklogId);
-
-    let total = 0;
-    for (const entry of Object.values(timeEntries)) {
-      if (entry.workItemId === null) {
-        if (entry.backlogId && backlogIds.has(entry.backlogId)) {
-          total += entry.durationMinutes;
-        }
-      } else {
-        const wi = workItems[entry.workItemId];
-        if (wi && backlogIds.has(wi.backlogAssignments[selectedTreeId])) {
-          total += entry.durationMinutes;
-        }
-      }
-    }
-    return total;
+    return computeBacklogTotalMinutes(selectedBacklogId, selectedTreeId, backlogs, workItems, timeEntries);
   }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
 

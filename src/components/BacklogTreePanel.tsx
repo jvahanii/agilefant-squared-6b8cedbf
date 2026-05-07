@@ -26,6 +26,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -184,28 +185,7 @@ function useBacklogTotalMinutes(backlogId: string, treeId: string) {
 
   return useMemo(() => {
     if (!timeLoggingVisible) return 0;
-
-    const backlogIds = new Set<string>();
-    const collectBacklogs = (id: string) => {
-      backlogIds.add(id);
-      backlogs[id]?.childrenIds.forEach(collectBacklogs);
-    };
-    collectBacklogs(backlogId);
-
-    let total = 0;
-    for (const entry of Object.values(timeEntries)) {
-      if (entry.workItemId === null) {
-        if (entry.backlogId && backlogIds.has(entry.backlogId)) {
-          total += entry.durationMinutes;
-        }
-      } else {
-        const wi = workItems[entry.workItemId];
-        if (wi && backlogIds.has(wi.backlogAssignments[treeId])) {
-          total += entry.durationMinutes;
-        }
-      }
-    }
-    return total;
+    return computeBacklogTotalMinutes(backlogId, treeId, backlogs, workItems, timeEntries);
   }, [timeEntries, workItems, backlogs, backlogId, treeId, timeLoggingVisible]);
 }
 
