@@ -1,51 +1,31 @@
+## Diagnosis
 
+- The Agilefant org has exactly **one** backup row in `organization_backups` (manual, 2026-04-21). The UI is correct — it shows everything that's there.
+- `cron.job` is **empty**. The `daily-backup` edge function exists and is wired to accept service-role calls, but no `pg_cron` schedule was ever created to invoke it. That's why no automatic snapshots have been produced.
+- Adjacent issue: `trim_organization_backups()` exists as a trigger function but is not attached to any trigger, so the "30-day retention" promise in the UI isn't enforced either.
 
-## Plan: Add Enterprise plan + fix build error
+## Plan
 
-### 1. Fix build error in `src/components/AppLayout.tsx`
+### 1. Schedule the daily backup via pg_cron
+Create a cron schedule that POSTs to the `daily-backup` edge function once per day, authenticated with the service role key so the function's existing auth check passes.
 
-Line 352 uses `a.rank - b.rank` but the `WorkItem` type now has `ranks` (a `Record<string, number>`) instead of `rank`. Since this sorting happens in the context of a specific backlog (the `backlogId` variable is available in scope), change the sort to use the per-backlog rank:
+- Enable `pg_cron` and `pg_net` extensions if not already on.
+- Insert a `cron.schedule(...)` row that runs daily (e.g. `15 3 * * *` UTC) and calls
+  `https://hwwjwkdbautfkhpxuord.supabase.co/functions/v1/daily-backup`
+  with `Authorization: Bearer <service_role_key>`.
+- Use the Supabase **insert tool** (not a migration) since the SQL contains the service role key and must not be replayed on remixes.
 
-```ts
-.sort((a, b) => (a.ranks[backlogId] ?? 0) - (b.ranks[backlogId] ?? 0));
-```
+### 2. Attach the retention trigger
+Add an `AFTER INSERT` trigger on `organization_backups` that runs `trim_organization_backups()`, so old (>30 days) snapshots actually get pruned. Done via migration.
 
-Need to verify `backlogId` is in scope at that point — it should be since this is inside the keyboard reorder handler that already references `treeId` and `backlogIds`.
+### 3. (Optional) one-off manual run to confirm
+After the cron is in place, invoke `daily-backup` once manually via `supabase--curl_edge_functions` to verify it produces a fresh row for Agilefant and any other orgs.
 
-### 2. Add Enterprise plan to `src/hooks/useSubscription.ts`
+### 4. UI: nothing to change
+The `BackupsCard` already fetches and renders every row for the active org with no limit. The reason "only one shows up" is that only one exists. No frontend change needed.
 
-Add an `enterprise` entry to the `PLANS` object:
-```ts
-enterprise: {
-  name: "Enterprise",
-  price: "Custom",
-  product_id: null,
-  price_id: null,
-  features: ["Dedicated support and organization design advice"],
-},
-```
+## Technical notes
 
-### 3. Update `src/components/PricingCards.tsx`
-
-- Add `"enterprise"` to the `planKeys` array.
-- Widen grid to 3 columns: `sm:grid-cols-3`, `max-w-2xl`.
-- For the enterprise card button: render a "Contact Us" button that opens a mailto link (e.g. `mailto:sales@agilefant.org`) instead of calling `startCheckout`. No special handling needed — it's just a link.
-
-### 4. Update `src/pages/Auth.tsx` — `PlanChoosingDialog`
-
-- Add `"enterprise"` to the `planKeys` array in the dialog.
-- Widen grid to 3 columns.
-- The enterprise card should behave identically to the other plans — clicking it calls `onPlanChosen("enterprise")`, which stores `"enterprise"` as `pendingPlan` in localStorage, proceeds with signup, and the Onboarding page auto-creates the org. The Onboarding logic already skips checkout for plans without a `price_id`, so no changes needed there.
-- After org creation completes for enterprise, open a mailto link so the user can contact sales.
-
-### 5. Update Onboarding flow for enterprise (`src/pages/Onboarding.tsx`)
-
-After org creation, if `pendingPlan === "enterprise"`, open a mailto link (e.g. `window.open("mailto:sales@agilefant.org?subject=Enterprise inquiry")`) and show a toast informing the user that the team will be in touch.
-
-### Summary of files changed
-- `src/hooks/useSubscription.ts` — add enterprise plan
-- `src/components/PricingCards.tsx` — add enterprise card with mailto CTA
-- `src/pages/Auth.tsx` — add enterprise to plan chooser dialog
-- `src/pages/Onboarding.tsx` — handle enterprise pendingPlan with mailto
-- `src/components/AppLayout.tsx` — fix `.rank` → `.ranks[backlogId]` build error
-
+- The cron SQL must be inserted (not migrated) because it embeds the project URL and service role key.
+- Edge function `daily-backup` already accepts `Bearer <SUPABASE_SERVICE_ROLE_KEY>` and iterates all orgs calling `create_organization_backup(_kind => 'auto')`, so no function code changes are needed.
+- The trigger creation is a normal schema change → migration.
