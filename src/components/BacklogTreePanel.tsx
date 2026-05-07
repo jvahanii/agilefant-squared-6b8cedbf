@@ -609,7 +609,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteBacklog(backlogId)}
+              onClick={() => { deleteBacklog(backlogId); setConfirmDeleteOpen(false); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -985,7 +985,7 @@ export function BacklogTreePanel() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { if (pendingDeleteTree) deleteBacklogTree(pendingDeleteTree.id); }}
+              onClick={() => { if (pendingDeleteTree) { deleteBacklogTree(pendingDeleteTree.id); setPendingDeleteTree(null); } }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
