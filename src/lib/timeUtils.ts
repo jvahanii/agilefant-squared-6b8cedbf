@@ -11,7 +11,7 @@ export function collectBacklogSubtree(
   const ids = new Set<string>();
   const queue: string[] = [backlogId];
   while (queue.length > 0) {
-    const id = queue.pop()!;
+    const id = queue.shift()!;
     if (ids.has(id)) continue;
     ids.add(id);
     backlogs[id]?.childrenIds.forEach((cid) => queue.push(cid));
@@ -42,7 +42,7 @@ export function computeBacklogTotalMinutes(
       }
     } else {
       const wi = workItems[entry.workItemId];
-      if (wi && backlogIds.has(wi.backlogAssignments[treeId])) {
+      if (wi && wi.backlogAssignments && backlogIds.has(wi.backlogAssignments[treeId])) {
         total += entry.durationMinutes;
       }
     }
