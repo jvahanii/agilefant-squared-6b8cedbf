@@ -3,6 +3,16 @@ import { ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Share2, Users, C
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ShareTreeDialog } from "./ShareTreeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
@@ -215,6 +225,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const editRef = useRef<HTMLInputElement>(null);
   const dragStartedRef = useRef(false);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -289,7 +300,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
     const handleAddSiblingBacklog = () => setIsAddingSibling(true);
     const handleDeleteBacklog = () => {
       if (useAppStore.getState().selectedWorkItemIds.length > 0) return;
-      deleteBacklog(backlogId);
+      setConfirmDeleteOpen(true);
     };
 
     window.addEventListener("shortcut:add-child-backlog", handleAddBacklog);
@@ -454,7 +465,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           ><SlidersHorizontal className="w-3.5 h-3.5" /></button>
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            onClick={(e) => { e.stopPropagation(); deleteBacklog(backlogId); }}
+            onClick={(e) => { e.stopPropagation(); setConfirmDeleteOpen(true); }}
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
@@ -504,7 +515,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
-              deleteBacklog(backlogId);
+              setConfirmDeleteOpen(true);
             }}
             title="Delete backlog (Del)"
           >
@@ -587,6 +598,25 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         onOpenChange={setShowMobileAttributesSheet}
         onOpenTimeLog={() => setShowTimeLogDialog(true)}
       />
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete backlog?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the backlog "{backlog.name}" and all its nested backlogs and work items. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { deleteBacklog(backlogId); setConfirmDeleteOpen(false); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -816,6 +846,7 @@ export function BacklogTreePanel() {
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
   const [editingStatusesTree, setEditingStatusesTree] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDeleteTree, setPendingDeleteTree] = useState<{ id: string; name: string } | null>(null);
 
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -879,7 +910,7 @@ export function BacklogTreePanel() {
               <DraggableTreeHeader
                 tree={tree}
                 onAddBacklog={() => setAddingToTree(tree.id)}
-                onDeleteTree={() => deleteBacklogTree(tree.id)}
+                onDeleteTree={() => setPendingDeleteTree({ id: tree.id, name: tree.name })}
                 onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
                 onEditStatuses={() => setEditingStatusesTree({ id: tree.id, name: tree.name })}
                 canEditStatuses={canEditStatuses}
@@ -942,6 +973,26 @@ export function BacklogTreePanel() {
           }}
         />
       )}
+
+      <AlertDialog open={!!pendingDeleteTree} onOpenChange={(open) => { if (!open) setPendingDeleteTree(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete backlog tree?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the backlog tree "{pendingDeleteTree?.name}" and all its backlogs and work items. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (pendingDeleteTree) { deleteBacklogTree(pendingDeleteTree.id); setPendingDeleteTree(null); } }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
