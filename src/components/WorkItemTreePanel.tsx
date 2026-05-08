@@ -1131,6 +1131,19 @@ function WorkItemNodeContent({
                   const isMultiBacklog = allBacklogIds.length > 1;
                   return (
                     <>
+                      {isAdding && (
+                        <InlineWorkItemInput
+                          depth={depth + 1}
+                          onSubmit={(title) => {
+                            addWorkItem(title, workItemId, backlogId, treeId);
+                            setIsAdding(false);
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                            }, 50);
+                          }}
+                          onCancel={() => setIsAdding(false)}
+                        />
+                      )}
                       {sortedChildren.map((child, index) => {
                         const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
                         return (
@@ -1170,19 +1183,6 @@ function WorkItemNodeContent({
                     </>
                   );
                 })()}
-                {isAdding && (
-                  <InlineWorkItemInput
-                    depth={depth + 1}
-                    onSubmit={(title) => {
-                      addWorkItem(title, workItemId, backlogId, treeId);
-                      setIsAdding(false);
-                      setTimeout(() => {
-                        window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-                      }, 50);
-                    }}
-                    onCancel={() => setIsAdding(false)}
-                  />
-                )}
               </>
             )}
             {isAdding && !hasChildren && (
