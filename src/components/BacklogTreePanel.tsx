@@ -27,6 +27,7 @@ import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
+import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -865,6 +866,25 @@ export function BacklogTreePanel() {
 
   const treeIds = useMemo(() => sortedTrees.map((t) => t.id), [sortedTrees]);
   const treeShares = useTreeShares(treeIds);
+
+  // Keep the shared navigation ref up-to-date with the visible backlog order.
+  const backlogs = useAppStore((s) => s.backlogs);
+  const expandedBacklogs = useAppStore((s) => s.expandedBacklogs);
+  const visibleBacklogIds = useMemo(() => {
+    const ids: string[] = [];
+    const traverse = (backlogId: string) => {
+      ids.push(backlogId);
+      if (expandedBacklogs.has(backlogId)) {
+        backlogs[backlogId]?.childrenIds.forEach(traverse);
+      }
+    };
+    sortedTrees.forEach((tree) => tree.rootBacklogIds.forEach(traverse));
+    return ids;
+  }, [sortedTrees, expandedBacklogs, backlogs]);
+
+  useEffect(() => {
+    visibleBacklogIdsRef.current = visibleBacklogIds;
+  }, [visibleBacklogIds]);
 
   const { scrambleEnabled, isSuperuser } = useScramble();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
