@@ -295,7 +295,7 @@ function WorkItemNodeContent({
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
     const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
-    await Promise.all(contextIds.map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })));
+    await Promise.allSettled(contextIds.map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })));
   }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, selectedWorkItemIds]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -1120,7 +1120,7 @@ function WorkItemNodeContent({
           {isSnoozed && (
             <ContextMenuItem className="text-xs" onSelect={() => {
               const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
-              contextIds.forEach((id) => unsnoozeWorkItem(id));
+              Promise.allSettled(contextIds.map((id) => unsnoozeWorkItem(id)));
             }}>
               <Bell className="w-3 h-3 mr-2" />
               Unsnooze
