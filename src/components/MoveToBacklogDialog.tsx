@@ -61,8 +61,7 @@ export function MoveToBacklogDialog({
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSelect = (targetBacklogId: string) => {
-    const ids = workItemIds;
-    ids.forEach((id) => moveWorkItemToBacklog(id, targetBacklogId, treeId));
+    workItemIds.forEach((id) => moveWorkItemToBacklog(id, targetBacklogId, treeId));
     onOpenChange(false);
   };
 
