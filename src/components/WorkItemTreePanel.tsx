@@ -1671,7 +1671,7 @@ function SearchResultItem({
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              description: `Remove from "${backlogs[backlogId]?.name ?? backlogId}" only. Keeps it in other backlogs.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
