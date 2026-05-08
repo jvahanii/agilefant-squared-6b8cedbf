@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,10 @@ import { scrambleName } from "@/lib/scramble";
 interface MoveToBacklogDialogProps {
   /** The IDs of work items to move. */
   workItemIds: string[];
-  /** The tree in which the move takes place. */
+  /** The tree in which the move takes place (used as fallback). */
   treeId: string;
   /** The backlog the items currently live in (excluded from the list). */
   currentBacklogId: string;
-  /** All backlog IDs available in the current tree context. */
-  allBacklogIds: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -27,11 +25,11 @@ export function MoveToBacklogDialog({
   workItemIds,
   treeId,
   currentBacklogId,
-  allBacklogIds,
   open,
   onOpenChange,
 }: MoveToBacklogDialogProps) {
   const backlogs = useAppStore((s) => s.backlogs);
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
   const workItems = useAppStore((s) => s.workItems);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const { isScrambled } = useScramble();
@@ -51,17 +49,57 @@ export function MoveToBacklogDialog({
       ? (workItems[workItemIds[0]]?.title ?? "item")
       : `${workItemIds.length} items`;
 
-  const candidates = allBacklogIds
-    .filter((id) => id !== currentBacklogId)
-    .map((id) => ({ id, name: backlogs[id]?.name ?? id }))
-    .filter(({ name }) => {
-      const q = query.trim().toLowerCase();
-      return !q || name.toLowerCase().includes(q);
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Collect all backlog IDs the selected items are already assigned to.
+  const assignedBacklogIds = useMemo(() => {
+    const ids = new Set<string>();
+    workItemIds.forEach((id) => {
+      const wi = workItems[id];
+      if (wi) Object.values(wi.backlogAssignments).forEach((blId) => ids.add(blId));
+    });
+    return ids;
+  }, [workItemIds, workItems]);
 
-  const handleSelect = (targetBacklogId: string) => {
-    workItemIds.forEach((id) => moveWorkItemToBacklog(id, targetBacklogId, treeId));
+  // Sort trees by rank so same-tree backlogs appear first.
+  const sortedTrees = useMemo(
+    () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
+    [backlogTrees],
+  );
+
+  // The tree ID of the currently active context (for ordering: current tree first).
+  const currentTreeId = backlogs[currentBacklogId]?.treeId ?? treeId;
+
+  const candidates = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const result: Array<{ id: string; name: string; treeName: string; treeId: string; crossTree: boolean }> = [];
+    sortedTrees.forEach((tree) => {
+      const collectBacklog = (backlogId: string) => {
+        const bl = backlogs[backlogId];
+        if (!bl) return;
+        if (!assignedBacklogIds.has(backlogId)) {
+          const name = bl.name ?? backlogId;
+          if (!q || name.toLowerCase().includes(q) || tree.name.toLowerCase().includes(q)) {
+            result.push({
+              id: backlogId,
+              name,
+              treeName: tree.name,
+              treeId: tree.id,
+              crossTree: tree.id !== currentTreeId,
+            });
+          }
+        }
+        bl.childrenIds.forEach(collectBacklog);
+      };
+      tree.rootBacklogIds.forEach(collectBacklog);
+    });
+    // Sort: same-tree backlogs first, then cross-tree; within each group alphabetically by name.
+    return result.sort((a, b) => {
+      if (a.crossTree !== b.crossTree) return a.crossTree ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [backlogs, sortedTrees, assignedBacklogIds, query, currentTreeId]);
+
+  const handleSelect = (targetBacklogId: string, targetTreeId: string) => {
+    workItemIds.forEach((id) => moveWorkItemToBacklog(id, targetBacklogId, targetTreeId));
     onOpenChange(false);
   };
 
@@ -74,20 +112,18 @@ export function MoveToBacklogDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {candidates.length > 5 && (
-          <div className="px-4 pb-2">
-            <Input
-              ref={inputRef}
-              placeholder="Search backlogs…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="h-8 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") onOpenChange(false);
-              }}
-            />
-          </div>
-        )}
+        <div className="px-4 pb-2">
+          <Input
+            ref={inputRef}
+            placeholder="Search backlogs…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-8 text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onOpenChange(false);
+            }}
+          />
+        </div>
 
         <div className="overflow-y-auto max-h-72 border-t border-border/50">
           {candidates.length === 0 ? (
@@ -96,13 +132,18 @@ export function MoveToBacklogDialog({
             </div>
           ) : (
             <div className="flex flex-col">
-              {candidates.map(({ id, name }) => (
+              {candidates.map(({ id, name, treeName, treeId: targetTreeId, crossTree }) => (
                 <button
                   key={id}
-                  className="flex items-center gap-2 px-4 py-2 text-left text-sm hover:bg-accent/60 transition-colors border-b border-border/20 last:border-b-0"
-                  onClick={() => handleSelect(id)}
+                  className="flex items-center justify-between gap-2 px-4 py-2 text-left text-sm hover:bg-accent/60 transition-colors border-b border-border/20 last:border-b-0"
+                  onClick={() => handleSelect(id, targetTreeId)}
                 >
-                  {isScrambled ? scrambleName(name) : name}
+                  <span>{isScrambled ? scrambleName(name) : name}</span>
+                  {crossTree && (
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {isScrambled ? scrambleName(treeName) : treeName}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
