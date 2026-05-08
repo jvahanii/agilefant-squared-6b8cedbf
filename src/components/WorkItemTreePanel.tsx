@@ -1285,7 +1285,6 @@ function WorkItemNodeContent({
         workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
         treeId={treeId}
         currentBacklogId={backlogId}
-        allBacklogIds={allBacklogIds}
         open={showMoveToBacklogDialog}
         onOpenChange={setShowMoveToBacklogDialog}
       />
