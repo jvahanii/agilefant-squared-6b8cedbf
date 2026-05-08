@@ -316,6 +316,13 @@ function AppLayoutInner() {
         case "m": {
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
+            window.dispatchEvent(new CustomEvent("shortcut:move-to-backlog"));
+          }
+          break;
+        }
+        case "r": {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
             window.dispatchEvent(new CustomEvent("shortcut:move-to-parent"));
           }
           break;
@@ -1254,7 +1261,8 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
     { keys: ["L"], description: "Log spent time" },
-    { keys: ["M"], description: "Move under parent…" },
+    { keys: ["M"], description: "Move to backlog…" },
+    { keys: ["R"], description: "Reparent (change parent)…" },
   ];
 
   return (
