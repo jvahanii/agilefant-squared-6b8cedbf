@@ -24,7 +24,7 @@ export function isPinnedStatus(key: string): boolean {
 export const DEFAULT_TREE_STATUSES: Omit<TreeStatus, 'id' | 'treeId'>[] = [
   { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
   { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1 },
-  { key: 'pending',     label: 'Pending',     color: '#14b8a6', rank: 2 },
+  { key: 'pending',     label: 'Pending',     color: '#93c5fd', rank: 2 },
   { key: 'blocked',     label: 'Blocked',     color: '#ef4444', rank: 3 },
   { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4 },
 ];
