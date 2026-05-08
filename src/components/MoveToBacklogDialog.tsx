@@ -201,7 +201,6 @@ export function MoveToBacklogDialog({
             {
               label: "Mirror",
               description: `Keep in both tree views.`,
-              value: "mirror",
             },
           ]}
           onSelect={handleMoveOrMirrorChoice}
