@@ -72,7 +72,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
-  moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
+  moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
@@ -706,7 +706,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
+    moveWorkItemToBacklog: (workItemId, targetBacklogId, targetTreeId, strategy = "move", sourceTreeId) => {
+      const treeId = targetTreeId;
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
@@ -785,6 +786,24 @@ export const useAppStore = create<AppState>()((set, get) => {
           } else {
             prevEffective = sibRank;
           }
+        }
+      }
+
+      // For cross-tree "move" (not mirror): remove the source tree assignment from
+      // all moved items so the item no longer appears in the source tree.
+      if (strategy === "move" && sourceTreeId && sourceTreeId !== targetTreeId) {
+        for (const wi of [...changed]) {
+          const sourceBl = wi.backlogAssignments[sourceTreeId];
+          if (!sourceBl) continue;
+          const newAssignments = { ...wi.backlogAssignments };
+          delete newAssignments[sourceTreeId];
+          const newRanks = { ...wi.ranks };
+          delete newRanks[sourceBl];
+          removedRanks.push({ workItemId: wi.id, backlogId: sourceBl });
+          const updated = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+          updatedItems[wi.id] = updated;
+          const idx = changed.findIndex((c) => c.id === wi.id);
+          if (idx >= 0) changed[idx] = updated;
         }
       }
 
