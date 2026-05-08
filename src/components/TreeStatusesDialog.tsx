@@ -25,7 +25,7 @@ interface Props {
 
 const COLOR_PRESETS = [
   "#94a3b8", "#3b82f6", "#f59e0b", "#ef4444", "#22c55e",
-  "#a855f7", "#ec4899", "#14b8a6", "#eab308", "#64748b",
+  "#a855f7", "#ec4899", "#93c5fd", "#eab308", "#64748b",
 ];
 
 function slugifyKey(label: string): string {
