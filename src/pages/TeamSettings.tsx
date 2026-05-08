@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag, Settings2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag, Settings2, FlaskConical, Youtube, Wrench } from "lucide-react";
+import { useAppStore } from "@/store/appStore";
+import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { TeamManagement } from "@/components/TeamManagement";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
@@ -482,6 +484,86 @@ export default function TeamSettings() {
     }
   };
 
+  const handleCheckData = () => {
+    const state = useAppStore.getState();
+    const issues = checkDataIntegrity({
+      workItems: state.workItems,
+      backlogs: state.backlogs,
+      backlogTrees: state.backlogTrees,
+    });
+    if (issues.length === 0) {
+      toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." });
+    } else {
+      const report = formatIssueReport(issues);
+      navigator.clipboard.writeText(report);
+      const categories = [...new Set(issues.map((i) => i.category))];
+      toast({
+        title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
+        description: `Categories: ${categories.join(", ")}. See console for full report.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCleanseData = () => {
+    const state = useAppStore.getState();
+    const result = cleanseData({
+      workItems: state.workItems,
+      backlogs: state.backlogs,
+      backlogTrees: state.backlogTrees,
+    });
+    const allIssues = [...result.removed, ...result.fixed];
+    if (allIssues.length === 0) {
+      toast({ title: "✅ No invalid data found" });
+      return;
+    }
+    const report = formatIssueReport(allIssues);
+    navigator.clipboard.writeText(report);
+    console.log("Cleanse report:\n" + report);
+    useAppStore.setState(result.data);
+    toast({
+      title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`,
+      description: "Full report copied to clipboard.",
+    });
+  };
+
+  const handleRunTests = () => {
+    const state = useAppStore.getState();
+    const issues = checkDataIntegrity({
+      workItems: state.workItems,
+      backlogs: state.backlogs,
+      backlogTrees: state.backlogTrees,
+    });
+    const results: string[] = [];
+    const pass = (name: string) => results.push(`✅ PASS: ${name}`);
+    const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
+    const categories = [
+      "Ghost Parent",
+      "Orphaned Children",
+      "Circular Reference",
+      "Backlog Displacement",
+      "Tree-Backlog Desync",
+      "Duplicate Rank",
+      "Cross-Org Pollution",
+      "Malformed ID",
+      "Zombie Assignment",
+    ];
+    categories.forEach((cat) => {
+      const catIssues = issues.filter((i) => i.category === cat);
+      catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
+    });
+    const passed = results.filter((r) => r.startsWith("✅")).length;
+    const failed = results.filter((r) => r.startsWith("❌")).length;
+    const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
+    const fullReport = issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
+    navigator.clipboard.writeText(fullReport);
+    toast({
+      title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`,
+      description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
+      variant: failed > 0 ? "destructive" : undefined,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -873,6 +955,63 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
         <TermsOfServiceDialog open={tosOpen} onCancel={() => setTosOpen(false)} />
+
+        {/* Superuser Tools */}
+        {isSuperuser && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wrench className="w-4 h-4" /> Superuser Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Check Data</p>
+                  <p className="text-xs text-muted-foreground">
+                    Run data integrity checks and copy any issues to clipboard.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCheckData}>
+                  <SearchCheck className="w-3.5 h-3.5 mr-1" /> Check Data
+                </Button>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t">
+                <div>
+                  <p className="text-sm font-medium">Cleanse Data</p>
+                  <p className="text-xs text-muted-foreground">
+                    Remove or fix invalid data entries and copy a report to clipboard.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCleanseData}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Cleanse Data
+                </Button>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t">
+                <div>
+                  <p className="text-sm font-medium">Run Tests</p>
+                  <p className="text-xs text-muted-foreground">
+                    Run all integrity tests and copy results to clipboard.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleRunTests}>
+                  <FlaskConical className="w-3.5 h-3.5 mr-1" /> Run Tests
+                </Button>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t">
+                <div>
+                  <p className="text-sm font-medium">YouTube Channels</p>
+                  <p className="text-xs text-muted-foreground">
+                    Manage YouTube channel integrations.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/superuser/youtube")}>
+                  <Youtube className="w-3.5 h-3.5 mr-1 text-red-500" /> YouTube
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Danger Zone — Superuser only */}
         {isSuperuser && orgSlug && (

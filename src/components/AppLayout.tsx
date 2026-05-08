@@ -38,18 +38,14 @@ import {
   RotateCcw,
   Copy,
   FileText,
-  SearchCheck,
-  Trash2,
-  FlaskConical,
   MoreVertical,
   HelpCircle,
   Eye,
   EyeOff,
   ClipboardList,
-  Youtube,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
+import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv } from "@/store/changeLog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
@@ -939,86 +935,6 @@ function AppLayoutInner() {
     toast({ title: "Data copied to clipboard" });
   };
 
-  const handleCheckData = () => {
-    const state = useAppStore.getState();
-    const issues = checkDataIntegrity({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
-    if (issues.length === 0) {
-      toast({ title: "✅ No broken items found", description: "All 8 integrity checks passed." });
-    } else {
-      const report = formatIssueReport(issues);
-      navigator.clipboard.writeText(report);
-      const categories = [...new Set(issues.map((i) => i.category))];
-      toast({
-        title: `⚠️ Found ${issues.length} issue${issues.length > 1 ? "s" : ""}`,
-        description: `Categories: ${categories.join(", ")}. See console for full report.`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCleanseData = () => {
-    const state = useAppStore.getState();
-    const result = cleanseData({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
-    const allIssues = [...result.removed, ...result.fixed];
-    if (allIssues.length === 0) {
-      toast({ title: "✅ No invalid data found" });
-      return;
-    }
-    const report = formatIssueReport(allIssues);
-    navigator.clipboard.writeText(report);
-    console.log("Cleanse report:\n" + report);
-    useAppStore.setState(result.data);
-    toast({
-      title: `🧹 Cleansed ${allIssues.length} issue${allIssues.length > 1 ? "s" : ""} (${result.removed.length} removed, ${result.fixed.length} fixed)`,
-      description: "Full report copied to clipboard.",
-    });
-  };
-
-  const handleRunTests = () => {
-    const state = useAppStore.getState();
-    const issues = checkDataIntegrity({
-      workItems: state.workItems,
-      backlogs: state.backlogs,
-      backlogTrees: state.backlogTrees,
-    });
-    const results: string[] = [];
-    const pass = (name: string) => results.push(`✅ PASS: ${name}`);
-    const fail = (name: string, detail: string) => results.push(`❌ FAIL: ${name} — ${detail}`);
-    const categories = [
-      "Ghost Parent",
-      "Orphaned Children",
-      "Circular Reference",
-      "Backlog Displacement",
-      "Tree-Backlog Desync",
-      "Duplicate Rank",
-      "Cross-Org Pollution",
-      "Malformed ID",
-      "Zombie Assignment",
-    ];
-    categories.forEach((cat) => {
-      const catIssues = issues.filter((i) => i.category === cat);
-      catIssues.length === 0 ? pass(`No ${cat.toLowerCase()}`) : fail(`${cat} found`, `${catIssues.length} items`);
-    });
-    const passed = results.filter((r) => r.startsWith("✅")).length;
-    const failed = results.filter((r) => r.startsWith("❌")).length;
-    const report = `DATA INTEGRITY TEST RESULTS\n${"=".repeat(40)}\n${results.join("\n")}\n${"=".repeat(40)}\n${passed} passed, ${failed} failed of ${results.length} tests`;
-    const fullReport = issues.length > 0 ? report + "\n\nDETAILED ISSUES:\n" + formatIssueReport(issues) : report;
-    navigator.clipboard.writeText(fullReport);
-    toast({
-      title: failed === 0 ? `✅ All ${passed} tests passed` : `⚠️ ${failed} test${failed > 1 ? "s" : ""} failed`,
-      description: `${passed} passed, ${failed} failed. Report copied to clipboard.`,
-      variant: failed > 0 ? "destructive" : undefined,
-    });
-  };
-
   const [showResetDialog, setShowResetDialog] = useState(false);
   const { isSuperuser, scrambleEnabled, toggleScramble } = useScramble();
   const effectiveSuperuser = isSuperuser && !roleOverride;
@@ -1067,43 +983,6 @@ function AppLayoutInner() {
                 <ClipboardList className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">Export history</span>
               </button>
-              {effectiveSuperuser && (
-                <>
-                  <button
-                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                    onClick={handleCheckData}
-                  >
-                    <SearchCheck className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Check Data</span>
-                  </button>
-                  <button
-                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1.5"
-                    onClick={handleCleanseData}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Cleanse Data</span>
-                  </button>
-                  <button
-                    className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                    onClick={handleRunTests}
-                  >
-                    <FlaskConical className="w-3.5 h-3.5" />
-                    <span className="hidden lg:inline">Run Tests</span>
-                  </button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
-                        onClick={() => navigate("/superuser/youtube")}
-                      >
-                        <Youtube className="w-3.5 h-3.5 text-red-500" />
-                        <span className="hidden lg:inline">YouTube</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>YouTube channels</TooltipContent>
-                  </Tooltip>
-                </>
-              )}
               <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -1223,23 +1102,6 @@ function AppLayoutInner() {
                   </DropdownMenuItem>
                   {effectiveSuperuser && (
                     <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleCheckData}>
-                        <SearchCheck className="w-4 h-4 mr-2" />
-                        Check Data
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleCleanseData}>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Cleanse Data
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleRunTests}>
-                        <FlaskConical className="w-4 h-4 mr-2" />
-                        Run Tests
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/superuser/youtube")}>
-                        <Youtube className="w-4 h-4 mr-2 text-red-500" />
-                        YouTube channels
-                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={toggleScramble}>
                         {scrambleEnabled ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
