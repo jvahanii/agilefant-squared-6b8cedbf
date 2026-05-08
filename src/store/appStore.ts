@@ -72,7 +72,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
-  moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, treeId: string) => void;
+  moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
@@ -706,7 +706,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    moveWorkItemToBacklog: (workItemId, targetBacklogId, treeId) => {
+    moveWorkItemToBacklog: (workItemId, targetBacklogId, targetTreeId, strategy = "move", sourceTreeId) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
@@ -719,7 +719,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       Object.values(state.workItems).forEach((wi) => {
         if (wi.id === workItemId) return;
         if (wi.parentId !== item.parentId) return;
-        if (wi.backlogAssignments[treeId] === cleanTargetBl) {
+        if (wi.backlogAssignments[targetTreeId] === cleanTargetBl) {
           const wiRank = wi.ranks[cleanTargetBl] ?? 0;
           if (wiRank < minRank) minRank = wiRank;
         }
@@ -733,7 +733,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const moveRecursive = (id: string, isRoot: boolean) => {
         const wi = updatedItems[id];
         if (!wi) return;
-        const oldBlId = wi.backlogAssignments[treeId];
+        const oldBlId = wi.backlogAssignments[targetTreeId];
         const newRanks = { ...wi.ranks };
         // Remove rank for old backlog, add rank for new backlog
         if (oldBlId && oldBlId !== cleanTargetBl) {
@@ -748,7 +748,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
         updatedItems[id] = {
           ...wi,
-          backlogAssignments: { ...wi.backlogAssignments, [treeId]: cleanTargetBl },
+          backlogAssignments: { ...wi.backlogAssignments, [targetTreeId]: cleanTargetBl },
           ranks: newRanks,
         };
         changed.push(updatedItems[id]);
@@ -788,10 +788,28 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       }
 
+      // For cross-tree "move" (not mirror): remove the source tree assignment from
+      // all moved items so the item no longer appears in the source tree.
+      if (strategy === "move" && sourceTreeId && sourceTreeId !== targetTreeId) {
+        for (const wi of [...changed]) {
+          const sourceBl = wi.backlogAssignments[sourceTreeId];
+          if (!sourceBl) continue;
+          const newAssignments = { ...wi.backlogAssignments };
+          delete newAssignments[sourceTreeId];
+          const newRanks = { ...wi.ranks };
+          delete newRanks[sourceBl];
+          removedRanks.push({ workItemId: wi.id, backlogId: sourceBl });
+          const updated = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+          updatedItems[wi.id] = updated;
+          const idx = changed.findIndex((c) => c.id === wi.id);
+          if (idx >= 0) changed[idx] = updated;
+        }
+      }
+
       upsertWorkItems(changed, orgId);
       // Clean up stale rank rows in the DB for backlogs that items were moved out of.
       deleteWorkItemBacklogRanks(removedRanks);
-      const oldBacklogId = item.backlogAssignments[treeId];
+      const oldBacklogId = item.backlogAssignments[targetTreeId];
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
       const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
       internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `backlog: "${oldBacklogName}" → "${newBacklogName}"` });
