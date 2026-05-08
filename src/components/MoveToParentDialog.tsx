@@ -225,7 +225,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
           <>
             <DialogHeader className="px-4 pt-4 pb-2">
               <DialogTitle className="text-sm font-semibold">
-                Move &ldquo;{movingTitle}&rdquo; under parent
+                Reparent &ldquo;{movingTitle}&rdquo;
               </DialogTitle>
             </DialogHeader>
 
