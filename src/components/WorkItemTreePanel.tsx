@@ -294,8 +294,9 @@ function WorkItemNodeContent({
 
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
-    await snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: until });
-  }, [workItemId, activeOrgId, snoozeWorkItem]);
+    const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+    await Promise.all(contextIds.map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })));
+  }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, selectedWorkItemIds]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -310,9 +311,18 @@ function WorkItemNodeContent({
 
   const handleDeleteClick = useCallback(() => {
     if (!item) return;
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(workItemId);
-  }, [assignmentCount, deleteWorkItem, item, workItemId]);
+    const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+    if (contextIds.length > 1) {
+      const anyMultiAssigned = contextIds.some(
+        (id) => Object.keys(workItems[id]?.backlogAssignments ?? {}).length > 1,
+      );
+      if (anyMultiAssigned) setShowDeletePrompt(true);
+      else contextIds.forEach((id) => deleteWorkItem(id));
+    } else {
+      if (assignmentCount > 1) setShowDeletePrompt(true);
+      else deleteWorkItem(workItemId);
+    }
+  }, [assignmentCount, deleteWorkItem, item, workItemId, isSelected, selectedWorkItemIds, workItems]);
 
   const handleEditHyperlinks = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
@@ -460,8 +470,9 @@ function WorkItemNodeContent({
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") removeWorkItemFromTree(workItemId, treeId);
-    else if (value === "delete-everywhere") deleteWorkItem(workItemId);
+    const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+    if (value === "remove-from-backlog") contextIds.forEach((id) => removeWorkItemFromTree(id, treeId));
+    else if (value === "delete-everywhere") contextIds.forEach((id) => deleteWorkItem(id));
   };
 
   const startEditingTitle = () => {
@@ -1107,7 +1118,10 @@ function WorkItemNodeContent({
             </ContextMenuSubContent>
           </ContextMenuSub>
           {isSnoozed && (
-            <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(workItemId)}>
+            <ContextMenuItem className="text-xs" onSelect={() => {
+              const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+              contextIds.forEach((id) => unsnoozeWorkItem(id));
+            }}>
               <Bell className="w-3 h-3 mr-2" />
               Unsnooze
             </ContextMenuItem>
@@ -1226,17 +1240,27 @@ function WorkItemNodeContent({
       )}
       {showDeletePrompt && (
         <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} backlogs`}
+          title={
+            isSelected && selectedWorkItemIds.length > 1
+              ? `Delete ${selectedWorkItemIds.length} selected items?`
+              : `"${item.title}" is in ${assignmentCount} backlogs`
+          }
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              description:
+                isSelected && selectedWorkItemIds.length > 1
+                  ? `Remove all selected items from "${backlogs[item.backlogAssignments[treeId]]?.name}" only.`
+                  : `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
+              description:
+                isSelected && selectedWorkItemIds.length > 1
+                  ? "Permanently delete all selected items from all backlogs."
+                  : "Permanently delete this item from all backlogs.",
               value: "delete-everywhere",
               variant: "destructive",
             },
