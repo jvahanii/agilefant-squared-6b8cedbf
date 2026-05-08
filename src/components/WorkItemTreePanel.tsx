@@ -51,6 +51,7 @@ import {
   snoozeOptionNextWeek,
   snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
+import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 /**
  * When a label filter is active, this context holds the Set of work item IDs
  * that should be visible (matching items + their ancestors).  Null means "show
@@ -2075,6 +2076,7 @@ export function WorkItemTreePanel() {
   const visibleItemIdsRef = useRef<string[]>(visibleItemIds);
   useEffect(() => {
     visibleItemIdsRef.current = visibleItemIds;
+    visibleWorkItemIdsRef.current = visibleItemIds;
   }, [visibleItemIds]);
 
   // Keyboard shortcuts: Tab = indent (make child of item above),

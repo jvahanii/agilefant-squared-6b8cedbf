@@ -61,6 +61,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { visibleWorkItemIdsRef, visibleBacklogIdsRef } from "@/store/navigationRefs";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -162,6 +163,46 @@ function AppLayoutInner() {
 
       const state = useAppStore.getState();
 
+      // Helper: move the single selected work item one step up (-1) or down (+1).
+      const reorderSelectedItem = (direction: -1 | 1) => {
+        if (state.selectedWorkItemIds.length !== 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0) return;
+        const wiId = state.selectedWorkItemIds[0];
+        const wi = state.workItems[wiId];
+        if (!wi) return;
+        const treeId = state.selectedTreeId;
+        const selectedBacklogId = state.selectedBacklogIds[0];
+
+        const backlogIds: string[] = [];
+        const collectBacklogs = (id: string) => {
+          backlogIds.push(id);
+          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+        };
+        collectBacklogs(selectedBacklogId);
+
+        const backlogIdSet = new Set(backlogIds);
+        const siblings = Object.values(state.workItems)
+          .filter((w) => {
+            if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
+            if (wi.parentId === null) {
+              return (
+                w.parentId === null ||
+                !state.workItems[w.parentId] ||
+                !backlogIdSet.has(state.workItems[w.parentId].backlogAssignments[treeId])
+              );
+            }
+            return w.parentId === wi.parentId;
+          })
+          .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
+
+        const idx = siblings.findIndex((s) => s.id === wiId);
+        if (idx === -1) return;
+        // Use drop-zone semantics: up targets zone (idx-1), down targets zone
+        // (idx+2) — one past the next item — so the item swaps with its neighbour.
+        const newIdx = direction === -1 ? idx - 1 : idx + 2;
+        if (newIdx < 0 || newIdx > siblings.length) return;
+        useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
+      };
+
       switch (e.key.toLowerCase()) {
         case "t": {
           // Rank to Top
@@ -242,11 +283,18 @@ function AppLayoutInner() {
           break;
         }
         case "n": {
-          // Set status to Not Started
-          if (state.selectedWorkItemIds.length > 0) {
+          // Move selected item down (reorder within siblings).
+          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
-            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
+            reorderSelectedItem(1);
+          }
+          break;
+        }
+        case "u": {
+          // Move selected item up (reorder within siblings).
+          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+            e.preventDefault();
+            reorderSelectedItem(-1);
           }
           break;
         }
@@ -347,43 +395,29 @@ function AppLayoutInner() {
         }
         case "arrowup":
         case "arrowdown": {
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            const wiId = state.selectedWorkItemIds[0];
-            const wi = state.workItems[wiId];
-            if (!wi) break;
-            const treeId = state.selectedTreeId;
-            const selectedBacklogId = state.selectedBacklogIds[0];
-
-            const backlogIds: string[] = [];
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(selectedBacklogId);
-
-            const backlogIdSet = new Set(backlogIds);
-            const siblings = Object.values(state.workItems)
-              .filter((w) => {
-                if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
-                if (wi.parentId === null) {
-                  return (
-                    w.parentId === null ||
-                    !state.workItems[w.parentId] ||
-                    !backlogIdSet.has(state.workItems[w.parentId].backlogAssignments[treeId])
-                  );
-                }
-                return w.parentId === wi.parentId;
-              })
-              .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
-
-            const idx = siblings.findIndex((s) => s.id === wiId);
+          const isDown = e.key.toLowerCase() === "arrowdown";
+          if (state.selectedWorkItemIds.length > 0) {
+            // Navigate selection through visible work items.
+            const currentId = state.selectedWorkItemIds[state.selectedWorkItemIds.length - 1];
+            const ids = visibleWorkItemIdsRef.current;
+            const idx = ids.indexOf(currentId);
             if (idx === -1) break;
-            // Use drop-zone semantics: ArrowUp targets zone (idx-1), ArrowDown targets
-            // zone (idx+2) — one past the next item — so the item swaps with its neighbour.
-            const newIdx = e.key === "ArrowUp" ? idx - 1 : idx + 2;
-            if (newIdx < 0 || newIdx > siblings.length) break;
-            useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
+            const nextIdx = isDown ? idx + 1 : idx - 1;
+            if (nextIdx < 0 || nextIdx >= ids.length) break;
+            e.preventDefault();
+            useAppStore.getState().selectWorkItem(ids[nextIdx]);
+          } else if (state.selectedBacklogIds.length > 0) {
+            // Navigate selection through visible backlogs.
+            const currentId = state.selectedBacklogIds[state.selectedBacklogIds.length - 1];
+            const ids = visibleBacklogIdsRef.current;
+            const idx = ids.indexOf(currentId);
+            if (idx === -1) break;
+            const nextIdx = isDown ? idx + 1 : idx - 1;
+            if (nextIdx < 0 || nextIdx >= ids.length) break;
+            const nextBacklog = useAppStore.getState().backlogs[ids[nextIdx]];
+            if (!nextBacklog) break;
+            e.preventDefault();
+            useAppStore.getState().selectBacklog(ids[nextIdx], nextBacklog.treeId);
           }
           break;
         }
@@ -1205,7 +1239,9 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Shift", "Enter"], description: "New child item" },
     { keys: ["Del", "Bksp"], description: "Delete selected" },
     { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
-    { keys: ["↑", "↓"], description: "Move selection up/down" },
+    { keys: ["↑", "↓"], description: "Change selection up/down" },
+    { keys: ["U"], description: "Move item up" },
+    { keys: ["N"], description: "Move item down" },
     { keys: ["→"], description: "Expand selected item or backlog branch" },
     { keys: ["T"], description: "Move selection to Top" },
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
@@ -1216,7 +1252,6 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["I"], description: "Set status: In Progress" },
     { keys: ["P"], description: "Set status: Pending" },
     { keys: ["B"], description: "Set status: Blocked" },
-    { keys: ["N"], description: "Set status: Not Started" },
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
     { keys: ["L"], description: "Log spent time" },
     { keys: ["M"], description: "Move under parent…" },
