@@ -52,7 +52,7 @@
 
     --status-not-started: hsl(0 0% 72%);
     --status-in-progress: hsl(30 90% 55%);
-    --status-pending: hsl(172 75% 42%);
+    --status-pending: hsl(217 91% 75%);
     --status-blocked: hsl(0 72% 51%);
     --status-done: hsl(142 60% 45%);
   }
