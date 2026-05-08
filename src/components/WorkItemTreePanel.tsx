@@ -1,6 +1,6 @@
 import { useAppStore } from "@/store/appStore";
 import { TeamAssignmentCell } from "./TeamAssignmentCell";
-import { WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
+import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -1347,6 +1347,376 @@ function scrollWorkItemIntoView(itemId: string) {
   });
 }
 
+/**
+ * A single row in the search-results or label-filter-results list.
+ * Supports drag-and-drop (drop onto a backlog in the left panel) and a full
+ * right-click context menu that mirrors the one on regular work-item rows.
+ */
+function SearchResultItem({
+  item,
+  treeId,
+  backlogId,
+  idx,
+  titleNode,
+  workItemAncestors,
+  treeName,
+  backlogPath,
+  isScrambled,
+  onNavigate,
+}: {
+  item: WorkItem;
+  treeId: string;
+  backlogId: string;
+  idx: number;
+  titleNode: React.ReactNode;
+  workItemAncestors: string[];
+  treeName: string;
+  backlogPath: string[];
+  isScrambled: boolean;
+  onNavigate: () => void;
+}) {
+  const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
+  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
+  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const byEntity = useLabelsStore((s) => s.byEntity);
+  const assignLabel = useLabelsStore((s) => s.assignLabel);
+  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
+  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
+  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
+  const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
+  const isMobile = useIsMobile();
+
+  const [showRespawnDialog, setShowRespawnDialog] = useState(false);
+  const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
+  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
+  const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+
+  const orgLabels = useMemo(
+    () =>
+      Object.values(labelsMap)
+        .filter((l) => l.organizationId === activeOrgId)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [labelsMap, activeOrgId],
+  );
+
+  // All backlog IDs in this item's tree, for the "Move to backlog" sub-menu.
+  const treeBacklogIds = useMemo(() => {
+    const ids: string[] = [];
+    const collect = (id: string) => {
+      ids.push(id);
+      backlogs[id]?.childrenIds.forEach(collect);
+    };
+    Object.values(backlogs)
+      .filter((b) => b.treeId === treeId && !b.parentId)
+      .forEach((b) => collect(b.id));
+    return ids;
+  }, [backlogs, treeId]);
+
+  const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  const treeStatuses = useMemo(
+    () =>
+      treeStatusList && treeStatusList.length > 0
+        ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
+        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color })),
+    [treeStatusList],
+  );
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+  } = useDraggable({
+    id: `search-workitem-${item.id}`,
+    data: {
+      type: "workitem",
+      workItemId: item.id,
+      treeId,
+      selectedIds: [item.id],
+    },
+  });
+
+  const dragStartedRef = useRef(false);
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const { onPointerDown: dndPointerDown, ...restListeners } = !isMobile ? (listeners ?? {}) : {};
+
+  const statusColor = treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8";
+  const assignmentCount = Object.keys(item.backlogAssignments).length;
+
+  const handleDeleteClick = useCallback(() => {
+    if (assignmentCount > 1) setShowDeletePrompt(true);
+    else deleteWorkItem(item.id);
+  }, [assignmentCount, deleteWorkItem, item.id]);
+
+  const handleQuickSnooze = useCallback(
+    async (until: Date) => {
+      if (!activeOrgId) return;
+      await snoozeWorkItem({ workItemId: item.id, organizationId: activeOrgId, snoozedUntil: until });
+    },
+    [item.id, activeOrgId, snoozeWorkItem],
+  );
+
+  const handleDeleteChoice = (value: string) => {
+    setShowDeletePrompt(false);
+    if (value === "remove-from-backlog") removeWorkItemFromTree(item.id, treeId);
+    else if (value === "delete-everywhere") deleteWorkItem(item.id);
+  };
+
+  return (
+    <>
+      <div ref={setNodeRef} style={isDragging ? { opacity: 0.4 } : undefined}>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              {...attributes}
+              {...restListeners}
+              className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group select-none${!isMobile ? " cursor-grab active:cursor-grabbing" : ""}`}
+              onPointerDown={(e) => {
+                dndPointerDown?.(e);
+                dragStartedRef.current = false;
+                pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+              }}
+              onPointerMove={(e) => {
+                if (!pointerDownPosRef.current) return;
+                const dx = e.clientX - pointerDownPosRef.current.x;
+                const dy = e.clientY - pointerDownPosRef.current.y;
+                if (dx * dx + dy * dy >= DRAG_THRESHOLD_PX_SQUARED) {
+                  dragStartedRef.current = true;
+                }
+              }}
+              onPointerUp={() => {
+                pointerDownPosRef.current = null;
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (dragStartedRef.current) return;
+                onNavigate();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onNavigate();
+                }
+              }}
+            >
+              <span
+                className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none"
+                aria-hidden="true"
+              >
+                {idx + 1}
+              </span>
+              <span
+                className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
+                style={{ backgroundColor: statusColor }}
+                title={item.status}
+              />
+              <div className="min-w-0 flex-1">
+                <span className="text-sm leading-snug break-words">{titleNode}</span>
+                {workItemAncestors.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
+                    {isScrambled ? "···" : workItemAncestors.join(" › ")}
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                  {isScrambled ? "···" : [treeName, ...backlogPath].join(" › ")}
+                </p>
+              </div>
+              {!isMobile && (
+                <div className="shrink-0 mt-0.5 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <GripVertical className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-52">
+            <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                <span
+                  className="w-2 h-2 rounded-full mr-2 shrink-0 inline-block"
+                  style={{ backgroundColor: treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8" }}
+                />
+                Status
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuRadioGroup
+                  value={item.status}
+                  onValueChange={(val) => setWorkItemStatus(item.id, val as WorkItemStatus)}
+                >
+                  {treeStatuses.map((s) => (
+                    <ContextMenuRadioItem key={s.key} value={s.key} className="text-xs">
+                      <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: s.color }} />
+                      {s.label}
+                    </ContextMenuRadioItem>
+                  ))}
+                </ContextMenuRadioGroup>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuItem className="text-xs" onSelect={() => setShowMoveToParentDialog(true)}>
+              Move under parent…
+            </ContextMenuItem>
+            {treeBacklogIds.length > 1 && (
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs">Move to backlog</ContextMenuSubTrigger>
+                <ContextMenuSubContent>
+                  {treeBacklogIds
+                    .filter((blId) => blId !== backlogId)
+                    .map((blId) => (
+                      <ContextMenuItem
+                        key={blId}
+                        className="text-xs"
+                        onSelect={() => moveWorkItemToBacklog(item.id, blId, treeId)}
+                      >
+                        {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
+                      </ContextMenuItem>
+                    ))}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+            )}
+            <ContextMenuSeparator />
+            {labelsVisible && orgLabels.length > 0 && (
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
+                <ContextMenuSubContent>
+                  {orgLabels.map((label) => {
+                    const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
+                    return (
+                      <ContextMenuCheckboxItem
+                        key={label.id}
+                        className="text-xs"
+                        checked={isAssigned}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            assignLabel(label.id, "work_item", item.id, label.organizationId);
+                          } else {
+                            unassignLabel(label.id, "work_item", item.id);
+                          }
+                        }}
+                      >
+                        <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
+                        {label.name}
+                      </ContextMenuCheckboxItem>
+                    );
+                  })}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+            )}
+            {timeLoggingVisible && (
+              <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
+                Log time
+              </ContextMenuItem>
+            )}
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                <BellOff className="w-3 h-3 mr-2" />
+                Snooze
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionLaterToday())}>
+                  <span className="flex-1">Later Today</span>
+                  <span className="ml-4 text-muted-foreground text-[10px]">3h from now</span>
+                </ContextMenuItem>
+                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionTomorrowMorning())}>
+                  <span className="flex-1">Tomorrow Morning</span>
+                  <span className="ml-4 text-muted-foreground text-[10px]">7:00 AM</span>
+                </ContextMenuItem>
+                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionThisWeekend())}>
+                  <span className="flex-1">This Weekend</span>
+                  <span className="ml-4 text-muted-foreground text-[10px]">Sat 7:00 AM</span>
+                </ContextMenuItem>
+                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionNextWeek())}>
+                  <span className="flex-1">Next Week</span>
+                  <span className="ml-4 text-muted-foreground text-[10px]">Mon 7:00 AM</span>
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem className="text-xs" onSelect={() => setShowSnoozeDialog(true)}>
+                  Pick Date / Time…
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            {isSnoozed && (
+              <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(item.id)}>
+                <Bell className="w-3 h-3 mr-2" />
+                Unsnooze
+              </ContextMenuItem>
+            )}
+            <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
+              Respawn settings
+            </ContextMenuItem>
+            <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
+              Hyperlinks
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-xs text-destructive focus:text-destructive"
+              onSelect={handleDeleteClick}
+            >
+              Delete
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </div>
+      {showDeletePrompt && (
+        <ActionPrompt
+          title={`"${item.title}" is in ${assignmentCount} backlogs`}
+          options={[
+            {
+              label: "Remove from this backlog",
+              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              value: "remove-from-backlog",
+              isDefault: true,
+            },
+            {
+              label: "Delete everywhere",
+              description: "Permanently delete this item from all backlogs.",
+              value: "delete-everywhere",
+              variant: "destructive",
+            },
+          ]}
+          onSelect={handleDeleteChoice}
+          onCancel={() => setShowDeletePrompt(false)}
+        />
+      )}
+      <RespawnSettingsDialog
+        workItemId={item.id}
+        open={showRespawnDialog}
+        onOpenChange={setShowRespawnDialog}
+      />
+      <HyperlinksDialog
+        workItemId={item.id}
+        open={showHyperlinksDialog}
+        onOpenChange={setShowHyperlinksDialog}
+      />
+      {timeLoggingVisible && (
+        <TimeLogDialog
+          workItemId={item.id}
+          open={showTimeLogDialog}
+          onOpenChange={setShowTimeLogDialog}
+        />
+      )}
+      <SnoozeDialog
+        workItemId={item.id}
+        open={showSnoozeDialog}
+        onOpenChange={setShowSnoozeDialog}
+      />
+      <MoveToParentDialog
+        workItemIds={[item.id]}
+        open={showMoveToParentDialog}
+        onOpenChange={setShowMoveToParentDialog}
+      />
+    </>
+  );
+}
+
 export function WorkItemTreePanel() {
   const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
@@ -2005,8 +2375,6 @@ export function WorkItemTreePanel() {
                   // Compute query string once before mapping to avoid redundant string ops per item.
                   const q = searchQuery.trim().toLowerCase();
                   return searchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => {
-                    const statusColor =
-                      DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
                     const titleLower = item.title.toLowerCase();
                     const matchIdx = titleLower.indexOf(q);
                     const titleNode =
@@ -2022,20 +2390,26 @@ export function WorkItemTreePanel() {
                         item.title
                       );
                     return (
-                      <button
+                      <SearchResultItem
                         key={item.id}
-                        className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
-                        onClick={() => {
+                        item={item}
+                        treeId={treeId}
+                        backlogId={backlogId}
+                        idx={idx}
+                        titleNode={titleNode}
+                        workItemAncestors={workItemAncestors}
+                        treeName={treeName}
+                        backlogPath={backlogPath}
+                        isScrambled={isScrambled}
+                        onNavigate={() => {
                           // Expand ancestor backlogs and work items so the item is visible
                           useAppStore.setState((state) => {
-                            // Expand ancestor backlogs in the left panel
                             const expandedBacklogs = new Set(state.expandedBacklogs);
                             let bl = state.backlogs[backlogId];
                             while (bl?.parentId) {
                               expandedBacklogs.add(bl.parentId);
                               bl = state.backlogs[bl.parentId];
                             }
-                            // Expand ancestor work items in the right panel
                             const expandedWorkItems = new Set(state.expandedWorkItems);
                             let wi = state.workItems[item.id];
                             while (wi?.parentId) {
@@ -2050,33 +2424,10 @@ export function WorkItemTreePanel() {
                           // before we try to highlight the work item row.
                           setTimeout(() => {
                             selectWorkItem(item.id, false);
-                            // Scroll the item into view after React re-renders the selection.
                             scrollWorkItemIntoView(item.id);
                           }, 50);
                         }}
-                      >
-                        <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
-                          {idx + 1}
-                        </span>
-                        <span
-                          className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
-                          style={{ backgroundColor: statusColor }}
-                          title={item.status}
-                        />
-                         <div className="min-w-0 flex-1">
-                          <span className="text-sm leading-snug break-words">{titleNode}</span>
-                          {workItemAncestors.length > 0 && (
-                            <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
-                              {isScrambled ? "···" : workItemAncestors.join(" › ")}
-                            </p>
-                          )}
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {isScrambled
-                              ? "···"
-                              : [treeName, ...backlogPath].join(" › ")}
-                          </p>
-                        </div>
-                      </button>
+                      />
                     );
                   });
                 })()}
@@ -2092,63 +2443,44 @@ export function WorkItemTreePanel() {
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {labelSearchResults && labelSearchResults.length > 0 ? (
               <div className="flex flex-col">
-                {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => {
-                  const statusColor =
-                    DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? "#94a3b8";
-                  return (
-                    <button
-                      key={item.id}
-                      className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group"
-                      onClick={() => {
-                        // Expand ancestor backlogs and work items so the item is visible
-                        useAppStore.setState((state) => {
-                          const expandedBacklogs = new Set(state.expandedBacklogs);
-                          let bl = state.backlogs[backlogId];
-                          while (bl?.parentId) {
-                            expandedBacklogs.add(bl.parentId);
-                            bl = state.backlogs[bl.parentId];
-                          }
-                          const expandedWorkItems = new Set(state.expandedWorkItems);
-                          let wi = state.workItems[item.id];
-                          while (wi?.parentId) {
-                            expandedWorkItems.add(wi.parentId);
-                            wi = state.workItems[wi.parentId];
-                          }
-                          return { expandedBacklogs, expandedWorkItems };
-                        });
-                        selectBacklog(backlogId, treeId);
-                        setFilterLabelIds(new Set());
-                        setTimeout(() => {
-                          selectWorkItem(item.id, false);
-                          // Scroll the item into view after React re-renders the selection.
-                          scrollWorkItemIntoView(item.id);
-                        }, 50);
-                      }}
-                    >
-                      <span className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none" aria-hidden="true">
-                        {idx + 1}
-                      </span>
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
-                        style={{ backgroundColor: statusColor }}
-                        title={item.status}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-sm leading-snug break-words">{item.title}</span>
-                        {workItemAncestors.length > 0 && (
-                          <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
-                            {isScrambled ? "···" : workItemAncestors.join(" › ")}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                          {isScrambled
-                            ? "···"
-                            : [treeName, ...backlogPath].join(" › ")}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => (
+                  <SearchResultItem
+                    key={item.id}
+                    item={item}
+                    treeId={treeId}
+                    backlogId={backlogId}
+                    idx={idx}
+                    titleNode={item.title}
+                    workItemAncestors={workItemAncestors}
+                    treeName={treeName}
+                    backlogPath={backlogPath}
+                    isScrambled={isScrambled}
+                    onNavigate={() => {
+                      // Expand ancestor backlogs and work items so the item is visible
+                      useAppStore.setState((state) => {
+                        const expandedBacklogs = new Set(state.expandedBacklogs);
+                        let bl = state.backlogs[backlogId];
+                        while (bl?.parentId) {
+                          expandedBacklogs.add(bl.parentId);
+                          bl = state.backlogs[bl.parentId];
+                        }
+                        const expandedWorkItems = new Set(state.expandedWorkItems);
+                        let wi = state.workItems[item.id];
+                        while (wi?.parentId) {
+                          expandedWorkItems.add(wi.parentId);
+                          wi = state.workItems[wi.parentId];
+                        }
+                        return { expandedBacklogs, expandedWorkItems };
+                      });
+                      selectBacklog(backlogId, treeId);
+                      setFilterLabelIds(new Set());
+                      setTimeout(() => {
+                        selectWorkItem(item.id, false);
+                        scrollWorkItemIntoView(item.id);
+                      }, 50);
+                    }}
+                  />
+                ))}
               </div>
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
