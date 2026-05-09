@@ -686,7 +686,7 @@ export default function TeamSettings() {
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {canManage && currentRole === "owner" && member.user_id !== user?.id ? (
+                    {(canManage && currentRole === "owner" || isSuperuser) && member.user_id !== user?.id ? (
                       <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v)}>
                         <SelectTrigger className="w-24 h-8 text-xs">
                           <SelectValue />
