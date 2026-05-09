@@ -108,6 +108,15 @@ interface SnoozeState {
     snoozedUntil: Date;
     note?: string | null;
   }) => Promise<void>;
+  /**
+   * Snooze multiple work items at once. Fires all upserts in parallel.
+   */
+  snoozeAll: (params: {
+    workItemIds: string[];
+    organizationId: string;
+    snoozedUntil: Date;
+    note?: string | null;
+  }) => Promise<void>;
   unsnoozeWorkItem: (workItemId: string) => Promise<void>;
   /** Remove active snoozes for all given work item IDs in a single request. */
   unsnoozeAll: (workItemIds: string[]) => Promise<void>;
@@ -192,6 +201,15 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
 
     const s = rowToSnooze(data as Record<string, unknown>);
     set((state) => ({ snoozes: { ...state.snoozes, [s.workItemId]: s } }));
+  },
+
+  snoozeAll: async ({ workItemIds, organizationId, snoozedUntil, note }) => {
+    if (workItemIds.length === 0) return;
+    await Promise.all(
+      workItemIds.map((workItemId) =>
+        get().snoozeWorkItem({ workItemId, organizationId, snoozedUntil, note }),
+      ),
+    );
   },
 
   unsnoozeWorkItem: async (workItemId) => {

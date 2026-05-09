@@ -20,7 +20,7 @@ import {
 import { useOrgStore } from "@/store/orgStore";
 
 interface SnoozeDialogProps {
-  workItemId: string;
+  workItemIds: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -44,8 +44,8 @@ const QUICK_OPTIONS = [
   { label: "Next Year", sublabel: "In 1 year, 7:00 AM", fn: snoozeOptionNextYear },
 ];
 
-export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogProps) {
-  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
+export function SnoozeDialog({ workItemIds, open, onOpenChange }: SnoozeDialogProps) {
+  const snoozeAll = useSnoozeStore((s) => s.snoozeAll);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
 
   const [customDatetime, setCustomDatetime] = useState(() =>
@@ -65,8 +65,8 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
   const doSnooze = async (until: Date) => {
     if (!activeOrgId) return;
     setIsSaving(true);
-    await snoozeWorkItem({
-      workItemId,
+    await snoozeAll({
+      workItemIds,
       organizationId: activeOrgId,
       snoozedUntil: until,
     });
@@ -79,11 +79,15 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
     doSnooze(customDate);
   };
 
+  const count = workItemIds.length;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base">Snooze item</DialogTitle>
+          <DialogTitle className="text-base">
+            {count > 1 ? `Snooze ${count} items` : "Snooze item"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-2 pt-1">

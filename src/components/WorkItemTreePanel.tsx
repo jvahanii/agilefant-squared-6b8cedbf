@@ -287,15 +287,20 @@ function WorkItemNodeContent({
   const [showMoveToBacklogDialog, setShowMoveToBacklogDialog] = useState(false);
 
   // Snooze store
-  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
+  const snoozeAll = useSnoozeStore((s) => s.snoozeAll);
+  const unsnoozeAll = useSnoozeStore((s) => s.unsnoozeAll);
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
   const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
 
+  // IDs to target when snoozing/unsnoozing: all selected items if this item is
+  // part of a multi-selection, otherwise just this item.
+  const snoozeTargetIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
-    await snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: until });
-  }, [workItemId, activeOrgId, snoozeWorkItem]);
+    await snoozeAll({ workItemIds: snoozeTargetIds, organizationId: activeOrgId, snoozedUntil: until });
+  }, [snoozeTargetIds, activeOrgId, snoozeAll]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -1107,7 +1112,7 @@ function WorkItemNodeContent({
             </ContextMenuSubContent>
           </ContextMenuSub>
           {isSnoozed && (
-            <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(workItemId)}>
+            <ContextMenuItem className="text-xs" onSelect={() => snoozeTargetIds.length > 1 ? unsnoozeAll(snoozeTargetIds) : unsnoozeWorkItem(workItemId)}>
               <Bell className="w-3 h-3 mr-2" />
               Unsnooze
             </ContextMenuItem>
@@ -1263,7 +1268,7 @@ function WorkItemNodeContent({
         />
       )}
       <SnoozeDialog
-        workItemId={workItemId}
+        workItemIds={snoozeTargetIds}
         open={showSnoozeDialog}
         onOpenChange={setShowSnoozeDialog}
       />
@@ -1721,7 +1726,7 @@ function SearchResultItem({
         />
       )}
       <SnoozeDialog
-        workItemId={item.id}
+        workItemIds={[item.id]}
         open={showSnoozeDialog}
         onOpenChange={setShowSnoozeDialog}
       />
