@@ -289,7 +289,6 @@ function WorkItemNodeContent({
   // Snooze store
   const snoozeAll = useSnoozeStore((s) => s.snoozeAll);
   const unsnoozeAll = useSnoozeStore((s) => s.unsnoozeAll);
-  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
   const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
 
@@ -693,7 +692,7 @@ function WorkItemNodeContent({
                 <TooltipTrigger asChild>
                   <button
                     className="shrink-0 mt-0.5 text-amber-500/80 hover:text-amber-500 transition-colors"
-                    onClick={(e) => { e.stopPropagation(); unsnoozeWorkItem(workItemId); }}
+                    onClick={(e) => { e.stopPropagation(); unsnoozeAll(snoozeTargetIds); }}
                   >
                     <BellOff className="w-3 h-3" />
                   </button>
@@ -1112,7 +1111,7 @@ function WorkItemNodeContent({
             </ContextMenuSubContent>
           </ContextMenuSub>
           {isSnoozed && (
-            <ContextMenuItem className="text-xs" onSelect={() => snoozeTargetIds.length > 1 ? unsnoozeAll(snoozeTargetIds) : unsnoozeWorkItem(workItemId)}>
+            <ContextMenuItem className="text-xs" onSelect={() => unsnoozeAll(snoozeTargetIds)}>
               <Bell className="w-3 h-3 mr-2" />
               Unsnooze
             </ContextMenuItem>
