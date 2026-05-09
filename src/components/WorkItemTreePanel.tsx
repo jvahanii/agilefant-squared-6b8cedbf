@@ -294,8 +294,15 @@ function WorkItemNodeContent({
 
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
-    await snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: until });
-  }, [workItemId, activeOrgId, snoozeWorkItem]);
+    const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+    try {
+      await Promise.all(
+        ids.map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })),
+      );
+    } catch (err) {
+      console.error('Failed to snooze one or more items', err);
+    }
+  }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, selectedWorkItemIds]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -1263,7 +1270,7 @@ function WorkItemNodeContent({
         />
       )}
       <SnoozeDialog
-        workItemId={workItemId}
+        workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
         open={showSnoozeDialog}
         onOpenChange={setShowSnoozeDialog}
       />
@@ -1721,7 +1728,7 @@ function SearchResultItem({
         />
       )}
       <SnoozeDialog
-        workItemId={item.id}
+        workItemIds={[item.id]}
         open={showSnoozeDialog}
         onOpenChange={setShowSnoozeDialog}
       />

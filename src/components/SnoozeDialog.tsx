@@ -20,7 +20,7 @@ import {
 import { useOrgStore } from "@/store/orgStore";
 
 interface SnoozeDialogProps {
-  workItemId: string;
+  workItemIds: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -44,7 +44,7 @@ const QUICK_OPTIONS = [
   { label: "Next Year", sublabel: "In 1 year, 7:00 AM", fn: snoozeOptionNextYear },
 ];
 
-export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogProps) {
+export function SnoozeDialog({ workItemIds, open, onOpenChange }: SnoozeDialogProps) {
   const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
 
@@ -65,12 +65,15 @@ export function SnoozeDialog({ workItemId, open, onOpenChange }: SnoozeDialogPro
   const doSnooze = async (until: Date) => {
     if (!activeOrgId) return;
     setIsSaving(true);
-    await snoozeWorkItem({
-      workItemId,
-      organizationId: activeOrgId,
-      snoozedUntil: until,
-    });
-    setIsSaving(false);
+    try {
+      await Promise.all(
+        workItemIds.map((workItemId) =>
+          snoozeWorkItem({ workItemId, organizationId: activeOrgId, snoozedUntil: until }),
+        ),
+      );
+    } finally {
+      setIsSaving(false);
+    }
     onOpenChange(false);
   };
 
