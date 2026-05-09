@@ -17,6 +17,7 @@ import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useLabelsStore } from "@/store/labelsStore";
 import { LabelsManager } from "@/components/LabelsManager";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
@@ -68,10 +69,14 @@ export default function TeamSettings() {
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
+  const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
+  const loadLabels = useLabelsStore((s) => s.loadLabels);
+  const setOrganizationId = useAppStore((s) => s.setOrganizationId);
+  const loadData = useAppStore((s) => s.loadFromSupabase);
 
   // Delete state
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -86,9 +91,18 @@ export default function TeamSettings() {
   const currentRole = activeOrg?.role;
   const canManage = currentRole === "owner" || currentRole === "admin";
 
+  // Load data that may not be populated when landing directly on this page
+  // (e.g. after a browser refresh instead of navigating from the main view).
   useEffect(() => {
     if (!activeOrgId) return;
     loadMembers();
+    loadSettings(activeOrgId);
+    loadLabels([activeOrgId]);
+    setOrganizationId(activeOrgId);
+    loadData();
+    // loadMembers is defined in this component; Zustand actions are stable refs.
+    // Only activeOrgId needs to be in the dependency array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
   useEffect(() => {
