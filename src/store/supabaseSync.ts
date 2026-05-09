@@ -55,6 +55,13 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
 }> {
+  // Ensure the Supabase auth client has finished initialising (including any
+  // pending token refresh) before issuing PostgREST queries.  Without this,
+  // onAuthStateChange can fire INITIAL_SESSION while initialize() is still
+  // running; the access token in currentSession may be stale, causing RLS to
+  // evaluate auth.uid() as null and return empty rows for every table.
+  await supabase.auth.getSession();
+
   // Load shared tree IDs for this org
   const { data: shares } = await supabase
     .from('backlog_tree_shares' as any)
