@@ -100,6 +100,9 @@ export default function TeamSettings() {
     loadLabels([activeOrgId]);
     setOrganizationId(activeOrgId);
     loadData();
+    // loadMembers is defined in this component; Zustand actions are stable refs.
+    // Only activeOrgId needs to be in the dependency array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
   useEffect(() => {
