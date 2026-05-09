@@ -58,16 +58,6 @@ export function MoveToBacklogDialog({
       ? (workItems[workItemIds[0]]?.title ?? "item")
       : `${workItemIds.length} items`;
 
-  // Collect all backlog IDs the selected items are already assigned to.
-  const assignedBacklogIds = useMemo(() => {
-    const ids = new Set<string>();
-    workItemIds.forEach((id) => {
-      const wi = workItems[id];
-      if (wi) Object.values(wi.backlogAssignments).forEach((blId) => ids.add(blId));
-    });
-    return ids;
-  }, [workItemIds, workItems]);
-
   // Sort trees by rank so same-tree backlogs appear first.
   const sortedTrees = useMemo(
     () => Object.values(backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0)),
@@ -84,7 +74,7 @@ export function MoveToBacklogDialog({
       const collectBacklog = (backlogId: string) => {
         const bl = backlogs[backlogId];
         if (!bl) return;
-        if (!assignedBacklogIds.has(backlogId)) {
+        if (backlogId !== currentBacklogId) {
           const name = bl.name ?? backlogId;
           if (!q || name.toLowerCase().includes(q) || tree.name.toLowerCase().includes(q)) {
             result.push({
@@ -105,7 +95,7 @@ export function MoveToBacklogDialog({
       if (a.crossTree !== b.crossTree) return a.crossTree ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
-  }, [backlogs, sortedTrees, assignedBacklogIds, query, currentTreeId]);
+  }, [backlogs, sortedTrees, currentBacklogId, query, currentTreeId]);
 
   const applySelection = (backlogId: string, targetTreeId: string, strategy: "move" | "mirror") => {
     workItemIds.forEach((id) =>
