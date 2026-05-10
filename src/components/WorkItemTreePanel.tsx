@@ -156,7 +156,7 @@ function InlineWorkItemInput({
   };
 
   return (
-    <div className="flex items-start gap-1.5 px-3 py-px" style={{ paddingLeft: `${depth * 20 + 32}px` }}>
+    <div className="flex items-start gap-1.5 px-3 py-px" style={{ paddingLeft: `${depth * 20 + 100}px` }}>
       <textarea
         ref={textAreaRef}
         rows={1}
