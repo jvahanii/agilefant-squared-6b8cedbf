@@ -13,9 +13,11 @@ import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
-import { Bell, BellOff, Clock, Link2, RotateCcw, Tag } from "lucide-react";
+import { Bell, BellOff, Check, Clock, Link2, RotateCcw, Tag, Users } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
+import { useTeamStore } from "@/store/teamStore";
+import { Badge } from "@/components/ui/badge";
 
 // ─── Work Item Attributes Sheet ──────────────────────────────────────────────
 
@@ -71,6 +73,11 @@ export function MobileWorkItemAttributesSheet({
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
   const activeSnooze = useSnoozeStore((s) => s.getActiveSnooze(workItemId));
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
+
+  const teams = useTeamStore((s) => s.teams);
+  const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? []);
+  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
+  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
   const [isEditingPoints, setIsEditingPoints] = useState(false);
   const [editPoints, setEditPoints] = useState("");
@@ -211,6 +218,38 @@ export function MobileWorkItemAttributesSheet({
               {hyperlinkCount > 0 ? `${hyperlinkCount} link${hyperlinkCount !== 1 ? "s" : ""}` : "Manage"}
             </Button>
           </div>
+
+          {teams.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">Teams</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pl-5">
+                {teams.map((team) => {
+                  const isAssigned = workItemTeams.includes(team.id);
+                  return (
+                    <button
+                      key={team.id}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors active:bg-accent/80"
+                      style={isAssigned ? { borderColor: "hsl(var(--primary))", background: "hsl(var(--primary) / 0.08)" } : {}}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAssigned) {
+                          unassignTeam(workItemId, team.id);
+                        } else {
+                          assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
+                        }
+                      }}
+                    >
+                      {isAssigned && <Check className="w-3 h-3 text-primary" />}
+                      <span className={isAssigned ? "text-primary font-medium" : "text-muted-foreground"}>{team.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Snooze</span>
