@@ -28,14 +28,7 @@ function AppRoutes() {
     if (user) {
       loadMemberships(user.id);
     }
-    // user?.id is the stable key: loadMemberships only needs to re-run when
-    // the signed-in user actually changes.  Using the full user object would
-    // re-trigger on every reference change (e.g. INITIAL_SESSION then
-    // getSession() both setting the same user with different object refs),
-    // which would race two concurrent loadMemberships calls against loadData().
-    // loadMemberships is a stable Zustand reference so it is safe to omit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user]);
 
   // On mobile, iOS Safari can restore the page from bfcache while orgLoading
   // is still true (the in-flight RPC was silently cancelled by the OS and the
