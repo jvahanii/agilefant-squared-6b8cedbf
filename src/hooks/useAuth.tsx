@@ -35,6 +35,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 8000);
 
+    // Guard so the initial auth state is resolved exactly once, regardless of
+    // whether INITIAL_SESSION or getSession() fires first.  Without this guard,
+    // both could call resolveSession with slightly different user-object
+    // references, triggering a second loadMemberships() call and a data-loading
+    // race on startup.
+    let initiallyResolved = false;
+    const resolveInitialSession = (s: Session | null) => {
+      if (initiallyResolved) return;
+      initiallyResolved = true;
+      resolveSession(s);
+    };
+
     const resolveSession = (s: Session | null) => {
       clearTimeout(loadingTimeout);
       setSession(s);
@@ -43,12 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     };
 
-    // Use getSession() as the authoritative source for the initial auth state.
-    // It waits for the Supabase client's internal initialize() to complete
-    // (including any token refresh) before resolving, so the user object and
-    // the PostgREST session are always in sync when data fetching begins.
+    // getSession() waits for the Supabase client's internal initialize() to
+    // complete (including any token refresh) before resolving, so the user
+    // object and the PostgREST session are always in sync when data fetching
+    // begins.  It acts as a fallback in case INITIAL_SESSION never fires.
     supabase.auth.getSession()
-      .then(({ data: { session } }) => resolveSession(session))
+      .then(({ data: { session } }) => resolveInitialSession(session))
       .catch(() => {
         // If getSession() rejects (e.g. network error during token refresh),
         // clear the loading state so the app can fall through to the login page.
@@ -57,16 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       });
 
-    // onAuthStateChange handles all *subsequent* auth events (SIGNED_IN,
-    // SIGNED_OUT, TOKEN_REFRESHED, USER_UPDATED, …).  We skip INITIAL_SESSION
-    // because getSession() above already covers it; processing it here too
-    // would set a potentially different user-object reference, triggering an
-    // extra loadMemberships() call and a data-loading race on startup.
+    // onAuthStateChange handles all auth events.  INITIAL_SESSION is used as
+    // the primary handler for the initial auth state: it fires as soon as the
+    // Supabase client finishes initializing (before getSession() resolves), so
+    // handling it here unblocks loading immediately and keeps the 8-second
+    // safety timeout intact as a true last-resort fallback.  The
+    // resolveInitialSession guard prevents a double-resolve if getSession()
+    // also fires shortly after.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') {
-        // Already handled by getSession() above.  Clear the timeout defensively
-        // in case getSession() hasn't resolved yet (e.g. very fast initialization).
-        clearTimeout(loadingTimeout);
+        resolveInitialSession(session);
         return;
       }
       resolveSession(session);
@@ -84,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState !== 'visible' || !loadingRef.current || retrying) return;
       retrying = true;
       supabase.auth.getSession()
-        .then(({ data: { session } }) => resolveSession(session))
+        .then(({ data: { session } }) => resolveInitialSession(session))
         .catch(() => {
           loadingRef.current = false;
           setLoading(false);
