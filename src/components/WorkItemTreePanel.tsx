@@ -1312,6 +1312,8 @@ function WorkItemNodeContent({
         onOpenRespawn={() => setShowRespawnDialog(true)}
         onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
         onOpenSnooze={() => setShowSnoozeDialog(true)}
+        onOpenMove={() => setShowMoveToBacklogDialog(true)}
+        onOpenReparent={() => setShowMoveToParentDialog(true)}
       />
       <MoveToParentDialog
         workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
