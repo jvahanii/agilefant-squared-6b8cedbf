@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { TeamAssignmentCell } from "./TeamAssignmentCell";
+import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
@@ -70,6 +70,7 @@ const RunningNumberContext = createContext<Map<string, number> | null>(null);
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
 const DRAG_THRESHOLD_PX = 5;
 const DRAG_THRESHOLD_PX_SQUARED = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
+const EMPTY_ARRAY: string[] = [];
 
 function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
@@ -264,6 +265,12 @@ function WorkItemNodeContent({
     () => new Set(byEntity[`work_item:${workItemId}`] ?? []),
     [byEntity, workItemId],
   );
+
+  // Teams
+  const teams = useTeamStore((s) => s.teams);
+  const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? EMPTY_ARRAY);
+  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
+  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
   // Per-tree status definitions (falls back to defaults if not loaded yet).
   const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
@@ -779,9 +786,6 @@ function WorkItemNodeContent({
           )}
 
           <div className="flex items-start gap-1 mt-0.5">
-            <div className="shrink-0">
-              <TeamAssignmentCell workItemId={workItemId} />
-            </div>
             {pointsVisible && (() => {
                 const getEffectivePoints = (wi: any): number => {
                   const own = wi.points ?? 0;
@@ -1074,6 +1078,32 @@ function WorkItemNodeContent({
                       <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
                       {label.name}
                       {partiallyAssigned && <span className="ml-auto text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
+                    </ContextMenuCheckboxItem>
+                  );
+                })}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          {teams.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {teams.map((team) => {
+                  const isAssigned = workItemTeams.includes(team.id);
+                  return (
+                    <ContextMenuCheckboxItem
+                      key={team.id}
+                      className="text-xs"
+                      checked={isAssigned}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
+                        } else {
+                          unassignTeam(workItemId, team.id);
+                        }
+                      }}
+                    >
+                      {team.name}
                     </ContextMenuCheckboxItem>
                   );
                 })}
@@ -1415,6 +1445,10 @@ function SearchResultItem({
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
   const isMobile = useIsMobile();
+  const teams = useTeamStore((s) => s.teams);
+  const workItemTeams = useTeamStore((s) => s.workItemTeams[item.id] ?? EMPTY_ARRAY);
+  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
+  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
@@ -1628,6 +1662,32 @@ function SearchResultItem({
                       >
                         <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
                         {label.name}
+                      </ContextMenuCheckboxItem>
+                    );
+                  })}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+            )}
+            {teams.length > 0 && (
+              <ContextMenuSub>
+                <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
+                <ContextMenuSubContent>
+                  {teams.map((team) => {
+                    const isAssigned = workItemTeams.includes(team.id);
+                    return (
+                      <ContextMenuCheckboxItem
+                        key={team.id}
+                        className="text-xs"
+                        checked={isAssigned}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            assignTeam(item.id, team.id, team.organization_id || activeOrgId!);
+                          } else {
+                            unassignTeam(item.id, team.id);
+                          }
+                        }}
+                      >
+                        {team.name}
                       </ContextMenuCheckboxItem>
                     );
                   })}
