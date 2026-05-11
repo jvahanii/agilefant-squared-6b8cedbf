@@ -33,7 +33,7 @@ export function MoveToBacklogDialog({
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const workItems = useAppStore((s) => s.workItems);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
-  const { isScrambled } = useScramble();
+  const { scrambleEnabled: isScrambled } = useScramble();
 
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +201,7 @@ export function MoveToBacklogDialog({
             {
               label: "Mirror",
               description: `Keep in both tree views.`,
+              value: "mirror",
             },
           ]}
           onSelect={handleMoveOrMirrorChoice}
