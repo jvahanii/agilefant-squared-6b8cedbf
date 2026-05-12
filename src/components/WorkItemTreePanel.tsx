@@ -53,6 +53,7 @@ import {
   snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
+import { toast } from "@/hooks/use-toast";
 /**
  * When a label filter is active, this context holds the Set of work item IDs
  * that should be visible (matching items + their ancestors).  Null means "show
@@ -226,6 +227,7 @@ function WorkItemNodeContent({
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
@@ -986,6 +988,22 @@ function WorkItemNodeContent({
               </ContextMenuRadioGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => {
+              const state = useAppStore.getState();
+              const backlogIds: string[] = [];
+              const collectBacklogs = (id: string) => {
+                backlogIds.push(id);
+                state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+              };
+              collectBacklogs(backlogId);
+              reorderWorkItemAmongSiblings(workItemId, 0, treeId, backlogIds);
+              toast({ title: "Moved item to top", description: item.title });
+            }}
+          >
+            Move to top
+          </ContextMenuItem>
           <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
             Rename
           </ContextMenuItem>

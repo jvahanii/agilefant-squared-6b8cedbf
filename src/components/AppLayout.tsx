@@ -447,23 +447,11 @@ function AppLayoutInner() {
     // gestures where the user started moving horizontally then went vertical.
     let lockedDirection: "vertical" | "horizontal" | null = null;
     const LOCK_THRESHOLD = 8; // px before direction is locked
-    // Long-press parameters: fires top-rank command when held.
-    const LONG_PRESS_DURATION = 350; // ms of held touch before long press fires
-    const LONG_PRESS_CANCEL_THRESHOLD = 20; // px of movement that cancels the long press
-    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    let longPressHandled = false;
-    // Sentinel rank values for moving to the top or bottom of the list.
-    const TOP_POSITION = 0;
 
     const resetState = () => {
       touchStartRef.current = null;
       touchScrolled = false;
       lockedDirection = null;
-      longPressHandled = false;
-      if (longPressTimer !== null) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      }
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -474,58 +462,6 @@ function AppLayoutInner() {
         touchStartRef.current = { x: touch.clientX, y: touch.clientY };
         touchScrolled = false;
         lockedDirection = null;
-        longPressHandled = false;
-
-        // Identify the work item row under the touch point so the long-press
-        // action targets that specific item rather than the selected item(s).
-        // Also detect whether the touch started on a drag handle so we can
-        // suppress the long-press (dragging from the handle should not rank to top).
-        let touchedWorkItemId: string | null = null;
-        let touchedBacklogId: string | null = null;
-        let touchedTreeId: string | null = null;
-        let touchedDragHandle = false;
-        let node: Element | null = document.elementFromPoint(touch.clientX, touch.clientY);
-        while (node) {
-          if (node.getAttribute("data-drag-handle") === "true") {
-            touchedDragHandle = true;
-          }
-          const wiId = node.getAttribute("data-work-item-id");
-          if (wiId) {
-            touchedWorkItemId = wiId;
-            touchedBacklogId = node.getAttribute("data-backlog-id");
-            touchedTreeId = node.getAttribute("data-tree-id");
-            break;
-          }
-          node = node.parentElement;
-        }
-
-        // If the touch originated on a drag handle, skip the long-press timer:
-        // the user intends to drag, not to rank-to-top.
-        if (touchedDragHandle) return;
-
-        // Start long-press timer; fires top-rank command when the finger is
-        // held still long enough.
-        longPressTimer = setTimeout(() => {
-          longPressTimer = null;
-          if (touchScrolled) return;
-          // Provide haptic feedback if the browser supports it.
-          if (navigator.vibrate) {
-            navigator.vibrate(50);
-          }
-          // Long press → move the touched item to top (like T)
-          const state = useAppStore.getState();
-          if (touchedWorkItemId && touchedTreeId && touchedBacklogId) {
-            const backlogIds: string[] = [];
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(touchedBacklogId);
-            longPressHandled = true;
-            state.reorderWorkItemAmongSiblings(touchedWorkItemId, TOP_POSITION, touchedTreeId, backlogIds);
-            toast({ title: "Moved item to top" });
-          }
-        }, LONG_PRESS_DURATION);
       } else {
         // Two or more fingers: ignore.
         resetState();
@@ -543,13 +479,6 @@ function AppLayoutInner() {
       const clientY = e.touches[0].clientY;
       const absDx = Math.abs(clientX - touchStartRef.current.x);
       const absDy = Math.abs(clientY - touchStartRef.current.y);
-      // Cancel the long-press timer if the finger moves too much.
-      if (longPressTimer !== null) {
-        if (Math.max(absDx, absDy) > LONG_PRESS_CANCEL_THRESHOLD) {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        }
-      }
       if (lockedDirection !== null) return;
       const moved = Math.max(absDx, absDy);
       if (moved < LOCK_THRESHOLD) return;
@@ -568,15 +497,11 @@ function AppLayoutInner() {
         resetState();
         return;
       }
-      const wasLongPressHandled = longPressHandled;
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       const dx = endX - touchStartRef.current.x;
       const dy = endY - touchStartRef.current.y;
       resetState();
-
-      // If the long press already handled an action, don't process further.
-      if (wasLongPressHandled) return;
 
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
