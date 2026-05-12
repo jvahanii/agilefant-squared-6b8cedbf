@@ -855,7 +855,7 @@ function WorkItemNodeContent({
                 );
               })()}
 
-            {/* Mobile actions: Plus + rotor (attributes sheet) + Delete */}
+            {/* Mobile actions: Plus only — other actions via context menu (long-press) */}
             <div className={`flex md:hidden items-center gap-0.5 shrink-0 ${!isSelected ? "invisible" : ""}`}>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -866,25 +866,6 @@ function WorkItemNodeContent({
                 }}
               >
                 <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMobileAttributesSheet(true);
-                }}
-                title="Attributes"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-              </button>
-              <button
-                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteClick();
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
             {/* Desktop hover actions */}
