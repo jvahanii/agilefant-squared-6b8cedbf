@@ -493,7 +493,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             </button>
           )}
         </div>
-        <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+        <div className="hidden md:group-hover:flex items-center gap-0.5 shrink-0">
           {pointsVisible && totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
