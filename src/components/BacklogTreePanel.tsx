@@ -1,5 +1,13 @@
 import { useAppStore } from "@/store/appStore";
 import { ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -358,6 +366,8 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         ...(isDragging ? { opacity: 0.4 } : {}),
       }}
     >
+      <ContextMenu>
+      <ContextMenuTrigger asChild>
       <div
         ref={combinedRef}
         {...attributes}
@@ -462,22 +472,26 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
         )}
-        {/* Mobile actions: Plus + rotor (attributes sheet) + Delete — only for selected backlog */}
+        {/* Mobile actions: Plus + logged time — only for selected backlog; other actions via context menu */}
         <div className={`${isSelected ? "flex" : "hidden"} md:hidden items-center gap-0.5 shrink-0`}>
           {pointsVisible && totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); setIsAdding(true); }}
           ><Plus className="w-3.5 h-3.5" /></button>
-          <button
-            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            onClick={(e) => { e.stopPropagation(); setShowMobileAttributesSheet(true); }}
-            title="Attributes"
-          ><SlidersHorizontal className="w-3.5 h-3.5" /></button>
-          <button
-            className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            onClick={(e) => { e.stopPropagation(); setConfirmDeleteOpen(true); }}
-          ><Trash2 className="w-3.5 h-3.5" /></button>
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+              title="Log time"
+            >
+              {backlogTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
         </div>
         <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
           {pointsVisible && totalPoints > 0 && <span className="text-xs tabular-nums text-muted-foreground mr-1">{totalPoints}</span>}
@@ -534,6 +548,27 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           </button>
         </div>
       </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        <ContextMenuLabel className="text-xs truncate">{isScrambled ? scrambleName(backlog.name) : backlog.name}</ContextMenuLabel>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          className="text-xs"
+          onSelect={() => setShowMobileAttributesSheet(true)}
+        >
+          <SlidersHorizontal className="w-3 h-3 mr-2" />
+          Attributes
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          className="text-xs text-destructive focus:text-destructive"
+          onSelect={() => setConfirmDeleteOpen(true)}
+        >
+          <Trash2 className="w-3 h-3 mr-2" />
+          Delete backlog
+        </ContextMenuItem>
+      </ContextMenuContent>
+      </ContextMenu>
       {(expanded || isAdding) && (
         <div>
           {hasChildren &&
