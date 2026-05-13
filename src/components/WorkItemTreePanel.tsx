@@ -2196,6 +2196,12 @@ export function WorkItemTreePanel() {
           ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
           : backlogId;
         state.reparentWorkItem(workItemId, grandparentId, treeId, targetBacklogId);
+        const grandparentTitle = grandparentId ? (state.workItems[grandparentId]?.title ?? "item") : null;
+        toast({
+          title: grandparentTitle
+            ? `Reparented to "${grandparentTitle}"`
+            : "Moved to root (no parent)",
+        });
       } else {
         // Indent: make child of the item immediately above in the visible list.
         const currentIds = visibleItemIdsRef.current;
@@ -2206,6 +2212,7 @@ export function WorkItemTreePanel() {
         if (!aboveItem) return;
         const targetBacklogId = aboveItem.backlogAssignments[treeId] ?? backlogId;
         state.reparentWorkItem(workItemId, aboveId, treeId, targetBacklogId);
+        toast({ title: `Reparented to "${aboveItem.title}"` });
         // Expand the new parent so the indented item stays visible.
         if (!state.expandedWorkItems.has(aboveId)) {
           state.toggleWorkItemExpand(aboveId);

@@ -725,14 +725,26 @@ function AppLayoutInner() {
         }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
         const targetId = overData.workItemId;
-        draggedIds
-          .filter((id) => id !== targetId)
-          .forEach((id) => {
-            reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
+        const idsToReparent = draggedIds.filter((id) => id !== targetId);
+        idsToReparent.forEach((id) => {
+          reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
+        });
+        if (idsToReparent.length > 0) {
+          const parentTitle = useAppStore.getState().workItems[targetId as string]?.title ?? "item";
+          toast({
+            title: idsToReparent.length === 1
+              ? `Reparented to "${parentTitle}"`
+              : `Reparented ${idsToReparent.length} items to "${parentTitle}"`,
           });
+        }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
         draggedIds.forEach((id) => {
           reparentWorkItem(id, null, overData.treeId, overData.backlogId);
+        });
+        toast({
+          title: draggedIds.length === 1
+            ? "Moved to root (no parent)"
+            : `Moved ${draggedIds.length} items to root`,
         });
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
         const targetParentId = overData.parentId as string | null;
@@ -758,17 +770,33 @@ function AppLayoutInner() {
 
         // Re-read store after potential backlog moves so reparent/reorder see latest state.
         const store = useAppStore.getState();
+        const reparentedIds: string[] = [];
         draggedIds.forEach((id) => {
           const wi = store.workItems[id];
           if (!wi) return;
           if (wi.parentId !== targetParentId) {
             const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
             reparentWorkItem(id, targetParentId, treeId, backlogId);
+            reparentedIds.push(id);
           }
         });
         draggedIds.forEach((id) => {
           reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
         });
+        if (reparentedIds.length > 0) {
+          const newParentTitle = targetParentId
+            ? (useAppStore.getState().workItems[targetParentId]?.title ?? "item")
+            : null;
+          toast({
+            title: newParentTitle
+              ? reparentedIds.length === 1
+                ? `Reparented to "${newParentTitle}"`
+                : `Reparented ${reparentedIds.length} items to "${newParentTitle}"`
+              : reparentedIds.length === 1
+                ? "Moved to root (no parent)"
+                : `Moved ${reparentedIds.length} items to root`,
+          });
+        }
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
         const backlogId = activeData.backlogId as string;
         const targetParentId = overData.parentId as string | null;
