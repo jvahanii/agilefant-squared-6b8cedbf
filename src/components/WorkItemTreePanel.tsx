@@ -293,7 +293,9 @@ function WorkItemNodeContent({
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
+  const [moveToParentItemIds, setMoveToParentItemIds] = useState<string[]>([]);
   const [showMoveToBacklogDialog, setShowMoveToBacklogDialog] = useState(false);
+  const [moveToBacklogItemIds, setMoveToBacklogItemIds] = useState<string[]>([]);
 
   // Snooze store
   const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
@@ -340,15 +342,27 @@ function WorkItemNodeContent({
     setShowTimeLogDialog(true);
   }, [workItemId]);
 
+  const openMoveToParentDialog = useCallback(() => {
+    const ids = useAppStore.getState().selectedWorkItemIds;
+    setMoveToParentItemIds(ids.includes(workItemId) && ids.length > 1 ? ids : [workItemId]);
+    setShowMoveToParentDialog(true);
+  }, [workItemId]);
+
   const handleMoveToParent = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
-    setShowMoveToParentDialog(true);
+    openMoveToParentDialog();
+  }, [workItemId, openMoveToParentDialog]);
+
+  const openMoveToBacklogDialog = useCallback(() => {
+    const ids = useAppStore.getState().selectedWorkItemIds;
+    setMoveToBacklogItemIds(ids.includes(workItemId) && ids.length > 1 ? ids : [workItemId]);
+    setShowMoveToBacklogDialog(true);
   }, [workItemId]);
 
   const handleMoveToBacklog = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
-    setShowMoveToBacklogDialog(true);
-  }, [workItemId]);
+    openMoveToBacklogDialog();
+  }, [workItemId, openMoveToBacklogDialog]);
 
   const {
     attributes,
@@ -1046,7 +1060,7 @@ function WorkItemNodeContent({
           )}
           <ContextMenuItem
             className="text-xs"
-            onSelect={() => setShowMoveToParentDialog(true)}
+            onSelect={openMoveToParentDialog}
           >
             Reparent…
           </ContextMenuItem>
@@ -1311,16 +1325,16 @@ function WorkItemNodeContent({
         onOpenRespawn={() => setShowRespawnDialog(true)}
         onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
         onOpenSnooze={() => setShowSnoozeDialog(true)}
-        onOpenMove={() => setShowMoveToBacklogDialog(true)}
-        onOpenReparent={() => setShowMoveToParentDialog(true)}
+        onOpenMove={openMoveToBacklogDialog}
+        onOpenReparent={openMoveToParentDialog}
       />
       <MoveToParentDialog
-        workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
+        workItemIds={moveToParentItemIds}
         open={showMoveToParentDialog}
         onOpenChange={setShowMoveToParentDialog}
       />
       <MoveToBacklogDialog
-        workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
+        workItemIds={moveToBacklogItemIds}
         treeId={treeId}
         currentBacklogId={backlogId}
         open={showMoveToBacklogDialog}
