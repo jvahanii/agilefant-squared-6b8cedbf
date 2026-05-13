@@ -255,6 +255,15 @@ function AppLayoutInner() {
           }
           break;
         }
+        case "n": {
+          // Set status to Not Started
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
+          }
+          break;
+        }
         case "d": {
           // Set status to Done
           if (state.selectedWorkItemIds.length > 0) {
@@ -1208,6 +1217,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Esc"], description: "Deselect items" },
     { keys: ["Ctrl", "Z"], description: "Undo action" },
     { keys: ["?"], description: "Toggle help" },
+    { keys: ["N"], description: "Set status: Not Started" },
     { keys: ["D"], description: "Set status: Done" },
     { keys: ["I"], description: "Set status: In Progress" },
     { keys: ["P"], description: "Set status: Pending" },
