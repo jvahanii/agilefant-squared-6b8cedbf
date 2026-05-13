@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/appStore";
 import { ChevronRight } from "lucide-react";
 import { DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { toast } from "@/hooks/use-toast";
 
 const DEFAULT_STATUS_COLOR = "#94a3b8";
 const BREADCRUMB_MAX_WIDTH = "max-w-[120px]";
@@ -143,6 +144,16 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
     }
 
     workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
+    const newParentTitle = newParentId ? (workItems[newParentId]?.title ?? "item") : null;
+    toast({
+      title: newParentTitle
+        ? workItemIds.length === 1
+          ? `Reparented to "${newParentTitle}"`
+          : `Reparented ${workItemIds.length} items to "${newParentTitle}"`
+        : workItemIds.length === 1
+          ? "Moved to root (no parent)"
+          : `Moved ${workItemIds.length} items to root`,
+    });
     onOpenChange(false);
   };
 
@@ -152,6 +163,12 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
     workItemIds.forEach((id) =>
       reparentWorkItem(id, parentId, treeId, backlogId, strategy),
     );
+    const parentTitle = workItems[parentId]?.title ?? "item";
+    toast({
+      title: workItemIds.length === 1
+        ? `Reparented to "${parentTitle}"`
+        : `Reparented ${workItemIds.length} items to "${parentTitle}"`,
+    });
     setPendingCrossTree(null);
     onOpenChange(false);
   };
