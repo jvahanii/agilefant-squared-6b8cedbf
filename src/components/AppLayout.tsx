@@ -282,7 +282,7 @@ function AppLayoutInner() {
           }
           break;
         }
-        case "n": {
+        case "o": {
           // Move selected item down (reorder within siblings).
           if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
@@ -1173,7 +1173,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
     { keys: ["↑", "↓"], description: "Change selection up/down" },
     { keys: ["U"], description: "Move item up" },
-    { keys: ["N"], description: "Move item down" },
+    { keys: ["O"], description: "Move item down" },
     { keys: ["→"], description: "Expand selected item or backlog branch" },
     { keys: ["T"], description: "Move selection to Top" },
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
