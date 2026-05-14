@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       status: 'done',
       parent_id: null,
       backlog_assignments: { [TREE_ID]: BACKLOG_ID },
-      rank: 0,
+      rank: newRank,
     });
     if (wiErr) {
       console.error('insert work_item failed', wiErr);

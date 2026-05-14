@@ -1967,6 +1967,23 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
         }
 
+        // Seed initial ranks from the legacy work_items.rank column for new
+        // INSERT events. This ensures items inserted by external sources (e.g.
+        // the GitHub PR webhook) appear at the correct position immediately,
+        // before the separate work_item_backlog_ranks realtime event arrives.
+        const existingRanks = state.workItems[id]?.ranks ?? {};
+        let initialRanks: Record<string, number> = existingRanks;
+        if (eventType === 'INSERT' && Object.keys(existingRanks).length === 0) {
+          const legacyRank = typeof row.rank === 'number' ? (row.rank as number) : null;
+          if (legacyRank !== null) {
+            const seeded: Record<string, number> = {};
+            for (const blId of Object.values(parsedAssignments)) {
+              seeded[blId] = legacyRank;
+            }
+            if (Object.keys(seeded).length > 0) initialRanks = seeded;
+          }
+        }
+
         const newItem: WorkItem = {
           id,
           title: row.title as string,
@@ -1976,7 +1993,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           parentId: (row.parent_id as string | null) ?? null,
           childrenIds: state.workItems[id]?.childrenIds ?? [],
           backlogAssignments: parsedAssignments,
-          ranks: state.workItems[id]?.ranks ?? {},
+          ranks: initialRanks,
           organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
