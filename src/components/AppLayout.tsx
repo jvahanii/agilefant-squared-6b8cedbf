@@ -204,6 +204,8 @@ function AppLayoutInner() {
         useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
       };
 
+      if (e.ctrlKey || e.metaKey) return;
+
       switch (e.key.toLowerCase()) {
         case "t": {
           // Rank to Top
