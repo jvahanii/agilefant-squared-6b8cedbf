@@ -419,7 +419,10 @@ function WorkItemNodeContent({
       if (!expanded) toggleExpand(workItemId);
       setIsAdding(true);
     };
-    const handleAddSibling = () => setIsAddingSibling(true);
+    const handleAddSibling = () => {
+      if (!useAppStore.getState().selectedWorkItemIds.includes(workItemId)) return;
+      setIsAddingSibling(true);
+    };
     const handleDelete = () => handleDeleteClick();
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
