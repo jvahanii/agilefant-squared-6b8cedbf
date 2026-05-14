@@ -1062,7 +1062,7 @@ function AppLayoutInner() {
                       <HelpCircle className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>User Guidee</TooltipContent>
+                  <TooltipContent>User Guide</TooltipContent>
                 </Tooltip>
               </div>
             </div>
