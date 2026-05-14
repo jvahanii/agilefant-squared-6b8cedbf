@@ -165,7 +165,8 @@ function AppLayoutInner() {
 
       // Helper: move the single selected work item one step up (-1) or down (+1).
       const reorderSelectedItem = (direction: -1 | 1) => {
-        if (state.selectedWorkItemIds.length !== 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0) return;
+        if (state.selectedWorkItemIds.length !== 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0)
+          return;
         const wiId = state.selectedWorkItemIds[0];
         const wi = state.workItems[wiId];
         if (!wi) return;
@@ -741,9 +742,10 @@ function AppLayoutInner() {
         if (idsToReparent.length > 0) {
           const parentTitle = useAppStore.getState().workItems[targetId as string]?.title ?? "item";
           toast({
-            title: idsToReparent.length === 1
-              ? `Reparented to "${parentTitle}"`
-              : `Reparented ${idsToReparent.length} items to "${parentTitle}"`,
+            title:
+              idsToReparent.length === 1
+                ? `Reparented to "${parentTitle}"`
+                : `Reparented ${idsToReparent.length} items to "${parentTitle}"`,
           });
         }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
@@ -751,9 +753,7 @@ function AppLayoutInner() {
           reparentWorkItem(id, null, overData.treeId, overData.backlogId);
         });
         toast({
-          title: draggedIds.length === 1
-            ? "Moved to root (no parent)"
-            : `Moved ${draggedIds.length} items to root`,
+          title: draggedIds.length === 1 ? "Moved to root (no parent)" : `Moved ${draggedIds.length} items to root`,
         });
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
         const targetParentId = overData.parentId as string | null;
@@ -1062,7 +1062,7 @@ function AppLayoutInner() {
                       <HelpCircle className="w-4 h-4" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>User Guide</TooltipContent>
+                  <TooltipContent>User Guidee</TooltipContent>
                 </Tooltip>
               </div>
             </div>
