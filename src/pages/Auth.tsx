@@ -50,16 +50,8 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <TermsOfServiceDialog
-        open={tosOpen}
-        onAccept={handleTosAccept}
-        onCancel={handleTosCancel}
-      />
-      <PlanChoosingDialog
-        open={planDialogOpen}
-        onPlanChosen={handlePlanChosen}
-        onCancel={handlePlanCancel}
-      />
+      <TermsOfServiceDialog open={tosOpen} onAccept={handleTosAccept} onCancel={handleTosCancel} />
+      <PlanChoosingDialog open={planDialogOpen} onPlanChosen={handlePlanChosen} onCancel={handlePlanCancel} />
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
@@ -117,7 +109,7 @@ export default function Auth() {
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             <Link to="/user-guide" className="hover:text-foreground underline underline-offset-4 transition-colors">
-              View User Guide
+              View User Guidee
             </Link>
           </p>
         </CardContent>
@@ -126,7 +118,17 @@ export default function Auth() {
   );
 }
 
-function LoginForm({ loading, setLoading, email, setEmail }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void }) {
+function LoginForm({
+  loading,
+  setLoading,
+  email,
+  setEmail,
+}: {
+  loading: boolean;
+  setLoading: (v: boolean) => void;
+  email: string;
+  setEmail: (v: string) => void;
+}) {
   const [password, setPassword] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -186,7 +188,19 @@ function LoginForm({ loading, setLoading, email, setEmail }: { loading: boolean;
   );
 }
 
-function SignupForm({ loading, setLoading, email, setEmail, onShowTos }: { loading: boolean; setLoading: (v: boolean) => void; email: string; setEmail: (v: string) => void; onShowTos: (signupFn: () => Promise<void>) => void }) {
+function SignupForm({
+  loading,
+  setLoading,
+  email,
+  setEmail,
+  onShowTos,
+}: {
+  loading: boolean;
+  setLoading: (v: boolean) => void;
+  email: string;
+  setEmail: (v: string) => void;
+  onShowTos: (signupFn: () => Promise<void>) => void;
+}) {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
@@ -243,11 +257,24 @@ function SignupForm({ loading, setLoading, email, setEmail, onShowTos }: { loadi
   );
 }
 
-function PlanChoosingDialog({ open, onPlanChosen, onCancel }: { open: boolean; onPlanChosen: (planKey: PlanKey) => void; onCancel: () => void }) {
+function PlanChoosingDialog({
+  open,
+  onPlanChosen,
+  onCancel,
+}: {
+  open: boolean;
+  onPlanChosen: (planKey: PlanKey) => void;
+  onCancel: () => void;
+}) {
   const planKeys: PlanKey[] = ["free", "starter", "enterprise"];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onCancel();
+      }}
+    >
       <DialogContent className="max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Choose your plan</DialogTitle>
@@ -291,4 +318,3 @@ function PlanChoosingDialog({ open, onPlanChosen, onCancel }: { open: boolean; o
     </Dialog>
   );
 }
-
