@@ -109,7 +109,7 @@ export default function Auth() {
           </div>
           <p className="mt-4 text-center text-xs text-muted-foreground">
             <Link to="/user-guide" className="hover:text-foreground underline underline-offset-4 transition-colors">
-              View User Guide
+              View User Guidee
             </Link>
           </p>
         </CardContent>
