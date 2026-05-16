@@ -1218,6 +1218,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
     { keys: ["Esc"], description: "Deselect items" },
     { keys: ["Ctrl", "Z"], description: "Undo action" },
+    { keys: ["/"], description: "Focus search / filter bar" },
     { keys: ["?"], description: "Toggle help" },
     { keys: ["N"], description: "Set status: Not Started" },
     { keys: ["D"], description: "Set status: Done" },
