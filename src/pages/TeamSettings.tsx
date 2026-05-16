@@ -24,6 +24,7 @@ import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
+import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import {
   AlertDialog,
   AlertDialogAction,
