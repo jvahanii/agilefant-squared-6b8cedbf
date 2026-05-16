@@ -122,9 +122,13 @@ Deno.serve(async (req) => {
     const results: Array<{ org: string; backlog: string; work_item_id: string }> = [];
     let verifiedAny = false;
 
+    const envSecret = Deno.env.get('GITHUB_WEBHOOK_SECRET');
+
     for (const integ of integrations) {
       if (!integ.enabled) continue;
-      const ok = await verifySignature(integ.webhook_secret, rawBody, signature);
+      let ok = await verifySignature(integ.webhook_secret, rawBody, signature);
+      // Backward-compat fallback: accept the legacy shared env secret too
+      if (!ok && envSecret) ok = await verifySignature(envSecret, rawBody, signature);
       if (!ok) continue;
       verifiedAny = true;
 
