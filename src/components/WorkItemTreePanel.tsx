@@ -2142,7 +2142,10 @@ export function WorkItemTreePanel() {
           backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
           (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId ?? ""]?.backlogAssignments[selectedTreeId])),
       )
-      .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0));
+      .sort((a, b) => {
+        const rankDiff = (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0);
+        return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+      });
   }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
 
   // When filter is active, hide root items that have no matching descendant-or-self.

@@ -665,7 +665,10 @@ export const useAppStore = create<AppState>()((set, get) => {
             backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId]);
           return !wiParentInContext;
         })
-        .sort((a, b) => getWorkItemRank(a, treeId) - getWorkItemRank(b, treeId));
+        .sort((a, b) => {
+          const rankDiff = getWorkItemRank(a, treeId) - getWorkItemRank(b, treeId);
+          return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+        });
 
       const movingSet = new Set(itemsToMoveIds);
       const remaining = allSiblings.filter((s) => !movingSet.has(s.id));

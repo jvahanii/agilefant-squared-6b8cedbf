@@ -142,15 +142,33 @@ Deno.serve(async (req) => {
       }
 
       for (const tgt of targets ?? []) {
-        // Place at top of backlog
-        const { data: ranks } = await supabase
-          .from('work_item_backlog_ranks')
-          .select('rank')
-          .eq('backlog_id', tgt.backlog_id)
-          .order('rank', { ascending: true })
-          .limit(1);
-        const minRank = ranks && ranks.length > 0 ? ranks[0].rank : 0;
-        const newRank = (minRank ?? 0) - 1;
+        // Place at top of backlog: find the minimum rank across both the
+        // dedicated ranks table AND the legacy work_items.rank column so that
+        // items created before the work_item_backlog_ranks migration (which
+        // have no entry in that table and fall back to work_items.rank on the
+        // client) are taken into account.
+        const [{ data: rankRows }, { data: legacyRows }] = await Promise.all([
+          supabase
+            .from('work_item_backlog_ranks')
+            .select('rank')
+            .eq('backlog_id', tgt.backlog_id)
+            .order('rank', { ascending: true })
+            .limit(1),
+          // 'cs' maps to the PostgreSQL JSONB @> (containment) operator, which
+          // returns rows whose backlog_assignments JSON *contains* the given
+          // key-value pair as a subset — not an exact-match.
+          supabase
+            .from('work_items')
+            .select('rank')
+            .filter('backlog_assignments', 'cs', JSON.stringify({ [tgt.tree_id]: tgt.backlog_id }))
+            .order('rank', { ascending: true })
+            .limit(1),
+        ]);
+        const minFromRanksTable = rankRows && rankRows.length > 0 ? (rankRows[0].rank as number) : null;
+        const minFromWorkItems = legacyRows && legacyRows.length > 0 ? (legacyRows[0].rank as number) : null;
+        const candidates = [minFromRanksTable, minFromWorkItems].filter((v): v is number => v !== null);
+        const minRank = candidates.length > 0 ? Math.min(...candidates) : 0;
+        const newRank = minRank - 1;
 
         const wiSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
         const workItemId = `${integ.organization_id}::wi-${wiSuffix}`;
