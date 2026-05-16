@@ -733,6 +733,8 @@ export default function TeamSettings() {
 
         <BackupsCard />
 
+        <GithubIntegrationsCard />
+
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
           <p className="text-sm text-muted-foreground mb-4">
