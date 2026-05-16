@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 
@@ -228,6 +228,7 @@ function WorkItemNodeContent({
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
+  const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
@@ -1038,6 +1039,25 @@ function WorkItemNodeContent({
           >
             Add child item
           </ContextMenuItem>
+          {item.childrenIds.length > 1 && (
+            <ContextMenuItem
+              className="text-xs"
+              onSelect={() => {
+                const state = useAppStore.getState();
+                const backlogIds: string[] = [];
+                const collectBacklogs = (id: string) => {
+                  backlogIds.push(id);
+                  state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+                };
+                collectBacklogs(backlogId);
+                sortChildrenAlphabetically(workItemId, treeId, backlogIds);
+                toast({ title: "Children sorted A→Z" });
+              }}
+            >
+              <ArrowDownAZ className="w-3 h-3 mr-1.5 shrink-0" />
+              Sort children A→Z
+            </ContextMenuItem>
+          )}
           {allBacklogIds.length > 1 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">
@@ -1829,6 +1849,7 @@ export function WorkItemTreePanel() {
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
+  const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
   const toggleWorkItemExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
@@ -2442,6 +2463,20 @@ export function WorkItemTreePanel() {
                 title="Paste items from clipboard"
               >
                 <ClipboardPaste className="w-4 h-4" />
+              </button>
+            )}
+            {!isSearchMode && !isLabelFilterMode && rootWorkItems.length > 1 && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!selectedBacklogId || !selectedTreeId) return;
+                  sortChildrenAlphabetically(null, selectedTreeId, allBacklogIds);
+                  toast({ title: "Root items sorted A→Z" });
+                }}
+                title="Sort root items A→Z"
+              >
+                <ArrowDownAZ className="w-4 h-4" />
               </button>
             )}
             {!isSearchMode && !isLabelFilterMode && timeLoggingVisible && (

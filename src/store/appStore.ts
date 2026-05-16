@@ -72,6 +72,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
+  sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
@@ -701,6 +702,52 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpsert = reordered.map((s) => updatedItems[s.id]);
       upsertWorkItems(itemsToUpsert, orgId);
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
+
+      set({
+        workItems: updatedItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
+    sortChildrenAlphabetically: (parentId, treeId, backlogIds) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
+
+      // Collect the siblings at this level using the same visibility logic as
+      // reorderWorkItemAmongSiblings: items whose parent is `parentId` (or
+      // root-visible items when parentId is null).
+      const siblings = Object.values(state.workItems)
+        .filter((wi) => {
+          if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
+          if (parentId !== null) {
+            return wi.parentId === parentId;
+          }
+          // Root-visible: parent not present in this backlog context.
+          const wiParentInContext =
+            wi.parentId !== null &&
+            backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId]);
+          return !wiParentInContext;
+        })
+        .sort((a, b) => (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" }));
+
+      if (siblings.length === 0) return;
+
+      const updatedItems = { ...state.workItems };
+      siblings.forEach((s, i) => {
+        const blId = updatedItems[s.id].backlogAssignments[treeId];
+        if (blId) {
+          updatedItems[s.id] = {
+            ...updatedItems[s.id],
+            ranks: { ...updatedItems[s.id].ranks, [blId]: i },
+          };
+        }
+      });
+
+      upsertWorkItems(siblings.map((s) => updatedItems[s.id]), orgId);
+      const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
+      internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
 
       set({
         workItems: updatedItems,
