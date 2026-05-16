@@ -154,6 +154,9 @@ Deno.serve(async (req) => {
             .eq('backlog_id', tgt.backlog_id)
             .order('rank', { ascending: true })
             .limit(1),
+          // 'cs' maps to the PostgreSQL JSONB @> (containment) operator, which
+          // returns rows whose backlog_assignments JSON *contains* the given
+          // key-value pair as a subset — not an exact-match.
           supabase
             .from('work_items')
             .select('rank')
