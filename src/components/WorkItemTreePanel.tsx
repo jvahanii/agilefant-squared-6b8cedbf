@@ -1051,7 +1051,7 @@ function WorkItemNodeContent({
                 };
                 collectBacklogs(backlogId);
                 sortChildrenAlphabetically(workItemId, treeId, backlogIds);
-                toast({ title: "Children sorted A→Z" });
+                toast({ title: "Children sorted A→Z", description: "Press Ctrl+Z to undo" });
               }}
             >
               <ArrowDownAZ className="w-3 h-3 mr-1.5 shrink-0" />
@@ -2472,7 +2472,7 @@ export function WorkItemTreePanel() {
                   e.stopPropagation();
                   if (!selectedBacklogId || !selectedTreeId) return;
                   sortChildrenAlphabetically(null, selectedTreeId, allBacklogIds);
-                  toast({ title: "Root items sorted A→Z" });
+                  toast({ title: "Root items sorted A→Z", description: "Press Ctrl+Z to undo" });
                 }}
                 title="Sort root items A→Z"
               >
