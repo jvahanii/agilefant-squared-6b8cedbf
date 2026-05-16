@@ -1250,6 +1250,188 @@ describe("renameBacklogTree", () => {
   });
 });
 
+// ─── REALTIME: applyRealtimeWorkItem ──────────────────────────────────
+
+describe("applyRealtimeWorkItem", () => {
+  it("INSERT: adds a new root item with correct backlogAssignments and rank", () => {
+    seedStore();
+    const store = useAppStore.getState();
+
+    store.applyRealtimeWorkItem("INSERT", {
+      id: `${ORG}::wi-whatsapp`,
+      title: "Buy milk",
+      description: "From John via WhatsApp",
+      status: "in_progress",
+      parent_id: null,
+      backlog_assignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      rank: -1,
+      organization_id: ORG,
+      respawn_enabled: false,
+      respawn_interval_days: null,
+      respawn_hour: null,
+      respawn_minute: null,
+      respawn_last_triggered_at: null,
+      points: null,
+    });
+
+    const item = useAppStore.getState().workItems[`${ORG}::wi-whatsapp`];
+    expect(item).toBeDefined();
+    expect(item.title).toBe("Buy milk");
+    expect(item.status).toBe("in_progress");
+    expect(item.parentId).toBeNull();
+    expect(item.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    // Rank is seeded from the legacy work_items.rank column
+    expect(item.ranks[`${ORG}::bl-1`]).toBe(-1);
+  });
+
+  it("INSERT: item appears in rootWorkItems filter (backlog membership)", () => {
+    seedStore();
+    const store = useAppStore.getState();
+
+    store.applyRealtimeWorkItem("INSERT", {
+      id: `${ORG}::wi-whatsapp`,
+      title: "Buy milk",
+      description: "From John via WhatsApp",
+      status: "in_progress",
+      parent_id: null,
+      backlog_assignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      rank: -1,
+      organization_id: ORG,
+      respawn_enabled: false,
+      respawn_interval_days: null,
+      respawn_hour: null,
+      respawn_minute: null,
+      respawn_last_triggered_at: null,
+      points: null,
+    });
+
+    // Item must be visible when filtering by the configured tree/backlog
+    const workItems = useAppStore.getState().workItems;
+    const treeId = `${ORG}::bt-1`;
+    const backlogId = `${ORG}::bl-1`;
+    const rootItems = Object.values(workItems).filter(
+      (wi) => wi.backlogAssignments[treeId] === backlogId && wi.parentId === null,
+    );
+    const ids = rootItems.map((wi) => wi.id);
+    expect(ids).toContain(`${ORG}::wi-whatsapp`);
+  });
+
+  it("INSERT: adds a child item and registers it in parent's childrenIds", () => {
+    seedStore();
+    const store = useAppStore.getState();
+
+    store.applyRealtimeWorkItem("INSERT", {
+      id: `${ORG}::wi-child`,
+      title: "Sub-task",
+      description: null,
+      status: "not_started",
+      parent_id: `${ORG}::wi-1`,
+      backlog_assignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      rank: 0,
+      organization_id: ORG,
+      respawn_enabled: false,
+      respawn_interval_days: null,
+      respawn_hour: null,
+      respawn_minute: null,
+      respawn_last_triggered_at: null,
+      points: null,
+    });
+
+    const parent = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    expect(parent.childrenIds).toContain(`${ORG}::wi-child`);
+    const child = useAppStore.getState().workItems[`${ORG}::wi-child`];
+    expect(child.parentId).toBe(`${ORG}::wi-1`);
+  });
+
+  it("UPDATE: updates an existing item's title and status", () => {
+    seedStore();
+    const store = useAppStore.getState();
+
+    store.applyRealtimeWorkItem("UPDATE", {
+      id: `${ORG}::wi-1`,
+      title: "Item 1 – Updated",
+      description: null,
+      status: "done",
+      parent_id: null,
+      backlog_assignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      rank: 0,
+      organization_id: ORG,
+      respawn_enabled: false,
+      respawn_interval_days: null,
+      respawn_hour: null,
+      respawn_minute: null,
+      respawn_last_triggered_at: null,
+      points: null,
+    });
+
+    const item = useAppStore.getState().workItems[`${ORG}::wi-1`];
+    expect(item.title).toBe("Item 1 – Updated");
+    expect(item.status).toBe("done");
+  });
+
+  it("DELETE: removes item from the store", () => {
+    seedStore();
+    const store = useAppStore.getState();
+
+    store.applyRealtimeWorkItem("DELETE", { id: `${ORG}::wi-1` });
+
+    expect(useAppStore.getState().workItems[`${ORG}::wi-1`]).toBeUndefined();
+  });
+});
+
+// ─── REALTIME: applyRealtimeWorkItemRank ──────────────────────────────
+
+describe("applyRealtimeWorkItemRank", () => {
+  it("INSERT: sets rank for an existing work item", () => {
+    seedStore();
+    // Start with no rank so we can observe the rank being applied
+    useAppStore.setState({
+      workItems: {
+        [`${ORG}::wi-1`]: {
+          ...useAppStore.getState().workItems[`${ORG}::wi-1`],
+          ranks: {},
+        },
+      },
+    });
+
+    useAppStore.getState().applyRealtimeWorkItemRank("INSERT", {
+      work_item_id: `${ORG}::wi-1`,
+      backlog_id: `${ORG}::bl-1`,
+      rank: -5,
+      organization_id: ORG,
+    });
+
+    expect(useAppStore.getState().workItems[`${ORG}::wi-1`].ranks[`${ORG}::bl-1`]).toBe(-5);
+  });
+
+  it("UPDATE: updates the rank for an existing work item", () => {
+    seedStore();
+
+    useAppStore.getState().applyRealtimeWorkItemRank("UPDATE", {
+      work_item_id: `${ORG}::wi-1`,
+      backlog_id: `${ORG}::bl-1`,
+      rank: 42,
+      organization_id: ORG,
+    });
+
+    expect(useAppStore.getState().workItems[`${ORG}::wi-1`].ranks[`${ORG}::bl-1`]).toBe(42);
+  });
+
+  it("INSERT: is a no-op when the work item is not in the store", () => {
+    seedStore();
+
+    // Should not throw and should not add an unknown item
+    useAppStore.getState().applyRealtimeWorkItemRank("INSERT", {
+      work_item_id: `${ORG}::wi-nonexistent`,
+      backlog_id: `${ORG}::bl-1`,
+      rank: 0,
+      organization_id: ORG,
+    });
+
+    expect(useAppStore.getState().workItems[`${ORG}::wi-nonexistent`]).toBeUndefined();
+  });
+});
+
 // ─── UNDO / REDO ───────────────────────────────────────────────────────
 
 describe("undo/redo", () => {
