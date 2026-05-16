@@ -1412,6 +1412,63 @@ describe("reorderWorkItemAmongSiblings", () => {
     expect(useAppStore.getState().undoStack.length).toBeGreaterThan(0);
   });
 
+  it("multi-selection move-to-top adds exactly ONE undo entry regardless of selection size", () => {
+    // Regression: the T-key handler used to call reorderWorkItemAmongSiblings once
+    // per selected item, producing N redundant undo entries for N items in the same
+    // sibling context.  With N entries on the undo stack, the user had to press
+    // Ctrl+Z N times to fully undo a single T press.  The first N−1 presses appeared
+    // to do nothing (identical state), masking the fact that one more Ctrl+Z would
+    // silently undo the move.  Any reorder performed afterwards would persist the
+    // un-T'd ranks to the DB, so items were no longer at the top on next reload.
+    // Seed four items where C and D are NOT at the top.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 } },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 1 } },
+        [`${ORG}::wi-c`]: { id: `${ORG}::wi-c`, title: "C", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 2 } },
+        [`${ORG}::wi-d`]: { id: `${ORG}::wi-d`, title: "D", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 3 } },
+      },
+      // C and D are selected – they are currently NOT at the top (ranks 2 and 3).
+      selectedWorkItemIds: [`${ORG}::wi-c`, `${ORG}::wi-d`],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    const stackBefore = useAppStore.getState().undoStack.length; // 0
+
+    // One call – mirrors the deduplicated T-key handler.  Because C and D share the
+    // same root sibling context, this single call moves both to the top.
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-c`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+    const afterMove = useAppStore.getState();
+
+    // Exactly one undo entry was created.
+    expect(afterMove.undoStack.length - stackBefore).toBe(1);
+
+    // C and D ended up at the top (in their original relative order).
+    const orderedTitles = Object.values(afterMove.workItems)
+      .sort((a, b) => (a.ranks[`${ORG}::bl-1`] ?? 0) - (b.ranks[`${ORG}::bl-1`] ?? 0))
+      .map((wi) => wi.title);
+    expect(orderedTitles[0]).toBe("C");
+    expect(orderedTitles[1]).toBe("D");
+
+    // A single undo press fully restores the original order (C and D back to positions 2 and 3).
+    useAppStore.getState().undo();
+    const afterUndo = useAppStore.getState();
+    const restoredTitles = Object.values(afterUndo.workItems)
+      .sort((a, b) => (a.ranks[`${ORG}::bl-1`] ?? 0) - (b.ranks[`${ORG}::bl-1`] ?? 0))
+      .map((wi) => wi.title);
+    expect(restoredTitles).toEqual(["A", "B", "C", "D"]);
+    // Undo stack is back to empty (no ghost entries).
+    expect(afterUndo.undoStack.length).toBe(stackBefore);
+  });
+
   it("moves cross-context sub-task to top of flat view (rank issue regression)", () => {
     // wi-a and wi-b are root items (parentId=null) in bl-1 with negative ranks from
     // addWorkItem default (minRank-1).  wi-cross has a non-null parentId whose parent
