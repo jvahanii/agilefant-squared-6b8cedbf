@@ -730,7 +730,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId]);
           return !wiParentInContext;
         })
-        .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+        .sort((a, b) => (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" }));
 
       if (siblings.length === 0) return;
 
@@ -746,7 +746,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
 
       upsertWorkItems(siblings.map((s) => updatedItems[s.id]), orgId);
-      const contextName = parentId ? (state.workItems[parentId]?.title ?? parentId) : "backlog";
+      const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
       internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
 
       set({
