@@ -43,6 +43,16 @@ serve(async (req) => {
     if (!price_id) throw new Error("price_id is required");
     if (!organization_id) throw new Error("organization_id is required");
 
+    // Server-side allowlist of valid Stripe price IDs. Must be kept in sync with
+    // src/hooks/useSubscription.ts. Prevents callers from submitting arbitrary
+    // (e.g. promotional or test) price IDs.
+    const ALLOWED_PRICE_IDS = new Set<string>([
+      "price_1TJIGCBRMLkyTCtAKXA3imQq", // starter
+    ]);
+    if (!ALLOWED_PRICE_IDS.has(price_id)) {
+      throw new Error("Forbidden: invalid price_id");
+    }
+
     // Verify the caller is a member of the organization
     const { data: membership } = await supabaseClient
       .from("memberships")

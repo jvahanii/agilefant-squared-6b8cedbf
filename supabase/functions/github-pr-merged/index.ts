@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 
     if (intErr) {
       console.error('integration lookup failed', intErr);
-      return new Response(JSON.stringify({ error: intErr.message }), {
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error('handler error', e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
