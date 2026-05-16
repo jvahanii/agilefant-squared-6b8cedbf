@@ -61,6 +61,22 @@ Deno.serve(async (req) => {
     return json({ error: 'Unauthorized' }, 401);
   }
 
+  // Require the caller to belong to at least one organization to prevent
+  // unaffiliated accounts from consuming the shared YOUTUBE_API_KEY quota.
+  const userId = claims.claims.sub as string | undefined;
+  if (!userId) return json({ error: 'Unauthorized' }, 401);
+  const { data: membership, error: memErr } = await supabase
+    .from('memberships')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+  if (memErr) {
+    console.error('membership check failed', memErr);
+    return json({ error: 'Forbidden' }, 403);
+  }
+  if (!membership) return json({ error: 'Forbidden' }, 403);
+
   const apiKey = Deno.env.get('YOUTUBE_API_KEY');
   if (!apiKey) return json({ error: 'YOUTUBE_API_KEY is not configured' }, 500);
 

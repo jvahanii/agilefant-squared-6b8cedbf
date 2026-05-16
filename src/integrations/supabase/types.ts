@@ -1032,6 +1032,10 @@ export type Database = {
         Args: { _share_id: string }
         Returns: undefined
       }
+      rename_work_items_org_prefix: {
+        Args: { _item_ids: string[]; _new_org_id: string }
+        Returns: Json
+      }
       restore_organization_backup: {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
