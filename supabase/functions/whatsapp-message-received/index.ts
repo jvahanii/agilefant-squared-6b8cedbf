@@ -63,9 +63,18 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json().catch(() => ({}));
-    const messages: WhapiMessage[] = Array.isArray(payload?.messages)
-      ? payload.messages
-      : Array.isArray(payload) ? payload : payload?.message ? [payload.message] : [];
+    console.log('whatsapp payload:', JSON.stringify(payload));
+
+    // Whapi wraps live events in `data` (array or object). Also support `messages`,
+    // bare arrays, and single `message` objects from other bridges.
+    let rawMessages: unknown = payload?.messages ?? payload?.data ?? payload;
+    if (payload?.message) rawMessages = [payload.message];
+
+    const messages: WhapiMessage[] = Array.isArray(rawMessages)
+      ? (rawMessages as WhapiMessage[])
+      : rawMessages && typeof rawMessages === 'object'
+        ? [rawMessages as WhapiMessage]
+        : [];
 
     if (messages.length === 0) {
       // ping / verification
