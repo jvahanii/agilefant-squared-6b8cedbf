@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { BackupsCard } from "@/components/BackupsCard";
+import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -731,6 +732,8 @@ export default function TeamSettings() {
         </Card>
 
         <BackupsCard />
+
+        <GithubIntegrationsCard />
 
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>

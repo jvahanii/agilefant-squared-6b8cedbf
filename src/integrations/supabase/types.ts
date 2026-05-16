@@ -160,6 +160,71 @@ export type Database = {
         }
         Relationships: []
       }
+      github_repo_integrations: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          organization_id: string
+          repo_full_name: string
+          updated_at: string
+          webhook_secret: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id: string
+          repo_full_name: string
+          updated_at?: string
+          webhook_secret: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id?: string
+          repo_full_name?: string
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Relationships: []
+      }
+      github_repo_targets: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          id: string
+          integration_id: string
+          organization_id: string
+          tree_id: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          id?: string
+          integration_id: string
+          organization_id: string
+          tree_id: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          id?: string
+          integration_id?: string
+          organization_id?: string
+          tree_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "github_repo_targets_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "github_repo_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       label_assignments: {
         Row: {
           created_at: string
