@@ -133,15 +133,16 @@ export function WhatsappIntegrationsCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <MessageCircle className="w-4 h-4" /> WhatsApp groups
+          <MessageCircle className="w-4 h-4" /> WhatsApp
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Connect a WhatsApp group via a bridge such as <em>whapi.cloud</em>. Every text message posted in the group becomes an
+          Connect a WhatsApp chat (group or individual) via a bridge such as <em>whapi.cloud</em>. Every text message becomes an
           "In Progress" work item at the top of the chosen backlog. In your bridge, set the webhook URL below for the
-          <em> messages.post</em> (or equivalent) event. Optionally restrict to a single chat by entering its chat ID
-          (e.g. <code>1203630412345678@g.us</code>).
+          <em> messages.post</em> (or equivalent) event. Leave Chat ID blank to accept messages from any chat, or enter a
+          specific chat ID to restrict to one conversation (e.g. <code>1203630412345678@g.us</code> for a group or{" "}
+          <code>15551234567@s.whatsapp.net</code> for a 1-to-1 chat).
         </p>
 
         <div className="border rounded-md p-3 space-y-2">
@@ -154,7 +155,7 @@ export function WhatsappIntegrationsCard() {
             <div>
               <Label className="text-xs">Chat ID (optional)</Label>
               <Input
-                placeholder="1203...@g.us"
+                placeholder="1203...@g.us or 1555...@s.whatsapp.net"
                 value={draftChat}
                 onChange={(e) => setDraftChat(e.target.value)}
               />
