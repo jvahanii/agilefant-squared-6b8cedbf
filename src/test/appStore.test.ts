@@ -1506,6 +1506,41 @@ describe("reorderWorkItemAmongSiblings", () => {
     expect(items[`${ORG}::wi-cross`].ranks[`${ORG}::bl-1`]).toBeLessThan(items[`${ORG}::wi-b`].ranks[`${ORG}::bl-1`]);
   });
 
+  it("stable sort tie-breaker: equal-rank items always order by ID after reorder-to-top", () => {
+    // All three items start at rank 0 (e.g., legacy items with no
+    // work_item_backlog_ranks entries that all fall back to rank 0).
+    // Moving wi-z (lexicographically last by ID) to the top must assign it the
+    // lowest rank so that on the next reload — when items are fetched in an
+    // arbitrary DB order and sorted again — the stable ID tie-breaker produces
+    // the same visual order.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 } },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 } },
+        [`${ORG}::wi-z`]: { id: `${ORG}::wi-z`, title: "Z", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 } },
+      },
+      selectedWorkItemIds: [`${ORG}::wi-z`],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-z`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+    const items = useAppStore.getState().workItems;
+    // wi-z must now have a strictly lower rank than wi-a and wi-b.
+    expect(items[`${ORG}::wi-z`].ranks[`${ORG}::bl-1`]).toBeLessThan(items[`${ORG}::wi-a`].ranks[`${ORG}::bl-1`]);
+    expect(items[`${ORG}::wi-z`].ranks[`${ORG}::bl-1`]).toBeLessThan(items[`${ORG}::wi-b`].ranks[`${ORG}::bl-1`]);
+    // wi-a and wi-b must also have distinct ranks so no tie-breaking is needed
+    // on the next load.
+    expect(items[`${ORG}::wi-a`].ranks[`${ORG}::bl-1`]).not.toBe(items[`${ORG}::wi-b`].ranks[`${ORG}::bl-1`]);
+  });
+
   it("moves cross-context sub-task to bottom of flat view (rank issue regression)", () => {
     useAppStore.setState({
       organizationId: ORG,
