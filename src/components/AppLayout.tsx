@@ -220,8 +220,27 @@ function AppLayoutInner() {
             };
             collectBacklogs(selectedBacklogId);
 
-            // Move each selected item to index 0
+            // Call reorderWorkItemAmongSiblings once per unique sibling context rather
+            // than once per selected item.  Each call already moves every selected item
+            // in that context (because internally it uses itemsToMoveIds =
+            // selectedWorkItemIds), so calling it N times for N items in the same
+            // group creates N−1 redundant undo entries.  Those ghost entries make the
+            // user press Ctrl+Z N times to undo a single T press; the first N−1
+            // presses appear to do nothing, hiding the fact that one more Ctrl+Z will
+            // silently undo the move.  A subsequent drag/reorder then writes the
+            // undo'd state back to the DB, causing items to no longer be at the top
+            // on the next reload.
+            const backlogIdSet = new Set(backlogIds);
+            const processedContexts = new Set<string>();
             state.selectedWorkItemIds.forEach((id) => {
+              const wi = state.workItems[id];
+              if (!wi) return;
+              const parentInContext =
+                wi.parentId !== null &&
+                backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
+              const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+              if (processedContexts.has(contextKey)) return;
+              processedContexts.add(contextKey);
               state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
             });
             toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
@@ -242,8 +261,18 @@ function AppLayoutInner() {
               };
               collectBacklogs(selectedBacklogId);
 
-              // Move each to a very high index to force bottom placement
+              // Same deduplication as "Move to top" – one call per sibling context.
+              const backlogIdSet = new Set(backlogIds);
+              const processedContexts = new Set<string>();
               state.selectedWorkItemIds.forEach((id) => {
+                const wi = state.workItems[id];
+                if (!wi) return;
+                const parentInContext =
+                  wi.parentId !== null &&
+                  backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
+                const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                if (processedContexts.has(contextKey)) return;
+                processedContexts.add(contextKey);
                 state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
               });
               toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
@@ -791,9 +820,13 @@ function AppLayoutInner() {
             reparentedIds.push(id);
           }
         });
-        draggedIds.forEach((id) => {
-          reorderWorkItemAmongSiblings(id, overData.index as number, treeId, backlogIds);
-        });
+        // One reorderWorkItemAmongSiblings call handles all selected items in the
+        // same sibling context (the function moves all of selectedWorkItemIds, not
+        // just the single workItemId argument).  Calling it once per dragged item
+        // would create N redundant undo entries for N dragged items.
+        if (draggedIds.length > 0) {
+          reorderWorkItemAmongSiblings(draggedIds[0], overData.index as number, treeId, backlogIds);
+        }
         if (reparentedIds.length > 0) {
           const newParentTitle = targetParentId
             ? (useAppStore.getState().workItems[targetParentId]?.title ?? "item")
