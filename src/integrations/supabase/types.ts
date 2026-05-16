@@ -622,6 +622,45 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_integrations: {
+        Row: {
+          backlog_id: string
+          chat_id: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          label: string
+          organization_id: string
+          tree_id: string
+          updated_at: string
+          webhook_secret: string
+        }
+        Insert: {
+          backlog_id: string
+          chat_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          organization_id: string
+          tree_id: string
+          updated_at?: string
+          webhook_secret: string
+        }
+        Update: {
+          backlog_id?: string
+          chat_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          organization_id?: string
+          tree_id?: string
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Relationships: []
+      }
       work_item_backlog_ranks: {
         Row: {
           backlog_id: string

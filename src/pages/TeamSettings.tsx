@@ -24,6 +24,7 @@ import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
+import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -734,6 +735,8 @@ export default function TeamSettings() {
         <BackupsCard />
 
         <GithubIntegrationsCard />
+
+        <WhatsappIntegrationsCard />
 
         <div>
           <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>

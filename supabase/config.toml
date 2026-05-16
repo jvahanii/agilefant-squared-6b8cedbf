@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.github-pr-merged]
 verify_jwt = false
+
+[functions.whatsapp-message-received]
+verify_jwt = false
