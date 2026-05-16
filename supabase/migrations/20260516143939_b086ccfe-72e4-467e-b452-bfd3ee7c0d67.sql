@@ -3,7 +3,7 @@
 -- Root cause 1: create_organization_backup raised 'Authentication required'
 -- whenever auth.uid() was NULL.  The edge function (daily-backup) invokes this
 -- RPC via an admin/service-role client, which always produces a NULL auth.uid().
--- The original intent (see migration 20260502065339 comment) was to allow
+-- The original intent (see migration 20260502081413 comment) was to allow
 -- service-role / pg-cron calls; the implementation never matched that intent.
 --
 -- Root cause 2: The cron job fetched the service_role_key from
@@ -67,7 +67,7 @@ END $$;
 
 SELECT cron.schedule(
   'daily-organization-backup',
-  '15 3 * * *',
+  '15 3 * * *',   -- 03:15 UTC every day
   $$
     SELECT public.create_organization_backup(id, 'auto', NULL)
     FROM public.organizations;
