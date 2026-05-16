@@ -732,122 +732,124 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        <BackupsCard />
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
+            </p>
+          </div>
 
-        <GithubIntegrationsCard />
+          <BackupsCard />
 
-        <WhatsappIntegrationsCard />
+          <GithubIntegrationsCard />
 
-        <div>
-          <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
-          </p>
-        </div>
+          <WhatsappIntegrationsCard />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Hash className="w-4 h-4" /> Points
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Enable story points</p>
-                <p className="text-xs text-muted-foreground">
-                  Show story points on work items and backlogs.
-                </p>
-              </div>
-              <Switch
-                checked={orgSettings.pointsEnabled}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    setPointsEnabledSetting(activeOrgId, checked);
-                    toast({ title: checked ? "Points enabled" : "Points disabled" });
-                  }
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="w-4 h-4" /> Time Logging
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Enable time logging</p>
-                <p className="text-xs text-muted-foreground">
-                  Allow members to log time spent on work items.
-                </p>
-              </div>
-              <Switch
-                checked={orgSettings.timeLoggingEnabled}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    setTimeLoggingEnabledSetting(activeOrgId, checked);
-                    toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
-                  }
-                }}
-              />
-            </div>
-            {orgSettings.timeLoggingEnabled && (
-              <div className="mt-4 pt-4 border-t space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Browse time logs</p>
-                    <p className="text-xs text-muted-foreground">
-                      View and filter all logged time for users and backlogs, including shared.
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setTimesheetBrowserOpen(true)}
-                  >
-                    <Clock className="w-3.5 h-3.5 mr-1" />
-                    Browse
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Custom statuses — available to org admins and owners */}
-        {canManage && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Settings2 className="w-4 h-4" /> Custom Statuses
+                <Hash className="w-4 h-4" /> Points
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Enable per-tree statuses</p>
+                  <p className="text-sm font-medium">Enable story points</p>
                   <p className="text-xs text-muted-foreground">
-                    Show a gear icon on each backlog tree so users can configure its statuses and colors.
+                    Show story points on work items and backlogs.
                   </p>
                 </div>
                 <Switch
-                  checked={customStatusesEnabled}
+                  checked={orgSettings.pointsEnabled}
                   onCheckedChange={(checked) => {
                     if (activeOrgId) {
-                      setCustomStatusesEnabledSetting(activeOrgId, checked);
-                      toast({ title: checked ? "Custom statuses enabled" : "Custom statuses disabled" });
+                      setPointsEnabledSetting(activeOrgId, checked);
+                      toast({ title: checked ? "Points enabled" : "Points disabled" });
                     }
                   }}
                 />
               </div>
             </CardContent>
           </Card>
-        )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Time Logging
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Enable time logging</p>
+                  <p className="text-xs text-muted-foreground">
+                    Allow members to log time spent on work items.
+                  </p>
+                </div>
+                <Switch
+                  checked={orgSettings.timeLoggingEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setTimeLoggingEnabledSetting(activeOrgId, checked);
+                      toast({ title: checked ? "Time logging enabled" : "Time logging disabled" });
+                    }
+                  }}
+                />
+              </div>
+              {orgSettings.timeLoggingEnabled && (
+                <div className="mt-4 pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Browse time logs</p>
+                      <p className="text-xs text-muted-foreground">
+                        View and filter all logged time for users and backlogs, including shared.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTimesheetBrowserOpen(true)}
+                    >
+                      <Clock className="w-3.5 h-3.5 mr-1" />
+                      Browse
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Custom statuses — available to org admins and owners */}
+          {canManage && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Settings2 className="w-4 h-4" /> Custom Statuses
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Enable per-tree statuses</p>
+                    <p className="text-xs text-muted-foreground">
+                      Show a gear icon on each backlog tree so users can configure its statuses and colors.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={customStatusesEnabled}
+                    onCheckedChange={(checked) => {
+                      if (activeOrgId) {
+                        setCustomStatusesEnabledSetting(activeOrgId, checked);
+                        toast({ title: checked ? "Custom statuses enabled" : "Custom statuses disabled" });
+                      }
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         <div>
           <h2 className="text-lg font-semibold mb-1">Labs</h2>
