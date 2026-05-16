@@ -86,7 +86,6 @@ Deno.serve(async (req) => {
     const created: string[] = [];
 
     for (const m of messages) {
-      if (m.from_me) continue; // ignore messages sent by the bridge account itself
       if (integ.chat_id && m.chat_id && m.chat_id !== integ.chat_id) continue;
 
       const body = (m.text?.body ?? m.body ?? '').toString().trim();
