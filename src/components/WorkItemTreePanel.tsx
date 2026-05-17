@@ -288,6 +288,7 @@ function WorkItemNodeContent({
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  const [showSortPrompt, setShowSortPrompt] = useState(false);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
@@ -1042,17 +1043,7 @@ function WorkItemNodeContent({
           {item.childrenIds.length > 1 && (
             <ContextMenuItem
               className="text-xs"
-              onSelect={() => {
-                const state = useAppStore.getState();
-                const backlogIds: string[] = [];
-                const collectBacklogs = (id: string) => {
-                  backlogIds.push(id);
-                  state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-                };
-                collectBacklogs(backlogId);
-                sortChildrenAlphabetically(workItemId, treeId, backlogIds);
-                toast({ title: "Children sorted A→Z", description: "Press Ctrl+Z to undo" });
-              }}
+              onSelect={() => setShowSortPrompt(true)}
             >
               <ArrowDownAZ className="w-3 h-3 mr-1.5 shrink-0" />
               Sort children A→Z
@@ -1316,6 +1307,32 @@ function WorkItemNodeContent({
           ]}
           onSelect={handleDeleteChoice}
           onCancel={() => setShowDeletePrompt(false)}
+        />
+      )}
+      {showSortPrompt && (
+        <ActionPrompt
+          title="Sort children A→Z?"
+          options={[
+            {
+              label: "Sort A→Z",
+              description: "Sorts children alphabetically. You can undo with Ctrl+Z.",
+              value: "confirm",
+              isDefault: true,
+            },
+          ]}
+          onSelect={() => {
+            const state = useAppStore.getState();
+            const backlogIds: string[] = [];
+            const collectBacklogs = (id: string) => {
+              backlogIds.push(id);
+              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
+            };
+            collectBacklogs(backlogId);
+            sortChildrenAlphabetically(workItemId, treeId, backlogIds);
+            toast({ title: "Children sorted A→Z", description: "Press Ctrl+Z to undo" });
+            setShowSortPrompt(false);
+          }}
+          onCancel={() => setShowSortPrompt(false)}
         />
       )}
       <RespawnSettingsDialog
@@ -1865,6 +1882,7 @@ export function WorkItemTreePanel() {
     return computeBacklogTotalMinutes(selectedBacklogId, selectedTreeId, backlogs, workItems, timeEntries);
   }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
+  const [showSortRootPrompt, setShowSortRootPrompt] = useState(false);
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
   // stable comma-joined string so zustand only triggers a re-render when the
@@ -2471,8 +2489,7 @@ export function WorkItemTreePanel() {
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!selectedBacklogId || !selectedTreeId) return;
-                  sortChildrenAlphabetically(null, selectedTreeId, allBacklogIds);
-                  toast({ title: "Root items sorted A→Z", description: "Press Ctrl+Z to undo" });
+                  setShowSortRootPrompt(true);
                 }}
                 title="Sort root items A→Z"
               >
@@ -2715,6 +2732,27 @@ export function WorkItemTreePanel() {
             backlogId={selectedBacklogId}
             open={showBacklogTimeLogDialog}
             onOpenChange={setShowBacklogTimeLogDialog}
+          />
+        )}
+        {showSortRootPrompt && (
+          <ActionPrompt
+            title="Sort root items A→Z?"
+            options={[
+              {
+                label: "Sort A→Z",
+                description: "Sorts root items alphabetically. You can undo with Ctrl+Z.",
+                value: "confirm",
+                isDefault: true,
+              },
+            ]}
+            onSelect={() => {
+              if (selectedTreeId) {
+                sortChildrenAlphabetically(null, selectedTreeId, allBacklogIds);
+                toast({ title: "Root items sorted A→Z", description: "Press Ctrl+Z to undo" });
+              }
+              setShowSortRootPrompt(false);
+            }}
+            onCancel={() => setShowSortRootPrompt(false)}
           />
         )}
         </>
