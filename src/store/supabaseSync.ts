@@ -211,8 +211,16 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
 
   // Load per-backlog ranks from the work_item_backlog_ranks table.
+  // Fetch by organization_id to avoid PostgREST URL length limits with .in()
+  // on large work-item ID lists (would silently return empty for big orgs).
   const workItemIds = cleanItemRows.map(r => r.id);
-  const ranksMap = await loadWorkItemBacklogRanks(workItemIds);
+  const rankOrgIds = [
+    ...new Set([
+      organizationId,
+      ...cleanItemRows.map(r => (r as any).organization_id).filter(Boolean),
+    ]),
+  ];
+  const ranksMap = await loadWorkItemBacklogRanks(workItemIds, rankOrgIds);
 
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
