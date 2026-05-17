@@ -211,8 +211,16 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
 
   // Load per-backlog ranks from the work_item_backlog_ranks table.
+  // Fetch by organization_id to avoid PostgREST URL length limits with .in()
+  // on large work-item ID lists (would silently return empty for big orgs).
   const workItemIds = cleanItemRows.map(r => r.id);
-  const ranksMap = await loadWorkItemBacklogRanks(workItemIds);
+  const rankOrgIds = [
+    ...new Set([
+      organizationId,
+      ...cleanItemRows.map(r => (r as any).organization_id).filter(Boolean),
+    ]),
+  ];
+  const ranksMap = await loadWorkItemBacklogRanks(workItemIds, rankOrgIds);
 
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
@@ -734,20 +742,52 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
 
 // ─── Work Item Backlog Ranks CRUD ─────────────────────────────────────────
 
-/** Load per-backlog ranks for a set of work items from the work_item_backlog_ranks table. */
+/** Load per-backlog ranks for a set of work items from the work_item_backlog_ranks table.
+ *  When `organizationIds` is provided, fetches by org and filters in memory –
+ *  this avoids PostgREST URL length limits triggered by large `.in('work_item_id', ...)`
+ *  lists, which would silently return zero rows. */
 async function loadWorkItemBacklogRanks(
   workItemIds: string[],
+  organizationIds?: string[],
 ): Promise<Record<string, Record<string, number>>> {
   if (workItemIds.length === 0) return {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await supabase.from('work_item_backlog_ranks' as any).select('*').in('work_item_id', workItemIds);
-  if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
+  const wanted = new Set(workItemIds);
   const result: Record<string, Record<string, number>> = {};
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (data ?? []) as any[]) {
-    const wiId = row.work_item_id as string;
-    if (!result[wiId]) result[wiId] = {};
-    result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+  const collect = (rows: any[]) => {
+    for (const row of rows) {
+      const wiId = row.work_item_id as string;
+      if (!wanted.has(wiId)) continue;
+      if (!result[wiId]) result[wiId] = {};
+      result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+    }
+  };
+
+  if (organizationIds && organizationIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await supabase
+      .from('work_item_backlog_ranks' as any)
+      .select('*')
+      .in('organization_id', organizationIds);
+    if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    collect((data ?? []) as any[]);
+    return result;
+  }
+
+  // Fallback: chunk by work_item_id to stay under URL limits.
+  const CHUNK = 100;
+  for (let i = 0; i < workItemIds.length; i += CHUNK) {
+    const chunk = workItemIds.slice(i, i + CHUNK);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await supabase
+      .from('work_item_backlog_ranks' as any)
+      .select('*')
+      .in('work_item_id', chunk);
+    if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    collect((data ?? []) as any[]);
   }
   return result;
 }
