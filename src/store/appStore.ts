@@ -466,7 +466,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Load hyperlinks and change log in parallel
         const workItemIds = Object.keys(cleanData.workItems);
         const [hyperlinks, dbChangeLog] = await Promise.all([
-          loadHyperlinksForWorkItems(workItemIds),
+          loadHyperlinksForWorkItems(workItemIds, orgId),
           loadChangeLog(orgId),
         ]);
 

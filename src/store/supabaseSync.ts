@@ -813,10 +813,44 @@ async function upsertWorkItemBacklogRanksBatch(
 
 // ─── Hyperlink CRUD ───────────────────────────────────────────────────────
 
-export async function loadHyperlinksForWorkItems(workItemIds: string[]): Promise<Record<string, Hyperlink[]>> {
+export async function loadHyperlinksForWorkItems(
+  workItemIds: string[],
+  organizationId?: string,
+): Promise<Record<string, Hyperlink[]>> {
   if (workItemIds.length === 0) return {};
+  // Prefer a single org-scoped fetch — passing hundreds of IDs via `.in()`
+  // builds a URL that exceeds PostgREST's request size limit and returns nothing.
+  // Fall back to chunked `.in()` queries when no org is provided.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await supabase.from('work_item_hyperlinks' as any).select('*').in('work_item_id', workItemIds).order('rank');
+  let data: any[] | null = null;
+  let error: unknown = null;
+  if (organizationId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await supabase.from('work_item_hyperlinks' as any)
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('rank');
+    data = res.data as any[] | null;
+    error = res.error;
+    // Filter to the requested work items so callers don't see hyperlinks for
+    // items they didn't ask about (defensive — orgs are isolated anyway).
+    if (data) {
+      const idSet = new Set(workItemIds);
+      data = data.filter((row) => idSet.has(row.work_item_id));
+    }
+  } else {
+    const CHUNK = 100;
+    const collected: any[] = [];
+    for (let i = 0; i < workItemIds.length; i += CHUNK) {
+      const slice = workItemIds.slice(i, i + CHUNK);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await supabase.from('work_item_hyperlinks' as any)
+        .select('*').in('work_item_id', slice).order('rank');
+      if (res.error) { error = res.error; break; }
+      if (res.data) collected.push(...(res.data as any[]));
+    }
+    if (!error) data = collected;
+  }
   if (error) { console.error('loadHyperlinksForWorkItems:', error); return {}; }
   const result: Record<string, Hyperlink[]> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
