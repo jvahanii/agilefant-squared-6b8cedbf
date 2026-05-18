@@ -73,6 +73,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
   const [dateInput, setDateInput] = useState(() => new Date().toISOString().slice(0, 10));
   const [noteInput, setNoteInput] = useState("");
   const durationRef = useRef<HTMLInputElement>(null);
+  const addFormRef = useRef<HTMLDivElement>(null);
 
   // Edit state for existing entries
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -119,7 +120,10 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
 
   useEffect(() => {
     if (isAdding) {
-      setTimeout(() => durationRef.current?.focus(), 0);
+      setTimeout(() => {
+        durationRef.current?.focus();
+        addFormRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 0);
     }
   }, [isAdding]);
 
@@ -357,7 +361,7 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
 
         {/* Add new entry form */}
         {isAdding ? (
-          <div className="space-y-2 p-2 rounded-md border border-dashed bg-muted/20 mt-2">
+          <div ref={addFormRef} className="space-y-2 p-2 rounded-md border border-dashed bg-muted/20 mt-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Duration</Label>
