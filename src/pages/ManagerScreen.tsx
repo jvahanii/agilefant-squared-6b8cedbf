@@ -43,6 +43,7 @@ interface OrgRow {
   slug: string;
   created_at: string;
   memberCount?: number;
+  actionCount?: number;
 }
 
 interface UserRow {
