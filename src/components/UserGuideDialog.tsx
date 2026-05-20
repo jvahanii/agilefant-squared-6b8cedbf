@@ -734,6 +734,11 @@ function buildSections(): Section[] {
                 title: "Role Simulator (superusers only)",
                 body: 'Click the role-switcher pyramid icon in the header to simulate Owner, Admin, or Member. The UI hides superuser-only controls so you see exactly what your team members see. Click again and select "Superuser (real)" to restore your full permissions.',
               },
+              {
+                icon: <Shield className="w-4 h-4 text-primary" />,
+                title: "Manager Screen (superusers only)",
+                body: "Open from the org switcher → Manager Screen. Browse every organisation, user, and team across the platform, jump straight into any org, review per-org billing plans, and see an Actions column showing how many tracked changes each organisation has accumulated — a quick health/activity signal.",
+              },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
                 <div className="mt-0.5 shrink-0">{card.icon}</div>
