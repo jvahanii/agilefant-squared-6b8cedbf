@@ -43,6 +43,7 @@ interface OrgRow {
   slug: string;
   created_at: string;
   memberCount?: number;
+  actionCount?: number;
 }
 
 interface UserRow {
@@ -132,10 +133,23 @@ export default function ManagerScreen() {
         orgMap[o.id] = o.name;
       }
 
+      const orgList = orgsRes.data ?? [];
+      const actionCounts: Record<string, number> = {};
+      await Promise.all(
+        orgList.map(async (o) => {
+          const { count } = await (supabase as any)
+            .from("change_log")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", o.id);
+          actionCounts[o.id] = count ?? 0;
+        }),
+      );
+
       setOrgs(
-        (orgsRes.data ?? []).map((o) => ({
+        orgList.map((o) => ({
           ...o,
           memberCount: memberCounts[o.id] ?? 0,
+          actionCount: actionCounts[o.id] ?? 0,
         })),
       );
       setUsers(usersRes.data ?? []);
@@ -387,6 +401,7 @@ export default function ManagerScreen() {
                         <TableHead>Name</TableHead>
                         <TableHead>Slug</TableHead>
                         <TableHead>Members</TableHead>
+                        <TableHead>Actions</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -397,6 +412,7 @@ export default function ManagerScreen() {
                           <TableCell className="font-medium">{org.name}</TableCell>
                           <TableCell className="text-muted-foreground">{org.slug}</TableCell>
                           <TableCell>{org.memberCount}</TableCell>
+                          <TableCell>{org.actionCount?.toLocaleString() ?? 0}</TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {new Date(org.created_at).toLocaleDateString()}
                           </TableCell>
