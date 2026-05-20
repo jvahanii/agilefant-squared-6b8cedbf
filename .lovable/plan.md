@@ -1,40 +1,42 @@
-# GitHub PR → Work Item: multi-org, multi-repo, multi-backlog
+# Why Lovable commits don't create "done" items
 
-Generalize the currently hard-coded `github-pr-merged` webhook so any organization can wire one or more GitHub repos to one or more backlogs.
+The GitHub integration edge function (`supabase/functions/github-pr-merged/index.ts`) only reacts to **merged Pull Requests** (`x-github-event: pull_request` with `action: closed` and `merged: true`).
 
-## Data model (new tables)
+- GitHub Copilot opens a PR → when you merge it, the webhook fires → a "done" work item is created.
+- Lovable pushes commits **directly to the default branch** — no PR is ever opened or merged, so GitHub only fires a `push` event, which the function currently ignores (`event !== 'pull_request'` → returns `ignored`).
 
-**`github_repo_integrations`** — one row per repo connected by an org
-- `organization_id` (uuid)
-- `repo_full_name` (text, e.g. `owner/name`, lowercased, unique together with org)
-- `webhook_secret` (text, generated server-side, shown once)
-- `enabled` (bool, default true)
+# What to change
 
-**`github_repo_targets`** — backlogs that should receive a "done" item for each merged PR
-- `integration_id` (uuid → github_repo_integrations)
-- `organization_id` (uuid, denormalized for RLS)
-- `tree_id` (text)
-- `backlog_id` (text)
+Extend the same edge function to also accept `push` events on the default branch, creating one "done" work item per push (or per commit, see options below). Keep PR-merge handling untouched.
 
-RLS: org admins/owners manage; members read. Webhook secret column is admin-read-only.
+To avoid double-counting, skip pushes that are the result of a PR merge (their head commit message starts with `Merge pull request #`, or `pusher` is the GitHub merge bot).
 
-## Edge function changes (`github-pr-merged`)
+# Where
 
-- Drop hardcoded ORG_ID / TREE_ID / BACKLOG_ID.
-- Read `payload.repository.full_name`; look up matching `github_repo_integrations` rows (a repo may belong to several orgs).
-- For each integration, verify `x-hub-signature-256` against its `webhook_secret` (skip on mismatch).
-- For each `github_repo_targets` row, insert a `done` work item at top of that backlog (min rank − 1), with the same id format `<org-uuid>::wi-<8hex>`, and a matching `work_item_backlog_ranks` row.
-- Respond with summary of inserts.
+Single file:
+- `supabase/functions/github-pr-merged/index.ts`
 
-## UI
+Optional follow-up (cosmetic, not required):
+- Rename the function to something like `github-webhook` to reflect that it now handles more than PR merges. This requires updating any webhook URL configured in GitHub. Skip unless you want the cleanup.
 
-New section in **Team Settings** (org admins only): "GitHub integrations"
-- List of connected repos with: repo full name, webhook URL (copy), webhook secret (reveal/regenerate), target backlogs (add/remove with tree+backlog pickers), enable toggle, delete.
-- "Add repository" form: repo full name. On create, generate secret, show payload URL + secret and short setup instructions.
+GitHub webhook configuration (per repo, in `github_repo_integrations`):
+- Make sure each integration's webhook is subscribed to **both** `Pull requests` and `Pushes` events. If it was set up as "Just the push event" or "Let me select" with only PRs ticked, push events won't arrive.
 
-Existing hardcoded Agilefant / Done archive mapping is preserved as a seeded integration row so behaviour is unchanged for the current repo.
+# Technical details
 
-## Notes
+In the handler, after the existing `ping` branch:
 
-- Webhook URL stays the same for everyone: `…/functions/v1/github-pr-merged`. Routing is by `repository.full_name` in the payload.
-- Single shared `GITHUB_WEBHOOK_SECRET` env var is no longer used by the function; per-repo secrets stored in DB are used instead. The env secret can stay for backward compat / fallback.
+1. Accept `event === 'push'` in addition to `pull_request`.
+2. For `push`:
+   - Verify HMAC against each matching integration's `webhook_secret` (same loop as today).
+   - Ignore if `payload.ref !== 'refs/heads/' + payload.repository.default_branch`.
+   - Ignore if `payload.deleted` is true (branch delete) or `payload.commits` is empty.
+   - Ignore if the head commit message starts with `Merge pull request #` (PR merge already handled) — prevents duplicates.
+3. Decide granularity (recommend **one item per push**, matches current PR-merge behavior):
+   - `title` = `payload.head_commit.message` first line, capped at 300 chars.
+   - `description` = `Pushed to ${repoFullName}@${shortSha}` + commit URL + author.
+4. Reuse the existing target-lookup + min-rank + insert logic verbatim for each `github_repo_targets` row.
+
+Alternative granularity: one item per commit in `payload.commits` (filter out merge commits). More noise, but full traceability. Default to one-per-push unless you ask otherwise.
+
+No database migration needed — schema for `work_items` and `work_item_backlog_ranks` already supports this.
