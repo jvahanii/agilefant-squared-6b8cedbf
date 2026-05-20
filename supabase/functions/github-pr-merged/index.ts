@@ -75,14 +75,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (event !== 'pull_request') {
+    if (event !== 'pull_request' && event !== 'push') {
       return new Response(JSON.stringify({ ignored: true, reason: `event ${event}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (payload.action !== 'closed' || !payload.pull_request?.merged) {
-      return new Response(JSON.stringify({ ignored: true, reason: 'not a merged PR' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -94,10 +88,45 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pr = payload.pull_request;
-    const title: string = (pr.title ?? `PR #${pr.number}`).toString().slice(0, 300);
-    const prNumber: number = pr.number;
-    const description = `Merged from ${repoFullName} #${prNumber}\n${pr.html_url ?? ''}`;
+    let title: string;
+    let description: string;
+
+    if (event === 'pull_request') {
+      if (payload.action !== 'closed' || !payload.pull_request?.merged) {
+        return new Response(JSON.stringify({ ignored: true, reason: 'not a merged PR' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const pr = payload.pull_request;
+      title = (pr.title ?? `PR #${pr.number}`).toString().slice(0, 300);
+      description = `Merged from ${repoFullName} #${pr.number}\n${pr.html_url ?? ''}`;
+    } else {
+      // push event
+      const defaultBranch: string | undefined = payload.repository?.default_branch;
+      if (!defaultBranch || payload.ref !== `refs/heads/${defaultBranch}`) {
+        return new Response(JSON.stringify({ ignored: true, reason: `push to ${payload.ref}, not default branch` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (payload.deleted || !payload.head_commit) {
+        return new Response(JSON.stringify({ ignored: true, reason: 'branch delete or no head commit' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const headMsg: string = payload.head_commit.message ?? '';
+      if (headMsg.startsWith('Merge pull request #')) {
+        // PR-merge push — already handled by the pull_request event
+        return new Response(JSON.stringify({ ignored: true, reason: 'PR merge push (dedup)' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const firstLine = headMsg.split('\n')[0] || `Push to ${repoFullName}`;
+      title = firstLine.slice(0, 300);
+      const shortSha = String(payload.head_commit.id ?? '').slice(0, 7);
+      const author = payload.head_commit.author?.name ?? payload.pusher?.name ?? 'unknown';
+      description = `Pushed to ${repoFullName}@${shortSha} by ${author}\n${payload.head_commit.url ?? ''}`;
+    }
+
 
     // Find all integrations for this repo across all organizations
     const { data: integrations, error: intErr } = await supabase
