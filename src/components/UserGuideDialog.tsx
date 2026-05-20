@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
   Archive,
   Eye,
+  Shield,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
