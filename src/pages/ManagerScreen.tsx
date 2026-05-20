@@ -401,6 +401,7 @@ export default function ManagerScreen() {
                         <TableHead>Name</TableHead>
                         <TableHead>Slug</TableHead>
                         <TableHead>Members</TableHead>
+                        <TableHead>Actions</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -411,6 +412,7 @@ export default function ManagerScreen() {
                           <TableCell className="font-medium">{org.name}</TableCell>
                           <TableCell className="text-muted-foreground">{org.slug}</TableCell>
                           <TableCell>{org.memberCount}</TableCell>
+                          <TableCell>{org.actionCount?.toLocaleString() ?? 0}</TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {new Date(org.created_at).toLocaleDateString()}
                           </TableCell>
