@@ -133,10 +133,23 @@ export default function ManagerScreen() {
         orgMap[o.id] = o.name;
       }
 
+      const orgList = orgsRes.data ?? [];
+      const actionCounts: Record<string, number> = {};
+      await Promise.all(
+        orgList.map(async (o) => {
+          const { count } = await (supabase as any)
+            .from("change_log")
+            .select("*", { count: "exact", head: true })
+            .eq("organization_id", o.id);
+          actionCounts[o.id] = count ?? 0;
+        }),
+      );
+
       setOrgs(
-        (orgsRes.data ?? []).map((o) => ({
+        orgList.map((o) => ({
           ...o,
           memberCount: memberCounts[o.id] ?? 0,
+          actionCount: actionCounts[o.id] ?? 0,
         })),
       );
       setUsers(usersRes.data ?? []);
