@@ -6,6 +6,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { usePasteImageOnSelected } from '@/hooks/usePasteImageOnSelected';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
