@@ -466,14 +466,13 @@ function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   });
 }
 
-function flushPendingRankUpserts() {
+async function flushPendingRankUpserts() {
   if (typeof localStorage === "undefined") return;
   try {
     const pending = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
     if (!Array.isArray(pending) || pending.length === 0) return;
-    upsertWorkItemBacklogRankRows(pending).then((ok) => {
-      if (ok) localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
-    });
+    const ok = await upsertWorkItemBacklogRankRows(pending);
+    if (ok) localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   } catch {
     localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   }
@@ -546,6 +545,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       }, 15000);
 
       try {
+        await flushPendingRankUpserts();
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
 
