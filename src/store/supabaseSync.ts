@@ -831,7 +831,10 @@ async function upsertWorkItemBacklogRanks(
   const { error } = await supabase
     .from('work_item_backlog_ranks' as any)
     .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
-  if (error) console.error('upsertWorkItemBacklogRanks:', error);
+  if (error) {
+    console.error('upsertWorkItemBacklogRanks:', error);
+    toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 /** Upsert per-backlog ranks for a batch of work items. */
@@ -867,7 +870,10 @@ async function upsertWorkItemBacklogRanksBatch(
   const { error } = await supabase
     .from('work_item_backlog_ranks' as any)
     .upsert(deduped, { onConflict: 'work_item_id,backlog_id' });
-  if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
+  if (error) {
+    console.error('upsertWorkItemBacklogRanksBatch:', error);
+    toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 // ─── Hyperlink CRUD ───────────────────────────────────────────────────────

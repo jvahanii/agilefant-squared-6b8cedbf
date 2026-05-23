@@ -2137,8 +2137,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         const newRanks = { ...wi.ranks, [backlogId]: newRank };
         const updatedWorkItems = { ...state.workItems, [workItemId]: { ...wi, ranks: newRanks } };
 
-        // Resolve any duplicate ranks introduced by this realtime update
-        dedupWorkItemRanksInPlace(updatedWorkItems);
+        // NOTE: do NOT call dedupWorkItemRanksInPlace here.  A batch reorder
+        // writes N rank rows to the DB; realtime events arrive one-by-one, so
+        // between the first and last event the local state has transient rank
+        // collisions.  Running dedup on each event bumps sibling ranks upward;
+        // those inflated values get written to the DB if the user edits any
+        // item before all events have arrived, permanently corrupting the order.
+        // Dedup at load time (sanitizeData) is sufficient to repair any genuine
+        // duplicates that escaped to the DB.
 
         // Re-sort parent's childrenIds if this item has a parent.
         // Use the updated backlog context instead of the minimum rank across all backlogs.
