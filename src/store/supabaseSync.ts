@@ -5,6 +5,17 @@ import { toast } from '@/hooks/use-toast';
 /** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
 const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
 
+// Work-item creates/reorders often touch many sibling ranks. Keep those DB
+// mutations in call order so fast consecutive adds cannot persist stale ranks
+// after newer ones and reshuffle the list on the next refresh.
+let workItemMutationQueue: Promise<void> = Promise.resolve();
+
+function enqueueWorkItemMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const run = workItemMutationQueue.catch(() => undefined).then(operation);
+  workItemMutationQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
 type WorkItemUpsertRow = {
   id: string;
   title: string;
