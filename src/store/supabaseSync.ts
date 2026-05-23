@@ -5,6 +5,17 @@ import { toast } from '@/hooks/use-toast';
 /** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
 const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
 
+// Work-item creates/reorders often touch many sibling ranks. Keep those DB
+// mutations in call order so fast consecutive adds cannot persist stale ranks
+// after newer ones and reshuffle the list on the next refresh.
+let workItemMutationQueue: Promise<void> = Promise.resolve();
+
+function enqueueWorkItemMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const run = workItemMutationQueue.catch(() => undefined).then(operation);
+  workItemMutationQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
 type WorkItemUpsertRow = {
   id: string;
   title: string;
@@ -413,6 +424,10 @@ async function withSessionRetry(
 }
 
 export async function upsertWorkItem(item: WorkItem, organizationId: string) {
+  return enqueueWorkItemMutation(async () => upsertWorkItemImmediate(item, organizationId));
+}
+
+async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
   // Repair stale org prefix (if any) before writing.  This renames the DB row
   // and notifies the store callback so local state stays consistent.
   const oldToNew = await repairStaleOrgPrefixes([item], organizationId);
@@ -519,6 +534,10 @@ export async function deleteBacklogTree(id: string) {
 }
 
 export async function upsertWorkItems(items: WorkItem[], organizationId: string) {
+  return enqueueWorkItemMutation(async () => upsertWorkItemsImmediate(items, organizationId));
+}
+
+async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: string) {
   if (items.length === 0) return;
 
   // Repair any stale org prefixes before writing.
