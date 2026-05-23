@@ -791,14 +791,28 @@ async function loadWorkItemBacklogRanks(
   };
 
   if (organizationIds && organizationIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await supabase
-      .from('work_item_backlog_ranks' as any)
-      .select('*')
-      .in('organization_id', organizationIds);
-    if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    collect((data ?? []) as any[]);
+    // Paginate to bypass PostgREST's default 1000-row cap. Large orgs can
+    // easily have thousands of rank rows; without pagination some ranks are
+    // silently dropped and the fallback to the deprecated work_items.rank
+    // column shuffles items into an apparently-random order on reload.
+    const PAGE = 1000;
+    let from = 0;
+    for (;;) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase
+        .from('work_item_backlog_ranks' as any)
+        .select('*')
+        .in('organization_id', organizationIds)
+        .order('work_item_id', { ascending: true })
+        .order('backlog_id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (data ?? []) as any[];
+      collect(rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
     return result;
   }
 
