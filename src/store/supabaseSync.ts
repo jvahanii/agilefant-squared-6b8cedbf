@@ -33,6 +33,13 @@ type WorkItemUpsertRow = {
   respawn_last_triggered_at: string | null;
 };
 
+export type WorkItemBacklogRankUpsert = {
+  workItemId: string;
+  backlogId: string;
+  rank: number;
+  organizationId: string;
+};
+
 // ─── Pure helpers (used by both load and sync) ────────────────────────────
 
 /**
@@ -817,13 +824,26 @@ async function upsertWorkItemBacklogRanks(
   ranks: Record<string, number>,
   organizationId: string,
 ): Promise<void> {
-  const rows = Object.entries(ranks).map(([backlogId, rank]) => ({
-    work_item_id: workItemId,
-    backlog_id: backlogId,
-    rank: safeRank(rank),
-    organization_id: organizationId,
+  const rows = Object.entries(ranks).map(([backlogId, rank]) => ({ workItemId, backlogId, rank, organizationId }));
+  await upsertWorkItemBacklogRankRowsImmediate(rows);
+}
+
+export async function upsertWorkItemBacklogRankRows(
+  rowsToUpsert: WorkItemBacklogRankUpsert[],
+): Promise<boolean> {
+  return enqueueWorkItemMutation(async () => upsertWorkItemBacklogRankRowsImmediate(rowsToUpsert));
+}
+
+async function upsertWorkItemBacklogRankRowsImmediate(
+  rowsToUpsert: WorkItemBacklogRankUpsert[],
+): Promise<boolean> {
+  const rows = rowsToUpsert.map((row) => ({
+    work_item_id: row.workItemId,
+    backlog_id: row.backlogId,
+    rank: safeRank(row.rank),
+    organization_id: row.organizationId,
   }));
-  if (rows.length === 0) return;
+  if (rows.length === 0) return true;
   // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
@@ -834,7 +854,9 @@ async function upsertWorkItemBacklogRanks(
   if (error) {
     console.error('upsertWorkItemBacklogRanks:', error);
     toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    return false;
   }
+  return true;
 }
 
 /** Upsert per-backlog ranks for a batch of work items. */

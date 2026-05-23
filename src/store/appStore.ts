@@ -17,6 +17,8 @@ import {
   upsertHyperlink,
   deleteHyperlink as deleteHyperlinkDB,
   registerWorkItemRenameCallback,
+  upsertWorkItemBacklogRankRows,
+  type WorkItemBacklogRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -427,6 +429,58 @@ function assignSequentialRanksForContext(
   return changed;
 }
 
+const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
+
+function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, WorkItemBacklogRankUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((row) => {
+        if (row?.workItemId && row?.backlogId && row?.organizationId) deduped.set(`${row.workItemId}::${row.backlogId}`, row);
+      });
+    }
+    rows.forEach((row) => deduped.set(`${row.workItemId}::${row.backlogId}`, row));
+    localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
+  if (rows.length === 0) return;
+  queueRankUpsertsForRetry(rows);
+  upsertWorkItemBacklogRankRows(rows).then((ok) => {
+    if (!ok || typeof localStorage === "undefined") return;
+    try {
+      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
+      const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+      if (!Array.isArray(existing)) return;
+      const remaining = existing.filter((row) => {
+        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+      });
+      if (remaining.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+      else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+    } catch {
+      // Best-effort cleanup only.
+    }
+  });
+}
+
+async function flushPendingRankUpserts() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    const ok = await upsertWorkItemBacklogRankRows(pending);
+    if (ok) localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+  } catch {
+    localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+  }
+}
+
 export const useAppStore = create<AppState>()((set, get) => {
   // Register a callback so supabaseSync can notify us when work-item IDs are
   // renamed (stale org prefix repaired).  This keeps local state consistent
@@ -494,6 +548,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       }, 15000);
 
       try {
+        await flushPendingRankUpserts();
         const rawData = await loadFromSupabase(orgId);
         const cleanData = sanitizeData(rawData, orgId);
 
@@ -733,8 +788,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      const itemsToUpsert = reordered.map((s) => updatedItems[s.id]);
-      upsertWorkItems(itemsToUpsert, orgId);
+      persistRankUpserts(
+        reordered.flatMap((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          if (!blId) return [];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }),
+      );
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -779,7 +840,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      upsertWorkItems(siblings.map((s) => updatedItems[s.id]), orgId);
+      persistRankUpserts(
+        siblings.flatMap((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          if (!blId) return [];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }),
+      );
       const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
       internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
 

@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData } from "@/store/appStore";
+import { upsertWorkItemBacklogRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
 vi.mock("@/store/supabaseSync", () => ({
   loadFromSupabase: vi.fn().mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} }),
   upsertWorkItem: vi.fn(),
   upsertWorkItems: vi.fn(),
+  upsertWorkItemBacklogRankRows: vi.fn().mockResolvedValue(true),
   deleteWorkItems: vi.fn(),
   deleteWorkItemBacklogRanks: vi.fn(),
   upsertBacklog: vi.fn(),
@@ -53,11 +55,47 @@ function seedStore() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
+  vi.mocked(upsertWorkItemBacklogRankRows).mockClear();
+  vi.mocked(upsertWorkItems).mockClear();
   useAppStore.setState({
     workItems: {}, backlogs: {}, backlogTrees: {}, hyperlinks: {},
     selectedBacklogIds: [], selectedTreeId: null, selectedWorkItemIds: [],
     changeLog: [], expandedWorkItems: new Set(), expandedBacklogs: new Set(),
     undoStack: [], redoStack: [], isLoading: false, organizationId: null,
+  });
+});
+
+describe("reorderWorkItemAmongSiblings", () => {
+  it("moves the third root item to the top and persists rank rows directly", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-1`]: { id: `${ORG}::wi-1`, title: "One", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 } },
+        [`${ORG}::wi-2`]: { id: `${ORG}::wi-2`, title: "Two", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 1 } },
+        [`${ORG}::wi-3`]: { id: `${ORG}::wi-3`, title: "Three", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 2 } },
+      },
+      selectedWorkItemIds: [`${ORG}::wi-3`], undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-3`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+    const ordered = Object.values(useAppStore.getState().workItems)
+      .sort((a, b) => a.ranks[`${ORG}::bl-1`] - b.ranks[`${ORG}::bl-1`])
+      .map((wi) => wi.title);
+    expect(ordered).toEqual(["Three", "One", "Two"]);
+    expect(upsertWorkItemBacklogRankRows).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ workItemId: `${ORG}::wi-3`, backlogId: `${ORG}::bl-1`, rank: 0 }),
+      expect.objectContaining({ workItemId: `${ORG}::wi-1`, backlogId: `${ORG}::bl-1`, rank: 1 }),
+      expect.objectContaining({ workItemId: `${ORG}::wi-2`, backlogId: `${ORG}::bl-1`, rank: 2 }),
+    ]));
+    expect(upsertWorkItems).not.toHaveBeenCalled();
   });
 });
 
