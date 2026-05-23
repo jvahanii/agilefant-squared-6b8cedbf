@@ -450,6 +450,9 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
   if (error) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    // Do not attempt to write rank rows for an item that failed to persist –
+    // this would create orphan rows in work_item_backlog_ranks.
+    return;
   }
   // Persist per-backlog ranks to the dedicated table
   await upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
@@ -828,10 +831,13 @@ async function upsertWorkItemBacklogRanks(
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase
-    .from('work_item_backlog_ranks' as any)
-    .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
-  if (error) console.error('upsertWorkItemBacklogRanks:', error);
+  const { error } = await withSessionRetry(() => (supabase as any)
+    .from('work_item_backlog_ranks')
+    .upsert(rows, { onConflict: 'work_item_id,backlog_id' }));
+  if (error) {
+    console.error('upsertWorkItemBacklogRanks:', error);
+    toast({ title: 'Failed to save ranking', description: error.message || 'Your rank changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 /** Upsert per-backlog ranks for a batch of work items. */
@@ -864,10 +870,13 @@ async function upsertWorkItemBacklogRanksBatch(
   // row locks in the same order, preventing PostgreSQL deadlocks.
   deduped.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase
-    .from('work_item_backlog_ranks' as any)
-    .upsert(deduped, { onConflict: 'work_item_id,backlog_id' });
-  if (error) console.error('upsertWorkItemBacklogRanksBatch:', error);
+  const { error } = await withSessionRetry(() => (supabase as any)
+    .from('work_item_backlog_ranks')
+    .upsert(deduped, { onConflict: 'work_item_id,backlog_id' }));
+  if (error) {
+    console.error('upsertWorkItemBacklogRanksBatch:', error);
+    toast({ title: 'Failed to save ranking', description: error.message || 'Your rank changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+  }
 }
 
 // ─── Hyperlink CRUD ───────────────────────────────────────────────────────
