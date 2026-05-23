@@ -914,12 +914,15 @@ export const useAppStore = create<AppState>()((set, get) => {
           return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
         })
         .map((wi) => wi.id);
-      const insertIndex = requestedRank != null
-        ? Math.max(0, siblingIds.findIndex((sid) => {
+      const requestedIndex = requestedRank != null
+        ? siblingIds.findIndex((sid) => {
           const sibling = updatedWorkItems[sid];
           const siblingBacklogId = sibling.backlogAssignments[treeId];
           return (sibling.ranks[siblingBacklogId] ?? 0) >= requestedRank;
-        })) || siblingIds.length
+        })
+        : -1;
+      const insertIndex = requestedRank != null
+        ? (requestedIndex === -1 ? siblingIds.length : requestedIndex)
         : 0;
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
