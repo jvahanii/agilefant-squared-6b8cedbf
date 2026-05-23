@@ -915,7 +915,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
         .map((wi) => wi.id);
       const insertIndex = requestedRank != null
-        ? Math.max(0, Math.min(requestedRank, siblingIds.length))
+        ? Math.max(0, siblingIds.findIndex((sid) => {
+          const sibling = updatedWorkItems[sid];
+          const siblingBacklogId = sibling.backlogAssignments[treeId];
+          return (sibling.ranks[siblingBacklogId] ?? 0) >= requestedRank;
+        })) || siblingIds.length
         : 0;
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
