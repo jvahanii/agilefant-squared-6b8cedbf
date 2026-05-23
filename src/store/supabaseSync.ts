@@ -825,10 +825,16 @@ async function upsertWorkItemBacklogRanks(
   organizationId: string,
 ): Promise<void> {
   const rows = Object.entries(ranks).map(([backlogId, rank]) => ({ workItemId, backlogId, rank, organizationId }));
-  await upsertWorkItemBacklogRankRows(rows);
+  await upsertWorkItemBacklogRankRowsImmediate(rows);
 }
 
 export async function upsertWorkItemBacklogRankRows(
+  rowsToUpsert: WorkItemBacklogRankUpsert[],
+): Promise<boolean> {
+  return enqueueWorkItemMutation(async () => upsertWorkItemBacklogRankRowsImmediate(rowsToUpsert));
+}
+
+async function upsertWorkItemBacklogRankRowsImmediate(
   rowsToUpsert: WorkItemBacklogRankUpsert[],
 ): Promise<boolean> {
   const rows = rowsToUpsert.map((row) => ({
