@@ -906,41 +906,24 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!orgId) return;
 
       const updatedWorkItems = { ...state.workItems };
-      const itemsToUpdateInDB: WorkItem[] = [];
-
-      let finalRank: number;
-      if (requestedRank != null) {
-        finalRank = requestedRank;
-        const toShift = buildCascadedShiftSet(
-          updatedWorkItems,
-          parentId,
-          finalRank,
-          null,
-          backlogId,
-        );
-        toShift.forEach((id) => {
-          const wi = updatedWorkItems[id];
-          const updatedItem = { ...wi, ranks: { ...wi.ranks, [backlogId]: (wi.ranks[backlogId] ?? 0) + 1 } };
-          updatedWorkItems[id] = updatedItem;
-          itemsToUpdateInDB.push(updatedItem);
-        });
-      } else {
-        let minRank = Infinity;
-        Object.values(state.workItems).forEach((wi) => {
-          if (wi.parentId === parentId && wi.backlogAssignments[treeId] === backlogId) {
-            const wiRank = wi.ranks[backlogId] ?? 0;
-            if (wiRank < minRank) minRank = wiRank;
-          }
-        });
-        finalRank = minRank === Infinity ? 0 : minRank - 1;
-      }
+      const visibleBacklogIds = getVisibleBacklogIds(state.backlogs, backlogId);
+      const siblingIds = Object.values(updatedWorkItems)
+        .filter((wi) => wi.parentId === parentId && visibleBacklogIds.has(wi.backlogAssignments[treeId]))
+        .sort((a, b) => {
+          const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
+          return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+        })
+        .map((wi) => wi.id);
+      const insertIndex = requestedRank != null
+        ? Math.max(0, Math.min(requestedRank, siblingIds.length))
+        : 0;
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
         id,
         title,
         parentId,
-        ranks: { [backlogId]: finalRank },
+        ranks: { [backlogId]: insertIndex },
         backlogAssignments: { [treeId]: backlogId },
         status: "not_started" as WorkItemStatus,
         childrenIds: [],
@@ -948,7 +931,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       };
 
       updatedWorkItems[id] = newItem;
-      itemsToUpdateInDB.push(newItem);
+      const orderedIds = [...siblingIds];
+      orderedIds.splice(insertIndex, 0, id);
+      const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
+      if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       upsertWorkItems(itemsToUpdateInDB, orgId);
 
       if (parentId && updatedWorkItems[parentId]) {
