@@ -118,6 +118,30 @@ describe("addWorkItem", () => {
     expect(useAppStore.getState().workItems[`${ORG}::wi-a`].ranks[`${ORG}::bl-1`]).toBe(1);
     expect(useAppStore.getState().workItems[`${ORG}::wi-b`].ranks[`${ORG}::bl-2`]).toBe(1);
   });
+
+  it("normalizes visible sibling ranks when adding repeatedly to the top", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {},
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    useAppStore.getState().addWorkItem("A", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    useAppStore.getState().addWorkItem("B", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    useAppStore.getState().addWorkItem("C", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+
+    const ordered = Object.values(useAppStore.getState().workItems)
+      .sort((a, b) => a.ranks[`${ORG}::bl-1`] - b.ranks[`${ORG}::bl-1`]);
+
+    expect(ordered.map((wi) => wi.title)).toEqual(["C", "B", "A"]);
+    expect(ordered.map((wi) => wi.ranks[`${ORG}::bl-1`])).toEqual([0, 1, 2]);
+  });
 });
 
 describe("deleteWorkItem", () => {
