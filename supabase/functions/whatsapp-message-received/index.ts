@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json().catch(() => ({}));
-    console.log('whatsapp payload:', JSON.stringify(payload));
+    // Avoid logging full payload (contains private message content / PII).
 
     // Whapi wraps live events in `data` (array or object). Also support `messages`,
     // bare arrays, and single `message` objects from other bridges.
