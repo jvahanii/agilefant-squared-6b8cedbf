@@ -1979,7 +1979,7 @@ export function WorkItemTreePanel() {
   // Returns null when no query is active (normal view mode).
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return null;
+    if (q.length < 3) return null;
 
     return Object.values(workItems)
       .filter((wi) => wi.title.toLowerCase().includes(q))
@@ -2328,7 +2328,7 @@ export function WorkItemTreePanel() {
   );
 
   const selectBacklog = useAppStore((s) => s.selectBacklog);
-  const isSearchMode = searchQuery.trim().length > 0;
+  const isSearchMode = searchQuery.trim().length >= 3;
   const isLabelFilterMode = filterLabelIds.size > 0;
 
   return (
