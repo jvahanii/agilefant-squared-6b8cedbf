@@ -1454,6 +1454,96 @@ describe("applyRealtimeWorkItemRank", () => {
 
     expect(useAppStore.getState().workItems[`${ORG}::wi-nonexistent`]).toBeUndefined();
   });
+
+  it("sequential events for a batch reorder do NOT corrupt sibling ranks", () => {
+    // Regression: previously dedupWorkItemRanksInPlace was called on every
+    // realtime event, which bumped sibling ranks during the window between the
+    // first and last event of a batch reorder.  Those inflated ranks could then
+    // be written back to the DB by any subsequent edit, corrupting the ordering.
+    //
+    // Setup: three siblings A=0, B=1, C=2.
+    // Simulate a reorder that places C first: C→0, A→1, B→2.
+    // Local state is already updated to C=0, A=1, B=2 (as reorderWorkItemAmongSiblings
+    // does synchronously). Then realtime events arrive one-by-one.
+    const BL = `${ORG}::bl-1`;
+    const TREE = `${ORG}::bt-1`;
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [TREE]: { id: TREE, name: "Tree 1", rootBacklogIds: [BL], rank: 0 },
+      },
+      backlogs: {
+        [BL]: { id: BL, name: "Backlog 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 1 } },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 2 } },
+        [`${ORG}::wi-c`]: { id: `${ORG}::wi-c`, title: "C", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 0 } },
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    // Realtime event 1: C is confirmed at rank 0 (same as local state).
+    useAppStore.getState().applyRealtimeWorkItemRank("UPDATE", {
+      work_item_id: `${ORG}::wi-c`, backlog_id: BL, rank: 0, organization_id: ORG,
+    });
+    // After event 1, A and B must NOT have their ranks bumped.
+    expect(useAppStore.getState().workItems[`${ORG}::wi-a`].ranks[BL]).toBe(1);
+    expect(useAppStore.getState().workItems[`${ORG}::wi-b`].ranks[BL]).toBe(2);
+    expect(useAppStore.getState().workItems[`${ORG}::wi-c`].ranks[BL]).toBe(0);
+
+    // Realtime event 2: A confirmed at rank 1.
+    useAppStore.getState().applyRealtimeWorkItemRank("UPDATE", {
+      work_item_id: `${ORG}::wi-a`, backlog_id: BL, rank: 1, organization_id: ORG,
+    });
+    expect(useAppStore.getState().workItems[`${ORG}::wi-a`].ranks[BL]).toBe(1);
+    expect(useAppStore.getState().workItems[`${ORG}::wi-b`].ranks[BL]).toBe(2);
+
+    // Realtime event 3: B confirmed at rank 2.
+    useAppStore.getState().applyRealtimeWorkItemRank("UPDATE", {
+      work_item_id: `${ORG}::wi-b`, backlog_id: BL, rank: 2, organization_id: ORG,
+    });
+    expect(useAppStore.getState().workItems[`${ORG}::wi-a`].ranks[BL]).toBe(1);
+    expect(useAppStore.getState().workItems[`${ORG}::wi-b`].ranks[BL]).toBe(2);
+    expect(useAppStore.getState().workItems[`${ORG}::wi-c`].ranks[BL]).toBe(0);
+  });
+
+  it("stale event from a previous reorder does not corrupt ranks after a second reorder", () => {
+    // Regression scenario: user does reorder-1, then reorder-2 quickly.
+    // Reorder-2 updates local state (A→0, B→1, C→2).
+    // Then reorder-1's delayed realtime events arrive (C→0, A→1, B→2) —
+    // these are already stale but still fire. The handler must not corrupt
+    // A's rank (which is 0 in the current state) when the C=0 event creates
+    // a transient collision.
+    const BL = `${ORG}::bl-1`;
+    const TREE = `${ORG}::bt-1`;
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [TREE]: { id: TREE, name: "Tree 1", rootBacklogIds: [BL], rank: 0 },
+      },
+      backlogs: {
+        [BL]: { id: BL, name: "Backlog 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
+      },
+      workItems: {
+        // local state reflects reorder-2: A=0, B=1, C=2
+        [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 0 } },
+        [`${ORG}::wi-b`]: { id: `${ORG}::wi-b`, title: "B", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 1 } },
+        [`${ORG}::wi-c`]: { id: `${ORG}::wi-c`, title: "C", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 2 } },
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    // Stale event from reorder-1: C should be at rank 0.
+    // This creates a transient collision with A (also at 0 in current state).
+    useAppStore.getState().applyRealtimeWorkItemRank("UPDATE", {
+      work_item_id: `${ORG}::wi-c`, backlog_id: BL, rank: 0, organization_id: ORG,
+    });
+    // A's rank must NOT be bumped by dedup — it must stay at 0 (reorder-2 value).
+    expect(useAppStore.getState().workItems[`${ORG}::wi-a`].ranks[BL]).toBe(0);
+  });
 });
 
 // ─── UNDO / REDO ───────────────────────────────────────────────────────
