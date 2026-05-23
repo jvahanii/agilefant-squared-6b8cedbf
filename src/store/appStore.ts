@@ -785,8 +785,13 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      const itemsToUpsert = reordered.map((s) => updatedItems[s.id]);
-      upsertWorkItems(itemsToUpsert, orgId);
+      persistRankUpserts(
+        reordered.map((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }).filter((row) => Boolean(row.backlogId)),
+      );
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -831,7 +836,13 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      upsertWorkItems(siblings.map((s) => updatedItems[s.id]), orgId);
+      persistRankUpserts(
+        siblings.map((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }).filter((row) => Boolean(row.backlogId)),
+      );
       const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
       internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
 
