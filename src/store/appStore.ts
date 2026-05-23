@@ -393,6 +393,40 @@ function buildCascadedShiftSet(
   return toShift;
 }
 
+function getVisibleBacklogIds(
+  backlogs: Record<string, Backlog>,
+  backlogId: string,
+): Set<string> {
+  const ids = new Set<string>();
+  const collect = (id: string) => {
+    if (ids.has(id)) return;
+    ids.add(id);
+    backlogs[id]?.childrenIds.forEach(collect);
+  };
+  collect(backlogId);
+  return ids;
+}
+
+function assignSequentialRanksForContext(
+  items: Record<string, WorkItem>,
+  parentId: string | null,
+  treeId: string,
+  backlogIds: Set<string>,
+  orderedIds: string[],
+): WorkItem[] {
+  const changed: WorkItem[] = [];
+  orderedIds.forEach((id, rank) => {
+    const wi = items[id];
+    const wiBacklogId = wi?.backlogAssignments[treeId];
+    if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wi.parentId !== parentId) return;
+    if (wi.ranks[wiBacklogId] === rank) return;
+    const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank } };
+    items[id] = updated;
+    changed.push(updated);
+  });
+  return changed;
+}
+
 export const useAppStore = create<AppState>()((set, get) => {
   // Register a callback so supabaseSync can notify us when work-item IDs are
   // renamed (stale org prefix repaired).  This keeps local state consistent
