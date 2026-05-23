@@ -6,6 +6,7 @@ vi.mock("@/store/supabaseSync", () => ({
   loadFromSupabase: vi.fn().mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} }),
   upsertWorkItem: vi.fn(),
   upsertWorkItems: vi.fn(),
+  upsertWorkItemBacklogRankRows: vi.fn().mockResolvedValue(true),
   deleteWorkItems: vi.fn(),
   deleteWorkItemBacklogRanks: vi.fn(),
   upsertBacklog: vi.fn(),
