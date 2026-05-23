@@ -17,6 +17,8 @@ import {
   upsertHyperlink,
   deleteHyperlink as deleteHyperlinkDB,
   registerWorkItemRenameCallback,
+  upsertWorkItemBacklogRankRows,
+  type WorkItemBacklogRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -425,6 +427,56 @@ function assignSequentialRanksForContext(
     changed.push(updated);
   });
   return changed;
+}
+
+const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
+
+function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, WorkItemBacklogRankUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((row) => {
+        if (row?.workItemId && row?.backlogId && row?.organizationId) deduped.set(`${row.workItemId}::${row.backlogId}`, row);
+      });
+    }
+    rows.forEach((row) => deduped.set(`${row.workItemId}::${row.backlogId}`, row));
+    localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
+  if (rows.length === 0) return;
+  queueRankUpsertsForRetry(rows);
+  upsertWorkItemBacklogRankRows(rows).then((ok) => {
+    if (!ok || typeof localStorage === "undefined") return;
+    try {
+      const keys = new Set(rows.map((row) => `${row.workItemId}::${row.backlogId}`));
+      const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+      if (!Array.isArray(existing)) return;
+      const remaining = existing.filter((row) => !keys.has(`${row.workItemId}::${row.backlogId}`));
+      if (remaining.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+      else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+    } catch {
+      // Best-effort cleanup only.
+    }
+  });
+}
+
+function flushPendingRankUpserts() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    upsertWorkItemBacklogRankRows(pending).then((ok) => {
+      if (ok) localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+    });
+  } catch {
+    localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+  }
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
