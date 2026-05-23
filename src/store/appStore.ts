@@ -454,10 +454,13 @@ function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   upsertWorkItemBacklogRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
     try {
-      const keys = new Set(rows.map((row) => `${row.workItemId}::${row.backlogId}`));
+      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
       const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
       if (!Array.isArray(existing)) return;
-      const remaining = existing.filter((row) => !keys.has(`${row.workItemId}::${row.backlogId}`));
+      const remaining = existing.filter((row) => {
+        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+      });
       if (remaining.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(remaining));
       else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
     } catch {
