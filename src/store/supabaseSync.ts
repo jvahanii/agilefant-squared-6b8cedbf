@@ -837,7 +837,7 @@ export async function upsertWorkItemBacklogRankRows(
     rank: safeRank(row.rank),
     organization_id: row.organizationId,
   }));
-  if (rows.length === 0) return;
+  if (rows.length === 0) return true;
   // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
