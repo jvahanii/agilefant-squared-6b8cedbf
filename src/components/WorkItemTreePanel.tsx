@@ -224,8 +224,8 @@ function WorkItemNodeContent({
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
-  const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
-  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
+  const deleteWorkItemsBulk = useAppStore((s) => s.deleteWorkItemsBulk);
+  const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
@@ -288,6 +288,7 @@ function WorkItemNodeContent({
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  const [deleteItemIds, setDeleteItemIds] = useState<string[]>([]);
   const [showSortPrompt, setShowSortPrompt] = useState(false);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
@@ -330,9 +331,20 @@ function WorkItemNodeContent({
 
   const handleDeleteClick = useCallback(() => {
     if (!item) return;
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(workItemId);
-  }, [assignmentCount, deleteWorkItem, item, workItemId]);
+    const state = useAppStore.getState();
+    const selectedIds = state.selectedWorkItemIds;
+    const idsToProcess = isSelected && selectedIds.length > 1 ? [...selectedIds] : [workItemId];
+    setDeleteItemIds(idsToProcess);
+    const anyMultiAssigned = idsToProcess.some((id) => {
+      const wi = state.workItems[id];
+      return wi && Object.keys(wi.backlogAssignments).length > 1;
+    });
+    if (anyMultiAssigned) {
+      setShowDeletePrompt(true);
+    } else {
+      deleteWorkItemsBulk(idsToProcess);
+    }
+  }, [deleteWorkItemsBulk, isSelected, item, workItemId]);
 
   const handleEditHyperlinks = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
@@ -425,7 +437,10 @@ function WorkItemNodeContent({
       if (!useAppStore.getState().selectedWorkItemIds.includes(workItemId)) return;
       setIsAddingSibling(true);
     };
-    const handleDelete = () => handleDeleteClick();
+    const handleDelete = () => {
+      if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
+      handleDeleteClick();
+    };
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
@@ -495,8 +510,8 @@ function WorkItemNodeContent({
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") removeWorkItemFromTree(workItemId, treeId);
-    else if (value === "delete-everywhere") deleteWorkItem(workItemId);
+    if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk(deleteItemIds.map((id) => ({ workItemId: id, treeId })));
+    else if (value === "delete-everywhere") deleteWorkItemsBulk(deleteItemIds);
   };
 
   const startEditingTitle = () => {
@@ -1290,17 +1305,21 @@ function WorkItemNodeContent({
       )}
       {showDeletePrompt && (
         <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} backlogs`}
+          title={deleteItemIds.length > 1 ? `Delete ${deleteItemIds.length} selected items?` : `"${item.title}" is in ${assignmentCount} backlogs`}
           options={[
             {
               label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+              description: deleteItemIds.length > 1
+                ? `Remove all selected items from this backlog only. Keeps them in other backlogs.`
+                : `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
+              description: deleteItemIds.length > 1
+                ? "Permanently delete all selected items from all backlogs."
+                : "Permanently delete this item from all backlogs.",
               value: "delete-everywhere",
               variant: "destructive",
             },
