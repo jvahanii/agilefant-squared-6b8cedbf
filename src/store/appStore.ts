@@ -1154,17 +1154,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedItems = { ...state.workItems };
       const allIdsToDelete: string[] = [];
 
+      // Deduplicate: if workItemIds contains both a parent and its descendant,
+      // skip the descendant when it's reached as a root (it will be collected
+      // recursively when the ancestor is processed).
+      const processed = new Set<string>();
       const collectIds = (id: string) => {
-        if (!updatedItems[id]) return;
+        if (processed.has(id) || !updatedItems[id]) return;
+        processed.add(id);
         allIdsToDelete.push(id);
         state.workItems[id]?.childrenIds.forEach(collectIds);
       };
-      // Deduplicate: skip items already collected as children of a previous root
-      const processedRoots = new Set<string>();
-      workItemIds.forEach((id) => {
-        if (!processedRoots.has(id)) collectIds(id);
-      });
-      allIdsToDelete.forEach((id) => processedRoots.add(id));
+      workItemIds.forEach(collectIds);
 
       allIdsToDelete.forEach((id) => delete updatedItems[id]);
 
