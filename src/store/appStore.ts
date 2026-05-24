@@ -79,10 +79,12 @@ interface AppState extends DataSnapshot {
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
+  deleteWorkItemsBulk: (workItemIds: string[]) => void;
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
+  removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
   respawnItem: (workItemId: string) => void;
@@ -1144,6 +1146,56 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    deleteWorkItemsBulk: (workItemIds) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (workItemIds.length === 0) return;
+
+      const updatedItems = { ...state.workItems };
+      const allIdsToDelete: string[] = [];
+
+      const collectIds = (id: string) => {
+        if (!updatedItems[id]) return;
+        allIdsToDelete.push(id);
+        state.workItems[id]?.childrenIds.forEach(collectIds);
+      };
+      // Deduplicate: skip items already collected as children of a previous root
+      const processedRoots = new Set<string>();
+      workItemIds.forEach((id) => {
+        if (!processedRoots.has(id)) collectIds(id);
+      });
+      allIdsToDelete.forEach((id) => processedRoots.add(id));
+
+      allIdsToDelete.forEach((id) => delete updatedItems[id]);
+
+      const deleteSet = new Set(allIdsToDelete);
+      allIdsToDelete.forEach((deletedId) => {
+        const deletedItem = state.workItems[deletedId];
+        if (deletedItem?.parentId && updatedItems[deletedItem.parentId]) {
+          updatedItems[deletedItem.parentId] = {
+            ...updatedItems[deletedItem.parentId],
+            childrenIds: updatedItems[deletedItem.parentId].childrenIds.filter((id) => !deleteSet.has(id)),
+          };
+        }
+      });
+
+      const orphanRepairs: WorkItem[] = [];
+      repairOrphanedSurvivors(updatedItems, deleteSet, state.workItems, (updated) => {
+        orphanRepairs.push(updated);
+      });
+      if (orphanRepairs.length > 0 && orgId) {
+        upsertWorkItems(orphanRepairs, orgId);
+      }
+
+      deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk delete work items failed", err));
+      internalLog({ action: "Delete", entityType: "work_item", entityId: workItemIds[0], entityName: `${workItemIds.length} items` });
+      set({
+        workItems: updatedItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
     renameWorkItem: (workItemId, title) => {
       const state = get();
       const orgId = state.organizationId!;
@@ -1276,6 +1328,70 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const treeName = state.backlogTrees[treeId]?.name ?? treeId;
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `tree: "${treeName}"` });
+      set({
+        workItems: updatedItems,
+        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        redoStack: [],
+      });
+    },
+
+    removeWorkItemsFromTreeBulk: (items) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      if (items.length === 0) return;
+
+      const updatedItems = { ...state.workItems };
+      const toUpsert: WorkItem[] = [];
+      const allIdsToDelete: string[] = [];
+
+      for (const { workItemId, treeId } of items) {
+        if (!state.workItems[workItemId]) continue;
+
+        const processItem = (id: string) => {
+          const wi = updatedItems[id];
+          if (!wi) return;
+          const newAssignments = { ...wi.backlogAssignments };
+          const removedBlId = newAssignments[treeId];
+          delete newAssignments[treeId];
+          if (Object.keys(newAssignments).length === 0) {
+            allIdsToDelete.push(id);
+            wi.childrenIds.forEach(processItem);
+          } else {
+            const newRanks = { ...wi.ranks };
+            if (removedBlId) delete newRanks[removedBlId];
+            updatedItems[id] = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+            toUpsert.push(updatedItems[id]);
+            updatedItems[id].childrenIds.forEach(processItem);
+          }
+        };
+
+        processItem(workItemId);
+      }
+
+      if (allIdsToDelete.length > 0) {
+        const deleteSet = new Set(allIdsToDelete);
+        allIdsToDelete.forEach((deletedId) => {
+          const deletedItem = state.workItems[deletedId];
+          if (deletedItem?.parentId && !deleteSet.has(deletedItem.parentId) && updatedItems[deletedItem.parentId]) {
+            updatedItems[deletedItem.parentId] = {
+              ...updatedItems[deletedItem.parentId],
+              childrenIds: updatedItems[deletedItem.parentId].childrenIds.filter((id) => !deleteSet.has(id)),
+            };
+          }
+          delete updatedItems[deletedId];
+        });
+
+        repairOrphanedSurvivors(updatedItems, deleteSet, state.workItems, (updated) => {
+          toUpsert.push(updated);
+        });
+
+        deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk remove from tree failed", err));
+      }
+      if (toUpsert.length > 0) {
+        upsertWorkItems(toUpsert, orgId);
+      }
+
+      internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: items[0].workItemId, entityName: `${items.length} items` });
       set({
         workItems: updatedItems,
         undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
