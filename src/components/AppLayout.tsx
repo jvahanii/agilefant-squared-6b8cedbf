@@ -149,6 +149,16 @@ function AppLayoutInner() {
         return;
       }
 
+      // Ctrl+A / Cmd+A selects all visible work items
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+        const ids = visibleWorkItemIdsRef.current;
+        if (ids.length > 0) {
+          e.preventDefault();
+          useAppStore.setState({ selectedWorkItemIds: [...ids] });
+        }
+        return;
+      }
+
       // Ctrl+K / Cmd+K opens the hyperlink dialog
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         const state = useAppStore.getState();
@@ -1249,6 +1259,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["→"], description: "Expand selected item or backlog branch" },
     { keys: ["T"], description: "Move selection to Top" },
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
+    { keys: ["Ctrl/Cmd", "A"], description: "Select all visible work items" },
     { keys: ["Esc"], description: "Deselect items" },
     { keys: ["Ctrl", "Z"], description: "Undo action" },
     { keys: ["/"], description: "Focus search / filter bar" },
