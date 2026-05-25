@@ -50,8 +50,10 @@ const Index = () => {
 
   useEffect(() => {
     if (activeOrgId) {
-      setOrganizationId(activeOrgId);
-      loadData();
+      // Note: setOrganizationId + loadData() are already triggered by the
+      // useOrgStore.subscribe block in App.tsx before this effect runs, so we
+      // intentionally don't call them here — doing so would double-fetch the
+      // entire dataset on every org switch.
       loadTeams(activeOrgId);
       loadWorkItemTeams(activeOrgId);
       loadSettings(activeOrgId).then(() => {
