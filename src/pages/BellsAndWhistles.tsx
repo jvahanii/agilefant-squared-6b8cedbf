@@ -3,25 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useOrgStore } from "@/store/orgStore";
-import { useAppStore } from "@/store/appStore";
 import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 
 export default function BellsAndWhistlesPage() {
   const navigate = useNavigate();
   const activeOrg = useOrgStore((s) => s.getActiveOrg());
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const setOrganizationId = useAppStore((s) => s.setOrganizationId);
-  const loadData = useAppStore((s) => s.loadFromSupabase);
 
-  // Load data that may not be populated when landing directly on this page
-  // (e.g. after a browser refresh instead of navigating from the main view).
-  useEffect(() => {
-    if (!activeOrgId) return;
-    setOrganizationId(activeOrgId);
-    loadData();
-    // setOrganizationId and loadData are stable Zustand references.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId]);
+  // appStore data (backlogTrees, backlogs) is loaded by the module-level
+  // orgStore subscriber in App.tsx, which fires before this component mounts.
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
