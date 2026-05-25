@@ -554,17 +554,26 @@ export const useAppStore = create<AppState>()((set, get) => {
       try {
         await flushPendingRankUpserts();
         set({ loadingProgress: 10 });
-        const rawData = await loadFromSupabase(orgId);
-        set({ loadingProgress: 60 });
-        const cleanData = sanitizeData(rawData, orgId);
-        set({ loadingProgress: 70 });
 
-        // Load hyperlinks and change log in parallel
-        const workItemIds = Object.keys(cleanData.workItems);
-        const [hyperlinks, dbChangeLog] = await Promise.all([
-          loadHyperlinksForWorkItems(workItemIds, orgId),
+        // Run the main data load, hyperlinks (org-scoped), and change log
+        // concurrently. Hyperlinks can be fetched by organization_id without
+        // first needing the resolved work-item id list, so all three waves
+        // overlap instead of running serially.
+        const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
+          loadFromSupabase(orgId),
+          loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
           loadChangeLog(orgId),
         ]);
+        set({ loadingProgress: 70 });
+        const cleanData = sanitizeData(rawData, orgId);
+        set({ loadingProgress: 80 });
+
+        // Filter hyperlinks to the work items that survived sanitization.
+        const workItemIdSet = new Set(Object.keys(cleanData.workItems));
+        const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
+        for (const [wiId, links] of Object.entries(allHyperlinks)) {
+          if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
+        }
         set({ loadingProgress: 90 });
 
         const parseStoredIds = (key: string): string[] => {

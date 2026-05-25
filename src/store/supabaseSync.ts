@@ -80,100 +80,95 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   // evaluate auth.uid() as null and return empty rows for every table.
   await supabase.auth.getSession();
 
-  // Load shared tree IDs for this org
-  const { data: shares } = await supabase
-    .from('backlog_tree_shares' as any)
-    .select('tree_id')
-    .eq('organization_id', organizationId);
-  const sharedTreeIds = (shares ?? []).map((s: any) => s.tree_id as string);
+  // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
+  // shares, own trees, and own work items are independent of each other.
+  const [sharesRes, ownTreesRes, ownItemsRes] = await Promise.all([
+    supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
+    supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
+    supabase.from('work_items').select('*').eq('organization_id', organizationId),
+  ]);
 
-  // Load own trees + shared trees
-  const ownTreesPromise = supabase.from('backlog_trees').select('*').eq('organization_id', organizationId);
+  const sharedTreeIds = ((sharesRes.data ?? []) as any[]).map((s) => s.tree_id as string);
+  if (ownTreesRes.error) throw ownTreesRes.error;
+  if (ownItemsRes.error) throw ownItemsRes.error;
+
+  const ownTreeIds = (ownTreesRes.data ?? []).map((t: any) => t.id as string);
+
+  // ── Wave 2: queries that depend on wave-1 IDs run in parallel ───────────
   const sharedTreesPromise = sharedTreeIds.length > 0
     ? supabase.from('backlog_trees').select('*').in('id', sharedTreeIds)
     : Promise.resolve({ data: [], error: null });
 
-  const [ownTreesRes, sharedTreesRes] = await Promise.all([ownTreesPromise, sharedTreesPromise]);
-  if (ownTreesRes.error) throw ownTreesRes.error;
+  const outgoingSharesPromise = ownTreeIds.length > 0
+    ? supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id').in('tree_id', ownTreeIds)
+    : Promise.resolve({ data: [], error: null });
+
+  const [sharedTreesRes, outgoingSharesRes] = await Promise.all([sharedTreesPromise, outgoingSharesPromise]);
   if (sharedTreesRes.error) throw sharedTreesRes.error;
 
   const allTreeRows = [...(ownTreesRes.data ?? []), ...(sharedTreesRes.data ?? [])];
   const allTreeIds = allTreeRows.map(t => t.id);
 
-  // Load backlogs for all accessible trees
+  // ── Wave 3: backlogs + partner work items (all independent) ─────────────
   const backlogsPromise = allTreeIds.length > 0
     ? supabase.from('backlogs').select('*').in('tree_id', allTreeIds)
     : Promise.resolve({ data: [], error: null });
 
-  // Load own work items + work items from shared trees
-  const ownItemsPromise = supabase.from('work_items').select('*').eq('organization_id', organizationId);
-
-  const [backlogsRes, itemsRes] = await Promise.all([backlogsPromise, ownItemsPromise]);
-
-  if (backlogsRes.error) throw backlogsRes.error;
-  if (itemsRes.error) throw itemsRes.error;
-
-  // Also load work items from partner orgs that participate in tree sharing.
-  // This covers two directions:
-  //   (A) Incoming shares: other orgs own trees shared TO this org – their items
-  //       live under their own organization_id but are assigned to those trees.
-  //   (B) Outgoing shares: this org owns trees shared WITH other orgs – items
-  //       those orgs created in our trees live under their organization_id.
-  let sharedWorkItems: any[] = [];
-
   // (A) Incoming: orgs that own the trees shared to us.
-  if (sharedTreeIds.length > 0) {
-    const sharedTreeIdSet = new Set(sharedTreeIds);
-    const incomingPartnerOrgIds = [
-      ...new Set(
+  const incomingPartnerOrgIds = sharedTreeIds.length > 0
+    ? [...new Set(
         (sharedTreesRes.data ?? [])
           .map((t: any) => t.organization_id as string)
           .filter((id: string) => id !== organizationId)
-      ),
-    ];
-    if (incomingPartnerOrgIds.length > 0) {
-      const { data: incomingItems } = await supabase
-        .from('work_items')
-        .select('*')
-        .in('organization_id', incomingPartnerOrgIds);
-      // Keep only items that are actually assigned to one of the shared trees.
-      const filtered = (incomingItems ?? []).filter((item: any) => {
-        const assignments = item.backlog_assignments as Record<string, string>;
-        return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
-      });
-      sharedWorkItems = [...sharedWorkItems, ...filtered];
-    }
-  }
+      )]
+    : [];
+  const incomingItemsPromise = incomingPartnerOrgIds.length > 0
+    ? supabase.from('work_items').select('*').in('organization_id', incomingPartnerOrgIds)
+    : Promise.resolve({ data: [], error: null });
 
   // (B) Outgoing: orgs that have been granted access to our own trees.
-  const ownTreeIds = (ownTreesRes.data ?? []).map((t: any) => t.id as string);
-  if (ownTreeIds.length > 0) {
-    const { data: outgoingShares } = await supabase
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .from('backlog_tree_shares' as any)
-      .select('organization_id')
-      .in('tree_id', ownTreeIds);
-    const outgoingPartnerOrgIds = [
-      ...new Set(
-        (outgoingShares ?? [])
-          .map((s: any) => s.organization_id as string)
-          .filter((id: string) => id !== organizationId)
-      ),
+  const outgoingPartnerOrgIds = [
+    ...new Set(
+      ((outgoingSharesRes.data ?? []) as any[])
+        .map((s) => s.organization_id as string)
+        .filter((id: string) => id !== organizationId)
+    ),
+  ];
+  const outgoingItemsPromise = outgoingPartnerOrgIds.length > 0
+    ? supabase.from('work_items').select('*').in('organization_id', outgoingPartnerOrgIds)
+    : Promise.resolve({ data: [], error: null });
+
+  const [backlogsRes, incomingItemsRes, outgoingItemsRes] = await Promise.all([
+    backlogsPromise,
+    incomingItemsPromise,
+    outgoingItemsPromise,
+  ]);
+  if (backlogsRes.error) throw backlogsRes.error;
+
+  let sharedWorkItems: any[] = [];
+  if (incomingPartnerOrgIds.length > 0) {
+    const sharedTreeIdSet = new Set(sharedTreeIds);
+    sharedWorkItems = [
+      ...sharedWorkItems,
+      ...((incomingItemsRes.data ?? []) as any[]).filter((item) => {
+        const assignments = item.backlog_assignments as Record<string, string>;
+        return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
+      }),
     ];
-    if (outgoingPartnerOrgIds.length > 0) {
-      const ownTreeIdSet = new Set(ownTreeIds);
-      const { data: outgoingItems } = await supabase
-        .from('work_items')
-        .select('*')
-        .in('organization_id', outgoingPartnerOrgIds);
-      // Keep only items assigned to one of our own trees.
-      const filtered = (outgoingItems ?? []).filter((item: any) => {
+  }
+  if (outgoingPartnerOrgIds.length > 0) {
+    const ownTreeIdSet = new Set(ownTreeIds);
+    sharedWorkItems = [
+      ...sharedWorkItems,
+      ...((outgoingItemsRes.data ?? []) as any[]).filter((item) => {
         const assignments = item.backlog_assignments as Record<string, string>;
         return Object.keys(assignments).some(treeId => ownTreeIdSet.has(treeId));
-      });
-      sharedWorkItems = [...sharedWorkItems, ...filtered];
-    }
+      }),
+    ];
   }
+
+  const itemsRes = ownItemsRes;
+
 
   // Auto-cleanup malformed (double-prefixed) tree IDs
   const malformedTreeIds = allTreeRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
@@ -918,7 +913,10 @@ export async function loadHyperlinksForWorkItems(
   workItemIds: string[],
   organizationId?: string,
 ): Promise<Record<string, Hyperlink[]>> {
-  if (workItemIds.length === 0) return {};
+  // When an organizationId is supplied we can fetch every hyperlink for that
+  // org in a single query — no work-item id list required.  This enables
+  // callers to start the hyperlinks fetch in parallel with the main data load.
+  if (workItemIds.length === 0 && !organizationId) return {};
   // Prefer a single org-scoped fetch — passing hundreds of IDs via `.in()`
   // builds a URL that exceeds PostgREST's request size limit and returns nothing.
   // Fall back to chunked `.in()` queries when no org is provided.
@@ -935,10 +933,12 @@ export async function loadHyperlinksForWorkItems(
     error = res.error;
     // Filter to the requested work items so callers don't see hyperlinks for
     // items they didn't ask about (defensive — orgs are isolated anyway).
-    if (data) {
+    // When workItemIds is empty, treat that as "all hyperlinks for the org".
+    if (data && workItemIds.length > 0) {
       const idSet = new Set(workItemIds);
       data = data.filter((row) => idSet.has(row.work_item_id));
     }
+
   } else {
     const CHUNK = 100;
     const collected: any[] = [];
