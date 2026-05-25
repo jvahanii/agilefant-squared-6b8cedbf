@@ -44,6 +44,7 @@ import {
   EyeOff,
   ClipboardList,
   Sparkles,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
 import { exportChangeLogAsCsv } from "@/store/changeLog";
