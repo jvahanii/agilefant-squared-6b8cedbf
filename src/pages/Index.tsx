@@ -13,9 +13,11 @@ import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsSt
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
+import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
+  const loadingProgress = useAppStore(s => s.loadingProgress);
   const setOrganizationId = useAppStore(s => s.setOrganizationId);
   const setUser = useAppStore(s => s.setUser);
   const loadData = useAppStore(s => s.loadFromSupabase);
@@ -132,8 +134,9 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background text-foreground">
+      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground gap-4">
         <p className="text-muted-foreground">Loading...</p>
+        <Progress value={loadingProgress} className="w-64 h-2" />
       </div>
     );
   }
