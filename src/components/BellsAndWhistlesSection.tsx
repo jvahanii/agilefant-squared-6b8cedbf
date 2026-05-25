@@ -14,7 +14,12 @@ import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 
 export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: boolean }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const activeOrg = useOrgStore((s) => s.getActiveOrg());
+  const memberships = useOrgStore((s) => s.memberships);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const activeOrg = (() => {
+    const m = memberships.find((x) => x.organization_id === activeOrgId) ?? null;
+    return m && roleOverride ? { ...m, role: roleOverride } : m;
+  })();
   const role = activeOrg?.role;
   const canManage = role === "owner" || role === "admin";
 
