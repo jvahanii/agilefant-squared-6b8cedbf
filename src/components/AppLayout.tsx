@@ -43,7 +43,7 @@ import {
   Eye,
   EyeOff,
   ClipboardList,
-  Sparkles,
+  Settings,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
@@ -1014,7 +1014,7 @@ function AppLayoutInner() {
             onClick={() => navigate("/settings/bells-whistles")}
             title="Bells & Whistles"
           >
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <Settings className="w-3.5 h-3.5 text-primary" />
             <span className="hidden md:inline">Bells &amp; Whistles</span>
           </button>
           <RoleSimulator />
