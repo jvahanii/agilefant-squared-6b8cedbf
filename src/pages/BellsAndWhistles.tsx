@@ -3,14 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useOrgStore } from "@/store/orgStore";
+import { useAppStore } from "@/store/appStore";
 import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 
 export default function BellsAndWhistlesPage() {
   const navigate = useNavigate();
   const activeOrg = useOrgStore((s) => s.getActiveOrg());
-
-  // appStore data (backlogTrees, backlogs) is loaded by the module-level
-  // orgStore subscriber in App.tsx, which fires before this component mounts.
+  const appIsLoading = useAppStore((s) => s.isLoading);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -22,6 +21,14 @@ export default function BellsAndWhistlesPage() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [navigate]);
+
+  if (appIsLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6">
