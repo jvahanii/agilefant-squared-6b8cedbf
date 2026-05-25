@@ -12,15 +12,21 @@ import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 
+const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false };
+
 export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: boolean }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const activeOrg = useOrgStore((s) => s.getActiveOrg());
+  const memberships = useOrgStore((s) => s.memberships);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const activeOrg = (() => {
+    const m = memberships.find((x) => x.organization_id === activeOrgId) ?? null;
+    return m && roleOverride ? { ...m, role: roleOverride } : m;
+  })();
   const role = activeOrg?.role;
   const canManage = role === "owner" || role === "admin";
 
-  const orgSettings = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false },
-  );
+  const orgSettingsRaw = useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId] : undefined));
+  const orgSettings = orgSettingsRaw ?? DEFAULT_ORG_SETTINGS;
   const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
