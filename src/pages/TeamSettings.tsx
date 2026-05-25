@@ -13,6 +13,7 @@ import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchChe
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { TeamManagement } from "@/components/TeamManagement";
+import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
