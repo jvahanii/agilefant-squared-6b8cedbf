@@ -33,7 +33,7 @@ export default function BellsAndWhistlesPage() {
           </h1>
         </div>
 
-        <BellsAndWhistlesSection />
+        <BellsAndWhistlesSection showHeader={false} />
       </div>
     </div>
   );
