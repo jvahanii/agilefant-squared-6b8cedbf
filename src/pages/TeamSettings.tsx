@@ -719,7 +719,7 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        <TeamManagement />
+        
 
         <Card>
           <CardHeader>
