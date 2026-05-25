@@ -13,7 +13,7 @@ import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsSt
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
-import { Progress } from '@/components/ui/progress';
+import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
