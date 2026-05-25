@@ -12,7 +12,7 @@ import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 
-export function BellsAndWhistlesSection() {
+export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: boolean }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const activeOrg = useOrgStore((s) => s.getActiveOrg());
   const role = activeOrg?.role;
@@ -36,12 +36,14 @@ export function BellsAndWhistlesSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Bells &amp; Whistles</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
+          </p>
+        </div>
+      )}
 
       <TeamManagement />
 
