@@ -1008,6 +1008,14 @@ function AppLayoutInner() {
             <sup className="text-xs text-primary ml-0.5 font-mono">2</sup>
           </h1>
           <OrgSwitcher />
+          <button
+            className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors"
+            onClick={() => navigate("/settings/bells-whistles")}
+            title="Bells & Whistles"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden md:inline">Bells &amp; Whistles</span>
+          </button>
           <RoleSimulator />
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">
