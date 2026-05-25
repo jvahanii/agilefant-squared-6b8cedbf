@@ -559,12 +559,15 @@ export const useAppStore = create<AppState>()((set, get) => {
         // concurrently. Hyperlinks can be fetched by organization_id without
         // first needing the resolved work-item id list, so all three waves
         // overlap instead of running serially.
+        // Each promise increments the progress bar as it finishes so the
+        // bar reflects real work rather than staying frozen at 10%.
         const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
-          loadFromSupabase(orgId),
-          loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
-          loadChangeLog(orgId),
+          loadFromSupabase(orgId).then((r) => { set({ loadingProgress: 50 }); return r; }),
+          loadHyperlinksForWorkItems([], orgId)
+            .catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>))
+            .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 60) })); return r; }),
+          loadChangeLog(orgId).then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 65) })); return r; }),
         ]);
-        set({ loadingProgress: 70 });
         const cleanData = sanitizeData(rawData, orgId);
         set({ loadingProgress: 80 });
 
