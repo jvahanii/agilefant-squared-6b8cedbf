@@ -54,6 +54,7 @@ interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
   redoStack: DataSnapshot[];
   isLoading: boolean;
+  loadingProgress: number;
   organizationId: string | null;
   userId: string | null;
   userEmail: string | null;
@@ -520,6 +521,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     undoStack: [],
     redoStack: [],
     isLoading: true,
+    loadingProgress: 0,
     organizationId: null,
     userId: null,
     userEmail: null,
@@ -537,7 +539,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({ isLoading: false });
         return;
       }
-      set({ isLoading: true });
+      set({ isLoading: true, loadingProgress: 0 });
 
       // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
       // a hung network request), unblock the UI so the app renders in an empty state
@@ -545,14 +547,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       // prevents a no-op state update if the timeout fires after a successful load.
       const timeoutId = setTimeout(() => {
         if (get().isLoading) {
-          set({ isLoading: false });
+          set({ isLoading: false, loadingProgress: 0 });
         }
       }, 15000);
 
       try {
         await flushPendingRankUpserts();
+        set({ loadingProgress: 10 });
         const rawData = await loadFromSupabase(orgId);
+        set({ loadingProgress: 60 });
         const cleanData = sanitizeData(rawData, orgId);
+        set({ loadingProgress: 70 });
 
         // Load hyperlinks and change log in parallel
         const workItemIds = Object.keys(cleanData.workItems);
@@ -560,6 +565,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           loadHyperlinksForWorkItems(workItemIds, orgId),
           loadChangeLog(orgId),
         ]);
+        set({ loadingProgress: 90 });
 
         const parseStoredIds = (key: string): string[] => {
           try {
@@ -604,6 +610,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           hyperlinks,
           changeLog: dbChangeLog,
           isLoading: false,
+          loadingProgress: 100,
           undoStack: [],
           redoStack: [],
           selectedBacklogIds: validBacklogIds,
@@ -614,7 +621,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         });
       } catch (err) {
         clearTimeout(timeoutId);
-        set({ isLoading: false });
+        set({ isLoading: false, loadingProgress: 0 });
       }
     },
 
