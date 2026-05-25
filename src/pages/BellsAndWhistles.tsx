@@ -24,7 +24,7 @@ export default function BellsAndWhistlesPage() {
 
   if (appIsLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex items-center justify-center h-screen bg-background" role="status" aria-live="polite">
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
