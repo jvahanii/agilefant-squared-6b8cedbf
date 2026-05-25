@@ -23,9 +23,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const role = activeOrg?.role;
   const canManage = role === "owner" || role === "admin";
 
-  const orgSettings = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false },
-  );
+  const orgSettingsRaw = useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId] : undefined));
+  const orgSettings = orgSettingsRaw ?? DEFAULT_ORG_SETTINGS;
   const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
