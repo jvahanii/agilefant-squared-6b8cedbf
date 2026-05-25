@@ -5,10 +5,26 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
+import { useAppStore } from "@/store/appStore";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+
+// Pre-load appStore data as soon as the active org is known, before any page
+// component mounts. Zustand's subscribe fires synchronously inside
+// loadMemberships (before React re-renders to show the route), so
+// loadFromSupabase gets a head-start over component-level useEffect callbacks.
+// Without this, React's bottom-up effect ordering means child components (e.g.
+// GithubIntegrationsCard) fire their effects before the page-level effect that
+// kicks off loadFromSupabase, causing a flash of UUID names in integration targets.
+useOrgStore.subscribe((state, prevState) => {
+  if (state.activeOrgId && state.activeOrgId !== prevState.activeOrgId) {
+    const appStore = useAppStore.getState();
+    appStore.setOrganizationId(state.activeOrgId);
+    appStore.loadFromSupabase();
+  }
+});
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
