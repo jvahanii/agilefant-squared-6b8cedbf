@@ -1,42 +1,50 @@
-# Why Lovable commits don't create "done" items
+## Goal
 
-The GitHub integration edge function (`supabase/functions/github-pr-merged/index.ts`) only reacts to **merged Pull Requests** (`x-github-event: pull_request` with `action: closed` and `merged: true`).
+Make the "Loading…" screen disappear noticeably faster on app start and org switch, without changing behavior.
 
-- GitHub Copilot opens a PR → when you merge it, the webhook fires → a "done" work item is created.
-- Lovable pushes commits **directly to the default branch** — no PR is ever opened or merged, so GitHub only fires a `push` event, which the function currently ignores (`event !== 'pull_request'` → returns `ignored`).
+## Findings
 
-# What to change
+Three concrete bottlenecks in the current loading path:
 
-Extend the same edge function to also accept `push` events on the default branch, creating one "done" work item per push (or per commit, see options below). Keep PR-merge handling untouched.
+1. **Duplicate full load on every org switch.** `App.tsx` subscribes to `useOrgStore` and calls `appStore.loadFromSupabase()` whenever `activeOrgId` changes. `Index.tsx` *also* calls `loadData()` in a `useEffect` on the same `activeOrgId`. Both fire on first mount, so the entire dataset is fetched twice in parallel — doubling DB load and often doubling perceived wait time.
 
-To avoid double-counting, skip pushes that are the result of a PR merge (their head commit message starts with `Merge pull request #`, or `pusher` is the GitHub merge bot).
+2. **Serialized Supabase queries in `loadFromSupabase`** (`src/store/supabaseSync.ts`):
+   - `auth.getSession()` → `shares` query → `[ownTrees, sharedTrees]` → `[backlogs, ownItems]` → `incomingShared items` → `outgoingShared items` → `loadWorkItemBacklogRanks`.
+   - Several of these are independent and can run together:
+     - `shares`, own trees, own work items, own backlogs (by `organization_id`), and the change log can all start immediately in parallel.
+     - Hyperlinks + change log are loaded *after* the main load completes; they can start in the same parallel batch.
 
-# Where
+3. **Full-screen "Loading…" blocker.** `Index.tsx` renders only a spinner until `isLoading` is false. The app chrome (header, sidebars) could mount immediately with skeletons for trees/items, making the app feel responsive within a few hundred ms even if data is still streaming.
 
-Single file:
-- `supabase/functions/github-pr-merged/index.ts`
+## Plan
 
-Optional follow-up (cosmetic, not required):
-- Rename the function to something like `github-webhook` to reflect that it now handles more than PR merges. This requires updating any webhook URL configured in GitHub. Skip unless you want the cleanup.
+### Step 1 — Remove the duplicate load
+Pick one owner for "load data when active org changes". Keep the `useOrgStore.subscribe` block in `App.tsx` (it runs before child effects, avoiding the GitHub-target flash noted in the existing comment) and **delete** the redundant `loadData()` call from the `activeOrgId` effect in `src/pages/Index.tsx`. Keep the rest of that effect (teams, settings, time entries) since those stores are not pre-loaded by the subscribe.
 
-GitHub webhook configuration (per repo, in `github_repo_integrations`):
-- Make sure each integration's webhook is subscribed to **both** `Pull requests` and `Pushes` events. If it was set up as "Just the push event" or "Let me select" with only PRs ticked, push events won't arrive.
+### Step 2 — Parallelize independent queries in `loadFromSupabase`
+Refactor `src/store/supabaseSync.ts` to issue independent queries in one `Promise.all`:
 
-# Technical details
+- `shares`, own `backlog_trees`, own `work_items`, own `backlogs` (filter by `organization_id` instead of `tree_id`) — all fire immediately.
+- After that batch resolves, fire shared-trees + incoming/outgoing partner work-items + ranks in a second `Promise.all`.
 
-In the handler, after the existing `ping` branch:
+Also lift `loadHyperlinksForWorkItems` and `loadChangeLog` out of `appStore.loadFromSupabase` and run them inside the same overall `Promise.all` as the main load (they only need the org id and the resolved work-item id list, so chain them as a second wave).
 
-1. Accept `event === 'push'` in addition to `pull_request`.
-2. For `push`:
-   - Verify HMAC against each matching integration's `webhook_secret` (same loop as today).
-   - Ignore if `payload.ref !== 'refs/heads/' + payload.repository.default_branch`.
-   - Ignore if `payload.deleted` is true (branch delete) or `payload.commits` is empty.
-   - Ignore if the head commit message starts with `Merge pull request #` (PR merge already handled) — prevents duplicates.
-3. Decide granularity (recommend **one item per push**, matches current PR-merge behavior):
-   - `title` = `payload.head_commit.message` first line, capped at 300 chars.
-   - `description` = `Pushed to ${repoFullName}@${shortSha}` + commit URL + author.
-4. Reuse the existing target-lookup + min-rank + insert logic verbatim for each `github_repo_targets` row.
+### Step 3 — Render the shell during load
+In `src/pages/Index.tsx`, mount `<AppLayout />` immediately and pass `isLoading` down so individual panels show lightweight `<Skeleton />` placeholders instead of the full-screen spinner. Keep the existing full-screen spinner only for the very first paint when nothing is in memory yet (e.g. when `organizationId` is not yet set).
 
-Alternative granularity: one item per commit in `payload.commits` (filter out merge commits). More noise, but full traceability. Default to one-per-push unless you ask otherwise.
+### Step 4 — Verify
+- Manually: open the app, watch network tab → confirm only one wave of `work_items`/`backlogs` fetches per org switch, and that the parallel queries overlap.
+- Run `bunx vitest run` to make sure existing store tests still pass.
+- Sanity-check the Bells & Whistles page still loads correctly.
 
-No database migration needed — schema for `work_items` and `work_item_backlog_ranks` already supports this.
+## Technical details
+
+- The `backlogs` query currently uses `.in('tree_id', allTreeIds)` which forces serialization on the trees query. Switching to `.eq('organization_id', organizationId)` returns the same own-org backlogs and removes the dependency; shared-tree backlogs are already implicitly handled because shared trees are loaded separately and their backlogs are fetched by tree id in the second wave (already the case).
+- The `subscribe` in `App.tsx` already calls `setOrganizationId` + `loadFromSupabase` before the route mounts, which is exactly the head-start the existing comment relies on — Step 1 just removes the duplicate, not the head-start.
+- Skeletons can reuse `@/components/ui/skeleton` which is already in the project.
+
+## Out of scope
+
+- No DB schema changes.
+- No new indexes (can be a follow-up if profiling shows a slow query after these wins).
+- No changes to realtime sync or auth flow.
