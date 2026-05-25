@@ -561,7 +561,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // overlap instead of running serially.
         const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
           loadFromSupabase(orgId),
-          loadHyperlinksForWorkItems(['__org_scoped__'], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
+          loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
           loadChangeLog(orgId),
         ]);
         set({ loadingProgress: 70 });
