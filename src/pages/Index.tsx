@@ -135,13 +135,9 @@ const Index = () => {
   usePasteImageOnSelected();
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground gap-4">
-        <p className="text-muted-foreground">Loading...</p>
-        <Progress value={loadingProgress} className="w-64 h-2" />
-      </div>
-    );
+    return <AppShellSkeleton progress={loadingProgress} />;
   }
+
 
   return <AppLayout />;
 };
