@@ -12,6 +12,8 @@ import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 
+const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false };
+
 export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: boolean }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const memberships = useOrgStore((s) => s.memberships);
