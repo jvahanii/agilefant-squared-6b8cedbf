@@ -8,7 +8,13 @@ import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 
 export default function BellsAndWhistlesPage() {
   const navigate = useNavigate();
-  const activeOrg = useOrgStore((s) => s.getActiveOrg());
+  const memberships = useOrgStore((s) => s.memberships);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const activeOrg = (() => {
+    const m = memberships.find((x) => x.organization_id === activeOrgId) ?? null;
+    return m && roleOverride ? { ...m, role: roleOverride } : m;
+  })();
   const appIsLoading = useAppStore((s) => s.isLoading);
 
   useEffect(() => {
