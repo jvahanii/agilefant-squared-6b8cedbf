@@ -27,10 +27,15 @@ export default function BellsAndWhistlesPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            Bells &amp; Whistles{activeOrg ? ` — ${activeOrg.organization_name}` : ""}
-          </h1>
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Bells &amp; Whistles{activeOrg ? ` — ${activeOrg.organization_name}` : ""}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              You really don't need any of these, but many other tools have them. Agilefant strives to offer them with elegance others will want to copy.
+            </p>
+          </div>
         </div>
 
         <BellsAndWhistlesSection showHeader={false} />
