@@ -913,7 +913,10 @@ export async function loadHyperlinksForWorkItems(
   workItemIds: string[],
   organizationId?: string,
 ): Promise<Record<string, Hyperlink[]>> {
-  if (workItemIds.length === 0) return {};
+  // When an organizationId is supplied we can fetch every hyperlink for that
+  // org in a single query — no work-item id list required.  This enables
+  // callers to start the hyperlinks fetch in parallel with the main data load.
+  if (workItemIds.length === 0 && !organizationId) return {};
   // Prefer a single org-scoped fetch — passing hundreds of IDs via `.in()`
   // builds a URL that exceeds PostgREST's request size limit and returns nothing.
   // Fall back to chunked `.in()` queries when no org is provided.
@@ -930,10 +933,12 @@ export async function loadHyperlinksForWorkItems(
     error = res.error;
     // Filter to the requested work items so callers don't see hyperlinks for
     // items they didn't ask about (defensive — orgs are isolated anyway).
-    if (data) {
+    // When workItemIds is empty, treat that as "all hyperlinks for the org".
+    if (data && workItemIds.length > 0) {
       const idSet = new Set(workItemIds);
       data = data.filter((row) => idSet.has(row.work_item_id));
     }
+
   } else {
     const CHUNK = 100;
     const collected: any[] = [];
