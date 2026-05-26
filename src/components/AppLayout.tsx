@@ -296,7 +296,9 @@ function AppLayoutInner() {
             // Set status to Blocked
             if (state.selectedWorkItemIds.length > 0) {
               e.preventDefault();
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
+              state.runBulk(() => {
+                state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
+              });
               toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Blocked` });
             }
           }
@@ -306,7 +308,9 @@ function AppLayoutInner() {
           // Set status to Not Started
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
           }
           break;
@@ -315,7 +319,9 @@ function AppLayoutInner() {
           // Set status to Done
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Done` });
           }
           break;
@@ -324,7 +330,9 @@ function AppLayoutInner() {
           // Set status to In Progress
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as In Progress` });
           }
           break;
@@ -333,7 +341,9 @@ function AppLayoutInner() {
           // Set status to Pending
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Pending` });
           }
           break;
