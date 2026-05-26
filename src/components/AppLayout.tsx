@@ -754,6 +754,11 @@ function AppLayoutInner() {
       const overData = over.data.current;
       const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
 
+      // Coalesce the entire drop into a single undo entry — multi-item drags
+      // and chained reparent+reorder operations should be one undo step.
+      useAppStore.getState().runBulk(() => {
+
+
       if (activeData?.type === "workitem" && overData?.type === "backlog") {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
