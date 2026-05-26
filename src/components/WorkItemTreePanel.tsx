@@ -1011,7 +1011,9 @@ function WorkItemNodeContent({
                 value={item.status}
                 onValueChange={(val) => {
                   if (isSelected && selectedWorkItemIds.length > 1) {
-                    selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                    useAppStore.getState().runBulk(() => {
+                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                    });
                   } else {
                     setWorkItemStatus(workItemId, val as WorkItemStatus);
                   }
