@@ -106,6 +106,8 @@ interface AppState extends DataSnapshot {
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
+  /** Coalesce many mutations into a single undo entry. */
+  runBulk: (fn: () => void) => void;
   addHyperlink: (workItemId: string, url: string, altText: string) => void;
   updateHyperlink: (linkId: string, workItemId: string, url: string, altText: string) => void;
   removeHyperlink: (linkId: string, workItemId: string) => void;
