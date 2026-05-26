@@ -273,6 +273,20 @@ const snapshot = (state: DataSnapshot): DataSnapshot => ({
 const MAX_UNDO = 100;
 
 /**
+ * Bulk-operation tracking: when `undoBatchDepth > 0`, mutators skip pushing
+ * their own undo snapshot; the `runBulk` wrapper captures exactly one
+ * snapshot at the start of the outermost batch and pushes it when the batch
+ * ends, so a multi-item operation becomes a single undo step.
+ */
+let undoBatchDepth = 0;
+let pendingBatchSnapshot: DataSnapshot | null = null;
+
+function pushUndoEntry(state: AppState): DataSnapshot[] {
+  if (undoBatchDepth > 0) return state.undoStack;
+  return [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)];
+}
+
+/**
  * Applies a batch of work-item ID renames (old → new) to the store's data
  * snapshot.  Rewires every item's own `id`, `parentId` back-references,
  * `childrenIds`, the `hyperlinks` map, and the selected-work-item list.
