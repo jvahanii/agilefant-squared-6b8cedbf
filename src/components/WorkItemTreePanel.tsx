@@ -1084,7 +1084,13 @@ function WorkItemNodeContent({
                       className="text-xs"
                       onSelect={() => {
                         const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
-                        ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                        if (ids.length > 1) {
+                          useAppStore.getState().runBulk(() => {
+                            ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                          });
+                        } else {
+                          ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                        }
                       }}
                     >
                       {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
