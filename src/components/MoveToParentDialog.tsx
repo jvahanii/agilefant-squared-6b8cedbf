@@ -143,7 +143,9 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
       }
     }
 
-    workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
+    useAppStore.getState().runBulk(() => {
+      workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
+    });
     const newParentTitle = newParentId ? (workItems[newParentId]?.title ?? "item") : null;
     toast({
       title: newParentTitle
