@@ -593,7 +593,9 @@ function WorkItemNodeContent({
             if (dragStartedRef.current) return;
             const newStatus: WorkItemStatus = item.status === "done" ? "not_started" : "done";
             if (isSelected && selectedWorkItemIds.length > 1) {
-              selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+              useAppStore.getState().runBulk(() => {
+                selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+              });
             } else {
               setWorkItemStatus(workItemId, newStatus);
             }
