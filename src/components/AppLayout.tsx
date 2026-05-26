@@ -277,16 +277,18 @@ function AppLayoutInner() {
               // Same deduplication as "Move to top" – one call per sibling context.
               const backlogIdSet = new Set(backlogIds);
               const processedContexts = new Set<string>();
-              state.selectedWorkItemIds.forEach((id) => {
-                const wi = state.workItems[id];
-                if (!wi) return;
-                const parentInContext =
-                  wi.parentId !== null &&
-                  backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
-                const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
-                if (processedContexts.has(contextKey)) return;
-                processedContexts.add(contextKey);
-                state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+              state.runBulk(() => {
+                state.selectedWorkItemIds.forEach((id) => {
+                  const wi = state.workItems[id];
+                  if (!wi) return;
+                  const parentInContext =
+                    wi.parentId !== null &&
+                    backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
+                  const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                  if (processedContexts.has(contextKey)) return;
+                  processedContexts.add(contextKey);
+                  state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+                });
               });
               toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
             }
