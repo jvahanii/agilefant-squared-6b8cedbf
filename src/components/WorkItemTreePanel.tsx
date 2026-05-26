@@ -648,7 +648,9 @@ function WorkItemNodeContent({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isSelected && selectedWorkItemIds.length > 1) {
-                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
+                      useAppStore.getState().runBulk(() => {
+                        selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
+                      });
                     } else {
                       setWorkItemStatus(workItemId, s.key as WorkItemStatus);
                     }
