@@ -2617,3 +2617,33 @@ describe("reorderWorkItemAmongSiblings cross-context rank", () => {
     expect(items[`${ORG}::wi-d`].ranks[`${ORG}::bl-3`]).not.toBe(items[`${ORG}::wi-c`].ranks[`${ORG}::bl-3`]);
   });
 });
+
+describe("runBulk", () => {
+  it("coalesces multiple mutations into a single undo entry", () => {
+    seedStore();
+    // Add three items via addWorkItem (each would normally push undo separately)
+    useAppStore.getState().addWorkItem("A", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    useAppStore.getState().addWorkItem("B", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    const baselineUndoLen = useAppStore.getState().undoStack.length;
+    const ids = Object.keys(useAppStore.getState().workItems);
+
+    useAppStore.getState().runBulk(() => {
+      ids.forEach((id) => useAppStore.getState().setWorkItemStatus(id, "done"));
+    });
+
+    expect(useAppStore.getState().undoStack.length).toBe(baselineUndoLen + 1);
+    expect(Object.values(useAppStore.getState().workItems).every((wi) => wi.status === "done")).toBe(true);
+
+    useAppStore.getState().undo();
+    expect(Object.values(useAppStore.getState().workItems).every((wi) => wi.status !== "done")).toBe(true);
+  });
+
+  it("does not push an undo entry when the batch made no changes", () => {
+    seedStore();
+    const before = useAppStore.getState().undoStack.length;
+    useAppStore.getState().runBulk(() => {
+      // no-op
+    });
+    expect(useAppStore.getState().undoStack.length).toBe(before);
+  });
+});

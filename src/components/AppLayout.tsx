@@ -243,16 +243,18 @@ function AppLayoutInner() {
             // on the next reload.
             const backlogIdSet = new Set(backlogIds);
             const processedContexts = new Set<string>();
-            state.selectedWorkItemIds.forEach((id) => {
-              const wi = state.workItems[id];
-              if (!wi) return;
-              const parentInContext =
-                wi.parentId !== null &&
-                backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
-              const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
-              if (processedContexts.has(contextKey)) return;
-              processedContexts.add(contextKey);
-              state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => {
+                const wi = state.workItems[id];
+                if (!wi) return;
+                const parentInContext =
+                  wi.parentId !== null &&
+                  backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
+                const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                if (processedContexts.has(contextKey)) return;
+                processedContexts.add(contextKey);
+                state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
+              });
             });
             toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
           }
@@ -275,16 +277,18 @@ function AppLayoutInner() {
               // Same deduplication as "Move to top" – one call per sibling context.
               const backlogIdSet = new Set(backlogIds);
               const processedContexts = new Set<string>();
-              state.selectedWorkItemIds.forEach((id) => {
-                const wi = state.workItems[id];
-                if (!wi) return;
-                const parentInContext =
-                  wi.parentId !== null &&
-                  backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
-                const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
-                if (processedContexts.has(contextKey)) return;
-                processedContexts.add(contextKey);
-                state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+              state.runBulk(() => {
+                state.selectedWorkItemIds.forEach((id) => {
+                  const wi = state.workItems[id];
+                  if (!wi) return;
+                  const parentInContext =
+                    wi.parentId !== null &&
+                    backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
+                  const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                  if (processedContexts.has(contextKey)) return;
+                  processedContexts.add(contextKey);
+                  state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+                });
               });
               toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
             }
@@ -292,7 +296,9 @@ function AppLayoutInner() {
             // Set status to Blocked
             if (state.selectedWorkItemIds.length > 0) {
               e.preventDefault();
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
+              state.runBulk(() => {
+                state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
+              });
               toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Blocked` });
             }
           }
@@ -302,7 +308,9 @@ function AppLayoutInner() {
           // Set status to Not Started
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
           }
           break;
@@ -311,7 +319,9 @@ function AppLayoutInner() {
           // Set status to Done
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Done` });
           }
           break;
@@ -320,7 +330,9 @@ function AppLayoutInner() {
           // Set status to In Progress
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as In Progress` });
           }
           break;
@@ -329,7 +341,9 @@ function AppLayoutInner() {
           // Set status to Pending
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
-            state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
+            state.runBulk(() => {
+              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
+            });
             toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Pending` });
           }
           break;
@@ -740,6 +754,11 @@ function AppLayoutInner() {
       const overData = over.data.current;
       const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
 
+      // Coalesce the entire drop into a single undo entry — multi-item drags
+      // and chained reparent+reorder operations should be one undo step.
+      useAppStore.getState().runBulk(() => {
+
+
       if (activeData?.type === "workitem" && overData?.type === "backlog") {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
@@ -890,6 +909,7 @@ function AppLayoutInner() {
         const targetIndex = overData.index as number;
         reorderBacklogTree(treeId, targetIndex);
       }
+      });
     },
     [
       moveWorkItemToBacklog,
@@ -908,13 +928,15 @@ function AppLayoutInner() {
       if (!pendingCrossTree) return;
       const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
-      workItemIds.forEach((id) => {
-        if (value === "move") {
-          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-          removeWorkItemFromTree(id, sourceTreeId);
-        } else if (value === "add") {
-          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-        }
+      useAppStore.getState().runBulk(() => {
+        workItemIds.forEach((id) => {
+          if (value === "move") {
+            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+            removeWorkItemFromTree(id, sourceTreeId);
+          } else if (value === "add") {
+            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+          }
+        });
       });
       setPendingCrossTree(null);
     },

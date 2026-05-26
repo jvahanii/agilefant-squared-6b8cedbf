@@ -106,6 +106,8 @@ interface AppState extends DataSnapshot {
   resetToMockData: () => Promise<void>;
   undo: () => void;
   redo: () => void;
+  /** Coalesce many mutations into a single undo entry. */
+  runBulk: (fn: () => void) => void;
   addHyperlink: (workItemId: string, url: string, altText: string) => void;
   updateHyperlink: (linkId: string, workItemId: string, url: string, altText: string) => void;
   removeHyperlink: (linkId: string, workItemId: string) => void;
@@ -271,6 +273,20 @@ const snapshot = (state: DataSnapshot): DataSnapshot => ({
 });
 
 const MAX_UNDO = 100;
+
+/**
+ * Bulk-operation tracking: when `undoBatchDepth > 0`, mutators skip pushing
+ * their own undo snapshot; the `runBulk` wrapper captures exactly one
+ * snapshot at the start of the outermost batch and pushes it when the batch
+ * ends, so a multi-item operation becomes a single undo step.
+ */
+let undoBatchDepth = 0;
+let pendingBatchSnapshot: DataSnapshot | null = null;
+
+function pushUndoEntry(state: AppState): DataSnapshot[] {
+  if (undoBatchDepth > 0) return state.undoStack;
+  return [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)];
+}
 
 /**
  * Applies a batch of work-item ID renames (old → new) to the store's data
@@ -821,7 +837,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -874,7 +890,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -986,7 +1002,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
       const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
       internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `backlog: "${oldBacklogName}" → "${newBacklogName}"` });
-      set({ workItems: updatedItems, undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)] });
+      set({ workItems: updatedItems, undoStack: pushUndoEntry(state) });
     },
 
     addWorkItem: (title, parentId, backlogId, treeId, requestedRank) => {
@@ -1047,7 +1063,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         workItems: updatedWorkItems,
         selectedWorkItemIds: [id],
         expandedWorkItems: newExpanded,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
 
@@ -1110,7 +1126,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       set({
         workItems: updatedWorkItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1160,7 +1176,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1210,7 +1226,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemIds[0], entityName: `${workItemIds.length} items` });
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1225,7 +1241,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title, details: `"${item.title}" → "${title}"` });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1259,7 +1275,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       set({
         workItems: updatedWorkItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1280,7 +1296,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1349,7 +1365,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `tree: "${treeName}"` });
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1413,7 +1429,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: items[0].workItemId, entityName: `${items.length} items` });
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1640,7 +1656,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Reparent", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `parent: "${oldParentName}" → "${newParentName}"${strategyLabel}` });
       set({
         workItems: updatedItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1764,7 +1780,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         selectedBacklogIds: [id],
         selectedTreeId: treeId,
         expandedBacklogs: newExpandedBacklogs,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1848,7 +1864,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         workItems: updatedItems,
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1863,7 +1879,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Rename", entityType: "backlog", entityId: backlogId, entityName: name, details: `"${bl.name}" → "${name}"` });
       set({
         backlogs: { ...state.backlogs, [backlogId]: updated },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1899,7 +1915,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -1995,7 +2011,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
         workItems: updatedWorkItems,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2016,7 +2032,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
       set({
         backlogTrees: { ...state.backlogTrees, [id]: newTree },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2057,7 +2073,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         workItems: updatedItems,
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2072,7 +2088,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Rename", entityType: "backlog_tree", entityId: treeId, entityName: name, details: `"${tree.name}" → "${name}"` });
       set({
         backlogTrees: { ...state.backlogTrees, [treeId]: updated },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2097,7 +2113,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Reorder", entityType: "backlog_tree", entityId: treeId, entityName: tree.name });
       set({
         backlogTrees: updatedTrees,
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2132,6 +2148,42 @@ export const useAppStore = create<AppState>()((set, get) => {
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       }),
 
+    runBulk: (fn) => {
+      let preState: AppState | null = null;
+      if (undoBatchDepth === 0) {
+        preState = get();
+        pendingBatchSnapshot = snapshot(preState);
+      }
+      undoBatchDepth++;
+      try {
+        fn();
+      } finally {
+        undoBatchDepth--;
+        if (undoBatchDepth === 0 && pendingBatchSnapshot) {
+          const snap = pendingBatchSnapshot;
+          pendingBatchSnapshot = null;
+          const after = get();
+          // Skip the snapshot if nothing relevant changed (e.g. early-return
+          // path inside the batch). Mutators always replace these maps, so
+          // reference equality is a safe "no change" detector.
+          const changed =
+            !preState ||
+            after.workItems !== preState.workItems ||
+            after.backlogs !== preState.backlogs ||
+            after.backlogTrees !== preState.backlogTrees ||
+            after.hyperlinks !== preState.hyperlinks;
+          if (changed) {
+            set((state) => ({
+              undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snap],
+              redoStack: [],
+            }));
+          }
+        }
+      }
+    },
+
+
+
     addHyperlink: (workItemId, url, altText) => {
       const state = get();
       const orgId = state.organizationId;
@@ -2150,7 +2202,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Add Hyperlink", entityType: "hyperlink", entityId: workItemId, details: url });
       set({
         hyperlinks: { ...state.hyperlinks, [workItemId]: [...existing, newLink] },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2170,7 +2222,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       newList[idx] = updated;
       set({
         hyperlinks: { ...state.hyperlinks, [workItemId]: newList },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },
@@ -2183,7 +2235,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Remove Hyperlink", entityType: "hyperlink", entityId: workItemId });
       set({
         hyperlinks: { ...state.hyperlinks, [workItemId]: filtered },
-        undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)],
+        undoStack: pushUndoEntry(state),
         redoStack: [],
       });
     },

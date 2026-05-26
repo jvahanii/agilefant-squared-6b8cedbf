@@ -143,7 +143,9 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
       }
     }
 
-    workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
+    useAppStore.getState().runBulk(() => {
+      workItemIds.forEach((id) => reparentWorkItem(id, newParentId, parentTreeId, parentBacklogId));
+    });
     const newParentTitle = newParentId ? (workItems[newParentId]?.title ?? "item") : null;
     toast({
       title: newParentTitle
@@ -160,9 +162,11 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
   const handleCrossTreeChoice = (strategy: "move-to-tree" | "mirror") => {
     if (!pendingCrossTree) return;
     const { parentId, treeId, backlogId } = pendingCrossTree;
-    workItemIds.forEach((id) =>
-      reparentWorkItem(id, parentId, treeId, backlogId, strategy),
-    );
+    useAppStore.getState().runBulk(() => {
+      workItemIds.forEach((id) =>
+        reparentWorkItem(id, parentId, treeId, backlogId, strategy),
+      );
+    });
     const parentTitle = workItems[parentId]?.title ?? "item";
     toast({
       title: workItemIds.length === 1

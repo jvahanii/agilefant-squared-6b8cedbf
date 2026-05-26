@@ -1,50 +1,50 @@
-## Goal
+# Single Undo for Multi-Select Operations
 
-Make the "Loading…" screen disappear noticeably faster on app start and org switch, without changing behavior.
+## Problem
 
-## Findings
+When several work items (or backlogs) are selected and the user triggers an action — status change, delete, move-to-backlog, label assign/unassign, reparent, snooze, etc. — the UI calls the per-item store mutator inside a `forEach`. Each mutator independently pushes a snapshot to `undoStack`, so undoing a 10-item bulk action takes 10 Ctrl+Z presses.
 
-Three concrete bottlenecks in the current loading path:
+There are ~30 such bulk call sites across `WorkItemTreePanel`, `BacklogTreePanel`, `AppLayout`, `MoveToParentDialog`, `MoveToBacklogDialog`, `LabelPicker`.
 
-1. **Duplicate full load on every org switch.** `App.tsx` subscribes to `useOrgStore` and calls `appStore.loadFromSupabase()` whenever `activeOrgId` changes. `Index.tsx` *also* calls `loadData()` in a `useEffect` on the same `activeOrgId`. Both fire on first mount, so the entire dataset is fetched twice in parallel — doubling DB load and often doubling perceived wait time.
+## Solution
 
-2. **Serialized Supabase queries in `loadFromSupabase`** (`src/store/supabaseSync.ts`):
-   - `auth.getSession()` → `shares` query → `[ownTrees, sharedTrees]` → `[backlogs, ownItems]` → `incomingShared items` → `outgoingShared items` → `loadWorkItemBacklogRanks`.
-   - Several of these are independent and can run together:
-     - `shares`, own trees, own work items, own backlogs (by `organization_id`), and the change log can all start immediately in parallel.
-     - Hyperlinks + change log are loaded *after* the main load completes; they can start in the same parallel batch.
+Introduce a batching wrapper in `src/store/appStore.ts` and wrap every bulk call site with it. One bulk action = one snapshot = one undo.
 
-3. **Full-screen "Loading…" blocker.** `Index.tsx` renders only a spinner until `isLoading` is false. The app chrome (header, sidebars) could mount immediately with skeletons for trees/items, making the app feel responsive within a few hundred ms even if data is still streaming.
+### Store changes (`src/store/appStore.ts`)
 
-## Plan
+1. Add a module-level `undoBatchDepth` counter and `undoBatchSnapshotTaken` flag (not part of zustand state, just module locals).
+2. Add `runBulk(fn: () => void): void` to the store API:
+   - On entry, if depth is 0, capture one snapshot of current state and set `undoBatchSnapshotTaken = true`. Increment depth.
+   - Run `fn()`.
+   - On exit, decrement depth. When depth returns to 0, push the captured snapshot to `undoStack` (trimmed to `MAX_UNDO`) and clear `redoStack`, then reset the flag.
+   - Wrap in try/finally so a thrown error still resets depth.
+3. Change every existing `undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)]` push inside the ~30 mutators to be conditional: if `undoBatchDepth > 0`, skip the push (the wrapper already snapshotted). Cleanest is a small helper `pushUndo(state)` that returns either the new array or `state.undoStack` unchanged when batching.
 
-### Step 1 — Remove the duplicate load
-Pick one owner for "load data when active org changes". Keep the `useOrgStore.subscribe` block in `App.tsx` (it runs before child effects, avoiding the GitHub-target flash noted in the existing comment) and **delete** the redundant `loadData()` call from the `activeOrgId` effect in `src/pages/Index.tsx`. Keep the rest of that effect (teams, settings, time entries) since those stores are not pre-loaded by the subscribe.
+### Call-site changes
 
-### Step 2 — Parallelize independent queries in `loadFromSupabase`
-Refactor `src/store/supabaseSync.ts` to issue independent queries in one `Promise.all`:
+Wrap each multi-id `forEach` with `runBulk`. Affected files and approximate lines:
 
-- `shares`, own `backlog_trees`, own `work_items`, own `backlogs` (filter by `organization_id` instead of `tree_id`) — all fire immediately.
-- After that batch resolves, fire shared-trees + incoming/outgoing partner work-items + ranks in a second `Promise.all`.
+- `src/components/WorkItemTreePanel.tsx` — 596, 649, 1010 (status changes), 1081 (move-to-backlog), 1114, 1116 (label assign/unassign)
+- `src/components/AppLayout.tsx` — 246, 278 (delete bulk), 295, 305, 314, 323, 332 (status shortcuts), 580, 587 (delete shortcut), 755, 776, 781, 794, 812, 825 (drag-and-drop multi-move), 911
+- `src/components/MoveToParentDialog.tsx` — 146, 163
+- `src/components/MoveToBacklogDialog.tsx` — 64, 111
+- `src/components/LabelPicker.tsx` — 108, 111, 127
+- `src/components/BacklogTreePanel.tsx` — any `forEach` over selected backlog ids (audit during implementation)
 
-Also lift `loadHyperlinksForWorkItems` and `loadChangeLog` out of `appStore.loadFromSupabase` and run them inside the same overall `Promise.all` as the main load (they only need the org id and the resolved work-item id list, so chain them as a second wave).
+Each wrap is mechanical:
 
-### Step 3 — Render the shell during load
-In `src/pages/Index.tsx`, mount `<AppLayout />` immediately and pass `isLoading` down so individual panels show lightweight `<Skeleton />` placeholders instead of the full-screen spinner. Keep the existing full-screen spinner only for the very first paint when nothing is in memory yet (e.g. when `organizationId` is not yet set).
+```ts
+runBulk(() => {
+  selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+});
+```
 
-### Step 4 — Verify
-- Manually: open the app, watch network tab → confirm only one wave of `work_items`/`backlogs` fetches per org switch, and that the parallel queries overlap.
-- Run `bunx vitest run` to make sure existing store tests still pass.
-- Sanity-check the Bells & Whistles page still loads correctly.
+### Tests (`src/test/appStore.test.ts`)
 
-## Technical details
-
-- The `backlogs` query currently uses `.in('tree_id', allTreeIds)` which forces serialization on the trees query. Switching to `.eq('organization_id', organizationId)` returns the same own-org backlogs and removes the dependency; shared-tree backlogs are already implicitly handled because shared trees are loaded separately and their backlogs are fetched by tree id in the second wave (already the case).
-- The `subscribe` in `App.tsx` already calls `setOrganizationId` + `loadFromSupabase` before the route mounts, which is exactly the head-start the existing comment relies on — Step 1 just removes the duplicate, not the head-start.
-- Skeletons can reuse `@/components/ui/skeleton` which is already in the project.
+Add a focused test: select 3 items, call `runBulk(() => ids.forEach(id => setWorkItemStatus(id, 'done')))`, assert `undoStack.length` grew by exactly 1, and a single `undo()` reverts all 3 items.
 
 ## Out of scope
 
-- No DB schema changes.
-- No new indexes (can be a follow-up if profiling shows a slow query after these wins).
-- No changes to realtime sync or auth flow.
+- No change to redo behavior beyond the standard "new action clears redo" — that already happens once via the wrapper.
+- No change to single-item operations; they still snapshot per call exactly as today.
+- Drag-and-drop already groups its DB writes; only the undo-stack push is being coalesced.

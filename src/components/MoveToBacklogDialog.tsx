@@ -108,9 +108,11 @@ export function MoveToBacklogDialog({
   }, [backlogs, sortedTrees, assignedBacklogIds, query, currentTreeId]);
 
   const applySelection = (backlogId: string, targetTreeId: string, strategy: "move" | "mirror") => {
-    workItemIds.forEach((id) =>
-      moveWorkItemToBacklog(id, backlogId, targetTreeId, strategy, strategy === "move" ? currentTreeId : undefined),
-    );
+    useAppStore.getState().runBulk(() => {
+      workItemIds.forEach((id) =>
+        moveWorkItemToBacklog(id, backlogId, targetTreeId, strategy, strategy === "move" ? currentTreeId : undefined),
+      );
+    });
     onOpenChange(false);
   };
 

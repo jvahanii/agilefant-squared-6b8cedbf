@@ -593,7 +593,9 @@ function WorkItemNodeContent({
             if (dragStartedRef.current) return;
             const newStatus: WorkItemStatus = item.status === "done" ? "not_started" : "done";
             if (isSelected && selectedWorkItemIds.length > 1) {
-              selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+              useAppStore.getState().runBulk(() => {
+                selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+              });
             } else {
               setWorkItemStatus(workItemId, newStatus);
             }
@@ -646,7 +648,9 @@ function WorkItemNodeContent({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isSelected && selectedWorkItemIds.length > 1) {
-                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
+                      useAppStore.getState().runBulk(() => {
+                        selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
+                      });
                     } else {
                       setWorkItemStatus(workItemId, s.key as WorkItemStatus);
                     }
@@ -1007,7 +1011,9 @@ function WorkItemNodeContent({
                 value={item.status}
                 onValueChange={(val) => {
                   if (isSelected && selectedWorkItemIds.length > 1) {
-                    selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                    useAppStore.getState().runBulk(() => {
+                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                    });
                   } else {
                     setWorkItemStatus(workItemId, val as WorkItemStatus);
                   }
@@ -1078,7 +1084,13 @@ function WorkItemNodeContent({
                       className="text-xs"
                       onSelect={() => {
                         const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
-                        ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                        if (ids.length > 1) {
+                          useAppStore.getState().runBulk(() => {
+                            ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                          });
+                        } else {
+                          ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
+                        }
                       }}
                     >
                       {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
