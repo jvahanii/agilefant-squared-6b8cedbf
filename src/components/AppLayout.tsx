@@ -909,6 +909,7 @@ function AppLayoutInner() {
         const targetIndex = overData.index as number;
         reorderBacklogTree(treeId, targetIndex);
       }
+      });
     },
     [
       moveWorkItemToBacklog,
