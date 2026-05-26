@@ -928,13 +928,15 @@ function AppLayoutInner() {
       if (!pendingCrossTree) return;
       const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
-      workItemIds.forEach((id) => {
-        if (value === "move") {
-          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-          removeWorkItemFromTree(id, sourceTreeId);
-        } else if (value === "add") {
-          moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-        }
+      useAppStore.getState().runBulk(() => {
+        workItemIds.forEach((id) => {
+          if (value === "move") {
+            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+            removeWorkItemFromTree(id, sourceTreeId);
+          } else if (value === "add") {
+            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
+          }
+        });
       });
       setPendingCrossTree(null);
     },
