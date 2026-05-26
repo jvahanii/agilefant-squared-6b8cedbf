@@ -1122,17 +1122,10 @@ function WorkItemNodeContent({
                       checked={fullyAssigned}
                       data-partially={partiallyAssigned || undefined}
                       onCheckedChange={(checked) => {
-                        const run = () => {
-                          if (checked) {
-                            contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
-                          } else {
-                            contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
-                          }
-                        };
-                        if (contextIds.length > 1) {
-                          useAppStore.getState().runBulk(run);
+                        if (checked) {
+                          contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
                         } else {
-                          run();
+                          contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
                         }
                       }}
                     >
