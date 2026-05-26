@@ -2149,8 +2149,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       }),
 
     runBulk: (fn) => {
+      let preState: AppState | null = null;
       if (undoBatchDepth === 0) {
-        pendingBatchSnapshot = snapshot(get());
+        preState = get();
+        pendingBatchSnapshot = snapshot(preState);
       }
       undoBatchDepth++;
       try {
@@ -2160,10 +2162,22 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (undoBatchDepth === 0 && pendingBatchSnapshot) {
           const snap = pendingBatchSnapshot;
           pendingBatchSnapshot = null;
-          set((state) => ({
-            undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snap],
-            redoStack: [],
-          }));
+          const after = get();
+          // Skip the snapshot if nothing relevant changed (e.g. early-return
+          // path inside the batch). Mutators always replace these maps, so
+          // reference equality is a safe "no change" detector.
+          const changed =
+            !preState ||
+            after.workItems !== preState.workItems ||
+            after.backlogs !== preState.backlogs ||
+            after.backlogTrees !== preState.backlogTrees ||
+            after.hyperlinks !== preState.hyperlinks;
+          if (changed) {
+            set((state) => ({
+              undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snap],
+              redoStack: [],
+            }));
+          }
         }
       }
     },
