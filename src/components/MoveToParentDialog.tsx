@@ -162,9 +162,11 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
   const handleCrossTreeChoice = (strategy: "move-to-tree" | "mirror") => {
     if (!pendingCrossTree) return;
     const { parentId, treeId, backlogId } = pendingCrossTree;
-    workItemIds.forEach((id) =>
-      reparentWorkItem(id, parentId, treeId, backlogId, strategy),
-    );
+    useAppStore.getState().runBulk(() => {
+      workItemIds.forEach((id) =>
+        reparentWorkItem(id, parentId, treeId, backlogId, strategy),
+      );
+    });
     const parentTitle = workItems[parentId]?.title ?? "item";
     toast({
       title: workItemIds.length === 1
