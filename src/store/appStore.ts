@@ -2148,6 +2148,28 @@ export const useAppStore = create<AppState>()((set, get) => {
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       }),
 
+    runBulk: (fn) => {
+      if (undoBatchDepth === 0) {
+        pendingBatchSnapshot = snapshot(get());
+      }
+      undoBatchDepth++;
+      try {
+        fn();
+      } finally {
+        undoBatchDepth--;
+        if (undoBatchDepth === 0 && pendingBatchSnapshot) {
+          const snap = pendingBatchSnapshot;
+          pendingBatchSnapshot = null;
+          set((state) => ({
+            undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snap],
+            redoStack: [],
+          }));
+        }
+      }
+    },
+
+
+
     addHyperlink: (workItemId, url, altText) => {
       const state = get();
       const orgId = state.organizationId;
