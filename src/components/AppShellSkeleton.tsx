@@ -31,7 +31,7 @@ export function AppShellSkeleton({ progress }: { progress: number }) {
       {/* Progress strip */}
       <div className="px-4 py-2 border-t border-border" aria-live="polite" role="status">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-muted-foreground">Loading your workspace…</span>
+          <span className="text-xs text-muted-foreground">Fetching your elephant…</span>
           <span className="text-xs text-muted-foreground tabular-nums">{Math.round(progress)}%</span>
         </div>
         <Progress value={progress} className="h-1.5" />
