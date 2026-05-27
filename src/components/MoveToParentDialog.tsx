@@ -38,6 +38,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
 
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   /** Set when the user selects a parent from a different tree; triggers the
    *  cross-tree choice view instead of immediately reparenting. */
@@ -118,6 +119,52 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
       .filter((r) => r.treeId)
       .sort((a, b) => a.item.title.localeCompare(b.item.title));
   }, [query, workItems, excludedIds, backlogs, backlogTrees]);
+
+  // Trim stale refs when the candidates list shrinks.
+  useEffect(() => {
+    itemRefs.current = itemRefs.current.slice(0, candidates.length + 1);
+  }, [candidates.length]);
+
+  const focusItem = (index: number) => {
+    const el = itemRefs.current[index];
+    if (el) {
+      el.focus();
+      el.scrollIntoView({ block: "nearest" });
+    }
+  };
+
+  // Total navigable items: root button (index 0) + one per candidate.
+  const totalItems = candidates.length + 1;
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      onOpenChange(false);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusItem(0);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      focusItem(totalItems - 1);
+    }
+  };
+
+  const handleItemKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (index === totalItems - 1) {
+        inputRef.current?.focus();
+      } else {
+        focusItem(index + 1);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (index === 0) {
+        inputRef.current?.focus();
+      } else {
+        focusItem(index - 1);
+      }
+    }
+  };
 
   const handleSelect = (
     newParentId: string | null,
@@ -258,17 +305,17 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="h-8 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") onOpenChange(false);
-                }}
+                onKeyDown={handleInputKeyDown}
               />
             </div>
 
             {/* Move to root option */}
             <div className="px-2 pb-1">
               <button
+                ref={(el) => { itemRefs.current[0] = el; }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-left text-sm hover:bg-accent/60 transition-colors text-muted-foreground italic"
                 onClick={() => handleSelect(null)}
+                onKeyDown={(e) => handleItemKeyDown(e, 0)}
               >
                 Move to root (no parent)
               </button>
@@ -282,7 +329,7 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
                 </div>
               ) : (
                 <div className="flex flex-col">
-                  {candidates.map(({ item, treeId, backlogId, treeName, backlogPath, ancestors }) => {
+                  {candidates.map(({ item, treeId, backlogId, treeName, backlogPath, ancestors }, index) => {
                     const statusColor =
                       DEFAULT_TREE_STATUSES.find((s) => s.key === item.status)?.color ?? DEFAULT_STATUS_COLOR;
                     const q = query.trim().toLowerCase();
@@ -307,8 +354,10 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
                     return (
                       <button
                         key={item.id}
+                        ref={(el) => { itemRefs.current[index + 1] = el; }}
                         className="flex items-start gap-2 px-4 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/20 last:border-b-0"
                         onClick={() => handleSelect(item.id, treeId, backlogId, treeName)}
+                        onKeyDown={(e) => handleItemKeyDown(e, index + 1)}
                       >
                         <span
                           className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50"
