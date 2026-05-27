@@ -150,8 +150,9 @@ function AppLayoutInner() {
         return;
       }
 
-      // Ctrl+A / Cmd+A selects all visible work items
+      // Ctrl+A / Cmd+A selects all visible work items (skip when a dialog is open)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+        if (document.querySelector('[role="dialog"]')) return;
         const ids = visibleWorkItemIdsRef.current;
         if (ids.length > 0) {
           e.preventDefault();
