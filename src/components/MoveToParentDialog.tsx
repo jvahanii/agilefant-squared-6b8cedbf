@@ -139,30 +139,39 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
       onOpenChange(false);
-    } else if (e.key === "ArrowDown") {
+    } else if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
       e.preventDefault();
       focusItem(0);
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
       e.preventDefault();
       focusItem(totalItems - 1);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (candidates.length > 0) {
+        const first = candidates[0];
+        handleSelect(first.item.id, first.treeId, first.backlogId, first.treeName);
+      }
     }
   };
 
   const handleItemKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (e.key === "ArrowDown") {
+    if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
       e.preventDefault();
       if (index === totalItems - 1) {
         inputRef.current?.focus();
       } else {
         focusItem(index + 1);
       }
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
       e.preventDefault();
       if (index === 0) {
         inputRef.current?.focus();
       } else {
         focusItem(index - 1);
       }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      e.currentTarget.click();
     }
   };
 
