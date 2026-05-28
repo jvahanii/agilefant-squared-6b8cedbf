@@ -173,6 +173,9 @@ function AppLayoutInner() {
 
       if (isInput) return;
 
+      // Don't fire global shortcuts when a modal dialog is open (e.g. reparent dialog).
+      if (document.querySelector('[role="dialog"]')) return;
+
       const state = useAppStore.getState();
 
       // Helper: move the single selected work item one step up (-1) or down (+1).
