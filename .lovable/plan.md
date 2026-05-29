@@ -1,50 +1,57 @@
-# Single Undo for Multi-Select Operations
+# Savings & Income (Labs)
 
-## Problem
+A new opt-in Labs feature that lets users attach **monthly savings** and **monthly income** amounts to any work item, then visualize them as **cumulative flow diagrams** per backlog tree, sliced by work-item status.
 
-When several work items (or backlogs) are selected and the user triggers an action — status change, delete, move-to-backlog, label assign/unassign, reparent, snooze, etc. — the UI calls the per-item store mutator inside a `forEach`. Each mutator independently pushes a snapshot to `undoStack`, so undoing a 10-item bulk action takes 10 Ctrl+Z presses.
+## 1. Labs toggle
 
-There are ~30 such bulk call sites across `WorkItemTreePanel`, `BacklogTreePanel`, `AppLayout`, `MoveToParentDialog`, `MoveToBacklogDialog`, `LabelPicker`.
+In `src/pages/TeamSettings.tsx` (Labs section), add a new card:
 
-## Solution
+- **Savings & Income** switch — default **off**, persisted in `organization_settings.savings_income_enabled`.
+- Same pattern as the existing Labels toggle (optimistic update + Supabase upsert + realtime sync).
+- New selector `isSavingsIncomeEnabled(orgId)` in `src/store/orgSettingsStore.ts`.
 
-Introduce a batching wrapper in `src/store/appStore.ts` and wrap every bulk call site with it. One bulk action = one snapshot = one undo.
+## 2. Database
 
-### Store changes (`src/store/appStore.ts`)
+Migration adds:
 
-1. Add a module-level `undoBatchDepth` counter and `undoBatchSnapshotTaken` flag (not part of zustand state, just module locals).
-2. Add `runBulk(fn: () => void): void` to the store API:
-   - On entry, if depth is 0, capture one snapshot of current state and set `undoBatchSnapshotTaken = true`. Increment depth.
-   - Run `fn()`.
-   - On exit, decrement depth. When depth returns to 0, push the captured snapshot to `undoStack` (trimmed to `MAX_UNDO`) and clear `redoStack`, then reset the flag.
-   - Wrap in try/finally so a thrown error still resets depth.
-3. Change every existing `undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)]` push inside the ~30 mutators to be conditional: if `undoBatchDepth > 0`, skip the push (the wrapper already snapshotted). Cleanest is a small helper `pushUndo(state)` that returns either the new array or `state.undoStack` unchanged when batching.
+- `organization_settings.savings_income_enabled boolean not null default false`
+- New table `public.work_item_financials`:
+  - `work_item_id text` (PK with org), `organization_id uuid`, `monthly_savings numeric(14,2) default 0`, `monthly_income numeric(14,2) default 0`, `currency text default 'EUR'`, `updated_at`.
+  - GRANTs to `authenticated` + `service_role`; RLS mirrors `work_items` (org member OR `has_accessible_tree_assignment` via lookup on the parent work item — simplest: org member OR `is_work_item_accessible`).
 
-### Call-site changes
+## 3. Store
 
-Wrap each multi-id `forEach` with `runBulk`. Affected files and approximate lines:
+New `src/store/financialsStore.ts` (Zustand) keyed by `workItemId`:
+- `load(orgId)`, `upsert(workItemId, { monthlySavings, monthlyIncome, currency })`, `getFor(workItemId)`, realtime apply.
+- Loaded inside `supabaseSync` alongside other per-org tables, guarded by the toggle.
 
-- `src/components/WorkItemTreePanel.tsx` — 596, 649, 1010 (status changes), 1081 (move-to-backlog), 1114, 1116 (label assign/unassign)
-- `src/components/AppLayout.tsx` — 246, 278 (delete bulk), 295, 305, 314, 323, 332 (status shortcuts), 580, 587 (delete shortcut), 755, 776, 781, 794, 812, 825 (drag-and-drop multi-move), 911
-- `src/components/MoveToParentDialog.tsx` — 146, 163
-- `src/components/MoveToBacklogDialog.tsx` — 64, 111
-- `src/components/LabelPicker.tsx` — 108, 111, 127
-- `src/components/BacklogTreePanel.tsx` — any `forEach` over selected backlog ids (audit during implementation)
+## 4. Dialog
 
-Each wrap is mechanical:
+New `src/components/FinancialsDialog.tsx`:
+- Triggered from a small **€** icon button in the work-item attributes area (`MobileAttributesSheet` + desktop equivalent in `WorkItemTreePanel`), shown only when the toggle is on.
+- Fields: Monthly savings, Monthly income, Currency (EUR/USD/GBP). Zod-validated, non-negative numbers, max 12 chars.
+- Save = optimistic upsert.
 
-```ts
-runBulk(() => {
-  selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
-});
-```
+## 5. Cumulative flow diagram
 
-### Tests (`src/test/appStore.test.ts`)
+New `src/components/CumulativeFlowChart.tsx` using `recharts` (already in deps):
+- One stacked area chart per backlog tree, X axis = month, Y axis = cumulative € of the selected metric (savings or income), areas stacked by **work item status** (using the tree's statuses + colors).
+- Data model: for each work item in the tree with a non-zero monthly amount, accrue `amount` for every month from its **creation month** to **now** (or to the month the status changed, snapshotted as "current status"). Since we don't track status history, slice by *current* status of each contributing item — explicitly noted in a chart caption.
+- Toggle inside the chart card: Savings | Income.
 
-Add a focused test: select 3 items, call `runBulk(() => ids.forEach(id => setWorkItemStatus(id, 'done')))`, assert `undoStack.length` grew by exactly 1, and a single `undo()` reverts all 3 items.
+Rendered in a new collapsible section at the bottom of each `BacklogTreePanel`, **only when** the Labs toggle is on and at least one item in the tree has financial data.
 
-## Out of scope
+## 6. Scope guards
 
-- No change to redo behavior beyond the standard "new action clears redo" — that already happens once via the wrapper.
-- No change to single-item operations; they still snapshot per call exactly as today.
-- Drag-and-drop already groups its DB writes; only the undo-stack push is being coalesced.
+- All UI gated on `isSavingsIncomeEnabled(activeOrgId)`.
+- No realtime / store loads when disabled (keeps the cold-start cost at zero for everyone else).
+- Per project memory: pink theme, semantic tokens only, no custom colors in components.
+
+## Technical notes
+
+- `numeric` returned as string by PostgREST — parse with `Number()` at the store boundary.
+- Chart slice colors come from `treeStatusesStore` (falls back to default status palette) so it stays consistent with the rest of the app.
+- Currency is informational only; no FX conversion.
+- Out of scope: historical status transitions, multi-currency aggregation, editing past months individually.
+
+After you approve I will run the migration first, then ship the code in one pass.
