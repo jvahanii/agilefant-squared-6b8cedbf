@@ -1212,6 +1212,11 @@ function WorkItemNodeContent({
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             Hyperlinks
           </ContextMenuItem>
+          {isSavingsIncomeEnabled(activeOrgId) && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
+              Savings &amp; Income
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             className="text-xs text-destructive focus:text-destructive"
