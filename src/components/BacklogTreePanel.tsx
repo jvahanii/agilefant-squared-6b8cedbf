@@ -934,6 +934,9 @@ export function BacklogTreePanel() {
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
+  const savingsIncomeVisible = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
+  );
   // When a superuser is simulating a non-privileged role, drop the superuser bypass
   // so the UI accurately reflects what the simulated role would see.
   const effectiveSuperuser = isSuperuser && !roleOverride;
