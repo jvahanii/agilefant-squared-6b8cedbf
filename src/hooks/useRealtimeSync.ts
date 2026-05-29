@@ -8,6 +8,7 @@ import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
+import { useFinancialsStore } from '@/store/financialsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -42,6 +43,7 @@ export function useRealtimeSync() {
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
   const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
+  const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -243,6 +245,23 @@ export function useRealtimeSync() {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_financials',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            if (payload.eventType !== 'DELETE') {
+              const workItemId = row.work_item_id as string;
+              if (!useAppStore.getState().workItems[workItemId]) return;
+            }
+            applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
         );
       addLabelHandlers(channel, orgId).subscribe();
       channels.push(channel);
@@ -354,6 +373,19 @@ export function useRealtimeSync() {
         (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
           applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'work_item_financials',
+          filter: `organization_id=eq.${activeOrgId}`,
+        },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
       .on(

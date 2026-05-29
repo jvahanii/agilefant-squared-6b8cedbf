@@ -889,6 +889,7 @@ export function BacklogTreePanel() {
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
+  // activeOrgId / savingsIncomeVisible are declared below alongside other org-scoped selectors.
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
@@ -932,6 +933,9 @@ export function BacklogTreePanel() {
   });
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
+  );
+  const savingsIncomeVisible = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
   // When a superuser is simulating a non-privileged role, drop the superuser bypass
   // so the UI accurately reflects what the simulated role would see.
@@ -1012,7 +1016,7 @@ export function BacklogTreePanel() {
                   onCancel={() => setAddingToTree(null)}
                 />
               )}
-              {(useOrgSettingsStore.getState().settings[activeOrgId ?? ""] as { savingsIncomeEnabled?: boolean })?.savingsIncomeEnabled && (
+              {savingsIncomeVisible && (
                 <CumulativeFlowChart treeId={tree.id} />
               )}
             </div>
