@@ -126,6 +126,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setSavingsIncomeEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), savingsIncomeEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, savings_income_enabled: enabled, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'organization_id' },
+      );
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -137,6 +153,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           pointsEnabled: row.points_enabled,
           labelsEnabled: row.labels_enabled ?? false,
           customStatusesEnabled: row.custom_statuses_enabled ?? false,
+          savingsIncomeEnabled: row.savings_income_enabled ?? false,
         },
       },
     }));
