@@ -6,6 +6,7 @@ interface OrgSettings {
   pointsEnabled: boolean;
   labelsEnabled: boolean;
   customStatusesEnabled: boolean;
+  savingsIncomeEnabled: boolean;
 }
 
 interface OrgSettingsState {
