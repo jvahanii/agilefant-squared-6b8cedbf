@@ -1012,6 +1012,9 @@ export function BacklogTreePanel() {
                   onCancel={() => setAddingToTree(null)}
                 />
               )}
+              {(useOrgSettingsStore.getState().settings[activeOrgId ?? ""] as { savingsIncomeEnabled?: boolean })?.savingsIncomeEnabled && (
+                <CumulativeFlowChart treeId={tree.id} />
+              )}
             </div>
           );
         })}
