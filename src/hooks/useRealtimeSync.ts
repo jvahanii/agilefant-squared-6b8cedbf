@@ -245,6 +245,23 @@ export function useRealtimeSync() {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_financials',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            if (payload.eventType !== 'DELETE') {
+              const workItemId = row.work_item_id as string;
+              if (!useAppStore.getState().workItems[workItemId]) return;
+            }
+            applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
         );
       addLabelHandlers(channel, orgId).subscribe();
       channels.push(channel);
