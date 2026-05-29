@@ -59,7 +59,7 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
       return;
     }
     const byWorkItem: Record<string, WorkItemFinancials> = {};
-    for (const row of ((data ?? []) as unknown) as Record<string, unknown>[]]) as Record<string, unknown>[]) {
+    for (const row of ((data ?? []) as unknown as Record<string, unknown>[])) {
       const e = rowToEntry(row);
       byWorkItem[e.workItemId] = e;
     }
