@@ -776,6 +776,35 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        {/* Savings & Income (Labs) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Hash className="w-4 h-4" /> Savings &amp; Income
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable savings &amp; income</p>
+                <p className="text-xs text-muted-foreground">
+                  Attach a monthly savings and monthly income amount to work items, then see
+                  cumulative flow diagrams per backlog tree sliced by status.
+                </p>
+              </div>
+              <Switch
+                checked={orgSettings.savingsIncomeEnabled ?? false}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    useOrgSettingsStore.getState().setSavingsIncomeEnabled(activeOrgId, checked);
+                    toast({ title: checked ? "Savings & Income enabled" : "Savings & Income disabled" });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {isSuperuser && (
         <Card>
           <CardHeader>
