@@ -889,10 +889,7 @@ export function BacklogTreePanel() {
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const savingsIncomeVisible = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
-  );
+  // activeOrgId / savingsIncomeVisible are declared below alongside other org-scoped selectors.
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
   const [sharingTree, setSharingTree] = useState<{ id: string; name: string } | null>(null);
