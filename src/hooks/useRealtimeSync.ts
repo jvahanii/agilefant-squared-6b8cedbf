@@ -380,6 +380,19 @@ export function useRealtimeSync() {
         {
           event: '*',
           schema: 'public',
+          table: 'work_item_financials',
+          filter: `organization_id=eq.${activeOrgId}`,
+        },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'organization_settings',
           filter: `organization_id=eq.${activeOrgId}`,
         },
