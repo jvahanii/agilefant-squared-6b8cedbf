@@ -296,6 +296,7 @@ function WorkItemNodeContent({
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [moveToParentItemIds, setMoveToParentItemIds] = useState<string[]>([]);
