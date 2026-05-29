@@ -34,6 +34,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 
@@ -1010,6 +1011,9 @@ export function BacklogTreePanel() {
                   }}
                   onCancel={() => setAddingToTree(null)}
                 />
+              )}
+              {(useOrgSettingsStore.getState().settings[activeOrgId ?? ""] as { savingsIncomeEnabled?: boolean })?.savingsIncomeEnabled && (
+                <CumulativeFlowChart treeId={tree.id} />
               )}
             </div>
           );

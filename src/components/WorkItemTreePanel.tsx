@@ -13,6 +13,8 @@ import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { FinancialsDialog } from "./FinancialsDialog";
+import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -294,6 +296,7 @@ function WorkItemNodeContent({
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [moveToParentItemIds, setMoveToParentItemIds] = useState<string[]>([]);
@@ -1209,6 +1212,11 @@ function WorkItemNodeContent({
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             Hyperlinks
           </ContextMenuItem>
+          {isSavingsIncomeEnabled(activeOrgId) && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
+              Savings &amp; Income
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             className="text-xs text-destructive focus:text-destructive"
@@ -1376,6 +1384,13 @@ function WorkItemNodeContent({
         open={showHyperlinksDialog}
         onOpenChange={setShowHyperlinksDialog}
       />
+      {isSavingsIncomeEnabled(activeOrgId) && (
+        <FinancialsDialog
+          workItemId={workItemId}
+          open={showFinancialsDialog}
+          onOpenChange={setShowFinancialsDialog}
+        />
+      )}
       {timeLoggingVisible && (
         <TimeLogDialog
           workItemId={workItemId}
