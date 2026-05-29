@@ -34,6 +34,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 
