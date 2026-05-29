@@ -74,7 +74,11 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
       onOpenChange(false);
       return;
     }
-    await upsert(workItemId, orgId, parsed.data);
+    await upsert(workItemId, orgId, {
+      monthlySavings: parsed.data.monthlySavings,
+      monthlyIncome: parsed.data.monthlyIncome,
+      currency: parsed.data.currency,
+    });
     onOpenChange(false);
   };
 
