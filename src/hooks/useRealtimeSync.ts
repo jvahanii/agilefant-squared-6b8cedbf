@@ -8,6 +8,7 @@ import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
+import { useFinancialsStore } from '@/store/financialsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
