@@ -100,6 +100,10 @@ const Index = () => {
       if (sep > 0) orgIds.add(treeId.slice(0, sep));
     }
     loadLabels([...orgIds]);
+    // Load savings/income financials for the active + partner orgs.
+    import('@/store/financialsStore').then(({ useFinancialsStore }) =>
+      useFinancialsStore.getState().load([...orgIds]),
+    );
     // Load per-tree status definitions for every accessible tree
     const treeIds = Object.keys(backlogTrees);
     if (treeIds.length > 0) loadStatusesForTrees(treeIds);
