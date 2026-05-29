@@ -793,7 +793,7 @@ export default function TeamSettings() {
                 </p>
               </div>
               <Switch
-                checked={orgSettings.savingsIncomeEnabled ?? false}
+                checked={(orgSettings as { savingsIncomeEnabled?: boolean }).savingsIncomeEnabled ?? false}
                 onCheckedChange={(checked) => {
                   if (activeOrgId) {
                     useOrgSettingsStore.getState().setSavingsIncomeEnabled(activeOrgId, checked);
