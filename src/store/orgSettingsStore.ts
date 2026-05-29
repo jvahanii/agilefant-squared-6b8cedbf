@@ -38,7 +38,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -53,6 +53,8 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
               labelsEnabled: (data as { labels_enabled?: boolean }).labels_enabled ?? false,
               customStatusesEnabled:
                 (data as { custom_statuses_enabled?: boolean }).custom_statuses_enabled ?? false,
+              savingsIncomeEnabled:
+                (data as { savings_income_enabled?: boolean }).savings_income_enabled ?? false,
             }
           : { ...defaults },
       },
