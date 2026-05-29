@@ -180,3 +180,8 @@ export function isCustomStatusesEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.customStatusesEnabled ?? false;
 }
+
+export function isSavingsIncomeEnabled(orgId: string | null): boolean {
+  if (!orgId) return false;
+  return useOrgSettingsStore.getState().settings[orgId]?.savingsIncomeEnabled ?? false;
+}
