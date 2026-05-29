@@ -1384,6 +1384,13 @@ function WorkItemNodeContent({
         open={showHyperlinksDialog}
         onOpenChange={setShowHyperlinksDialog}
       />
+      {isSavingsIncomeEnabled(activeOrgId) && (
+        <FinancialsDialog
+          workItemId={workItemId}
+          open={showFinancialsDialog}
+          onOpenChange={setShowFinancialsDialog}
+        />
+      )}
       {timeLoggingVisible && (
         <TimeLogDialog
           workItemId={workItemId}
