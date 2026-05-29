@@ -419,6 +419,7 @@ export type Database = {
           labels_enabled: boolean
           organization_id: string
           points_enabled: boolean
+          savings_income_enabled: boolean
           time_logging_enabled: boolean
           updated_at: string
         }
@@ -429,6 +430,7 @@ export type Database = {
           labels_enabled?: boolean
           organization_id: string
           points_enabled?: boolean
+          savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }
@@ -439,6 +441,7 @@ export type Database = {
           labels_enabled?: boolean
           organization_id?: string
           points_enabled?: boolean
+          savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }
@@ -684,6 +687,39 @@ export type Database = {
           id?: string
           organization_id?: string
           rank?: number
+          work_item_id?: string
+        }
+        Relationships: []
+      }
+      work_item_financials: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          monthly_income: number
+          monthly_savings: number
+          organization_id: string
+          updated_at: string
+          work_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          monthly_income?: number
+          monthly_savings?: number
+          organization_id: string
+          updated_at?: string
+          work_item_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          monthly_income?: number
+          monthly_savings?: number
+          organization_id?: string
+          updated_at?: string
           work_item_id?: string
         }
         Relationships: []
