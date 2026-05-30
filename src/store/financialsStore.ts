@@ -62,6 +62,8 @@ function rowToEntry(row: Record<string, unknown>): WorkItemFinancials {
     organizationId: row.organization_id as string,
     savingsByMonth: sanitizeMap(row.savings_by_month),
     incomeByMonth: sanitizeMap(row.income_by_month),
+    actualSavingsByMonth: sanitizeMap(row.actual_savings_by_month),
+    actualIncomeByMonth: sanitizeMap(row.actual_income_by_month),
     currency: (row.currency as string) ?? 'EUR',
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
