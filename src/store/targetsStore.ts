@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
-export type TargetMetric = 'savings' | 'income';
+export type TargetMetric = 'savings' | 'income' | 'both';
 
 export interface FinancialTarget {
   id: string;

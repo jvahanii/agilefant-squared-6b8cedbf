@@ -42,7 +42,7 @@ function monthLabel(monthNum: number): string {
 }
 
 export function CumulativeFlowChart({ treeId }: Props) {
-  const [metric, setMetric] = useState<TargetMetric>("savings");
+  const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
   const [targetInput, setTargetInput] = useState("");
@@ -50,7 +50,17 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const workItems = useAppStore((s) => s.workItems);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const target = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
+  const targetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
+  const target = metric === "both"
+    ? (targetSavings || targetIncome
+        ? {
+            ...((targetSavings ?? targetIncome)!),
+            amount: (targetSavings?.amount || 0) + (targetIncome?.amount || 0),
+            metric: "both" as TargetMetric,
+          }
+        : undefined)
+    : useTargetsStore.getState().byKey[`${treeId}::${year}::${metric}`];
   const upsertTarget = useTargetsStore((s) => s.upsert);
   const removeTarget = useTargetsStore((s) => s.remove);
 
