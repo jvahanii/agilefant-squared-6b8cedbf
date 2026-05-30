@@ -758,6 +758,9 @@ export default function TeamSettings() {
                 }}
               />
             </div>
+            <p className="mt-3 text-xs text-muted-foreground italic border-l-2 border-muted pl-3">
+              "Eliminate numerical targets for the work force." — W. Edwards Deming
+            </p>
           </CardContent>
         </Card>
 
