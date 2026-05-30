@@ -50,12 +50,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const workItems = useAppStore((s) => s.workItems);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const target = useTargetsStore((s) => {
-    const sep = treeId.indexOf("::");
-    const _org = sep > 0 ? treeId.slice(0, sep) : "";
-    return s.byKey[`${treeId}::${year}::${metric}`];
-    void _org;
-  });
+  const target = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
   const upsertTarget = useTargetsStore((s) => s.upsert);
   const removeTarget = useTargetsStore((s) => s.remove);
 
