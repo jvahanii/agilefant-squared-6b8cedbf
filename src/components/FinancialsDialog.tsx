@@ -51,6 +51,10 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
   const [savings, setSavings] = useState<MonthlyMap>({});
   const [income, setIncome] = useState<MonthlyMap>({});
   const [currency, setCurrency] = useState("EUR");
+  const [yearTotalDraft, setYearTotalDraft] = useState<{ savings: string; income: string }>({
+    savings: "",
+    income: "",
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +62,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     setIncome(entry?.incomeByMonth ? { ...entry.incomeByMonth } : {});
     setCurrency(entry?.currency ?? "EUR");
     setYear(currentYear);
+    setYearTotalDraft({ savings: "", income: "" });
   }, [open, entry, currentYear]);
 
   const totals = useMemo(() => {
@@ -90,6 +95,34 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     });
   };
 
+  const distributeYearTotal = (
+    target: "savings" | "income",
+    raw: string,
+  ) => {
+    const num = Number(raw);
+    const setter = target === "savings" ? setSavings : setIncome;
+    setter((prev) => {
+      const next = { ...prev };
+      // Remove existing months for this year first
+      for (let i = 0; i < 12; i++) {
+        delete next[monthKey(year, i)];
+      }
+      if (raw.trim() && Number.isFinite(num) && num > 0) {
+        const total = Math.min(num, MAX_AMOUNT * 12);
+        // Distribute evenly and assign remainder to the last month to avoid rounding drift
+        const base = Math.round((total / 12) * 100) / 100;
+        const sum11 = base * 11;
+        const last = Math.round((total - sum11) * 100) / 100;
+        for (let i = 0; i < 11; i++) {
+          next[monthKey(year, i)] = base;
+        }
+        next[monthKey(year, 11)] = Math.max(0, last);
+      }
+      return next;
+    });
+    setYearTotalDraft((d) => ({ ...d, [target]: "" }));
+  };
+
   const handleSave = async () => {
     const hasAny = Object.keys(savings).length > 0 || Object.keys(income).length > 0;
     if (!hasAny) {
@@ -120,6 +153,11 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     for (let i = 0; i < 12; i++) s += income[monthKey(year, i)] ?? 0;
     return s;
   }, [income, year]);
+
+  // Reset drafts when year navigation clears the typed-but-not-committed value
+  useEffect(() => {
+    setYearTotalDraft({ savings: "", income: "" });
+  }, [year]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -224,8 +262,36 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                         </td>
                       );
                     })}
-                    <td className="px-2 py-1 text-right tabular-nums text-muted-foreground whitespace-nowrap">
-                      {formatCurrencyCompact(yearTotal, currency)}
+                    <td className="p-0.5 whitespace-nowrap">
+                      {(() => {
+                        const draft = yearTotalDraft[target];
+                        const displayValue = draft !== "" ? draft : (yearTotal > 0 ? String(yearTotal) : "");
+                        return (
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            inputMode="decimal"
+                            value={displayValue}
+                            onChange={(e) =>
+                              setYearTotalDraft((d) => ({ ...d, [target]: e.target.value }))
+                            }
+                            onBlur={(e) => {
+                              if (draft !== "") {
+                                distributeYearTotal(target, e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && draft !== "") {
+                                distributeYearTotal(target, (e.target as HTMLInputElement).value);
+                              }
+                            }}
+                            placeholder="0"
+                            className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
+                            title="Enter a year total to distribute evenly across months"
+                          />
+                        );
+                      })()}
                     </td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">
                       {formatCurrencyCompact(totals[target], currency)}
