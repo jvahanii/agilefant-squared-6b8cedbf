@@ -979,7 +979,7 @@ export function BacklogTreePanel() {
     for (const workItemId of selectedWorkItemIds) {
       const assignments = workItems[workItemId]?.backlogAssignments;
       if (assignments) {
-        for (const treeId of Object.keys(assignments)) ids.add(treeId);
+        for (const treeId in assignments) ids.add(treeId);
       }
     }
     return ids;
