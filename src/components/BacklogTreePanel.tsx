@@ -929,6 +929,9 @@ export function BacklogTreePanel() {
 
   // Keep the shared navigation ref up-to-date with the visible backlog order.
   const backlogs = useAppStore((s) => s.backlogs);
+  const workItems = useAppStore((s) => s.workItems);
+  const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
+  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const expandedBacklogs = useAppStore((s) => s.expandedBacklogs);
   const visibleBacklogIds = useMemo(() => {
     const ids: string[] = [];
@@ -965,6 +968,22 @@ export function BacklogTreePanel() {
   const effectiveSuperuser = isSuperuser && !roleOverride;
   const canManage = activeOrgRole === "owner" || activeOrgRole === "admin" || effectiveSuperuser;
   const canEditStatuses = customStatusesEnabled && canManage;
+
+  // Set of tree IDs that have at least one selected list or work item.
+  const treesWithSelection = useMemo(() => {
+    const ids = new Set<string>();
+    for (const backlogId of selectedBacklogIds) {
+      const treeId = backlogs[backlogId]?.treeId;
+      if (treeId) ids.add(treeId);
+    }
+    for (const workItemId of selectedWorkItemIds) {
+      const assignments = workItems[workItemId]?.backlogAssignments;
+      if (assignments) {
+        for (const treeId of Object.keys(assignments)) ids.add(treeId);
+      }
+    }
+    return ids;
+  }, [selectedBacklogIds, selectedWorkItemIds, backlogs, workItems]);
 
   // A tree is scrambled only when scramble is enabled AND it has no shares with any org.
   const isTreeScrambled = (treeId: string) =>
@@ -1039,7 +1058,7 @@ export function BacklogTreePanel() {
                   onCancel={() => setAddingToTree(null)}
                 />
               )}
-              {savingsIncomeVisible && (
+              {savingsIncomeVisible && treesWithSelection.has(tree.id) && (
                 <CumulativeFlowChart treeId={tree.id} />
               )}
             </div>
