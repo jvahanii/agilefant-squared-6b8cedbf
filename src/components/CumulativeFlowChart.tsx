@@ -324,6 +324,16 @@ export function CumulativeFlowChart({ treeId }: Props) {
               <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
+          <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+            <SelectTrigger className="h-6 px-2 text-[10px] w-[72px]" aria-label="Display currency">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DISPLAY_CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {groupBy !== "type" && (
             <div className="flex gap-1">
               <Button
