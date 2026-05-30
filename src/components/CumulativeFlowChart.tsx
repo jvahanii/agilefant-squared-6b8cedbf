@@ -233,7 +233,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
                 <DialogTitle>
-                  {metric === "savings" ? "Savings" : "Income"} target · {year}
+                  {dialogMetric === "savings" ? "Savings" : "Income"} target · {year}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-2">
