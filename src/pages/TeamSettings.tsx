@@ -770,7 +770,7 @@ export default function TeamSettings() {
                 <p className="text-sm font-medium">Enable savings &amp; income</p>
                 <p className="text-xs text-muted-foreground">
                   Attach a monthly savings and monthly income amount to work items, then see cumulative flow diagrams
-                  per backlog tree sliced by status.
+                  per backlog tree sliced by different perspectives.
                 </p>
               </div>
               <Switch
