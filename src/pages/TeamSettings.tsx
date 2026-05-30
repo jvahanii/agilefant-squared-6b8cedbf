@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Tag, Settings2, FlaskConical, Youtube, Wrench } from "lucide-react";
+import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Settings2, FlaskConical, Youtube, Wrench } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { TeamManagement } from "@/components/TeamManagement";
@@ -18,8 +18,6 @@ import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
 import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
-import { useLabelsStore } from "@/store/labelsStore";
-import { LabelsManager } from "@/components/LabelsManager";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
@@ -68,16 +66,9 @@ export default function TeamSettings() {
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(() => isAutoCheckEnabledSetting(activeOrgId));
   const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
-  // Org settings from backend (includes labels toggle)
+  // Org settings from backend
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
-  const labelsEnabled = orgSettings.labelsEnabled ?? false;
-  const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
-  const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
-  const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
-  const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
-  const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
-  const loadLabels = useLabelsStore((s) => s.loadLabels);
   const setOrganizationId = useAppStore((s) => s.setOrganizationId);
   const loadData = useAppStore((s) => s.loadFromSupabase);
 
@@ -100,7 +91,6 @@ export default function TeamSettings() {
     if (!activeOrgId) return;
     loadMembers();
     loadSettings(activeOrgId);
-    loadLabels([activeOrgId]);
     setOrganizationId(activeOrgId);
     loadData();
     // loadMembers is defined in this component; Zustand actions are stable refs.
@@ -741,40 +731,6 @@ export default function TeamSettings() {
             These features are in progress. They sort of work but aren't yet great.
           </p>
         </div>
-
-        {/* Labels */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Tag className="w-4 h-4" /> Labels
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Enable labels</p>
-                <p className="text-xs text-muted-foreground">
-                  Attach color-coded labels to work items and backlogs.
-                </p>
-              </div>
-              <Switch
-                checked={labelsEnabled}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    setLabelsEnabledSetting(activeOrgId, checked);
-                    toast({ title: checked ? "Labels enabled" : "Labels disabled" });
-                  }
-                }}
-              />
-            </div>
-            {labelsEnabled && (
-              <div className="pt-2 border-t">
-                <p className="text-xs font-medium text-muted-foreground mb-3">Manage labels</p>
-                <LabelsManager />
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Savings & Income (Labs) */}
         <Card>

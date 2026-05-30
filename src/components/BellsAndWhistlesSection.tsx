@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2 } from "lucide-react";
+import { Hash, Clock, Settings2, Tag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useLabelsStore } from "@/store/labelsStore";
 import { TeamManagement } from "@/components/TeamManagement";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
+import { LabelsManager } from "@/components/LabelsManager";
 
 const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false };
 
@@ -32,11 +34,17 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
+  const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
+  const labelsEnabled = orgSettings.labelsEnabled ?? false;
+  const loadLabels = useLabelsStore((s) => s.loadLabels);
 
   const [timesheetBrowserOpen, setTimesheetBrowserOpen] = useState(false);
 
   useEffect(() => {
-    if (activeOrgId) loadSettings(activeOrgId);
+    if (activeOrgId) {
+      loadSettings(activeOrgId);
+      loadLabels([activeOrgId]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
 
@@ -153,6 +161,39 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Tag className="w-4 h-4" /> Labels
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable labels</p>
+              <p className="text-xs text-muted-foreground">
+                Attach color-coded labels to work items and backlogs.
+              </p>
+            </div>
+            <Switch
+              checked={labelsEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setLabelsEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Labels enabled" : "Labels disabled" });
+                }
+              }}
+            />
+          </div>
+          {labelsEnabled && (
+            <div className="pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-3">Manage labels</p>
+              <LabelsManager />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <TimesheetBrowserDialog
         open={timesheetBrowserOpen}
