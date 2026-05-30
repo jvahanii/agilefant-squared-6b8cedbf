@@ -31,6 +31,17 @@ import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
+import { useRatesStore, convertCurrency } from "@/store/ratesStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const DISPLAY_CURRENCIES = ["EUR", "USD", "GBP", "JPY", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
 
 type GroupBy = "type" | "item" | "status" | "list";
 
@@ -79,9 +90,22 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const backlogs = useAppStore((s) => s.backlogs);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
-  const targetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
-  const targetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
+  const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setDisplayCurrency);
+  const rates = useRatesStore((s) => s.rates);
+  const rawTargetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
+  const rawTargetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
+  const rawTargetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  // Convert target amounts to display currency for the reference line.
+  const targetSavings = rawTargetSavings
+    ? { ...rawTargetSavings, amount: convertCurrency(rawTargetSavings.amount, rawTargetSavings.currency, displayCurrency, rates) }
+    : undefined;
+  const targetIncome = rawTargetIncome
+    ? { ...rawTargetIncome, amount: convertCurrency(rawTargetIncome.amount, rawTargetIncome.currency, displayCurrency, rates) }
+    : undefined;
+  const targetSingle = rawTargetSingle
+    ? { ...rawTargetSingle, amount: convertCurrency(rawTargetSingle.amount, rawTargetSingle.currency, displayCurrency, rates) }
+    : undefined;
   const target = metric === "both"
     ? (targetSavings || targetIncome
         ? {
@@ -183,20 +207,22 @@ export function CumulativeFlowChart({ treeId }: Props) {
           for (const [k, v] of Object.entries(e.incomeByMonth ?? {})) {
             if (k.startsWith(`${year}-`) && k <= mk) accruedIncome += v;
           }
-          row["savings"] = (row["savings"] as number) + accruedSavings;
-          row["income"] = (row["income"] as number) + accruedIncome;
+          row["savings"] = (row["savings"] as number) + convertCurrency(accruedSavings, e.currency, displayCurrency, rates);
+          row["income"] = (row["income"] as number) + convertCurrency(accruedIncome, e.currency, displayCurrency, rates);
         }
       } else {
         for (const id of treeItemIds) {
           const wi = workItems[id];
           if (!wi) continue;
+          const e = byWorkItem[id];
           const map = getMetricMap(id);
-          if (!map) continue;
+          if (!map || !e) continue;
           let accrued = 0;
           for (const [k, v] of Object.entries(map)) {
             if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
           }
           if (accrued <= 0) continue;
+          accrued = convertCurrency(accrued, e.currency, displayCurrency, rates);
           let seriesKey: string;
           if (groupBy === "status") {
             seriesKey = wi.status;
@@ -212,11 +238,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
       }
       return row;
     });
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year, displayCurrency, rates]);
 
-  const currency = (
-    treeItemIds.length > 0 ? byWorkItem[treeItemIds[0]]?.currency : undefined
-  ) ?? target?.currency ?? "EUR";
+  const currency = displayCurrency;
 
   const yearTotal = data.length > 0
     ? series.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
@@ -300,6 +324,16 @@ export function CumulativeFlowChart({ treeId }: Props) {
               <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
+          <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+            <SelectTrigger className="h-6 px-2 text-[10px] w-[72px]" aria-label="Display currency">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DISPLAY_CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {groupBy !== "type" && (
             <div className="flex gap-1">
               <Button

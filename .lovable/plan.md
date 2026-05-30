@@ -1,57 +1,73 @@
-# Savings & Income (Labs)
+# Multi-currency support for Financials
 
-A new opt-in Labs feature that lets users attach **monthly savings** and **monthly income** amounts to any work item, then visualize them as **cumulative flow diagrams** per backlog tree, sliced by work-item status.
+Today each work item's financials entry has a `currency` field, but amounts are never converted — switching the currency in the dialog just relabels the same number. This plan introduces real conversion using daily exchange rates.
 
-## 1. Labs toggle
+## Concept
 
-In `src/pages/TeamSettings.tsx` (Labs section), add a new card:
+- **Entry currency** (per work item, stored): the currency the user typed the numbers in. Stored as-is, never mutated.
+- **Display currency** (per viewer, local): the currency totals/charts/badges are shown in. Defaults to EUR, persisted in `localStorage`, switchable from the chart header and the dialog header.
+- All sums (item totals, list totals, tree totals, chart series, target line) are converted on the fly to the display currency.
 
-- **Savings & Income** switch — default **off**, persisted in `organization_settings.savings_income_enabled`.
-- Same pattern as the existing Labels toggle (optimistic update + Supabase upsert + realtime sync).
-- New selector `isSavingsIncomeEnabled(orgId)` in `src/store/orgSettingsStore.ts`.
+This means: enter 30 EUR for an item, switch display to NOK, and you'll see ~345 NOK everywhere — without rewriting the stored 30.
 
-## 2. Database
+## Data source
 
-Migration adds:
+Use **Frankfurter** (`https://api.frankfurter.dev/v1/latest?base=EUR`) — free, no API key, ECB daily rates, ~30 currencies including all in our `CURRENCIES` list. Fetched once per day, cached in `localStorage` with the date stamp. If offline / fetch fails, fall back to the last cached rates; if none, fall back to 1:1 with a small "rates unavailable" indicator.
 
-- `organization_settings.savings_income_enabled boolean not null default false`
-- New table `public.work_item_financials`:
-  - `work_item_id text` (PK with org), `organization_id uuid`, `monthly_savings numeric(14,2) default 0`, `monthly_income numeric(14,2) default 0`, `currency text default 'EUR'`, `updated_at`.
-  - GRANTs to `authenticated` + `service_role`; RLS mirrors `work_items` (org member OR `has_accessible_tree_assignment` via lookup on the parent work item — simplest: org member OR `is_work_item_accessible`).
+## Files
 
-## 3. Store
+**New `src/store/ratesStore.ts`** (Zustand):
+- State: `base: 'EUR'`, `rates: Record<string, number>`, `fetchedOn: string` (YYYY-MM-DD), `loading`, `error`.
+- `load()` — reads cache from `localStorage` key `fx-rates-v1`; if stale (different UTC day) or missing, fetches Frankfurter and persists.
+- `convert(amount, from, to)` — pure helper: `amount * rates[to] / rates[from]`. EUR == base. Returns `amount` unchanged when `from === to` or rates missing.
 
-New `src/store/financialsStore.ts` (Zustand) keyed by `workItemId`:
-- `load(orgId)`, `upsert(workItemId, { monthlySavings, monthlyIncome, currency })`, `getFor(workItemId)`, realtime apply.
-- Loaded inside `supabaseSync` alongside other per-org tables, guarded by the toggle.
+**New `src/store/displayCurrencyStore.ts`** (Zustand, tiny):
+- `displayCurrency: string` persisted in `localStorage` (`display-currency-v1`), default `EUR`.
+- `setDisplayCurrency(c)`.
 
-## 4. Dialog
+**`src/pages/Index.tsx`**: call `useRatesStore.getState().load()` on mount alongside existing loads.
 
-New `src/components/FinancialsDialog.tsx`:
-- Triggered from a small **€** icon button in the work-item attributes area (`MobileAttributesSheet` + desktop equivalent in `WorkItemTreePanel`), shown only when the toggle is on.
-- Fields: Monthly savings, Monthly income, Currency (EUR/USD/GBP). Zod-validated, non-negative numbers, max 12 chars.
-- Save = optimistic upsert.
+**`src/hooks/useFinancialTotals.ts`**: convert each entry's monthly sums from its `entry.currency` to the active display currency before aggregating. Return `{ savings, income, currency: displayCurrency, hasData }`. Drop the "most common currency" heuristic.
 
-## 5. Cumulative flow diagram
+**`src/components/FinancialTotalsBadge.tsx`**: unchanged API, but now always receives display currency.
 
-New `src/components/CumulativeFlowChart.tsx` using `recharts` (already in deps):
-- One stacked area chart per backlog tree, X axis = month, Y axis = cumulative € of the selected metric (savings or income), areas stacked by **work item status** (using the tree's statuses + colors).
-- Data model: for each work item in the tree with a non-zero monthly amount, accrue `amount` for every month from its **creation month** to **now** (or to the month the status changed, snapshotted as "current status"). Since we don't track status history, slice by *current* status of each contributing item — explicitly noted in a chart caption.
-- Toggle inside the chart card: Savings | Income.
+**`src/components/FinancialsDialog.tsx`**:
+- The currency picker keeps its meaning as **entry currency** for this item (relabel the field "Entry currency").
+- Add a separate small "Display: <CUR>" readout in the header showing the converted year total next to the entry total, so the user can sanity-check conversion. Cells remain editable in entry currency.
+- No data migration needed.
 
-Rendered in a new collapsible section at the bottom of each `BacklogTreePanel`, **only when** the Labs toggle is on and at least one item in the tree has financial data.
+**`src/components/CumulativeFlowChart.tsx`**:
+- Add a display-currency `Select` next to the metric toggle (bound to `displayCurrencyStore`).
+- When building `savingsByMonth` / `incomeByMonth`, convert each contributing entry's monthly value from its entry currency to display currency.
+- Targets: store unchanged (still in their saved currency, which we'll continue to treat as the tree's "target currency" = display currency at the time of save). When rendering the reference line, convert target amount → display currency. The target dialog edits in the current display currency and saves with that currency tag.
 
-## 6. Scope guards
+**Tests**: add a small unit test for `ratesStore.convert` (EUR↔USD↔NOK round-trip with mocked rates) and update existing financial-total tests if they assert currency strings.
 
-- All UI gated on `isSavingsIncomeEnabled(activeOrgId)`.
-- No realtime / store loads when disabled (keeps the cold-start cost at zero for everyone else).
-- Per project memory: pink theme, semantic tokens only, no custom colors in components.
+## Technical details
 
-## Technical notes
+```text
+ratesStore (Zustand)
+  ├─ load(): cache key fx-rates-v1 = { base, rates, fetchedOn }
+  │     fetch https://api.frankfurter.dev/v1/latest?base=EUR  (once / UTC day)
+  └─ convert(amount, from, to): amount * rates[to] / rates[from]
 
-- `numeric` returned as string by PostgREST — parse with `Number()` at the store boundary.
-- Chart slice colors come from `treeStatusesStore` (falls back to default status palette) so it stays consistent with the rest of the app.
-- Currency is informational only; no FX conversion.
-- Out of scope: historical status transitions, multi-currency aggregation, editing past months individually.
+useFinancialTotals(itemIds)
+  for each entry:
+    sumSavings += convert(sumMap(entry.savingsByMonth), entry.currency, display)
+    sumIncome  += convert(sumMap(entry.incomeByMonth),  entry.currency, display)
 
-After you approve I will run the migration first, then ship the code in one pass.
+CumulativeFlowChart
+  per month, per item: convert(value, entry.currency, display)
+  target line: convert(target.amount, target.currency, display)
+```
+
+Error/edge handling:
+- Unknown currency code → treat as identity (no conversion), log once.
+- Rates not yet loaded on first render → show values as-is with a subtle "converting…" hint; re-render after `load()` resolves.
+- No network on first ever load and no cache → 1:1 conversion + tiny warning icon in the chart/dialog header.
+
+## Out of scope
+
+- Per-month historical FX rates (we use latest daily rates for all months — good enough for the stated "previous day is fine").
+- Letting users pick a different FX provider or pin a rate.
+- Server-side caching (purely client-side; the Frankfurter API is unauthenticated and CORS-enabled).

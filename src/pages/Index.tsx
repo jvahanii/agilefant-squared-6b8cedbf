@@ -108,6 +108,10 @@ const Index = () => {
     import('@/store/targetsStore').then(({ useTargetsStore }) =>
       useTargetsStore.getState().load([...orgIds]),
     );
+    // Load daily FX rates for currency conversion (cached per UTC day).
+    import('@/store/ratesStore').then(({ useRatesStore }) =>
+      useRatesStore.getState().load(),
+    );
     // Load per-tree status definitions for every accessible tree
     const treeIds = Object.keys(backlogTrees);
     if (treeIds.length > 0) loadStatusesForTrees(treeIds);

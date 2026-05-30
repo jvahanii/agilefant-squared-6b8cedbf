@@ -207,7 +207,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">Currency</Label>
+            <Label className="text-xs text-muted-foreground">Entry currency</Label>
             <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger className="h-7 text-xs w-[88px]"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -218,6 +218,9 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
             </Select>
           </div>
         </div>
+        <p className="text-[10px] text-muted-foreground -mt-2 mb-2">
+          Amounts are entered in <span className="font-medium">{currency}</span>. Totals across lists and trees are shown in your chosen display currency and converted using daily ECB rates.
+        </p>
 
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-xs">
