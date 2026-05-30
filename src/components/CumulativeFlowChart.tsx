@@ -11,17 +11,13 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/appStore";
-import { useFinancialsStore } from "@/store/financialsStore";
+import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 
 type Metric = "savings" | "income";
 
 interface Props {
   treeId: string;
-}
-
-function monthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function addMonths(d: Date, n: number): Date {
@@ -34,6 +30,10 @@ function formatMonthLabel(key: string): string {
     month: "short",
     year: "2-digit",
   });
+}
+
+function monthKey(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 export function CumulativeFlowChart({ treeId }: Props) {
@@ -49,59 +49,53 @@ export function CumulativeFlowChart({ treeId }: Props) {
       .map((s) => ({ key: s.key, label: s.label, color: s.color }));
   }, [statusesList]);
 
-  // Items in this tree with a non-zero amount for the selected metric.
+  // Items in this tree with non-empty monthly entries for the selected metric,
+  // grouped by current status.
   const contributors = useMemo(() => {
-    const out: Array<{
-      id: string;
-      status: string;
-      amount: number;
-      startMonth: string;
-      currency: string;
-    }> = [];
+    const out: Array<{ status: string; entries: MonthlyMap; currency: string }> = [];
     for (const id of Object.keys(byWorkItem)) {
       const wi = workItems[id];
       if (!wi) continue;
       if (!(treeId in wi.backlogAssignments)) continue;
       const e = byWorkItem[id];
-      const amount = metric === "savings" ? e.monthlySavings : e.monthlyIncome;
-      if (!amount || amount <= 0) continue;
-      out.push({
-        id,
-        status: wi.status,
-        amount,
-        startMonth: monthKey(new Date(e.createdAt)),
-        currency: e.currency,
-      });
+      const map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
+      if (!map || Object.keys(map).length === 0) continue;
+      out.push({ status: wi.status, entries: map, currency: e.currency });
     }
     return out;
   }, [byWorkItem, workItems, treeId, metric]);
 
   const data = useMemo(() => {
     if (contributors.length === 0) return [];
-    // Range = earliest start month → current month.
-    const months: string[] = [];
-    const sorted = [...contributors].sort((a, b) => (a.startMonth < b.startMonth ? -1 : 1));
-    const firstKey = sorted[0].startMonth;
+    // Range = earliest entry month → current month.
+    let firstKey: string | null = null;
+    for (const c of contributors) {
+      for (const k of Object.keys(c.entries)) {
+        if (firstKey === null || k < firstKey) firstKey = k;
+      }
+    }
+    if (!firstKey) return [];
     const [fy, fm] = firstKey.split("-").map(Number);
     const start = new Date(Date.UTC(fy, fm - 1, 1));
     const now = new Date();
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const months: string[] = [];
     let cursor = start;
     while (cursor <= end) {
       months.push(monthKey(cursor));
       cursor = addMonths(cursor, 1);
-      if (months.length > 600) break; // safety
+      if (months.length > 600) break;
     }
     return months.map((mk) => {
       const row: Record<string, number | string> = { month: mk };
       for (const s of statuses) row[s.key] = 0;
       for (const c of contributors) {
-        if (c.startMonth <= mk) {
-          // months elapsed since startMonth (inclusive of that month)
-          const [sy, sm] = c.startMonth.split("-").map(Number);
-          const [cy, cmM] = mk.split("-").map(Number);
-          const months = (cy - sy) * 12 + (cmM - sm) + 1;
-          row[c.status] = (row[c.status] as number) + c.amount * months;
+        let accrued = 0;
+        for (const [k, v] of Object.entries(c.entries)) {
+          if (k <= mk) accrued += v;
+        }
+        if (accrued > 0) {
+          row[c.status] = (row[c.status] as number) + accrued;
         }
       }
       return row;
