@@ -207,20 +207,22 @@ export function CumulativeFlowChart({ treeId }: Props) {
           for (const [k, v] of Object.entries(e.incomeByMonth ?? {})) {
             if (k.startsWith(`${year}-`) && k <= mk) accruedIncome += v;
           }
-          row["savings"] = (row["savings"] as number) + accruedSavings;
-          row["income"] = (row["income"] as number) + accruedIncome;
+          row["savings"] = (row["savings"] as number) + convertCurrency(accruedSavings, e.currency, displayCurrency, rates);
+          row["income"] = (row["income"] as number) + convertCurrency(accruedIncome, e.currency, displayCurrency, rates);
         }
       } else {
         for (const id of treeItemIds) {
           const wi = workItems[id];
           if (!wi) continue;
+          const e = byWorkItem[id];
           const map = getMetricMap(id);
-          if (!map) continue;
+          if (!map || !e) continue;
           let accrued = 0;
           for (const [k, v] of Object.entries(map)) {
             if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
           }
           if (accrued <= 0) continue;
+          accrued = convertCurrency(accrued, e.currency, displayCurrency, rates);
           let seriesKey: string;
           if (groupBy === "status") {
             seriesKey = wi.status;
@@ -236,11 +238,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
       }
       return row;
     });
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year, displayCurrency, rates]);
 
-  const currency = (
-    treeItemIds.length > 0 ? byWorkItem[treeItemIds[0]]?.currency : undefined
-  ) ?? target?.currency ?? "EUR";
+  const currency = displayCurrency;
 
   const yearTotal = data.length > 0
     ? series.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
