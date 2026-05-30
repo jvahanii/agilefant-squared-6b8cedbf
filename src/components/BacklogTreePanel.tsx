@@ -777,6 +777,7 @@ function DraggableTreeHeader({
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
   const treeFinancials = useTreeFinancialTotals(tree.id);
+  const selectTree = useAppStore((s) => s.selectTree);
   const {
     attributes,
     listeners,
@@ -804,6 +805,10 @@ function DraggableTreeHeader({
         if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
           dragStartedRef.current = true;
         }
+      }}
+      onClick={() => {
+        if (dragStartedRef.current) return;
+        selectTree(tree.id);
       }}
     >
       <div className="flex items-center justify-between">

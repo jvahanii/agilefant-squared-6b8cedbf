@@ -65,6 +65,7 @@ interface AppState extends DataSnapshot {
   loadFromSupabase: () => Promise<void>;
   logChange: (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => void;
   clearChangeLog: () => void;
+  selectTree: (treeId: string) => void;
   selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
   selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
   clearWorkItemSelection: () => void;
@@ -715,6 +716,17 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
         collect(id);
         return { expandedBacklogs: next };
+      }),
+
+    selectTree: (treeId) =>
+      set(() => {
+        const orgId = get().organizationId;
+        if (orgId) {
+          localStorage.setItem(`selection_${orgId}_treeId`, treeId);
+          localStorage.removeItem(`selection_${orgId}_backlogIds`);
+          localStorage.removeItem(`selection_${orgId}_workItemIds`);
+        }
+        return { selectedTreeId: treeId, selectedBacklogIds: [], selectedWorkItemIds: [] };
       }),
 
     selectBacklog: (backlogId, treeId, ctrlKey) =>
