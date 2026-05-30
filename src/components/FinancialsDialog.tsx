@@ -90,6 +90,29 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     });
   };
 
+  const distributeYearTotal = (
+    target: "savings" | "income",
+    raw: string,
+  ) => {
+    const num = Number(raw);
+    const setter = target === "savings" ? setSavings : setIncome;
+    setter((prev) => {
+      const next = { ...prev };
+      // Remove existing months for this year first
+      for (let i = 0; i < 12; i++) {
+        delete next[monthKey(year, i)];
+      }
+      if (raw.trim() && Number.isFinite(num) && num > 0) {
+        const total = Math.min(num, MAX_AMOUNT * 12);
+        const perMonth = total / 12;
+        for (let i = 0; i < 12; i++) {
+          next[monthKey(year, i)] = Math.round(perMonth * 100) / 100;
+        }
+      }
+      return next;
+    });
+  };
+
   const handleSave = async () => {
     const hasAny = Object.keys(savings).length > 0 || Object.keys(income).length > 0;
     if (!hasAny) {
@@ -224,8 +247,18 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                         </td>
                       );
                     })}
-                    <td className="px-2 py-1 text-right tabular-nums text-muted-foreground whitespace-nowrap">
-                      {formatCurrencyCompact(yearTotal, currency)}
+                    <td className="p-0.5 whitespace-nowrap">
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        value={yearTotal > 0 ? String(yearTotal) : ""}
+                        onChange={(e) => distributeYearTotal(target, e.target.value)}
+                        placeholder="0"
+                        className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
+                        title="Enter a year total to distribute evenly across months"
+                      />
                     </td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">
                       {formatCurrencyCompact(totals[target], currency)}
