@@ -960,6 +960,19 @@ export function BacklogTreePanel() {
   const savingsIncomeVisible = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
+  const selectedTreeId = useAppStore((s) => s.selectedTreeId);
+  const selectedWorkItemTreeIdsKey = useAppStore((s) => {
+    const ids = new Set<string>();
+    for (const id of s.selectedWorkItemIds) {
+      const wi = s.workItems[id];
+      if (wi) for (const t of Object.keys(wi.backlogAssignments)) ids.add(t);
+    }
+    return [...ids].sort().join(',');
+  });
+  const selectedWorkItemTreeIds = useMemo(
+    () => new Set(selectedWorkItemTreeIdsKey.length > 0 ? selectedWorkItemTreeIdsKey.split(',') : []),
+    [selectedWorkItemTreeIdsKey],
+  );
   // When a superuser is simulating a non-privileged role, drop the superuser bypass
   // so the UI accurately reflects what the simulated role would see.
   const effectiveSuperuser = isSuperuser && !roleOverride;
@@ -1039,7 +1052,7 @@ export function BacklogTreePanel() {
                   onCancel={() => setAddingToTree(null)}
                 />
               )}
-              {savingsIncomeVisible && (
+              {savingsIncomeVisible && (selectedTreeId === tree.id || selectedWorkItemTreeIds.has(tree.id)) && (
                 <CumulativeFlowChart treeId={tree.id} />
               )}
             </div>
