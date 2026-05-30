@@ -902,6 +902,15 @@ function WorkItemNodeContent({
                 );
               })()}
 
+            {savingsIncomeVisible && itemFinancials.hasData && (
+              <FinancialTotalsBadge
+                savings={itemFinancials.savings}
+                income={itemFinancials.income}
+                currency={itemFinancials.currency}
+              />
+            )}
+
+
             {/* Mobile actions: Plus only — other actions via context menu (long-press) */}
             <div className={`flex md:hidden items-center gap-0.5 shrink-0 ${!isSelected ? "invisible" : ""}`}>
               <button
