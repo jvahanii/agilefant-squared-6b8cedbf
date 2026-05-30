@@ -195,6 +195,14 @@ export function CumulativeFlowChart({ treeId }: Props) {
           <div className="flex gap-1">
             <Button
               size="sm"
+              variant={metric === "both" ? "default" : "ghost"}
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setMetric("both")}
+            >
+              Both
+            </Button>
+            <Button
+              size="sm"
               variant={metric === "savings" ? "default" : "ghost"}
               className="h-6 px-2 text-[10px]"
               onClick={() => setMetric("savings")}
