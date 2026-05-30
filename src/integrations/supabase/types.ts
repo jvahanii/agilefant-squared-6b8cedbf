@@ -592,6 +592,57 @@ export type Database = {
         }
         Relationships: []
       }
+      tree_financial_targets: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metric: string
+          organization_id: string
+          tree_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metric?: string
+          organization_id: string
+          tree_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metric?: string
+          organization_id?: string
+          tree_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_financial_targets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_financial_targets_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tree_statuses: {
         Row: {
           color: string

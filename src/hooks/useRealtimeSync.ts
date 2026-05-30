@@ -9,6 +9,7 @@ import { useLabelsStore } from '@/store/labelsStore';
 import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
+import { useTargetsStore } from '@/store/targetsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -44,6 +45,7 @@ export function useRealtimeSync() {
   const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
+  const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -422,6 +424,24 @@ export function useRealtimeSync() {
       )
       .subscribe();
     channels.push(statusChannel);
+
+    // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
+    const targetsChannel = supabase
+      .channel(`tree-financial-targets-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tree_financial_targets' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          const treeId = row?.tree_id as string | undefined;
+          if (!treeId) return;
+          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
+          if (!accessible.has(treeId)) return;
+          applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .subscribe();
+    channels.push(targetsChannel);
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
