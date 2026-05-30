@@ -7,40 +7,62 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight, Target as TargetIcon } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
+import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-
-type Metric = "savings" | "income";
 
 interface Props {
   treeId: string;
 }
 
-function addMonths(d: Date, n: number): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
-}
+const MONTHS_OF_YEAR = Array.from({ length: 12 }, (_, i) =>
+  String(i + 1).padStart(2, "0"),
+);
 
-function formatMonthLabel(key: string): string {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleString(undefined, {
+function monthLabel(monthNum: number): string {
+  return new Date(Date.UTC(2020, monthNum - 1, 1)).toLocaleString(undefined, {
     month: "short",
-    year: "2-digit",
   });
 }
 
-function monthKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
 export function CumulativeFlowChart({ treeId }: Props) {
-  const [metric, setMetric] = useState<Metric>("savings");
+  const [metric, setMetric] = useState<TargetMetric>("savings");
+  const [year, setYear] = useState<number>(new Date().getUTCFullYear());
+  const [targetDialogOpen, setTargetDialogOpen] = useState(false);
+  const [targetInput, setTargetInput] = useState("");
+
   const workItems = useAppStore((s) => s.workItems);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  const target = useTargetsStore((s) => {
+    const sep = treeId.indexOf("::");
+    const _org = sep > 0 ? treeId.slice(0, sep) : "";
+    return s.byKey[`${treeId}::${year}::${metric}`];
+    void _org;
+  });
+  const upsertTarget = useTargetsStore((s) => s.upsert);
+  const removeTarget = useTargetsStore((s) => s.remove);
+
+  const ownerOrgId = useMemo(() => {
+    const sep = treeId.indexOf("::");
+    return sep > 0 ? treeId.slice(0, sep) : "";
+  }, [treeId]);
 
   const statuses = useMemo(() => {
     const list = statusesList && statusesList.length > 0 ? statusesList : DEFAULT_TREE_STATUSES;
@@ -49,8 +71,6 @@ export function CumulativeFlowChart({ treeId }: Props) {
       .map((s) => ({ key: s.key, label: s.label, color: s.color }));
   }, [statusesList]);
 
-  // Items in this tree with non-empty monthly entries for the selected metric,
-  // grouped by current status.
   const contributors = useMemo(() => {
     const out: Array<{ status: string; entries: MonthlyMap; currency: string }> = [];
     for (const id of Object.keys(byWorkItem)) {
@@ -66,79 +86,148 @@ export function CumulativeFlowChart({ treeId }: Props) {
   }, [byWorkItem, workItems, treeId, metric]);
 
   const data = useMemo(() => {
-    if (contributors.length === 0) return [];
-    // Range = earliest entry month → current month.
-    let firstKey: string | null = null;
-    for (const c of contributors) {
-      for (const k of Object.keys(c.entries)) {
-        if (firstKey === null || k < firstKey) firstKey = k;
-      }
-    }
-    if (!firstKey) return [];
-    const [fy, fm] = firstKey.split("-").map(Number);
-    const start = new Date(Date.UTC(fy, fm - 1, 1));
-    const now = new Date();
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const months: string[] = [];
-    let cursor = start;
-    while (cursor <= end) {
-      months.push(monthKey(cursor));
-      cursor = addMonths(cursor, 1);
-      if (months.length > 600) break;
-    }
-    return months.map((mk) => {
-      const row: Record<string, number | string> = { month: mk };
+    return MONTHS_OF_YEAR.map((mm) => {
+      const mk = `${year}-${mm}`;
+      const row: Record<string, number | string> = { month: mk, label: monthLabel(Number(mm)) };
       for (const s of statuses) row[s.key] = 0;
       for (const c of contributors) {
         let accrued = 0;
         for (const [k, v] of Object.entries(c.entries)) {
-          if (k <= mk) accrued += v;
+          if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
         }
-        if (accrued > 0) {
-          row[c.status] = (row[c.status] as number) + accrued;
-        }
+        if (accrued > 0) row[c.status] = (row[c.status] as number) + accrued;
       }
       return row;
     });
-  }, [contributors, statuses]);
+  }, [contributors, statuses, year]);
 
-  const currency = contributors[0]?.currency ?? "EUR";
+  const currency = contributors[0]?.currency ?? target?.currency ?? "EUR";
 
-  if (contributors.length === 0) return null;
-
-  const total = data.length > 0
+  const yearTotal = data.length > 0
     ? statuses.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
     : 0;
 
+  const hasData = contributors.length > 0;
+  const hasTarget = target && target.amount > 0;
+  if (!hasData && !hasTarget) return null;
+
+  function openTargetDialog() {
+    setTargetInput(target ? String(target.amount) : "");
+    setTargetDialogOpen(true);
+  }
+
+  async function saveTarget() {
+    if (!ownerOrgId) return;
+    const n = Number(targetInput);
+    if (!Number.isFinite(n) || n < 0) return;
+    if (n === 0) {
+      if (target) await removeTarget(treeId, year, metric);
+    } else {
+      await upsertTarget(treeId, ownerOrgId, year, metric, n, currency);
+    }
+    setTargetDialogOpen(false);
+  }
+
   return (
     <div className="mt-2 rounded-md border bg-card p-2">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Cumulative {metric === "savings" ? "Savings" : "Income"}
+            Cumulative {metric === "savings" ? "Savings" : "Income"} · {year}
           </h4>
           <p className="text-[10px] text-muted-foreground">
             Sliced by current status · {currency}{" "}
-            {total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {hasTarget ? (
+              <>
+                {" · target "}
+                <span className="text-destructive font-medium">
+                  {currency} {target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              </>
+            ) : null}
           </p>
         </div>
-        <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant={metric === "savings" ? "default" : "ghost"}
-            className="h-6 px-2 text-[10px]"
-            onClick={() => setMetric("savings")}
-          >
-            Savings
-          </Button>
-          <Button
-            size="sm"
-            variant={metric === "income" ? "default" : "ghost"}
-            className="h-6 px-2 text-[10px]"
-            onClick={() => setMetric("income")}
-          >
-            Income
-          </Button>
+        <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => setYear((y) => y - 1)}
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="text-[10px] tabular-nums w-10 text-center">{year}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => setYear((y) => y + 1)}
+              aria-label="Next year"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={metric === "savings" ? "default" : "ghost"}
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setMetric("savings")}
+            >
+              Savings
+            </Button>
+            <Button
+              size="sm"
+              variant={metric === "income" ? "default" : "ghost"}
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setMetric("income")}
+            >
+              Income
+            </Button>
+          </div>
+          <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[10px] gap-1"
+                onClick={openTargetDialog}
+              >
+                <TargetIcon className="h-3 w-3" />
+                Target
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>
+                  {metric === "savings" ? "Savings" : "Income"} target · {year}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="target-amount" className="text-xs">
+                  Annual target ({currency}). Set to 0 to clear.
+                </Label>
+                <Input
+                  id="target-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={targetInput}
+                  onChange={(e) => setTargetInput(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setTargetDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveTarget}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       <div className="h-44 w-full">
@@ -146,10 +235,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
           <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
             <XAxis
-              dataKey="month"
-              tickFormatter={formatMonthLabel}
+              dataKey="label"
               tick={{ fontSize: 10 }}
-              minTickGap={20}
+              minTickGap={8}
             />
             <YAxis
               tick={{ fontSize: 10 }}
@@ -160,7 +248,6 @@ export function CumulativeFlowChart({ treeId }: Props) {
             />
             <RechartsTooltip
               contentStyle={{ fontSize: 11 }}
-              labelFormatter={(l: string) => formatMonthLabel(l)}
               formatter={(value: number, name: string) => [
                 `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
                 statuses.find((s) => s.key === name)?.label ?? name,
@@ -179,6 +266,21 @@ export function CumulativeFlowChart({ treeId }: Props) {
                 fillOpacity={0.75}
               />
             ))}
+            {hasTarget ? (
+              <ReferenceLine
+                y={target!.amount}
+                stroke="hsl(var(--destructive))"
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                ifOverflow="extendDomain"
+                label={{
+                  value: `Target ${currency} ${target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  position: "insideTopRight",
+                  fontSize: 10,
+                  fill: "hsl(var(--destructive))",
+                }}
+              />
+            ) : null}
           </AreaChart>
         </ResponsiveContainer>
       </div>
