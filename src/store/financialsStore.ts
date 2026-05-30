@@ -9,10 +9,14 @@ export interface WorkItemFinancials {
   id: string;
   workItemId: string;
   organizationId: string;
-  /** YYYY-MM -> savings amount for that month. */
+  /** Plan: YYYY-MM -> savings amount for that month. */
   savingsByMonth: MonthlyMap;
-  /** YYYY-MM -> income amount for that month. */
+  /** Plan: YYYY-MM -> income amount for that month. */
   incomeByMonth: MonthlyMap;
+  /** Actual: YYYY-MM -> realized savings amount for past months. */
+  actualSavingsByMonth: MonthlyMap;
+  /** Actual: YYYY-MM -> realized income amount for past months. */
+  actualIncomeByMonth: MonthlyMap;
   currency: string;
   createdAt: string;
   updatedAt: string;
@@ -27,7 +31,13 @@ interface FinancialsState {
   upsert: (
     workItemId: string,
     organizationId: string,
-    patch: { savingsByMonth: MonthlyMap; incomeByMonth: MonthlyMap; currency: string },
+    patch: {
+      savingsByMonth: MonthlyMap;
+      incomeByMonth: MonthlyMap;
+      actualSavingsByMonth: MonthlyMap;
+      actualIncomeByMonth: MonthlyMap;
+      currency: string;
+    },
   ) => Promise<void>;
   remove: (workItemId: string) => Promise<void>;
   getFor: (workItemId: string) => WorkItemFinancials | undefined;
