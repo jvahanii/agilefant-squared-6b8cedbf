@@ -508,24 +508,66 @@ export function CumulativeFlowChart({ treeId }: Props) {
             />
             <RechartsTooltip
               contentStyle={{ fontSize: 11 }}
-              formatter={(value: number, name: string) => [
-                `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                series.find((s) => s.key === name)?.label ?? name,
-              ]}
+              formatter={(value: number, name: string) => {
+                const isPlan = name.endsWith("_plan");
+                const baseKey = name.replace(/_(plan|actual)$/, "");
+                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                return [
+                  `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  `${label} · ${isPlan ? "Plan" : "Actual"}`,
+                ];
+              }}
             />
-            <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
+            <Legend
+              wrapperStyle={{ fontSize: 10 }}
+              iconSize={8}
+              formatter={(value: string) => {
+                const isPlan = value.endsWith("_plan");
+                const baseKey = value.replace(/_(plan|actual)$/, "");
+                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                return `${label} · ${isPlan ? "Plan" : "Actual"}`;
+              }}
+            />
+            {/* Plan layer — full year, dashed + translucent so future portion reads as "planned" */}
             {series.map((s) => (
               <Area
-                key={s.key}
+                key={`${s.key}_plan`}
                 type="monotone"
-                dataKey={s.key}
-                stackId="1"
-                name={s.label}
+                dataKey={`${s.key}_plan`}
+                stackId="plan"
+                name={`${s.key}_plan`}
                 stroke={s.color}
+                strokeDasharray="4 4"
+                strokeOpacity={0.8}
                 fill={s.color}
-                fillOpacity={0.75}
+                fillOpacity={0.18}
+                isAnimationActive={false}
               />
             ))}
+            {/* Actual layer — only past months populated; line breaks at today */}
+            {series.map((s) => (
+              <Area
+                key={`${s.key}_actual`}
+                type="monotone"
+                dataKey={`${s.key}_actual`}
+                stackId="actual"
+                name={`${s.key}_actual`}
+                stroke={s.color}
+                strokeWidth={2}
+                fill={s.color}
+                fillOpacity={0.55}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            ))}
+            {year === new Date().getUTCFullYear() ? (
+              <ReferenceLine
+                x={monthLabel(new Date().getUTCMonth() + 1)}
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="2 2"
+                label={{ value: "today", position: "top", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              />
+            ) : null}
             {hasTarget ? (
               <ReferenceLine
                 y={target!.amount}
