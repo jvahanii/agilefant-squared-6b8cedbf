@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -79,6 +79,7 @@ function sumMaps(a: MonthlyMap | undefined, b: MonthlyMap | undefined): MonthlyM
 }
 
 export function CumulativeFlowChart({ treeId }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
   const [groupBy, setGroupBy] = useState<GroupBy>("type");
@@ -248,6 +249,14 @@ export function CumulativeFlowChart({ treeId }: Props) {
 
   const hasData = treeItemIds.length > 0;
   const hasTarget = target && target.amount > 0;
+
+  // Scroll into view on first mount so the user doesn't need to scroll manually
+  // after clicking a tree/backlog/work item that triggers the chart to appear.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
+
   if (!hasData && !hasTarget) return null;
 
   const dialogMetric = metric === "both" ? "savings" : metric;
@@ -283,7 +292,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       : "Income";
 
   return (
-    <div className="mt-2 rounded-md border bg-card p-2">
+    <div ref={containerRef} className="mt-2 rounded-md border bg-card p-2">
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
