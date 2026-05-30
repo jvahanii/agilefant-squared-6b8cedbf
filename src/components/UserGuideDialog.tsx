@@ -23,6 +23,7 @@ import {
   Archive,
   Eye,
   Shield,
+  TrendingUp,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -690,6 +691,80 @@ function buildSections(): Section[] {
           <Tip>
             Restore is non-destructive by default — it merges the snapshot back in rather than wiping your current
             data. Use "Everything in the snapshot" only when you want a full rollback.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "financials",
+      icon: <TrendingUp className="w-4 h-4" />,
+      label: "Savings & Income",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Savings &amp; Income</strong> lets you attach monthly financial
+            projections to work items and track how actuals compare to your plan. The feature is off by default and must
+            be enabled by a superuser in{" "}
+            <strong className="text-foreground">Settings → Savings &amp; Income</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Enable the feature",
+                how: "A superuser opens Settings and toggles the \"Enable savings & income\" switch on. The setting is per-organisation.",
+              },
+              {
+                action: "Open the dialog",
+                how: "Right-click any work item and choose \"Savings & Income\" from the context menu to open the financial entry dialog.",
+              },
+              {
+                action: "Plan rows",
+                how: "Enter projected savings and income month-by-month for the selected year. Plan values are always editable for any month.",
+              },
+              {
+                action: "Actual rows",
+                how: "Record realised amounts. Actual cells are editable only for months that have already ended — current and future month cells are disabled with a tooltip explaining why.",
+              },
+              {
+                action: "Pre-populated actuals",
+                how: "When you open the dialog, past-month Actual cells are pre-filled from the corresponding Plan values if no actual has been entered yet, saving you from re-entering unchanged figures.",
+              },
+              {
+                action: "Year total",
+                how: "Type a total in the Year column and press Enter (or tab away) to distribute it evenly across the year. For Plan rows it spreads across all 12 months; for Actual rows it spreads only across past months. The column is disabled for Actual rows when the selected year has no past months yet.",
+              },
+              {
+                action: "Navigate years",
+                how: "Use the ← / → arrows at the top of the dialog to switch between years. Click Today to jump back to the current year.",
+              },
+              {
+                action: "Currency",
+                how: "Each entry has its own currency. Changing the currency in the dialog converts all four maps (Savings Plan, Savings Actual, Income Plan, Income Actual) using daily ECB rates. Totals shown elsewhere in the app convert to your chosen display currency automatically.",
+              },
+              {
+                action: "Save / Clear",
+                how: "Click Save to persist all four maps. \"Clear all\" removes the entire financial entry for the item.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
+            ))}
+          </div>
+          <div className="flex gap-3 p-3 rounded-lg border bg-card text-sm">
+            <TrendingUp className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Cumulative Flow Chart</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Click the chart icon on any backlog tree header to open the Cumulative Flow Chart. It overlays{" "}
+                <strong>Plan</strong> (dashed, translucent) and <strong>Actual</strong> (solid) series side-by-side so
+                you can spot variances at a glance. A vertical <strong>today</strong> reference line marks the boundary
+                between realised and projected months. Use the Group&nbsp;By selector to view financials broken down by
+                type (savings vs income), by work item, by item status, or by backlog list.
+              </p>
+            </div>
+          </div>
+          <Tip>
+            Actual data is sourced from past months only — the chart never shows actuals for the current or future months
+            so your projections and reality remain clearly separated.
           </Tip>
         </div>
       ),
