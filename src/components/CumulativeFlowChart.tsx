@@ -279,8 +279,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
 
   const currency = displayCurrency;
 
+  // Year total reflects the plan (full year). Past months alone wouldn't show
+  // upcoming planned activity in the header readout.
   const yearTotal = data.length > 0
-    ? series.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
+    ? series.reduce((sum, s) => sum + ((data[data.length - 1][`${s.key}_plan`] as number) || 0), 0)
     : 0;
 
   const hasData = treeItemIds.length > 0;
