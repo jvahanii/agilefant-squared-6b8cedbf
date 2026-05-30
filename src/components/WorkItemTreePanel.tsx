@@ -14,6 +14,8 @@ import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
+import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
+import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
 import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
