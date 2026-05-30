@@ -27,12 +27,12 @@ function rollup(
   for (const id of workItemIds) {
     const e = byWorkItem[id];
     if (!e) continue;
-    const a = sumMap(e.actualSavingsByMonth) + sumMap(e.actualIncomeByMonth);
-    const p = sumMap(e.savingsByMonth) + sumMap(e.incomeByMonth);
-    if (a === 0 && p === 0) continue;
+    const actualTotal = sumMap(e.actualSavingsByMonth) + sumMap(e.actualIncomeByMonth);
+    const planTotal = sumMap(e.savingsByMonth) + sumMap(e.incomeByMonth);
+    if (actualTotal === 0 && planTotal === 0) continue;
     hasData = true;
-    actual += convertCurrency(a, e.currency, displayCurrency, rates);
-    plan += convertCurrency(p, e.currency, displayCurrency, rates);
+    actual += convertCurrency(actualTotal, e.currency, displayCurrency, rates);
+    plan += convertCurrency(planTotal, e.currency, displayCurrency, rates);
   }
   return { actual, plan, currency: displayCurrency, hasData };
 }
