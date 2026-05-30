@@ -68,6 +68,7 @@ function seedActualFromPlan(plan: MonthlyMap, savedActual: MonthlyMap): MonthlyM
 
 export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
+  const logChange = useAppStore((s) => s.logChange);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const entry = useFinancialsStore((s) => s.byWorkItem[workItemId]);
   const upsert = useFinancialsStore((s) => s.upsert);
@@ -198,7 +199,10 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
   const handleSave = async () => {
     const hasAny = ROW_KEYS.some((k) => Object.keys(maps[k]).length > 0);
     if (!hasAny) {
-      if (entry) await remove(workItemId);
+      if (entry) {
+        await remove(workItemId);
+        logChange({ action: "Clear Financials", entityType: "work_item", entityId: workItemId, entityName: item.title });
+      }
       onOpenChange(false);
       return;
     }
@@ -209,11 +213,21 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
       actualIncomeByMonth: maps.incomeActual,
       currency,
     });
+    logChange({
+      action: "Update Financials",
+      entityType: "work_item",
+      entityId: workItemId,
+      entityName: item.title,
+      details: `savings: ${formatCurrencyCompact(totals.savingsPlan, currency)}, income: ${formatCurrencyCompact(totals.incomePlan, currency)}`,
+    });
     onOpenChange(false);
   };
 
   const handleClear = async () => {
-    if (entry) await remove(workItemId);
+    if (entry) {
+      await remove(workItemId);
+      logChange({ action: "Clear Financials", entityType: "work_item", entityId: workItemId, entityName: item.title });
+    }
     onOpenChange(false);
   };
 
