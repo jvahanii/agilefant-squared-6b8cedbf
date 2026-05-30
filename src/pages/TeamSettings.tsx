@@ -9,14 +9,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, UserPlus, Trash2, KeyRound, Pencil, AlertTriangle, SearchCheck, Hash, CreditCard, FileText, Clock, Settings2, FlaskConical, Youtube, Wrench } from "lucide-react";
+import {
+  ArrowLeft,
+  UserPlus,
+  Trash2,
+  KeyRound,
+  Pencil,
+  AlertTriangle,
+  SearchCheck,
+  Hash,
+  CreditCard,
+  FileText,
+  Clock,
+  Settings2,
+  FlaskConical,
+  Youtube,
+  Wrench,
+} from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
 import { TeamManagement } from "@/components/TeamManagement";
 import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 import { PricingCards } from "@/components/PricingCards";
 import { Switch } from "@/components/ui/switch";
-import { isAutoCheckEnabled as isAutoCheckEnabledSetting, setAutoCheckEnabled as setAutoCheckEnabledSetting, isAutoTestEnabled as isAutoTestEnabledSetting, setAutoTestEnabled as setAutoTestEnabledSetting } from "@/hooks/useAutoIntegrityCheck";
+import {
+  isAutoCheckEnabled as isAutoCheckEnabledSetting,
+  setAutoCheckEnabled as setAutoCheckEnabledSetting,
+  isAutoTestEnabled as isAutoTestEnabledSetting,
+  setAutoTestEnabled as setAutoTestEnabledSetting,
+} from "@/hooks/useAutoIntegrityCheck";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
@@ -67,7 +88,9 @@ export default function TeamSettings() {
   const [autoTestEnabled, setAutoTestEnabled] = useState(() => isAutoTestEnabledSetting(activeOrgId));
 
   // Org settings from backend
-  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false });
+  const orgSettings = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false },
+  );
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setOrganizationId = useAppStore((s) => s.setOrganizationId);
   const loadData = useAppStore((s) => s.loadFromSupabase);
@@ -422,7 +445,11 @@ export default function TeamSettings() {
         .eq("is_superuser", true);
       if (superuserCheckError) {
         // Abort: we cannot safely determine which members are superusers.
-        toast({ title: "Error", description: "Could not verify member roles before cleanup. Aborting.", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "Could not verify member roles before cleanup. Aborting.",
+          variant: "destructive",
+        });
         setDeleteLoading(false);
         return;
       }
@@ -439,8 +466,7 @@ export default function TeamSettings() {
           .select("id")
           .eq("user_id", user.id)
           .limit(1);
-        const currentUserWillBeOrphaned =
-          !isSuperuser && (!currentUserRemaining || currentUserRemaining.length === 0);
+        const currentUserWillBeOrphaned = !isSuperuser && (!currentUserRemaining || currentUserRemaining.length === 0);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: cleanupError } = await (supabase as any).rpc("cleanup_orphaned_users", {
@@ -456,7 +482,8 @@ export default function TeamSettings() {
         } else {
           toast({
             title: "Organization deleted",
-            description: "All organization data has been permanently deleted. Members with no remaining organizations were also removed.",
+            description:
+              "All organization data has been permanently deleted. Members with no remaining organizations were also removed.",
           });
         }
 
@@ -679,7 +706,7 @@ export default function TeamSettings() {
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {(canManage && currentRole === "owner" || isSuperuser) && member.user_id !== user?.id ? (
+                    {((canManage && currentRole === "owner") || isSuperuser) && member.user_id !== user?.id ? (
                       <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v)}>
                         <SelectTrigger className="w-24 h-8 text-xs">
                           <SelectValue />
@@ -709,8 +736,6 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
-
-        
 
         <Card>
           <CardHeader>
@@ -744,8 +769,8 @@ export default function TeamSettings() {
               <div>
                 <p className="text-sm font-medium">Enable savings &amp; income</p>
                 <p className="text-xs text-muted-foreground">
-                  Attach a monthly savings and monthly income amount to work items, then see
-                  cumulative flow diagrams per backlog tree sliced by status.
+                  Attach a monthly savings and monthly income amount to work items, then see cumulative flow diagrams
+                  per backlog tree sliced by status.
                 </p>
               </div>
               <Switch
@@ -759,57 +784,58 @@ export default function TeamSettings() {
               />
             </div>
             <p className="mt-3 text-xs text-muted-foreground italic border-l-2 border-muted pl-3">
-              "Eliminate numerical targets for the work force." — W. Edwards Deming
+              "Eliminate numerical targets for the work force. Substitute with leadership." — W. Edwards Deming
             </p>
           </CardContent>
         </Card>
 
         {isSuperuser && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <SearchCheck className="w-4 h-4" /> Data Integrity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Auto-check on changes</p>
-                <p className="text-xs text-muted-foreground">
-                  Automatically run data integrity checks whenever item or backlog relationships change.
-                </p>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <SearchCheck className="w-4 h-4" /> Data Integrity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Auto-check on changes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically run data integrity checks whenever item or backlog relationships change.
+                  </p>
+                </div>
+                <Switch
+                  checked={autoCheckEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setAutoCheckEnabledSetting(activeOrgId, checked);
+                      setAutoCheckEnabled(checked);
+                      toast({ title: checked ? "Auto-check enabled" : "Auto-check disabled" });
+                    }
+                  }}
+                />
               </div>
-              <Switch
-                checked={autoCheckEnabled}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    setAutoCheckEnabledSetting(activeOrgId, checked);
-                    setAutoCheckEnabled(checked);
-                    toast({ title: checked ? "Auto-check enabled" : "Auto-check disabled" });
-                  }
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <div>
-                <p className="text-sm font-medium">Auto-run tests on changes</p>
-                <p className="text-xs text-muted-foreground">
-                  Automatically run all integrity tests whenever item or backlog relationships change and copy results to clipboard.
-                </p>
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div>
+                  <p className="text-sm font-medium">Auto-run tests on changes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically run all integrity tests whenever item or backlog relationships change and copy results
+                    to clipboard.
+                  </p>
+                </div>
+                <Switch
+                  checked={autoTestEnabled}
+                  onCheckedChange={(checked) => {
+                    if (activeOrgId) {
+                      setAutoTestEnabledSetting(activeOrgId, checked);
+                      setAutoTestEnabled(checked);
+                      toast({ title: checked ? "Auto-test enabled" : "Auto-test disabled" });
+                    }
+                  }}
+                />
               </div>
-              <Switch
-                checked={autoTestEnabled}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    setAutoTestEnabledSetting(activeOrgId, checked);
-                    setAutoTestEnabled(checked);
-                    toast({ title: checked ? "Auto-test enabled" : "Auto-test disabled" });
-                  }
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         )}
 
         <TimesheetBrowserDialog
@@ -839,9 +865,7 @@ export default function TeamSettings() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                View the terms you agreed to when creating your account.
-              </p>
+              <p className="text-sm text-muted-foreground">View the terms you agreed to when creating your account.</p>
               <Button variant="outline" size="sm" onClick={() => setTosOpen(true)}>
                 View
               </Button>
@@ -895,9 +919,7 @@ export default function TeamSettings() {
               <div className="flex items-center justify-between pt-3 border-t">
                 <div>
                   <p className="text-sm font-medium">YouTube Channels</p>
-                  <p className="text-xs text-muted-foreground">
-                    Manage YouTube channel integrations.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Manage YouTube channel integrations.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate("/superuser/youtube")}>
                   <Youtube className="w-3.5 h-3.5 mr-1 text-red-500" /> YouTube
@@ -933,7 +955,9 @@ export default function TeamSettings() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{activeOrg?.organization_name ?? orgName}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. All backlog trees, backlogs, work items, hyperlinks, and memberships will be permanently deleted. Members who do not belong to any other organization will also have their accounts deleted.
+                        This action cannot be undone. All backlog trees, backlogs, work items, hyperlinks, and
+                        memberships will be permanently deleted. Members who do not belong to any other organization
+                        will also have their accounts deleted.
                         <br />
                         <br />
                         Type <strong>{activeOrg?.organization_slug ?? orgSlug}</strong> to confirm:
@@ -947,7 +971,10 @@ export default function TeamSettings() {
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        disabled={deleteConfirmText.toLowerCase() !== (activeOrg?.organization_slug ?? orgSlug).toLowerCase() || deleteLoading}
+                        disabled={
+                          deleteConfirmText.toLowerCase() !== (activeOrg?.organization_slug ?? orgSlug).toLowerCase() ||
+                          deleteLoading
+                        }
                         onClick={handleDeleteOrg}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
