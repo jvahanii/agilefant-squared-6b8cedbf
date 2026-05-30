@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -107,13 +107,13 @@ export function CumulativeFlowChart({ treeId }: Props) {
   }, [statusesList]);
 
   /** Resolve the financial map for a work item depending on current metric. */
-  const getMetricMap = (id: string): MonthlyMap | undefined => {
+  const getMetricMap = useCallback((id: string): MonthlyMap | undefined => {
     const e = byWorkItem[id];
     if (!e) return undefined;
     if (metric === "savings") return e.savingsByMonth;
     if (metric === "income") return e.incomeByMonth;
     return sumMaps(e.savingsByMonth, e.incomeByMonth);
-  };
+  }, [byWorkItem, metric]);
 
   /** IDs of work items in this tree that have relevant financials. */
   const treeItemIds = useMemo(() => {
@@ -163,8 +163,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       colorIdx++;
     }
     return Array.from(seen.values());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, byWorkItem, metric]);
+  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, getMetricMap]);
 
   const data = useMemo(() => {
     return MONTHS_OF_YEAR.map((mm) => {
@@ -213,8 +212,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       }
       return row;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, metric, year]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year]);
 
   const currency = (
     treeItemIds.length > 0 ? byWorkItem[treeItemIds[0]]?.currency : undefined
@@ -390,7 +388,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => { setGroupBy(opt.value); setSettingsOpen(false); }}
+                    onClick={() => {
+                      setGroupBy(opt.value);
+                      setSettingsOpen(false);
+                    }}
                     className={`w-full flex flex-col items-start rounded px-2 py-1.5 text-left transition-colors ${
                       groupBy === opt.value
                         ? "bg-primary text-primary-foreground"
