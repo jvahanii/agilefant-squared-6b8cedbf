@@ -291,7 +291,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
+  const backlogFinancials = useBacklogFinancialTotals(backlogId, treeId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
 
@@ -474,6 +476,13 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
+        )}
+        {savingsIncomeVisible && backlogFinancials.hasData && (
+          <FinancialTotalsBadge
+            savings={backlogFinancials.savings}
+            income={backlogFinancials.income}
+            currency={backlogFinancials.currency}
+          />
         )}
         {/* Mobile actions: Plus + logged time — only for selected backlog; other actions via context menu */}
         <div className={`${isSelected ? "flex" : "hidden"} md:hidden items-center gap-0.5 shrink-0`}>
