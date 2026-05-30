@@ -155,7 +155,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Cumulative {metric === "savings" ? "Savings" : "Income"} · {year}
+            Cumulative {metric === "both" ? "Savings + Income" : metric === "savings" ? "Savings" : "Income"} · {year}
           </h4>
           <p className="text-[10px] text-muted-foreground">
             Sliced by current status · {currency}{" "}
