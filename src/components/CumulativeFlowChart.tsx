@@ -21,11 +21,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Target as TargetIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ChevronLeft, ChevronRight, Settings2, Target as TargetIcon } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+
+type GroupBy = "type" | "item" | "status" | "list";
+
+const GROUP_BY_OPTIONS: { value: GroupBy; label: string; description: string }[] = [
+  { value: "type", label: "Financials type", description: "Income vs savings" },
+  { value: "item", label: "Item", description: "One area per work item" },
+  { value: "status", label: "Item status", description: "Grouped by current status" },
+  { value: "list", label: "List", description: "Grouped by backlog list" },
+];
+
+const CHART_COLORS = [
+  "#6366f1", "#f59e0b", "#10b981", "#3b82f6", "#ef4444",
+  "#8b5cf6", "#06b6d4", "#84cc16", "#f97316", "#ec4899",
+];
 
 interface Props {
   treeId: string;
@@ -51,10 +70,13 @@ function sumMaps(a: MonthlyMap | undefined, b: MonthlyMap | undefined): MonthlyM
 export function CumulativeFlowChart({ treeId }: Props) {
   const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
+  const [groupBy, setGroupBy] = useState<GroupBy>("type");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
   const [targetInput, setTargetInput] = useState("");
 
   const workItems = useAppStore((s) => s.workItems);
+  const backlogs = useAppStore((s) => s.backlogs);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
   const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
@@ -84,48 +106,125 @@ export function CumulativeFlowChart({ treeId }: Props) {
       .map((s) => ({ key: s.key, label: s.label, color: s.color }));
   }, [statusesList]);
 
-  const contributors = useMemo(() => {
-    const out: Array<{ status: string; entries: MonthlyMap; currency: string }> = [];
-    for (const id of Object.keys(byWorkItem)) {
+  /** Resolve the financial map for a work item depending on current metric. */
+  const getMetricMap = (id: string): MonthlyMap | undefined => {
+    const e = byWorkItem[id];
+    if (!e) return undefined;
+    if (metric === "savings") return e.savingsByMonth;
+    if (metric === "income") return e.incomeByMonth;
+    return sumMaps(e.savingsByMonth, e.incomeByMonth);
+  };
+
+  /** IDs of work items in this tree that have relevant financials. */
+  const treeItemIds = useMemo(() => {
+    return Object.keys(byWorkItem).filter((id) => {
+      const wi = workItems[id];
+      return wi && treeId in wi.backlogAssignments;
+    });
+  }, [byWorkItem, workItems, treeId]);
+
+  /** Ordered series definitions (key, label, color) for the chart. */
+  const series = useMemo(() => {
+    if (groupBy === "type") {
+      return [
+        { key: "savings", label: "Savings", color: "#22c55e" },
+        { key: "income", label: "Income", color: "#3b82f6" },
+      ];
+    }
+    if (groupBy === "status") {
+      return statuses;
+    }
+    if (groupBy === "item") {
+      const items = treeItemIds.filter((id) => {
+        const map = getMetricMap(id);
+        return map && Object.keys(map).length > 0;
+      });
+      return items.map((id, i) => ({
+        key: id,
+        label: workItems[id]?.title ?? id,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }));
+    }
+    // "list"
+    const seen = new Map<string, { key: string; label: string; color: string }>();
+    let colorIdx = 0;
+    for (const id of treeItemIds) {
       const wi = workItems[id];
       if (!wi) continue;
-      if (!(treeId in wi.backlogAssignments)) continue;
-      const e = byWorkItem[id];
-      let map: MonthlyMap | undefined;
-      if (metric === "both") {
-        map = sumMaps(e.savingsByMonth, e.incomeByMonth);
-      } else {
-        map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
-      }
+      const backlogId = wi.backlogAssignments[treeId];
+      if (!backlogId || seen.has(backlogId)) continue;
+      const map = getMetricMap(id);
       if (!map || Object.keys(map).length === 0) continue;
-      out.push({ status: wi.status, entries: map, currency: e.currency });
+      seen.set(backlogId, {
+        key: backlogId,
+        label: backlogs[backlogId]?.name ?? backlogId,
+        color: CHART_COLORS[colorIdx % CHART_COLORS.length],
+      });
+      colorIdx++;
     }
-    return out;
-  }, [byWorkItem, workItems, treeId, metric]);
+    return Array.from(seen.values());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, byWorkItem, metric]);
 
   const data = useMemo(() => {
     return MONTHS_OF_YEAR.map((mm) => {
       const mk = `${year}-${mm}`;
       const row: Record<string, number | string> = { month: mk, label: monthLabel(Number(mm)) };
-      for (const s of statuses) row[s.key] = 0;
-      for (const c of contributors) {
-        let accrued = 0;
-        for (const [k, v] of Object.entries(c.entries)) {
-          if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
+      for (const s of series) row[s.key] = 0;
+
+      if (groupBy === "type") {
+        for (const id of treeItemIds) {
+          const e = byWorkItem[id];
+          if (!e) continue;
+          let accruedSavings = 0;
+          let accruedIncome = 0;
+          for (const [k, v] of Object.entries(e.savingsByMonth ?? {})) {
+            if (k.startsWith(`${year}-`) && k <= mk) accruedSavings += v;
+          }
+          for (const [k, v] of Object.entries(e.incomeByMonth ?? {})) {
+            if (k.startsWith(`${year}-`) && k <= mk) accruedIncome += v;
+          }
+          row["savings"] = (row["savings"] as number) + accruedSavings;
+          row["income"] = (row["income"] as number) + accruedIncome;
         }
-        if (accrued > 0) row[c.status] = (row[c.status] as number) + accrued;
+      } else {
+        for (const id of treeItemIds) {
+          const wi = workItems[id];
+          if (!wi) continue;
+          const map = getMetricMap(id);
+          if (!map) continue;
+          let accrued = 0;
+          for (const [k, v] of Object.entries(map)) {
+            if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
+          }
+          if (accrued <= 0) continue;
+          let seriesKey: string;
+          if (groupBy === "status") {
+            seriesKey = wi.status;
+          } else if (groupBy === "item") {
+            seriesKey = id;
+          } else {
+            seriesKey = wi.backlogAssignments[treeId];
+          }
+          if (row[seriesKey] !== undefined) {
+            row[seriesKey] = (row[seriesKey] as number) + accrued;
+          }
+        }
       }
       return row;
     });
-  }, [contributors, statuses, year]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, metric, year]);
 
-  const currency = contributors[0]?.currency ?? target?.currency ?? "EUR";
+  const currency = (
+    treeItemIds.length > 0 ? byWorkItem[treeItemIds[0]]?.currency : undefined
+  ) ?? target?.currency ?? "EUR";
 
   const yearTotal = data.length > 0
-    ? statuses.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
+    ? series.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
     : 0;
 
-  const hasData = contributors.length > 0;
+  const hasData = treeItemIds.length > 0;
   const hasTarget = target && target.amount > 0;
   if (!hasData && !hasTarget) return null;
 
@@ -150,15 +249,26 @@ export function CumulativeFlowChart({ treeId }: Props) {
     setTargetDialogOpen(false);
   }
 
+  const groupByLabel = GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ?? groupBy;
+
+  const metricLabel =
+    groupBy === "type"
+      ? "Savings + Income"
+      : metric === "both"
+      ? "Savings + Income"
+      : metric === "savings"
+      ? "Savings"
+      : "Income";
+
   return (
     <div className="mt-2 rounded-md border bg-card p-2">
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Cumulative {metric === "both" ? "Savings + Income" : metric === "savings" ? "Savings" : "Income"} · {year}
+            Cumulative {metricLabel} · {year}
           </h4>
           <p className="text-[10px] text-muted-foreground">
-            Sliced by current status · {currency}{" "}
+            Sliced by {groupByLabel.toLowerCase()} · {currency}{" "}
             {yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             {hasTarget ? (
               <>
@@ -192,32 +302,34 @@ export function CumulativeFlowChart({ treeId }: Props) {
               <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant={metric === "both" ? "default" : "ghost"}
-              className="h-6 px-2 text-[10px]"
-              onClick={() => setMetric("both")}
-            >
-              Both
-            </Button>
-            <Button
-              size="sm"
-              variant={metric === "savings" ? "default" : "ghost"}
-              className="h-6 px-2 text-[10px]"
-              onClick={() => setMetric("savings")}
-            >
-              Savings
-            </Button>
-            <Button
-              size="sm"
-              variant={metric === "income" ? "default" : "ghost"}
-              className="h-6 px-2 text-[10px]"
-              onClick={() => setMetric("income")}
-            >
-              Income
-            </Button>
-          </div>
+          {groupBy !== "type" && (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={metric === "both" ? "default" : "ghost"}
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setMetric("both")}
+              >
+                Both
+              </Button>
+              <Button
+                size="sm"
+                variant={metric === "savings" ? "default" : "ghost"}
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setMetric("savings")}
+              >
+                Savings
+              </Button>
+              <Button
+                size="sm"
+                variant={metric === "income" ? "default" : "ghost"}
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setMetric("income")}
+              >
+                Income
+              </Button>
+            </div>
+          )}
           <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -258,6 +370,42 @@ export function CumulativeFlowChart({ treeId }: Props) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                aria-label="Chart settings"
+              >
+                <Settings2 className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-2" align="end">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                Count by
+              </p>
+              <div className="space-y-0.5">
+                {GROUP_BY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setGroupBy(opt.value); setSettingsOpen(false); }}
+                    className={`w-full flex flex-col items-start rounded px-2 py-1.5 text-left transition-colors ${
+                      groupBy === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <span className="text-xs font-medium">{opt.label}</span>
+                    <span className={`text-[10px] ${groupBy === opt.value ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      {opt.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       <div className="h-44 w-full">
@@ -280,11 +428,11 @@ export function CumulativeFlowChart({ treeId }: Props) {
               contentStyle={{ fontSize: 11 }}
               formatter={(value: number, name: string) => [
                 `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                statuses.find((s) => s.key === name)?.label ?? name,
+                series.find((s) => s.key === name)?.label ?? name,
               ]}
             />
             <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
-            {statuses.map((s) => (
+            {series.map((s) => (
               <Area
                 key={s.key}
                 type="monotone"
