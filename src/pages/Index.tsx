@@ -104,6 +104,10 @@ const Index = () => {
     import('@/store/financialsStore').then(({ useFinancialsStore }) =>
       useFinancialsStore.getState().load([...orgIds]),
     );
+    // Load per-tree yearly financial targets.
+    import('@/store/targetsStore').then(({ useTargetsStore }) =>
+      useTargetsStore.getState().load([...orgIds]),
+    );
     // Load per-tree status definitions for every accessible tree
     const treeIds = Object.keys(backlogTrees);
     if (treeIds.length > 0) loadStatusesForTrees(treeIds);
