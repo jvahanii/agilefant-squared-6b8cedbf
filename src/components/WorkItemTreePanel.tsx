@@ -239,6 +239,8 @@ function WorkItemNodeContent({
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
+  const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
+  const itemFinancials = useWorkItemFinancialTotals(workItemId);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const itemTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible) return 0;
