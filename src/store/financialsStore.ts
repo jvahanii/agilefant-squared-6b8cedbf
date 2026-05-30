@@ -1,14 +1,19 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
+/** YYYY-MM key, UTC. */
+export type MonthKey = string;
+export type MonthlyMap = Record<MonthKey, number>;
+
 export interface WorkItemFinancials {
   id: string;
   workItemId: string;
   organizationId: string;
-  monthlySavings: number;
-  monthlyIncome: number;
+  /** YYYY-MM -> savings amount for that month. */
+  savingsByMonth: MonthlyMap;
+  /** YYYY-MM -> income amount for that month. */
+  incomeByMonth: MonthlyMap;
   currency: string;
-  /** ISO timestamp – used as the starting month for cumulative-flow accrual. */
   createdAt: string;
   updatedAt: string;
 }
@@ -22,11 +27,22 @@ interface FinancialsState {
   upsert: (
     workItemId: string,
     organizationId: string,
-    patch: { monthlySavings: number; monthlyIncome: number; currency: string },
+    patch: { savingsByMonth: MonthlyMap; incomeByMonth: MonthlyMap; currency: string },
   ) => Promise<void>;
   remove: (workItemId: string) => Promise<void>;
   getFor: (workItemId: string) => WorkItemFinancials | undefined;
   applyRealtime: (event: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+}
+
+function sanitizeMap(raw: unknown): MonthlyMap {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: MonthlyMap = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^\d{4}-\d{2}$/.test(k)) continue;
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) out[k] = n;
+  }
+  return out;
 }
 
 function rowToEntry(row: Record<string, unknown>): WorkItemFinancials {
@@ -34,8 +50,8 @@ function rowToEntry(row: Record<string, unknown>): WorkItemFinancials {
     id: row.id as string,
     workItemId: row.work_item_id as string,
     organizationId: row.organization_id as string,
-    monthlySavings: Number(row.monthly_savings ?? 0),
-    monthlyIncome: Number(row.monthly_income ?? 0),
+    savingsByMonth: sanitizeMap(row.savings_by_month),
+    incomeByMonth: sanitizeMap(row.income_by_month),
     currency: (row.currency as string) ?? 'EUR',
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
@@ -68,7 +84,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
 
   upsert: async (workItemId, organizationId, patch) => {
     const prev = get().byWorkItem[workItemId];
-    // Optimistic
+    const savingsByMonth = sanitizeMap(patch.savingsByMonth);
+    const incomeByMonth = sanitizeMap(patch.incomeByMonth);
     set((s) => ({
       byWorkItem: {
         ...s.byWorkItem,
@@ -76,8 +93,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
           id: prev?.id ?? `optimistic-${workItemId}`,
           workItemId,
           organizationId,
-          monthlySavings: patch.monthlySavings,
-          monthlyIncome: patch.monthlyIncome,
+          savingsByMonth,
+          incomeByMonth,
           currency: patch.currency,
           createdAt: prev?.createdAt ?? new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -91,8 +108,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
         {
           work_item_id: workItemId,
           organization_id: organizationId,
-          monthly_savings: patch.monthlySavings,
-          monthly_income: patch.monthlyIncome,
+          savings_by_month: savingsByMonth,
+          income_by_month: incomeByMonth,
           currency: patch.currency,
           updated_at: new Date().toISOString(),
         },
@@ -102,7 +119,6 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
       .single();
     if (error) {
       console.error('financialsStore.upsert failed', error);
-      // Roll back
       set((s) => {
         const next = { ...s.byWorkItem };
         if (prev) next[workItemId] = prev;
@@ -152,3 +168,19 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
     set((s) => ({ byWorkItem: { ...s.byWorkItem, [e.workItemId]: e } }));
   },
 }));
+
+/** Sum of all monthly amounts in a map. */
+export function sumMap(m: MonthlyMap | undefined): number {
+  if (!m) return 0;
+  let total = 0;
+  for (const v of Object.values(m)) total += v;
+  return total;
+}
+
+/** Format a currency total in a compact form. */
+export function formatCurrencyCompact(amount: number, currency: string): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) return `${currency} ${(amount / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}k`;
+  return `${currency} ${amount.toFixed(0)}`;
+}

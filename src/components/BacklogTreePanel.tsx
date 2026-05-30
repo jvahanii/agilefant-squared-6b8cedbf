@@ -35,6 +35,8 @@ import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
+import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
+import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 
@@ -289,7 +291,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
+  const backlogFinancials = useBacklogFinancialTotals(backlogId, treeId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
 
@@ -472,6 +476,13 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
+        )}
+        {savingsIncomeVisible && backlogFinancials.hasData && (
+          <FinancialTotalsBadge
+            savings={backlogFinancials.savings}
+            income={backlogFinancials.income}
+            currency={backlogFinancials.currency}
+          />
         )}
         {/* Mobile actions: Plus + logged time — only for selected backlog; other actions via context menu */}
         <div className={`${isSelected ? "flex" : "hidden"} md:hidden items-center gap-0.5 shrink-0`}>
@@ -761,6 +772,11 @@ function DraggableTreeHeader({
 }) {
   const dragStartedRef = useRef(false);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const savingsIncomeVisible = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
+  );
+  const treeFinancials = useTreeFinancialTotals(tree.id);
   const {
     attributes,
     listeners,
@@ -815,6 +831,13 @@ function DraggableTreeHeader({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+          {savingsIncomeVisible && treeFinancials.hasData && (
+            <FinancialTotalsBadge
+              savings={treeFinancials.savings}
+              income={treeFinancials.income}
+              currency={treeFinancials.currency}
+            />
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">

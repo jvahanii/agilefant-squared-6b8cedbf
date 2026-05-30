@@ -14,6 +14,8 @@ import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
+import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
+import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
 import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -239,6 +241,8 @@ function WorkItemNodeContent({
   const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
+  const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
+  const itemFinancials = useWorkItemFinancialTotals(workItemId);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const itemTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible) return 0;
@@ -897,6 +901,15 @@ function WorkItemNodeContent({
                   </>
                 );
               })()}
+
+            {savingsIncomeVisible && itemFinancials.hasData && (
+              <FinancialTotalsBadge
+                savings={itemFinancials.savings}
+                income={itemFinancials.income}
+                currency={itemFinancials.currency}
+              />
+            )}
+
 
             {/* Mobile actions: Plus only — other actions via context menu (long-press) */}
             <div className={`flex md:hidden items-center gap-0.5 shrink-0 ${!isSelected ? "invisible" : ""}`}>
