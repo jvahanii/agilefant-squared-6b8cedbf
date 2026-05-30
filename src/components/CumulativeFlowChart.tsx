@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronLeft, ChevronRight, Settings2, Target as TargetIcon } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
-import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
+import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
