@@ -970,7 +970,7 @@ export function BacklogTreePanel() {
     return [...ids].sort().join(',');
   });
   const selectedWorkItemTreeIds = useMemo(
-    () => new Set(selectedWorkItemTreeIdsKey ? selectedWorkItemTreeIdsKey.split(',') : []),
+    () => new Set(selectedWorkItemTreeIdsKey.length > 0 ? selectedWorkItemTreeIdsKey.split(',') : []),
     [selectedWorkItemTreeIdsKey],
   );
   // When a superuser is simulating a non-privileged role, drop the superuser bypass
