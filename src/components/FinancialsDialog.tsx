@@ -51,6 +51,10 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
   const [savings, setSavings] = useState<MonthlyMap>({});
   const [income, setIncome] = useState<MonthlyMap>({});
   const [currency, setCurrency] = useState("EUR");
+  const [yearTotalDraft, setYearTotalDraft] = useState<{ savings: string; income: string }>({
+    savings: "",
+    income: "",
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +62,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     setIncome(entry?.incomeByMonth ? { ...entry.incomeByMonth } : {});
     setCurrency(entry?.currency ?? "EUR");
     setYear(currentYear);
+    setYearTotalDraft({ savings: "", income: "" });
   }, [open, entry, currentYear]);
 
   const totals = useMemo(() => {
@@ -104,13 +109,18 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
       }
       if (raw.trim() && Number.isFinite(num) && num > 0) {
         const total = Math.min(num, MAX_AMOUNT * 12);
-        const perMonth = total / 12;
-        for (let i = 0; i < 12; i++) {
-          next[monthKey(year, i)] = Math.round(perMonth * 100) / 100;
+        // Distribute evenly and assign remainder to the last month to avoid rounding drift
+        const base = Math.round((total / 12) * 100) / 100;
+        const sum11 = base * 11;
+        const last = Math.round((total - sum11) * 100) / 100;
+        for (let i = 0; i < 11; i++) {
+          next[monthKey(year, i)] = base;
         }
+        next[monthKey(year, 11)] = last > 0 ? last : base;
       }
       return next;
     });
+    setYearTotalDraft((d) => ({ ...d, [target]: "" }));
   };
 
   const handleSave = async () => {
@@ -143,6 +153,11 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     for (let i = 0; i < 12; i++) s += income[monthKey(year, i)] ?? 0;
     return s;
   }, [income, year]);
+
+  // Reset drafts when year navigation clears the typed-but-not-committed value
+  useEffect(() => {
+    setYearTotalDraft({ savings: "", income: "" });
+  }, [year]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,8 +268,20 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                         min={0}
                         step="0.01"
                         inputMode="decimal"
-                        value={yearTotal > 0 ? String(yearTotal) : ""}
-                        onChange={(e) => distributeYearTotal(target, e.target.value)}
+                        value={yearTotalDraft[target] !== "" ? yearTotalDraft[target] : (yearTotal > 0 ? String(yearTotal) : "")}
+                        onChange={(e) =>
+                          setYearTotalDraft((d) => ({ ...d, [target]: e.target.value }))
+                        }
+                        onBlur={(e) => {
+                          if (yearTotalDraft[target] !== "") {
+                            distributeYearTotal(target, e.target.value);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && yearTotalDraft[target] !== "") {
+                            distributeYearTotal(target, (e.target as HTMLInputElement).value);
+                          }
+                        }}
                         placeholder="0"
                         className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
                         title="Enter a year total to distribute evenly across months"
