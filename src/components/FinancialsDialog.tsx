@@ -234,7 +234,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
           </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Entry currency</Label>
-            <Select value={currency} onValueChange={setCurrency}>
+            <Select value={currency} onValueChange={handleCurrencyChange}>
               <SelectTrigger className="h-7 text-xs w-[88px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CURRENCIES.map((c) => (
