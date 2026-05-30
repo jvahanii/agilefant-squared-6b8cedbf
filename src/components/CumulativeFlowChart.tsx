@@ -129,8 +129,11 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const hasTarget = target && target.amount > 0;
   if (!hasData && !hasTarget) return null;
 
+  const dialogMetric = metric === "both" ? "savings" : metric;
+
   function openTargetDialog() {
-    setTargetInput(target ? String(target.amount) : "");
+    const t = dialogMetric === "savings" ? targetSavings : targetIncome;
+    setTargetInput(t ? String(t.amount) : "");
     setTargetDialogOpen(true);
   }
 
@@ -139,9 +142,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
     const n = Number(targetInput);
     if (!Number.isFinite(n) || n < 0) return;
     if (n === 0) {
-      if (target) await removeTarget(treeId, year, metric);
+      const t = dialogMetric === "savings" ? targetSavings : targetIncome;
+      if (t) await removeTarget(treeId, year, dialogMetric);
     } else {
-      await upsertTarget(treeId, ownerOrgId, year, metric, n, currency);
+      await upsertTarget(treeId, ownerOrgId, year, dialogMetric, n, currency);
     }
     setTargetDialogOpen(false);
   }
