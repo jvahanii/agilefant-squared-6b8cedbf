@@ -23,6 +23,7 @@ import {
   type MonthlyMap,
 } from "@/store/financialsStore";
 import { useOrgStore } from "@/store/orgStore";
+import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 
 interface FinancialsDialogProps {
