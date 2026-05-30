@@ -9,10 +9,14 @@ export interface WorkItemFinancials {
   id: string;
   workItemId: string;
   organizationId: string;
-  /** YYYY-MM -> savings amount for that month. */
+  /** Plan: YYYY-MM -> savings amount for that month. */
   savingsByMonth: MonthlyMap;
-  /** YYYY-MM -> income amount for that month. */
+  /** Plan: YYYY-MM -> income amount for that month. */
   incomeByMonth: MonthlyMap;
+  /** Actual: YYYY-MM -> realized savings amount for past months. */
+  actualSavingsByMonth: MonthlyMap;
+  /** Actual: YYYY-MM -> realized income amount for past months. */
+  actualIncomeByMonth: MonthlyMap;
   currency: string;
   createdAt: string;
   updatedAt: string;
@@ -27,7 +31,13 @@ interface FinancialsState {
   upsert: (
     workItemId: string,
     organizationId: string,
-    patch: { savingsByMonth: MonthlyMap; incomeByMonth: MonthlyMap; currency: string },
+    patch: {
+      savingsByMonth: MonthlyMap;
+      incomeByMonth: MonthlyMap;
+      actualSavingsByMonth: MonthlyMap;
+      actualIncomeByMonth: MonthlyMap;
+      currency: string;
+    },
   ) => Promise<void>;
   remove: (workItemId: string) => Promise<void>;
   getFor: (workItemId: string) => WorkItemFinancials | undefined;
@@ -52,6 +62,8 @@ function rowToEntry(row: Record<string, unknown>): WorkItemFinancials {
     organizationId: row.organization_id as string,
     savingsByMonth: sanitizeMap(row.savings_by_month),
     incomeByMonth: sanitizeMap(row.income_by_month),
+    actualSavingsByMonth: sanitizeMap(row.actual_savings_by_month),
+    actualIncomeByMonth: sanitizeMap(row.actual_income_by_month),
     currency: (row.currency as string) ?? 'EUR',
     createdAt: (row.created_at as string) ?? new Date().toISOString(),
     updatedAt: (row.updated_at as string) ?? new Date().toISOString(),
@@ -86,6 +98,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
     const prev = get().byWorkItem[workItemId];
     const savingsByMonth = sanitizeMap(patch.savingsByMonth);
     const incomeByMonth = sanitizeMap(patch.incomeByMonth);
+    const actualSavingsByMonth = sanitizeMap(patch.actualSavingsByMonth);
+    const actualIncomeByMonth = sanitizeMap(patch.actualIncomeByMonth);
     set((s) => ({
       byWorkItem: {
         ...s.byWorkItem,
@@ -95,6 +109,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
           organizationId,
           savingsByMonth,
           incomeByMonth,
+          actualSavingsByMonth,
+          actualIncomeByMonth,
           currency: patch.currency,
           createdAt: prev?.createdAt ?? new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -110,6 +126,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
           organization_id: organizationId,
           savings_by_month: savingsByMonth,
           income_by_month: incomeByMonth,
+          actual_savings_by_month: actualSavingsByMonth,
+          actual_income_by_month: actualIncomeByMonth,
           currency: patch.currency,
           updated_at: new Date().toISOString(),
         },
@@ -184,3 +202,38 @@ export function formatCurrencyCompact(amount: number, currency: string): string 
   if (abs >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}k`;
   return `${currency} ${amount.toFixed(0)}`;
 }
+
+/**
+ * True when the given (year, 0-indexed month) is strictly before the current
+ * calendar month in UTC. The current month is treated as "future" so its
+ * actual values are not editable until the month closes.
+ */
+export function isPastMonth(year: number, monthIndex0: number): boolean {
+  const now = new Date();
+  const curY = now.getUTCFullYear();
+  const curM = now.getUTCMonth();
+  if (year < curY) return true;
+  if (year > curY) return false;
+  return monthIndex0 < curM;
+}
+
+/**
+ * Returns the "effective" amount for a metric on this entry: actual values
+ * for past months, plan values for the current and future months. Used by
+ * aggregated totals so badges reflect realized + planned mix.
+ */
+export function effectiveSum(plan: MonthlyMap, actual: MonthlyMap): number {
+  // Union of all keys so we don't miss months present only in one map.
+  const keys = new Set<string>([...Object.keys(plan), ...Object.keys(actual)]);
+  let total = 0;
+  for (const k of keys) {
+    const m = /^(\d{4})-(\d{2})$/.exec(k);
+    if (!m) continue;
+    const y = Number(m[1]);
+    const mi = Number(m[2]) - 1;
+    const v = isPastMonth(y, mi) ? (actual[k] ?? plan[k] ?? 0) : (plan[k] ?? 0);
+    total += v;
+  }
+  return total;
+}
+

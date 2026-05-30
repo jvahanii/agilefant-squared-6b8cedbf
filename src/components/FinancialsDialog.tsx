@@ -20,6 +20,7 @@ import {
   useFinancialsStore,
   sumMap,
   formatCurrencyCompact,
+  isPastMonth,
   type MonthlyMap,
 } from "@/store/financialsStore";
 import { useOrgStore } from "@/store/orgStore";
@@ -36,8 +37,33 @@ const CURRENCIES = ["EUR", "USD", "GBP", "JPY", "AUD", "CAD", "CHF", "SEK", "NOK
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MAX_AMOUNT = 1_000_000_000;
 
+type RowKey = "savingsPlan" | "savingsActual" | "incomePlan" | "incomeActual";
+type DraftMap = Record<RowKey, string>;
+const ROW_KEYS: RowKey[] = ["savingsPlan", "savingsActual", "incomePlan", "incomeActual"];
+const ROW_LABELS: Record<RowKey, { metric: string; kind: string }> = {
+  savingsPlan: { metric: "Savings", kind: "Plan" },
+  savingsActual: { metric: "Savings", kind: "Actual" },
+  incomePlan: { metric: "Income", kind: "Plan" },
+  incomeActual: { metric: "Income", kind: "Actual" },
+};
+const ACTUAL_KEYS: RowKey[] = ["savingsActual", "incomeActual"];
+
 function monthKey(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+}
+
+function seedActualFromPlan(plan: MonthlyMap, savedActual: MonthlyMap): MonthlyMap {
+  // Pre-populate actual rows with plan values for past months when the stored
+  // actual has no value yet for that month. Future months are left empty.
+  const out: MonthlyMap = { ...savedActual };
+  for (const [k, v] of Object.entries(plan)) {
+    if (!/^\d{4}-\d{2}$/.test(k)) continue;
+    const [y, m] = k.split("-").map(Number);
+    if (!isPastMonth(y, m - 1)) continue;
+    if (out[k] != null) continue;
+    out[k] = v;
+  }
+  return out;
 }
 
 export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsDialogProps) {
@@ -49,79 +75,90 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
 
   const currentYear = new Date().getUTCFullYear();
   const [year, setYear] = useState(currentYear);
-  const [savings, setSavings] = useState<MonthlyMap>({});
-  const [income, setIncome] = useState<MonthlyMap>({});
+  const [maps, setMaps] = useState<Record<RowKey, MonthlyMap>>({
+    savingsPlan: {},
+    savingsActual: {},
+    incomePlan: {},
+    incomeActual: {},
+  });
   const [currency, setCurrency] = useState("EUR");
-  const [yearTotalDraft, setYearTotalDraft] = useState<{ savings: string; income: string }>({
-    savings: "",
-    income: "",
+  const [yearTotalDraft, setYearTotalDraft] = useState<DraftMap>({
+    savingsPlan: "",
+    savingsActual: "",
+    incomePlan: "",
+    incomeActual: "",
   });
 
   useEffect(() => {
     if (!open) return;
-    setSavings(entry?.savingsByMonth ? { ...entry.savingsByMonth } : {});
-    setIncome(entry?.incomeByMonth ? { ...entry.incomeByMonth } : {});
+    const savingsPlan = entry?.savingsByMonth ? { ...entry.savingsByMonth } : {};
+    const incomePlan = entry?.incomeByMonth ? { ...entry.incomeByMonth } : {};
+    const savingsActual = seedActualFromPlan(savingsPlan, entry?.actualSavingsByMonth ?? {});
+    const incomeActual = seedActualFromPlan(incomePlan, entry?.actualIncomeByMonth ?? {});
+    setMaps({ savingsPlan, savingsActual, incomePlan, incomeActual });
     setCurrency(entry?.currency ?? "EUR");
     setYear(currentYear);
-    setYearTotalDraft({ savings: "", income: "" });
+    setYearTotalDraft({ savingsPlan: "", savingsActual: "", incomePlan: "", incomeActual: "" });
   }, [open, entry, currentYear]);
 
   const totals = useMemo(() => {
     return {
-      savings: sumMap(savings),
-      income: sumMap(income),
-    };
-  }, [savings, income]);
+      savingsPlan: sumMap(maps.savingsPlan),
+      savingsActual: sumMap(maps.savingsActual),
+      incomePlan: sumMap(maps.incomePlan),
+      incomeActual: sumMap(maps.incomeActual),
+    } as Record<RowKey, number>;
+  }, [maps]);
+
+  // Reset drafts when year navigation clears the typed-but-not-committed value
+  useEffect(() => {
+    setYearTotalDraft({ savingsPlan: "", savingsActual: "", incomePlan: "", incomeActual: "" });
+  }, [year]);
 
   if (!item) return null;
   const orgId = item.organizationId ?? activeOrgId;
   if (!orgId) return null;
 
-  const updateCell = (
-    target: "savings" | "income",
-    monthIndex: number,
-    raw: string,
-  ) => {
+  const updateCell = (row: RowKey, monthIndex: number, raw: string) => {
     const key = monthKey(year, monthIndex);
     const num = Number(raw);
-    const setter = target === "savings" ? setSavings : setIncome;
-    setter((prev) => {
-      const next = { ...prev };
+    setMaps((prev) => {
+      const next = { ...prev[row] };
       if (!raw.trim() || !Number.isFinite(num) || num <= 0) {
         delete next[key];
       } else {
         next[key] = Math.min(num, MAX_AMOUNT);
       }
-      return next;
+      return { ...prev, [row]: next };
     });
   };
 
-  const distributeYearTotal = (
-    target: "savings" | "income",
-    raw: string,
-  ) => {
+  const distributeYearTotal = (row: RowKey, raw: string) => {
     const num = Number(raw);
-    const setter = target === "savings" ? setSavings : setIncome;
-    setter((prev) => {
-      const next = { ...prev };
-      // Remove existing months for this year first
-      for (let i = 0; i < 12; i++) {
-        delete next[monthKey(year, i)];
-      }
-      if (raw.trim() && Number.isFinite(num) && num > 0) {
-        const total = Math.min(num, MAX_AMOUNT * 12);
-        // Distribute evenly and assign remainder to the last month to avoid rounding drift
-        const base = Math.round((total / 12) * 100) / 100;
-        const sum11 = base * 11;
-        const last = Math.round((total - sum11) * 100) / 100;
-        for (let i = 0; i < 11; i++) {
-          next[monthKey(year, i)] = base;
+    const isActual = ACTUAL_KEYS.includes(row);
+    // For Actual rows, distribute only across past months of the selected year.
+    const monthIdxs: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      if (isActual && !isPastMonth(year, i)) continue;
+      monthIdxs.push(i);
+    }
+    setMaps((prev) => {
+      const next = { ...prev[row] };
+      // Remove existing months for this year (only the ones we'd distribute into)
+      for (const i of monthIdxs) delete next[monthKey(year, i)];
+      if (monthIdxs.length > 0 && raw.trim() && Number.isFinite(num) && num > 0) {
+        const total = Math.min(num, MAX_AMOUNT * monthIdxs.length);
+        const base = Math.round((total / monthIdxs.length) * 100) / 100;
+        const sumRest = base * (monthIdxs.length - 1);
+        const last = Math.round((total - sumRest) * 100) / 100;
+        for (let j = 0; j < monthIdxs.length - 1; j++) {
+          next[monthKey(year, monthIdxs[j])] = base;
         }
-        next[monthKey(year, 11)] = Math.max(0, last);
+        next[monthKey(year, monthIdxs[monthIdxs.length - 1])] = Math.max(0, last);
       }
-      return next;
+      return { ...prev, [row]: next };
     });
-    setYearTotalDraft((d) => ({ ...d, [target]: "" }));
+    setYearTotalDraft((d) => ({ ...d, [row]: "" }));
   };
 
   const handleCurrencyChange = (next: string) => {
@@ -135,8 +172,12 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
       }
       return out;
     };
-    setSavings((prev) => convertMap(prev));
-    setIncome((prev) => convertMap(prev));
+    setMaps((prev) => ({
+      savingsPlan: convertMap(prev.savingsPlan),
+      savingsActual: convertMap(prev.savingsActual),
+      incomePlan: convertMap(prev.incomePlan),
+      incomeActual: convertMap(prev.incomeActual),
+    }));
     setYearTotalDraft((d) => {
       const conv = (s: string) => {
         if (!s.trim()) return s;
@@ -144,21 +185,28 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
         if (!Number.isFinite(n)) return s;
         return String(Math.round(convertCurrency(n, currency, next, rates) * 100) / 100);
       };
-      return { savings: conv(d.savings), income: conv(d.income) };
+      return {
+        savingsPlan: conv(d.savingsPlan),
+        savingsActual: conv(d.savingsActual),
+        incomePlan: conv(d.incomePlan),
+        incomeActual: conv(d.incomeActual),
+      };
     });
     setCurrency(next);
   };
 
   const handleSave = async () => {
-    const hasAny = Object.keys(savings).length > 0 || Object.keys(income).length > 0;
+    const hasAny = ROW_KEYS.some((k) => Object.keys(maps[k]).length > 0);
     if (!hasAny) {
       if (entry) await remove(workItemId);
       onOpenChange(false);
       return;
     }
     await upsert(workItemId, orgId, {
-      savingsByMonth: savings,
-      incomeByMonth: income,
+      savingsByMonth: maps.savingsPlan,
+      incomeByMonth: maps.incomePlan,
+      actualSavingsByMonth: maps.savingsActual,
+      actualIncomeByMonth: maps.incomeActual,
       currency,
     });
     onOpenChange(false);
@@ -169,20 +217,19 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     onOpenChange(false);
   };
 
-  const yearSavings = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 12; i++) s += savings[monthKey(year, i)] ?? 0;
-    return s;
-  }, [savings, year]);
-  const yearIncome = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 12; i++) s += income[monthKey(year, i)] ?? 0;
-    return s;
-  }, [income, year]);
+  const yearSums = useMemo(() => {
+    const sums = {} as Record<RowKey, number>;
+    for (const row of ROW_KEYS) {
+      let s = 0;
+      for (let i = 0; i < 12; i++) s += maps[row][monthKey(year, i)] ?? 0;
+      sums[row] = s;
+    }
+    return sums;
+  }, [maps, year]);
 
-  // Reset drafts when year navigation clears the typed-but-not-committed value
-  useEffect(() => {
-    setYearTotalDraft({ savings: "", income: "" });
+  const yearHasPastMonths = useMemo(() => {
+    for (let i = 0; i < 12; i++) if (isPastMonth(year, i)) return true;
+    return false;
   }, [year]);
 
   return (
@@ -245,7 +292,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground -mt-2 mb-2">
-          Amounts are entered in <span className="font-medium">{currency}</span>. Totals across lists and trees are shown in your chosen display currency and converted using daily ECB rates.
+          Plan rows hold projected amounts. Actual rows are editable only for past months and start pre-filled from the plan. Amounts are entered in <span className="font-medium">{currency}</span>; totals elsewhere convert to your display currency using daily ECB rates.
         </p>
 
         <div className="overflow-x-auto rounded-md border">
@@ -265,17 +312,26 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
               </tr>
             </thead>
             <tbody>
-              {(["savings", "income"] as const).map((target) => {
-                const map = target === "savings" ? savings : income;
-                const yearTotal = target === "savings" ? yearSavings : yearIncome;
+              {ROW_KEYS.map((row, rowIdx) => {
+                const map = maps[row];
+                const isActual = ACTUAL_KEYS.includes(row);
+                const label = ROW_LABELS[row];
+                const yearTotal = yearSums[row];
+                const yearDistributeDisabled = isActual && !yearHasPastMonths;
+                // Add a thicker top border between metric groups (every other row).
+                const groupBorder = rowIdx === 0 || rowIdx === 2 ? "border-t-2" : "border-t";
                 return (
-                  <tr key={target} className="border-t">
+                  <tr key={row} className={groupBorder}>
                     <td className="px-2 py-1 font-medium sticky left-0 bg-card z-10 whitespace-nowrap">
-                      {target === "savings" ? "Savings" : "Income"}
+                      <span>{label.metric}</span>
+                      <span className={`ml-1 text-[10px] ${isActual ? "text-foreground/70" : "text-muted-foreground"}`}>
+                        · {label.kind}
+                      </span>
                     </td>
                     {MONTH_LABELS.map((_, i) => {
                       const k = monthKey(year, i);
                       const v = map[k];
+                      const disabled = isActual && !isPastMonth(year, i);
                       return (
                         <td key={i} className="p-0.5">
                           <Input
@@ -284,16 +340,18 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                             step="0.01"
                             inputMode="decimal"
                             value={v != null ? String(v) : ""}
-                            onChange={(e) => updateCell(target, i, e.target.value)}
-                            placeholder="0"
-                            className="h-7 px-1.5 text-xs text-right tabular-nums"
+                            onChange={(e) => updateCell(row, i, e.target.value)}
+                            placeholder={disabled ? "—" : "0"}
+                            disabled={disabled}
+                            title={disabled ? "Future month — actuals can only be entered after the month ends." : undefined}
+                            className={`h-7 px-1.5 text-xs text-right tabular-nums ${disabled ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed" : ""}`}
                           />
                         </td>
                       );
                     })}
                     <td className="p-0.5 whitespace-nowrap">
                       {(() => {
-                        const draft = yearTotalDraft[target];
+                        const draft = yearTotalDraft[row];
                         const displayValue = draft !== "" ? draft : (yearTotal > 0 ? String(yearTotal) : "");
                         return (
                           <Input
@@ -302,28 +360,35 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                             step="0.01"
                             inputMode="decimal"
                             value={displayValue}
+                            disabled={yearDistributeDisabled}
                             onChange={(e) =>
-                              setYearTotalDraft((d) => ({ ...d, [target]: e.target.value }))
+                              setYearTotalDraft((d) => ({ ...d, [row]: e.target.value }))
                             }
                             onBlur={(e) => {
                               if (draft !== "") {
-                                distributeYearTotal(target, e.target.value);
+                                distributeYearTotal(row, e.target.value);
                               }
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && draft !== "") {
-                                distributeYearTotal(target, (e.target as HTMLInputElement).value);
+                                distributeYearTotal(row, (e.target as HTMLInputElement).value);
                               }
                             }}
                             placeholder="0"
-                            className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
-                            title="Enter a year total to distribute evenly across months"
+                            className={`h-7 px-1.5 text-xs text-right tabular-nums w-24 ${yearDistributeDisabled ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed" : ""}`}
+                            title={
+                              yearDistributeDisabled
+                                ? "No past months in this year yet."
+                                : isActual
+                                ? "Distribute evenly across past months of this year"
+                                : "Distribute evenly across all 12 months"
+                            }
                           />
                         );
                       })()}
                     </td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">
-                      {formatCurrencyCompact(totals[target], currency)}
+                      {formatCurrencyCompact(totals[row], currency)}
                     </td>
                   </tr>
                 );

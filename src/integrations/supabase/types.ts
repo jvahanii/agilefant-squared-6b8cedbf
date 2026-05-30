@@ -744,6 +744,8 @@ export type Database = {
       }
       work_item_financials: {
         Row: {
+          actual_income_by_month: Json
+          actual_savings_by_month: Json
           created_at: string
           currency: string
           id: string
@@ -756,6 +758,8 @@ export type Database = {
           work_item_id: string
         }
         Insert: {
+          actual_income_by_month?: Json
+          actual_savings_by_month?: Json
           created_at?: string
           currency?: string
           id?: string
@@ -768,6 +772,8 @@ export type Database = {
           work_item_id: string
         }
         Update: {
+          actual_income_by_month?: Json
+          actual_savings_by_month?: Json
           created_at?: string
           currency?: string
           id?: string

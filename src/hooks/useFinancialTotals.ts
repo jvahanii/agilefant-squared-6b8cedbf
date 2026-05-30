@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/store/appStore";
-import { useFinancialsStore, sumMap } from "@/store/financialsStore";
+import { useFinancialsStore, effectiveSum } from "@/store/financialsStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
 import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 
@@ -25,8 +25,9 @@ function rollup(
   for (const id of workItemIds) {
     const e = byWorkItem[id];
     if (!e) continue;
-    const s = sumMap(e.savingsByMonth);
-    const i = sumMap(e.incomeByMonth);
+    // Use actuals for past months, plan for current/future.
+    const s = effectiveSum(e.savingsByMonth, e.actualSavingsByMonth);
+    const i = effectiveSum(e.incomeByMonth, e.actualIncomeByMonth);
     if (s === 0 && i === 0) continue;
     hasData = true;
     savings += convertCurrency(s, e.currency, displayCurrency, rates);

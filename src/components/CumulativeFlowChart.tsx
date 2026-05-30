@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronLeft, ChevronRight, Settings2, Target as TargetIcon } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
-import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
+import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
@@ -131,13 +131,22 @@ export function CumulativeFlowChart({ treeId }: Props) {
       .map((s) => ({ key: s.key, label: s.label, color: s.color }));
   }, [statusesList]);
 
-  /** Resolve the financial map for a work item depending on current metric. */
-  const getMetricMap = useCallback((id: string): MonthlyMap | undefined => {
+  /** Resolve the plan financial map for a work item depending on current metric. */
+  const getPlanMap = useCallback((id: string): MonthlyMap | undefined => {
     const e = byWorkItem[id];
     if (!e) return undefined;
     if (metric === "savings") return e.savingsByMonth;
     if (metric === "income") return e.incomeByMonth;
     return sumMaps(e.savingsByMonth, e.incomeByMonth);
+  }, [byWorkItem, metric]);
+
+  /** Resolve the actual (realized) financial map for a work item. */
+  const getActualMap = useCallback((id: string): MonthlyMap | undefined => {
+    const e = byWorkItem[id];
+    if (!e) return undefined;
+    if (metric === "savings") return e.actualSavingsByMonth;
+    if (metric === "income") return e.actualIncomeByMonth;
+    return sumMaps(e.actualSavingsByMonth, e.actualIncomeByMonth);
   }, [byWorkItem, metric]);
 
   /** IDs of work items in this tree that have relevant financials. */
@@ -161,8 +170,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
     }
     if (groupBy === "item") {
       const items = treeItemIds.filter((id) => {
-        const map = getMetricMap(id);
-        return map && Object.keys(map).length > 0;
+        const plan = getPlanMap(id);
+        const actual = getActualMap(id);
+        return (plan && Object.keys(plan).length > 0) || (actual && Object.keys(actual).length > 0);
       });
       return items.map((id, i) => ({
         key: id,
@@ -178,8 +188,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
       if (!wi) continue;
       const backlogId = wi.backlogAssignments[treeId];
       if (!backlogId || seen.has(backlogId)) continue;
-      const map = getMetricMap(id);
-      if (!map || Object.keys(map).length === 0) continue;
+      const plan = getPlanMap(id);
+      const actual = getActualMap(id);
+      if ((!plan || Object.keys(plan).length === 0) && (!actual || Object.keys(actual).length === 0)) continue;
       seen.set(backlogId, {
         key: backlogId,
         label: backlogs[backlogId]?.name ?? backlogId,
@@ -188,63 +199,90 @@ export function CumulativeFlowChart({ treeId }: Props) {
       colorIdx++;
     }
     return Array.from(seen.values());
-  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, getMetricMap]);
+  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, getPlanMap, getActualMap]);
 
   const data = useMemo(() => {
     return MONTHS_OF_YEAR.map((mm) => {
+      const monthIdx0 = Number(mm) - 1;
       const mk = `${year}-${mm}`;
-      const row: Record<string, number | string> = { month: mk, label: monthLabel(Number(mm)) };
-      for (const s of series) row[s.key] = 0;
+      const past = isPastMonth(year, monthIdx0);
+      const row: Record<string, number | string | null> = { month: mk, label: monthLabel(Number(mm)) };
+      // Initialize plan keys to 0 and actual keys to null (so the line breaks for non-past months).
+      for (const s of series) {
+        row[`${s.key}_plan`] = 0;
+        row[`${s.key}_actual`] = past ? 0 : null;
+      }
 
       if (groupBy === "type") {
         for (const id of treeItemIds) {
           const e = byWorkItem[id];
           if (!e) continue;
-          let accruedSavings = 0;
-          let accruedIncome = 0;
+          let accruedPlanS = 0, accruedPlanI = 0, accruedActS = 0, accruedActI = 0;
           for (const [k, v] of Object.entries(e.savingsByMonth ?? {})) {
-            if (k.startsWith(`${year}-`) && k <= mk) accruedSavings += v;
+            if (k.startsWith(`${year}-`) && k <= mk) accruedPlanS += v;
           }
           for (const [k, v] of Object.entries(e.incomeByMonth ?? {})) {
-            if (k.startsWith(`${year}-`) && k <= mk) accruedIncome += v;
+            if (k.startsWith(`${year}-`) && k <= mk) accruedPlanI += v;
           }
-          row["savings"] = (row["savings"] as number) + convertCurrency(accruedSavings, e.currency, displayCurrency, rates);
-          row["income"] = (row["income"] as number) + convertCurrency(accruedIncome, e.currency, displayCurrency, rates);
+          if (past) {
+            for (const [k, v] of Object.entries(e.actualSavingsByMonth ?? {})) {
+              if (k.startsWith(`${year}-`) && k <= mk) accruedActS += v;
+            }
+            for (const [k, v] of Object.entries(e.actualIncomeByMonth ?? {})) {
+              if (k.startsWith(`${year}-`) && k <= mk) accruedActI += v;
+            }
+          }
+          row["savings_plan"] = (row["savings_plan"] as number) + convertCurrency(accruedPlanS, e.currency, displayCurrency, rates);
+          row["income_plan"] = (row["income_plan"] as number) + convertCurrency(accruedPlanI, e.currency, displayCurrency, rates);
+          if (past) {
+            row["savings_actual"] = (row["savings_actual"] as number) + convertCurrency(accruedActS, e.currency, displayCurrency, rates);
+            row["income_actual"] = (row["income_actual"] as number) + convertCurrency(accruedActI, e.currency, displayCurrency, rates);
+          }
         }
       } else {
         for (const id of treeItemIds) {
           const wi = workItems[id];
           if (!wi) continue;
           const e = byWorkItem[id];
-          const map = getMetricMap(id);
-          if (!map || !e) continue;
-          let accrued = 0;
-          for (const [k, v] of Object.entries(map)) {
-            if (k.startsWith(`${year}-`) && k <= mk) accrued += v;
-          }
-          if (accrued <= 0) continue;
-          accrued = convertCurrency(accrued, e.currency, displayCurrency, rates);
+          const planMap = getPlanMap(id);
+          const actualMap = getActualMap(id);
+          if (!e) continue;
           let seriesKey: string;
-          if (groupBy === "status") {
-            seriesKey = wi.status;
-          } else if (groupBy === "item") {
-            seriesKey = id;
-          } else {
-            seriesKey = wi.backlogAssignments[treeId];
+          if (groupBy === "status") seriesKey = wi.status;
+          else if (groupBy === "item") seriesKey = id;
+          else seriesKey = wi.backlogAssignments[treeId];
+          const planKey = `${seriesKey}_plan`;
+          const actualKey = `${seriesKey}_actual`;
+          if (row[planKey] === undefined) continue;
+
+          let accruedPlan = 0;
+          for (const [k, v] of Object.entries(planMap ?? {})) {
+            if (k.startsWith(`${year}-`) && k <= mk) accruedPlan += v;
           }
-          if (row[seriesKey] !== undefined) {
-            row[seriesKey] = (row[seriesKey] as number) + accrued;
+          if (accruedPlan > 0) {
+            row[planKey] = (row[planKey] as number) + convertCurrency(accruedPlan, e.currency, displayCurrency, rates);
+          }
+          if (past) {
+            let accruedAct = 0;
+            for (const [k, v] of Object.entries(actualMap ?? {})) {
+              if (k.startsWith(`${year}-`) && k <= mk) accruedAct += v;
+            }
+            if (accruedAct > 0) {
+              row[actualKey] = (row[actualKey] as number) + convertCurrency(accruedAct, e.currency, displayCurrency, rates);
+            }
           }
         }
       }
       return row;
     });
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getMetricMap, year, displayCurrency, rates]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates]);
 
   const currency = displayCurrency;
 
+  // Year total reflects the plan (full year). Past months alone wouldn't show
+  // upcoming planned activity in the header readout.
   const yearTotal = data.length > 0
-    ? series.reduce((sum, s) => sum + ((data[data.length - 1][s.key] as number) || 0), 0)
+    ? series.reduce((sum, s) => sum + ((data[data.length - 1][`${s.key}_plan`] as number) || 0), 0)
     : 0;
 
   const hasData = treeItemIds.length > 0;
@@ -470,24 +508,66 @@ export function CumulativeFlowChart({ treeId }: Props) {
             />
             <RechartsTooltip
               contentStyle={{ fontSize: 11 }}
-              formatter={(value: number, name: string) => [
-                `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                series.find((s) => s.key === name)?.label ?? name,
-              ]}
+              formatter={(value: number, name: string) => {
+                const isPlan = name.endsWith("_plan");
+                const baseKey = name.replace(/_(plan|actual)$/, "");
+                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                return [
+                  `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                  `${label} · ${isPlan ? "Plan" : "Actual"}`,
+                ];
+              }}
             />
-            <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
+            <Legend
+              wrapperStyle={{ fontSize: 10 }}
+              iconSize={8}
+              formatter={(value: string) => {
+                const isPlan = value.endsWith("_plan");
+                const baseKey = value.replace(/_(plan|actual)$/, "");
+                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                return `${label} · ${isPlan ? "Plan" : "Actual"}`;
+              }}
+            />
+            {/* Plan layer — full year, dashed + translucent so future portion reads as "planned" */}
             {series.map((s) => (
               <Area
-                key={s.key}
+                key={`${s.key}_plan`}
                 type="monotone"
-                dataKey={s.key}
-                stackId="1"
-                name={s.label}
+                dataKey={`${s.key}_plan`}
+                stackId="plan"
+                name={`${s.key}_plan`}
                 stroke={s.color}
+                strokeDasharray="4 4"
+                strokeOpacity={0.8}
                 fill={s.color}
-                fillOpacity={0.75}
+                fillOpacity={0.18}
+                isAnimationActive={false}
               />
             ))}
+            {/* Actual layer — only past months populated; line breaks at today */}
+            {series.map((s) => (
+              <Area
+                key={`${s.key}_actual`}
+                type="monotone"
+                dataKey={`${s.key}_actual`}
+                stackId="actual"
+                name={`${s.key}_actual`}
+                stroke={s.color}
+                strokeWidth={2}
+                fill={s.color}
+                fillOpacity={0.55}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            ))}
+            {year === new Date().getUTCFullYear() ? (
+              <ReferenceLine
+                x={monthLabel(new Date().getUTCMonth() + 1)}
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="2 2"
+                label={{ value: "today", position: "top", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              />
+            ) : null}
             {hasTarget ? (
               <ReferenceLine
                 y={target!.amount}
