@@ -116,7 +116,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
         for (let i = 0; i < 11; i++) {
           next[monthKey(year, i)] = base;
         }
-        next[monthKey(year, 11)] = last > 0 ? last : base;
+        next[monthKey(year, 11)] = Math.max(0, last);
       }
       return next;
     });
@@ -263,29 +263,35 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                       );
                     })}
                     <td className="p-0.5 whitespace-nowrap">
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        inputMode="decimal"
-                        value={yearTotalDraft[target] !== "" ? yearTotalDraft[target] : (yearTotal > 0 ? String(yearTotal) : "")}
-                        onChange={(e) =>
-                          setYearTotalDraft((d) => ({ ...d, [target]: e.target.value }))
-                        }
-                        onBlur={(e) => {
-                          if (yearTotalDraft[target] !== "") {
-                            distributeYearTotal(target, e.target.value);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && yearTotalDraft[target] !== "") {
-                            distributeYearTotal(target, (e.target as HTMLInputElement).value);
-                          }
-                        }}
-                        placeholder="0"
-                        className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
-                        title="Enter a year total to distribute evenly across months"
-                      />
+                      {(() => {
+                        const draft = yearTotalDraft[target];
+                        const displayValue = draft !== "" ? draft : (yearTotal > 0 ? String(yearTotal) : "");
+                        return (
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            inputMode="decimal"
+                            value={displayValue}
+                            onChange={(e) =>
+                              setYearTotalDraft((d) => ({ ...d, [target]: e.target.value }))
+                            }
+                            onBlur={(e) => {
+                              if (draft !== "") {
+                                distributeYearTotal(target, e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && draft !== "") {
+                                distributeYearTotal(target, (e.target as HTMLInputElement).value);
+                              }
+                            }}
+                            placeholder="0"
+                            className="h-7 px-1.5 text-xs text-right tabular-nums w-24"
+                            title="Enter a year total to distribute evenly across months"
+                          />
+                        );
+                      })()}
                     </td>
                     <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">
                       {formatCurrencyCompact(totals[target], currency)}
