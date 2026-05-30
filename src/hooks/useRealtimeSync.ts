@@ -425,6 +425,24 @@ export function useRealtimeSync() {
       .subscribe();
     channels.push(statusChannel);
 
+    // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
+    const targetsChannel = supabase
+      .channel(`tree-financial-targets-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tree_financial_targets' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          const treeId = row?.tree_id as string | undefined;
+          if (!treeId) return;
+          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
+          if (!accessible.has(treeId)) return;
+          applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .subscribe();
+    channels.push(targetsChannel);
+
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
     (async () => {
