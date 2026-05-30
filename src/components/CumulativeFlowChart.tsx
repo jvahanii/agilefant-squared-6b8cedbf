@@ -52,6 +52,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
   const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
   const targetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
+  const targetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
   const target = metric === "both"
     ? (targetSavings || targetIncome
         ? {
@@ -60,7 +61,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
             metric: "both" as TargetMetric,
           }
         : undefined)
-    : useTargetsStore.getState().byKey[`${treeId}::${year}::${metric}`];
+    : targetSingle;
   const upsertTarget = useTargetsStore((s) => s.upsert);
   const removeTarget = useTargetsStore((s) => s.remove);
 
