@@ -41,8 +41,15 @@ function monthLabel(monthNum: number): string {
   });
 }
 
+function sumMaps(a: MonthlyMap | undefined, b: MonthlyMap | undefined): MonthlyMap {
+  const out: MonthlyMap = {};
+  for (const [k, v] of Object.entries(a || {})) if (v) out[k] = (out[k] || 0) + v;
+  for (const [k, v] of Object.entries(b || {})) if (v) out[k] = (out[k] || 0) + v;
+  return out;
+}
+
 export function CumulativeFlowChart({ treeId }: Props) {
-  const [metric, setMetric] = useState<TargetMetric>("savings");
+  const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
   const [targetInput, setTargetInput] = useState("");
@@ -50,7 +57,18 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const workItems = useAppStore((s) => s.workItems);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const target = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
+  const targetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
+  const targetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  const target = metric === "both"
+    ? (targetSavings || targetIncome
+        ? {
+            ...((targetSavings ?? targetIncome)!),
+            amount: (targetSavings?.amount || 0) + (targetIncome?.amount || 0),
+            metric: "both" as TargetMetric,
+          }
+        : undefined)
+    : targetSingle;
   const upsertTarget = useTargetsStore((s) => s.upsert);
   const removeTarget = useTargetsStore((s) => s.remove);
 
@@ -73,7 +91,12 @@ export function CumulativeFlowChart({ treeId }: Props) {
       if (!wi) continue;
       if (!(treeId in wi.backlogAssignments)) continue;
       const e = byWorkItem[id];
-      const map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
+      let map: MonthlyMap | undefined;
+      if (metric === "both") {
+        map = sumMaps(e.savingsByMonth, e.incomeByMonth);
+      } else {
+        map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
+      }
       if (!map || Object.keys(map).length === 0) continue;
       out.push({ status: wi.status, entries: map, currency: e.currency });
     }
@@ -106,8 +129,11 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const hasTarget = target && target.amount > 0;
   if (!hasData && !hasTarget) return null;
 
+  const dialogMetric = metric === "both" ? "savings" : metric;
+
   function openTargetDialog() {
-    setTargetInput(target ? String(target.amount) : "");
+    const t = dialogMetric === "savings" ? targetSavings : targetIncome;
+    setTargetInput(t ? String(t.amount) : "");
     setTargetDialogOpen(true);
   }
 
@@ -116,9 +142,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
     const n = Number(targetInput);
     if (!Number.isFinite(n) || n < 0) return;
     if (n === 0) {
-      if (target) await removeTarget(treeId, year, metric);
+      const t = dialogMetric === "savings" ? targetSavings : targetIncome;
+      if (t) await removeTarget(treeId, year, dialogMetric);
     } else {
-      await upsertTarget(treeId, ownerOrgId, year, metric, n, currency);
+      await upsertTarget(treeId, ownerOrgId, year, dialogMetric, n, currency);
     }
     setTargetDialogOpen(false);
   }
@@ -128,7 +155,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Cumulative {metric === "savings" ? "Savings" : "Income"} · {year}
+            Cumulative {metric === "both" ? "Savings + Income" : metric === "savings" ? "Savings" : "Income"} · {year}
           </h4>
           <p className="text-[10px] text-muted-foreground">
             Sliced by current status · {currency}{" "}
@@ -168,6 +195,14 @@ export function CumulativeFlowChart({ treeId }: Props) {
           <div className="flex gap-1">
             <Button
               size="sm"
+              variant={metric === "both" ? "default" : "ghost"}
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setMetric("both")}
+            >
+              Both
+            </Button>
+            <Button
+              size="sm"
               variant={metric === "savings" ? "default" : "ghost"}
               className="h-6 px-2 text-[10px]"
               onClick={() => setMetric("savings")}
@@ -198,7 +233,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
                 <DialogTitle>
-                  {metric === "savings" ? "Savings" : "Income"} target · {year}
+                  {dialogMetric === "savings" ? "Savings" : "Income"} target · {year}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-2">
