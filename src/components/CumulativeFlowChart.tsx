@@ -41,6 +41,13 @@ function monthLabel(monthNum: number): string {
   });
 }
 
+function sumMaps(a: MonthlyMap | undefined, b: MonthlyMap | undefined): MonthlyMap {
+  const out: MonthlyMap = {};
+  for (const [k, v] of Object.entries(a || {})) if (v) out[k] = (out[k] || 0) + v;
+  for (const [k, v] of Object.entries(b || {})) if (v) out[k] = (out[k] || 0) + v;
+  return out;
+}
+
 export function CumulativeFlowChart({ treeId }: Props) {
   const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
