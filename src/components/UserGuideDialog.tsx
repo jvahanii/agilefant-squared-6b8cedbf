@@ -727,7 +727,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Pre-populated actuals",
-                how: "When you open the dialog, past-month Actual cells are pre-filled from the corresponding Plan values if no actual has been entered yet, saving you from re-entering unchanged figures.",
+                how: "When you open the dialog, past-month Actual cells are pre-filled from the corresponding Plan values if no actual has been entered yet, eliminating the need to manually copy Plan values to Actual fields.",
               },
               {
                 action: "Year total",
