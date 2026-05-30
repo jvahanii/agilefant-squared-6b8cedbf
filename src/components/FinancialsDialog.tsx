@@ -194,6 +194,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                   </th>
                 ))}
                 <th className="px-2 py-1.5 text-right font-medium text-muted-foreground">Year</th>
+                <th className="px-2 py-1.5 text-right font-medium text-muted-foreground">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -226,26 +227,14 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                     <td className="px-2 py-1 text-right tabular-nums text-muted-foreground whitespace-nowrap">
                       {formatCurrencyCompact(yearTotal, currency)}
                     </td>
+                    <td className="px-2 py-1 text-right tabular-nums font-medium whitespace-nowrap">
+                      {formatCurrencyCompact(totals[target], currency)}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
-
-        <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-          <span>
-            Lifetime savings:{" "}
-            <span className="font-medium text-foreground tabular-nums">
-              {formatCurrencyCompact(totals.savings, currency)}
-            </span>
-          </span>
-          <span>
-            Lifetime income:{" "}
-            <span className="font-medium text-foreground tabular-nums">
-              {formatCurrencyCompact(totals.income, currency)}
-            </span>
-          </span>
         </div>
 
         <div className="flex justify-between mt-3">
