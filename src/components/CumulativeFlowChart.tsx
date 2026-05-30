@@ -91,7 +91,12 @@ export function CumulativeFlowChart({ treeId }: Props) {
       if (!wi) continue;
       if (!(treeId in wi.backlogAssignments)) continue;
       const e = byWorkItem[id];
-      const map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
+      let map: MonthlyMap | undefined;
+      if (metric === "both") {
+        map = sumMaps(e.savingsByMonth, e.incomeByMonth);
+      } else {
+        map = metric === "savings" ? e.savingsByMonth : e.incomeByMonth;
+      }
       if (!map || Object.keys(map).length === 0) continue;
       out.push({ status: wi.status, entries: map, currency: e.currency });
     }
