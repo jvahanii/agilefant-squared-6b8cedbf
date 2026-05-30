@@ -31,6 +31,17 @@ import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
+import { useRatesStore, convertCurrency } from "@/store/ratesStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const DISPLAY_CURRENCIES = ["EUR", "USD", "GBP", "JPY", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
 
 type GroupBy = "type" | "item" | "status" | "list";
 
