@@ -696,9 +696,11 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          income_by_month: Json
           monthly_income: number
           monthly_savings: number
           organization_id: string
+          savings_by_month: Json
           updated_at: string
           work_item_id: string
         }
@@ -706,9 +708,11 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          income_by_month?: Json
           monthly_income?: number
           monthly_savings?: number
           organization_id: string
+          savings_by_month?: Json
           updated_at?: string
           work_item_id: string
         }
@@ -716,9 +720,11 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          income_by_month?: Json
           monthly_income?: number
           monthly_savings?: number
           organization_id?: string
+          savings_by_month?: Json
           updated_at?: string
           work_item_id?: string
         }
