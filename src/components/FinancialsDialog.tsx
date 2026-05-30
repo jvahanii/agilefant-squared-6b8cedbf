@@ -23,6 +23,7 @@ import {
   type MonthlyMap,
 } from "@/store/financialsStore";
 import { useOrgStore } from "@/store/orgStore";
+import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 
 interface FinancialsDialogProps {
@@ -123,6 +124,31 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
     setYearTotalDraft((d) => ({ ...d, [target]: "" }));
   };
 
+  const handleCurrencyChange = (next: string) => {
+    if (next === currency) return;
+    const rates = useRatesStore.getState().rates;
+    const convertMap = (m: MonthlyMap): MonthlyMap => {
+      const out: MonthlyMap = {};
+      for (const [k, v] of Object.entries(m)) {
+        const c = convertCurrency(v, currency, next, rates);
+        out[k] = Math.round(c * 100) / 100;
+      }
+      return out;
+    };
+    setSavings((prev) => convertMap(prev));
+    setIncome((prev) => convertMap(prev));
+    setYearTotalDraft((d) => {
+      const conv = (s: string) => {
+        if (!s.trim()) return s;
+        const n = Number(s);
+        if (!Number.isFinite(n)) return s;
+        return String(Math.round(convertCurrency(n, currency, next, rates) * 100) / 100);
+      };
+      return { savings: conv(d.savings), income: conv(d.income) };
+    });
+    setCurrency(next);
+  };
+
   const handleSave = async () => {
     const hasAny = Object.keys(savings).length > 0 || Object.keys(income).length > 0;
     if (!hasAny) {
@@ -208,7 +234,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
           </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Entry currency</Label>
-            <Select value={currency} onValueChange={setCurrency}>
+            <Select value={currency} onValueChange={handleCurrencyChange}>
               <SelectTrigger className="h-7 text-xs w-[88px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CURRENCIES.map((c) => (
