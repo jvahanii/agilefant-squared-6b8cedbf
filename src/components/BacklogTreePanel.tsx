@@ -772,6 +772,11 @@ function DraggableTreeHeader({
 }) {
   const dragStartedRef = useRef(false);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const savingsIncomeVisible = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
+  );
+  const treeFinancials = useTreeFinancialTotals(tree.id);
   const {
     attributes,
     listeners,
@@ -826,6 +831,13 @@ function DraggableTreeHeader({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+          {savingsIncomeVisible && treeFinancials.hasData && (
+            <FinancialTotalsBadge
+              savings={treeFinancials.savings}
+              income={treeFinancials.income}
+              currency={treeFinancials.currency}
+            />
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
