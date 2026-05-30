@@ -904,8 +904,8 @@ function WorkItemNodeContent({
 
             {savingsIncomeVisible && itemFinancials.hasData && (
               <FinancialTotalsBadge
-                savings={itemFinancials.savings}
-                income={itemFinancials.income}
+                actual={itemFinancials.actual}
+                plan={itemFinancials.plan}
                 currency={itemFinancials.currency}
               />
             )}

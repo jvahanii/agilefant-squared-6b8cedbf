@@ -479,8 +479,8 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         )}
         {savingsIncomeVisible && backlogFinancials.hasData && (
           <FinancialTotalsBadge
-            savings={backlogFinancials.savings}
-            income={backlogFinancials.income}
+            actual={backlogFinancials.actual}
+            plan={backlogFinancials.plan}
             currency={backlogFinancials.currency}
           />
         )}
@@ -839,8 +839,8 @@ function DraggableTreeHeader({
           )}
           {savingsIncomeVisible && treeFinancials.hasData && (
             <FinancialTotalsBadge
-              savings={treeFinancials.savings}
-              income={treeFinancials.income}
+              actual={treeFinancials.actual}
+              plan={treeFinancials.plan}
               currency={treeFinancials.currency}
             />
           )}

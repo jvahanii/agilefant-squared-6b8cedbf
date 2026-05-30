@@ -1,21 +1,20 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatCurrencyCompact } from "@/store/financialsStore";
+import { formatCurrencyCompact, formatAmountCompact } from "@/store/financialsStore";
 
 interface Props {
-  savings: number;
-  income: number;
+  actual: number;
+  plan: number;
   currency: string;
   /** Compact rendering for tree/backlog rows. */
   compact?: boolean;
 }
 
 /**
- * Small inline badge showing total savings + income for a work item / backlog /
+ * Small inline badge showing actual/plan totals for a work item / backlog /
  * tree. Hover for the full breakdown.
  */
-export function FinancialTotalsBadge({ savings, income, currency, compact = true }: Props) {
-  const total = savings + income;
-  if (total <= 0) return null;
+export function FinancialTotalsBadge({ actual, plan, currency, compact = true }: Props) {
+  if (actual <= 0 && plan <= 0) return null;
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
@@ -25,16 +24,16 @@ export function FinancialTotalsBadge({ savings, income, currency, compact = true
               compact ? "px-1.5 py-0 text-[10px]" : "px-2 py-0.5 text-xs"
             }`}
           >
-            {formatCurrencyCompact(total, currency)}
+            {currency} {formatAmountCompact(actual)}/{formatAmountCompact(plan)}
           </span>
         </TooltipTrigger>
         <TooltipContent side="left" className="text-xs">
-          <div className="font-medium mb-0.5">Savings &amp; Income</div>
+          <div className="font-medium mb-0.5">Actual / Plan</div>
           <div className="tabular-nums">
-            Savings: {formatCurrencyCompact(savings, currency)}
+            Actual: {formatCurrencyCompact(actual, currency)}
           </div>
           <div className="tabular-nums">
-            Income: {formatCurrencyCompact(income, currency)}
+            Plan: {formatCurrencyCompact(plan, currency)}
           </div>
         </TooltipContent>
       </Tooltip>

@@ -203,6 +203,14 @@ export function formatCurrencyCompact(amount: number, currency: string): string 
   return `${currency} ${amount.toFixed(0)}`;
 }
 
+/** Format just the numeric part of a compact currency value (no currency symbol). */
+export function formatAmountCompact(amount: number): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(amount / 1_000).toFixed(1)}k`;
+  return amount.toFixed(0);
+}
+
 /**
  * True when the given (year, 0-indexed month) is strictly before the current
  * calendar month in UTC. The current month is treated as "future" so its

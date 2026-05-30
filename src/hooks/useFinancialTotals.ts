@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/store/appStore";
-import { useFinancialsStore, effectiveSum } from "@/store/financialsStore";
+import { useFinancialsStore, sumMap } from "@/store/financialsStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
 import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 
 interface FinancialTotals {
-  savings: number;
-  income: number;
+  /** Total realized (actual) savings + income across all months. */
+  actual: number;
+  /** Total planned savings + income across all months. */
+  plan: number;
   /** Display currency that the values are expressed in. */
   currency: string;
   /** True when at least one work item in scope has any financial entry. */
@@ -19,21 +21,20 @@ function rollup(
   displayCurrency: string,
   rates: Record<string, number>,
 ): FinancialTotals {
-  let savings = 0;
-  let income = 0;
+  let actual = 0;
+  let plan = 0;
   let hasData = false;
   for (const id of workItemIds) {
     const e = byWorkItem[id];
     if (!e) continue;
-    // Use actuals for past months, plan for current/future.
-    const s = effectiveSum(e.savingsByMonth, e.actualSavingsByMonth);
-    const i = effectiveSum(e.incomeByMonth, e.actualIncomeByMonth);
-    if (s === 0 && i === 0) continue;
+    const a = sumMap(e.actualSavingsByMonth) + sumMap(e.actualIncomeByMonth);
+    const p = sumMap(e.savingsByMonth) + sumMap(e.incomeByMonth);
+    if (a === 0 && p === 0) continue;
     hasData = true;
-    savings += convertCurrency(s, e.currency, displayCurrency, rates);
-    income += convertCurrency(i, e.currency, displayCurrency, rates);
+    actual += convertCurrency(a, e.currency, displayCurrency, rates);
+    plan += convertCurrency(p, e.currency, displayCurrency, rates);
   }
-  return { savings, income, currency: displayCurrency, hasData };
+  return { actual, plan, currency: displayCurrency, hasData };
 }
 
 /** Sum of financial entries for a work item and all its descendants. */
