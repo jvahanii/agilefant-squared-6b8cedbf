@@ -35,6 +35,8 @@ import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { TreeStatusesDialog } from "./TreeStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
+import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
+import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 
