@@ -202,3 +202,38 @@ export function formatCurrencyCompact(amount: number, currency: string): string 
   if (abs >= 1_000) return `${currency} ${(amount / 1_000).toFixed(1)}k`;
   return `${currency} ${amount.toFixed(0)}`;
 }
+
+/**
+ * True when the given (year, 0-indexed month) is strictly before the current
+ * calendar month in UTC. The current month is treated as "future" so its
+ * actual values are not editable until the month closes.
+ */
+export function isPastMonth(year: number, monthIndex0: number): boolean {
+  const now = new Date();
+  const curY = now.getUTCFullYear();
+  const curM = now.getUTCMonth();
+  if (year < curY) return true;
+  if (year > curY) return false;
+  return monthIndex0 < curM;
+}
+
+/**
+ * Returns the "effective" amount for a metric on this entry: actual values
+ * for past months, plan values for the current and future months. Used by
+ * aggregated totals so badges reflect realized + planned mix.
+ */
+export function effectiveSum(plan: MonthlyMap, actual: MonthlyMap): number {
+  // Union of all keys so we don't miss months present only in one map.
+  const keys = new Set<string>([...Object.keys(plan), ...Object.keys(actual)]);
+  let total = 0;
+  for (const k of keys) {
+    const m = /^(\d{4})-(\d{2})$/.exec(k);
+    if (!m) continue;
+    const y = Number(m[1]);
+    const mi = Number(m[2]) - 1;
+    const v = isPastMonth(y, mi) ? (actual[k] ?? plan[k] ?? 0) : (plan[k] ?? 0);
+    total += v;
+  }
+  return total;
+}
+
