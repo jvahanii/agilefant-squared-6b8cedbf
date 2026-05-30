@@ -98,6 +98,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
     const prev = get().byWorkItem[workItemId];
     const savingsByMonth = sanitizeMap(patch.savingsByMonth);
     const incomeByMonth = sanitizeMap(patch.incomeByMonth);
+    const actualSavingsByMonth = sanitizeMap(patch.actualSavingsByMonth);
+    const actualIncomeByMonth = sanitizeMap(patch.actualIncomeByMonth);
     set((s) => ({
       byWorkItem: {
         ...s.byWorkItem,
@@ -107,6 +109,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
           organizationId,
           savingsByMonth,
           incomeByMonth,
+          actualSavingsByMonth,
+          actualIncomeByMonth,
           currency: patch.currency,
           createdAt: prev?.createdAt ?? new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -122,6 +126,8 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
           organization_id: organizationId,
           savings_by_month: savingsByMonth,
           income_by_month: incomeByMonth,
+          actual_savings_by_month: actualSavingsByMonth,
+          actual_income_by_month: actualIncomeByMonth,
           currency: patch.currency,
           updated_at: new Date().toISOString(),
         },
