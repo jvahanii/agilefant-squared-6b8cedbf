@@ -90,9 +90,22 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const backlogs = useAppStore((s) => s.backlogs);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const targetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
-  const targetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
-  const targetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
+  const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setDisplayCurrency);
+  const rates = useRatesStore((s) => s.rates);
+  const rawTargetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
+  const rawTargetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
+  const rawTargetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
+  // Convert target amounts to display currency for the reference line.
+  const targetSavings = rawTargetSavings
+    ? { ...rawTargetSavings, amount: convertCurrency(rawTargetSavings.amount, rawTargetSavings.currency, displayCurrency, rates) }
+    : undefined;
+  const targetIncome = rawTargetIncome
+    ? { ...rawTargetIncome, amount: convertCurrency(rawTargetIncome.amount, rawTargetIncome.currency, displayCurrency, rates) }
+    : undefined;
+  const targetSingle = rawTargetSingle
+    ? { ...rawTargetSingle, amount: convertCurrency(rawTargetSingle.amount, rawTargetSingle.currency, displayCurrency, rates) }
+    : undefined;
   const target = metric === "both"
     ? (targetSavings || targetIncome
         ? {
