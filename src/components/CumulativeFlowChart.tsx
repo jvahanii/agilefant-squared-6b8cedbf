@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
