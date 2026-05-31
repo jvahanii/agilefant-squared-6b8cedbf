@@ -22,6 +22,7 @@ import {
 import { ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
+import { useTeamStore } from "@/store/teamStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
@@ -36,13 +37,14 @@ import {
 
 const DISPLAY_CURRENCIES = ["EUR", "USD", "GBP", "JPY", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
 
-type GroupBy = "type" | "item" | "status" | "list";
+type GroupBy = "type" | "item" | "status" | "list" | "team";
 
 const GROUP_BY_OPTIONS: { value: GroupBy; label: string; description: string }[] = [
   { value: "type", label: "Financials type", description: "Income vs savings" },
   { value: "item", label: "Item", description: "One area per work item" },
   { value: "status", label: "Item status", description: "Grouped by current status" },
   { value: "list", label: "List", description: "Grouped by backlog list" },
+  { value: "team", label: "Team", description: "Grouped by assigned team" },
 ];
 
 const CHART_COLORS = [
@@ -98,6 +100,8 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
   const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setDisplayCurrency);
   const rates = useRatesStore((s) => s.rates);
+  const workItemTeams = useTeamStore((s) => s.workItemTeams);
+  const teams = useTeamStore((s) => s.teams);
   const rawTargetSavings = useTargetsStore((s) => s.byKey[`${treeId}::${year}::savings`]);
   const rawTargetIncome = useTargetsStore((s) => s.byKey[`${treeId}::${year}::income`]);
   const rawTargetSingle = useTargetsStore((s) => s.byKey[`${treeId}::${year}::${metric}`]);
@@ -184,26 +188,61 @@ export function CumulativeFlowChart({ treeId }: Props) {
         color: CHART_COLORS[i % CHART_COLORS.length],
       }));
     }
-    // "list"
-    const seen = new Map<string, { key: string; label: string; color: string }>();
-    let colorIdx = 0;
+    if (groupBy === "list") {
+      const seen = new Map<string, { key: string; label: string; color: string }>();
+      let colorIdx = 0;
+      for (const id of treeItemIds) {
+        const wi = workItems[id];
+        if (!wi) continue;
+        const backlogId = wi.backlogAssignments[treeId];
+        if (!backlogId || seen.has(backlogId)) continue;
+        const plan = getPlanMap(id);
+        const actual = getActualMap(id);
+        if ((!plan || Object.keys(plan).length === 0) && (!actual || Object.keys(actual).length === 0)) continue;
+        seen.set(backlogId, {
+          key: backlogId,
+          label: backlogs[backlogId]?.name ?? backlogId,
+          color: CHART_COLORS[colorIdx % CHART_COLORS.length],
+        });
+        colorIdx++;
+      }
+      return Array.from(seen.values());
+    }
+    // "team"
+    const teamsMap = new Map<string, { key: string; label: string; color: string }>();
+    let teamColorIdx = 0;
+    let hasUnassigned = false;
     for (const id of treeItemIds) {
-      const wi = workItems[id];
-      if (!wi) continue;
-      const backlogId = wi.backlogAssignments[treeId];
-      if (!backlogId || seen.has(backlogId)) continue;
       const plan = getPlanMap(id);
       const actual = getActualMap(id);
       if ((!plan || Object.keys(plan).length === 0) && (!actual || Object.keys(actual).length === 0)) continue;
-      seen.set(backlogId, {
-        key: backlogId,
-        label: backlogs[backlogId]?.name ?? backlogId,
-        color: CHART_COLORS[colorIdx % CHART_COLORS.length],
-      });
-      colorIdx++;
+      const tids = workItemTeams[id] ?? [];
+      if (tids.length === 0) {
+        hasUnassigned = true;
+      } else {
+        for (const teamId of tids) {
+          if (!teamsMap.has(teamId)) {
+            const team = teams.find((t) => t.id === teamId);
+            teamsMap.set(teamId, {
+              key: teamId,
+              label: team?.name ?? teamId,
+              color: CHART_COLORS[teamColorIdx % CHART_COLORS.length],
+            });
+            teamColorIdx++;
+          }
+        }
+      }
     }
-    return Array.from(seen.values());
-  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, getPlanMap, getActualMap]);
+    const teamSeries = Array.from(teamsMap.values());
+    if (hasUnassigned) {
+      teamSeries.push({
+        key: "__unassigned__",
+        label: "Unassigned",
+        color: CHART_COLORS[teamColorIdx % CHART_COLORS.length],
+      });
+    }
+    return teamSeries;
+  }, [groupBy, statuses, treeItemIds, workItems, backlogs, treeId, getPlanMap, getActualMap, workItemTeams, teams]);
 
   const data = useMemo(() => {
     return MONTHS_OF_YEAR.map((mm) => {
@@ -251,35 +290,41 @@ export function CumulativeFlowChart({ treeId }: Props) {
           const planMap = getPlanMap(id);
           const actualMap = getActualMap(id);
           if (!e) continue;
-          let seriesKey: string;
-          if (groupBy === "status") seriesKey = wi.status;
-          else if (groupBy === "item") seriesKey = id;
-          else seriesKey = wi.backlogAssignments[treeId];
-          const planKey = `${seriesKey}_plan`;
-          const actualKey = `${seriesKey}_actual`;
-          if (row[planKey] === undefined) continue;
+          let seriesKeys: string[];
+          if (groupBy === "status") seriesKeys = [wi.status];
+          else if (groupBy === "item") seriesKeys = [id];
+          else if (groupBy === "team") {
+            const tids = workItemTeams[id] ?? [];
+            seriesKeys = tids.length > 0 ? tids : ["__unassigned__"];
+          } else seriesKeys = [wi.backlogAssignments[treeId]];
 
-          let accruedPlan = 0;
-          for (const [k, v] of Object.entries(planMap ?? {})) {
-            if (k.startsWith(`${year}-`) && k <= mk) accruedPlan += v;
-          }
-          if (accruedPlan > 0) {
-            row[planKey] = (row[planKey] as number) + convertCurrency(accruedPlan, e.currency, displayCurrency, rates);
-          }
-          if (past) {
-            let accruedAct = 0;
-            for (const [k, v] of Object.entries(actualMap ?? {})) {
-              if (k.startsWith(`${year}-`) && k <= mk) accruedAct += v;
+          for (const seriesKey of seriesKeys) {
+            const planKey = `${seriesKey}_plan`;
+            const actualKey = `${seriesKey}_actual`;
+            if (row[planKey] === undefined) continue;
+
+            let accruedPlan = 0;
+            for (const [k, v] of Object.entries(planMap ?? {})) {
+              if (k.startsWith(`${year}-`) && k <= mk) accruedPlan += v;
             }
-            if (accruedAct > 0) {
-              row[actualKey] = (row[actualKey] as number) + convertCurrency(accruedAct, e.currency, displayCurrency, rates);
+            if (accruedPlan > 0) {
+              row[planKey] = (row[planKey] as number) + convertCurrency(accruedPlan, e.currency, displayCurrency, rates);
+            }
+            if (past) {
+              let accruedAct = 0;
+              for (const [k, v] of Object.entries(actualMap ?? {})) {
+                if (k.startsWith(`${year}-`) && k <= mk) accruedAct += v;
+              }
+              if (accruedAct > 0) {
+                row[actualKey] = (row[actualKey] as number) + convertCurrency(accruedAct, e.currency, displayCurrency, rates);
+              }
             }
           }
         }
       }
       return row;
     });
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates, workItemTeams]);
 
   // Non-cumulative per-month data for the bar chart.
   const barData = useMemo(() => {
@@ -316,25 +361,31 @@ export function CumulativeFlowChart({ treeId }: Props) {
           if (!e) continue;
           const planMap = getPlanMap(id);
           const actualMap = getActualMap(id);
-          let seriesKey: string;
-          if (groupBy === "status") seriesKey = wi.status;
-          else if (groupBy === "item") seriesKey = id;
-          else seriesKey = wi.backlogAssignments[treeId];
-          const planKey = `${seriesKey}_plan`;
-          const actualKey = `${seriesKey}_actual`;
-          if (row[planKey] === undefined) continue;
+          let seriesKeys: string[];
+          if (groupBy === "status") seriesKeys = [wi.status];
+          else if (groupBy === "item") seriesKeys = [id];
+          else if (groupBy === "team") {
+            const tids = workItemTeams[id] ?? [];
+            seriesKeys = tids.length > 0 ? tids : ["__unassigned__"];
+          } else seriesKeys = [wi.backlogAssignments[treeId]];
 
-          const p = planMap?.[mk] || 0;
-          if (p) row[planKey] = (row[planKey] as number) + convertCurrency(p, e.currency, displayCurrency, rates);
-          if (past) {
-            const a = actualMap?.[mk] || 0;
-            if (a) row[actualKey] = (row[actualKey] as number) + convertCurrency(a, e.currency, displayCurrency, rates);
+          for (const seriesKey of seriesKeys) {
+            const planKey = `${seriesKey}_plan`;
+            const actualKey = `${seriesKey}_actual`;
+            if (row[planKey] === undefined) continue;
+
+            const p = planMap?.[mk] || 0;
+            if (p) row[planKey] = (row[planKey] as number) + convertCurrency(p, e.currency, displayCurrency, rates);
+            if (past) {
+              const a = actualMap?.[mk] || 0;
+              if (a) row[actualKey] = (row[actualKey] as number) + convertCurrency(a, e.currency, displayCurrency, rates);
+            }
           }
         }
       }
       return row;
     });
-  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates]);
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates, workItemTeams]);
 
   const currency = displayCurrency;
 
