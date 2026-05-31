@@ -14,21 +14,12 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, Settings2, Target as TargetIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
@@ -97,7 +88,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
     try { localStorage.setItem("financials-chart-type-v1", chartType); } catch { /* ignore */ }
   }, [chartType]);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [targetDialogOpen, setTargetDialogOpen] = useState(false);
+  const [editingTarget, setEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState("");
 
   const workItems = useAppStore((s) => s.workItems);
@@ -367,23 +358,24 @@ export function CumulativeFlowChart({ treeId }: Props) {
 
   const dialogMetric = metric === "both" ? "savings" : metric;
 
-  function openTargetDialog() {
+  function openInlineTargetEdit() {
+    if (!ownerOrgId) return;
     const t = dialogMetric === "savings" ? targetSavings : targetIncome;
     setTargetInput(t ? String(t.amount) : "");
-    setTargetDialogOpen(true);
+    setEditingTarget(true);
   }
 
   async function saveTarget() {
     if (!ownerOrgId) return;
     const n = Number(targetInput);
-    if (!Number.isFinite(n) || n < 0) return;
+    if (!Number.isFinite(n) || n < 0) { setEditingTarget(false); return; }
     if (n === 0) {
       const t = dialogMetric === "savings" ? targetSavings : targetIncome;
       if (t) await removeTarget(treeId, year, dialogMetric);
     } else {
       await upsertTarget(treeId, ownerOrgId, year, dialogMetric, n, currency);
     }
-    setTargetDialogOpen(false);
+    setEditingTarget(false);
   }
 
   const groupByLabel = GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ?? groupBy;
@@ -407,11 +399,44 @@ export function CumulativeFlowChart({ treeId }: Props) {
           <p className="text-[10px] text-muted-foreground">
             Sliced by {groupByLabel.toLowerCase()} · {currency}{" "}
             {yearTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            {hasTarget ? (
+            {editingTarget ? (
               <>
                 {" · target "}
-                <span className="text-destructive font-medium">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={targetInput}
+                  onChange={(e) => setTargetInput(e.target.value)}
+                  onBlur={saveTarget}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveTarget();
+                    if (e.key === "Escape") setEditingTarget(false);
+                  }}
+                  autoFocus
+                  className="inline h-4 w-24 px-1 py-0 text-[10px] align-baseline"
+                />
+              </>
+            ) : hasTarget ? (
+              <>
+                {" · target "}
+                <span
+                  className="text-destructive font-medium cursor-pointer"
+                  title="Double-click to edit target"
+                  onDoubleClick={openInlineTargetEdit}
+                >
                   {currency} {target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              </>
+            ) : ownerOrgId ? (
+              <>
+                {" · "}
+                <span
+                  className="text-muted-foreground/50 cursor-pointer hover:text-muted-foreground"
+                  title="Double-click to set target"
+                  onDoubleClick={openInlineTargetEdit}
+                >
+                  set target
                 </span>
               </>
             ) : null}
@@ -495,46 +520,6 @@ export function CumulativeFlowChart({ treeId }: Props) {
               </Button>
             </div>
           )}
-          <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-[10px] gap-1"
-                onClick={openTargetDialog}
-              >
-                <TargetIcon className="h-3 w-3" />
-                Target
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle>
-                  {dialogMetric === "savings" ? "Savings" : "Income"} target · {year}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-2">
-                <Label htmlFor="target-amount" className="text-xs">
-                  Annual target ({currency}). Set to 0 to clear.
-                </Label>
-                <Input
-                  id="target-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={targetInput}
-                  onChange={(e) => setTargetInput(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setTargetDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={saveTarget}>Save</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
             <PopoverTrigger asChild>
               <Button
