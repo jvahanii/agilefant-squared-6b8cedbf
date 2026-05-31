@@ -249,7 +249,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] sm:max-w-4xl"
+        className="max-w-[95vw] sm:max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
@@ -358,7 +358,7 @@ export function FinancialsDialog({ workItemId, open, onOpenChange }: FinancialsD
                             placeholder={disabled ? "—" : "0"}
                             disabled={disabled}
                             title={disabled ? "Future month — actuals can only be entered after the month ends." : undefined}
-                            className={`h-7 px-1.5 text-xs text-right tabular-nums ${disabled ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed" : ""}`}
+                            className={`h-7 w-10 px-1.5 text-xs text-right tabular-nums ${disabled ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed" : ""}`}
                           />
                         </td>
                       );
