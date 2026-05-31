@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -35,7 +35,9 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
+  const setSavingsIncomeEnabledSetting = useOrgSettingsStore((s) => s.setSavingsIncomeEnabled);
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
+  const savingsIncomeEnabled = (orgSettings as { savingsIncomeEnabled?: boolean }).savingsIncomeEnabled ?? false;
   const loadLabels = useLabelsStore((s) => s.loadLabels);
 
   const [timesheetBrowserOpen, setTimesheetBrowserOpen] = useState(false);
@@ -192,6 +194,34 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
               <LabelsManager />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" /> Savings &amp; Income
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable savings &amp; income</p>
+              <p className="text-xs text-muted-foreground">
+                Attach a monthly savings and monthly income amount to work items, then see cumulative flow diagrams
+                per backlog tree sliced by different perspectives.
+              </p>
+            </div>
+            <Switch
+              checked={savingsIncomeEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setSavingsIncomeEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Savings & Income enabled" : "Savings & Income disabled" });
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

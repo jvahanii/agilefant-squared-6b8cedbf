@@ -703,15 +703,15 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Savings &amp; Income</strong> lets you attach monthly financial
-            projections to work items and track how actuals compare to your plan. The feature is off by default and must
-            be enabled by a superuser in{" "}
+            projections to work items and track how actuals compare to your plan. The feature is off by default and can
+            be enabled by any user in{" "}
             <strong className="text-foreground">Settings → Savings &amp; Income</strong>.
           </p>
           <div className="space-y-2">
             {[
               {
                 action: "Enable the feature",
-                how: "A superuser opens Settings and toggles the \"Enable savings & income\" switch on. The setting is per-organisation.",
+                how: "Open Settings (Bells & Whistles) and toggle the \"Enable savings & income\" switch on. The setting is per-organisation.",
               },
               {
                 action: "Open the dialog",
