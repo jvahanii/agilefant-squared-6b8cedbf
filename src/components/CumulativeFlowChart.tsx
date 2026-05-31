@@ -85,6 +85,17 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
   const [groupBy, setGroupBy] = useState<GroupBy>("type");
+  const [chartType, setChartType] = useState<"area" | "bar">(() => {
+    try {
+      const v = localStorage.getItem("financials-chart-type-v1");
+      return v === "bar" ? "bar" : "area";
+    } catch {
+      return "area";
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("financials-chart-type-v1", chartType); } catch { /* ignore */ }
+  }, [chartType]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
   const [targetInput, setTargetInput] = useState("");
