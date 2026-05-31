@@ -439,6 +439,24 @@ export function CumulativeFlowChart({ treeId }: Props) {
               <ChevronRight className="h-3 w-3" />
             </Button>
           </div>
+          <div className="flex gap-0.5 rounded border p-0.5">
+            <Button
+              size="sm"
+              variant={chartType === "area" ? "default" : "ghost"}
+              className="h-5 px-2 text-[10px]"
+              onClick={() => setChartType("area")}
+            >
+              Cumulative
+            </Button>
+            <Button
+              size="sm"
+              variant={chartType === "bar" ? "default" : "ghost"}
+              className="h-5 px-2 text-[10px]"
+              onClick={() => setChartType("bar")}
+            >
+              Monthly
+            </Button>
+          </div>
           <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
             <SelectTrigger className="h-6 px-2 text-[10px] w-[72px]" aria-label="Display currency">
               <SelectValue />
