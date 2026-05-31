@@ -209,6 +209,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
       return Array.from(seen.values());
     }
     // "team"
+    const teamsById = new Map(teams.map((t) => [t.id, t]));
     const teamsMap = new Map<string, { key: string; label: string; color: string }>();
     let teamColorIdx = 0;
     let hasUnassigned = false;
@@ -222,10 +223,9 @@ export function CumulativeFlowChart({ treeId }: Props) {
       } else {
         for (const teamId of tids) {
           if (!teamsMap.has(teamId)) {
-            const team = teams.find((t) => t.id === teamId);
             teamsMap.set(teamId, {
               key: teamId,
-              label: team?.name ?? teamId,
+              label: teamsById.get(teamId)?.name ?? teamId,
               color: CHART_COLORS[teamColorIdx % CHART_COLORS.length],
             });
             teamColorIdx++;
