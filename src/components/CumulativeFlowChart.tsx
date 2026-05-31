@@ -414,6 +414,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
                     if (e.key === "Escape") setEditingTarget(false);
                   }}
                   autoFocus
+                  aria-label="Edit target amount"
                   className="inline h-4 w-24 px-1 py-0 text-[10px] align-baseline"
                 />
               </>
@@ -423,7 +424,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
                 <span
                   className="text-destructive font-medium cursor-pointer"
                   title="Double-click to edit target"
+                  role="button"
+                  tabIndex={0}
                   onDoubleClick={openInlineTargetEdit}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") openInlineTargetEdit(); }}
                 >
                   {currency} {target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </span>
@@ -434,7 +438,10 @@ export function CumulativeFlowChart({ treeId }: Props) {
                 <span
                   className="text-muted-foreground/50 cursor-pointer hover:text-muted-foreground"
                   title="Double-click to set target"
+                  role="button"
+                  tabIndex={0}
                   onDoubleClick={openInlineTargetEdit}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") openInlineTargetEdit(); }}
                 >
                   set target
                 </span>
