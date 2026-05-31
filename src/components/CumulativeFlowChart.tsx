@@ -19,7 +19,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Settings2 } from "lucide-react";
+import { PopoutWindow } from "@/components/PopoutWindow";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTeamStore } from "@/store/teamStore";
@@ -54,6 +55,9 @@ const CHART_COLORS = [
 
 interface Props {
   treeId: string;
+  /** True when this chart is already rendered inside a PopoutWindow – hides the
+   *  "open in new window" button to prevent infinite window chains. */
+  inPopout?: boolean;
 }
 
 const MONTHS_OF_YEAR = Array.from({ length: 12 }, (_, i) =>
@@ -73,7 +77,7 @@ function sumMaps(a: MonthlyMap | undefined, b: MonthlyMap | undefined): MonthlyM
   return out;
 }
 
-export function CumulativeFlowChart({ treeId }: Props) {
+export function CumulativeFlowChart({ treeId, inPopout = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [metric, setMetric] = useState<TargetMetric>("both");
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
@@ -92,6 +96,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingTarget, setEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState("");
+  const [poppedOut, setPoppedOut] = useState(false);
 
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -407,6 +412,33 @@ export function CumulativeFlowChart({ treeId }: Props) {
 
   if (!hasData && !hasTarget) return null;
 
+  // When popped out, render a fresh independent chart instance in a new browser
+  // window (sharing the same Zustand stores) and show a placeholder inline.
+  if (poppedOut && !inPopout) {
+    return (
+      <>
+        <PopoutWindow
+          content={<CumulativeFlowChart treeId={treeId} inPopout />}
+          title="Financial Chart"
+          onClose={() => setPoppedOut(false)}
+        />
+        <div ref={containerRef} className="mt-2 rounded-md border bg-card p-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Financial chart is open in a separate window.
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs shrink-0"
+            onClick={() => setPoppedOut(false)}
+          >
+            Close external window
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   const dialogMetric = metric === "both" ? "savings" : metric;
 
   function openInlineTargetEdit() {
@@ -617,6 +649,18 @@ export function CumulativeFlowChart({ treeId }: Props) {
               </div>
             </PopoverContent>
           </Popover>
+          {!inPopout && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => setPoppedOut(true)}
+              aria-label="Open chart in new window"
+              title="Open in new window"
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
       <div className="h-44 w-full">
