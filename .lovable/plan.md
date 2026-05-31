@@ -1,70 +1,64 @@
 ## Goal
 
-Split each work item's financial entry into **Plan** (existing) and **Actual** (new). Actual is editable only for past months (current month = future). Actual rows in the dialog start pre-populated from the plan. The chart shows both as overlaid series with future portions visually muted.
+Add a second chart mode to the financials section: a **monthly stacked bar chart** showing Plan and Actual values per month. Side-by-side with the existing cumulative area chart, toggled via a chart-type switch. Reuses the existing year navigation, currency, metric, and groupBy controls.
 
-## Data model
+## Behavior
 
-Add two jsonb columns to `work_item_financials`:
+- **X axis**: 12 months of the selected year (Jan…Dec), same as today.
+- **Y axis**: monthly amount (not cumulative) in display currency.
+- **Bars per month**: two adjacent bars — **Plan** and **Actual** — each a stack split by the current `groupBy` (type / item / status / list).
+- **Future months**: the Actual bar is rendered with reduced opacity (or omitted) for current+future months, mirroring how the area chart breaks the actual line. Plan bar is full opacity for all months.
+- **Tooltip**: per month, lists each series and its Plan / Actual values; total at the bottom.
+- **Legend**: same series colors as the area chart. A small "Plan / Actual" indicator (e.g. solid vs hatched/translucent) explains the bar pair.
+- **Today reference**: a vertical `ReferenceLine` between the last past month and the current month, label "today" — same as the area chart.
+- **Target line**: optional horizontal `ReferenceLine` only when `groupBy === "type"` and a target exists, drawn as **monthly target = annual / 12** so it stays meaningful on a non-cumulative chart. Otherwise hidden.
 
-- `actual_savings_by_month jsonb NOT NULL DEFAULT '{}'`
-- `actual_income_by_month jsonb NOT NULL DEFAULT '{}'`
+## Chart-type toggle
 
-No backfill — existing rows get empty actuals. No RLS / grants change (table policies already cover all columns).
-
-## Store: `src/store/financialsStore.ts`
-
-- Extend `WorkItemFinancials` with `actualSavingsByMonth` and `actualIncomeByMonth` (both `MonthlyMap`).
-- `rowToEntry` reads the two new columns via `sanitizeMap`.
-- `upsert` accepts the two new maps and writes them to the new columns.
-- `applyRealtime` already routes through `rowToEntry`, no extra change.
-
-## "Past month" helper
-
-Add a tiny helper `isPastMonth(year, monthIndex0)` returning true only when the month strictly precedes the current calendar month (UTC). Current month is treated as future per user choice.
-
-## Dialog: `src/components/FinancialsDialog.tsx`
-
-Change the table from 2 rows (Savings, Income) to 4 rows:
+Add a small segmented control in the existing chart header (next to the year/currency controls):
 
 ```text
-Savings · Plan       [Jan..Dec inputs]   [Year]   [Total]
-Savings · Actual     [Jan..Dec inputs]   [Year]   [Total]
-Income  · Plan       [Jan..Dec inputs]   [Year]   [Total]
-Income  · Actual     [Jan..Dec inputs]   [Year]   [Total]
+[ Cumulative ]  [ Monthly bars ]
 ```
 
-State: `savingsPlan`, `savingsActual`, `incomePlan`, `incomeActual` maps. On open, actual maps default to a shallow copy of plan maps when the saved actual map is empty for that year; otherwise use saved actual as-is.
+State `chartType: "area" | "bar"` lives in `CumulativeFlowChart` (the component stays the single entry point, just renders one of two chart bodies). Persist the choice in `localStorage` under `financials-chart-type-v1`.
 
-Behavior:
-- Future-month cells in the Actual rows are rendered as disabled inputs with muted styling and a tooltip ("Future month — edit the plan").
-- Past-month cells in the Actual row remain editable. If left blank, treat as "no actual yet" (stored as missing key, not 0).
-- The year-total distribute input on Actual rows distributes only across past months of the selected year; if the year is fully in the future, the input is disabled.
-- Currency conversion on currency-change applies to all four maps (extend the existing `handleCurrencyChange`).
-- Save persists all four maps. Clear-all wipes all four.
+The header readout updates: "Cumulative …" stays for the area mode; bar mode reads "Monthly … · {year}" with the same total (sum of plan for the year).
 
-Totals shown per row use `sumMap` over the respective map (already correct after split).
+## Data shape for the bar chart
 
-## Aggregated totals: `src/hooks/useFinancialTotals.ts`
+Build a per-month row similar to today, but **non-cumulative**:
 
-Add an "effective" sum per metric per entry: for each year present in the maps, take **actual** for past months and **plan** for the current+future months, then sum. Reuse this in `rollup` so badges and lists naturally reflect the realized + planned mix. This is computed per entry to keep currency conversion correct.
+```ts
+{
+  month: "2026-01", label: "Jan",
+  [`${seriesKey}_plan`]: number,    // 0 if no entry
+  [`${seriesKey}_actual`]: number | null,  // null for current+future months
+}
+```
 
-## Chart: `src/components/CumulativeFlowChart.tsx`
+For `groupBy === "type"`, series are `savings` and `income` (same colors). For other groupings, one series per status / item / backlog (same color logic as today).
 
-Render two overlaid cumulative series per metric:
+Reuse the existing helpers: `treeItemIds`, `getPlanMap`, `getActualMap`, `series` memo, `convertCurrency`, `isPastMonth`. Only the data-building loop changes (sum the single month, not the accrued total).
 
-- **Plan** — full 12 months, drawn with the existing color but reduced opacity (e.g. `fillOpacity 0.15`, dashed stroke `strokeDasharray="4 4"`).
-- **Actual** — only past months populated; current and future months as `null` so Recharts breaks the line. Solid stroke, normal opacity.
+## Rendering
 
-For grouping modes:
-- `groupBy === "type"`: emit four series — `savingsPlan`, `savingsActual`, `incomePlan`, `incomeActual` — using existing green/blue palette (savings = green, income = blue), actual solid, plan dashed/translucent.
-- Other groupings (`item`, `status`, `list`): keep one series per group but switch the data source so past months come from actual (falling back to plan when actual missing) and future months come from plan. Add a vertical `ReferenceLine` at the boundary between the last past month and the current month with label "today" so the user can see the realized/plan transition.
-- Add a vertical `ReferenceLine` at the today boundary in `type` mode as well.
+Use Recharts `BarChart` with two `<Bar>` per series:
 
-Tooltip and legend automatically reflect the new series via existing series map.
+```tsx
+<Bar dataKey={`${s.key}_plan`}   stackId="plan"   fill={s.color} fillOpacity={0.85} />
+<Bar dataKey={`${s.key}_actual`} stackId="actual" fill={s.color} fillOpacity={1} stroke={s.color} />
+```
 
-`sumMaps` helper unchanged; new helper `accruedThroughMonth(map, year, mk)` already inlined will be reused.
+`barCategoryGap` set so the Plan/Actual pair sits adjacent within each month slot. Future-month Actual cells are `null`, so they render as empty space inside the Actual stack — visually distinct from the populated Plan stack next to them.
 
 ## Out of scope
 
-- Per-month FX rates (still uses today's rate as before).
-- No change to targets, share/RLS, or change log.
+- No new data model, store, or migration changes.
+- No new groupings or metrics.
+- No editing from the chart.
+- No animation / transitions beyond Recharts defaults.
+
+## File touched
+
+- `src/components/CumulativeFlowChart.tsx` — add chart-type toggle, new `bar`-mode data memo, and render `BarChart` when selected. Possibly extract two small inner components (`CumulativeAreaBody`, `MonthlyBarBody`) to keep the file readable; leave header/controls shared.
