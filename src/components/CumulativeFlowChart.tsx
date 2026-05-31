@@ -290,6 +290,61 @@ export function CumulativeFlowChart({ treeId }: Props) {
     });
   }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates]);
 
+  // Non-cumulative per-month data for the bar chart.
+  const barData = useMemo(() => {
+    return MONTHS_OF_YEAR.map((mm) => {
+      const monthIdx0 = Number(mm) - 1;
+      const mk = `${year}-${mm}`;
+      const past = isPastMonth(year, monthIdx0);
+      const row: Record<string, number | string | null> = { month: mk, label: monthLabel(Number(mm)) };
+      for (const s of series) {
+        row[`${s.key}_plan`] = 0;
+        row[`${s.key}_actual`] = past ? 0 : null;
+      }
+
+      if (groupBy === "type") {
+        for (const id of treeItemIds) {
+          const e = byWorkItem[id];
+          if (!e) continue;
+          const ps = e.savingsByMonth?.[mk] || 0;
+          const pi = e.incomeByMonth?.[mk] || 0;
+          row["savings_plan"] = (row["savings_plan"] as number) + convertCurrency(ps, e.currency, displayCurrency, rates);
+          row["income_plan"] = (row["income_plan"] as number) + convertCurrency(pi, e.currency, displayCurrency, rates);
+          if (past) {
+            const as = e.actualSavingsByMonth?.[mk] || 0;
+            const ai = e.actualIncomeByMonth?.[mk] || 0;
+            row["savings_actual"] = (row["savings_actual"] as number) + convertCurrency(as, e.currency, displayCurrency, rates);
+            row["income_actual"] = (row["income_actual"] as number) + convertCurrency(ai, e.currency, displayCurrency, rates);
+          }
+        }
+      } else {
+        for (const id of treeItemIds) {
+          const wi = workItems[id];
+          if (!wi) continue;
+          const e = byWorkItem[id];
+          if (!e) continue;
+          const planMap = getPlanMap(id);
+          const actualMap = getActualMap(id);
+          let seriesKey: string;
+          if (groupBy === "status") seriesKey = wi.status;
+          else if (groupBy === "item") seriesKey = id;
+          else seriesKey = wi.backlogAssignments[treeId];
+          const planKey = `${seriesKey}_plan`;
+          const actualKey = `${seriesKey}_actual`;
+          if (row[planKey] === undefined) continue;
+
+          const p = planMap?.[mk] || 0;
+          if (p) row[planKey] = (row[planKey] as number) + convertCurrency(p, e.currency, displayCurrency, rates);
+          if (past) {
+            const a = actualMap?.[mk] || 0;
+            if (a) row[actualKey] = (row[actualKey] as number) + convertCurrency(a, e.currency, displayCurrency, rates);
+          }
+        }
+      }
+      return row;
+    });
+  }, [series, groupBy, treeItemIds, byWorkItem, workItems, treeId, getPlanMap, getActualMap, year, displayCurrency, rates]);
+
   const currency = displayCurrency;
 
   // Year total reflects the plan (full year). Past months alone wouldn't show
