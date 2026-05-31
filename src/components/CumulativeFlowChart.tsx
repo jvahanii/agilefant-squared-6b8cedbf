@@ -422,7 +422,7 @@ export function CumulativeFlowChart({ treeId, inPopout = false }: Props) {
           title="Financial Chart"
           onClose={() => setPoppedOut(false)}
         />
-        <div ref={containerRef} className="mt-2 rounded-md border bg-card p-3 flex items-center justify-between gap-3">
+        <div className="mt-2 rounded-md border bg-card p-3 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Financial chart is open in a separate window.
           </p>

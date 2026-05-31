@@ -13,8 +13,14 @@ interface PopoutWindowProps {
 /**
  * Opens a new browser window and renders `content` into it via a fresh React
  * root.  Because Zustand stores are module-level singletons the new root shares
- * live store data with the parent window automatically.  Stylesheets and the
+ * live store data with the parent window automatically, so `content` only needs
+ * to be rendered once – subsequent store-driven updates are handled inside the
+ * popout's own React tree without re-passing props.  Stylesheets and the
  * dark-mode class are copied from the parent document so the UI looks correct.
+ *
+ * `title` and `windowFeatures` are intentionally applied only on mount.
+ * Changing them after the window opens has no effect (the window is already
+ * open and the props are stable in all current call sites).
  *
  * Returns null (renders nothing in the parent DOM).
  */
