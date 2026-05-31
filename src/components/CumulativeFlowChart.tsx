@@ -739,7 +739,7 @@ export function CumulativeFlowChart({ treeId }: Props) {
                   strokeDasharray="4 4"
                   ifOverflow="extendDomain"
                   label={{
-                    value: `Monthly target ${currency} ${(target!.amount / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    value: `Average monthly target ${currency} ${(target!.amount / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
                     position: "insideTopRight",
                     fontSize: 10,
                     fill: "hsl(var(--destructive))",
