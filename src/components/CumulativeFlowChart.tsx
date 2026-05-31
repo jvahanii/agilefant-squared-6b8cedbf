@@ -578,98 +578,176 @@ export function CumulativeFlowChart({ treeId }: Props) {
       </div>
       <div className="h-44 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 10 }}
-              minTickGap={8}
-            />
-            <YAxis
-              tick={{ fontSize: 10 }}
-              width={48}
-              tickFormatter={(v: number) =>
-                v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
-              }
-            />
-            <RechartsTooltip
-              contentStyle={{ fontSize: 11 }}
-              formatter={(value: number, name: string) => {
-                const isPlan = name.endsWith("_plan");
-                const baseKey = name.replace(/_(plan|actual)$/, "");
-                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
-                return [
-                  `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                  `${label} · ${isPlan ? "Plan" : "Actual"}`,
-                ];
-              }}
-            />
-            <Legend
-              wrapperStyle={{ fontSize: 10 }}
-              iconSize={8}
-              formatter={(value: string) => {
-                const isPlan = value.endsWith("_plan");
-                const baseKey = value.replace(/_(plan|actual)$/, "");
-                const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
-                return `${label} · ${isPlan ? "Plan" : "Actual"}`;
-              }}
-            />
-            {/* Plan layer — full year, dashed + translucent so future portion reads as "planned" */}
-            {series.map((s) => (
-              <Area
-                key={`${s.key}_plan`}
-                type="monotone"
-                dataKey={`${s.key}_plan`}
-                stackId="plan"
-                name={`${s.key}_plan`}
-                stroke={s.color}
-                strokeDasharray="4 4"
-                strokeOpacity={0.8}
-                fill={s.color}
-                fillOpacity={0.18}
-                isAnimationActive={false}
+          {chartType === "area" ? (
+            <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} minTickGap={8} />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                width={48}
+                tickFormatter={(v: number) =>
+                  v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                }
               />
-            ))}
-            {/* Actual layer — only past months populated; line breaks at today */}
-            {series.map((s) => (
-              <Area
-                key={`${s.key}_actual`}
-                type="monotone"
-                dataKey={`${s.key}_actual`}
-                stackId="actual"
-                name={`${s.key}_actual`}
-                stroke={s.color}
-                strokeWidth={2}
-                fill={s.color}
-                fillOpacity={0.55}
-                connectNulls={false}
-                isAnimationActive={false}
-              />
-            ))}
-            {year === new Date().getUTCFullYear() ? (
-              <ReferenceLine
-                x={monthLabel(new Date().getUTCMonth() + 1)}
-                stroke="hsl(var(--muted-foreground))"
-                strokeDasharray="2 2"
-                label={{ value: "today", position: "top", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
-              />
-            ) : null}
-            {hasTarget ? (
-              <ReferenceLine
-                y={target!.amount}
-                stroke="hsl(var(--destructive))"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                ifOverflow="extendDomain"
-                label={{
-                  value: `Target ${currency} ${target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                  position: "insideTopRight",
-                  fontSize: 10,
-                  fill: "hsl(var(--destructive))",
+              <RechartsTooltip
+                contentStyle={{ fontSize: 11 }}
+                formatter={(value: number, name: string) => {
+                  const isPlan = name.endsWith("_plan");
+                  const baseKey = name.replace(/_(plan|actual)$/, "");
+                  const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                  return [
+                    `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    `${label} · ${isPlan ? "Plan" : "Actual"}`,
+                  ];
                 }}
               />
-            ) : null}
-          </AreaChart>
+              <Legend
+                wrapperStyle={{ fontSize: 10 }}
+                iconSize={8}
+                formatter={(value: string) => {
+                  const isPlan = value.endsWith("_plan");
+                  const baseKey = value.replace(/_(plan|actual)$/, "");
+                  const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                  return `${label} · ${isPlan ? "Plan" : "Actual"}`;
+                }}
+              />
+              {series.map((s) => (
+                <Area
+                  key={`${s.key}_plan`}
+                  type="monotone"
+                  dataKey={`${s.key}_plan`}
+                  stackId="plan"
+                  name={`${s.key}_plan`}
+                  stroke={s.color}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.8}
+                  fill={s.color}
+                  fillOpacity={0.18}
+                  isAnimationActive={false}
+                />
+              ))}
+              {series.map((s) => (
+                <Area
+                  key={`${s.key}_actual`}
+                  type="monotone"
+                  dataKey={`${s.key}_actual`}
+                  stackId="actual"
+                  name={`${s.key}_actual`}
+                  stroke={s.color}
+                  strokeWidth={2}
+                  fill={s.color}
+                  fillOpacity={0.55}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              ))}
+              {year === new Date().getUTCFullYear() ? (
+                <ReferenceLine
+                  x={monthLabel(new Date().getUTCMonth() + 1)}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="2 2"
+                  label={{ value: "today", position: "top", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                />
+              ) : null}
+              {hasTarget ? (
+                <ReferenceLine
+                  y={target!.amount}
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  ifOverflow="extendDomain"
+                  label={{
+                    value: `Target ${currency} ${target!.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    position: "insideTopRight",
+                    fontSize: 10,
+                    fill: "hsl(var(--destructive))",
+                  }}
+                />
+              ) : null}
+            </AreaChart>
+          ) : (
+            <BarChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} minTickGap={8} />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                width={48}
+                tickFormatter={(v: number) =>
+                  v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                }
+              />
+              <RechartsTooltip
+                contentStyle={{ fontSize: 11 }}
+                formatter={(value: number, name: string) => {
+                  const isPlan = name.endsWith("_plan");
+                  const baseKey = name.replace(/_(plan|actual)$/, "");
+                  const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                  return [
+                    `${currency} ${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    `${label} · ${isPlan ? "Plan" : "Actual"}`,
+                  ];
+                }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: 10 }}
+                iconSize={8}
+                formatter={(value: string) => {
+                  const isPlan = value.endsWith("_plan");
+                  const baseKey = value.replace(/_(plan|actual)$/, "");
+                  const label = series.find((s) => s.key === baseKey)?.label ?? baseKey;
+                  return `${label} · ${isPlan ? "Plan" : "Actual"}`;
+                }}
+              />
+              {series.map((s) => (
+                <Bar
+                  key={`${s.key}_plan`}
+                  dataKey={`${s.key}_plan`}
+                  stackId="plan"
+                  name={`${s.key}_plan`}
+                  fill={s.color}
+                  fillOpacity={0.45}
+                  stroke={s.color}
+                  strokeOpacity={0.6}
+                  strokeDasharray="3 3"
+                  isAnimationActive={false}
+                />
+              ))}
+              {series.map((s) => (
+                <Bar
+                  key={`${s.key}_actual`}
+                  dataKey={`${s.key}_actual`}
+                  stackId="actual"
+                  name={`${s.key}_actual`}
+                  fill={s.color}
+                  fillOpacity={0.95}
+                  isAnimationActive={false}
+                />
+              ))}
+              {year === new Date().getUTCFullYear() ? (
+                <ReferenceLine
+                  x={monthLabel(new Date().getUTCMonth() + 1)}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="2 2"
+                  label={{ value: "today", position: "top", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                />
+              ) : null}
+              {hasTarget ? (
+                <ReferenceLine
+                  y={target!.amount / 12}
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  ifOverflow="extendDomain"
+                  label={{
+                    value: `Monthly target ${currency} ${(target!.amount / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                    position: "insideTopRight",
+                    fontSize: 10,
+                    fill: "hsl(var(--destructive))",
+                  }}
+                />
+              ) : null}
+            </BarChart>
+          )}
         </ResponsiveContainer>
       </div>
     </div>
