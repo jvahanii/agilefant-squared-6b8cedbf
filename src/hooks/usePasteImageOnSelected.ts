@@ -79,9 +79,13 @@ export function usePasteImageOnSelected() {
           });
         if (upErr) throw upErr;
 
-        const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-        const publicUrl = data.publicUrl;
-        if (!publicUrl) throw new Error("Failed to resolve public URL");
+        // Bucket is private — store a stable signed URL reference. Consumers
+        // re-sign at open time via resolveOpenableHref().
+        const { data: signed, error: signErr } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(filename, 60 * 60);
+        if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to sign URL");
+        const publicUrl = signed.signedUrl;
 
         const altText = `Pasted image ${new Date().toLocaleString()}`;
         useAppStore.getState().addHyperlink(workItemId, publicUrl, altText);

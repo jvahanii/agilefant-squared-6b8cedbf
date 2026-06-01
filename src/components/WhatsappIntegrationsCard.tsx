@@ -127,7 +127,8 @@ export function WhatsappIntegrationsCard() {
     load();
   };
 
-  const urlFor = (i: Integration) => `${BASE_URL}?token=${i.webhook_secret}`;
+  const urlFor = (_i: Integration) => BASE_URL;
+  const headerFor = (i: Integration) => `X-Webhook-Token: ${i.webhook_secret}`;
 
   return (
     <Card>
@@ -140,9 +141,10 @@ export function WhatsappIntegrationsCard() {
         <p className="text-sm text-muted-foreground">
           Connect a WhatsApp chat (group or individual) via a bridge such as <em>whapi.cloud</em>. Every text message becomes an
           "In Progress" work item at the top of the chosen backlog. In your bridge, set the webhook URL below for the
-          <em> messages.post</em> (or equivalent) event. Leave Chat ID blank to accept messages from any chat, or enter a
-          specific chat ID to restrict to one conversation (e.g. <code>1203630412345678@g.us</code> for a group or{" "}
-          <code>15551234567@s.whatsapp.net</code> for a 1-to-1 chat).
+          <em> messages.post</em> (or equivalent) event and add the <code>X-Webhook-Token</code> request header so the bridge can
+          authenticate. Leave Chat ID blank to accept messages from any chat, or enter a specific chat ID to restrict to one
+          conversation (e.g. <code>1203630412345678@g.us</code> for a group or <code>15551234567@s.whatsapp.net</code> for a
+          1-to-1 chat).
         </p>
 
         <div className="border rounded-md p-3 space-y-2">
@@ -206,6 +208,7 @@ export function WhatsappIntegrationsCard() {
             const treeName = backlogTrees[i.tree_id]?.name ?? i.tree_id;
             const backlogName = backlogs[i.backlog_id]?.name ?? i.backlog_id;
             const fullUrl = urlFor(i);
+            const fullHeader = headerFor(i);
             return (
               <div key={i.id} className="border rounded-md p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -228,13 +231,20 @@ export function WhatsappIntegrationsCard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground w-24 shrink-0 text-xs">Webhook URL</span>
+                    <code className="flex-1 truncate bg-muted px-2 py-1 rounded text-xs">{fullUrl}</code>
+                    <Button size="sm" variant="ghost" onClick={() => copy(fullUrl, "URL")}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-24 shrink-0 text-xs">Auth header</span>
                     <code className="flex-1 truncate bg-muted px-2 py-1 rounded text-xs">
-                      {isRevealed ? fullUrl : `${BASE_URL}?token=${"•".repeat(16)}`}
+                      {isRevealed ? fullHeader : `X-Webhook-Token: ${"•".repeat(16)}`}
                     </code>
                     <Button size="sm" variant="ghost" onClick={() => setRevealed((r) => ({ ...r, [i.id]: !isRevealed }))}>
                       {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => copy(fullUrl, "URL")}>
+                    <Button size="sm" variant="ghost" onClick={() => copy(i.webhook_secret, "Token")}>
                       <Copy className="w-3.5 h-3.5" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => rotateSecret(i.id)} title="Rotate secret">

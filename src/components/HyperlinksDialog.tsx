@@ -10,9 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExternalLink, Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { isAttachmentUrl, resolveOpenableHref } from "@/lib/attachmentUrl";
 
 const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
 const safeHref = (url: string) => (isValidUrl(url) ? url : "#");
+
+const handleHyperlinkClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+  if (!isValidUrl(url) || !isAttachmentUrl(url)) return;
+  e.preventDefault();
+  const href = await resolveOpenableHref(url);
+  window.open(href, "_blank", "noopener,noreferrer");
+};
 
 interface HyperlinksDialogProps {
   workItemId: string;
@@ -180,6 +188,7 @@ export function HyperlinksDialog({
                     href={safeHref(link.url)}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleHyperlinkClick(e, link.url)}
                     className="text-sm text-primary hover:underline truncate block"
                     title={link.url}
                   >
