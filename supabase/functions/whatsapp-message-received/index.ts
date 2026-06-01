@@ -26,8 +26,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token') ?? req.headers.get('x-webhook-token');
+    // Prefer header-based token; only fall back to query param for backward
+    // compatibility with already-deployed webhook URLs. The header avoids
+    // leaking the secret into edge function access logs.
+    const token = req.headers.get('x-webhook-token') ?? new URL(req.url).searchParams.get('token');
     if (!token) {
       return new Response(JSON.stringify({ error: 'missing token' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

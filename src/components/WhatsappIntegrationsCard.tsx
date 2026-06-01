@@ -127,7 +127,8 @@ export function WhatsappIntegrationsCard() {
     load();
   };
 
-  const urlFor = (i: Integration) => `${BASE_URL}?token=${i.webhook_secret}`;
+  const urlFor = (_i: Integration) => BASE_URL;
+  const headerFor = (i: Integration) => `X-Webhook-Token: ${i.webhook_secret}`;
 
   return (
     <Card>
