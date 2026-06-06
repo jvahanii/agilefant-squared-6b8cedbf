@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import agilefantLogo from "@/assets/agilefant-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,9 +227,6 @@ function SignupForm({
 
   return (
     <form onSubmit={handleSignup} className="space-y-4 mt-4">
-      <div className="flex justify-center mb-2">
-        <img src={agilefantLogo} alt="Agilefant heraldic logo" className="h-24 w-auto" />
-      </div>
       <div className="space-y-2">
         <Label htmlFor="signup-name">Full Name</Label>
         <Input id="signup-name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
