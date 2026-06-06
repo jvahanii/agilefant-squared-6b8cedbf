@@ -1086,6 +1086,11 @@ function WorkItemNodeContent({
               Sort children A→Z
             </ContextMenuItem>
           )}
+          <ContextMenuItem className="text-xs" onSelect={openMoveToBacklogDialog}>
+            <FolderInput className="w-3 h-3 mr-1.5 shrink-0" />
+            Move…
+            <span className="ml-auto text-[10px] text-muted-foreground">M</span>
+          </ContextMenuItem>
           {allBacklogIds.length > 1 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">
