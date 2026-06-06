@@ -217,7 +217,7 @@ export function MobileWorkItemAttributesSheet({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Move to backlog</span>
+            <span className="text-sm font-medium">Move…</span>
             <Button
               variant="ghost"
               size="sm"
