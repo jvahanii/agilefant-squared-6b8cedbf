@@ -1696,7 +1696,15 @@ function SearchResultItem({
                 title={item.status}
               />
               <div className="min-w-0 flex-1">
-                <span className="text-sm leading-snug break-words">{titleNode}</span>
+                <span className="text-sm leading-snug break-words inline-flex items-center gap-1">
+                  {isSnoozed && (
+                    <BellOff
+                      className="w-3 h-3 text-amber-500/80 shrink-0 inline-block"
+                      aria-label="Snoozed — hidden in backlog view; click to reveal"
+                    />
+                  )}
+                  {titleNode}
+                </span>
                 {workItemAncestors.length > 0 && (
                   <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
                     {isScrambled ? "···" : workItemAncestors.join(" › ")}
