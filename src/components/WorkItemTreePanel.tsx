@@ -2639,6 +2639,10 @@ export function WorkItemTreePanel() {
                         backlogPath={backlogPath}
                         isScrambled={isScrambled}
                         onNavigate={() => {
+                          // If snoozed, wake the item so it appears in the destination backlog.
+                          if (useSnoozeStore.getState().isSnoozed(item.id)) {
+                            useSnoozeStore.getState().unsnoozeWorkItem(item.id);
+                          }
                           // Expand ancestor backlogs and work items so the item is visible
                           useAppStore.setState((state) => {
                             const expandedBacklogs = new Set(state.expandedBacklogs);
