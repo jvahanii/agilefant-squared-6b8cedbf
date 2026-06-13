@@ -1696,7 +1696,15 @@ function SearchResultItem({
                 title={item.status}
               />
               <div className="min-w-0 flex-1">
-                <span className="text-sm leading-snug break-words">{titleNode}</span>
+                <span className="text-sm leading-snug break-words inline-flex items-center gap-1">
+                  {isSnoozed && (
+                    <BellOff
+                      className="w-3 h-3 text-amber-500/80 shrink-0 inline-block"
+                      aria-label="Snoozed — hidden in backlog view; click to reveal"
+                    />
+                  )}
+                  {titleNode}
+                </span>
                 {workItemAncestors.length > 0 && (
                   <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
                     {isScrambled ? "···" : workItemAncestors.join(" › ")}
@@ -2524,15 +2532,15 @@ export function WorkItemTreePanel() {
           <div className="flex items-center gap-1 shrink-0 ml-2">
             {!isSearchMode && !isLabelFilterMode && snoozedInBacklog.length > 0 && (
               <button
-                className="flex items-center gap-1 w-auto h-7 px-1.5 rounded-md text-amber-500/80 hover:text-amber-500 hover:bg-accent transition-colors"
+                className="flex items-center gap-1 w-auto h-7 px-2 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   unsnoozeAll(snoozedInBacklog);
                 }}
-                title={`${snoozedInBacklog.length} snoozed item${snoozedInBacklog.length !== 1 ? "s" : ""} \u2014 click to unsnooze all`}
+                title={`${snoozedInBacklog.length} item${snoozedInBacklog.length !== 1 ? "s" : ""} hidden by snooze — click to unsnooze all`}
               >
                 <BellOff className="w-4 h-4" />
-                <span className="text-xs font-medium tabular-nums">{snoozedInBacklog.length}</span>
+                <span className="text-xs font-medium tabular-nums">Snoozed: {snoozedInBacklog.length}</span>
               </button>
             )}
             {!isSearchMode && !isLabelFilterMode && (
@@ -2631,6 +2639,10 @@ export function WorkItemTreePanel() {
                         backlogPath={backlogPath}
                         isScrambled={isScrambled}
                         onNavigate={() => {
+                          // If snoozed, wake the item so it appears in the destination backlog.
+                          if (useSnoozeStore.getState().isSnoozed(item.id)) {
+                            useSnoozeStore.getState().unsnoozeWorkItem(item.id);
+                          }
                           // Expand ancestor backlogs and work items so the item is visible
                           useAppStore.setState((state) => {
                             const expandedBacklogs = new Set(state.expandedBacklogs);
