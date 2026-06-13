@@ -170,7 +170,13 @@ export function RespawnSettingsDialog({
         )}
 
         <div className="flex justify-between gap-2 mt-6">
-          <Button variant="outline" size="sm" onClick={() => { respawnItem(workItemId); onOpenChange(false); }}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!item.respawnEnabled}
+            title={!item.respawnEnabled ? "Enable and save respawn first" : undefined}
+            onClick={() => { respawnItem(workItemId); onOpenChange(false); }}
+          >
             Respawn now
           </Button>
           <div className="flex gap-2">
