@@ -22,6 +22,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If the email-recovery link lands anywhere other than /reset-password
+    // (e.g. Supabase fell back to Site URL because /reset-password isn't in
+    // the Redirect URLs allow list), bounce to the reset form before the
+    // recovery session auto-logs the user in.
+    const redirectIfRecovery = () => {
+      const hash = window.location.hash || '';
+      const isRecoveryHash = hash.includes('type=recovery');
+      if (isRecoveryHash && window.location.pathname !== '/reset-password') {
+        window.location.replace('/reset-password' + hash);
+        return true;
+      }
+      return false;
+    };
+    if (redirectIfRecovery()) return;
+
     // Safety timeout: if Supabase auth doesn't respond within 8 seconds,
     // clear the loading state so the app can redirect to the login page
     // instead of hanging on the loading screen indefinitely.
@@ -51,6 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // would set a potentially different user-object reference, triggering an
     // extra loadMemberships() call and a data-loading race on startup.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+        clearTimeout(loadingTimeout);
+        window.location.replace('/reset-password' + (window.location.hash || ''));
+        return;
+      }
       if (event === 'INITIAL_SESSION') {
         // Already handled by getSession() above.  Clear the timeout defensively
         // in case getSession() hasn't resolved yet (e.g. very fast initialization).
