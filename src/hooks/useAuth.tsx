@@ -66,6 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // would set a potentially different user-object reference, triggering an
     // extra loadMemberships() call and a data-loading race on startup.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
+        clearTimeout(loadingTimeout);
+        window.location.replace('/reset-password' + (window.location.hash || ''));
+        return;
+      }
       if (event === 'INITIAL_SESSION') {
         // Already handled by getSession() above.  Clear the timeout defensively
         // in case getSession() hasn't resolved yet (e.g. very fast initialization).
