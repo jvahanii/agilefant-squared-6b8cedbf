@@ -1,20 +1,27 @@
+# Fix: password reset email logs user in instead of opening reset form
+
 ## Root cause
-Search and the backlog view disagree about snoozed items:
-- `searchResults` (WorkItemTreePanel.tsx:2044) returns matches with **no snooze filter**, showing the item with its backlog label.
-- The backlog view's `displayedRootItems` (line 2259) explicitly **removes** snoozed items: `.filter((wi) => !snoozedItemIds.has(wi.id))`.
-- A small "snoozed N" badge exists in the header (line 2525) but is easy to miss.
 
-Result: user finds "keywi backlog hehkutus" in search, sees its backlog, navigates there, and the item is gone with no obvious explanation.
+`resetPasswordForEmail` already passes `redirectTo: ${origin}/reset-password`, but Supabase only honors that if the URL is in the project's Redirect URL allow list. When it isn't, Supabase falls back to the Site URL (`/`), the recovery token is consumed there, and the user ends up signed in on the home page instead of on the reset form.
 
-## Fix
-Make snoozed items discoverable from the backlog view, and make search self-explanatory when an item is hidden because it's snoozed.
+## Fix (two parts)
 
-1. **Search result row**: show a small `BellOff` icon next to snoozed items in the search results (purely visual — the icon is already imported and used in the context menu, so this is just rendering it inline in the row when `isSnoozed` is true).
-2. **Clicking a snoozed search result**: in the existing `onNavigate` handler (line 2633), when the target item is snoozed, also call `unsnooze(wi.id)` so it becomes visible in the destination backlog. This matches the user's intent ("show me this item").
-3. **Backlog header snoozed badge**: keep existing single-click "unsnooze all" behavior but improve the tooltip and make the badge slightly more prominent (small label "Snoozed: N" instead of just an icon + number) so users notice it.
+### 1. Code: catch recovery sessions globally and route to `/reset-password`
 
-No data-model changes. All edits in `src/components/WorkItemTreePanel.tsx`.
+In `src/hooks/useAuth.tsx`, when `onAuthStateChange` fires with event `PASSWORD_RECOVERY` (or when the initial URL hash contains `type=recovery`), force a client-side navigation to `/reset-password` preserving the hash. This guarantees the reset form is shown even if the email link lands on `/`.
+
+Implementation detail: do the navigation with `window.location.replace('/reset-password' + window.location.hash)` from inside the auth listener so it works before the router has mounted. Skip if already on `/reset-password`.
+
+Also harden `src/pages/ResetPassword.tsx`: in addition to checking `type=recovery` in the hash, treat the presence of an active recovery session (set by the `PASSWORD_RECOVERY` event it already subscribes to) as sufficient — the current code is already close, no behavior change needed beyond confirming it still works after the redirect above.
+
+### 2. Configuration (user action, outside code)
+
+In Supabase Auth settings → URL Configuration, add `https://<your-domain>/reset-password` (and the Lovable preview/published origins) to the **Redirect URLs** allow list. Without this, Supabase will keep falling back to Site URL. The code change above makes the app resilient even if this step is missed, but adding the URL is the clean long-term fix.
+
+## Files changed
+
+- `src/hooks/useAuth.tsx` — add `PASSWORD_RECOVERY` handler that redirects to `/reset-password`.
 
 ## Out of scope
-- Bug B (child items hidden when their parent is in the same backlog) — `onNavigate` already auto-expands ancestors, so clicking the search result works; manual backlog navigation showing flat children is a separate, larger UX change. Will not touch unless you ask.
-- Multi-tree label disambiguation in search results.
+
+No changes to email templates (project uses default Supabase auth emails — no `auth-email-hook` exists). No new routes.
