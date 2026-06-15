@@ -11,22 +11,47 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isRecovery, setIsRecovery] = useState(false);
+  // 'checking' | 'ready' | 'invalid'
+  const [status, setStatus] = useState<'checking' | 'ready' | 'invalid'>('checking');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
-      setIsRecovery(true);
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const hasRecoveryMarker =
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      hash.includes('access_token=');
+
+    if (hasRecoveryMarker) {
+      setStatus('ready');
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setIsRecovery(true);
+        setStatus('ready');
+      } else if (event === 'SIGNED_IN' && session) {
+        // If supabase already finished the recovery handshake we still want
+        // to let the user set a new password rather than bouncing into the app.
+        setStatus(prev => (prev === 'checking' ? 'ready' : prev));
       }
     });
 
-    return () => subscription.unsubscribe();
+    // If no markers and no event arrives shortly, treat link as invalid.
+    const timeout = setTimeout(() => {
+      setStatus(prev => (prev === 'checking' ? 'invalid' : prev));
+    }, 1500);
+
+    // If there is already a session (supabase consumed the token before this
+    // component mounted), allow the reset form.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && hasRecoveryMarker) setStatus('ready');
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -50,7 +75,15 @@ export default function ResetPassword() {
     setLoading(false);
   };
 
-  if (!isRecovery) {
+  if (status === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (status === 'invalid') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
