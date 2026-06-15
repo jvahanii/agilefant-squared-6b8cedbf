@@ -71,6 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.replace('/reset-password' + (window.location.hash || ''));
         return;
       }
+      // While on /reset-password, ignore auth state changes so the recovery
+      // session doesn't bounce the user into the app before they set a new password.
+      if (window.location.pathname === '/reset-password' && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+        clearTimeout(loadingTimeout);
+        return;
+      }
       if (event === 'INITIAL_SESSION') {
         // Already handled by getSession() above.  Clear the timeout defensively
         // in case getSession() hasn't resolved yet (e.g. very fast initialization).
