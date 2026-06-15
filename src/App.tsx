@@ -114,6 +114,7 @@ function AppRoutes() {
     <Suspense fallback={pageFallback}>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/settings/bells-whistles" element={<BellsAndWhistles />} />
         <Route path="/manager" element={<ManagerScreen />} />
