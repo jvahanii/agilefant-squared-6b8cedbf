@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,16 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  // 'checking' | 'ready' | 'invalid'
   const [status, setStatus] = useState<'checking' | 'ready' | 'invalid'>('checking');
   const navigate = useNavigate();
+  const mountedRef = useRef(true);
+
+  const safeSetStatus = (s: 'checking' | 'ready' | 'invalid') => {
+    if (mountedRef.current) setStatus(s);
+  };
 
   useEffect(() => {
+    mountedRef.current = true;
     const hash = window.location.hash || '';
     const search = window.location.search || '';
     const hasRecoveryMarker =
@@ -23,32 +28,35 @@ export default function ResetPassword() {
       search.includes('type=recovery') ||
       hash.includes('access_token=');
 
-    if (hasRecoveryMarker) {
-      setStatus('ready');
-    }
+    // Primary path: if Supabase already established a session (recovery link
+    // consumed the hash before we mounted), or the URL still carries recovery
+    // markers, show the form immediately.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session || hasRecoveryMarker) {
+        safeSetStatus('ready');
+      }
+    }).catch(() => {});
 
+    // Backup: handle PASSWORD_RECOVERY if it arrives after mount.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setStatus('ready');
-      } else if (event === 'SIGNED_IN' && session) {
-        // If supabase already finished the recovery handshake we still want
-        // to let the user set a new password rather than bouncing into the app.
-        setStatus(prev => (prev === 'checking' ? 'ready' : prev));
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        safeSetStatus('ready');
       }
     });
 
-    // If no markers and no event arrives shortly, treat link as invalid.
-    const timeout = setTimeout(() => {
-      setStatus(prev => (prev === 'checking' ? 'invalid' : prev));
-    }, 1500);
-
-    // If there is already a session (supabase consumed the token before this
-    // component mounted), allow the reset form.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && hasRecoveryMarker) setStatus('ready');
-    });
+    // Only declare the link invalid after a grace period with neither
+    // a session nor recovery markers present.
+    const timeout = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session && !hasRecoveryMarker) {
+        safeSetStatus('invalid');
+      } else {
+        safeSetStatus('ready');
+      }
+    }, 2000);
 
     return () => {
+      mountedRef.current = false;
       subscription.unsubscribe();
       clearTimeout(timeout);
     };
@@ -68,11 +76,14 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Password updated', description: 'Your password has been reset successfully.' });
-      navigate('/');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    toast({ title: 'Password updated', description: 'Please sign in with your new password.' });
+    // Sign out the temporary recovery session so the user explicitly signs
+    // in again — avoids the /auth → / redirect chain that was crashing.
+    await supabase.auth.signOut();
+    navigate('/auth', { replace: true });
   };
 
   if (status === 'checking') {
@@ -92,7 +103,15 @@ export default function ResetPassword() {
             <CardDescription>This password reset link is invalid or has expired.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => navigate('/auth')}>Back to Sign In</Button>
+            <Button
+              className="w-full"
+              onClick={async () => {
+                await supabase.auth.signOut().catch(() => {});
+                window.location.assign('/auth');
+              }}
+            >
+              Back to Sign In
+            </Button>
           </CardContent>
         </Card>
       </div>
