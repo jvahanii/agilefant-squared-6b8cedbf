@@ -103,6 +103,7 @@ function AppRoutes() {
       <Suspense fallback={pageFallback}>
         <Routes>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/user-guide" element={<UserGuide />} />
           <Route path="*" element={<Navigate to="/onboarding" replace />} />
         </Routes>
