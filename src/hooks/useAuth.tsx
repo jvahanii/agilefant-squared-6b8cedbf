@@ -125,6 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // re-trigger downstream effects (loadMemberships, data fetches), which
       // on a freshly-reset password sign-in can produce render-loop crashes.
       const newUserId = newSession?.user?.id ?? null;
+      if (event === 'SIGNED_IN' && newUserId) {
+        useOrgStore.setState({ loading: true });
+      }
       setSession((prev) => {
         if ((prev?.user?.id ?? null) === newUserId && prev?.access_token === newSession?.access_token) return prev;
         return newSession;
