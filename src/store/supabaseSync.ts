@@ -260,17 +260,17 @@ export async function loadFromSupabase(organizationId: string): Promise<{
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
-      parentIds: (r.parent_id_overrides && typeof r.parent_id_overrides === 'object' && !Array.isArray(r.parent_id_overrides))
-        ? (r.parent_id_overrides as Record<string, string | null>)
+      parentIds: (row.parent_id_overrides && typeof row.parent_id_overrides === 'object' && !Array.isArray(row.parent_id_overrides))
+        ? (row.parent_id_overrides as Record<string, string | null>)
         : undefined,
       backlogAssignments,
       ranks,
-      organizationId: r.organization_id ?? undefined,
-      respawnEnabled: r.respawn_enabled ?? false,
-      respawnIntervalDays: r.respawn_interval_days ?? undefined,
-      respawnHour: r.respawn_hour ?? undefined,
-      respawnMinute: r.respawn_minute ?? undefined,
-      respawnLastTriggeredAt: r.respawn_last_triggered_at ?? undefined,
+      organizationId: row.organization_id ?? undefined,
+      respawnEnabled: row.respawn_enabled ?? false,
+      respawnIntervalDays: row.respawn_interval_days ?? undefined,
+      respawnHour: row.respawn_hour ?? undefined,
+      respawnMinute: row.respawn_minute ?? undefined,
+      respawnLastTriggeredAt: row.respawn_last_triggered_at ?? undefined,
     };
   }
   for (const wi of Object.values(workItems)) {
