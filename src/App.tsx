@@ -42,10 +42,13 @@ function AppRoutes() {
   const { memberships, activeOrgId, loading: orgLoading, loadMemberships } = useOrgStore();
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadMemberships(user.id);
     }
-  }, [user]);
+    // Only re-run when the authenticated user id actually changes — not on
+    // every new User object reference produced by TOKEN_REFRESHED, etc.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // On mobile, iOS Safari can restore the page from bfcache while orgLoading
   // is still true (the in-flight RPC was silently cancelled by the OS and the
