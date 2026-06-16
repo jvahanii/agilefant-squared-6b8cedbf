@@ -896,6 +896,7 @@ export type Database = {
           id: string
           organization_id: string | null
           parent_id: string | null
+          parent_id_overrides: Json
           points: number | null
           rank: number
           respawn_enabled: boolean
@@ -912,6 +913,7 @@ export type Database = {
           id: string
           organization_id?: string | null
           parent_id?: string | null
+          parent_id_overrides?: Json
           points?: number | null
           rank?: number
           respawn_enabled?: boolean
@@ -928,6 +930,7 @@ export type Database = {
           id?: string
           organization_id?: string | null
           parent_id?: string | null
+          parent_id_overrides?: Json
           points?: number | null
           rank?: number
           respawn_enabled?: boolean

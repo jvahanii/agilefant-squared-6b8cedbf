@@ -1,6 +1,6 @@
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
-import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus } from "@/types/models";
+import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -487,7 +487,10 @@ function WorkItemNodeContent({
 
   if (!item) return null;
 
-  const hasChildren = item.childrenIds.length > 0;
+  const hasChildren = item.childrenIds.some((id) => {
+    const child = workItems[id];
+    return child && getEffectiveParentId(child, treeId) === workItemId;
+  });
 
   const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
     const path: { id: string; name: string }[] = [];
@@ -1253,7 +1256,7 @@ function WorkItemNodeContent({
                 {(() => {
                   const sortedChildren = [...item.childrenIds]
                     .map((id) => workItems[id])
-                    .filter(Boolean)
+                    .filter((child): child is WorkItem => !!child && getEffectiveParentId(child, treeId) === workItemId)
                     .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
                   const isMultiBacklog = allBacklogIds.length > 1;
                   return (
@@ -2249,9 +2252,11 @@ export function WorkItemTreePanel() {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
     return Object.values(workItems)
       .filter(
-        (wi) =>
-          backlogIdSet.has(wi.backlogAssignments[selectedTreeId]) &&
-          (wi.parentId === null || !backlogIdSet.has(workItems[wi.parentId ?? ""]?.backlogAssignments[selectedTreeId])),
+        (wi) => {
+          if (!backlogIdSet.has(wi.backlogAssignments[selectedTreeId])) return false;
+          const effectiveParentId = getEffectiveParentId(wi, selectedTreeId);
+          return effectiveParentId === null || !backlogIdSet.has(workItems[effectiveParentId ?? ""]?.backlogAssignments[selectedTreeId]);
+        },
       )
       .sort((a, b) => {
         const rankDiff = (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0);

@@ -63,6 +63,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef } from "@/store/navigationRefs";
+import { getEffectiveParentId } from "@/types/models";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -199,14 +200,16 @@ function AppLayoutInner() {
         const siblings = Object.values(state.workItems)
           .filter((w) => {
             if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
-            if (wi.parentId === null) {
+            const wiEffectiveParent = getEffectiveParentId(wi, treeId);
+            const wEffectiveParent = getEffectiveParentId(w, treeId);
+            if (wiEffectiveParent === null) {
               return (
-                w.parentId === null ||
-                !state.workItems[w.parentId] ||
-                !backlogIdSet.has(state.workItems[w.parentId].backlogAssignments[treeId])
+                wEffectiveParent === null ||
+                !state.workItems[wEffectiveParent] ||
+                !backlogIdSet.has(state.workItems[wEffectiveParent].backlogAssignments[treeId])
               );
             }
-            return w.parentId === wi.parentId;
+            return wEffectiveParent === wiEffectiveParent;
           })
           .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
 
@@ -251,10 +254,12 @@ function AppLayoutInner() {
               state.selectedWorkItemIds.forEach((id) => {
                 const wi = state.workItems[id];
                 if (!wi) return;
-                const parentInContext =
-                  wi.parentId !== null &&
-                  backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
-                const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                const parentInContext = (() => {
+                  const effectiveParentId = getEffectiveParentId(wi, treeId);
+                  return effectiveParentId !== null &&
+                    backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
+                })();
+                const contextKey = parentInContext ? `child:${getEffectiveParentId(wi, treeId)}` : "root";
                 if (processedContexts.has(contextKey)) return;
                 processedContexts.add(contextKey);
                 state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
@@ -285,10 +290,12 @@ function AppLayoutInner() {
                 state.selectedWorkItemIds.forEach((id) => {
                   const wi = state.workItems[id];
                   if (!wi) return;
-                  const parentInContext =
-                    wi.parentId !== null &&
-                    backlogIdSet.has(state.workItems[wi.parentId]?.backlogAssignments[treeId] ?? "");
-                  const contextKey = parentInContext ? `child:${wi.parentId}` : "root";
+                  const parentInContext = (() => {
+                    const effectiveParentId = getEffectiveParentId(wi, treeId);
+                    return effectiveParentId !== null &&
+                      backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
+                  })();
+                  const contextKey = parentInContext ? `child:${getEffectiveParentId(wi, treeId)}` : "root";
                   if (processedContexts.has(contextKey)) return;
                   processedContexts.add(contextKey);
                   state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);

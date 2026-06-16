@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData } from "@/store/appStore";
+import { getEffectiveParentId } from "@/types/models";
 import { upsertWorkItemBacklogRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
@@ -867,7 +868,77 @@ describe("reparentWorkItem", () => {
     expect(moved.ranks[`${ORG}::bl-1`]).toBe(5);
     // Rank in new backlog should be set
     expect(moved.ranks[`${ORG}::bl-2`]).toBeDefined();
-    expect(moved.parentId).toBe(`${ORG}::wi-parent`);
+    // parentId should remain null (the item had no global parent before mirroring)
+    expect(moved.parentId).toBeNull();
+    // The per-tree parent override for bt-2 should be set
+    expect(moved.parentIds?.[`${ORG}::bt-2`]).toBe(`${ORG}::wi-parent`);
+  });
+
+  it("multi-tree reparent only affects the operated tree, not others", () => {
+    // Set up an item in two trees, with a different parent in each tree.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", treeId: `${ORG}::bt-1`, childrenIds: [], parentId: null, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", treeId: `${ORG}::bt-2`, childrenIds: [], parentId: null, rank: 0 },
+      },
+      workItems: {
+        // Parent in tree 1
+        [`${ORG}::old-parent-t1`]: {
+          id: `${ORG}::old-parent-t1`, title: "Old Parent T1", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-multi`], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        // New parent being assigned in tree 1
+        [`${ORG}::new-parent-t1`]: {
+          id: `${ORG}::new-parent-t1`, title: "New Parent T1", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 1 },
+        },
+        // Parent in tree 2
+        [`${ORG}::parent-t2`]: {
+          id: `${ORG}::parent-t2`, title: "Parent T2", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-multi`], backlogAssignments: { [`${ORG}::bt-2`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
+        },
+        // Multi-tree item: in tree 1 under old-parent-t1 (global), in tree 2 under parent-t2 (override)
+        [`${ORG}::wi-multi`]: {
+          id: `${ORG}::wi-multi`, title: "Multi-tree item", status: "not_started" as const,
+          parentId: `${ORG}::old-parent-t1`,
+          parentIds: { [`${ORG}::bt-2`]: `${ORG}::parent-t2` },
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 5, [`${ORG}::bl-2`]: 5 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+
+    // Reparent wi-multi within tree 1 only (same-tree, no strategy)
+    useAppStore.getState().reparentWorkItem(
+      `${ORG}::wi-multi`,
+      `${ORG}::new-parent-t1`,
+      `${ORG}::bt-1`,
+      `${ORG}::bl-1`,
+    );
+
+    const s = useAppStore.getState();
+    const moved = s.workItems[`${ORG}::wi-multi`];
+
+    // In tree 1: effective parent should now be new-parent-t1
+    expect(getEffectiveParentId(moved, `${ORG}::bt-1`)).toBe(`${ORG}::new-parent-t1`);
+    // In tree 2: effective parent should still be parent-t2 (UNCHANGED)
+    expect(getEffectiveParentId(moved, `${ORG}::bt-2`)).toBe(`${ORG}::parent-t2`);
+
+    // old-parent-t1 should no longer list wi-multi as a child
+    expect(s.workItems[`${ORG}::old-parent-t1`].childrenIds).not.toContain(`${ORG}::wi-multi`);
+    // new-parent-t1 should now list wi-multi as a child
+    expect(s.workItems[`${ORG}::new-parent-t1`].childrenIds).toContain(`${ORG}::wi-multi`);
+    // parent-t2 should still list wi-multi as a child (tree 2 unchanged)
+    expect(s.workItems[`${ORG}::parent-t2`].childrenIds).toContain(`${ORG}::wi-multi`);
   });
 });
 
