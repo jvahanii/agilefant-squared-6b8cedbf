@@ -23,6 +23,7 @@ type WorkItemUpsertRow = {
   points: number | null;
   status: string;
   parent_id: string | null;
+  parent_id_overrides: Record<string, string | null>;
   backlog_assignments: Record<string, string>;
   rank: number;
   organization_id: string;
@@ -259,6 +260,9 @@ export async function loadFromSupabase(organizationId: string): Promise<{
       id: row.id, title: row.title, description: row.description ?? undefined,
       points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
+      parentIds: (r.parent_id_overrides && typeof r.parent_id_overrides === 'object' && !Array.isArray(r.parent_id_overrides))
+        ? (r.parent_id_overrides as Record<string, string | null>)
+        : undefined,
       backlogAssignments,
       ranks,
       organizationId: r.organization_id ?? undefined,
@@ -272,6 +276,17 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   for (const wi of Object.values(workItems)) {
     if (wi.parentId && workItems[wi.parentId]) {
       workItems[wi.parentId].childrenIds.push(wi.id);
+    }
+    // Also populate childrenIds from per-tree parent overrides so that items
+    // whose parent differs by tree are still reachable from the override parent.
+    if (wi.parentIds) {
+      for (const treeParentId of Object.values(wi.parentIds)) {
+        if (treeParentId && treeParentId !== wi.parentId && workItems[treeParentId]) {
+          if (!workItems[treeParentId].childrenIds.includes(wi.id)) {
+            workItems[treeParentId].childrenIds.push(wi.id);
+          }
+        }
+      }
     }
   }
   for (const wi of Object.values(workItems)) {
@@ -439,6 +454,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
     points: item.points ?? null, status: item.status, parent_id: item.parentId,
+    parent_id_overrides: item.parentIds ?? {},
     backlog_assignments: item.backlogAssignments, rank: 0,
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
@@ -551,6 +567,7 @@ async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: strin
     return {
       id: resolvedId, title: item.title, description: item.description ?? null,
       points: item.points ?? null, status: item.status, parent_id: item.parentId,
+      parent_id_overrides: item.parentIds ?? {},
       backlog_assignments: item.backlogAssignments, rank: 0,
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,
@@ -733,6 +750,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     points: item.points ?? null,
     status: item.status,
     parent_id: item.parentId,
+    parent_id_overrides: item.parentIds ?? {},
     backlog_assignments: item.backlogAssignments,
     rank: 0,
     organization_id: organizationId,

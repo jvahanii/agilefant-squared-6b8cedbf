@@ -14,7 +14,12 @@ export interface WorkItem {
   description?: string;
   points?: number;
   status: WorkItemStatus;
+  /** Global parent ID — the default parent used when no per-tree override is present. */
   parentId: string | null;
+  /** Per-tree parent overrides (treeId → parentId | null).  When present for a
+   *  given tree, this takes precedence over the global `parentId` so that an
+   *  item can live under different parents in different backlog trees. */
+  parentIds?: Record<string, string | null>;
   childrenIds: string[];
   /** Maps backlogTreeId -> backlogId */
   backlogAssignments: Record<string, string>;
@@ -55,4 +60,20 @@ export interface Hyperlink {
   url: string;
   altText: string;
   rank: number;
+}
+
+/**
+ * Returns the effective parent ID of a work item within the context of a
+ * specific backlog tree.  When `wi.parentIds[treeId]` is defined it takes
+ * precedence over the global `wi.parentId`, allowing items to live under
+ * different parents in different trees.
+ *
+ * NOTE: a stored value of `null` means "root in this tree" and is distinct
+ * from `undefined` (= "no override, fall back to global parentId").
+ */
+export function getEffectiveParentId(wi: WorkItem, treeId: string): string | null {
+  if (wi.parentIds && treeId in wi.parentIds) {
+    return wi.parentIds[treeId];
+  }
+  return wi.parentId;
 }

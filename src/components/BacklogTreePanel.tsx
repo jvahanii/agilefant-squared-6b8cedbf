@@ -39,6 +39,7 @@ import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
+import { getEffectiveParentId } from "@/types/models";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -226,8 +227,10 @@ function useBacklogPoints(backlogId: string, treeId: string) {
     let total = 0;
     Object.values(workItems).forEach((wi) => {
       if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
-        const parentInSet =
-          wi.parentId && workItems[wi.parentId] && backlogIds.has(workItems[wi.parentId].backlogAssignments[treeId]);
+        const parentInSet = (() => {
+          const effectiveParentId = getEffectiveParentId(wi, treeId);
+          return effectiveParentId && workItems[effectiveParentId] && backlogIds.has(workItems[effectiveParentId].backlogAssignments[treeId]);
+        })();
         if (!parentInSet) {
           total += getEffectivePoints(wi);
         }
