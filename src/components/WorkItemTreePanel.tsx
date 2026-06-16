@@ -238,9 +238,8 @@ function WorkItemNodeContent({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const orgSettings = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false });
-  const pointsVisible = orgSettings.pointsEnabled;
-  const timeLoggingVisible = orgSettings.timeLoggingEnabled;
+  const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);

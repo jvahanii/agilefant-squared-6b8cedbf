@@ -5,14 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'checking' | 'ready' | 'invalid'>('checking');
-  const navigate = useNavigate();
   const mountedRef = useRef(true);
 
   const safeSetStatus = (s: 'checking' | 'ready' | 'invalid') => {
@@ -81,9 +79,10 @@ export default function ResetPassword() {
     }
     toast({ title: 'Password updated', description: 'Please sign in with your new password.' });
     // Sign out the temporary recovery session so the user explicitly signs
-    // in again — avoids the /auth → / redirect chain that was crashing.
+    // in again. Use a real navigation (not SPA navigate) so all in-memory
+    // recovery/org/app store state is discarded before the next sign-in.
     await supabase.auth.signOut();
-    navigate('/auth', { replace: true });
+    window.location.replace('/auth');
   };
 
   if (status === 'checking') {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,15 +40,17 @@ const queryClient = new QueryClient();
 function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
   const { memberships, activeOrgId, loading: orgLoading, loadMemberships } = useOrgStore();
+  const location = useLocation();
+  const isResetPasswordRoute = location.pathname === "/reset-password";
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !isResetPasswordRoute) {
       loadMemberships(user.id);
     }
     // Only re-run when the authenticated user id actually changes — not on
     // every new User object reference produced by TOKEN_REFRESHED, etc.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, isResetPasswordRoute]);
 
   // On mobile, iOS Safari can restore the page from bfcache while orgLoading
   // is still true (the in-flight RPC was silently cancelled by the OS and the
@@ -74,7 +76,7 @@ function AppRoutes() {
     document.title = activeOrg ? `${activeOrg.organization_name} – Agilefant²` : "Agilefant²";
   }, [memberships, activeOrgId]);
 
-  if (authLoading || (user && orgLoading)) {
+  if (authLoading || (user && orgLoading && !isResetPasswordRoute)) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <p className="text-muted-foreground">Loading...</p>

@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { useAppStore } from '@/store/appStore';
+import { useOrgStore } from '@/store/orgStore';
+import { useTeamStore } from '@/store/teamStore';
+import { useTimeEntryStore } from '@/store/timeEntryStore';
+import { useSnoozeStore } from '@/store/snoozeStore';
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +20,32 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
 });
+
+function resetClientStoresAfterSignOut() {
+  useOrgStore.setState({ memberships: [], activeOrgId: null, activeOrgName: null, loading: false });
+  useAppStore.setState({
+    workItems: {},
+    backlogs: {},
+    backlogTrees: {},
+    hyperlinks: {},
+    selectedBacklogIds: [],
+    selectedTreeId: null,
+    selectedWorkItemIds: [],
+    changeLog: [],
+    expandedWorkItems: new Set(),
+    expandedBacklogs: new Set(),
+    undoStack: [],
+    redoStack: [],
+    isLoading: false,
+    loadingProgress: 0,
+    organizationId: null,
+    userId: null,
+    userEmail: null,
+  });
+  useTeamStore.setState({ teams: [], teamMembers: [], workItemTeams: {}, loading: false });
+  useTimeEntryStore.setState({ timeEntries: {}, isLoading: false });
+  useSnoozeStore.setState({ snoozes: {}, isLoading: false });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -82,11 +113,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       clearTimeout(loadingTimeout);
+      if (event === 'SIGNED_OUT') {
+        resetClientStoresAfterSignOut();
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       // Avoid duplicate state updates when the user identity hasn't changed.
       // TOKEN_REFRESHED / USER_UPDATED swap the user object reference and
       // re-trigger downstream effects (loadMemberships, data fetches), which
       // on a freshly-reset password sign-in can produce render-loop crashes.
       const newUserId = newSession?.user?.id ?? null;
+      if (event === 'SIGNED_IN' && newUserId) {
+        useOrgStore.setState({ loading: true });
+      }
       setSession((prev) => {
         if ((prev?.user?.id ?? null) === newUserId && prev?.access_token === newSession?.access_token) return prev;
         return newSession;
