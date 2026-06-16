@@ -233,7 +233,7 @@ export function sanitizeData(data: any, orgId: string) {
     // Clean per-tree parent overrides
     const cleanParentIds: Record<string, string | null> = {};
     if (wi.parentIds && typeof wi.parentIds === 'object') {
-      Object.entries(wi.parentIds).forEach(([tId, pid]) => {
+      Object.entries(wi.parentIds as Record<string, string | null>).forEach(([tId, pid]) => {
         const cleanT = ensureCleanId(tId, orgId);
         if (cleanTrees[cleanT]) {
           cleanParentIds[cleanT] = pid ? ensureCleanId(pid, orgId) : null;

@@ -1,35 +1,33 @@
-# Fix Password Reset Flow
+## Issue
+After the password is updated, the app signs out from the temporary recovery session, but the auth/org/app stores can still carry transitional state. On the next sign-in, that stale/reset transition can trigger repeated auth/org loading updates and React throws error #185 (maximum update depth) until a hard refresh reinitializes cleanly.
 
-## What's happening
+## Do I know what the issue is?
+Yes. The reset flow is mixing a recovery session, sign-out, route navigation, and immediate sign-in without fully clearing app/org state and without guarding duplicate auth state updates. The hard refresh works because it rebuilds those stores from a clean Supabase session.
 
-1. Email link → Supabase verify → redirects to `/reset-password#access_token=...&type=recovery`.
-2. The Supabase client auto-consumes the URL hash on load and fires `PASSWORD_RECOVERY` **before** the lazy-loaded `ResetPassword` component mounts. Its listener therefore never sees the event, the hash is already gone, and after 1.5s we render **"Invalid Link"**.
-3. Clicking **Back to Sign In** navigates to `/auth`. Because a recovery session already exists, `useAuth` treats the user as signed in and the `/auth` route does `<Navigate to="/">`. During that transition `useAuth`'s `onAuthStateChange` (or another setState chain) triggers React error **#185 (max update depth)** → ErrorBoundary shows "Something went wrong". A hard refresh re-runs `getSession()` cleanly and lands in the app.
+## Plan
+1. **Harden auth state updates in `src/hooks/useAuth.tsx`**
+   - Ignore duplicate auth events when the session/user id has not actually changed.
+   - On `SIGNED_OUT`, explicitly clear auth state and loading once.
+   - Keep the `/reset-password` recovery guard, but avoid leaving loading/user state in a half-updated state.
 
-## Fix
+2. **Reset app/org state on sign-out**
+   - Add focused reset actions to the Zustand stores if needed.
+   - Call them when the user signs out after password reset and from normal sign-out.
+   - This removes stale memberships, active org, selected org data, and loading flags before returning to `/auth`.
 
-### `src/pages/ResetPassword.tsx`
-- Stop relying on the `PASSWORD_RECOVERY` event firing after mount.
-- On mount, immediately call `supabase.auth.getSession()`. If a session exists, treat the page as **ready** (the user got here via the recovery link or is already signed in and explicitly wants to change password).
-- Keep the `onAuthStateChange` listener as a backup for the rare case the session is still being established.
-- Only show "Invalid Link" if after ~2s there is still no session AND no recovery markers in URL.
-- Use a `mountedRef` so `setStatus` never runs after unmount (defensive against error #185).
-- After `updateUser` success, sign out first then navigate to `/auth` with a success toast — avoids leaving the user in an ambiguous recovery session and avoids the `/auth` → `/` → Index redirect chain that's currently crashing.
+3. **Make post-reset navigation deterministic in `src/pages/ResetPassword.tsx`**
+   - After `updateUser`, sign out the recovery session.
+   - Clear recovery URL fragments/history.
+   - Navigate to `/auth` only after the sign-out and store cleanup complete.
 
-### `src/hooks/useAuth.tsx`
-- Tighten the `PASSWORD_RECOVERY` branch: only `window.location.replace` when the path is not `/reset-password` **and** not already mid-redirect (guard with a module-level flag) to eliminate any chance of a redirect loop contributing to #185.
-- No other behavior changes.
+4. **Prevent duplicate membership/data loads in `src/App.tsx`**
+   - Only call `loadMemberships` when the authenticated user id changes, not whenever Supabase provides a new `User` object reference.
+   - Keep `/reset-password` as an accessible route during recovery.
 
-### `src/components/ErrorBoundary.tsx`
-- No change needed; once the underlying loop is gone the boundary won't trip.
+5. **Verify**
+   - Check the app can still load unauthenticated `/auth` and `/reset-password`.
+   - Validate that sign-in after reset no longer lands on the error boundary, and that refresh is no longer required.
 
-## Out of scope
-- Supabase dashboard settings (Site URL / Redirect URLs already correct per user).
-- `public/_redirects` (already in place).
-- Auth.tsx, App routing structure beyond what's described.
-
-## Verification
-1. Request password reset from `/auth`.
-2. Click email link → should land on `/reset-password` showing the **New Password** form (no "Invalid Link" flash).
-3. Submit new password → toast + redirect to `/auth` where user can sign in with new password.
-4. If link is genuinely bad/expired → "Invalid Link" card; clicking **Back to Sign In** goes to `/auth` without the "Something went wrong" screen.
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>

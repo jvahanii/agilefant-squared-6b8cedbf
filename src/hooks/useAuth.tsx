@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // because getSession() above already covers it; processing it here too
     // would set a potentially different user-object reference, triggering an
     // extra loadMemberships() call and a data-loading race on startup.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
         clearTimeout(loadingTimeout);
         window.location.replace('/reset-password' + (window.location.hash || ''));
@@ -78,14 +78,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (event === 'INITIAL_SESSION') {
-        // Already handled by getSession() above.  Clear the timeout defensively
-        // in case getSession() hasn't resolved yet (e.g. very fast initialization).
         clearTimeout(loadingTimeout);
         return;
       }
       clearTimeout(loadingTimeout);
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Avoid duplicate state updates when the user identity hasn't changed.
+      // TOKEN_REFRESHED / USER_UPDATED swap the user object reference and
+      // re-trigger downstream effects (loadMemberships, data fetches), which
+      // on a freshly-reset password sign-in can produce render-loop crashes.
+      const newUserId = newSession?.user?.id ?? null;
+      setSession((prev) => {
+        if ((prev?.user?.id ?? null) === newUserId && prev?.access_token === newSession?.access_token) return prev;
+        return newSession;
+      });
+      setUser((prev) => {
+        if ((prev?.id ?? null) === newUserId) return prev;
+        return newSession?.user ?? null;
+      });
       setLoading(false);
     });
 
