@@ -2309,49 +2309,78 @@ export function WorkItemTreePanel() {
       if (isInput) return;
 
       const state = useAppStore.getState();
-      if (state.selectedWorkItemIds.length !== 1) return;
+      if (state.selectedWorkItemIds.length === 0) return;
       if (!state.selectedTreeId || !state.selectedBacklogIds[0]) return;
-
-      const workItemId = state.selectedWorkItemIds[0];
-      const item = state.workItems[workItemId];
-      if (!item) return;
-
-      e.preventDefault();
 
       const treeId = state.selectedTreeId;
       const backlogId = state.selectedBacklogIds[0];
+      const currentIds = visibleItemIdsRef.current;
+      const selectedSet = new Set(state.selectedWorkItemIds);
+      // Process in visible (top-to-bottom) order, restricted to currently visible items.
+      const orderedSelected = currentIds.filter((id) => selectedSet.has(id));
+      if (orderedSelected.length === 0) return;
+
+      e.preventDefault();
 
       if (e.shiftKey) {
-        // Outdent: move item up one level (child of grandparent).
-        if (!item.parentId) return;
-        const parent = state.workItems[item.parentId];
-        if (!parent) return;
-        const grandparentId = parent.parentId ?? null;
-        const targetBacklogId = grandparentId
-          ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
-          : backlogId;
-        state.reparentWorkItem(workItemId, grandparentId, treeId, targetBacklogId);
-        const grandparentTitle = grandparentId ? (state.workItems[grandparentId]?.title ?? "item") : null;
+        // Outdent: each selected item becomes a sibling of its current parent.
+        // Snapshot parent ids first so reparenting doesn't affect later lookups.
+        const plans = orderedSelected
+          .map((id) => {
+            const item = state.workItems[id];
+            if (!item || !item.parentId) return null;
+            const parent = state.workItems[item.parentId];
+            if (!parent) return null;
+            const grandparentId = parent.parentId ?? null;
+            const targetBacklogId = grandparentId
+              ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
+              : backlogId;
+            return { id, grandparentId, targetBacklogId };
+          })
+          .filter((p): p is { id: string; grandparentId: string | null; targetBacklogId: string } => p !== null);
+        if (plans.length === 0) return;
+        plans.forEach((p) => state.reparentWorkItem(p.id, p.grandparentId, treeId, p.targetBacklogId));
         toast({
-          title: grandparentTitle
-            ? `Reparented to "${grandparentTitle}"`
-            : "Moved to root (no parent)",
+          title:
+            plans.length === 1
+              ? plans[0].grandparentId
+                ? `Reparented to "${state.workItems[plans[0].grandparentId!]?.title ?? "item"}"`
+                : "Moved to root (no parent)"
+              : `Outdented ${plans.length} items`,
         });
       } else {
-        // Indent: make child of the item immediately above in the visible list.
-        const currentIds = visibleItemIdsRef.current;
-        const idx = currentIds.indexOf(workItemId);
-        if (idx <= 0) return;
-        const aboveId = currentIds[idx - 1];
-        const aboveItem = state.workItems[aboveId];
-        if (!aboveItem) return;
-        const targetBacklogId = aboveItem.backlogAssignments[treeId] ?? backlogId;
-        state.reparentWorkItem(workItemId, aboveId, treeId, targetBacklogId);
-        toast({ title: `Reparented to "${aboveItem.title}"` });
-        // Expand the new parent so the indented item stays visible.
-        if (!state.expandedWorkItems.has(aboveId)) {
-          state.toggleWorkItemExpand(aboveId);
+        // Indent: each selected item becomes a child of the nearest preceding
+        // item that is NOT itself selected (preserves relative grouping).
+        const plans: { id: string; parentId: string; targetBacklogId: string }[] = [];
+        for (const id of orderedSelected) {
+          const idx = currentIds.indexOf(id);
+          let parentId: string | null = null;
+          for (let i = idx - 1; i >= 0; i--) {
+            if (!selectedSet.has(currentIds[i])) {
+              parentId = currentIds[i];
+              break;
+            }
+          }
+          if (!parentId) continue;
+          const parentItem = state.workItems[parentId];
+          if (!parentItem) continue;
+          const targetBacklogId = parentItem.backlogAssignments[treeId] ?? backlogId;
+          plans.push({ id, parentId, targetBacklogId });
         }
+        if (plans.length === 0) return;
+        plans.forEach((p) => state.reparentWorkItem(p.id, p.parentId, treeId, p.targetBacklogId));
+        // Expand new parents so indented items stay visible.
+        const latest = useAppStore.getState();
+        const uniqueParents = Array.from(new Set(plans.map((p) => p.parentId)));
+        uniqueParents.forEach((pid) => {
+          if (!latest.expandedWorkItems.has(pid)) latest.toggleWorkItemExpand(pid);
+        });
+        toast({
+          title:
+            plans.length === 1
+              ? `Reparented to "${state.workItems[plans[0].parentId]?.title ?? "item"}"`
+              : `Indented ${plans.length} items`,
+        });
       }
     };
     window.addEventListener("keydown", handler);
