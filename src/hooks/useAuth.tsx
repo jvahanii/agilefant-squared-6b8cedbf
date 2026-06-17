@@ -125,14 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // re-trigger downstream effects (loadMemberships, data fetches), which
       // on a freshly-reset password sign-in can produce render-loop crashes.
       const newUserId = newSession?.user?.id ?? null;
-      if (event === 'SIGNED_IN' && newUserId) {
-        useOrgStore.setState({ loading: true });
-      }
       setSession((prev) => {
         if ((prev?.user?.id ?? null) === newUserId && prev?.access_token === newSession?.access_token) return prev;
         return newSession;
       });
       setUser((prev) => {
+        // Only flip org-store to loading when a *different* user signs in
+        // (e.g. after a password reset). A SIGNED_IN fired by a background
+        // token refresh when the tab regains focus keeps the same user id
+        // and must not force the app back to the "Loading..." screen.
+        if (event === 'SIGNED_IN' && newUserId && (prev?.id ?? null) !== newUserId) {
+          useOrgStore.setState({ loading: true });
+        }
         if ((prev?.id ?? null) === newUserId) return prev;
         return newSession?.user ?? null;
       });
