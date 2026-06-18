@@ -99,7 +99,7 @@ function AppLayoutInner() {
   const redoStackLength = useAppStore((s) => s.redoStack.length);
   const changeLog = useAppStore((s) => s.changeLog);
 
-  const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string } | null>(null);
+  const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string; count?: number } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
@@ -113,7 +113,9 @@ function AppLayoutInner() {
   }, [activeDrag]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Larger activation distance avoids accidentally starting a drag during
+    // a click/text-selection — desktop drag now needs a clear ~8px gesture.
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
 
@@ -740,8 +742,8 @@ function AppLayoutInner() {
         const ids: string[] = data.selectedIds ?? [data.workItemId];
         const totalCount = countWithDescendants(ids);
         const titles = ids.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
-        const title = totalCount > 1 ? `${titles[0]} (+${totalCount - 1} more)` : (titles[0] ?? "");
-        setActiveDrag({ id: data.workItemId, type: "workitem", title });
+        const title = titles[0] ?? "";
+        setActiveDrag({ id: data.workItemId, type: "workitem", title, count: totalCount });
       } else if (data?.type === "backlog-node") {
         const store = useAppStore.getState();
         const bl = store.backlogs[data.backlogId];
@@ -1028,6 +1030,11 @@ function AppLayoutInner() {
       collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      autoScroll={{
+        threshold: { x: 0, y: 0.18 },
+        acceleration: 25,
+        interval: 5,
+      }}
     >
       <div className="h-screen flex flex-col overflow-hidden bg-background">
         {/* HEADER */}
@@ -1240,8 +1247,16 @@ function AppLayoutInner() {
 
       <DragOverlay dropAnimation={null}>
         {activeDrag && (
-          <div className="bg-card border-2 border-primary/20 shadow-2xl rounded-lg px-4 py-2 text-sm font-semibold max-w-xs truncate pointer-events-none ring-2 ring-background opacity-60">
-            {activeDrag.title}
+          <div className="relative pointer-events-none" style={{ transform: "rotate(-1.5deg)" }}>
+            <div className="flex items-center gap-2 bg-card border border-primary shadow-2xl rounded-lg pl-3 pr-4 py-2 text-sm font-semibold max-w-sm ring-2 ring-primary/30">
+              <span className="inline-block w-1.5 h-5 rounded-full bg-primary shrink-0" />
+              <span className="truncate">{activeDrag.title}</span>
+            </div>
+            {activeDrag.count && activeDrag.count > 1 && (
+              <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-lg ring-2 ring-background">
+                {activeDrag.count}
+              </span>
+            )}
           </div>
         )}
       </DragOverlay>

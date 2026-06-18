@@ -73,7 +73,7 @@ const RunningNumberContext = createContext<Map<string, number> | null>(null);
 
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
-const DRAG_THRESHOLD_PX = 5;
+const DRAG_THRESHOLD_PX = 8;
 const DRAG_THRESHOLD_PX_SQUARED = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
 const EMPTY_ARRAY: string[] = [];
 
@@ -1480,12 +1480,13 @@ function ReorderDropZone({
       className="relative py-px"
       style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
-      {/* Absolutely-positioned hit area: expands during drag without shifting layout */}
+      {/* Absolutely-positioned hit area: expands during drag without shifting layout.
+          Bigger zones make reorder gaps far easier to hit with a mouse. */}
       <div
         ref={setNodeRef}
-        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-2 -bottom-2") : "inset-y-0"}`}
+        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-3 -bottom-3") : "inset-y-0"}`}
       />
-      <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
+      <div className={`rounded-full transition-all ${isOver ? "h-1.5 bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" : ""}`} />
     </div>
   );
 }
