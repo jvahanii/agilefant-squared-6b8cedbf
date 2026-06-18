@@ -1478,7 +1478,7 @@ function ReorderDropZone({
   return (
     <div
       className="relative py-px"
-      style={{ marginLeft: `${depth * 20 + 12}px`, height: isDragActive ? (isMobile ? 10 : 12) : undefined }}
+      style={{ marginLeft: `${depth * 20 + 12}px` }}
     >
       {/* Absolutely-positioned hit area: expands during drag without shifting layout.
           Bigger zones make reorder gaps far easier to hit with a mouse. */}
