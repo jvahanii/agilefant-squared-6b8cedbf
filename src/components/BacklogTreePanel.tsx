@@ -915,7 +915,12 @@ function DraggableTreeHeader({
   );
 }
 
-export function BacklogTreePanel() {
+interface BacklogTreePanelProps {
+  mobileCollapsed?: boolean;
+  onToggleMobileCollapse?: () => void;
+}
+
+export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: BacklogTreePanelProps = {}) {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
