@@ -103,6 +103,7 @@ function AppLayoutInner() {
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
+  const [mobileBacklogsCollapsed, setMobileBacklogsCollapsed] = useState(false);
 
   const isMobile = useIsMobile();
 
