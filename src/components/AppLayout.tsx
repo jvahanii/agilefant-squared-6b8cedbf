@@ -103,6 +103,7 @@ function AppLayoutInner() {
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
+  const [mobileBacklogsCollapsed, setMobileBacklogsCollapsed] = useState(false);
 
   const isMobile = useIsMobile();
 
@@ -1217,8 +1218,11 @@ function AppLayoutInner() {
           {isMobile ? (
             /* Mobile: single-column stacked layout */
             <div className="h-full flex flex-col">
-              <div className="border-b overflow-hidden shrink-0 h-[40%]">
-                <BacklogTreePanel />
+              <div className={`border-b overflow-hidden shrink-0 transition-[height] duration-200 ease-in-out ${mobileBacklogsCollapsed ? "h-8" : "h-[40%]"}`}>
+                <BacklogTreePanel
+                  mobileCollapsed={mobileBacklogsCollapsed}
+                  onToggleMobileCollapse={() => setMobileBacklogsCollapsed((v) => !v)}
+                />
               </div>
               <div className="flex-1 min-h-0 overflow-hidden">
                 <WorkItemTreePanel />

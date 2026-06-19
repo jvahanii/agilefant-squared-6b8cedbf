@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -915,7 +915,12 @@ function DraggableTreeHeader({
   );
 }
 
-export function BacklogTreePanel() {
+interface BacklogTreePanelProps {
+  mobileCollapsed?: boolean;
+  onToggleMobileCollapse?: () => void;
+}
+
+export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: BacklogTreePanelProps = {}) {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
@@ -995,79 +1000,92 @@ export function BacklogTreePanel() {
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
-        <button
-          className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          onClick={() => setIsAddingTree(true)}
-          title="Add backlog tree"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {onToggleMobileCollapse && (
+            <button
+              className="md:hidden w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={onToggleMobileCollapse}
+              title={mobileCollapsed ? "Expand backlogs" : "Collapse backlogs"}
+            >
+              {mobileCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          <button
+            className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={() => setIsAddingTree(true)}
+            title="Add backlog tree"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-0.5 pb-0">
-        {isAddingTree && (
-          <div className="mb-1 px-2">
-            <InlineInput
-              depth={0}
-              onSubmit={(name) => {
-                addBacklogTree(name);
-                setIsAddingTree(false);
-              }}
-              onCancel={() => setIsAddingTree(false)}
-            />
-          </div>
-        )}
-        {sortedTrees.map((tree, treeIndex) => {
-          const treeIsScrambled = isTreeScrambled(tree.id);
-          return (
-            <div key={tree.id} className="mb-0.5">
-              <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
-              <DraggableTreeHeader
-                tree={tree}
-                onAddBacklog={() => setAddingToTree(tree.id)}
-                onDeleteTree={() => setPendingDeleteTree({ id: tree.id, name: tree.name })}
-                onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
-                onEditStatuses={() => setEditingStatusesTree({ id: tree.id, name: tree.name })}
-                canEditStatuses={canEditStatuses}
-                shares={treeShares[tree.id] ?? []}
-                isScrambled={treeIsScrambled}
-              />
-              {tree.rootBacklogIds.map((backlogId, i) => (
-                <div key={backlogId}>
-                  <BacklogReorderDropZone
-                    id={`backlog-reorder-root-${tree.id}-${i}`}
-                    index={i}
-                    parentId={null}
-                    treeId={tree.id}
-                    depth={0}
-                  />
-                  <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} isScrambled={treeIsScrambled} />
-                </div>
-              ))}
-              <BacklogReorderDropZone
-                id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
-                index={tree.rootBacklogIds.length}
-                parentId={null}
-                treeId={tree.id}
+      {!mobileCollapsed && (
+        <div className="flex-1 overflow-y-auto px-0.5 pb-0">
+          {isAddingTree && (
+            <div className="mb-1 px-2">
+              <InlineInput
                 depth={0}
+                onSubmit={(name) => {
+                  addBacklogTree(name);
+                  setIsAddingTree(false);
+                }}
+                onCancel={() => setIsAddingTree(false)}
               />
-              {addingToTree === tree.id && (
-                <InlineInput
-                  depth={0}
-                  onSubmit={(name) => {
-                    addBacklog(name, null, tree.id);
-                    setAddingToTree(null);
-                  }}
-                  onCancel={() => setAddingToTree(null)}
-                />
-              )}
-              {savingsIncomeVisible && (selectedTreeId === tree.id || selectedWorkItemTreeIds.has(tree.id)) && (
-                <CumulativeFlowChart treeId={tree.id} />
-              )}
             </div>
-          );
-        })}
-        <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
-      </div>
+          )}
+          {sortedTrees.map((tree, treeIndex) => {
+            const treeIsScrambled = isTreeScrambled(tree.id);
+            return (
+              <div key={tree.id} className="mb-0.5">
+                <TreeReorderDropZone id={`tree-reorder-${treeIndex}`} index={treeIndex} />
+                <DraggableTreeHeader
+                  tree={tree}
+                  onAddBacklog={() => setAddingToTree(tree.id)}
+                  onDeleteTree={() => setPendingDeleteTree({ id: tree.id, name: tree.name })}
+                  onShareTree={() => setSharingTree({ id: tree.id, name: tree.name })}
+                  onEditStatuses={() => setEditingStatusesTree({ id: tree.id, name: tree.name })}
+                  canEditStatuses={canEditStatuses}
+                  shares={treeShares[tree.id] ?? []}
+                  isScrambled={treeIsScrambled}
+                />
+                {tree.rootBacklogIds.map((backlogId, i) => (
+                  <div key={backlogId}>
+                    <BacklogReorderDropZone
+                      id={`backlog-reorder-root-${tree.id}-${i}`}
+                      index={i}
+                      parentId={null}
+                      treeId={tree.id}
+                      depth={0}
+                    />
+                    <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} isScrambled={treeIsScrambled} />
+                  </div>
+                ))}
+                <BacklogReorderDropZone
+                  id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
+                  index={tree.rootBacklogIds.length}
+                  parentId={null}
+                  treeId={tree.id}
+                  depth={0}
+                />
+                {addingToTree === tree.id && (
+                  <InlineInput
+                    depth={0}
+                    onSubmit={(name) => {
+                      addBacklog(name, null, tree.id);
+                      setAddingToTree(null);
+                    }}
+                    onCancel={() => setAddingToTree(null)}
+                  />
+                )}
+                {savingsIncomeVisible && (selectedTreeId === tree.id || selectedWorkItemTreeIds.has(tree.id)) && (
+                  <CumulativeFlowChart treeId={tree.id} />
+                )}
+              </div>
+            );
+          })}
+          <TreeReorderDropZone id={`tree-reorder-${sortedTrees.length}`} index={sortedTrees.length} />
+        </div>
+      )}
 
       {sharingTree && (
         <ShareTreeDialog
