@@ -1216,7 +1216,17 @@ function AppLayoutInner() {
         <main className="flex-1 min-h-0 relative">
           {isMobile ? (
             /* Mobile: single-column stacked layout */
-            <MobileBacklogsLayout />
+            <div className="h-full flex flex-col">
+              <div className={`border-b overflow-hidden shrink-0 transition-[height] duration-200 ease-in-out ${mobileBacklogsCollapsed ? "h-8" : "h-[40%]"}`}>
+                <BacklogTreePanel
+                  mobileCollapsed={mobileBacklogsCollapsed}
+                  onToggleMobileCollapse={() => setMobileBacklogsCollapsed((v) => !v)}
+                />
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <WorkItemTreePanel />
+              </div>
+            </div>
           ) : (
             /* Desktop: resizable panels */
             <ResizablePanelGroup direction="horizontal">
