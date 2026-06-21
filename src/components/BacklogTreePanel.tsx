@@ -177,12 +177,17 @@ function BacklogReorderDropZone({
       className="relative py-px"
       style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
     >
-      {/* Absolutely-positioned hit area: expands during drag without shifting layout */}
+      {/* Absolutely-positioned hit area: expands during drag without shifting layout.
+          Bigger zones make reorder gaps far easier to hit with a mouse. */}
       <div
         ref={setNodeRef}
-        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-3 -bottom-3" : "-top-2 -bottom-2") : "inset-y-0"}`}
+        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-2 -bottom-2" : "-top-2.5 -bottom-2.5") : "inset-y-0"}`}
       />
-      <div className={`rounded-full transition-all ${isOver ? "h-1 bg-selection" : ""}`} />
+      {/* Indicator is absolutely positioned so showing it doesn't change layout
+          (which previously caused the hit area to shift and oscillate isOver). */}
+      {isOver && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" />
+      )}
     </div>
   );
 }
