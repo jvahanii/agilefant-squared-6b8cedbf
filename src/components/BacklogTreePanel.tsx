@@ -245,7 +245,7 @@ function useBacklogPoints(backlogId: string, treeId: string) {
   }, [workItems, backlogs, backlogId, treeId]);
 }
 
-const DRAG_THRESHOLD = 5; // pixels — minimum movement to count as a drag vs. a tap
+const DRAG_THRESHOLD = 8; // pixels — minimum movement to count as a drag vs. a tap
 
 function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }: BacklogNodeProps) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
