@@ -1461,6 +1461,8 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       return newRootIds;
     },
+
+    renameWorkItem: (workItemId, title) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
