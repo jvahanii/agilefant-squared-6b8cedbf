@@ -219,6 +219,19 @@ export function MobileWorkItemAttributesSheet({
           </div>
 
           <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Duplicate</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-sm text-muted-foreground"
+              onClick={() => { onOpenChange(false); onDuplicate(); }}
+            >
+              <Copy className="w-3.5 h-3.5 mr-1" />
+              Duplicate
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Move…</span>
             <Button
               variant="ghost"
