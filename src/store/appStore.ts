@@ -82,6 +82,12 @@ interface AppState extends DataSnapshot {
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
   deleteWorkItemsBulk: (workItemIds: string[]) => void;
+  /** Duplicate work items (deep — includes descendants). Each new root is
+   *  inserted directly below its source, lives in the same backlogs/parents,
+   *  and inherits hyperlinks. Labels, team assignments, financials, and
+   *  respawn settings are copied asynchronously via their respective stores.
+   *  Returns the new root IDs. The new roots become the selection. */
+  duplicateWorkItems: (workItemIds: string[]) => string[];
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
