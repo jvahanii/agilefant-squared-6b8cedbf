@@ -1475,6 +1475,7 @@ function WorkItemNodeContent({
         onOpenSnooze={() => setShowSnoozeDialog(true)}
         onOpenMove={openMoveToBacklogDialog}
         onOpenReparent={openMoveToParentDialog}
+        onDuplicate={handleDuplicate}
       />
       <MoveToParentDialog
         workItemIds={moveToParentItemIds}
