@@ -385,6 +385,20 @@ function WorkItemNodeContent({
     openMoveToBacklogDialog();
   }, [workItemId, openMoveToBacklogDialog]);
 
+  const handleDuplicate = useCallback(() => {
+    const state = useAppStore.getState();
+    const selectedIds = state.selectedWorkItemIds;
+    const ids = isSelected && selectedIds.length > 1 ? [...selectedIds] : [workItemId];
+    const newRootIds = duplicateWorkItems(ids);
+    // When a single item was duplicated, focus its title for inline rename.
+    if (newRootIds.length === 1) {
+      const newId = newRootIds[0];
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("shortcut:edit-title", { detail: { workItemId: newId } }));
+      }, 50);
+    }
+  }, [duplicateWorkItems, isSelected, workItemId]);
+
   const {
     attributes,
     listeners,
