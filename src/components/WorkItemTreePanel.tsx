@@ -1103,6 +1103,10 @@ function WorkItemNodeContent({
           <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
             Rename
           </ContextMenuItem>
+          <ContextMenuItem className="text-xs" onSelect={handleDuplicate}>
+            Duplicate
+            <span className="ml-auto text-[10px] text-muted-foreground">⌘D</span>
+          </ContextMenuItem>
           {pointsVisible && (
             <ContextMenuItem className="text-xs" onSelect={startEditingPoints}>
               Edit story points
