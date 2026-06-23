@@ -82,6 +82,12 @@ interface AppState extends DataSnapshot {
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string) => void;
   deleteWorkItemsBulk: (workItemIds: string[]) => void;
+  /** Duplicate work items (deep — includes descendants). Each new root is
+   *  inserted directly below its source, lives in the same backlogs/parents,
+   *  and inherits hyperlinks. Labels, team assignments, financials, and
+   *  respawn settings are copied asynchronously via their respective stores.
+   *  Returns the new root IDs. The new roots become the selection. */
+  duplicateWorkItems: (workItemIds: string[]) => string[];
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
@@ -1265,6 +1271,195 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
+    },
+
+    duplicateWorkItems: (workItemIds) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId || workItemIds.length === 0) return [];
+
+      // Keep only top-level items in the selection — if both an ancestor and a
+      // descendant are selected, the descendant will be duplicated as part of
+      // the ancestor's subtree, so skip it as an explicit root.
+      const idsSet = new Set(workItemIds);
+      const roots = workItemIds.filter((id) => {
+        const wi = state.workItems[id];
+        if (!wi) return false;
+        let p = wi.parentId;
+        while (p) {
+          if (idsSet.has(p)) return false;
+          p = state.workItems[p]?.parentId ?? null;
+        }
+        return true;
+      });
+      if (roots.length === 0) return [];
+
+      const updatedWorkItems = { ...state.workItems };
+      const updatedHyperlinks = { ...state.hyperlinks };
+      const itemsToUpdateInDB: WorkItem[] = [];
+      const newHyperlinksToUpsert: { link: Hyperlink; itemOrgId?: string }[] = [];
+      const oldToNew = new Map<string, string>();
+      const newRootIds: string[] = [];
+
+      const cloneSubtree = (oldId: string, newParentId: string | null): string | null => {
+        const src = updatedWorkItems[oldId];
+        if (!src) return null;
+        const newId = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+        oldToNew.set(oldId, newId);
+
+        const copy: WorkItem = {
+          id: newId,
+          title: src.title,
+          description: src.description,
+          points: src.points,
+          status: src.status,
+          parentId: newParentId,
+          // Drop per-tree parent overrides on the clone — they reference the
+          // source's tree-context which doesn't apply to the new item.
+          parentIds: undefined,
+          childrenIds: [],
+          backlogAssignments: { ...src.backlogAssignments },
+          ranks: { ...src.ranks },
+          organizationId: src.organizationId,
+          respawnEnabled: src.respawnEnabled,
+          respawnIntervalDays: src.respawnIntervalDays,
+          respawnHour: src.respawnHour,
+          respawnMinute: src.respawnMinute,
+          // Don't carry over last-triggered timestamp — the clone is a fresh item.
+          respawnLastTriggeredAt: undefined,
+        };
+        updatedWorkItems[newId] = copy;
+
+        // Clone children (using source's childrenIds — pre-clone snapshot).
+        const sourceChildIds = [...src.childrenIds];
+        for (const childOldId of sourceChildIds) {
+          if (!updatedWorkItems[childOldId]) continue;
+          const newChildId = cloneSubtree(childOldId, newId);
+          if (newChildId) {
+            updatedWorkItems[newId] = {
+              ...updatedWorkItems[newId],
+              childrenIds: [...updatedWorkItems[newId].childrenIds, newChildId],
+            };
+          }
+        }
+
+        itemsToUpdateInDB.push(updatedWorkItems[newId]);
+
+        // Copy hyperlinks.
+        const links = state.hyperlinks[oldId];
+        if (links && links.length > 0) {
+          const newLinks: Hyperlink[] = links.map((l) => ({
+            id: crypto.randomUUID(),
+            workItemId: newId,
+            url: l.url,
+            altText: l.altText,
+            rank: l.rank,
+          }));
+          updatedHyperlinks[newId] = newLinks;
+          newLinks.forEach((nl) => newHyperlinksToUpsert.push({ link: nl, itemOrgId: src.organizationId }));
+        }
+
+        return newId;
+      };
+
+      for (const rootId of roots) {
+        const orig = updatedWorkItems[rootId];
+        if (!orig) continue;
+
+        // Shift later siblings in every backlog the original is in to make room
+        // for the clone at (originalRank + 1).
+        const copyRanks: Record<string, number> = {};
+        for (const [, blId] of Object.entries(orig.backlogAssignments)) {
+          const insertRank = (orig.ranks[blId] ?? 0) + 1;
+          copyRanks[blId] = insertRank;
+          const toShift = buildCascadedShiftSet(updatedWorkItems, orig.parentId, insertRank, rootId, blId);
+          toShift.forEach((sid) => {
+            const wi = updatedWorkItems[sid];
+            const shifted = { ...wi, ranks: { ...wi.ranks, [blId]: (wi.ranks[blId] ?? 0) + 1 } };
+            updatedWorkItems[sid] = shifted;
+            itemsToUpdateInDB.push(shifted);
+          });
+        }
+
+        const newRootId = cloneSubtree(rootId, orig.parentId);
+        if (!newRootId) continue;
+
+        // Override the cloned root's ranks with the computed insert ranks.
+        updatedWorkItems[newRootId] = { ...updatedWorkItems[newRootId], ranks: copyRanks };
+        const idx = itemsToUpdateInDB.findIndex((wi) => wi.id === newRootId);
+        if (idx !== -1) itemsToUpdateInDB[idx] = updatedWorkItems[newRootId];
+
+        newRootIds.push(newRootId);
+
+        if (orig.parentId && updatedWorkItems[orig.parentId]) {
+          updatedWorkItems[orig.parentId] = {
+            ...updatedWorkItems[orig.parentId],
+            childrenIds: [...updatedWorkItems[orig.parentId].childrenIds, newRootId],
+          };
+        }
+      }
+
+      upsertWorkItems(itemsToUpdateInDB, orgId);
+      newHyperlinksToUpsert.forEach(({ link, itemOrgId }) => upsertHyperlink(link, orgId, itemOrgId));
+
+      internalLog({
+        action: "Duplicate",
+        entityType: "work_item",
+        entityId: newRootIds[0],
+        entityName: state.workItems[roots[0]]?.title,
+        details: `${roots.length} root(s), ${oldToNew.size} total`,
+      });
+
+      set({
+        workItems: updatedWorkItems,
+        hyperlinks: updatedHyperlinks,
+        selectedWorkItemIds: newRootIds,
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+
+      // Asynchronously copy labels / team assignments / financials from each
+      // source item to its clone via the respective stores (dynamic imports
+      // avoid circular deps).
+      void import("./labelsStore").then(({ useLabelsStore }) => {
+        const ls = useLabelsStore.getState();
+        oldToNew.forEach((newId, oldId) => {
+          const labelIds = ls.byEntity[`work_item:${oldId}`] ?? [];
+          labelIds.forEach((lid) => {
+            const label = ls.labels[lid];
+            if (label) ls.assignLabel(lid, "work_item", newId, label.organizationId);
+          });
+        });
+      });
+      void import("./teamStore").then(({ useTeamStore }) => {
+        const ts = useTeamStore.getState();
+        oldToNew.forEach((newId, oldId) => {
+          const teamIds = ts.workItemTeams[oldId] ?? [];
+          teamIds.forEach((tid) => {
+            const team = ts.teams.find((t) => t.id === tid);
+            const teamOrgId = (team as unknown as { organization_id?: string } | undefined)?.organization_id;
+            const itemOrgId = updatedWorkItems[newId]?.organizationId ?? orgId;
+            ts.assignTeamToWorkItem(newId, tid, teamOrgId || itemOrgId);
+          });
+        });
+      });
+      void import("./financialsStore").then(({ useFinancialsStore }) => {
+        const fs = useFinancialsStore.getState();
+        oldToNew.forEach((newId, oldId) => {
+          const entry = fs.byWorkItem[oldId];
+          if (!entry) return;
+          const itemOrgId = updatedWorkItems[newId]?.organizationId ?? orgId;
+          fs.upsert(newId, itemOrgId, {
+            savingsByMonth: { ...entry.savingsByMonth },
+            incomeByMonth: { ...entry.incomeByMonth },
+            actualSavingsByMonth: { ...entry.actualSavingsByMonth },
+            actualIncomeByMonth: { ...entry.actualIncomeByMonth },
+            currency: entry.currency,
+          });
+        });
+      });
+
+      return newRootIds;
     },
 
     renameWorkItem: (workItemId, title) => {

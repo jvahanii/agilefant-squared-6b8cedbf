@@ -13,7 +13,7 @@ import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
-import { Bell, BellOff, Clock, FolderInput, GitBranch, Link2, RotateCcw, Tag } from "lucide-react";
+import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Link2, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +29,7 @@ interface MobileWorkItemAttributesSheetProps {
   onOpenSnooze: () => void;
   onOpenMove: () => void;
   onOpenReparent: () => void;
+  onDuplicate: () => void;
 }
 
 export function MobileWorkItemAttributesSheet({
@@ -41,6 +42,7 @@ export function MobileWorkItemAttributesSheet({
   onOpenSnooze,
   onOpenMove,
   onOpenReparent,
+  onDuplicate,
 }: MobileWorkItemAttributesSheetProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
@@ -213,6 +215,19 @@ export function MobileWorkItemAttributesSheet({
             >
               <Link2 className="w-3.5 h-3.5 mr-1" />
               {hyperlinkCount > 0 ? `${hyperlinkCount} link${hyperlinkCount !== 1 ? "s" : ""}` : "Manage"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Duplicate</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-sm text-muted-foreground"
+              onClick={() => { onOpenChange(false); onDuplicate(); }}
+            >
+              <Copy className="w-3.5 h-3.5 mr-1" />
+              Duplicate
             </Button>
           </div>
 
