@@ -462,9 +462,14 @@ function WorkItemNodeContent({
       if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
       handleDeleteClick();
     };
+    const handleDuplicate = () => {
+      if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
+      handleDuplicateRef.current();
+    };
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
+    window.addEventListener("shortcut:duplicate-selected", handleDuplicate);
     window.addEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
     window.addEventListener("shortcut:log-time", handleLogTime);
     window.addEventListener("shortcut:move-to-parent", handleMoveToParent);
@@ -473,12 +478,30 @@ function WorkItemNodeContent({
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
       window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
       window.removeEventListener("shortcut:delete-selected", handleDelete);
+      window.removeEventListener("shortcut:duplicate-selected", handleDuplicate);
       window.removeEventListener("shortcut:edit-hyperlinks", handleEditHyperlinks);
       window.removeEventListener("shortcut:log-time", handleLogTime);
       window.removeEventListener("shortcut:move-to-parent", handleMoveToParent);
       window.removeEventListener("shortcut:move-to-backlog", handleMoveToBacklog);
     };
   }, [expanded, handleDeleteClick, handleEditHyperlinks, handleLogTime, handleMoveToBacklog, handleMoveToParent, isSelected, toggleExpand, workItemId]);
+
+  // Keep a stable ref to handleDuplicate so the listener above doesn't need
+  // to re-bind every time isSelected changes.
+  const handleDuplicateRef = useRef(handleDuplicate);
+  useEffect(() => { handleDuplicateRef.current = handleDuplicate; }, [handleDuplicate]);
+
+  // Listen for inline title-edit requests (used after duplicate to focus the new item).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ workItemId?: string }>).detail;
+      if (!detail || detail.workItemId !== workItemId) return;
+      setEditTitle(item?.title ?? "");
+      setIsEditingTitle(true);
+    };
+    window.addEventListener("shortcut:edit-title", handler);
+    return () => window.removeEventListener("shortcut:edit-title", handler);
+  }, [workItemId, item?.title]);
 
   // On mount, if this is the first selected item, scroll it into view so
   // the previously-selected item is visible after restore (especially on mobile
