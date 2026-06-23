@@ -175,6 +175,16 @@ function AppLayoutInner() {
         return;
       }
 
+      // Ctrl+D / Cmd+D duplicates the selected work item(s)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d" && !e.shiftKey && !e.altKey) {
+        const state = useAppStore.getState();
+        if (state.selectedWorkItemIds.length > 0) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("shortcut:duplicate-selected"));
+        }
+        return;
+      }
+
       if (isInput) return;
 
       // Don't fire global shortcuts when a modal dialog is open (e.g. reparent dialog).
