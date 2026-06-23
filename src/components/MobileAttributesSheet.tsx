@@ -29,6 +29,7 @@ interface MobileWorkItemAttributesSheetProps {
   onOpenSnooze: () => void;
   onOpenMove: () => void;
   onOpenReparent: () => void;
+  onDuplicate: () => void;
 }
 
 export function MobileWorkItemAttributesSheet({
@@ -41,6 +42,7 @@ export function MobileWorkItemAttributesSheet({
   onOpenSnooze,
   onOpenMove,
   onOpenReparent,
+  onDuplicate,
 }: MobileWorkItemAttributesSheetProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
