@@ -1,53 +1,31 @@
-## Cause
+## Problem
 
-When you switch away from the Agilefant tab and come back, Supabase refreshes the auth token in the background and fires a `SIGNED_IN` event on `onAuthStateChange`.
+Clicking a search result jumps to the right backlog but doesn't expand the work‑item branch, so the target item stays hidden inside a collapsed parent.
 
-In `src/hooks/useAuth.tsx`, the handler added during the password‑reset fix runs:
+## Root cause
 
-```ts
-if (event === 'SIGNED_IN' && newUserId) {
-  useOrgStore.setState({ loading: true });   // ← flips app to "Loading..."
-}
-```
+In `src/components/WorkItemTreePanel.tsx`, the `onNavigate` handler on search‑result rows (around lines 2727‑2742) walks ancestors with `wi.parentId` — the **global** parent. Work items support per‑tree parent overrides via `wi.parentIds[treeId]` (see `getEffectiveParentId` in `src/types/models.ts`). When an item lives under a different parent in a specific tree (e.g. "Supercell several positions" sits under "Viikkosuunnitelma → Ke 17" only in that tree's hierarchy), the global `parentId` chain doesn't include those ancestors, so none of them get added to `expandedWorkItems` and the row stays collapsed out of view.
 
-It does this unconditionally — even when the user id hasn't changed. Then `setUser` / `setSession` are identity‑guarded (same id → no state change), so the `useEffect` in `App.tsx` that calls `loadMemberships(user.id)` does **not** re‑run. Nothing ever clears `orgStore.loading`, so the app sits on the "Loading..." screen until the 10‑second safety timeout in `orgStore.loadMemberships` fires.
-
-That's the regression — it didn't happen before because we never used to flip `orgStore.loading` on a benign re‑SIGNED_IN.
+The label-filter results list (around line 2768+) uses the same `SearchResultItem` and has the same bug — fix both call sites.
 
 ## Fix
 
-Only set `useOrgStore.loading = true` on `SIGNED_IN` when the signed‑in user id is actually different from the previously known user id. A token refresh / tab‑switch SIGNED_IN keeps the same id, so the loading flag is left alone and the app stays interactive — exactly the old behavior.
-
-### Change
-
-`src/hooks/useAuth.tsx`, around line 128:
+In both navigate handlers, use the per‑tree effective parent when walking the ancestor chain:
 
 ```ts
-// Before
-if (event === 'SIGNED_IN' && newUserId) {
-  useOrgStore.setState({ loading: true });
+import { getEffectiveParentId } from "@/types/models";
+...
+let wi = state.workItems[item.id];
+while (wi) {
+  const pid = getEffectiveParentId(wi, treeId);
+  if (!pid) break;
+  expandedWorkItems.add(pid);
+  wi = state.workItems[pid];
 }
-
-// After
-// Only flip to loading when a *different* user signs in (e.g. after a
-// password reset). A SIGNED_IN fired by a background token refresh when the
-// tab regains focus keeps the same user id and must not force the app back
-// to the "Loading..." screen.
-setUser((prevUser) => {
-  if (event === 'SIGNED_IN' && newUserId && prevUser?.id !== newUserId) {
-    useOrgStore.setState({ loading: true });
-  }
-  if ((prevUser?.id ?? null) === newUserId) return prevUser;
-  return newSession?.user ?? null;
-});
 ```
 
-(or equivalently, read `useAuth`'s current `user` via a ref to compare ids before the `setState` call — same effect, no nested setState side‑effect.)
+No other behaviour changes — backlog ancestor expansion, selection, scroll, and snooze wake‑up all stay as they are.
 
-No other files need to change. The password‑reset fix still works, because in that flow the previous user id is `null` (we forced a full reload via `window.location.replace('/auth')`) so the condition `prevUser?.id !== newUserId` is true on the next SIGNED_IN.
+## Files
 
-## Verification
-
-- Open the app, switch to another browser tab, wait, switch back → app stays on its current screen, no "Loading..." flash.
-- Sign out and sign in with a different account → "Loading..." appears briefly while memberships load (unchanged).
-- Reset password → still redirects cleanly without crashing.
+- `src/components/WorkItemTreePanel.tsx` — update the work‑item ancestor walk in the search-results `onNavigate` and in the label-filter-results `onNavigate`; add `getEffectiveParentId` import if not already present.
