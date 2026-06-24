@@ -2790,9 +2790,11 @@ export function WorkItemTreePanel() {
                         }
                         const expandedWorkItems = new Set(state.expandedWorkItems);
                         let wi = state.workItems[item.id];
-                        while (wi?.parentId) {
-                          expandedWorkItems.add(wi.parentId);
-                          wi = state.workItems[wi.parentId];
+                        while (wi) {
+                          const pid = getEffectiveParentId(wi, treeId);
+                          if (!pid) break;
+                          expandedWorkItems.add(pid);
+                          wi = state.workItems[pid];
                         }
                         return { expandedBacklogs, expandedWorkItems };
                       });
