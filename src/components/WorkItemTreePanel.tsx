@@ -2788,7 +2788,7 @@ export function WorkItemTreePanel() {
               <div className="flex flex-col">
                 {labelSearchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => (
                   <SearchResultItem
-                    key={item.id}
+                    key={`${item.id}::${treeId}`}
                     item={item}
                     treeId={treeId}
                     backlogId={backlogId}
