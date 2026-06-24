@@ -2105,46 +2105,56 @@ export function WorkItemTreePanel() {
 
     return Object.values(workItems)
       .filter((wi) => wi.title.toLowerCase().includes(q))
-      .map((wi) => {
-        // Pick the first tree assignment to provide context labels.
+      .flatMap((wi) => {
+        // Emit one result per backlog tree this item is assigned to,
+        // so items present in multiple trees show all occurrences.
         const treeIds = Object.keys(wi.backlogAssignments);
-        const treeId = treeIds[0] ?? null;
-        const backlogId = treeId ? wi.backlogAssignments[treeId] : null;
-        const tree = treeId ? backlogTrees[treeId] : null;
-        const backlog = backlogId ? backlogs[backlogId] : null;
+        if (treeIds.length === 0) return [];
 
-        // Build full backlog ancestry path from root backlog down to the item's backlog.
-        const backlogPath: string[] = [];
-        const visitedBacklogIds = new Set<string>();
-        let bl = backlog;
-        while (bl && !visitedBacklogIds.has(bl.id)) {
-          visitedBacklogIds.add(bl.id);
-          backlogPath.unshift(bl.name);
-          bl = bl.parentId ? backlogs[bl.parentId] : null;
-        }
+        return treeIds.map((treeId) => {
+          const backlogId = wi.backlogAssignments[treeId];
+          const tree = backlogTrees[treeId];
+          const backlog = backlogId ? backlogs[backlogId] : null;
 
-        // Build work item ancestor chain from root ancestor down to the direct parent.
-        const workItemAncestors: string[] = [];
-        const visitedWorkItemIds = new Set<string>();
-        let parent = wi.parentId ? workItems[wi.parentId] : null;
-        while (parent && !visitedWorkItemIds.has(parent.id)) {
-          visitedWorkItemIds.add(parent.id);
-          workItemAncestors.unshift(parent.title);
-          parent = parent.parentId ? workItems[parent.parentId] : null;
-        }
+          // Build full backlog ancestry path from root backlog down to the item's backlog.
+          const backlogPath: string[] = [];
+          const visitedBacklogIds = new Set<string>();
+          let bl = backlog;
+          while (bl && !visitedBacklogIds.has(bl.id)) {
+            visitedBacklogIds.add(bl.id);
+            backlogPath.unshift(bl.name);
+            bl = bl.parentId ? backlogs[bl.parentId] : null;
+          }
 
-        return {
-          item: wi,
-          treeId: treeId ?? "",
-          backlogId: backlogId ?? "",
-          treeName: tree?.name ?? "",
-          backlogName: backlog?.name ?? "",
-          backlogPath,
-          workItemAncestors,
-        };
+          // Build work item ancestor chain using per-tree effective parent.
+          const workItemAncestors: string[] = [];
+          const visitedWorkItemIds = new Set<string>();
+          let parentId = getEffectiveParentId(wi, treeId);
+          while (parentId && !visitedWorkItemIds.has(parentId)) {
+            visitedWorkItemIds.add(parentId);
+            const parent = workItems[parentId];
+            if (!parent) break;
+            workItemAncestors.unshift(parent.title);
+            parentId = getEffectiveParentId(parent, treeId);
+          }
+
+          return {
+            item: wi,
+            treeId,
+            backlogId: backlogId ?? "",
+            treeName: tree?.name ?? "",
+            backlogName: backlog?.name ?? "",
+            backlogPath,
+            workItemAncestors,
+          };
+        });
       })
       .filter((r) => r.treeId)
-      .sort((a, b) => a.item.title.localeCompare(b.item.title));
+      .sort((a, b) => {
+        const t = a.item.title.localeCompare(b.item.title);
+        if (t !== 0) return t;
+        return a.treeName.localeCompare(b.treeName);
+      });
   }, [searchQuery, workItems, backlogTrees, backlogs]);
 
   // Label search results: items from ALL trees that have one of the active filter labels.
