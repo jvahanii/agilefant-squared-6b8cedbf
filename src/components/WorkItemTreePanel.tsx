@@ -2728,7 +2728,7 @@ export function WorkItemTreePanel() {
                       );
                     return (
                       <SearchResultItem
-                        key={item.id}
+                        key={`${item.id}::${treeId}`}
                         item={item}
                         treeId={treeId}
                         backlogId={backlogId}
