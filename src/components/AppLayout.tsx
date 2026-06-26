@@ -194,13 +194,14 @@ function AppLayoutInner() {
 
       // Helper: move the single selected work item one step up (-1) or down (+1).
       const reorderSelectedItem = (direction: -1 | 1) => {
-        if (state.selectedWorkItemIds.length !== 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0)
+        if (state.selectedWorkItemIds.length < 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0)
           return;
-        const wiId = state.selectedWorkItemIds[0];
-        const wi = state.workItems[wiId];
+        const anchorId = state.selectedWorkItemIds[0];
+        const wi = state.workItems[anchorId];
         if (!wi) return;
         const treeId = state.selectedTreeId;
         const selectedBacklogId = state.selectedBacklogIds[0];
+        const selectedSet = new Set(state.selectedWorkItemIds);
 
         const backlogIds: string[] = [];
         const collectBacklogs = (id: string) => {
@@ -210,29 +211,37 @@ function AppLayoutInner() {
         collectBacklogs(selectedBacklogId);
 
         const backlogIdSet = new Set(backlogIds);
+        const wiEffectiveParent = getEffectiveParentId(wi, treeId);
+        const anchorParentInContext =
+          wiEffectiveParent !== null &&
+          !!state.workItems[wiEffectiveParent] &&
+          backlogIdSet.has(state.workItems[wiEffectiveParent].backlogAssignments[treeId]);
+
         const siblings = Object.values(state.workItems)
           .filter((w) => {
             if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
-            const wiEffectiveParent = getEffectiveParentId(wi, treeId);
             const wEffectiveParent = getEffectiveParentId(w, treeId);
-            if (wiEffectiveParent === null) {
-              return (
-                wEffectiveParent === null ||
-                !state.workItems[wEffectiveParent] ||
-                !backlogIdSet.has(state.workItems[wEffectiveParent].backlogAssignments[treeId])
-              );
+            if (anchorParentInContext) {
+              return wEffectiveParent === wiEffectiveParent;
             }
-            return wEffectiveParent === wiEffectiveParent;
+            return (
+              wEffectiveParent === null ||
+              !state.workItems[wEffectiveParent] ||
+              !backlogIdSet.has(state.workItems[wEffectiveParent].backlogAssignments[treeId])
+            );
           })
           .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
 
-        const idx = siblings.findIndex((s) => s.id === wiId);
-        if (idx === -1) return;
-        // Use drop-zone semantics: up targets zone (idx-1), down targets zone
-        // (idx+2) — one past the next item — so the item swaps with its neighbour.
-        const newIdx = direction === -1 ? idx - 1 : idx + 2;
+        // Find drop-zone indices of all selected siblings; move the whole group by one
+        // neighbour up or down — top selected → zone-1 for up, bottom selected → zone+2 for down.
+        const selectedIdxs: number[] = [];
+        siblings.forEach((s, i) => { if (selectedSet.has(s.id)) selectedIdxs.push(i); });
+        if (selectedIdxs.length === 0) return;
+        const topIdx = selectedIdxs[0];
+        const botIdx = selectedIdxs[selectedIdxs.length - 1];
+        const newIdx = direction === -1 ? topIdx - 1 : botIdx + 2;
         if (newIdx < 0 || newIdx > siblings.length) return;
-        useAppStore.getState().reorderWorkItemAmongSiblings(wiId, newIdx, treeId, backlogIds);
+        useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
       };
 
       if (e.ctrlKey || e.metaKey) return;
@@ -373,16 +382,14 @@ function AppLayoutInner() {
           break;
         }
         case "o": {
-          // Move selected item down (reorder within siblings).
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(1);
           }
           break;
         }
         case "u": {
-          // Move selected item up (reorder within siblings).
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(-1);
           }
