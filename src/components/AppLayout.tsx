@@ -382,16 +382,14 @@ function AppLayoutInner() {
           break;
         }
         case "o": {
-          // Move selected item down (reorder within siblings).
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(1);
           }
           break;
         }
         case "u": {
-          // Move selected item up (reorder within siblings).
-          if (state.selectedWorkItemIds.length === 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
+          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(-1);
           }
