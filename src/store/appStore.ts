@@ -2725,6 +2725,26 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
         }
 
+        // Parse parent_id_overrides if present in the payload; otherwise
+        // preserve whatever the current local state already knows.  Without
+        // this preservation, any realtime UPDATE silently strips per-tree
+        // parent overrides and items collapse to the root level.
+        let parsedParentIds: Record<string, string | null> | undefined;
+        if ('parent_id_overrides' in row) {
+          const raw = row.parent_id_overrides as unknown;
+          if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+            const map: Record<string, string | null> = {};
+            for (const [tId, val] of Object.entries(raw as Record<string, unknown>)) {
+              if (val === null || typeof val === 'string') map[tId] = val as string | null;
+            }
+            parsedParentIds = Object.keys(map).length > 0 ? map : undefined;
+          } else {
+            parsedParentIds = undefined;
+          }
+        } else {
+          parsedParentIds = state.workItems[id]?.parentIds;
+        }
+
         const newItem: WorkItem = {
           id,
           title: row.title as string,
@@ -2732,6 +2752,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           points: (row.points as number | null) ?? undefined,
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
+          parentIds: parsedParentIds,
           childrenIds: state.workItems[id]?.childrenIds ?? [],
           backlogAssignments: parsedAssignments,
           ranks: initialRanks,
@@ -2776,6 +2797,41 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Same non-null parent: re-sort childrenIds in case rank changed.
           const parent = updatedWorkItems[newItem.parentId];
           updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
+        }
+
+        // Sync childrenIds for per-tree override parents.  Remove from any
+        // override parent that no longer references this item, and add to any
+        // new override parent.
+        const oldOverrideParents = new Set<string>();
+        if (oldItem?.parentIds) {
+          for (const pid of Object.values(oldItem.parentIds)) {
+            if (pid && pid !== oldParentId) oldOverrideParents.add(pid);
+          }
+        }
+        const newOverrideParents = new Set<string>();
+        if (newItem.parentIds) {
+          for (const pid of Object.values(newItem.parentIds)) {
+            if (pid && pid !== newItem.parentId) newOverrideParents.add(pid);
+          }
+        }
+        for (const pid of oldOverrideParents) {
+          if (newOverrideParents.has(pid)) continue;
+          const parent = updatedWorkItems[pid];
+          if (!parent) continue;
+          updatedWorkItems[pid] = {
+            ...parent,
+            childrenIds: parent.childrenIds.filter((cid) => cid !== id),
+          };
+        }
+        for (const pid of newOverrideParents) {
+          const parent = updatedWorkItems[pid];
+          if (!parent) continue;
+          if (!parent.childrenIds.includes(id)) {
+            updatedWorkItems[pid] = {
+              ...parent,
+              childrenIds: sortWorkItemIds([...parent.childrenIds, id]),
+            };
+          }
         }
 
         return { workItems: updatedWorkItems };
