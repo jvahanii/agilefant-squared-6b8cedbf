@@ -214,6 +214,22 @@ function buildSections(): Section[] {
                 action: "Set recurring",
                 how: "Click the settings icon on the item row to open respawn settings and configure the schedule.",
               },
+              {
+                action: "Reparent item(s)",
+                how: "Select item(s) and press R, or right-click and choose Reparent, to open the Move to Parent dialog. Search for a new parent item or choose \"Move to root (no parent)\".",
+              },
+              {
+                action: "Move to backlog",
+                how: "Select item(s) and press M, or right-click and choose Move to Backlog, to move items to a different backlog within the same tree.",
+              },
+              {
+                action: "Indent (make child)",
+                how: "Select an item and press Tab to make it a child of the item directly above it.",
+              },
+              {
+                action: "Outdent (elevate)",
+                how: "Select an item and press Shift+Tab to move it up to its parent's level (becomes a sibling of its current parent).",
+              },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
@@ -274,8 +290,8 @@ function buildSections(): Section[] {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reordering</p>
             <ShortcutRow keys={["T"]} description="Move selection to Top" />
             <ShortcutRow keys={["Shift", "B"]} description="Move selection to Bottom" />
-            <ShortcutRow keys={["Tab"]} description="Indent: make child of item above" />
-            <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
+            <ShortcutRow keys={["O"]} description="Move item down one position" />
+            <ShortcutRow keys={["U"]} description="Move item up one position" />
           </div>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Status</p>
@@ -284,6 +300,13 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["P"]} description="Set status: Pending" />
             <ShortcutRow keys={["B"]} description="Set status: Blocked" />
             <ShortcutRow keys={["N"]} description="Set status: Not Started" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reparenting & Moving</p>
+            <ShortcutRow keys={["R"]} description="Reparent: open Move to Parent dialog" />
+            <ShortcutRow keys={["M"]} description="Move to Backlog dialog" />
+            <ShortcutRow keys={["Tab"]} description="Indent: make child of item above" />
+            <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
           </div>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other</p>
@@ -321,8 +344,18 @@ function buildSections(): Section[] {
               },
               {
                 icon: <Share2 className="w-4 h-4 text-primary" />,
+                title: "Reparent by dropping on an item",
+                body: "Drag a work item and drop it directly onto another work item to make it a child of that item.",
+              },
+              {
+                icon: <Share2 className="w-4 h-4 text-primary" />,
                 title: "Move items across trees",
                 body: "Drag a work item from one backlog tree and drop it onto a node in a different tree. A prompt will ask whether to Move or Mirror the item.",
+              },
+              {
+                icon: <Share2 className="w-4 h-4 text-primary" />,
+                title: "Move to root",
+                body: "Drag a work item and drop it onto a backlog node (in the left panel) to move it to root level in that backlog.",
               },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
