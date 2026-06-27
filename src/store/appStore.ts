@@ -1485,7 +1485,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
       upsertWorkItem(updatedWorkItems[workItemId], orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
-      if (status === "in_progress" || status === "done") {
+      const isLeavingNotStarted = item.status === "not_started" && status !== "not_started";
+      if (isLeavingNotStarted || status === "in_progress" || status === "done") {
         const visited = new Set<string>([workItemId]);
         let ancestorId = item.parentId;
         while (ancestorId && !visited.has(ancestorId)) {
