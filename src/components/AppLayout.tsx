@@ -429,8 +429,7 @@ function AppLayoutInner() {
             e.preventDefault();
             if (state.selectedWorkItemIds.length > 0) {
               window.dispatchEvent(new CustomEvent("shortcut:add-child-workitem"));
-            }
-          } else if (state.selectedBacklogIds.length > 0) {
+            } else if (state.selectedBacklogIds.length > 0) {
               window.dispatchEvent(new CustomEvent("shortcut:add-child-backlog"));
             }
           } else {
@@ -534,8 +533,7 @@ function AppLayoutInner() {
               if (nextIdx < 0 || nextIdx >= ids.length) break;
               e.preventDefault();
               useAppStore.getState().selectWorkItem(ids[nextIdx]);
-            }
-          } else if (state.selectedBacklogIds.length > 0) {
+            } else if (state.selectedBacklogIds.length > 0) {
             // Navigate selection through visible backlogs.
             const currentId = state.selectedBacklogIds[state.selectedBacklogIds.length - 1];
             const ids = visibleBacklogIdsRef.current;
