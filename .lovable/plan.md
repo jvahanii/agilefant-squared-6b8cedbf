@@ -1,26 +1,20 @@
-## What's happening
+## Plan
 
-Items in this tree live under "Employed in a better job…" via the per-tree parent override map (`work_items.parent_id_overrides`) — their global `parent_id` is `null`. When you add a new item or hyperlink, Supabase realtime fires updates that flow through `applyRealtimeWorkItem` in `src/store/appStore.ts`. That handler rebuilds the local `WorkItem` from the row but **never reads `parent_id_overrides` and never preserves the existing `parentIds`**, so every realtime UPDATE silently strips the override map. Items then collapse to their global `parent_id` (null = root), which matches your screenshot.
+1. **Confirm the exact mismatch**
+   - Compare the migration versions currently in the connected Supabase ledger with the migration files in the repository.
+   - Check whether GitHub is running against the same connected Supabase project or a separate preview/test database.
 
-The bug is self-reinforcing: once `parentIds` is `undefined` locally, the next save writes `parent_id_overrides: {}` back to the DB (see `supabaseSync.ts` lines 457 / 570 / 753), permanently losing the overrides server-side. That's why the items don't snap back after a refresh.
+2. **Fix the repository-side issue that can cause this error**
+   - Inspect `supabase/migrations` for duplicate migration versions.
+   - There is a duplicate local version: `20260403054300` appears in two files. Supabase migration history is version-based, so this can confuse preview checks even if the live ledger has that version marked applied.
+   - Rename one of the duplicate migration files to a unique timestamp if it has not already been applied as a distinct remote version.
 
-## Fix
+3. **Repair the remote migration ledger only if needed**
+   - If the remote ledger still has versions that do not exist locally, remove those ledger-only versions.
+   - If local versions are missing from the remote ledger, mark them as applied.
+   - Keep this limited to `supabase_migrations.schema_migrations`; do not alter application tables or data.
 
-1. **`src/store/appStore.ts` → `applyRealtimeWorkItem`**
-   - Parse `row.parent_id_overrides` exactly like `supabaseSync.ts` does (object → `Record<string, string|null>`, otherwise `undefined`); fall back to the current `state.workItems[id]?.parentIds` if the field is absent from the payload.
-   - Include `parentIds` on the rebuilt `WorkItem`.
-   - When the override map changes, update `childrenIds` for both the old and new override parents (same logic as for the global `parentId` reparent block), so the tree view stays in sync without a reload.
-
-2. **`src/store/supabaseSync.ts` (defensive)**
-   - In the three upsert paths that write `parent_id_overrides: item.parentIds ?? {}`, only include the field when `item.parentIds !== undefined`. This stops a stale-local-state write from blanking the DB column. Existing intentional clears already pass an explicit `{}`/value, so behavior there is unchanged.
-
-3. **One-off data repair**
-   - Inspect the affected work items (`MWB Uuden duunin saaminen` tree) with `supabase--read_query` to see which children now have `parent_id = null` AND empty `parent_id_overrides`. If they should sit under "Employed in a better job…" in that tree, restore the override via `supabase--insert`. Confirm with the user before running the repair.
-
-## Verification
-
-- After the fix, edit any item in that tree (e.g. rename) and confirm via console / DB that `parent_id_overrides` is still populated and the tree shape is preserved.
-- Add a hyperlink to a child and confirm no sibling jumps to root.
-- `tsgo` clean; existing `appStore.test.ts` still passes.
-
-No UI changes.
+4. **Verify after the change**
+   - Re-query the ledger and local filenames to confirm they match exactly by migration version.
+   - Run a read-only app/database smoke check to confirm the connected app can still boot against the schema.
+   - Ask you to re-run the GitHub Supabase Preview check; if it still fails, use the new failure text to identify whether GitHub is using a separate preview database environment that I cannot directly repair from the connected Supabase project.
