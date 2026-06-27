@@ -1493,10 +1493,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           visited.add(ancestorId);
           const ancestor = updatedWorkItems[ancestorId];
           if (!ancestor) break;
-          // "done" only promotes not_started ancestors; "in_progress" promotes all non-in_progress ancestors.
-          const shouldUpdate = status === "done"
-            ? ancestor.status === "not_started"
-            : ancestor.status !== "in_progress";
+          // Only promote ancestors that are still in the "not_started" state.
+          const shouldUpdate = ancestor.status === "not_started";
           if (shouldUpdate) {
             updatedWorkItems[ancestorId] = { ...ancestor, status: "in_progress" };
             upsertWorkItem(updatedWorkItems[ancestorId], orgId);
