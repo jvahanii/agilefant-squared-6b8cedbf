@@ -2389,16 +2389,40 @@ export function WorkItemTreePanel() {
 
       e.preventDefault();
 
+
+      // Exclude items that are descendants of another selected item —
+      // they'll move implicitly when their selected ancestor is reparented.
+      const isDescendantOfSelected = new Set<string>();
+      for (const id of orderedSelected) {
+        const wi = state.workItems[id];
+        let ancestor: string | null = treeId ? getEffectiveParentId(wi, treeId) : wi.parentId;
+        while (ancestor) {
+          if (selectedSet.has(ancestor)) {
+            isDescendantOfSelected.add(id);
+            break;
+          }
+          const ancestorWi = state.workItems[ancestor];
+          ancestor = treeId && ancestorWi ? getEffectiveParentId(ancestorWi, treeId) : ancestorWi?.parentId ?? null;
+        }
+      }
+
+
+      const topmostSelected = orderedSelected.filter((id) => !isDescendantOfSelected.has(id));
+
       if (e.shiftKey) {
         // Outdent: each selected item becomes a sibling of its current parent.
+
+
+
         // Snapshot parent ids first so reparenting doesn't affect later lookups.
         const plans = orderedSelected
           .map((id) => {
             const item = state.workItems[id];
-            if (!item || !item.parentId) return null;
-            const parent = state.workItems[item.parentId];
+            const effectiveParentId = treeId ? getEffectiveParentId(item, treeId) : item.parentId;
+            if (!item || effectiveParentId === null) return null;
+            const parent = state.workItems[effectiveParentId];
             if (!parent) return null;
-            const grandparentId = parent.parentId ?? null;
+            const grandparentId = treeId ? getEffectiveParentId(parent, treeId) : parent.parentId;
             const targetBacklogId = grandparentId
               ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
               : backlogId;
@@ -2406,7 +2430,9 @@ export function WorkItemTreePanel() {
           })
           .filter((p): p is { id: string; grandparentId: string | null; targetBacklogId: string } => p !== null);
         if (plans.length === 0) return;
-        plans.forEach((p) => state.reparentWorkItem(p.id, p.grandparentId, treeId, p.targetBacklogId));
+        useAppStore.getState().runBulk(() => {
+          plans.forEach((p) => state.reparentWorkItem(p.id, p.grandparentId, treeId, p.targetBacklogId));
+        });
         toast({
           title:
             plans.length === 1
@@ -2419,11 +2445,26 @@ export function WorkItemTreePanel() {
         // Indent: each selected item becomes a child of the nearest preceding
         // item that is NOT itself selected (preserves relative grouping).
         const plans: { id: string; parentId: string; targetBacklogId: string }[] = [];
-        for (const id of orderedSelected) {
+        for (const id of topmostSelected) {
           const idx = currentIds.indexOf(id);
           let parentId: string | null = null;
           for (let i = idx - 1; i >= 0; i--) {
-            if (!selectedSet.has(currentIds[i])) {
+            // Skip other selected items
+            if (selectedSet.has(currentIds[i])) continue;
+            // Skip items that are descendants of any selected item (prevent cycles)
+            const candidateId = currentIds[i];
+            const candidate = state.workItems[candidateId];
+            let isDescendant = false;
+            if (candidate) {
+              let cur: string | null = treeId ? getEffectiveParentId(candidate, treeId) : candidate.parentId;
+              while (cur) {
+                if (selectedSet.has(cur)) { isDescendant = true; break; }
+                const curWi = state.workItems[cur];
+                cur = treeId && curWi ? getEffectiveParentId(curWi, treeId) : curWi?.parentId ?? null;
+              }
+            }
+            if (isDescendant) continue;
+            {
               parentId = currentIds[i];
               break;
             }
@@ -2435,7 +2476,9 @@ export function WorkItemTreePanel() {
           plans.push({ id, parentId, targetBacklogId });
         }
         if (plans.length === 0) return;
-        plans.forEach((p) => state.reparentWorkItem(p.id, p.parentId, treeId, p.targetBacklogId));
+        useAppStore.getState().runBulk(() => {
+          plans.forEach((p) => state.reparentWorkItem(p.id, p.parentId, treeId, p.targetBacklogId));
+        });
         // Expand new parents so indented items stay visible.
         const latest = useAppStore.getState();
         const uniqueParents = Array.from(new Set(plans.map((p) => p.parentId)));
