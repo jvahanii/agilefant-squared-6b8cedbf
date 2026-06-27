@@ -501,15 +501,38 @@ function AppLayoutInner() {
         case "arrowdown": {
           const isDown = e.key.toLowerCase() === "arrowdown";
           if (state.selectedWorkItemIds.length > 0) {
-            // Navigate selection through visible work items.
-            const currentId = state.selectedWorkItemIds[state.selectedWorkItemIds.length - 1];
+
+            
             const ids = visibleWorkItemIdsRef.current;
-            const idx = ids.indexOf(currentId);
-            if (idx === -1) break;
-            const nextIdx = isDown ? idx + 1 : idx - 1;
-            if (nextIdx < 0 || nextIdx >= ids.length) break;
-            e.preventDefault();
-            useAppStore.getState().selectWorkItem(ids[nextIdx]);
+            
+            if (e.shiftKey) {
+              // Shift+Arrow: extend the selection range by one in the pressed direction.
+              const selectedIndices = state.selectedWorkItemIds
+                .map((id) => ids.indexOf(id))
+                .filter((i) => i !== -1)
+                .sort((a, b) => a - b);
+              if (selectedIndices.length === 0) break;
+
+              const nextIdx = isDown
+                ? Math.min(selectedIndices[selectedIndices.length - 1] + 1, ids.length - 1)
+                : Math.max(selectedIndices[0] - 1, 0);
+
+              const nextId = ids[nextIdx];
+              if (!nextId) break;
+              e.preventDefault();
+              // Add to selection if not already selected — never remove on extend.
+              if (!state.selectedWorkItemIds.includes(nextId)) {
+                useAppStore.getState().selectWorkItem(nextId, true);
+              }
+            } else {
+              // Plain Arrow: single-select navigation (existing behavior).
+              const currentId = state.selectedWorkItemIds[state.selectedWorkItemIds.length - 1];
+              const idx = ids.indexOf(currentId);
+              if (idx === -1) break;
+              const nextIdx = isDown ? idx + 1 : idx - 1;
+              if (nextIdx < 0 || nextIdx >= ids.length) break;
+              e.preventDefault();
+              useAppStore.getState().selectWorkItem(ids[nextIdx]);
           } else if (state.selectedBacklogIds.length > 0) {
             // Navigate selection through visible backlogs.
             const currentId = state.selectedBacklogIds[state.selectedBacklogIds.length - 1];
