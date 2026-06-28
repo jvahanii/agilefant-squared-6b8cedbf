@@ -1029,10 +1029,14 @@ export const useAppStore = create<AppState>()((set, get) => {
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
 
       // Compute rank as min-1 among siblings in the NEW backlog to place item at top.
+      // Use effective parent (respecting per-tree overrides) so items with
+      // different global parents but the same tree-specific parent are
+      // correctly grouped as siblings.
+      const itemEffectiveParent = getEffectiveParentId(item, targetTreeId);
       let minRank = Infinity;
       Object.values(state.workItems).forEach((wi) => {
         if (wi.id === workItemId) return;
-        if (wi.parentId !== item.parentId) return;
+        if (getEffectiveParentId(wi, targetTreeId) !== itemEffectiveParent) return;
         if (wi.backlogAssignments[targetTreeId] === cleanTargetBl) {
           const wiRank = wi.ranks[cleanTargetBl] ?? 0;
           if (wiRank < minRank) minRank = wiRank;
@@ -1076,7 +1080,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const movedByParent = new Map<string | null, string[]>();
       for (const wi of changed) {
         if (wi.id === workItemId) continue;
-        const pid = wi.parentId ?? null;
+        const pid = getEffectiveParentId(wi, targetTreeId) ?? null;
         if (!movedByParent.has(pid)) movedByParent.set(pid, []);
         movedByParent.get(pid)!.push(wi.id);
       }
