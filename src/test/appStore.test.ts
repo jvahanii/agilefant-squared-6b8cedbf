@@ -2718,3 +2718,145 @@ describe("runBulk", () => {
     expect(useAppStore.getState().undoStack.length).toBe(before);
   });
 });
+
+// ─── DUPLICATE WORK ITEMS ─────────────────────────────────────────────
+
+describe("duplicateWorkItems", () => {
+  it("duplicates a parent with children, preserving parents in every tree and copying hyperlinks", () => {
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "BL 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+      },
+      workItems: {
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent", status: "not_started" as const,
+          parentId: null,
+          childrenIds: [`${ORG}::wi-child-1`, `${ORG}::wi-child-2`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 0, [`${ORG}::bl-2`]: 0 },
+        },
+        [`${ORG}::wi-child-1`]: {
+          id: `${ORG}::wi-child-1`, title: "Child 1", status: "not_started" as const,
+          parentId: `${ORG}::wi-parent`,
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 1, [`${ORG}::bl-2`]: 1 },
+        },
+        [`${ORG}::wi-child-2`]: {
+          id: `${ORG}::wi-child-2`, title: "Child 2", status: "not_started" as const,
+          parentId: `${ORG}::wi-parent`,
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1`, [`${ORG}::bt-2`]: `${ORG}::bl-2` },
+          ranks: { [`${ORG}::bl-1`]: 2, [`${ORG}::bl-2`]: 2 },
+        },
+      },
+      hyperlinks: {
+        [`${ORG}::wi-parent`]: [
+          { id: "hl-1", workItemId: `${ORG}::wi-parent`, url: "https://a.com", altText: "Link A", rank: 0 },
+          { id: "hl-2", workItemId: `${ORG}::wi-parent`, url: "https://b.com", altText: "Link B", rank: 1 },
+        ],
+        [`${ORG}::wi-child-1`]: [
+          { id: "hl-3", workItemId: `${ORG}::wi-child-1`, url: "https://c.com", altText: "Link C", rank: 0 },
+        ],
+      },
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    // ── Action: duplicate the parent ───────────────────────────────
+    const newRootIds = useAppStore.getState().duplicateWorkItems([`${ORG}::wi-parent`]);
+    expect(newRootIds).toHaveLength(1);
+    const newParentId = newRootIds[0];
+
+    const store = useAppStore.getState();
+    const allItems = Object.values(store.workItems);
+    const originalIds = new Set([`${ORG}::wi-parent`, `${ORG}::wi-child-1`, `${ORG}::wi-child-2`]);
+
+    // ── Assert: correct number of items (3 originals + 3 clones) ──
+    expect(allItems).toHaveLength(6);
+
+    const newItems = allItems.filter((wi) => !originalIds.has(wi.id));
+    expect(newItems).toHaveLength(3);
+
+    const newParent = store.workItems[newParentId];
+    expect(newParent).toBeDefined();
+    expect(newParent.title).toBe("Parent");
+
+    // ── Assert: parent-child structure preserved ──────────────────
+    expect(newParent.parentId).toBeNull();
+
+    expect(newParent.childrenIds).toHaveLength(2);
+    const newChildIds = newParent.childrenIds;
+    const newChild1 = store.workItems[newChildIds[0]];
+    const newChild2 = store.workItems[newChildIds[1]];
+    expect(newChild1).toBeDefined();
+    expect(newChild2).toBeDefined();
+    expect(newChild1.title).toBe("Child 1");
+    expect(newChild2.title).toBe("Child 2");
+
+    expect(newChild1.parentId).toBe(newParentId);
+    expect(newChild2.parentId).toBe(newParentId);
+
+    // ── Assert: all trees preserved ───────────────────────────────
+    expect(newParent.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    expect(newParent.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+    expect(newChild1.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    expect(newChild1.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+    expect(newChild2.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    expect(newChild2.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-2`);
+
+    // ── Assert: hyperlinks copied for parent ──────────────────────
+    const newParentLinks = store.hyperlinks[newParentId];
+    expect(newParentLinks).toBeDefined();
+    expect(newParentLinks).toHaveLength(2);
+
+    const sortedNewLinks = [...newParentLinks].sort((a, b) => a.rank - b.rank);
+    expect(sortedNewLinks[0].url).toBe("https://a.com");
+    expect(sortedNewLinks[0].altText).toBe("Link A");
+    expect(sortedNewLinks[0].rank).toBe(0);
+    expect(sortedNewLinks[0].workItemId).toBe(newParentId);
+    expect(sortedNewLinks[0].id).not.toBe("hl-1");
+
+
+    expect(sortedNewLinks[1].url).toBe("https://b.com");
+    expect(sortedNewLinks[1].altText).toBe("Link B");
+    expect(sortedNewLinks[1].rank).toBe(1);
+    expect(sortedNewLinks[1].workItemId).toBe(newParentId);
+    expect(sortedNewLinks[1].id).not.toBe("hl-2");
+
+    // ── Assert: hyperlinks copied for child 1 ─────────────────────
+    const newChild1Links = store.hyperlinks[newChild1.id];
+    expect(newChild1Links).toBeDefined();
+    expect(newChild1Links).toHaveLength(1);
+    expect(newChild1Links[0].url).toBe("https://c.com");
+    expect(newChild1Links[0].altText).toBe("Link C");
+    expect(newChild1Links[0].rank).toBe(0);
+    expect(newChild1Links[0].workItemId).toBe(newChild1.id);
+    expect(newChild1Links[0].id).not.toBe("hl-3");
+
+    // ── Assert: no hyperlinks for child 2 clone ───────────────────
+    const newChild2Links = store.hyperlinks[newChild2.id];
+    expect(newChild2Links ?? []).toHaveLength(0);
+
+    // ── Assert: original hyperlinks untouched ─────────────────────
+    const origParentLinks = store.hyperlinks[`${ORG}::wi-parent`];
+    expect(origParentLinks).toHaveLength(2);
+    expect(origParentLinks[0].id).toBe("hl-1");
+    expect(origParentLinks[1].id).toBe("hl-2");
+
+    const origChild1Links = store.hyperlinks[`${ORG}::wi-child-1`];
+    expect(origChild1Links).toHaveLength(1);
+    expect(origChild1Links[0].id).toBe("hl-3");
+
+    // ── Assert: new root becomes the selection ────────────────────
+    expect(store.selectedWorkItemIds).toEqual([newParentId]);
+  });
+});
+
+
