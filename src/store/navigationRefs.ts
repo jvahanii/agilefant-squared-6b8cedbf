@@ -10,3 +10,6 @@ export const visibleWorkItemIdsRef: { current: string[] } = { current: [] };
 
 /** Ordered IDs of every backlog node currently visible in the backlog panel. */
 export const visibleBacklogIdsRef: { current: string[] } = { current: [] };
+
+/** Direction for delete-selected: 'up' (Backspace) or 'down' (Delete). */
+export const deleteDirectionRef: { current: 'up' | 'down' } = { current: 'up' };

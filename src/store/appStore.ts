@@ -23,7 +23,7 @@ import {
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { useTreeStatusesStore } from "./treeStatusesStore";
-import { visibleWorkItemIdsRef, visibleBacklogIdsRef } from "./navigationRefs";
+import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -34,12 +34,33 @@ function generateMockData() {
  * work item to select afterwards.  Prefers the item immediately above the first
  * deleted item in the current visible order; falls back to the item below.
  */
-function computeNextWorkItemSelection(deletedIds: Set<string>): string | null {
+function computeNextWorkItemSelection(deletedIds: Set<string>, direction: 'up' | 'down' = 'up'): string | null {
   const visible = visibleWorkItemIdsRef.current;
   let minIdx = visible.length;
   for (let i = 0; i < visible.length; i++) {
     if (deletedIds.has(visible[i])) { minIdx = i; break; }
   }
+  if (direction === 'down') {
+    // Look downward first, then upward.
+    for (let i = minIdx + 1; i < visible.length; i++) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+    for (let i = minIdx - 1; i >= 0; i--) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+  } else {
+    // Look upward first, then downward.
+    for (let i = minIdx - 1; i >= 0; i--) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+    for (let i = minIdx + 1; i < visible.length; i++) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+  }
+  return null;
+}
+
+/* OLD BODY:
   // Look upward for the closest non-deleted item.
   for (let i = minIdx - 1; i >= 0; i--) {
     if (!deletedIds.has(visible[i])) return visible[i];
@@ -49,17 +70,39 @@ function computeNextWorkItemSelection(deletedIds: Set<string>): string | null {
     if (!deletedIds.has(visible[i])) return visible[i];
   }
   return null;
+*/
+//
+//
 }
 
 /**
  * Same as computeNextWorkItemSelection but for backlog nodes.
  */
-function computeNextBacklogSelection(deletedIds: Set<string>): string | null {
+function computeNextBacklogSelection(deletedIds: Set<string>, direction: 'up' | 'down' = 'up'): string | null {
   const visible = visibleBacklogIdsRef.current;
   let minIdx = visible.length;
   for (let i = 0; i < visible.length; i++) {
     if (deletedIds.has(visible[i])) { minIdx = i; break; }
   }
+  if (direction === 'down') {
+    for (let i = minIdx + 1; i < visible.length; i++) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+    for (let i = minIdx - 1; i >= 0; i--) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+  } else {
+    for (let i = minIdx - 1; i >= 0; i--) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+    for (let i = minIdx + 1; i < visible.length; i++) {
+      if (!deletedIds.has(visible[i])) return visible[i];
+    }
+  }
+  return null;
+}
+
+/* OLD BODY:
   for (let i = minIdx - 1; i >= 0; i--) {
     if (!deletedIds.has(visible[i])) return visible[i];
   }
@@ -67,6 +110,10 @@ function computeNextBacklogSelection(deletedIds: Set<string>): string | null {
     if (!deletedIds.has(visible[i])) return visible[i];
   }
   return null;
+*/
+// (old closing brace removed)
+//
+//
 }
 
 /** Get the rank of a work item in a specific tree context. */
@@ -121,8 +168,8 @@ interface AppState extends DataSnapshot {
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
-  deleteWorkItem: (workItemId: string) => void;
-  deleteWorkItemsBulk: (workItemIds: string[]) => void;
+  deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
+  deleteWorkItemsBulk: (workItemIds: string[], direction?: 'up' | 'down') => void;
   /** Duplicate work items (deep — includes descendants). Each new root is
    *  inserted directly below its source, lives in the same backlogs/parents,
    *  and inherits hyperlinks. Labels, team assignments, financials, and
@@ -138,7 +185,7 @@ interface AppState extends DataSnapshot {
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
   respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
-  deleteBacklog: (backlogId: string) => void;
+  deleteBacklog: (backlogId: string, direction?: 'up' | 'down') => void;
   renameBacklog: (backlogId: string, name: string) => void;
   reorderBacklogAmongSiblings: (
     backlogId: string,
@@ -1214,7 +1261,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteWorkItem: (workItemId) => {
+    deleteWorkItem: (workItemId, direction) => {
       const state = get();
       const orgId = state.organizationId;
       const item = state.workItems[workItemId];
@@ -1257,7 +1304,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
-      const newSelectedId = computeNextWorkItemSelection(deleteSet);
+      const newSelectedId = computeNextWorkItemSelection(deleteSet, direction ?? deleteDirectionRef.current);
       set({
         workItems: updatedItems,
         selectedWorkItemIds: newSelectedId ? [newSelectedId] : [],
@@ -1266,7 +1313,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteWorkItemsBulk: (workItemIds) => {
+    deleteWorkItemsBulk: (workItemIds, direction) => {
       const state = get();
       const orgId = state.organizationId;
       if (workItemIds.length === 0) return;
@@ -1309,7 +1356,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk delete work items failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemIds[0], entityName: `${workItemIds.length} items` });
-      const newSelectedId = computeNextWorkItemSelection(deleteSet);
+      const newSelectedId = computeNextWorkItemSelection(deleteSet, direction ?? deleteDirectionRef.current);
       set({
         workItems: updatedItems,
         undoStack: pushUndoEntry(state),
@@ -2238,7 +2285,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteBacklog: (backlogId) => {
+    deleteBacklog: (backlogId, direction) => {
       const state = get();
       const bl = state.backlogs[backlogId];
       if (!bl) return;
@@ -2313,7 +2360,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         upsertWorkItems(wiIdsToUpsert, state.organizationId!)?.catch((err) => console.error("Update work item assignments failed", err));
       }
       internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
-      const newSelectedBacklogId = computeNextBacklogSelection(blIdSet);
+      const newSelectedBacklogId = computeNextBacklogSelection(blIdSet, direction ?? deleteDirectionRef.current);
       set({
         workItems: updatedItems,
         selectedBacklogIds: newSelectedBacklogId ? [newSelectedBacklogId] : [],

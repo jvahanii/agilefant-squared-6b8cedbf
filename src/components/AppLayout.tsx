@@ -62,7 +62,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { visibleWorkItemIdsRef, visibleBacklogIdsRef } from "@/store/navigationRefs";
+import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 
 interface PendingCrossTreeDrop {
@@ -446,7 +446,9 @@ function AppLayoutInner() {
         case "backspace": {
           if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
             e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:delete-selected"));
+            const direction = e.key === "Backspace" ? "up" : "down";
+            deleteDirectionRef.current = direction;
+            window.dispatchEvent(new CustomEvent("shortcut:delete-selected", { detail: { direction } }));
           }
           break;
         }
