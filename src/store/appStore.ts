@@ -679,15 +679,19 @@ export const useAppStore = create<AppState>()((set, get) => {
       }, 15000);
 
       try {
-        await flushPendingRankUpserts();
-        set({ loadingProgress: 10 });
+        set({ loadingProgress: 5 });
 
-        // Run the main data load, hyperlinks (org-scoped), and change log
-        // concurrently. Hyperlinks can be fetched by organization_id without
-        // first needing the resolved work-item id list, so all three waves
-        // overlap instead of running serially.
+        // Fire flushPendingRankUpserts concurrently with the main data load
+        // instead of blocking on it first.  If it fails or hangs the data
+        // still arrives and the UI becomes interactive sooner.
+        const rankFlushPromise = flushPendingRankUpserts().catch(() => {});
+
+        // Run the main data load, hyperlinks (org-scoped), change log, and
+        // rank flush all concurrently. Hyperlinks can be fetched by
+        // organization_id without first needing the resolved work-item id
+        // list, so all waves overlap instead of running serially.
         // Each promise increments the progress bar as it finishes so the
-        // bar reflects real work rather than staying frozen at 10%.
+        // bar reflects real work rather than staying frozen.
         const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
           loadFromSupabase(orgId).then((r) => { set({ loadingProgress: 50 }); return r; }),
           loadHyperlinksForWorkItems([], orgId)
@@ -695,6 +699,9 @@ export const useAppStore = create<AppState>()((set, get) => {
             .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 60) })); return r; }),
           loadChangeLog(orgId).then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 65) })); return r; }),
         ]);
+        // Ensure the rank flush has had at least the duration of the main
+        // data fetch to complete, but don't block the UI if it hasn't.
+        rankFlushPromise.catch(() => {});
         const cleanData = sanitizeData(rawData, orgId);
         set({ loadingProgress: 80 });
 
