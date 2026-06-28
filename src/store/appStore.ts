@@ -560,6 +560,46 @@ function assignSequentialRanksForContext(
 }
 
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
+const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
+const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
+
+interface CachedAppData {
+  orgId: string;
+  workItems: Record<string, WorkItem>;
+  backlogs: Record<string, Backlog>;
+  backlogTrees: Record<string, BacklogTree>;
+  hyperlinks: Record<string, Hyperlink[]>;
+  changeLog: ChangeLogEntry[];
+  selectedBacklogIds: string[];
+  selectedTreeId: string | null;
+  selectedWorkItemIds: string[];
+  timestamp: number;
+}
+
+function readCachedAppData(orgId: string): CachedAppData | null {
+  try {
+    const raw = localStorage.getItem(DATA_CACHE_KEY_PREFIX + orgId);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached?.orgId || cached.orgId !== orgId || !cached?.workItems || !cached?.timestamp) return null;
+    if (Date.now() - cached.timestamp > DATA_CACHE_TTL_MS) return null;
+    // Convert expandedSets arrays back to Set objects
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | 'timestamp'>): void {
+  try {
+    // Only cache if there's actual data to show.
+    if (Object.keys(data.workItems).length === 0 && Object.keys(data.backlogs).length === 0) return;
+    const cached: CachedAppData = { orgId, ...data, timestamp: Date.now() };
+    localStorage.setItem(DATA_CACHE_KEY_PREFIX + orgId, JSON.stringify(cached));
+  } catch {
+    // Storage full or unavailable — not critical.
+  }
+}
 
 function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
   if (typeof localStorage === "undefined" || rows.length === 0) return;
@@ -666,6 +706,90 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({ isLoading: false });
         return;
       }
+
+      // Restore from localStorage cache immediately so repeat visits show
+      // the previous state without any loading spinner.  Fresh data from
+      // Supabase replaces the cache asynchronously afterwards.
+      const cached = readCachedAppData(orgId);
+      if (cached && Object.keys(cached.workItems).length > 0) {
+        const parseStoredIdsCached = (key: string): string[] => {
+          try {
+            const raw = localStorage.getItem(key);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch { return []; }
+        };
+        const storedBacklogIds = parseStoredIdsCached(`selection_${orgId}_backlogIds`);
+        const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
+        const storedWorkItemIds = parseStoredIdsCached(`selection_${orgId}_workItemIds`);
+        const validBacklogIds = storedBacklogIds.filter((id) => cached.backlogs[id]);
+        const validTreeId = storedTreeId && cached.backlogTrees[storedTreeId] ? storedTreeId : null;
+        const validWorkItemIds = storedWorkItemIds.filter((id) => cached.workItems[id]);
+
+        set({
+          workItems: cached.workItems,
+          backlogs: cached.backlogs,
+          backlogTrees: cached.backlogTrees,
+          hyperlinks: cached.hyperlinks,
+          changeLog: cached.changeLog,
+          selectedBacklogIds: validBacklogIds,
+          selectedTreeId: validTreeId,
+          selectedWorkItemIds: validWorkItemIds,
+          isLoading: false,
+          loadingProgress: 100,
+          undoStack: [],
+          redoStack: [],
+          expandedWorkItems: new Set<string>(),
+          expandedBacklogs: new Set<string>(),
+        });
+
+        // Refresh in the background so the cache stays fresh.
+        void (async () => {
+          try {
+            await flushPendingRankUpserts().catch(() => {});
+            const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
+              loadFromSupabase(orgId),
+              loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
+              loadChangeLog(orgId).catch(() => [] as ChangeLogEntry[]),
+            ]);
+            const cleanData = sanitizeData(rawData, orgId);
+            const workItemIdSet = new Set(Object.keys(cleanData.workItems));
+            const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
+            for (const [wiId, links] of Object.entries(allHyperlinks)) {
+              if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
+            }
+            writeCachedAppData(orgId, {
+              workItems: cleanData.workItems,
+              backlogs: cleanData.backlogs,
+              backlogTrees: cleanData.backlogTrees,
+              hyperlinks,
+              changeLog: dbChangeLog as ChangeLogEntry[],
+              selectedBacklogIds: get().selectedBacklogIds,
+              selectedTreeId: get().selectedTreeId,
+              selectedWorkItemIds: get().selectedWorkItemIds,
+            });
+            // Only replace state if the user hasn't switched orgs while the
+            // background refresh was in flight.
+            if (get().organizationId === orgId) {
+              set({
+                workItems: cleanData.workItems,
+                backlogs: cleanData.backlogs,
+                backlogTrees: cleanData.backlogTrees,
+                hyperlinks,
+                changeLog: dbChangeLog as ChangeLogEntry[],
+                // Preserve current selection.
+                selectedBacklogIds: get().selectedBacklogIds,
+                selectedTreeId: get().selectedTreeId,
+                selectedWorkItemIds: get().selectedWorkItemIds,
+              });
+            }
+          } catch {
+            // Background refresh failed — cached data is still shown.
+          }
+        })();
+        return;
+      }
+
       set({ isLoading: true, loadingProgress: 0 });
 
       // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to

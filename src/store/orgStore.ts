@@ -65,6 +65,30 @@ async function ensureProfileExists(userId: string): Promise<void> {
   }
 }
 
+const MEMBERSHIPS_CACHE_KEY = 'cached_memberships';
+const MEMBERSHIPS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function readCachedMemberships(): { memberships: Membership[]; userId: string } | null {
+  try {
+    const raw = localStorage.getItem(MEMBERSHIPS_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached?.userId || !cached?.timestamp || !Array.isArray(cached?.memberships)) return null;
+    if (Date.now() - cached.timestamp > MEMBERSHIPS_CACHE_TTL_MS) return null;
+    return { memberships: cached.memberships, userId: cached.userId };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedMemberships(userId: string, memberships: Membership[]): void {
+  try {
+    localStorage.setItem(MEMBERSHIPS_CACHE_KEY, JSON.stringify({ userId, memberships, timestamp: Date.now() }));
+  } catch {
+    // Storage full or unavailable — not critical.
+  }
+}
+
 export const useOrgStore = create<OrgState>()((set, get) => ({
   memberships: [],
   activeOrgId: null,
@@ -82,6 +106,29 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   },
 
   loadMemberships: async (userId: string) => {
+    // Restore from cache immediately so the user never sees "Loading…" on
+    // repeat visits.  The fresh RPC result replaces the cache afterwards.
+    const cached = readCachedMemberships();
+    if (cached && cached.userId === userId && cached.memberships.length > 0) {
+      const stored = localStorage.getItem('activeOrgId');
+      const activeOrgId = cached.memberships.find(m => m.organization_id === stored)
+        ? stored
+        : cached.memberships[0]?.organization_id ?? null;
+      set({ memberships: cached.memberships, activeOrgId, loading: false });
+      // Fire a background refresh so the data stays fresh.
+      void (async () => {
+        const { data, error } = await supabase.rpc('get_user_memberships', { _user_id: userId });
+        if (error || !data) return;
+        const fresh = data as Membership[];
+        writeCachedMemberships(userId, fresh);
+        const freshOrgId = fresh.find(m => m.organization_id === get().activeOrgId)
+          ? get().activeOrgId
+          : fresh[0]?.organization_id ?? null;
+        set({ memberships: fresh, activeOrgId: freshOrgId });
+      })();
+      return;
+    }
+
     set({ loading: true });
     // Safety timeout: if the RPC call hangs (e.g. Supabase unreachable), unblock
     // the loading screen after 10 seconds so the app doesn't stay on "Loading..."
@@ -102,6 +149,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       return;
     }
     const memberships = (data ?? []) as Membership[];
+    writeCachedMemberships(userId, memberships);
     const stored = localStorage.getItem('activeOrgId');
     const activeOrgId = memberships.find(m => m.organization_id === stored)
       ? stored
