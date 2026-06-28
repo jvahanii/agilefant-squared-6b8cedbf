@@ -393,7 +393,6 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           ${isOver && !isDragging ? "drag-over" : ""}
           ${isDragging ? "shadow-lg bg-card" : ""}
         `}
-        title={timeLoggingVisible && backlogTotalMinutes > 0 ? `${formatDuration(backlogTotalMinutes)} logged` : undefined}
         style={{ paddingLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
         onPointerDown={(e) => {
           dndPointerDown?.(e);

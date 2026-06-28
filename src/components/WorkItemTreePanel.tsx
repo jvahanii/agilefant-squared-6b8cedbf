@@ -597,6 +597,7 @@ function WorkItemNodeContent({
           data-work-item-id={workItemId}
           data-backlog-id={backlogId}
           data-tree-id={treeId}
+          title={timeLoggingVisible && itemTotalMinutes > 0 ? `${formatDuration(itemTotalMinutes)} logged` : undefined}
           className={`
             flex items-start gap-1.5 px-3 py-px rounded-md
             transition-all duration-150 ease-out group
@@ -1626,6 +1627,13 @@ function SearchResultItem({
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
 
+  const workItemsSearch = useAppStore((s) => s.workItems);
+  const timeEntriesSearch = useTimeEntryStore((s) => s.timeEntries);
+  const itemTotalMinutes = useMemo(() => {
+    if (!timeLoggingVisible) return 0;
+    return computeWorkItemTotalMinutes(item.id, workItemsSearch, timeEntriesSearch);
+  }, [timeEntriesSearch, item.id, workItemsSearch, timeLoggingVisible]);
+
   const orgLabels = useMemo(
     () =>
       Object.values(labelsMap)
@@ -1706,6 +1714,7 @@ function SearchResultItem({
               {...attributes}
               {...restListeners}
               className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group select-none${!isMobile ? " cursor-grab active:cursor-grabbing" : ""}`}
+              title={timeLoggingVisible && itemTotalMinutes > 0 ? `${formatDuration(itemTotalMinutes)} logged` : undefined}
               onPointerDown={(e) => {
                 dndPointerDown?.(e);
                 dragStartedRef.current = false;
