@@ -1,0 +1,7 @@
+## Task Completion Protocol
+When you have successfully finished the user's core request and verified that the build/tests pass, you MUST execute the following automation steps in the terminal before concluding:
+
+1. **Auto-Commit:** Stage all modified files (`git add .`) and write a detailed, professional commit message following conventional commit guidelines based on the work you performed.
+2. **Sync:** Push the local commits to the remote repository (`git push`).
+3. **Email Notification:** Execute the email notification script to alert the user that the run is complete. Run the script using: `node scripts/send-email.js`
+4. **Final Confirmation:** Only after the push and email command have successfully run should you declare the task finished in the chat.
