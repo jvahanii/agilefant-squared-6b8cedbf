@@ -62,14 +62,40 @@ function AppRoutes() {
     if (!user) return;
     const userId = user.id;
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || !orgLoadingRef.current) return;
-      loadMemberships(userId);
+      if (document.visibilityState !== 'visible') return;
+      // 1) Memberships still loading → re-trigger.
+      if (orgLoadingRef.current) {
+        loadMemberships(userId);
+        return;
+      }
+      // 2) Memberships done and an org is active, but the app store is
+      //    empty (iOS Safari likely killed the in-flight fetch while the
+      //    tab was backgrounded; the 15 s safety timeout flipped
+      //    isLoading=false without populating any data).  Re-fetch so the
+      //    backlog/work-item panels don't stay blank.
+      const orgId = useOrgStore.getState().activeOrgId;
+      const app = useAppStore.getState();
+      if (orgId && !app.isLoading && Object.keys(app.backlogTrees).length === 0) {
+        app.loadFromSupabase();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     // loadMemberships is a stable Zustand reference; user.id is the key dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Initial-mount safety net: if the user lands on the app with an active
+  // org but the app store ended up empty (e.g. the very first fetch was
+  // killed mid-flight on a flaky mobile connection), kick off a retry once
+  // the app is past the auth/org loading screens.
+  useEffect(() => {
+    if (authLoading || orgLoading || !user || !activeOrgId) return;
+    const app = useAppStore.getState();
+    if (!app.isLoading && Object.keys(app.backlogTrees).length === 0) {
+      app.loadFromSupabase();
+    }
+  }, [authLoading, orgLoading, user, activeOrgId]);
 
   useEffect(() => {
     const activeOrg = memberships.find(m => m.organization_id === activeOrgId) ?? null;
