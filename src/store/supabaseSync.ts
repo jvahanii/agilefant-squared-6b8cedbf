@@ -462,12 +462,11 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
     respawn_minute: item.respawnMinute ?? null,
     respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
   };
-  // Only include parent_id_overrides when we actually have a map in local
-  // state.  Omitting the column on upsert preserves the existing DB value,
-  // preventing accidental blanking when a stale local copy has parentIds=undefined.
-  if (item.parentIds !== undefined) {
-    row.parent_id_overrides = item.parentIds;
-  }
+  // Always include parent_id_overrides. Local state is the source of truth
+  // (loaded from DB on fetch).  Omitting it in a batch where any other row
+  // includes the column causes PostgREST to fill in NULL, which violates
+  // the column's NOT NULL constraint.
+  row.parent_id_overrides = item.parentIds ?? {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
   if (error) {
@@ -580,10 +579,8 @@ async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: strin
       respawn_minute: item.respawnMinute ?? null,
       respawn_last_triggered_at: item.respawnLastTriggeredAt ?? null,
     };
-    // Preserve DB-side parent_id_overrides when local copy doesn't track them.
-    if (item.parentIds !== undefined) {
-      row.parent_id_overrides = item.parentIds;
-    }
+    // Always include parent_id_overrides — see note in upsertWorkItem.
+    row.parent_id_overrides = item.parentIds ?? {};
     return row;
   });
   // Dedupe by id (last write wins) so a single upsert payload never contains
