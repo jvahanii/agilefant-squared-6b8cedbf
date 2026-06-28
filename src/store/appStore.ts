@@ -816,12 +816,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         // list, so all waves overlap instead of running serially.
         // Each promise increments the progress bar as it finishes so the
         // bar reflects real work rather than staying frozen.
-        const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
+        // Load change log lazily on demand (when the user opens the history
+        // panel) instead of eagerly on every page load.  This saves one
+        // network round-trip on mobile for the common case.
+        const [rawData, allHyperlinks] = await Promise.all([
           loadFromSupabase(orgId).then((r) => { set({ loadingProgress: 50 }); return r; }),
           loadHyperlinksForWorkItems([], orgId)
             .catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>))
-            .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 60) })); return r; }),
-          loadChangeLog(orgId).then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 65) })); return r; }),
+            .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) })); return r; }),
         ]);
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
@@ -878,7 +880,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         set({
           ...cleanData,
           hyperlinks,
-          changeLog: dbChangeLog,
+          // changeLog loaded lazily via loadChangeLog action.
+          changeLog: [],
           isLoading: false,
           loadingProgress: 100,
           undoStack: [],

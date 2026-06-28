@@ -468,7 +468,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
   // the column's NOT NULL constraint.
   row.parent_id_overrides = item.parentIds ?? {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any).select().then(r => r));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any));
   if (error) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
@@ -590,7 +590,7 @@ async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: strin
   for (const row of rows) dedupedById.set(row.id, row);
   const dedupedRows = Array.from(dedupedById.values());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(dedupedRows as any).select().then(r => r));
+  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(dedupedRows as any));
   if (error) {
     console.error('upsertWorkItems:', error, 'rows:', dedupedRows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
