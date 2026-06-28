@@ -23,9 +23,50 @@ import {
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { useTreeStatusesStore } from "./treeStatusesStore";
+import { visibleWorkItemIdsRef, visibleBacklogIdsRef } from "./navigationRefs";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
+}
+
+/**
+ * Given a set of work-item IDs that are about to be deleted, compute the best
+ * work item to select afterwards.  Prefers the item immediately above the first
+ * deleted item in the current visible order; falls back to the item below.
+ */
+function computeNextWorkItemSelection(deletedIds: Set<string>): string | null {
+  const visible = visibleWorkItemIdsRef.current;
+  let minIdx = visible.length;
+  for (let i = 0; i < visible.length; i++) {
+    if (deletedIds.has(visible[i])) { minIdx = i; break; }
+  }
+  // Look upward for the closest non-deleted item.
+  for (let i = minIdx - 1; i >= 0; i--) {
+    if (!deletedIds.has(visible[i])) return visible[i];
+  }
+  // Look downward.
+  for (let i = minIdx + 1; i < visible.length; i++) {
+    if (!deletedIds.has(visible[i])) return visible[i];
+  }
+  return null;
+}
+
+/**
+ * Same as computeNextWorkItemSelection but for backlog nodes.
+ */
+function computeNextBacklogSelection(deletedIds: Set<string>): string | null {
+  const visible = visibleBacklogIdsRef.current;
+  let minIdx = visible.length;
+  for (let i = 0; i < visible.length; i++) {
+    if (deletedIds.has(visible[i])) { minIdx = i; break; }
+  }
+  for (let i = minIdx - 1; i >= 0; i--) {
+    if (!deletedIds.has(visible[i])) return visible[i];
+  }
+  for (let i = minIdx + 1; i < visible.length; i++) {
+    if (!deletedIds.has(visible[i])) return visible[i];
+  }
+  return null;
 }
 
 /** Get the rank of a work item in a specific tree context. */
@@ -1216,8 +1257,10 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
+      const newSelectedId = computeNextWorkItemSelection(deleteSet);
       set({
         workItems: updatedItems,
+        selectedWorkItemIds: newSelectedId ? [newSelectedId] : [],
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
@@ -1266,9 +1309,11 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk delete work items failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemIds[0], entityName: `${workItemIds.length} items` });
+      const newSelectedId = computeNextWorkItemSelection(deleteSet);
       set({
         workItems: updatedItems,
         undoStack: pushUndoEntry(state),
+        selectedWorkItemIds: newSelectedId ? [newSelectedId] : [],
         redoStack: [],
       });
     },
@@ -2268,8 +2313,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         upsertWorkItems(wiIdsToUpsert, state.organizationId!)?.catch((err) => console.error("Update work item assignments failed", err));
       }
       internalLog({ action: "Delete", entityType: "backlog", entityId: backlogId, entityName: bl.name });
+      const newSelectedBacklogId = computeNextBacklogSelection(blIdSet);
       set({
         workItems: updatedItems,
+        selectedBacklogIds: newSelectedBacklogId ? [newSelectedBacklogId] : [],
+        selectedWorkItemIds: [],
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
         undoStack: pushUndoEntry(state),
@@ -2477,11 +2525,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       deleteBacklogs(blIdsToDelete);
       deleteBacklogTreeDB(treeId);
       internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId, entityName: state.backlogTrees[treeId]?.name });
+      const wasSelectedTree = state.selectedTreeId === treeId;
       set({
         workItems: updatedItems,
         backlogs: updatedBacklogs,
         backlogTrees: updatedTrees,
         undoStack: pushUndoEntry(state),
+        ...(wasSelectedTree ? { selectedTreeId: null, selectedBacklogIds: [], selectedWorkItemIds: [] } : {}),
         redoStack: [],
       });
     },
