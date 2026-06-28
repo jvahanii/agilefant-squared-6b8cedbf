@@ -71,9 +71,7 @@ function computeNextWorkItemSelection(deletedIds: Set<string>, direction: 'up' |
   }
   return null;
 */
-//
-//
-}
+// (old comment block)
 
 /**
  * Same as computeNextWorkItemSelection but for backlog nodes.
@@ -111,10 +109,7 @@ function computeNextBacklogSelection(deletedIds: Set<string>, direction: 'up' | 
   }
   return null;
 */
-// (old closing brace removed)
-//
-//
-}
+// (old comment block)
 
 /** Get the rank of a work item in a specific tree context. */
 function getWorkItemRank(item: WorkItem, treeId: string): number {
@@ -1261,7 +1256,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteWorkItem: (workItemId, direction) => {
+    deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => {
       const state = get();
       const orgId = state.organizationId;
       const item = state.workItems[workItemId];
@@ -1313,7 +1308,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteWorkItemsBulk: (workItemIds, direction) => {
+    deleteWorkItemsBulk: (workItemIds: string[], direction?: 'up' | 'down') => {
       const state = get();
       const orgId = state.organizationId;
       if (workItemIds.length === 0) return;
@@ -2285,7 +2280,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    deleteBacklog: (backlogId, direction) => {
+    deleteBacklog: (backlogId: string, direction?: 'up' | 'down') => {
       const state = get();
       const bl = state.backlogs[backlogId];
       if (!bl) return;
