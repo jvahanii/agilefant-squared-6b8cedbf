@@ -112,6 +112,11 @@ const Index = () => {
     import('@/store/ratesStore').then(({ useRatesStore }) =>
       useRatesStore.getState().load(),
     );
+    // Load boards (Labs feature; the page itself gates rendering on the toggle).
+    import('@/store/boardsStore').then(({ useBoardsStore }) =>
+      useBoardsStore.getState().load([...orgIds]),
+    );
+
     // Load per-tree status definitions for every accessible tree
     const treeIds = Object.keys(backlogTrees);
     if (treeIds.length > 0) loadStatusesForTrees(treeIds);
