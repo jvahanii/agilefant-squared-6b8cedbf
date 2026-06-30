@@ -34,8 +34,6 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
 const SuperuserYoutube = lazy(() => import("./pages/SuperuserYoutube"));
 const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
-const Boards = lazy(() => import("./pages/Boards"));
-
 
 const queryClient = new QueryClient();
 
@@ -151,9 +149,6 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/settings/bells-whistles" element={<BellsAndWhistles />} />
-        <Route path="/boards" element={<Boards />} />
-        <Route path="/boards/:boardId" element={<Boards />} />
-
         <Route path="/manager" element={<ManagerScreen />} />
         <Route path="/superuser/youtube" element={<SuperuserYoutube />} />
         <Route path="/user-guide" element={<UserGuide />} />

@@ -10,8 +10,6 @@ import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
-import { useBoardsStore } from '@/store/boardsStore';
-
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -48,10 +46,6 @@ export function useRealtimeSync() {
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
-  const applyRealtimeBoard = useBoardsStore((s) => s.applyRealtimeBoard);
-  const applyRealtimeBoardColumn = useBoardsStore((s) => s.applyRealtimeColumn);
-  const applyRealtimeBoardCardRank = useBoardsStore((s) => s.applyRealtimeCardRank);
-
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -448,27 +442,6 @@ export function useRealtimeSync() {
       )
       .subscribe();
     channels.push(targetsChannel);
-
-    // Boards (Labs): boards, columns, card ranks. RLS already restricts to
-    // accessible orgs and to tree-scoped boards the user can read.
-    const boardsChannel = supabase
-      .channel(`boards-${activeOrgId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, (payload) => {
-        const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-        applyRealtimeBoard(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_columns' }, (payload) => {
-        const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-        applyRealtimeBoardColumn(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_card_ranks' }, (payload) => {
-        const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-        applyRealtimeBoardCardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-      })
-      .subscribe();
-    channels.push(boardsChannel);
-
-
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.

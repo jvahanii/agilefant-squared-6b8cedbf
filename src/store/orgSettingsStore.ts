@@ -7,9 +7,7 @@ interface OrgSettings {
   labelsEnabled: boolean;
   customStatusesEnabled: boolean;
   savingsIncomeEnabled: boolean;
-  boardsEnabled: boolean;
 }
-
 
 interface OrgSettingsState {
   settings: Record<string, OrgSettings>; // keyed by orgId
@@ -21,10 +19,8 @@ interface OrgSettingsState {
   setLabelsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setCustomStatusesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setSavingsIncomeEnabled: (orgId: string, enabled: boolean) => Promise<void>;
-  setBoardsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
-
 
 const defaults: OrgSettings = {
   timeLoggingEnabled: false,
@@ -32,9 +28,7 @@ const defaults: OrgSettings = {
   labelsEnabled: false,
   customStatusesEnabled: false,
   savingsIncomeEnabled: false,
-  boardsEnabled: false,
 };
-
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
   settings: {},
@@ -44,7 +38,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -61,14 +55,11 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
                 (data as { custom_statuses_enabled?: boolean }).custom_statuses_enabled ?? false,
               savingsIncomeEnabled:
                 (data as { savings_income_enabled?: boolean }).savings_income_enabled ?? false,
-              boardsEnabled:
-                (data as { boards_enabled?: boolean }).boards_enabled ?? false,
             }
           : { ...defaults },
       },
     }));
   },
-
 
   setTimeLoggingEnabled: async (orgId, enabled) => {
     // Optimistic update
@@ -151,22 +142,6 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
-  setBoardsEnabled: async (orgId, enabled) => {
-    set((s) => ({
-      settings: {
-        ...s.settings,
-        [orgId]: { ...(s.settings[orgId] ?? defaults), boardsEnabled: enabled },
-      },
-    }));
-
-    await supabase
-      .from('organization_settings')
-      .upsert(
-        { organization_id: orgId, boards_enabled: enabled, updated_at: new Date().toISOString() } as any,
-        { onConflict: 'organization_id' },
-      );
-  },
-
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -179,7 +154,6 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           labelsEnabled: row.labels_enabled ?? false,
           customStatusesEnabled: row.custom_statuses_enabled ?? false,
           savingsIncomeEnabled: row.savings_income_enabled ?? false,
-          boardsEnabled: row.boards_enabled ?? false,
         },
       },
     }));
@@ -211,9 +185,3 @@ export function isSavingsIncomeEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.savingsIncomeEnabled ?? false;
 }
-
-export function isBoardsEnabled(orgId: string | null): boolean {
-  if (!orgId) return false;
-  return useOrgSettingsStore.getState().settings[orgId]?.boardsEnabled ?? false;
-}
-

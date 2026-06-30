@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -14,7 +14,7 @@ import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard"
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 
-const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false, savingsIncomeEnabled: false, boardsEnabled: false };
+const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false, savingsIncomeEnabled: false };
 
 export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: boolean }) {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -36,9 +36,6 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
   const setSavingsIncomeEnabledSetting = useOrgSettingsStore((s) => s.setSavingsIncomeEnabled);
-  const setBoardsEnabledSetting = useOrgSettingsStore((s) => s.setBoardsEnabled);
-  const boardsEnabled = (orgSettings as { boardsEnabled?: boolean }).boardsEnabled ?? false;
-
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const loadLabels = useLabelsStore((s) => s.loadLabels);
 
@@ -226,35 +223,6 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FlaskConical className="w-4 h-4" /> Labs
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Configurable boards</p>
-              <p className="text-xs text-muted-foreground">
-                Experimental. Adds a <strong>Boards</strong> entry to the header. Build custom Kanban-style boards from
-                a backlog tree or from a custom filter, with fully configurable columns.
-              </p>
-            </div>
-            <Switch
-              checked={boardsEnabled}
-              onCheckedChange={(checked) => {
-                if (activeOrgId) {
-                  setBoardsEnabledSetting(activeOrgId, checked);
-                  toast({ title: checked ? "Boards enabled" : "Boards disabled" });
-                }
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
 
       <TimesheetBrowserDialog
         open={timesheetBrowserOpen}
