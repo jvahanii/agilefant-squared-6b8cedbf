@@ -14,7 +14,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
-import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
+import { isTimeLoggingEnabled, isBoardsEnabled, useOrgSettingsStore } from "@/store/orgSettingsStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,8 @@ import {
   EyeOff,
   ClipboardList,
   Settings,
+  LayoutDashboard,
+
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
@@ -692,6 +694,8 @@ function AppLayoutInner() {
   // Auto integrity check on data changes
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const roleOverride = useOrgStore((s) => s.roleOverride);
+  const boardsEnabled = useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId]?.boardsEnabled ?? false : false));
+
   const prevDataRef = useRef<string>("");
 
   useEffect(() => {
