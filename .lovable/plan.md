@@ -1,20 +1,28 @@
-## Plan
+Root cause: GitHub Supabase Preview still fails because the remote migration ledger and the repository migration folder are not aligned.
 
-1. **Confirm the exact mismatch**
-   - Compare the migration versions currently in the connected Supabase ledger with the migration files in the repository.
-   - Check whether GitHub is running against the same connected Supabase project or a separate preview/test database.
+Current mismatch I found:
 
-2. **Fix the repository-side issue that can cause this error**
-   - Inspect `supabase/migrations` for duplicate migration versions.
-   - There is a duplicate local version: `20260403054300` appears in two files. Supabase migration history is version-based, so this can confuse preview checks even if the live ledger has that version marked applied.
-   - Rename one of the duplicate migration files to a unique timestamp if it has not already been applied as a distinct remote version.
+```text
+Remote has, but local repo does not:
+- 20260630152703   boards attempt
+- 20260630201434   boards revert as recorded remotely
 
-3. **Repair the remote migration ledger only if needed**
-   - If the remote ledger still has versions that do not exist locally, remove those ledger-only versions.
-   - If local versions are missing from the remote ledger, mark them as applied.
-   - Keep this limited to `supabase_migrations.schema_migrations`; do not alter application tables or data.
+Local repo has, but remote does not:
+- 20260630201435_ce55f08b-e878-406b-a15a-cdc511728722.sql
+```
 
-4. **Verify after the change**
-   - Re-query the ledger and local filenames to confirm they match exactly by migration version.
-   - Run a read-only app/database smoke check to confirm the connected app can still boot against the schema.
-   - Ask you to re-run the GitHub Supabase Preview check; if it still fails, use the new failure text to identify whether GitHub is using a separate preview database environment that I cannot directly repair from the connected Supabase project.
+Why this happens:
+- The failed boards work left migration history entries in `supabase_migrations.schema_migrations`.
+- The revert migration exists locally with timestamp `20260630201435`, but the remote ledger recorded it as `20260630201434`.
+- Supabase Preview compares remote migration versions to local filenames, so even though the schema itself was reverted, the migration history still fails validation.
+
+Plan to fix:
+1. Confirm the final live schema has no boards artifacts: no `boards`, `board_columns`, `board_card_ranks`, and no `organization_settings.boards_enabled`.
+2. Remove the board-related versions from the remote migration ledger:
+   - `20260630152703`
+   - `20260630201434`
+3. Remove the local board-revert migration file `20260630201435_ce55f08b-e878-406b-a15a-cdc511728722.sql`, because it only exists to undo a feature we are removing from history.
+4. Re-check local migration versions against the remote ledger and verify there are no differences.
+5. Smoke-check the app boots after the schema/history cleanup.
+
+Technical detail: this does not change application data or re-create boards. It only aligns Supabase's migration bookkeeping with the repository after the boards schema was already dropped.
