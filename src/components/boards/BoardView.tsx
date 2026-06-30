@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Pencil, ArrowLeft } from "lucide-react";
 import { WORK_ITEM_STATUSES, type WorkItem, type WorkItemStatus } from "@/types/models";
 import { BoardEditorDialog } from "./BoardEditorDialog";
-
 interface Props {
   board: Board;
 }
@@ -22,8 +21,13 @@ export function BoardView({ board }: Props) {
   const selectBacklog = useAppStore((s) => s.selectBacklog);
 
 
-  const columns = useBoardsStore((s) =>
-    Object.values(s.columns).filter((c) => c.boardId === board.id).sort((a, b) => a.rank - b.rank),
+  const columnsRaw = useBoardsStore((s) => s.columns);
+  const columns = useMemo(
+    () =>
+      Object.values(columnsRaw)
+        .filter((c) => c.boardId === board.id)
+        .sort((a, b) => a.rank - b.rank),
+    [columnsRaw, board.id],
   );
   const setCardRank = useBoardsStore((s) => s.setCardRank);
   const cardRanksByKey = useBoardsStore((s) => s.cardRanks);

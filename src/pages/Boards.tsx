@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { useBoardsStore } from "@/store/boardsStore";
-import { isBoardsEnabled } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { Button } from "@/components/ui/button";
 import { Plus, LayoutDashboard, Trash2, ArrowLeft } from "lucide-react";
 import { BoardEditorDialog } from "@/components/boards/BoardEditorDialog";
@@ -29,6 +29,18 @@ export default function Boards() {
   const load = useBoardsStore((s) => s.load);
   const deleteBoard = useBoardsStore((s) => s.deleteBoard);
 
+  // Reactive subscription to org settings so the "disabled" screen automatically
+  // disappears when the toggle is flipped in another tab/window (via realtime).
+  const enabled = useOrgSettingsStore(
+    (s) => (activeOrgId ? s.settings[activeOrgId]?.boardsEnabled ?? false : false),
+  );
+  const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
+
+  // Ensure settings are loaded when landing directly on /boards.
+  useEffect(() => {
+    if (activeOrgId) loadSettings(activeOrgId);
+  }, [activeOrgId, loadSettings]);
+
   const [editorOpen, setEditorOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -41,8 +53,6 @@ export default function Boards() {
     }
     load([...orgIds]);
   }, [activeOrgId, backlogTrees, load]);
-
-  const enabled = activeOrgId ? isBoardsEnabled(activeOrgId) : false;
   const orgBoards = useMemo(
     () => Object.values(boards).filter((b) => b.organizationId === activeOrgId).sort((a, b) => a.rank - b.rank),
     [boards, activeOrgId],

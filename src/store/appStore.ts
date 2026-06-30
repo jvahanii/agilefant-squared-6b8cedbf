@@ -176,7 +176,7 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
-  reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
+  reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", insertAfterSiblingId?: string | null) => void;
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
   respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;

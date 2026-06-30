@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +29,13 @@ const DEFAULT_COLUMNS: { name: string; statuses: WorkItemStatus[]; color: string
 
 export function BoardEditorDialog({ open, onOpenChange, organizationId, boardId, onCreated }: Props) {
   const board: Board | undefined = useBoardsStore((s) => (boardId ? s.boards[boardId] : undefined));
-  const columns = useBoardsStore((s) =>
-    Object.values(s.columns).filter((c) => boardId && c.boardId === boardId).sort((a, b) => a.rank - b.rank),
+  const columnsRaw = useBoardsStore((s) => s.columns);
+  const columns = useMemo(
+    () =>
+      Object.values(columnsRaw)
+        .filter((c) => boardId && c.boardId === boardId)
+        .sort((a, b) => a.rank - b.rank),
+    [columnsRaw, boardId],
   );
   const createBoard = useBoardsStore((s) => s.createBoard);
   const updateBoard = useBoardsStore((s) => s.updateBoard);
