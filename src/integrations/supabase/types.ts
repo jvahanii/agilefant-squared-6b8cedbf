@@ -121,169 +121,6 @@ export type Database = {
           },
         ]
       }
-      board_card_ranks: {
-        Row: {
-          board_id: string
-          column_id: string
-          created_at: string
-          id: string
-          organization_id: string
-          rank: number
-          updated_at: string
-          work_item_id: string
-        }
-        Insert: {
-          board_id: string
-          column_id: string
-          created_at?: string
-          id?: string
-          organization_id: string
-          rank?: number
-          updated_at?: string
-          work_item_id: string
-        }
-        Update: {
-          board_id?: string
-          column_id?: string
-          created_at?: string
-          id?: string
-          organization_id?: string
-          rank?: number
-          updated_at?: string
-          work_item_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "board_card_ranks_board_id_fkey"
-            columns: ["board_id"]
-            isOneToOne: false
-            referencedRelation: "boards"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "board_card_ranks_column_id_fkey"
-            columns: ["column_id"]
-            isOneToOne: false
-            referencedRelation: "board_columns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "board_card_ranks_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "board_card_ranks_work_item_id_fkey"
-            columns: ["work_item_id"]
-            isOneToOne: false
-            referencedRelation: "work_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      board_columns: {
-        Row: {
-          board_id: string
-          color: string
-          created_at: string
-          id: string
-          is_unmatched: boolean
-          name: string
-          organization_id: string
-          rank: number
-          rule_json: Json
-          updated_at: string
-        }
-        Insert: {
-          board_id: string
-          color?: string
-          created_at?: string
-          id?: string
-          is_unmatched?: boolean
-          name: string
-          organization_id: string
-          rank?: number
-          rule_json?: Json
-          updated_at?: string
-        }
-        Update: {
-          board_id?: string
-          color?: string
-          created_at?: string
-          id?: string
-          is_unmatched?: boolean
-          name?: string
-          organization_id?: string
-          rank?: number
-          rule_json?: Json
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "board_columns_board_id_fkey"
-            columns: ["board_id"]
-            isOneToOne: false
-            referencedRelation: "boards"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "board_columns_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      boards: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          filter_json: Json
-          id: string
-          name: string
-          organization_id: string
-          rank: number
-          scope: string
-          tree_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          filter_json?: Json
-          id?: string
-          name: string
-          organization_id: string
-          rank?: number
-          scope: string
-          tree_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          filter_json?: Json
-          id?: string
-          name?: string
-          organization_id?: string
-          rank?: number
-          scope?: string
-          tree_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "boards_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       change_log: {
         Row: {
           action: string
@@ -576,7 +413,6 @@ export type Database = {
       }
       organization_settings: {
         Row: {
-          boards_enabled: boolean
           created_at: string
           custom_statuses_enabled: boolean
           id: string
@@ -588,7 +424,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          boards_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string
@@ -600,7 +435,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          boards_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string
