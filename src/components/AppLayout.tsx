@@ -14,7 +14,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
-import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
+import { isTimeLoggingEnabled, isBoardsEnabled, useOrgSettingsStore } from "@/store/orgSettingsStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,8 @@ import {
   EyeOff,
   ClipboardList,
   Settings,
+  LayoutDashboard,
+
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
@@ -692,6 +694,8 @@ function AppLayoutInner() {
   // Auto integrity check on data changes
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const roleOverride = useOrgStore((s) => s.roleOverride);
+  const boardsEnabled = useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId]?.boardsEnabled ?? false : false));
+
   const prevDataRef = useRef<string>("");
 
   useEffect(() => {
@@ -1101,7 +1105,18 @@ function AppLayoutInner() {
             <Settings className="w-3.5 h-3.5 text-primary" />
             <span className="hidden md:inline">Bells &amp; Whistles</span>
           </button>
+          {boardsEnabled && (
+            <button
+              className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors"
+              onClick={() => navigate("/boards")}
+              title="Boards"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-primary" />
+              <span className="hidden md:inline">Boards</span>
+            </button>
+          )}
           <RoleSimulator />
+
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">
             <span className="text-xs md:text-sm text-muted-foreground truncate max-w-[100px] md:max-w-none md:mr-2 md:border-r md:pr-3">
@@ -1232,7 +1247,14 @@ function AppLayoutInner() {
                     <HelpCircle className="w-4 h-4 mr-2" />
                     User Guide
                   </DropdownMenuItem>
+                  {boardsEnabled && (
+                    <DropdownMenuItem onClick={() => navigate("/boards")}>
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Boards
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
+
                   <DropdownMenuItem onClick={handleExportMock}>
                     <Copy className="w-4 h-4 mr-2" />
                     Export data
