@@ -2697,7 +2697,7 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && (
+            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && boardsVisible && (
               <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
                 <button
                   className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
