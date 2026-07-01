@@ -816,6 +816,17 @@ function AppLayoutInner() {
       useAppStore.getState().runBulk(() => {
 
 
+      if (activeData?.type === "workitem" && overData?.type === "board-column") {
+        const statusKey = overData.statusKey as WorkItemStatus;
+        const store = useAppStore.getState();
+        for (const id of draggedIds) {
+          if (store.workItems[id]?.status !== statusKey) {
+            store.setWorkItemStatus(id, statusKey);
+          }
+        }
+        return;
+      }
+
       if (activeData?.type === "workitem" && overData?.type === "backlog") {
         const sourceTreeId = activeData.treeId as string;
         const targetTreeId = overData.treeId as string;
