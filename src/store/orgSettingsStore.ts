@@ -147,6 +147,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setBoardsEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), boardsEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, boards_enabled: enabled, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'organization_id' },
+      );
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -159,6 +175,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           labelsEnabled: row.labels_enabled ?? false,
           customStatusesEnabled: row.custom_statuses_enabled ?? false,
           savingsIncomeEnabled: row.savings_income_enabled ?? false,
+          boardsEnabled: row.boards_enabled ?? false,
         },
       },
     }));
