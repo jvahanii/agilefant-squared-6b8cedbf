@@ -2044,6 +2044,19 @@ export function WorkItemTreePanel() {
   const [isFilterBarHovered, setIsFilterBarHovered] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+  // View mode per backlog: 'list' (default) or 'board'. Persisted in localStorage
+  // so each list remembers which view the user last chose.
+  const [viewMode, setViewModeState] = useState<"list" | "board">("list");
+  useEffect(() => {
+    if (!selectedBacklogId) { setViewModeState("list"); return; }
+    const saved = localStorage.getItem(`board-view:${selectedBacklogId}`);
+    setViewModeState(saved === "board" ? "board" : "list");
+  }, [selectedBacklogId]);
+  const setViewMode = useCallback((m: "list" | "board") => {
+    setViewModeState(m);
+    if (selectedBacklogId) localStorage.setItem(`board-view:${selectedBacklogId}`, m);
+  }, [selectedBacklogId]);
+
   // Clear search query when switching backlogs
   useEffect(() => {
     setSearchQuery("");
