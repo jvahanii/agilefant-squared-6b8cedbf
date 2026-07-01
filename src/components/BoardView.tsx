@@ -156,9 +156,15 @@ function BoardCard({
     id: `board-card:${item.id}`,
     data: { type: "workitem", workItemId: item.id, selectedIds: [item.id] },
   });
-  const teamIds = useTeamStore((s) => s.workItemTeams[item.id] ?? []);
+  const workItemTeamsMap = useTeamStore((s) => s.workItemTeams);
   const teams = useTeamStore((s) => s.teams);
-  const labels = useLabelsStore((s) => s.getLabelsForEntity("work_item", item.id));
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const byEntity = useLabelsStore((s) => s.byEntity);
+  const teamIds = useMemo(() => workItemTeamsMap[item.id] ?? EMPTY_ARR, [workItemTeamsMap, item.id]);
+  const labels = useMemo(() => {
+    const ids = byEntity[`work_item:${item.id}`] ?? EMPTY_ARR;
+    return ids.map((id) => labelsMap[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  }, [byEntity, labelsMap, item.id]);
   const { scrambleEnabled } = useScramble();
   const title = scrambleEnabled ? scrambleName(item.title) : item.title;
   return (
