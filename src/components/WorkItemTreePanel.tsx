@@ -2789,7 +2789,9 @@ export function WorkItemTreePanel() {
           </div>
         </div>
 
-        {isSearchMode ? (
+        {!isSearchMode && !isLabelFilterMode && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
+          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} />
+        ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {searchResults && searchResults.length > 0 ? (
