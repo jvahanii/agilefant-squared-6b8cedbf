@@ -25,6 +25,7 @@ import {
   FlaskConical,
   Youtube,
   Wrench,
+  LayoutGrid,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
