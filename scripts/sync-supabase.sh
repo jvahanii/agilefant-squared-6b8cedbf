@@ -30,6 +30,7 @@ echo "==> Remote state committed to local history."
 if [[ "$REPAIR" == "--repair" ]]; then
   echo "==> Marking all local migration files as applied..."
 
+  shopt -s nullglob
   for migration in supabase/migrations/*.sql; do
     # Extract the timestamp prefix (first 14 chars: YYYYMMDDHHmmss)
     timestamp=$(basename "$migration" | cut -c1-14)

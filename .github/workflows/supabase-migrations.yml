@@ -15,7 +15,14 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.x
+
+      - name: Validate required secret
+        run: |
+          if [[ -z "${{ secrets.SUPABASE_DB_URL }}" ]]; then
+            echo "::error::SUPABASE_DB_URL secret is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
 
       - name: Deploy migrations to remote
         run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
