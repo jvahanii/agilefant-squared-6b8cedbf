@@ -2008,6 +2008,7 @@ export function WorkItemTreePanel() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
+  const boardsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.boardsEnabled ?? false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible || !selectedBacklogId || !selectedTreeId) return 0;
