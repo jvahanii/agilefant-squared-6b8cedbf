@@ -2045,18 +2045,16 @@ export function WorkItemTreePanel() {
   const [isFilterBarHovered, setIsFilterBarHovered] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  // View mode per backlog: 'list' (default) or 'board'. Persisted in localStorage
-  // so each list remembers which view the user last chose.
-  const [viewMode, setViewModeState] = useState<"list" | "board">("list");
-  useEffect(() => {
-    if (!selectedBacklogId) { setViewModeState("list"); return; }
-    const saved = localStorage.getItem(`board-view:${selectedBacklogId}`);
-    setViewModeState(saved === "board" ? "board" : "list");
-  }, [selectedBacklogId]);
+  // View mode persisted globally: when the user chooses Board (or List) on any
+  // backlog, all other backlogs follow that same preference until it changes again.
+  const [viewMode, setViewModeState] = useState<"list" | "board">(() => {
+    const saved = localStorage.getItem("global-board-view");
+    return saved === "board" ? "board" : "list";
+  });
   const setViewMode = useCallback((m: "list" | "board") => {
     setViewModeState(m);
-    if (selectedBacklogId) localStorage.setItem(`board-view:${selectedBacklogId}`, m);
-  }, [selectedBacklogId]);
+    localStorage.setItem("global-board-view", m);
+  }, []);
 
   // Clear search query when switching backlogs
   useEffect(() => {
