@@ -16,9 +16,6 @@ interface BoardViewProps {
 }
 
 const EMPTY_ARR: string[] = [];
-  backlogId: string;
-  treeId: string;
-}
 
 /** Recursively collect this backlog and all descendant backlog IDs. */
 function collectBacklogIds(
