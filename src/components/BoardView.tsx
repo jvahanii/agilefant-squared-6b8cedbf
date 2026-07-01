@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -69,6 +69,42 @@ function collectBacklogIds(
   };
   walk(rootId);
   return out;
+}
+
+/** Drop zone placed between two board cards within a column to enable re-ranking.
+ *  Uses the same "workitem-reorder" drop type as the list-view ReorderDropZone
+ *  so the existing AppLayout onDragEnd handler processes it automatically. */
+function BoardReorderDropZone({
+  id,
+  index,
+  treeId,
+  backlogIds,
+}: {
+  id: string;
+  index: number;
+  treeId: string;
+  backlogIds: string[];
+}) {
+  const { active } = useDndContext();
+  const isDragActive = active !== null;
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId: null },
+  });
+
+  return (
+    <div className="relative" style={{ height: isDragActive ? 10 : 2 }}>
+      {/* Expanded hit area during drag */}
+      <div
+        ref={setNodeRef}
+        className="absolute inset-0"
+        style={{ top: -4, bottom: -4 }}
+      />
+      {isOver && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" />
+      )}
+    </div>
+  );
 }
 
 /** Inline input rendered at the top of a column to quickly add a new item. */
@@ -153,13 +189,10 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string) => {
-      const newId = crypto.randomUUID();
-      // addWorkItem uses its own ID generation; we need to create the item then set its status.
-      // Since addWorkItem returns void and generates its own ID, we save the current ID set
-      // to find the new item after creation.
+      // Save the current ID set to find the new item after creation.
       const before = new Set(Object.keys(useAppStore.getState().workItems));
       addWorkItem(title, null, backlogId, treeId);
-      // After the synchronous store update, find the new ID
+      // After the synchronous store update, find the new ID and set its status
       setTimeout(() => {
         const after = Object.keys(useAppStore.getState().workItems);
         const newIds = after.filter((id) => !before.has(id));
@@ -301,18 +334,33 @@ function BoardColumn({
             onCancel={onCancelAdd}
           />
         )}
-        <div className="p-1.5 space-y-1.5">
-          {items.map((wi) => (
-            <BoardCard
-              key={wi.id}
-              item={wi}
-              selected={selectedIds.includes(wi.id)}
-              onClick={(ctrl) => onSelectItem(wi.id, ctrl)}
-              treeStatuses={treeStatuses}
-              treeId={treeId}
-              backlogId={backlogId}
-              allBacklogIds={allBacklogIds}
-            />
+        <div className="p-1.5">
+          {/* Reorder drop zone before the first card */}
+          <BoardReorderDropZone
+            id={`board-reorder-${column.id}-0`}
+            index={0}
+            treeId={treeId}
+            backlogIds={allBacklogIds}
+          />
+          {items.map((wi, i) => (
+            <div key={wi.id}>
+              <BoardCard
+                item={wi}
+                selected={selectedIds.includes(wi.id)}
+                onClick={(ctrl) => onSelectItem(wi.id, ctrl)}
+                treeStatuses={treeStatuses}
+                treeId={treeId}
+                backlogId={backlogId}
+                allBacklogIds={allBacklogIds}
+              />
+              {/* Reorder drop zone after this card */}
+              <BoardReorderDropZone
+                id={`board-reorder-${column.id}-${i + 1}`}
+                index={i + 1}
+                treeId={treeId}
+                backlogIds={allBacklogIds}
+              />
+            </div>
           ))}
           {items.length === 0 && !isAdding && (
             <div className="text-xs text-muted-foreground text-center py-6">Drop here</div>
