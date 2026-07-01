@@ -2008,6 +2008,7 @@ export function WorkItemTreePanel() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
+  const boardsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.boardsEnabled ?? false);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
     if (!timeLoggingVisible || !selectedBacklogId || !selectedTreeId) return 0;
@@ -2696,7 +2697,7 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && (
+            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && boardsVisible && (
               <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
                 <button
                   className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
@@ -2789,7 +2790,7 @@ export function WorkItemTreePanel() {
           </div>
         </div>
 
-        {!isSearchMode && !isLabelFilterMode && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
+        {!isSearchMode && !isLabelFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
           <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} />
         ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */

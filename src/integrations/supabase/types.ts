@@ -413,6 +413,7 @@ export type Database = {
       }
       organization_settings: {
         Row: {
+          boards_enabled: boolean
           created_at: string
           custom_statuses_enabled: boolean
           id: string
@@ -424,6 +425,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          boards_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string
@@ -435,6 +437,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          boards_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string

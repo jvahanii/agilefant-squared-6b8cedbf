@@ -25,6 +25,7 @@ import {
   FlaskConical,
   Youtube,
   Wrench,
+  LayoutGrid,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
@@ -788,6 +789,35 @@ export default function TeamSettings() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Boards / Kanban (Labs) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4" /> Boards (Kanban)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable board view</p>
+                <p className="text-xs text-muted-foreground">
+                  Adds a List/Board toggle to each backlog. The board shows leaf items grouped by the tree's statuses; drag between columns to change status.
+                </p>
+              </div>
+              <Switch
+                checked={(orgSettings as { boardsEnabled?: boolean }).boardsEnabled ?? false}
+                onCheckedChange={(checked) => {
+                  if (activeOrgId) {
+                    useOrgSettingsStore.getState().setBoardsEnabled(activeOrgId, checked);
+                    toast({ title: checked ? "Boards enabled" : "Boards disabled" });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
 
         {isSuperuser && (
           <Card>
