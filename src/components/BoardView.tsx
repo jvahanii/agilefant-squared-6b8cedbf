@@ -188,12 +188,7 @@ function BoardCard({
     id: `board-card:${item.id}`,
     data: { type: "workitem", workItemId: item.id, selectedIds: [item.id] },
   });
-  const desktopPointerDownListener = !isMobile ? listeners?.onPointerDown : undefined;
-  const restListeners = useMemo(() => {
-    if (isMobile || !listeners) return {};
-    const { onPointerDown, ...rest } = listeners;
-    return rest;
-  }, [isMobile, listeners]);
+  const cardListeners = !isMobile ? listeners : undefined;
 
   const workItemTeamsMap = useTeamStore((s) => s.workItemTeams);
   const teams = useTeamStore((s) => s.teams);
@@ -230,13 +225,8 @@ function BoardCard({
       <ContextMenuTrigger asChild>
         <div
           ref={setNodeRef}
-          {...restListeners}
+          {...cardListeners}
           {...attributes}
-          onPointerDown={(e) => {
-            if (!isMobile) {
-              desktopPointerDownListener?.(e);
-            }
-          }}
           onClick={(e) => {
             e.stopPropagation();
             onClick(e.ctrlKey || e.metaKey);
@@ -253,6 +243,9 @@ function BoardCard({
             {isMobile && (
               <div
                 {...listeners}
+                onContextMenu={(e) => {
+                  e.stopPropagation();
+                }}
                 className="w-5 h-5 flex items-center justify-center shrink-0 text-muted-foreground/40 touch-none cursor-grab active:cursor-grabbing"
                 data-drag-handle="true"
               >
