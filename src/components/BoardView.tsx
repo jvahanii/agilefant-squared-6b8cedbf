@@ -92,8 +92,11 @@ function ColumnAddInput({
     if (trimmed) {
       onAdd(trimmed);
       setValue("");
+      // Keep the input open so the user can add more items in succession,
+      // matching the list-view add-item behavior.
+    } else {
+      onCancel();
     }
-    onCancel();
   };
 
   return (
@@ -224,7 +227,6 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
             onStartAdd={() => setAddingColumnKey(col.key)}
             onCommitAdd={(title) => {
               handleColumnAdd(col.key, title);
-              setAddingColumnKey(null);
             }}
             onCancelAdd={() => setAddingColumnKey(null)}
           />
