@@ -2,7 +2,8 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid } from "lucide-react";
+import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 
@@ -2043,6 +2044,19 @@ export function WorkItemTreePanel() {
   const [isFilterBarHovered, setIsFilterBarHovered] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+  // View mode per backlog: 'list' (default) or 'board'. Persisted in localStorage
+  // so each list remembers which view the user last chose.
+  const [viewMode, setViewModeState] = useState<"list" | "board">("list");
+  useEffect(() => {
+    if (!selectedBacklogId) { setViewModeState("list"); return; }
+    const saved = localStorage.getItem(`board-view:${selectedBacklogId}`);
+    setViewModeState(saved === "board" ? "board" : "list");
+  }, [selectedBacklogId]);
+  const setViewMode = useCallback((m: "list" | "board") => {
+    setViewModeState(m);
+    if (selectedBacklogId) localStorage.setItem(`board-view:${selectedBacklogId}`, m);
+  }, [selectedBacklogId]);
+
   // Clear search query when switching backlogs
   useEffect(() => {
     setSearchQuery("");
@@ -2682,6 +2696,26 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
+            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && (
+              <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
+                <button
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
+                  title="List view"
+                >
+                  <ListIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+                <button
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={(e) => { e.stopPropagation(); setViewMode("board"); }}
+                  title="Board view (leaf items by status)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Board</span>
+                </button>
+              </div>
+            )}
             {!isSearchMode && !isLabelFilterMode && snoozedInBacklog.length > 0 && (
               <button
                 className="flex items-center gap-1 w-auto h-7 px-2 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
@@ -2755,7 +2789,9 @@ export function WorkItemTreePanel() {
           </div>
         </div>
 
-        {isSearchMode ? (
+        {!isSearchMode && !isLabelFilterMode && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
+          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} />
+        ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {searchResults && searchResults.length > 0 ? (

@@ -63,7 +63,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
-import { getEffectiveParentId } from "@/types/models";
+import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
@@ -815,6 +815,17 @@ function AppLayoutInner() {
       // and chained reparent+reorder operations should be one undo step.
       useAppStore.getState().runBulk(() => {
 
+
+      if (activeData?.type === "workitem" && overData?.type === "board-column") {
+        const statusKey = overData.statusKey as WorkItemStatus;
+        const store = useAppStore.getState();
+        for (const id of draggedIds) {
+          if (store.workItems[id]?.status !== statusKey) {
+            store.setWorkItemStatus(id, statusKey);
+          }
+        }
+        return;
+      }
 
       if (activeData?.type === "workitem" && overData?.type === "backlog") {
         const sourceTreeId = activeData.treeId as string;
