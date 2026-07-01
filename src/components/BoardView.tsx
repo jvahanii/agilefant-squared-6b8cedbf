@@ -114,21 +114,21 @@ function BoardColumn({
   return (
     <div
       className={cn(
-        "flex flex-col w-64 shrink-0 rounded-lg border bg-muted/30 h-full",
+        "flex flex-col w-44 shrink-0 rounded-lg border bg-muted/30 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
     >
-      <div className="flex items-center gap-2 px-3 py-2 border-b sticky top-0 bg-muted/60 rounded-t-lg">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg">
         <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
+          className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: column.color }}
         />
-        <span className="text-sm font-semibold truncate">{column.label}</span>
+        <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
         <span className="ml-auto text-xs tabular-nums text-muted-foreground">
           {items.length}
         </span>
       </div>
-      <div ref={setNodeRef} className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div ref={setNodeRef} className="flex-1 overflow-y-auto p-1.5 space-y-1.5">
         {items.map((wi) => (
           <BoardCard
             key={wi.id}
@@ -179,22 +179,22 @@ function BoardCard({
         onClick(e.ctrlKey || e.metaKey);
       }}
       className={cn(
-        "group rounded-md border bg-card shadow-sm p-2 cursor-grab active:cursor-grabbing text-sm",
+        "group rounded-md border bg-card shadow-sm p-1.5 cursor-grab active:cursor-grabbing text-xs",
         selected && "ring-2 ring-primary border-primary",
         isDragging && "opacity-40",
       )}
     >
       <div className="font-medium leading-snug break-words">{title}</div>
-      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+      <div className="flex flex-wrap items-center gap-1 mt-1">
         {typeof item.points === "number" && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary tabular-nums">
+          <span className="text-[10px] font-semibold px-1 py-0.5 rounded bg-primary/10 text-primary tabular-nums">
             {item.points}p
           </span>
         )}
         {labels.map((l) => (
           <span
             key={l.id}
-            className="text-[10px] px-1.5 py-0.5 rounded"
+            className="text-[10px] px-1 py-0.5 rounded"
             style={{ backgroundColor: `${l.color}22`, color: l.color }}
           >
             {l.name}
@@ -207,7 +207,7 @@ function BoardCard({
           return (
             <span
               key={tid}
-              className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground"
+              className="text-[10px] px-1 py-0.5 rounded bg-secondary text-secondary-foreground"
               title={name}
             >
               {name}
