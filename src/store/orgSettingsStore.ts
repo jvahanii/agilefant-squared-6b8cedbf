@@ -207,3 +207,8 @@ export function isSavingsIncomeEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.savingsIncomeEnabled ?? false;
 }
+
+export function isBoardsEnabled(orgId: string | null): boolean {
+  if (!orgId) return false;
+  return useOrgSettingsStore.getState().settings[orgId]?.boardsEnabled ?? false;
+}
