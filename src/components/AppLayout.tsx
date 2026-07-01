@@ -63,7 +63,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
-import { getEffectiveParentId } from "@/types/models";
+import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 
 interface PendingCrossTreeDrop {
   workItemIds: string[];
