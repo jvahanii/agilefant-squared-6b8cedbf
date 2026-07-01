@@ -179,7 +179,7 @@ function BoardCard({
         onClick(e.ctrlKey || e.metaKey);
       }}
       className={cn(
-        "group rounded-md border bg-card shadow-sm p-1.5 cursor-grab active:cursor-grabbing text-xs",
+        "group rounded-md border bg-card shadow-sm p-1.5 cursor-grab active:cursor-grabbing text-xs touch-none",
         selected && "ring-2 ring-primary border-primary",
         isDragging && "opacity-40",
       )}

@@ -3,7 +3,7 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -116,7 +116,7 @@ function AppLayoutInner() {
   const sensors = useSensors(
     // Larger activation distance avoids accidentally starting a drag during
     // a click/text-selection — desktop drag now needs a clear ~8px gesture.
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
 
