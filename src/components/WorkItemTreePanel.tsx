@@ -2696,6 +2696,26 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
+            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && (
+              <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
+                <button
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
+                  title="List view"
+                >
+                  <ListIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+                <button
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={(e) => { e.stopPropagation(); setViewMode("board"); }}
+                  title="Board view (leaf items by status)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Board</span>
+                </button>
+              </div>
+            )}
             {!isSearchMode && !isLabelFilterMode && snoozedInBacklog.length > 0 && (
               <button
                 className="flex items-center gap-1 w-auto h-7 px-2 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
