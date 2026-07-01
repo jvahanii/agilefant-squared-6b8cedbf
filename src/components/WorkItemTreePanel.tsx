@@ -2774,7 +2774,9 @@ export function WorkItemTreePanel() {
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isMobile && selectedWorkItemIds.length === 1) {
+                  if (viewMode === "board" && boardsVisible) {
+                    window.dispatchEvent(new CustomEvent("board:header-add"));
+                  } else if (isMobile && selectedWorkItemIds.length === 1) {
                     window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
                   } else {
                     setIsAdding(true);
@@ -2789,7 +2791,7 @@ export function WorkItemTreePanel() {
         </div>
 
         {!isSearchMode && !isLabelFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
-          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} />
+          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} />
         ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>

@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
@@ -48,6 +48,8 @@ import {
 interface BoardViewProps {
   backlogId: string;
   treeId: string;
+  /** Function to add a new work item. Called with title, parentId, backlogId, treeId. */
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
 }
 
 const EMPTY_ARR: string[] = [];
@@ -69,7 +71,52 @@ function collectBacklogIds(
   return out;
 }
 
-export function BoardView({ backlogId, treeId }: BoardViewProps) {
+/** Inline input rendered at the top of a column to quickly add a new item. */
+function ColumnAddInput({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (title: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (trimmed) {
+      onAdd(trimmed);
+      setValue("");
+    }
+    onCancel();
+  };
+
+  return (
+    <div className="px-1.5 py-1">
+      <input
+        ref={inputRef}
+        className="w-full text-xs bg-card rounded border px-1.5 py-1 outline-none focus:border-primary"
+        placeholder="Title…"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          if (e.key === "Escape") onCancel();
+          e.stopPropagation();
+        }}
+        onBlur={submit}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
@@ -86,6 +133,40 @@ export function BoardView({ backlogId, treeId }: BoardViewProps) {
       rank: i,
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
+
+  // Track which column has an active inline add-input (null = none open)
+  const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
+
+  // Listen for the header "+" button event (dispatched from WorkItemTreePanel)
+  useEffect(() => {
+    const handler = () => {
+      if (columns.length > 0) {
+        setAddingColumnKey(columns[0].key);
+      }
+    };
+    window.addEventListener("board:header-add", handler);
+    return () => window.removeEventListener("board:header-add", handler);
+  }, [columns]);
+
+  const handleColumnAdd = useCallback(
+    (statusKey: string, title: string) => {
+      const newId = crypto.randomUUID();
+      // addWorkItem uses its own ID generation; we need to create the item then set its status.
+      // Since addWorkItem returns void and generates its own ID, we save the current ID set
+      // to find the new item after creation.
+      const before = new Set(Object.keys(useAppStore.getState().workItems));
+      addWorkItem(title, null, backlogId, treeId);
+      // After the synchronous store update, find the new ID
+      setTimeout(() => {
+        const after = Object.keys(useAppStore.getState().workItems);
+        const newIds = after.filter((id) => !before.has(id));
+        if (newIds.length === 1) {
+          useAppStore.getState().setWorkItemStatus(newIds[0], statusKey as WorkItemStatus);
+        }
+      }, 0);
+    },
+    [addWorkItem, backlogId, treeId],
+  );
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
@@ -139,6 +220,13 @@ export function BoardView({ backlogId, treeId }: BoardViewProps) {
             treeId={treeId}
             backlogId={backlogId}
             allBacklogIds={allBacklogIds}
+            isAdding={addingColumnKey === col.key}
+            onStartAdd={() => setAddingColumnKey(col.key)}
+            onCommitAdd={(title) => {
+              handleColumnAdd(col.key, title);
+              setAddingColumnKey(null);
+            }}
+            onCancelAdd={() => setAddingColumnKey(null)}
           />
         ))}
       </div>
@@ -155,6 +243,10 @@ function BoardColumn({
   treeId,
   backlogId,
   allBacklogIds,
+  isAdding,
+  onStartAdd,
+  onCommitAdd,
+  onCancelAdd,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -164,6 +256,10 @@ function BoardColumn({
   treeId: string;
   backlogId: string;
   allBacklogIds: string[];
+  isAdding: boolean;
+  onStartAdd: () => void;
+  onCommitAdd: (title: string) => void;
+  onCancelAdd: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -182,26 +278,44 @@ function BoardColumn({
           style={{ backgroundColor: column.color }}
         />
         <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
-        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+        <span className="text-xs tabular-nums text-muted-foreground">
           {items.length}
         </span>
+        <button
+          className="ml-auto w-5 h-5 flex items-center justify-center rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStartAdd();
+          }}
+          title={`Add item to ${column.label}`}
+        >
+          <Plus className="w-3 h-3" />
+        </button>
       </div>
-      <div ref={setNodeRef} className="flex-1 overflow-y-auto p-1.5 space-y-1.5">
-        {items.map((wi) => (
-          <BoardCard
-            key={wi.id}
-            item={wi}
-            selected={selectedIds.includes(wi.id)}
-            onClick={(ctrl) => onSelectItem(wi.id, ctrl)}
-            treeStatuses={treeStatuses}
-            treeId={treeId}
-            backlogId={backlogId}
-            allBacklogIds={allBacklogIds}
+      <div ref={setNodeRef} className="flex-1 overflow-y-auto">
+        {isAdding && (
+          <ColumnAddInput
+            onAdd={onCommitAdd}
+            onCancel={onCancelAdd}
           />
-        ))}
-        {items.length === 0 && (
-          <div className="text-xs text-muted-foreground text-center py-6">Drop here</div>
         )}
+        <div className="p-1.5 space-y-1.5">
+          {items.map((wi) => (
+            <BoardCard
+              key={wi.id}
+              item={wi}
+              selected={selectedIds.includes(wi.id)}
+              onClick={(ctrl) => onSelectItem(wi.id, ctrl)}
+              treeStatuses={treeStatuses}
+              treeId={treeId}
+              backlogId={backlogId}
+              allBacklogIds={allBacklogIds}
+            />
+          ))}
+          {items.length === 0 && !isAdding && (
+            <div className="text-xs text-muted-foreground text-center py-6">Drop here</div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -248,7 +362,6 @@ function BoardCard({
   // App store actions
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
-  const deleteWorkItemsBulk = useAppStore((s) => s.deleteWorkItemsBulk);
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
