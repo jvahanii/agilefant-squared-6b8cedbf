@@ -7,6 +7,7 @@ interface OrgSettings {
   labelsEnabled: boolean;
   customStatusesEnabled: boolean;
   savingsIncomeEnabled: boolean;
+  boardsEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -19,6 +20,7 @@ interface OrgSettingsState {
   setLabelsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setCustomStatusesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setSavingsIncomeEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setBoardsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -28,6 +30,7 @@ const defaults: OrgSettings = {
   labelsEnabled: false,
   customStatusesEnabled: false,
   savingsIncomeEnabled: false,
+  boardsEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
