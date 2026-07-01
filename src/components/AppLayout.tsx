@@ -1086,7 +1086,7 @@ function AppLayoutInner() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       autoScroll={{
-        threshold: { x: 0, y: 0.18 },
+        threshold: { x: 0.18, y: 0.18 },
         acceleration: 25,
         interval: 5,
       }}
