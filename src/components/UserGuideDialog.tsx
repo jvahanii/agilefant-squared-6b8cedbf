@@ -24,6 +24,7 @@ import {
   Eye,
   Shield,
   TrendingUp,
+  LayoutGrid,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -318,6 +319,74 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["/"]} description="Focus search bar" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
           </div>
+        </div>
+      ),
+    },
+    {
+      id: "boardview",
+      icon: <LayoutGrid className="w-4 h-4" />,
+      label: "Board View",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The <strong className="text-foreground">Board View</strong> shows leaf (non-parent) work items as
+            cards grouped by status column. Each status becomes a column where you can see and manage items at
+            a glance.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Switch to Board",
+                how: 'Click the "Board" tab in the toolbar above the work items panel. The List / Board toggle appears when boards are enabled in Settings.',
+              },
+              {
+                action: "Switch back to List",
+                how: 'Click "List" in the same toolbar toggle. Your preference is remembered globally.',
+              },
+              {
+                action: "Change item status",
+                how: (
+                  <>
+                    Drag a card from one column to another to change its status instantly, or right-click the
+                    card and choose <strong>Status</strong> → pick a status.
+                  </>
+                ),
+              },
+              {
+                action: "Add item to a column",
+                how: 'Click the "+" button in any column header to add a new item directly with that status.',
+              },
+              {
+                action: "Reorder within a column",
+                how: "Drag a card up or down within a column to reorder it. Drop zones appear between cards.",
+              },
+              {
+                action: "Board cards show",
+                how: "Cards display the item title, story points (if enabled), assigned labels, and team badges.",
+              },
+              {
+                action: "Hidden columns",
+                how: (
+                  <>
+                    Click the <strong>Columns</strong> dropdown above the board to toggle column visibility. 
+                    Hidden columns disappear from the board but items in those statuses remain intact. 
+                    Visibility is per-tree and persisted to the database — everyone sharing the tree sees 
+                    the same column layout. A badge shows the count of visible columns (e.g. 3/5).
+                  </>
+                ),
+              },
+              {
+                action: "All hidden state",
+                how: "If every column is hidden, a message appears suggesting you use the Columns dropdown to show them.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Board view is ideal for kanban-style workflows — drag an item from "Not Started" to "In Progress"
+            to "Done" as it moves through your pipeline.
+          </Tip>
         </div>
       ),
     },
