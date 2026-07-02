@@ -449,7 +449,7 @@ function BoardColumn({
   return (
     <div
       className={cn(
-        "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/30 h-full",
+        "flex flex-col w-56 shrink-0 rounded-lg border bg-muted/20 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
     >
@@ -458,7 +458,7 @@ function BoardColumn({
           <div
             ref={headerRef}
             draggable={onMoveColumn != null}
-            className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
+            className="flex items-center gap-1.5 px-2.5 py-2 border-b sticky top-0 bg-background/80 backdrop-blur-sm rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
             onDragStart={(e) => {
               if (!onMoveColumn) return;
               e.dataTransfer.setData("text/plain", column.key);
@@ -515,9 +515,11 @@ function BoardColumn({
               style={{ backgroundColor: column.color }}
             />
             <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {items.length}
-            </span>
+            {items.length > 0 && (
+              <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded-full bg-muted/80 text-muted-foreground ml-0.5">
+                {items.length}
+              </span>
+            )}
             <button
               className="ml-auto w-5 h-5 flex items-center justify-center rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors shrink-0"
               onClick={(e) => {
@@ -574,7 +576,10 @@ function BoardColumn({
             </div>
           ))}
           {items.length === 0 && !isAdding && (
-            <div className="text-xs text-muted-foreground text-center py-6">Drop here</div>
+            <div className="flex flex-col items-center justify-center gap-1 py-10 text-muted-foreground/50">
+              <Plus className="w-5 h-5 stroke-[1.5]" />
+              <span className="text-[11px]">Drop cards here</span>
+            </div>
           )}
         </div>
       </div>
@@ -621,6 +626,12 @@ function BoardCard({
   }, [byEntity, labelsMap, item.id]);
   const { scrambleEnabled } = useScramble();
   const title = scrambleEnabled ? scrambleName(item.title) : item.title;
+
+  // Status color for visual accent
+  const statusColor = useMemo(
+    () => treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8",
+    [treeStatuses, item.status],
+  );
 
   // App store actions
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
@@ -770,12 +781,24 @@ function BoardCard({
               onClick(e.ctrlKey || e.metaKey);
             }}
             className={cn(
-              "group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none",
+              "relative group rounded-md border bg-card shadow-sm p-2 text-xs select-none overflow-hidden",
               !isMobile && "cursor-grab active:cursor-grabbing hover:border-accent-foreground/30 touch-none",
               selected && "ring-2 ring-primary border-primary",
               isDragging && "opacity-40",
+              isSnoozed && "opacity-60",
             )}
           >
+            {/* Status color left accent bar */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1 rounded-l-md"
+              style={{ backgroundColor: statusColor }}
+            />
+            {/* Snoozed diagonal watermark */}
+            {isSnoozed && (
+              <div className="absolute right-1 top-1 text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-wider rotate-12">
+                snoozed
+              </div>
+            )}
             <div className="flex items-start gap-1 justify-between">
               {isEditingTitle ? (
                 <input
@@ -816,8 +839,9 @@ function BoardCard({
               {labels.map((l) => (
                 <span
                   key={l.id}
-                  className="text-[10px] px-1 py-0.5 rounded"
+                  className="text-[10px] px-1.5 py-0.5 rounded-full font-medium max-w-[80px] truncate"
                   style={{ backgroundColor: `${l.color}22`, color: l.color }}
+                  title={l.name}
                 >
                   {l.name}
                 </span>
@@ -829,7 +853,7 @@ function BoardCard({
                 return (
                   <span
                     key={tid}
-                    className="text-[10px] px-1 py-0.5 rounded bg-secondary text-secondary-foreground"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-secondary/60 text-secondary-foreground max-w-[80px] truncate"
                     title={name}
                   >
                     {name}
