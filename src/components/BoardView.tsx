@@ -758,6 +758,22 @@ function BoardCard({
               </ContextMenuRadioGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          <ContextMenuItem 
+            className="text-xs" 
+            onSelect={() => {
+              setViewMode("list");
+              // Select the item and scroll into view after view mode change and React reconciliation
+              setTimeout(() => {
+                selectWorkItem(item.id, false);
+                document
+                  .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
+                  ?.scrollIntoView({ block: "nearest" });
+              }, REACT_RECONCILIATION_DELAY);
+            }}
+          >
+            <ListIcon className="w-3 h-3 mr-2" />
+            View in list
+          </ContextMenuItem>
           <ContextMenuItem
             className="text-xs"
             onSelect={handleMoveToTop}
@@ -936,23 +952,6 @@ function BoardCard({
               Unsnooze
             </ContextMenuItem>
           )}
-          <ContextMenuSeparator />
-          <ContextMenuItem 
-            className="text-xs" 
-            onSelect={() => {
-              setViewMode("list");
-              // Select the item and scroll into view after view mode change and React reconciliation
-              setTimeout(() => {
-                selectWorkItem(item.id, false);
-                document
-                  .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
-                  ?.scrollIntoView({ block: "nearest" });
-              }, REACT_RECONCILIATION_DELAY);
-            }}
-          >
-            <ListIcon className="w-3 h-3 mr-2" />
-            View in list
-          </ContextMenuItem>
           <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
             <RotateCcw className="w-3 h-3 mr-2" />
             Respawn settings

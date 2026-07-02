@@ -1089,6 +1089,16 @@ function WorkItemNodeContent({
               </ContextMenuRadioGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          <ContextMenuItem className="text-xs" onSelect={() => {
+            setViewMode("board");
+            // Select the item after view mode change and React reconciliation
+            setTimeout(() => {
+              selectWorkItem(workItemId, false);
+            }, 100);
+          }}>
+            <LayoutGrid className="w-3 h-3 mr-2" />
+            View in board
+          </ContextMenuItem>
           <ContextMenuItem
             className="text-xs"
             onSelect={() => {
@@ -1278,17 +1288,6 @@ function WorkItemNodeContent({
           </ContextMenuItem>
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             Hyperlinks
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs" onSelect={() => {
-            setViewMode("board");
-            // Select the item after view mode change and React reconciliation
-            setTimeout(() => {
-              selectWorkItem(workItemId, false);
-            }, 100);
-          }}>
-            <LayoutGrid className="w-3 h-3 mr-2" />
-            View in board
           </ContextMenuItem>
           {isSavingsIncomeEnabled(activeOrgId) && (
             <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
