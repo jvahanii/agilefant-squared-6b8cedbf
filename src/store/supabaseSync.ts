@@ -522,6 +522,14 @@ export async function upsertBacklog(bl: Backlog, organizationId: string) {
   if (error) console.error('upsertBacklog:', error);
 }
 
+export async function updateBacklogHiddenStatusKeys(backlogId: string, keys: string[]) {
+  const { error } = await supabase
+    .from('backlogs')
+    .update({ board_hidden_status_keys: keys } as any)
+    .eq('id', backlogId);
+  if (error) console.error('updateBacklogHiddenStatusKeys:', error);
+}
+
 export async function deleteBacklogs(ids: string[]) {
   if (ids.length === 0) return;
   // Also delete any double-prefixed variants that may exist in the DB
