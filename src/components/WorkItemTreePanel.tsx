@@ -1283,7 +1283,6 @@ function WorkItemNodeContent({
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
           </ContextMenuItem>
-          <ContextMenuSeparator />
           {isSavingsIncomeEnabled(activeOrgId) && (
             <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
               Savings &amp; Income

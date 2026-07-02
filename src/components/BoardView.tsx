@@ -936,18 +936,17 @@ function BoardCard({
             className="text-xs" 
             onSelect={() => {
               setViewMode("list");
-              // Scroll the item into view after view mode change
-              requestAnimationFrame(() => {
+              // Scroll the item into view after view mode change and React reconciliation
+              setTimeout(() => {
                 document
                   .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
                   ?.scrollIntoView({ block: "nearest" });
-              });
+              }, 100);
             }}
           >
             <ListIcon className="w-3 h-3 mr-2" />
             View in list
           </ContextMenuItem>
-          <ContextMenuSeparator />
           <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
             <RotateCcw className="w-3 h-3 mr-2" />
             Respawn settings
