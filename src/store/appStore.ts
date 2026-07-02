@@ -2610,6 +2610,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({
         backlogs: { ...state.backlogs, [backlogId]: { ...bl, boardHiddenStatusKeys: dedup } },
       });
+    },
+
+
 
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
       const state = get();
