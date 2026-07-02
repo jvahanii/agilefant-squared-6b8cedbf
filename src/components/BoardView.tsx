@@ -216,6 +216,37 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const columns = useMemo(() => allColumns.filter((c) => !hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
   const hiddenColumns = useMemo(() => allColumns.filter((c) => hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
 
+  // Per-backlog column order persisted in localStorage.
+  const storageKey = `board-column-order:${backlogId}`;
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) return JSON.parse(raw) as string[];
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  const saveColumnOrder = useCallback(
+    (order: string[]) => {
+      setColumnOrder(order);
+      localStorage.setItem(storageKey, JSON.stringify(order));
+    },
+    [storageKey],
+  );
+
+  // Sort visible columns by the persisted order; columns not yet in the
+  // order list appear after any ordered ones in their default sequence.
+  const orderedColumns = useMemo(() => {
+    const visible = columns;
+    const keySet = new Set(visible.map((c) => c.key));
+    // Keep only keys that still exist (prune removed statuses).
+    const pruned = columnOrder.filter((k) => keySet.has(k));
+    const orderedSet = new Set(pruned);
+    const tail = visible.filter((c) => !orderedSet.has(c.key));
+    const map = new Map(visible.map((c) => [c.key, c]));
+    return [...pruned.map((k) => map.get(k)!).filter(Boolean), ...tail];
+  }, [columns, columnOrder]);
+
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
 
@@ -288,8 +319,8 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   return (
     <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2">
       <div className="flex gap-2 h-full min-w-max">
-        {columns.map((col) => (
-          <BoardColumn
+        {orderedColumns.map((col) => (
+            <BoardColumn
             key={col.id}
             column={col}
             items={cardsByStatus[col.key] ?? []}
@@ -307,6 +338,17 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             onCancelAdd={() => setAddingColumnKey(null)}
             onToggleHidden={() => toggleHideStatusKey(col.key)}
             setViewMode={setViewMode}
+            allColumnKeys={orderedColumns.map((c) => c.key)}
+            onMoveColumn={(fromKey, toKey) => {
+              const current = orderedColumns.map((c) => c.key);
+              const fromIdx = current.indexOf(fromKey);
+              const toIdx = current.indexOf(toKey);
+              if (fromIdx === -1 || toIdx === -1) return;
+              const next = [...current];
+              next.splice(fromIdx, 1);
+              next.splice(toIdx, 0, fromKey);
+              saveColumnOrder(next);
+            }}
           />
         ))}
         {hiddenColumns.map((col) => (
@@ -374,6 +416,8 @@ function BoardColumn({
   onCancelAdd,
   onToggleHidden,
   setViewMode,
+  allColumnKeys,
+  onMoveColumn,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -389,11 +433,19 @@ function BoardColumn({
   onCancelAdd: () => void;
   onToggleHidden: () => void;
   setViewMode: (mode: "list" | "board") => void;
+  allColumnKeys?: string[];
+  onMoveColumn?: (fromKey: string, toKey: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
     data: { type: "board-column", statusKey: column.key },
   });
+
+  // HTML5 dragover indicator
+  const [dragOverDir, setDragOverDir] = useState<"left" | "right" | null>(null);
+
+  const headerRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
       className={cn(
@@ -403,7 +455,35 @@ function BoardColumn({
     >
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg">
+          <div
+            ref={headerRef}
+            draggable={onMoveColumn != null}
+            className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+            onDragStart={(e) => {
+              if (!onMoveColumn) return;
+              e.dataTransfer.setData("text/plain", column.key);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              if (!onMoveColumn) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              const rect = headerRef.current?.getBoundingClientRect();
+              if (rect) {
+                setDragOverDir(e.clientX < rect.left + rect.width / 2 ? "left" : "right");
+              }
+            }}
+            onDragLeave={() => setDragOverDir(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOverDir(null);
+              const fromKey = e.dataTransfer.getData("text/plain");
+              if (fromKey && fromKey !== column.key && onMoveColumn) {
+                onMoveColumn(fromKey, column.key);
+              }
+            }}
+            onDragEnd={() => setDragOverDir(null)}
+          >
             <span
               className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: column.color }}
