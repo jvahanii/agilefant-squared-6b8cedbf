@@ -940,10 +940,10 @@ function BoardCard({
           <ContextMenuItem 
             className="text-xs" 
             onSelect={() => {
-              selectWorkItem(item.id, false);
               setViewMode("list");
-              // Scroll the item into view after view mode change and React reconciliation
+              // Select the item and scroll into view after view mode change and React reconciliation
               setTimeout(() => {
+                selectWorkItem(item.id, false);
                 document
                   .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
                   ?.scrollIntoView({ block: "nearest" });
