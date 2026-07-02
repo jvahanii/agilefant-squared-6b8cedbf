@@ -6,7 +6,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
-import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye } from "lucide-react";
+import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon } from "lucide-react";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,6 +50,8 @@ interface BoardViewProps {
   treeId: string;
   /** Function to add a new work item. Called with title, parentId, backlogId, treeId. */
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
+  /** Function to switch between list and board views */
+  setViewMode: (mode: "list" | "board") => void;
 }
 
 const EMPTY_ARR: string[] = [];
@@ -173,7 +175,7 @@ function ColumnAddInput({
   );
 }
 
-export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
+export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: BoardViewProps) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
@@ -300,6 +302,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
             }}
             onCancelAdd={() => setAddingColumnKey(null)}
             onToggleHidden={() => toggleHideStatusKey(col.key)}
+            setViewMode={setViewMode}
           />
         ))}
         {hiddenColumns.map((col) => (
@@ -366,6 +369,7 @@ function BoardColumn({
   onCommitAdd,
   onCancelAdd,
   onToggleHidden,
+  setViewMode,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -380,6 +384,7 @@ function BoardColumn({
   onCommitAdd: (title: string) => void;
   onCancelAdd: () => void;
   onToggleHidden: () => void;
+  setViewMode: (mode: "list" | "board") => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -447,6 +452,7 @@ function BoardColumn({
                 treeId={treeId}
                 backlogId={backlogId}
                 allBacklogIds={allBacklogIds}
+                setViewMode={setViewMode}
               />
               {/* Reorder drop zone after this card */}
               <BoardReorderDropZone
@@ -474,6 +480,7 @@ function BoardCard({
   treeId,
   backlogId,
   allBacklogIds,
+  setViewMode,
 }: {
   item: WorkItem;
   selected: boolean;
@@ -482,6 +489,7 @@ function BoardCard({
   treeId: string;
   backlogId: string;
   allBacklogIds: string[];
+  setViewMode: (mode: "list" | "board") => void;
 }) {
   const isMobile = useIsMobile();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -923,6 +931,12 @@ function BoardCard({
               Unsnooze
             </ContextMenuItem>
           )}
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs" onSelect={() => setViewMode("list")}>
+            <ListIcon className="w-3 h-3 mr-2" />
+            View in list
+          </ContextMenuItem>
+          <ContextMenuSeparator />
           <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
             <RotateCcw className="w-3 h-3 mr-2" />
             Respawn settings
