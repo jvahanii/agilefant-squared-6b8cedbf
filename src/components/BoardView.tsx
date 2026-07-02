@@ -458,7 +458,7 @@ function BoardColumn({
           <div
             ref={headerRef}
             draggable={onMoveColumn != null}
-            className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg cursor-grab active:cursor-grabbing select-none"
+            className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
             onDragStart={(e) => {
               if (!onMoveColumn) return;
               e.dataTransfer.setData("text/plain", column.key);
@@ -484,6 +484,32 @@ function BoardColumn({
             }}
             onDragEnd={() => setDragOverDir(null)}
           >
+            {/* Left-side drop indicator bar */}
+            <div
+              className={cn(
+                "absolute left-0 top-0 bottom-0 rounded-l-lg transition-all duration-200 ease-out pointer-events-none",
+                dragOverDir === "left"
+                  ? "w-1 bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]"
+                  : "w-0 bg-transparent",
+              )}
+            />
+            {/* Right-side drop indicator bar */}
+            <div
+              className={cn(
+                "absolute right-0 top-0 bottom-0 rounded-r-lg transition-all duration-200 ease-out pointer-events-none",
+                dragOverDir === "right"
+                  ? "w-1 bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]"
+                  : "w-0 bg-transparent",
+              )}
+            />
+            {/* Glowing dot on active drop side */}
+            {dragOverDir === "left" && (
+              <div className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150 pointer-events-none" />
+            )}
+            {dragOverDir === "right" && (
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150 pointer-events-none" />
+            )}
+            <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
             <span
               className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: column.color }}
