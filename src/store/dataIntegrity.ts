@@ -475,7 +475,7 @@ export function cleanseData(data: StoreData): CleanseResult {
   const wiRankGroups = new Map<string, { ids: string[]; backlogId: string }>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
-      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
+      const key = `${treeId}::${blId}::${getEffectiveParentId(wi, treeId) ?? "ROOT"}`;
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, { ids: [], backlogId: blId });
       wiRankGroups.get(key)!.ids.push(wi.id);
     });
