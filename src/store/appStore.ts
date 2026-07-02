@@ -888,8 +888,24 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
 
         clearTimeout(timeoutId);
+
+        // Silent duplicate-rank auto-heal: densify any sibling groups whose
+        // per-backlog ranks collide (grouped by tree, backlog, and effective
+        // per-tree parent). Fixes are applied to local state AND persisted to
+        // the DB so the next reload starts clean.
+        const healed = healDuplicateRanks(cleanData.workItems);
+        const finalWorkItems = healed.workItems;
+        if (healed.rankRows.length > 0) {
+          const rowsWithOrg: WorkItemBacklogRankUpsert[] = healed.rankRows.map((r) => ({
+            ...r,
+            organizationId: finalWorkItems[r.workItemId]?.organizationId ?? orgId,
+          }));
+          persistRankUpserts(rowsWithOrg);
+        }
+
         set({
           ...cleanData,
+          workItems: finalWorkItems,
           hyperlinks,
           // changeLog loaded lazily via loadChangeLog action.
           changeLog: [],
@@ -903,6 +919,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           expandedBacklogs,
           expandedWorkItems,
         });
+
       } catch (err) {
         clearTimeout(timeoutId);
         set({ isLoading: false, loadingProgress: 0 });
