@@ -197,7 +197,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   const backlogs: Record<string, Backlog> = {};
   for (const row of cleanBacklogRows) {
-    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank };
+    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [] };
   }
   for (const bl of Object.values(backlogs)) {
     if (bl.parentId && backlogs[bl.parentId]) {
