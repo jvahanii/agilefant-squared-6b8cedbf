@@ -932,7 +932,18 @@ function BoardCard({
             </ContextMenuItem>
           )}
           <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs" onSelect={() => setViewMode("list")}>
+          <ContextMenuItem 
+            className="text-xs" 
+            onSelect={() => {
+              setViewMode("list");
+              // Scroll the item into view after view mode change
+              requestAnimationFrame(() => {
+                document
+                  .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
+                  ?.scrollIntoView({ block: "nearest" });
+              });
+            }}
+          >
             <ListIcon className="w-3 h-3 mr-2" />
             View in list
           </ContextMenuItem>
