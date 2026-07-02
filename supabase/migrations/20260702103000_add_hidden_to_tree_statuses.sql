@@ -1,0 +1,2 @@
+-- Column visibility is now tracked per-backlog in the client (localStorage),
+-- so no DB schema change is required for the hide/show board columns feature.
