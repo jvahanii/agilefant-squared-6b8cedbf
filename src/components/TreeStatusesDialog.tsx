@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Lock, Plus, Trash2 } from "lucide-react";
 import {
   useTreeStatusesStore,
   isPinnedStatus,
@@ -44,7 +44,6 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
   const updateStatus = useTreeStatusesStore((s) => s.updateStatus);
   const deleteStatus = useTreeStatusesStore((s) => s.deleteStatus);
   const reorderStatuses = useTreeStatusesStore((s) => s.reorderStatuses);
-  const toggleStatusHidden = useTreeStatusesStore((s) => s.toggleStatusHidden);
 
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState(COLOR_PRESETS[0]);
@@ -117,7 +116,6 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
               onUp={() => moveUp(idx)}
               onDown={() => moveDown(idx)}
               onDelete={() => deleteStatus(s.id)}
-              onToggleHidden={() => toggleStatusHidden(s.id)}
               canDelete={list.length > 1}
             />
           ))}
@@ -171,7 +169,6 @@ function StatusRow({
   onUp,
   onDown,
   onDelete,
-  onToggleHidden,
   canDelete,
 }: {
   status: TreeStatus;
@@ -183,7 +180,6 @@ function StatusRow({
   onUp: () => void;
   onDown: () => void;
   onDelete: () => void;
-  onToggleHidden: () => void;
   canDelete: boolean;
 }) {
   const [label, setLabel] = useState(status.label);
@@ -214,18 +210,9 @@ function StatusRow({
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
         readOnly={locked}
-        className={`flex-1 ${locked ? "cursor-default opacity-80" : ""} ${status.hidden ? "line-through text-muted-foreground" : ""}`}
+        className={`flex-1 ${locked ? "cursor-default opacity-80" : ""}`}
         title={locked ? "Required status — label cannot be changed" : undefined}
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggleHidden}
-        title={status.hidden ? "Show column in board" : "Hide column in board"}
-        className={status.hidden ? "text-muted-foreground" : ""}
-      >
-        {status.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-      </Button>
       {locked ? (
         <span title="Required status — cannot be edited or removed" className="shrink-0 inline-flex">
           <Lock className="w-4 h-4 text-muted-foreground" />

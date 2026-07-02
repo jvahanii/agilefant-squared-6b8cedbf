@@ -161,7 +161,6 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
-  const toggleStatusHidden = useTreeStatusesStore((s) => s.toggleStatusHidden);
 
   const allColumns = useMemo<TreeStatus[]>(() => {
     const list = statusesByTree[treeId];
@@ -174,8 +173,47 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
 
-  const columns = useMemo(() => allColumns.filter((c) => !c.hidden), [allColumns]);
-  const hiddenColumns = useMemo(() => allColumns.filter((c) => c.hidden), [allColumns]);
+  // Per-backlog column visibility, persisted to localStorage.
+  const storageKey = `board-hidden-cols:${backlogId}`;
+  const [hiddenStatusKeys, setHiddenStatusKeys] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Re-load when the viewed backlog changes.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setHiddenStatusKeys(raw ? new Set(JSON.parse(raw) as string[]) : new Set());
+    } catch {
+      setHiddenStatusKeys(new Set());
+    }
+  }, [storageKey]);
+
+  const toggleHideStatusKey = useCallback(
+    (key: string) => {
+      setHiddenStatusKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {}
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  const columns = useMemo(() => allColumns.filter((c) => !hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
+  const hiddenColumns = useMemo(() => allColumns.filter((c) => hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
 
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
@@ -266,7 +304,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
               handleColumnAdd(col.key, title);
             }}
             onCancelAdd={() => setAddingColumnKey(null)}
-            onToggleHidden={() => toggleStatusHidden(col.id)}
+            onToggleHidden={() => toggleHideStatusKey(col.key)}
           />
         ))}
         {hiddenColumns.map((col) => (
@@ -274,7 +312,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
             key={col.id}
             column={col}
             itemCount={cardsByStatus[col.key]?.length ?? 0}
-            onShow={() => toggleStatusHidden(col.id)}
+            onShow={() => toggleHideStatusKey(col.key)}
           />
         ))}
       </div>
@@ -292,7 +330,7 @@ function HiddenColumnStrip({
   itemCount: number;
   onShow: () => void;
 }) {
-  const label = `Show "${column.label}" column (${itemCount} item${itemCount !== 1 ? "s" : ""})`;
+  const label = `Show "${column.label}" column (${itemCount} ${itemCount === 1 ? "item" : "items"})`;
   return (
     <button
       onClick={onShow}
