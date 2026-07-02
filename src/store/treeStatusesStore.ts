@@ -8,7 +8,6 @@ export interface TreeStatus {
   label: string;
   color: string;
   rank: number;
-  visible: boolean;
 }
 
 /** Keys of the statuses that every tree must always have and that cannot be edited or deleted. */
@@ -23,18 +22,18 @@ export function isPinnedStatus(key: string): boolean {
 /** Hard-coded fallback used when a tree has no rows in `tree_statuses`
  *  (e.g. immediately after creation, before realtime delivers them). */
 export const DEFAULT_TREE_STATUSES: Omit<TreeStatus, 'id' | 'treeId'>[] = [
-  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0, visible: true },
-  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1, visible: true },
-  { key: 'pending',     label: 'Pending',     color: '#93c5fd', rank: 2, visible: true },
-  { key: 'blocked',     label: 'Blocked',     color: '#ef4444', rank: 3, visible: true },
-  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4, visible: true },
+  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
+  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1 },
+  { key: 'pending',     label: 'Pending',     color: '#93c5fd', rank: 2 },
+  { key: 'blocked',     label: 'Blocked',     color: '#ef4444', rank: 3 },
+  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4 },
 ];
 
 /** The pinned statuses seeded into every new tree, in canonical order. */
 const PINNED_STATUS_SEEDS: Omit<TreeStatus, 'id' | 'treeId'>[] = [
-  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0, visible: true },
-  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1, visible: true },
-  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 999, visible: true },
+  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
+  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1 },
+  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 999 },
 ];
 
 interface TreeStatusesState {
@@ -45,7 +44,7 @@ interface TreeStatusesState {
   loadStatusesForTrees: (treeIds: string[]) => Promise<void>;
   seedPinnedStatuses: (treeId: string) => Promise<void>;
   createStatus: (treeId: string, key: string, label: string, color: string) => Promise<void>;
-  updateStatus: (id: string, patch: Partial<Pick<TreeStatus, 'label' | 'color' | 'key' | 'visible'>>) => Promise<void>;
+  updateStatus: (id: string, patch: Partial<Pick<TreeStatus, 'label' | 'color' | 'key'>>) => Promise<void>;
   deleteStatus: (id: string) => Promise<void>;
   reorderStatuses: (treeId: string, orderedIds: string[]) => Promise<void>;
 
@@ -60,7 +59,6 @@ function rowToStatus(row: Record<string, unknown>): TreeStatus {
     label: row.label as string,
     color: row.color as string,
     rank: (row.rank as number) ?? 0,
-    visible: (row.visible as boolean) ?? true,
   };
 }
 
@@ -122,7 +120,7 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
           : seed.rank;
         const { data, error } = await supabase
           .from('tree_statuses' as any)
-          .insert({ tree_id: treeId, key: seed.key, label: seed.label, color: seed.color, rank, visible: seed.visible })
+          .insert({ tree_id: treeId, key: seed.key, label: seed.label, color: seed.color, rank })
           .select()
           .single();
         if (error) {
@@ -145,7 +143,7 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
     const nextRank = existing.length > 0 ? Math.max(...existing.map((s) => s.rank)) + 1 : 0;
     const { data, error } = await supabase
       .from('tree_statuses' as any)
-      .insert({ tree_id: treeId, key, label, color, rank: nextRank, visible: true })
+      .insert({ tree_id: treeId, key, label, color, rank: nextRank })
       .select()
       .single();
     if (error) {
@@ -162,14 +160,11 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
   },
 
   updateStatus: async (id, patch) => {
-    // Guard: pinned statuses cannot be edited (but visibility can be toggled).
+    // Guard: pinned statuses cannot be edited.
     const allLists = Object.values(get().statusesByTree);
     for (const list of allLists) {
       const status = list.find((s) => s.id === id);
-      if (status && isPinnedStatus(status.key)) {
-        // Only allow toggling visible for pinned statuses, not other edits
-        if (Object.keys(patch).some(k => k !== 'visible')) return;
-      }
+      if (status && isPinnedStatus(status.key)) return;
     }
 
     // Optimistic
@@ -189,7 +184,6 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
     if (patch.label !== undefined) dbPatch.label = patch.label;
     if (patch.color !== undefined) dbPatch.color = patch.color;
     if (patch.key !== undefined) dbPatch.key = patch.key;
-    if (patch.visible !== undefined) dbPatch.visible = patch.visible;
     const { error } = await supabase.from('tree_statuses' as any).update(dbPatch).eq('id', id);
     if (error) console.error('updateStatus failed', error);
   },

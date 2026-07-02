@@ -6,7 +6,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
-import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, Columns as ColumnsIcon, EyeOff } from "lucide-react";
+import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock } from "lucide-react";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,14 +44,6 @@ import {
   ContextMenuRadioItem,
   ContextMenuCheckboxItem,
 } from "@/components/ui/context-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 
 interface BoardViewProps {
   backlogId: string;
@@ -169,9 +161,8 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
-  const updateStatus = useTreeStatusesStore((s) => s.updateStatus);
 
-  const allColumns = useMemo<TreeStatus[]>(() => {
+  const columns = useMemo<TreeStatus[]>(() => {
     const list = statusesByTree[treeId];
     if (list && list.length > 0) return list;
     return DEFAULT_TREE_STATUSES.map((s, i) => ({
@@ -181,19 +172,6 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
       rank: i,
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
-
-  // Filter to only visible columns for display
-  const columns = useMemo(() => allColumns.filter((c) => c.visible), [allColumns]);
-
-  // Toggle column visibility (persisted to DB)
-  const toggleColumn = useCallback(
-    (statusId: string) => {
-      const status = allColumns.find((c) => c.id === statusId);
-      if (!status) return;
-      updateStatus(statusId, { visible: !status.visible });
-    },
-    [allColumns, updateStatus],
-  );
 
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
@@ -264,61 +242,9 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
     return Array.from(ids);
   }, [backlogId, backlogs]);
 
-  const hiddenCount = allColumns.length - columns.length;
-
   return (
     <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2">
-      {/* Columns toggle dropdown */}
-      {allColumns.length > 0 && (
-        <div className="mb-2 flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="Toggle column visibility"
-              >
-                <ColumnsIcon className="w-3.5 h-3.5" />
-                <span>Columns</span>
-                {hiddenCount > 0 && (
-                  <span className="text-[10px] tabular-nums bg-muted-foreground/20 px-1 rounded">
-                    {columns.length}/{allColumns.length}
-                  </span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48" align="start">
-              <DropdownMenuLabel className="text-xs">Visible Columns</DropdownMenuLabel>
-              {allColumns.map((col) => (
-                <DropdownMenuItem
-                  key={col.id}
-                  className="text-xs flex items-center gap-2 cursor-pointer"
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={() => toggleColumn(col.id)}
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: col.color }}
-                  />
-                  <span className="flex-1 truncate">{col.label}</span>
-                  {col.visible ? (
-                    <span className="text-[10px] text-primary">Shown</span>
-                  ) : (
-                    <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                      <EyeOff className="w-3 h-3" /> Hidden
-                    </span>
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
       <div className="flex gap-2 h-full min-w-max">
-        {columns.length === 0 && allColumns.length > 0 && (
-          <div className="flex items-center justify-center w-full h-20 text-xs text-muted-foreground">
-            <span>All columns are hidden. Use "Columns" above to show them.</span>
-          </div>
-        )}
         {columns.map((col) => (
           <BoardColumn
             key={col.id}
@@ -326,7 +252,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
             items={cardsByStatus[col.key] ?? []}
             selectedIds={selectedWorkItemIds}
             onSelectItem={(id, ctrl) => selectWorkItem(id, ctrl)}
-            treeStatuses={allColumns}
+            treeStatuses={columns}
             treeId={treeId}
             backlogId={backlogId}
             allBacklogIds={allBacklogIds}
