@@ -30,7 +30,7 @@ jobs:
           db_url="${{ secrets.SUPABASE_DB_URL }}"
           echo "::add-mask::$db_url"
 
-          if [[ "$db_url" =~ @db\. ]]; then
+          if [[ "$db_url" =~ @db\.[a-z0-9-]+\.supabase\.co([:/]|$) ]]; then
             if [[ ! -f "supabase/.temp/pooler-url" ]]; then
               echo "::error::SUPABASE_DB_URL points to db.<project>.supabase.co (IPv6 direct host), but supabase/.temp/pooler-url is missing."
               exit 1
@@ -38,6 +38,10 @@ jobs:
 
             pooler_url="$(cat supabase/.temp/pooler-url)"
             echo "::add-mask::$pooler_url"
+            if [[ ! "$pooler_url" =~ ^postgres(ql)?://[^@]+@[^/]*pooler\.supabase\.com:[0-9]+(/|$) ]]; then
+              echo "::error::supabase/.temp/pooler-url does not contain a valid Supabase transaction pooler URL."
+              exit 1
+            fi
 
             pooler_host_port="${pooler_url#*@}"
             pooler_host_port="${pooler_host_port%%/*}"
