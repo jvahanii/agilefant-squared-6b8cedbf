@@ -1,50 +1,53 @@
-
 ## Diagnosis
 
-I queried the reported backlog directly ("MWB Uuden duunin saaminen", 182 items). Findings:
+Two distinct bugs, both rooted in code that compares the *global* `parentId` where it should compare the *effective per-tree parent* (`getEffectiveParentId(wi, treeId)`).
 
-- **Ranks are corrupted at the database level.** Within a single (backlog, parent) sibling group there are many duplicate ranks — e.g. under parent "NOT THIS TIME": rank 20 has 3 items, and ranks 0, 1, 3, 7, 12, 13, 16, 17, 23, 24, 26, 27, 28, 29 each have 2 items. Similar duplication exists under other parents in this backlog. Because the client sorts by `(rank, id)` with `rank` as the primary key, duplicated ranks give the sort no stable answer, so items visibly swap places between refreshes / tab switches. New items also collide because their assigned rank is picked from a store that already contains duplicates.
-- **Parents are intact in the DB.** Every effective parent (global `parent_id` merged with the per-tree `parent_id_overrides` for this tree) resolves to a real work item — no ghosts. So "parents disappear" is almost certainly a *client-side* symptom, most likely a realtime update path that strips `parent_id_overrides` after a sibling edit. I want to re-verify the sync code paths as part of the fix, not blindly patch again.
+### Bug A — "Sometimes does nothing"
+`src/components/AppLayout.tsx` line 915, inside the drag reorder path:
 
-So: yes, part of this is a database problem (the duplicate ranks), and part is a client sync problem worth re-auditing.
+```ts
+if (wi.parentId !== targetParentId) {
+  reparentWorkItem(id, targetParentId, treeId, backlogId);
+  ...
+}
+```
+
+For an item that has a per-tree parent override in `treeId`, `wi.parentId` (global) does not describe where the item actually lives in this tree. If the effective parent in this tree already differs from `targetParentId` but the global `parentId` happens to equal `targetParentId`, the guard falsely returns "already there" and skips the reparent. The reorder step then runs against the wrong sibling group and nothing visibly moves.
+
+### Bug B — "Copies of the same item appear"
+Inside `reparentWorkItem` in `src/store/appStore.ts`, the single-tree (`!isMultiTree`) branch computes the destination rank by scanning siblings whose *global* parent equals `newParentId`:
+
+- line 2265: `if (wi.parentId !== newParentId) continue;`
+- line 2338: `if (wi.parentId !== newParentId) continue;`
+
+Other items sitting under `newParentId` in this tree via a per-tree override are skipped by that filter, so `maxRank + 1` collides with a rank an override-sibling already owns. Since the tree sorts by `(rank, id)`, two items with the same rank stack at the same visual slot — one appears to be a duplicate of the other until a refresh reshuffles the tie-break.
+
+The same class of bug shows up in the dedup pass for descendant migration (lines 2306 groups by `wi.parentId ?? null` instead of the effective per-tree parent), producing rank collisions after cross-backlog reparents.
 
 ## Fix
 
-### 1. One-shot database cleanse (migration)
+All edits are frontend-only. No schema change, no new state.
 
-Re-rank every `(backlog_id, effective_parent_id)` sibling group across the whole DB so ranks are consecutive `0..N-1`, ordered by current rank then id as a deterministic tie-break. Run it as one migration that:
-- Reads current ranks from `work_item_backlog_ranks`.
-- Groups by `(backlog_id, effective_parent_in_that_tree)` where `effective_parent_in_that_tree = COALESCE(parent_id_overrides -> tree_id, parent_id)`.
-- Rewrites `work_item_backlog_ranks.rank` with dense integer ranks per group.
-- Wrapped in a transaction so all-or-nothing.
+### 1. `src/components/AppLayout.tsx`
+- In the drag reorder branch (~line 912-920), replace the `wi.parentId !== targetParentId` check with `getEffectiveParentId(wi, treeId) !== targetParentId`. Import `getEffectiveParentId` from `@/types/models` if it isn't already.
 
-### 2. Prevent rank collisions on write
+### 2. `src/store/appStore.ts` — `reparentWorkItem`
+Replace every `wi.parentId !== newParentId` sibling filter inside the same-tree branches with the effective per-tree parent check, using the `treeId` in scope:
 
-In `src/store/appStore.ts` `addWorkItem` and the reorder paths:
-- When inserting at `insertRank`, compute the shift set from a fresh selector snapshot and always shift *strictly*: any sibling with `rank >= insertRank` gets `rank + 1`. Today one add path uses `>= insertRank`, another path (line 522) uses `>= insertRank` but the write is not queued behind the previous add, so two rapid adds can both pick the same rank.
-- Enqueue the sibling shift + new-item rank into the existing `enqueueWorkItemMutation` FIFO so back-to-back adds cannot interleave.
-- Add a client-side guard: after computing new ranks for a group, assert they are unique; if not, densify the group before writing.
+- Line 2265 (single-tree, isBacklogChange rank scan): `if (getEffectiveParentId(wi, treeId!) !== newParentId) continue;`
+- Line 2338 (single-tree, same-backlog rank scan): use `getEffectiveParentId(wi, tId)` since the loop already iterates `[tId, blId]`.
+- Line 2306 (dedup grouping after descendant migration in single-tree branch): key by `getEffectiveParentId(wi, treeId!) ?? null` instead of `wi.parentId ?? null`, matching what the multi-tree branch at line 2193 already does.
 
-### 3. Client auto-heal on load
+### 3. Optional guard: densify after reparent
+After the reparent finishes, run the existing "densify per (tree, backlog, effective parent)" logic on the affected sibling group in memory before `upsertWorkItems`. This is the same one-line reuse already used by the auto-heal path from the previous fix pass; it prevents any residual collision from surviving to the DB if a stale in-memory rank existed before the operation.
 
-In `src/store/dataIntegrity.ts`'s "Duplicate Rank" cleanser: it already densifies per `(tree, backlog, parent)`. Wire the auto-integrity check (`useAutoIntegrityCheck`) to also run this specific cleanser on load for the active org (silent, no toast unless something changed) so users who already have corrupted data see it self-heal on next visit.
+## Verification
 
-### 4. Re-audit parent-override sync (no code change unless a bug is confirmed)
-
-Re-read `supabaseSync.ts` `rowToWorkItem`, the realtime CDC handler in `appStore.ts`, and every place that upserts a `work_items` row. Confirm that `parent_id_overrides` is:
-- Always read into the store (never dropped to `undefined`).
-- Never sent as `null`/missing in partial updates that would clobber other trees' overrides.
-- Preserved when a realtime `UPDATE` payload arrives with the column absent.
-
-If a real regression is found, patch it; otherwise report back that this path is clean and the "parent disappears" symptom should be resolved by the rank cleanse alone (sort instability was making items appear at unexpected positions, which is easy to mistake for "moved to root").
+- Run `bunx vitest run src/test/appStore.test.ts` to confirm existing reparent tests still pass.
+- Manual: reproduce the reported case — drag a per-tree-overridden item onto a new parent in the tree that owns the override, and confirm it moves. Reparent an item in a backlog that had prior rank collisions and confirm no visual duplicate remains.
 
 ## Out of scope
 
-- Switching to fractional / lexorank-style ranks. Considered but rejected for this pass — the current integer scheme works if writes are serialized and unique. Can revisit if collisions recur.
-- Any UI changes.
-
-## Technical notes
-
-- Migration touches `public.work_item_backlog_ranks` only; no schema change, just data.
-- Rank writes already funnel through `enqueueWorkItemMutation` for updates; the gap is on the *initial* insert of a new work item where the sibling shift and the new row race.
-- `useAutoIntegrityCheck` currently gates on manual trigger; we'll add a "silent duplicate-rank pass" that runs once per session per org.
+- Cross-tree drag/mirror path is untouched — it already uses `getEffectiveParentId`.
+- No changes to `MoveToParentDialog`, which routes through the same store method and inherits the fix.
+- No DB migration; a project-wide rank densification already ran in the previous pass.
