@@ -527,6 +527,7 @@ function BoardCard({
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
+  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
 
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => {
@@ -939,6 +940,7 @@ function BoardCard({
           <ContextMenuItem 
             className="text-xs" 
             onSelect={() => {
+              selectWorkItem(item.id, false);
               setViewMode("list");
               // Scroll the item into view after view mode change and React reconciliation
               setTimeout(() => {
