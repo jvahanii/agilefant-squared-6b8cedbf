@@ -247,37 +247,6 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     return [...pruned.map((k) => map.get(k)!).filter(Boolean), ...tail];
   }, [columns, columnOrder]);
 
-  // Track which column has an active inline add-input (null = none open)
-  const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
-
-  // Listen for the header "+" button event (dispatched from WorkItemTreePanel)
-  useEffect(() => {
-    const handler = () => {
-      if (columns.length > 0) {
-        setAddingColumnKey(columns[0].key);
-      }
-    };
-    window.addEventListener("board:header-add", handler);
-    return () => window.removeEventListener("board:header-add", handler);
-  }, [columns]);
-
-  const handleColumnAdd = useCallback(
-    (statusKey: string, title: string) => {
-      // Save the current ID set to find the new item after creation.
-      const before = new Set(Object.keys(useAppStore.getState().workItems));
-      addWorkItem(title, null, backlogId, treeId);
-      // After the synchronous store update, find the new ID and set its status
-      setTimeout(() => {
-        const after = Object.keys(useAppStore.getState().workItems);
-        const newIds = after.filter((id) => !before.has(id));
-        if (newIds.length === 1) {
-          useAppStore.getState().setWorkItemStatus(newIds[0], statusKey as WorkItemStatus);
-        }
-      }, 0);
-    },
-    [addWorkItem, backlogId, treeId],
-  );
-
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
     const known = new Set(allColumns.map((c) => c.key));
@@ -304,6 +273,59 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     }
     return map;
   }, [workItems, backlogs, backlogId, treeId, allColumns]);
+
+  // Track which column has an active inline add-input (null = none open)
+  const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
+
+  // When a card is selected and Enter is pressed, open an inline add-input
+  // immediately below the selected card (just like list view).
+  const [addAfterSlot, setAddAfterSlot] = useState<{ columnKey: string; afterIndex: number } | null>(null);
+
+  // Listen for the header "+" button event (dispatched from WorkItemTreePanel)
+  useEffect(() => {
+    const handler = () => {
+      if (columns.length > 0) {
+        setAddingColumnKey(columns[0].key);
+      }
+    };
+    window.addEventListener("board:header-add", handler);
+    return () => window.removeEventListener("board:header-add", handler);
+  }, [columns]);
+
+  // Listen for Enter / Shift+Enter so the board behaves like the list view.
+  useEffect(() => {
+    const handler = () => {
+      const state = useAppStore.getState();
+      const ids = state.selectedWorkItemIds;
+      if (ids.length === 0) return;
+      const item = state.workItems[ids[0]];
+      if (!item) return;
+      const colCards = cardsByStatus[item.status] ?? [];
+      const idx = colCards.findIndex((wi) => wi.id === item.id);
+      if (idx === -1) return;
+      setAddingColumnKey(null);
+      setAddAfterSlot({ columnKey: item.status, afterIndex: idx });
+    };
+    window.addEventListener("shortcut:add-sibling-workitem", handler);
+    return () => window.removeEventListener("shortcut:add-sibling-workitem", handler);
+  }, [cardsByStatus]);
+
+  const handleColumnAdd = useCallback(
+    (statusKey: string, title: string) => {
+      // Save the current ID set to find the new item after creation.
+      const before = new Set(Object.keys(useAppStore.getState().workItems));
+      addWorkItem(title, null, backlogId, treeId);
+      // After the synchronous store update, find the new ID and set its status
+      setTimeout(() => {
+        const after = Object.keys(useAppStore.getState().workItems);
+        const newIds = after.filter((id) => !before.has(id));
+        if (newIds.length === 1) {
+          useAppStore.getState().setWorkItemStatus(newIds[0], statusKey as WorkItemStatus);
+        }
+      }, 0);
+    },
+    [addWorkItem, backlogId, treeId],
+  );
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
   const allBacklogIds = useMemo(() => {
@@ -334,9 +356,16 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             onStartAdd={() => setAddingColumnKey(col.key)}
             onCommitAdd={(title) => {
               handleColumnAdd(col.key, title);
+              setAddAfterSlot(null);
             }}
-            onCancelAdd={() => setAddingColumnKey(null)}
+            onCancelAdd={() => {
+              setAddingColumnKey(null);
+              setAddAfterSlot(null);
+            }}
             onToggleHidden={() => toggleHideStatusKey(col.key)}
+            addAfterSlot={
+              addAfterSlot?.columnKey === col.key ? addAfterSlot.afterIndex : null
+            }
             setViewMode={setViewMode}
             allColumnKeys={orderedColumns.map((c) => c.key)}
             onMoveColumn={(fromKey, toKey) => {
@@ -411,6 +440,7 @@ function BoardColumn({
   backlogId,
   allBacklogIds,
   isAdding,
+  addAfterSlot,
   onStartAdd,
   onCommitAdd,
   onCancelAdd,
@@ -428,6 +458,7 @@ function BoardColumn({
   backlogId: string;
   allBacklogIds: string[];
   isAdding: boolean;
+  addAfterSlot: number | null;
   onStartAdd: () => void;
   onCommitAdd: (title: string) => void;
   onCancelAdd: () => void;
@@ -446,12 +477,20 @@ function BoardColumn({
 
   const headerRef = useRef<HTMLDivElement>(null);
 
+  const columnRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
+      ref={columnRef}
       className={cn(
         "flex flex-col w-56 shrink-0 rounded-lg border bg-muted/20 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
+      onDragOver={(e) => {
+        // Allow column-header drags to happen over the column body without
+        // the browser showing its native "no-drop" cursor.
+        e.preventDefault();
+      }}
     >
       <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -502,13 +541,6 @@ function BoardColumn({
                   : "w-0 bg-transparent",
               )}
             />
-            {/* Glowing dots on both sides when dragging over */}
-            {dragOverDir !== null && (
-              <>
-                <div className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150 pointer-events-none" />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150 pointer-events-none" />
-              </>
-            )}
             <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
             <span
               className="w-2 h-2 rounded-full shrink-0"
@@ -566,6 +598,13 @@ function BoardColumn({
                 allBacklogIds={allBacklogIds}
                 setViewMode={setViewMode}
               />
+              {/* Inline add-input opened via Enter key right after the selected card */}
+              {addAfterSlot === i && (
+                <ColumnAddInput
+                  onAdd={onCommitAdd}
+                  onCancel={onCancelAdd}
+                />
+              )}
               {/* Reorder drop zone after this card */}
               <BoardReorderDropZone
                 id={`board-reorder-${column.id}-${i + 1}`}
