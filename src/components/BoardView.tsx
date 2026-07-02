@@ -292,10 +292,12 @@ function HiddenColumnStrip({
   itemCount: number;
   onShow: () => void;
 }) {
+  const label = `Show "${column.label}" column (${itemCount} item${itemCount !== 1 ? "s" : ""})`;
   return (
     <button
       onClick={onShow}
-      title={`Show "${column.label}" column (${itemCount} item${itemCount !== 1 ? "s" : ""})`}
+      title={label}
+      aria-label={label}
       className="flex flex-col items-center justify-center w-8 shrink-0 rounded-lg border bg-muted/20 h-full gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group"
     >
       <span
@@ -303,7 +305,7 @@ function HiddenColumnStrip({
         style={{ backgroundColor: column.color }}
       />
       <span
-        className="text-[10px] font-semibold writing-mode-vertical"
+        className="text-[10px] font-semibold"
         style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)" }}
         title={column.label}
       >
