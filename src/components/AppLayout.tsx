@@ -912,7 +912,7 @@ function AppLayoutInner() {
         draggedIds.forEach((id) => {
           const wi = store.workItems[id];
           if (!wi) return;
-          if (wi.parentId !== targetParentId) {
+          if (getEffectiveParentId(wi, treeId) !== targetParentId) {
             const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
             reparentWorkItem(id, targetParentId, treeId, backlogId);
             reparentedIds.push(id);
