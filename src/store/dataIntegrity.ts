@@ -146,7 +146,8 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   const wiRankGroups = new Map<string, { id: string; title: string; rank: number }[]>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
-      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
+      const key = `${treeId}::${blId}::${getEffectiveParentId(wi, treeId) ?? "ROOT"}`;
+
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
       wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, rank: wi.ranks[blId] ?? 0 });
     });
