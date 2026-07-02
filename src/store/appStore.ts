@@ -662,6 +662,55 @@ async function flushPendingRankUpserts() {
   }
 }
 
+/**
+ * Silent auto-heal for duplicate per-backlog ranks. Groups items by
+ * (backlogId, effective_per_tree_parent) and densifies each group to
+ * consecutive 0..N-1 ranks, ordered by current rank then id as a
+ * deterministic tie-break. Returns the updated work items map and the
+ * minimal set of rank rows that changed (for DB persistence).
+ */
+function healDuplicateRanks(
+  workItems: Record<string, WorkItem>,
+): { workItems: Record<string, WorkItem>; rankRows: Array<{ workItemId: string; backlogId: string; rank: number }> } {
+  type Entry = { id: string; blId: string; treeId: string; effParent: string | null; rank: number };
+  const groups = new Map<string, Entry[]>();
+  Object.values(workItems).forEach((wi) => {
+    Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
+      const effParent = getEffectiveParentId(wi, treeId);
+      const key = `${blId}::${effParent ?? "ROOT"}`;
+      const rank = wi.ranks[blId] ?? 0;
+      const entry: Entry = { id: wi.id, blId, treeId, effParent, rank };
+      const arr = groups.get(key);
+      if (arr) arr.push(entry); else groups.set(key, [entry]);
+    });
+  });
+
+  const changed = new Map<string, WorkItem>();
+  const rankRows: Array<{ workItemId: string; backlogId: string; rank: number }> = [];
+  groups.forEach((entries) => {
+    // Detect duplicates before doing any work.
+    const ranks = entries.map((e) => e.rank);
+    const uniq = new Set(ranks);
+    if (uniq.size === ranks.length) return;
+    // Densify deterministically.
+    entries.sort((a, b) => (a.rank - b.rank) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    entries.forEach((e, i) => {
+      if (e.rank === i) return;
+      const base = changed.get(e.id) ?? workItems[e.id];
+      const updated = { ...base, ranks: { ...base.ranks, [e.blId]: i } };
+      changed.set(e.id, updated);
+      rankRows.push({ workItemId: e.id, backlogId: e.blId, rank: i });
+    });
+  });
+
+  if (changed.size === 0) return { workItems, rankRows: [] };
+  const next = { ...workItems };
+  changed.forEach((wi, id) => { next[id] = wi; });
+  return { workItems: next, rankRows };
+}
+
+
+
 export const useAppStore = create<AppState>()((set, get) => {
   // Register a callback so supabaseSync can notify us when work-item IDs are
   // renamed (stale org prefix repaired).  This keeps local state consistent
