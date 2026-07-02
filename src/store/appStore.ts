@@ -2303,7 +2303,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             for (const id of changedDescendantIds) {
               const wi = updatedItems[id];
               if (!wi) continue;
-              const pid = wi.parentId ?? null;
+              const pid = getEffectiveParentId(wi, treeId!) ?? null;
               if (!movedByParent.has(pid)) movedByParent.set(pid, []);
               movedByParent.get(pid)!.push(id);
             }
