@@ -1,21 +1,27 @@
 ## Goal
-Get commit `02a43e4` visible on GitHub without risking repository state corruption.
+Persist board hidden columns per backlog in the database (shared across all users viewing that backlog), replacing the current `localStorage` implementation.
 
-## Constraints
-- I cannot run `git push origin main` directly from this workspace; Lovable manages Git state and sync internally.
-- I also should not run stateful Git commands such as push/pull/reset from the agent terminal.
+## Changes
 
-## Plan
-1. Re-check local vs remote refs from the workspace using read-only Git commands only.
-2. If local `main` contains `02a43e4` but GitHub does not, treat this as a Lovable GitHub sync issue rather than an app-code issue.
-3. Force Lovable to emit a harmless new change through the normal sync pipeline if you want a new commit to trigger synchronization.
-4. If that still does not update GitHub, disconnect/reconnect or refresh the GitHub integration from Lovable’s Plus menu, then let Lovable re-sync automatically.
-5. As a fallback, download/export the codebase or use the connected GitHub workflow from your own local clone to push the missing commit manually.
+### 1. Database migration
+Add a new column to `public.backlogs`:
+- `board_hidden_status_keys text[] NOT NULL DEFAULT '{}'` — list of status keys hidden on the board view for this backlog.
 
-## What I would verify
-- Current local `HEAD` commit.
-- Current configured `origin/main` ref as visible from the workspace.
-- Whether GitHub’s web UI/API shows `02a43e4` on the target branch.
+Existing RLS policies on `backlogs` already cover reads and updates by org members / tree-share partners, so no policy changes are needed.
 
-## Expected outcome
-Either GitHub catches up through Lovable’s managed sync, or we confirm the integration is stuck and use the Lovable-supported reconnect/export fallback.
+### 2. App store (`src/store/appStore.ts`)
+- Extend the in-memory `Backlog` type / mapper to carry `boardHiddenStatusKeys: string[]`.
+- Load it in `loadFromSupabase` and in the realtime CDC mapper in `src/store/supabaseSync.ts`.
+- Add a `setBoardHiddenStatusKeys(backlogId, keys)` action that optimistically updates the store and writes to Supabase.
+
+### 3. BoardView (`src/components/BoardView.tsx`)
+- Remove the `localStorage` read/write (`board-hidden-cols:${backlogId}` key at line 177).
+- Read `hiddenStatusKeys` from the backlog record via a selector.
+- Hide/restore handlers call the new store action instead of `setState` + `localStorage`.
+
+### 4. Cleanup
+- One-time: no data migration required; existing localStorage values are ignored (safe to leave in the browser — they'll simply be unused).
+
+## Technical notes
+- Using a column on `backlogs` (not a separate table) keeps this a single write per toggle and rides existing realtime for `backlogs`, so other viewers see hides/unhides live.
+- Array of text keys mirrors how `tree_statuses.key` is already referenced elsewhere.
