@@ -183,6 +183,7 @@ interface AppState extends DataSnapshot {
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string, direction?: 'up' | 'down') => void;
   renameBacklog: (backlogId: string, name: string) => void;
+  setBacklogHiddenStatusKeys: (backlogId: string, keys: string[]) => void;
   reorderBacklogAmongSiblings: (
     backlogId: string,
     targetIndex: number,
