@@ -656,6 +656,7 @@ export type Database = {
           rank: number
           tree_id: string
           updated_at: string
+          visible: boolean
         }
         Insert: {
           color?: string
@@ -666,6 +667,7 @@ export type Database = {
           rank?: number
           tree_id: string
           updated_at?: string
+          visible?: boolean
         }
         Update: {
           color?: string
@@ -676,6 +678,7 @@ export type Database = {
           rank?: number
           tree_id?: string
           updated_at?: string
+          visible?: boolean
         }
         Relationships: []
       }
