@@ -510,11 +510,17 @@ function buildCascadedShiftSet(
   insertRank: number,
   excludeId: string | null,
   backlogId: string,
+  treeId?: string,
 ): Set<string> {
   const toShift = new Set<string>();
 
   for (const wi of Object.values(allItems)) {
-    if (wi.parentId !== parentId) continue;
+    // When we know the tree we're inserting into, group siblings by their
+    // effective per-tree parent (parent_id_overrides ?? parent_id). Otherwise
+    // fall back to the global parent — this preserves legacy behaviour for
+    // callers that operate outside a tree context (e.g. duplicate).
+    const wiParent = treeId ? getEffectiveParentId(wi, treeId) : wi.parentId;
+    if (wiParent !== parentId) continue;
     if (excludeId && wi.id === excludeId) continue;
     // Only consider items that are assigned to the same backlog
     const wiBacklogIds = Object.values(wi.backlogAssignments);
@@ -550,7 +556,11 @@ function assignSequentialRanksForContext(
   orderedIds.forEach((id, rank) => {
     const wi = items[id];
     const wiBacklogId = wi?.backlogAssignments[treeId];
-    if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wi.parentId !== parentId) return;
+    // Compare against the per-tree effective parent so items with a per-tree
+    // override are grouped with their siblings in this tree, not in whatever
+    // tree owns their global parent.
+    const wiEffectiveParent = wi ? getEffectiveParentId(wi, treeId) : null;
+    if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wiEffectiveParent !== parentId) return;
     if (wi.ranks[wiBacklogId] === rank) return;
     const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank } };
     items[id] = updated;
@@ -558,6 +568,7 @@ function assignSequentialRanksForContext(
   });
   return changed;
 }
+
 
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
@@ -650,6 +661,55 @@ async function flushPendingRankUpserts() {
     localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   }
 }
+
+/**
+ * Silent auto-heal for duplicate per-backlog ranks. Groups items by
+ * (backlogId, effective_per_tree_parent) and densifies each group to
+ * consecutive 0..N-1 ranks, ordered by current rank then id as a
+ * deterministic tie-break. Returns the updated work items map and the
+ * minimal set of rank rows that changed (for DB persistence).
+ */
+function healDuplicateRanks(
+  workItems: Record<string, WorkItem>,
+): { workItems: Record<string, WorkItem>; rankRows: Array<{ workItemId: string; backlogId: string; rank: number }> } {
+  type Entry = { id: string; blId: string; treeId: string; effParent: string | null; rank: number };
+  const groups = new Map<string, Entry[]>();
+  Object.values(workItems).forEach((wi) => {
+    Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
+      const effParent = getEffectiveParentId(wi, treeId);
+      const key = `${blId}::${effParent ?? "ROOT"}`;
+      const rank = wi.ranks[blId] ?? 0;
+      const entry: Entry = { id: wi.id, blId, treeId, effParent, rank };
+      const arr = groups.get(key);
+      if (arr) arr.push(entry); else groups.set(key, [entry]);
+    });
+  });
+
+  const changed = new Map<string, WorkItem>();
+  const rankRows: Array<{ workItemId: string; backlogId: string; rank: number }> = [];
+  groups.forEach((entries) => {
+    // Detect duplicates before doing any work.
+    const ranks = entries.map((e) => e.rank);
+    const uniq = new Set(ranks);
+    if (uniq.size === ranks.length) return;
+    // Densify deterministically.
+    entries.sort((a, b) => (a.rank - b.rank) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    entries.forEach((e, i) => {
+      if (e.rank === i) return;
+      const base = changed.get(e.id) ?? workItems[e.id];
+      const updated = { ...base, ranks: { ...base.ranks, [e.blId]: i } };
+      changed.set(e.id, updated);
+      rankRows.push({ workItemId: e.id, backlogId: e.blId, rank: i });
+    });
+  });
+
+  if (changed.size === 0) return { workItems, rankRows: [] };
+  const next = { ...workItems };
+  changed.forEach((wi, id) => { next[id] = wi; });
+  return { workItems: next, rankRows };
+}
+
+
 
 export const useAppStore = create<AppState>()((set, get) => {
   // Register a callback so supabaseSync can notify us when work-item IDs are
@@ -877,8 +937,24 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
 
         clearTimeout(timeoutId);
+
+        // Silent duplicate-rank auto-heal: densify any sibling groups whose
+        // per-backlog ranks collide (grouped by tree, backlog, and effective
+        // per-tree parent). Fixes are applied to local state AND persisted to
+        // the DB so the next reload starts clean.
+        const healed = healDuplicateRanks(cleanData.workItems);
+        const finalWorkItems = healed.workItems;
+        if (healed.rankRows.length > 0) {
+          const rowsWithOrg: WorkItemBacklogRankUpsert[] = healed.rankRows.map((r) => ({
+            ...r,
+            organizationId: finalWorkItems[r.workItemId]?.organizationId ?? orgId,
+          }));
+          persistRankUpserts(rowsWithOrg);
+        }
+
         set({
           ...cleanData,
+          workItems: finalWorkItems,
           hyperlinks,
           // changeLog loaded lazily via loadChangeLog action.
           changeLog: [],
@@ -892,6 +968,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           expandedBacklogs,
           expandedWorkItems,
         });
+
       } catch (err) {
         clearTimeout(timeoutId);
         set({ isLoading: false, loadingProgress: 0 });
@@ -1276,12 +1353,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       const visibleBacklogIds = getVisibleBacklogIds(state.backlogs, backlogId);
       const siblingIds = Object.values(updatedWorkItems)
-        .filter((wi) => wi.parentId === parentId && visibleBacklogIds.has(wi.backlogAssignments[treeId]))
+        .filter((wi) => getEffectiveParentId(wi, treeId) === parentId && visibleBacklogIds.has(wi.backlogAssignments[treeId]))
         .sort((a, b) => {
           const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
           return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
         })
         .map((wi) => wi.id);
+
       const requestedIndex = requestedRank != null
         ? siblingIds.findIndex((sid) => {
           const sibling = updatedWorkItems[sid];
@@ -1354,11 +1432,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       let maxRank = -1;
       Object.values(updatedWorkItems).forEach((wi) => {
-        if (wi.parentId === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
+        if (getEffectiveParentId(wi, treeId) === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
           const wiRank = wi.ranks[wi.backlogAssignments[treeId]] ?? 0;
           if (wiRank > maxRank) maxRank = wiRank;
         }
       });
+
 
       const newItems: WorkItem[] = [];
       titles.forEach((title, i) => {

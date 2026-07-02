@@ -1,4 +1,4 @@
-import { WorkItem, Backlog, BacklogTree } from "@/types/models";
+import { WorkItem, Backlog, BacklogTree, getEffectiveParentId } from "@/types/models";
 
 export interface DataIssue {
   category: string;
@@ -146,7 +146,8 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   const wiRankGroups = new Map<string, { id: string; title: string; rank: number }[]>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
-      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
+      const key = `${treeId}::${blId}::${getEffectiveParentId(wi, treeId) ?? "ROOT"}`;
+
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, []);
       wiRankGroups.get(key)!.push({ id: wi.id, title: wi.title, rank: wi.ranks[blId] ?? 0 });
     });
@@ -474,7 +475,7 @@ export function cleanseData(data: StoreData): CleanseResult {
   const wiRankGroups = new Map<string, { ids: string[]; backlogId: string }>();
   Object.values(workItems).forEach((wi) => {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
-      const key = `${treeId}::${blId}::${wi.parentId ?? "ROOT"}`;
+      const key = `${treeId}::${blId}::${getEffectiveParentId(wi, treeId) ?? "ROOT"}`;
       if (!wiRankGroups.has(key)) wiRankGroups.set(key, { ids: [], backlogId: blId });
       wiRankGroups.get(key)!.ids.push(wi.id);
     });
