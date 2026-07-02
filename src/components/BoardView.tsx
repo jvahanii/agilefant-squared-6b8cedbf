@@ -56,6 +56,10 @@ interface BoardViewProps {
 
 const EMPTY_ARR: string[] = [];
 
+/** Delay (in ms) to allow React to complete reconciliation before scrolling to an element.
+ *  This ensures the element exists in the DOM when we call scrollIntoView(). */
+const REACT_RECONCILIATION_DELAY = 100;
+
 /** Recursively collect this backlog and all descendant backlog IDs. */
 function collectBacklogIds(
   rootId: string,
@@ -941,7 +945,7 @@ function BoardCard({
                 document
                   .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
                   ?.scrollIntoView({ block: "nearest" });
-              }, 100);
+              }, REACT_RECONCILIATION_DELAY);
             }}
           >
             <ListIcon className="w-3 h-3 mr-2" />
