@@ -1,4 +1,4 @@
-import { WorkItem, Backlog, BacklogTree } from "@/types/models";
+import { WorkItem, Backlog, BacklogTree, getEffectiveParentId } from "@/types/models";
 
 export interface DataIssue {
   category: string;
