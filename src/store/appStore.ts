@@ -510,11 +510,17 @@ function buildCascadedShiftSet(
   insertRank: number,
   excludeId: string | null,
   backlogId: string,
+  treeId?: string,
 ): Set<string> {
   const toShift = new Set<string>();
 
   for (const wi of Object.values(allItems)) {
-    if (wi.parentId !== parentId) continue;
+    // When we know the tree we're inserting into, group siblings by their
+    // effective per-tree parent (parent_id_overrides ?? parent_id). Otherwise
+    // fall back to the global parent — this preserves legacy behaviour for
+    // callers that operate outside a tree context (e.g. duplicate).
+    const wiParent = treeId ? getEffectiveParentId(wi, treeId) : wi.parentId;
+    if (wiParent !== parentId) continue;
     if (excludeId && wi.id === excludeId) continue;
     // Only consider items that are assigned to the same backlog
     const wiBacklogIds = Object.values(wi.backlogAssignments);
@@ -550,7 +556,11 @@ function assignSequentialRanksForContext(
   orderedIds.forEach((id, rank) => {
     const wi = items[id];
     const wiBacklogId = wi?.backlogAssignments[treeId];
-    if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wi.parentId !== parentId) return;
+    // Compare against the per-tree effective parent so items with a per-tree
+    // override are grouped with their siblings in this tree, not in whatever
+    // tree owns their global parent.
+    const wiEffectiveParent = wi ? getEffectiveParentId(wi, treeId) : null;
+    if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wiEffectiveParent !== parentId) return;
     if (wi.ranks[wiBacklogId] === rank) return;
     const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank } };
     items[id] = updated;
@@ -558,6 +568,7 @@ function assignSequentialRanksForContext(
   });
   return changed;
 }
+
 
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
