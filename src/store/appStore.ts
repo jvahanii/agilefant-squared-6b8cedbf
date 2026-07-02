@@ -1287,12 +1287,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       const visibleBacklogIds = getVisibleBacklogIds(state.backlogs, backlogId);
       const siblingIds = Object.values(updatedWorkItems)
-        .filter((wi) => wi.parentId === parentId && visibleBacklogIds.has(wi.backlogAssignments[treeId]))
+        .filter((wi) => getEffectiveParentId(wi, treeId) === parentId && visibleBacklogIds.has(wi.backlogAssignments[treeId]))
         .sort((a, b) => {
           const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
           return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
         })
         .map((wi) => wi.id);
+
       const requestedIndex = requestedRank != null
         ? siblingIds.findIndex((sid) => {
           const sibling = updatedWorkItems[sid];
