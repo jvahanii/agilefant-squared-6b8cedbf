@@ -1,0 +1,1 @@
+ALTER TABLE public.backlogs ADD COLUMN IF NOT EXISTS board_hidden_status_keys text[] NOT NULL DEFAULT '{}';

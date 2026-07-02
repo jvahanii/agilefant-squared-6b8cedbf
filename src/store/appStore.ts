@@ -7,6 +7,7 @@ import {
   deleteWorkItems,
   deleteWorkItemBacklogRanks,
   upsertBacklog,
+  updateBacklogHiddenStatusKeys,
   upsertBacklogs,
   deleteBacklogs,
   upsertBacklogTree,
@@ -182,6 +183,7 @@ interface AppState extends DataSnapshot {
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
   deleteBacklog: (backlogId: string, direction?: 'up' | 'down') => void;
   renameBacklog: (backlogId: string, name: string) => void;
+  setBacklogHiddenStatusKeys: (backlogId: string, keys: string[]) => void;
   reorderBacklogAmongSiblings: (
     backlogId: string,
     targetIndex: number,
@@ -2599,6 +2601,19 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogHiddenStatusKeys: (backlogId, keys) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const dedup = Array.from(new Set(keys));
+      updateBacklogHiddenStatusKeys(backlogId, dedup);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, boardHiddenStatusKeys: dedup } },
+      });
+    },
+
+
+
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
       const state = get();
       const orgId = state.organizationId!;
@@ -3228,6 +3243,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: state.backlogs[id]?.childrenIds ?? [],
           treeId: row.tree_id as string,
           rank: row.rank as number,
+          boardHiddenStatusKeys: (row.board_hidden_status_keys as string[] | null) ?? [],
         };
 
         const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };

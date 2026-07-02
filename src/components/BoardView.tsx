@@ -160,6 +160,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
+  const setBacklogHiddenStatusKeys = useAppStore((s) => s.setBacklogHiddenStatusKeys);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
 
   const allColumns = useMemo<TreeStatus[]>(() => {
@@ -173,43 +174,19 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
 
-  // Per-backlog column visibility, persisted to localStorage.
-  const storageKey = `board-hidden-cols:${backlogId}`;
-  const [hiddenStatusKeys, setHiddenStatusKeys] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  // Re-load when the viewed backlog changes.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      setHiddenStatusKeys(raw ? new Set(JSON.parse(raw) as string[]) : new Set());
-    } catch {
-      setHiddenStatusKeys(new Set());
-    }
-  }, [storageKey]);
+  // Per-backlog column visibility, persisted on the backlog row so it's
+  // shared across users viewing the same backlog.
+  const persistedHiddenKeys = backlogs[backlogId]?.boardHiddenStatusKeys ?? EMPTY_ARR;
+  const hiddenStatusKeys = useMemo(() => new Set(persistedHiddenKeys), [persistedHiddenKeys]);
 
   const toggleHideStatusKey = useCallback(
     (key: string) => {
-      setHiddenStatusKeys((prev) => {
-        const next = new Set(prev);
-        if (next.has(key)) {
-          next.delete(key);
-        } else {
-          next.add(key);
-        }
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
-        } catch {}
-        return next;
-      });
+      const current = useAppStore.getState().backlogs[backlogId]?.boardHiddenStatusKeys ?? [];
+      const set = new Set(current);
+      if (set.has(key)) set.delete(key); else set.add(key);
+      setBacklogHiddenStatusKeys(backlogId, Array.from(set));
     },
-    [storageKey],
+    [backlogId, setBacklogHiddenStatusKeys],
   );
 
   const columns = useMemo(() => allColumns.filter((c) => !hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
