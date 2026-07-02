@@ -1281,8 +1281,11 @@ function WorkItemNodeContent({
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem className="text-xs" onSelect={() => {
-            selectWorkItem(workItemId, false);
             setViewMode("board");
+            // Select the item after view mode change and React reconciliation
+            setTimeout(() => {
+              selectWorkItem(workItemId, false);
+            }, 100);
           }}>
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
