@@ -198,6 +198,7 @@ interface WorkItemNodeProps {
   parentBacklogId?: string;
   isScrambled: boolean;
   onSelect: (id: string, multi: boolean, shift: boolean) => void;
+  setViewMode: (mode: "list" | "board") => void;
 }
 
 function WorkItemNode(props: WorkItemNodeProps) {
@@ -218,6 +219,7 @@ function WorkItemNodeContent({
   parentBacklogId,
   isScrambled,
   onSelect,
+  setViewMode,
 }: WorkItemNodeProps) {
   const runningNumber = useContext(RunningNumberContext)?.get(workItemId);
   const item = useAppStore((s) => s.workItems[workItemId]);
@@ -1276,6 +1278,11 @@ function WorkItemNodeContent({
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             Hyperlinks
           </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs" onSelect={() => setViewMode("board")}>
+            <LayoutGrid className="w-3 h-3 mr-2" />
+            View in board
+          </ContextMenuItem>
           {isSavingsIncomeEnabled(activeOrgId) && (
             <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
               Savings &amp; Income
@@ -1340,6 +1347,7 @@ function WorkItemNodeContent({
                               parentBacklogId={backlogId}
                               isScrambled={isScrambled}
                               onSelect={onSelect}
+                              setViewMode={setViewMode}
                             />
                           </div>
                         );
@@ -2791,7 +2799,7 @@ export function WorkItemTreePanel() {
         </div>
 
         {!isSearchMode && !isLabelFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
-          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} />
+          <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} setViewMode={setViewMode} />
         ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
@@ -2975,6 +2983,7 @@ export function WorkItemTreePanel() {
                               parentBacklogId={selectedBacklogId!}
                               isScrambled={isScrambled}
                               onSelect={handleSelect}
+                              setViewMode={setViewMode}
                             />
                           </div>
                         );
