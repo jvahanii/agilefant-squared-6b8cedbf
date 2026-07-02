@@ -2262,7 +2262,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             let maxRank = -1;
             Object.values(state.workItems).forEach((wi) => {
               if (wi.id === workItemId) return;
-              if (wi.parentId !== newParentId) return;
+              if (getEffectiveParentId(wi, treeId!) !== newParentId) return;
               if (wi.backlogAssignments[treeId!] === cleanBlId) {
                 const wiRank = wi.ranks[cleanBlId!] ?? 0;
                 if (wiRank > maxRank) maxRank = wiRank;
@@ -2303,7 +2303,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             for (const id of changedDescendantIds) {
               const wi = updatedItems[id];
               if (!wi) continue;
-              const pid = wi.parentId ?? null;
+              const pid = getEffectiveParentId(wi, treeId!) ?? null;
               if (!movedByParent.has(pid)) movedByParent.set(pid, []);
               movedByParent.get(pid)!.push(id);
             }
@@ -2335,7 +2335,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               let maxRank = -1;
               Object.values(state.workItems).forEach((wi) => {
                 if (wi.id === workItemId) return;
-                if (wi.parentId !== newParentId) return;
+                if (getEffectiveParentId(wi, tId) !== newParentId) return;
                 if (wi.backlogAssignments[tId] === blId) {
                   const wiRank = wi.ranks[blId] ?? 0;
                   if (wiRank > maxRank) maxRank = wiRank;
