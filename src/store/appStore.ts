@@ -2335,7 +2335,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               let maxRank = -1;
               Object.values(state.workItems).forEach((wi) => {
                 if (wi.id === workItemId) return;
-                if (wi.parentId !== newParentId) return;
+                if (getEffectiveParentId(wi, tId) !== newParentId) return;
                 if (wi.backlogAssignments[tId] === blId) {
                   const wiRank = wi.ranks[blId] ?? 0;
                   if (wiRank > maxRank) maxRank = wiRank;
