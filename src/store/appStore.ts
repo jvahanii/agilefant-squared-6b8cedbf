@@ -2601,6 +2601,16 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogHiddenStatusKeys: (backlogId, keys) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const dedup = Array.from(new Set(keys));
+      updateBacklogHiddenStatusKeys(backlogId, dedup);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, boardHiddenStatusKeys: dedup } },
+      });
+
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
       const state = get();
       const orgId = state.organizationId!;
