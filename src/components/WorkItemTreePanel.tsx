@@ -240,6 +240,7 @@ function WorkItemNodeContent({
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
+  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
@@ -1279,7 +1280,10 @@ function WorkItemNodeContent({
             Hyperlinks
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs" onSelect={() => setViewMode("board")}>
+          <ContextMenuItem className="text-xs" onSelect={() => {
+            selectWorkItem(workItemId, false);
+            setViewMode("board");
+          }}>
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
           </ContextMenuItem>
