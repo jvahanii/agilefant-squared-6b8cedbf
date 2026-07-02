@@ -24,5 +24,37 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve IPv4-compatible DB URL
+        id: db_url
+        run: |
+          db_url="${{ secrets.SUPABASE_DB_URL }}"
+          echo "::add-mask::$db_url"
+
+          if [[ "$db_url" =~ @db\.[a-z0-9-]+\.supabase\.co([:/]|$) ]]; then
+            if [[ ! -f "supabase/.temp/pooler-url" ]]; then
+              echo "::error::SUPABASE_DB_URL points to db.<project>.supabase.co (IPv6 direct host), but supabase/.temp/pooler-url is missing."
+              exit 1
+            fi
+
+            pooler_url="$(cat supabase/.temp/pooler-url)"
+            echo "::add-mask::$pooler_url"
+            if [[ ! "$pooler_url" =~ ^postgres(ql)?://[^@]+@[^/]*pooler\.supabase\.com:[0-9]+(/|$) ]]; then
+              echo "::error::supabase/.temp/pooler-url does not contain a valid Supabase transaction pooler URL."
+              exit 1
+            fi
+
+            pooler_host_port="${pooler_url#*@}"
+            pooler_host_port="${pooler_host_port%%/*}"
+            credentials="${db_url%@*}"
+            host_and_path="${db_url#*@}"
+            path_and_query="${host_and_path#*/}"
+            db_url="${credentials}@${pooler_host_port}/${path_and_query}"
+
+            echo "::notice::Converted SUPABASE_DB_URL to use transaction pooler for IPv4 compatibility."
+          fi
+
+          echo "::add-mask::$db_url"
+          echo "value=$db_url" >> "$GITHUB_OUTPUT"
+
       - name: Deploy migrations to remote
-        run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
+        run: supabase db push --db-url "${{ steps.db_url.outputs.value }}"
