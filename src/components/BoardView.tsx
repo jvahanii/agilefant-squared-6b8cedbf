@@ -73,7 +73,12 @@ function collectBacklogIds(
 
 /** Drop zone placed between two board cards within a column to enable re-ranking.
  *  Uses the same "workitem-reorder" drop type as the list-view ReorderDropZone
- *  so the existing AppLayout onDragEnd handler processes it automatically. */
+ *  so the existing AppLayout onDragEnd handler processes it automatically.
+ *
+ *  Keeps a minimal layout footprint (2–4 px) but expands the invisible hit area
+ *  to ±12 px vertically, making it easy to target without requiring pixel-perfect
+ *  aim.  During a drag every zone shows a subtle guide line; the active zone
+ *  brightens and gains a glowing dot. */
 function BoardReorderDropZone({
   id,
   index,
@@ -93,15 +98,28 @@ function BoardReorderDropZone({
   });
 
   return (
-    <div className="relative" style={{ height: isDragActive ? 10 : 2 }}>
-      {/* Expanded hit area during drag */}
+    <div className="relative" style={{ height: isDragActive ? 4 : 2 }}>
+      {/* Generous invisible hit area (±12 px → 24 px total) that does not
+          affect the flow layout. */}
       <div
         ref={setNodeRef}
-        className="absolute inset-0"
-        style={{ top: -4, bottom: -4 }}
+        className="absolute inset-0 z-10"
+        style={{ top: -12, bottom: -12 }}
       />
+      {/* Subtle guide line visible at every drop slot while dragging */}
+      <div
+        className={cn(
+          "absolute inset-x-1 top-1/2 -translate-y-1/2 rounded-full transition-all duration-200 ease-out",
+          isOver
+            ? "h-1 bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]"
+            : isDragActive
+              ? "h-px bg-muted-foreground/25"
+              : "h-0 bg-transparent",
+        )}
+      />
+      {/* Glowing dot on the active drop zone */}
       {isOver && (
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" />
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150" />
       )}
     </div>
   );
