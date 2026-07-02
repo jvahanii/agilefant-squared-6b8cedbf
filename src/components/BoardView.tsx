@@ -280,6 +280,8 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   // When a card is selected and Enter is pressed, open an inline add-input
   // immediately below the selected card (just like list view).
   const [addAfterSlot, setAddAfterSlot] = useState<{ columnKey: string; afterIndex: number } | null>(null);
+  const addAfterSlotRef = useRef(addAfterSlot);
+  addAfterSlotRef.current = addAfterSlot;
 
   // Listen for the header "+" button event (dispatched from WorkItemTreePanel)
   useEffect(() => {
@@ -311,10 +313,26 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   }, [cardsByStatus]);
 
   const handleColumnAdd = useCallback(
-    (statusKey: string, title: string) => {
+    (statusKey: string, title: string, afterIndex?: number) => {
       // Save the current ID set to find the new item after creation.
       const before = new Set(Object.keys(useAppStore.getState().workItems));
-      addWorkItem(title, null, backlogId, treeId);
+      // Compute a rank that places the new item after the card at `afterIndex`.
+      let rank: number | undefined;
+      if (afterIndex !== undefined && afterIndex >= 0) {
+        const colCards = cardsByStatus[statusKey] ?? [];
+        const afterCard = colCards[afterIndex];
+        if (afterCard) {
+          const afterRank = afterCard.ranks[afterCard.backlogAssignments[treeId]] ?? 0;
+          const nextCard = colCards[afterIndex + 1];
+          if (nextCard) {
+            const nextRank = nextCard.ranks[nextCard.backlogAssignments[treeId]] ?? 0;
+            rank = afterRank + (nextRank - afterRank) / 2;
+          } else {
+            rank = afterRank + 1;
+          }
+        }
+      }
+      addWorkItem(title, null, backlogId, treeId, rank);
       // After the synchronous store update, find the new ID and set its status
       setTimeout(() => {
         const after = Object.keys(useAppStore.getState().workItems);
@@ -324,7 +342,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
         }
       }, 0);
     },
-    [addWorkItem, backlogId, treeId],
+    [addWorkItem, backlogId, treeId, cardsByStatus],
   );
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
@@ -355,7 +373,9 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             isAdding={addingColumnKey === col.key}
             onStartAdd={() => setAddingColumnKey(col.key)}
             onCommitAdd={(title) => {
-              handleColumnAdd(col.key, title);
+              const slot = addAfterSlotRef.current;
+              handleColumnAdd(col.key, title, slot?.columnKey === col.key ? slot.afterIndex : undefined);
+              setAddingColumnKey(null);
               setAddAfterSlot(null);
             }}
             onCancelAdd={() => {
