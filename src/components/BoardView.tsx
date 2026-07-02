@@ -312,6 +312,61 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     return () => window.removeEventListener("shortcut:add-sibling-workitem", handler);
   }, [cardsByStatus]);
 
+  // Listen for Delete / Backspace so the board handles card deletion with selection navigation.
+  useEffect(() => {
+    const handler = () => {
+      const state = useAppStore.getState();
+      const ids = state.selectedWorkItemIds;
+      if (ids.length === 0) return;
+      const itemId = ids[0];
+      const item = state.workItems[itemId];
+      if (!item) return;
+
+      // Build a flat, ordered list of all visible cards across all columns.
+      const allCards: { id: string; statusKey: string }[] = [];
+      for (const col of orderedColumns) {
+        const colCards = cardsByStatus[col.key] ?? [];
+        for (const card of colCards) {
+          allCards.push({ id: card.id, statusKey: col.key });
+        }
+      }
+
+      const currentIdx = allCards.findIndex((c) => c.id === itemId);
+      if (currentIdx === -1) return;
+
+      // Determine next selection: item below > item above > none.
+      const isOnlyCardOnBoard = allCards.length <= 1;
+      let nextId: string | null = null;
+      if (currentIdx + 1 < allCards.length) {
+        nextId = allCards[currentIdx + 1].id;
+      } else if (currentIdx - 1 >= 0) {
+        nextId = allCards[currentIdx - 1].id;
+      }
+
+      // Perform the delete.
+      const assignmentCount = Object.keys(item.backlogAssignments).length;
+      if (assignmentCount > 1) {
+        state.removeWorkItemsFromTreeBulk([{ workItemId: itemId, treeId }]);
+      } else {
+        state.deleteWorkItem(itemId);
+      }
+
+      // Navigate selection after the store settles.
+      if (nextId) {
+        setTimeout(() => {
+          useAppStore.getState().selectWorkItem(nextId, false);
+        }, 50);
+      } else if (isOnlyCardOnBoard) {
+        setTimeout(() => {
+          useAppStore.setState({ selectedWorkItemIds: [] });
+        }, 0);
+      }
+    };
+
+    window.addEventListener("shortcut:delete-selected", handler);
+    return () => window.removeEventListener("shortcut:delete-selected", handler);
+  }, [cardsByStatus, orderedColumns, treeId]);
+
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
       // Save the current ID set to find the new item after creation.
