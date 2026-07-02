@@ -74,6 +74,7 @@ export type Database = {
       }
       backlogs: {
         Row: {
+          board_hidden_status_keys: string[]
           id: string
           name: string
           organization_id: string | null
@@ -82,6 +83,7 @@ export type Database = {
           tree_id: string
         }
         Insert: {
+          board_hidden_status_keys?: string[]
           id: string
           name: string
           organization_id?: string | null
@@ -90,6 +92,7 @@ export type Database = {
           tree_id: string
         }
         Update: {
+          board_hidden_status_keys?: string[]
           id?: string
           name?: string
           organization_id?: string | null

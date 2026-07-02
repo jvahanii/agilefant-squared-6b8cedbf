@@ -45,6 +45,7 @@ export interface Backlog {
   childrenIds: string[];
   treeId: string;
   rank: number;
+  boardHiddenStatusKeys?: string[];
 }
 
 export interface BacklogTree {
