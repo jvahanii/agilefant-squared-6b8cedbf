@@ -8,6 +8,7 @@ export interface TreeStatus {
   label: string;
   color: string;
   rank: number;
+  hidden: boolean;
 }
 
 /** Keys of the statuses that every tree must always have and that cannot be edited or deleted. */
@@ -22,18 +23,18 @@ export function isPinnedStatus(key: string): boolean {
 /** Hard-coded fallback used when a tree has no rows in `tree_statuses`
  *  (e.g. immediately after creation, before realtime delivers them). */
 export const DEFAULT_TREE_STATUSES: Omit<TreeStatus, 'id' | 'treeId'>[] = [
-  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
-  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1 },
-  { key: 'pending',     label: 'Pending',     color: '#93c5fd', rank: 2 },
-  { key: 'blocked',     label: 'Blocked',     color: '#ef4444', rank: 3 },
-  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4 },
+  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0, hidden: false },
+  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1, hidden: false },
+  { key: 'pending',     label: 'Pending',     color: '#93c5fd', rank: 2, hidden: false },
+  { key: 'blocked',     label: 'Blocked',     color: '#ef4444', rank: 3, hidden: false },
+  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 4, hidden: false },
 ];
 
 /** The pinned statuses seeded into every new tree, in canonical order. */
 const PINNED_STATUS_SEEDS: Omit<TreeStatus, 'id' | 'treeId'>[] = [
-  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0 },
-  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1 },
-  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 999 },
+  { key: 'not_started', label: 'Not Started', color: '#94a3b8', rank: 0,   hidden: false },
+  { key: 'in_progress', label: 'In Progress', color: '#f97316', rank: 1,   hidden: false },
+  { key: 'done',        label: 'Done',        color: '#22c55e', rank: 999, hidden: false },
 ];
 
 interface TreeStatusesState {
@@ -47,6 +48,7 @@ interface TreeStatusesState {
   updateStatus: (id: string, patch: Partial<Pick<TreeStatus, 'label' | 'color' | 'key'>>) => Promise<void>;
   deleteStatus: (id: string) => Promise<void>;
   reorderStatuses: (treeId: string, orderedIds: string[]) => Promise<void>;
+  toggleStatusHidden: (id: string) => Promise<void>;
 
   applyRealtimeStatus: (event: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
@@ -59,6 +61,7 @@ function rowToStatus(row: Record<string, unknown>): TreeStatus {
     label: row.label as string,
     color: row.color as string,
     rank: (row.rank as number) ?? 0,
+    hidden: (row.hidden as boolean) ?? false,
   };
 }
 
@@ -230,6 +233,54 @@ export const useTreeStatusesStore = create<TreeStatusesState>((set, get) => ({
         supabase.from('tree_statuses' as any).update({ rank: s.rank }).eq('id', s.id),
       ),
     );
+  },
+
+  toggleStatusHidden: async (id) => {
+    // Find current status to get current hidden value
+    let current: TreeStatus | undefined;
+    const allLists = Object.values(get().statusesByTree);
+    for (const list of allLists) {
+      current = list.find((s) => s.id === id);
+      if (current) break;
+    }
+    if (!current) return;
+
+    const newHidden = !current.hidden;
+
+    // Optimistic update
+    set((state) => {
+      const next = { ...state.statusesByTree };
+      for (const [tid, list] of Object.entries(next)) {
+        const idx = list.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+          const updated = { ...list[idx], hidden: newHidden };
+          next[tid] = [...list.slice(0, idx), updated, ...list.slice(idx + 1)];
+          break;
+        }
+      }
+      return { statusesByTree: next };
+    });
+
+    const { error } = await supabase
+      .from('tree_statuses' as any)
+      .update({ hidden: newHidden })
+      .eq('id', id);
+    if (error) {
+      console.error('toggleStatusHidden failed', error);
+      // Revert optimistic update on failure
+      set((state) => {
+        const next = { ...state.statusesByTree };
+        for (const [tid, list] of Object.entries(next)) {
+          const idx = list.findIndex((s) => s.id === id);
+          if (idx !== -1) {
+            const reverted = { ...list[idx], hidden: !newHidden };
+            next[tid] = [...list.slice(0, idx), reverted, ...list.slice(idx + 1)];
+            break;
+          }
+        }
+        return { statusesByTree: next };
+      });
+    }
   },
 
   applyRealtimeStatus: (event, row) => {

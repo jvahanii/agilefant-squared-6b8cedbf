@@ -6,7 +6,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
-import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock } from "lucide-react";
+import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye } from "lucide-react";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -161,8 +161,9 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
+  const toggleStatusHidden = useTreeStatusesStore((s) => s.toggleStatusHidden);
 
-  const columns = useMemo<TreeStatus[]>(() => {
+  const allColumns = useMemo<TreeStatus[]>(() => {
     const list = statusesByTree[treeId];
     if (list && list.length > 0) return list;
     return DEFAULT_TREE_STATUSES.map((s, i) => ({
@@ -172,6 +173,9 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
       rank: i,
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
+
+  const columns = useMemo(() => allColumns.filter((c) => !c.hidden), [allColumns]);
+  const hiddenColumns = useMemo(() => allColumns.filter((c) => c.hidden), [allColumns]);
 
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
@@ -206,9 +210,9 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
-    const known = new Set(columns.map((c) => c.key));
+    const known = new Set(allColumns.map((c) => c.key));
     const map: Record<string, WorkItem[]> = {};
-    for (const c of columns) map[c.key] = [];
+    for (const c of allColumns) map[c.key] = [];
     const leaves: WorkItem[] = [];
     for (const wi of Object.values(workItems)) {
       const assigned = wi.backlogAssignments?.[treeId];
@@ -229,7 +233,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
       (map[key] ??= []).push(wi);
     }
     return map;
-  }, [workItems, backlogs, backlogId, treeId, columns]);
+  }, [workItems, backlogs, backlogId, treeId, allColumns]);
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
   const allBacklogIds = useMemo(() => {
@@ -252,7 +256,7 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
             items={cardsByStatus[col.key] ?? []}
             selectedIds={selectedWorkItemIds}
             onSelectItem={(id, ctrl) => selectWorkItem(id, ctrl)}
-            treeStatuses={columns}
+            treeStatuses={allColumns}
             treeId={treeId}
             backlogId={backlogId}
             allBacklogIds={allBacklogIds}
@@ -262,10 +266,54 @@ export function BoardView({ backlogId, treeId, addWorkItem }: BoardViewProps) {
               handleColumnAdd(col.key, title);
             }}
             onCancelAdd={() => setAddingColumnKey(null)}
+            onToggleHidden={() => toggleStatusHidden(col.id)}
+          />
+        ))}
+        {hiddenColumns.map((col) => (
+          <HiddenColumnStrip
+            key={col.id}
+            column={col}
+            itemCount={cardsByStatus[col.key]?.length ?? 0}
+            onShow={() => toggleStatusHidden(col.id)}
           />
         ))}
       </div>
     </div>
+  );
+}
+
+/** Thin vertical strip shown for hidden columns; click to restore. */
+function HiddenColumnStrip({
+  column,
+  itemCount,
+  onShow,
+}: {
+  column: TreeStatus;
+  itemCount: number;
+  onShow: () => void;
+}) {
+  return (
+    <button
+      onClick={onShow}
+      title={`Show "${column.label}" column (${itemCount} item${itemCount !== 1 ? "s" : ""})`}
+      className="flex flex-col items-center justify-center w-8 shrink-0 rounded-lg border bg-muted/20 h-full gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group"
+    >
+      <span
+        className="w-2 h-2 rounded-full shrink-0"
+        style={{ backgroundColor: column.color }}
+      />
+      <span
+        className="text-[10px] font-semibold writing-mode-vertical"
+        style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)" }}
+        title={column.label}
+      >
+        {column.label}
+      </span>
+      {itemCount > 0 && (
+        <span className="text-[10px] tabular-nums">{itemCount}</span>
+      )}
+      <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
   );
 }
 
@@ -282,6 +330,7 @@ function BoardColumn({
   onStartAdd,
   onCommitAdd,
   onCancelAdd,
+  onToggleHidden,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -295,6 +344,7 @@ function BoardColumn({
   onStartAdd: () => void;
   onCommitAdd: (title: string) => void;
   onCancelAdd: () => void;
+  onToggleHidden: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -307,26 +357,36 @@ function BoardColumn({
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
     >
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: column.color }}
-        />
-        <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {items.length}
-        </span>
-        <button
-          className="ml-auto w-5 h-5 flex items-center justify-center rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onStartAdd();
-          }}
-          title={`Add item to ${column.label}`}
-        >
-          <Plus className="w-3 h-3" />
-        </button>
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b sticky top-0 bg-muted/60 rounded-t-lg">
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: column.color }}
+            />
+            <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {items.length}
+            </span>
+            <button
+              className="ml-auto w-5 h-5 flex items-center justify-center rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartAdd();
+              }}
+              title={`Add item to ${column.label}`}
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem className="text-xs" onSelect={onToggleHidden}>
+            <EyeOff className="w-3 h-3 mr-2" />
+            Hide column
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
       <div ref={setNodeRef} className="flex-1 overflow-y-auto">
         {isAdding && (
           <ColumnAddInput
