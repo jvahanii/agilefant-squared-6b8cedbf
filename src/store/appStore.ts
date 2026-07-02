@@ -1366,11 +1366,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedWorkItems = { ...state.workItems };
       let maxRank = -1;
       Object.values(updatedWorkItems).forEach((wi) => {
-        if (wi.parentId === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
+        if (getEffectiveParentId(wi, treeId) === parentId && allBacklogIds.has(wi.backlogAssignments[treeId])) {
           const wiRank = wi.ranks[wi.backlogAssignments[treeId]] ?? 0;
           if (wiRank > maxRank) maxRank = wiRank;
         }
       });
+
 
       const newItems: WorkItem[] = [];
       titles.forEach((title, i) => {
