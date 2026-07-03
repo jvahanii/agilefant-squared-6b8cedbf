@@ -8,6 +8,7 @@ import {
   deleteWorkItemBacklogRanks,
   upsertBacklog,
   updateBacklogHiddenStatusKeys,
+  updateBacklogViewMode,
   upsertBacklogs,
   deleteBacklogs,
   upsertBacklogTree,
