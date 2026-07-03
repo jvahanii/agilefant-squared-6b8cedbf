@@ -512,11 +512,12 @@ function BoardColumn({
   onStartAdd,
   onCommitAdd,
   onCancelAdd,
-  onToggleHidden,
+  onDeleteColumn,
+  availableStatuses,
+  onAddColumn,
   setViewMode,
   allColumnKeys,
   onMoveColumn,
-  labelOverride,
   onSaveLabel,
 }: {
   column: TreeStatus;
@@ -532,11 +533,12 @@ function BoardColumn({
   onStartAdd: () => void;
   onCommitAdd: (title: string) => void;
   onCancelAdd: () => void;
-  onToggleHidden: () => void;
+  onDeleteColumn: () => void;
+  availableStatuses: TreeStatus[];
+  onAddColumn: (statusKey: string, label: string) => void;
   setViewMode: (mode: "list" | "board") => void;
   allColumnKeys?: string[];
-  onMoveColumn?: (fromKey: string, toKey: string) => void;
-  labelOverride?: string;
+  onMoveColumn?: (fromId: string, toId: string) => void;
   onSaveLabel: (statusKey: string, label: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -564,7 +566,7 @@ function BoardColumn({
   }, [isEditingLabel]);
 
   const startEditingLabel = () => {
-    setEditLabel(labelOverride ?? column.label);
+    setEditLabel(column.label);
     setIsEditingLabel(true);
   };
 
@@ -572,13 +574,11 @@ function BoardColumn({
     const trimmed = editLabel.trim();
     if (trimmed && trimmed !== column.label) {
       onSaveLabel(column.key, trimmed);
-    } else if (trimmed === column.label || !trimmed) {
-      onSaveLabel(column.key, "");
     }
     setIsEditingLabel(false);
   };
 
-  const displayLabel = labelOverride ?? column.label;
+  const displayLabel = column.label;
 
   return (
     <div
