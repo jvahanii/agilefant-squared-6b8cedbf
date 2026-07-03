@@ -284,15 +284,22 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   addAfterSlotRef.current = addAfterSlot;
 
   // Listen for the header "+" button event (dispatched from WorkItemTreePanel)
+  // and Enter key with backlog selected but no work item selected.
+  // Both should prompt for a new item on the leftmost column (respecting user reorder).
   useEffect(() => {
     const handler = () => {
-      if (columns.length > 0) {
-        setAddingColumnKey(columns[0].key);
+      if (orderedColumns.length > 0) {
+        setAddAfterSlot(null);
+        setAddingColumnKey(orderedColumns[0].key);
       }
     };
     window.addEventListener("board:header-add", handler);
-    return () => window.removeEventListener("board:header-add", handler);
-  }, [columns]);
+    window.addEventListener("shortcut:add-workitem", handler);
+    return () => {
+      window.removeEventListener("board:header-add", handler);
+      window.removeEventListener("shortcut:add-workitem", handler);
+    };
+  }, [orderedColumns]);
 
   // Listen for Enter / Shift+Enter so the board behaves like the list view.
   useEffect(() => {
