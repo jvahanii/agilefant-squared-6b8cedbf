@@ -530,6 +530,14 @@ export async function updateBacklogHiddenStatusKeys(backlogId: string, keys: str
   if (error) console.error('updateBacklogHiddenStatusKeys:', error);
 }
 
+export async function updateBacklogViewMode(backlogId: string, mode: 'list' | 'board') {
+  const { error } = await supabase
+    .from('backlogs')
+    .update({ view_mode: mode } as any)
+    .eq('id', backlogId);
+  if (error) console.error('updateBacklogViewMode:', error);
+}
+
 export async function deleteBacklogs(ids: string[]) {
   if (ids.length === 0) return;
   // Also delete any double-prefixed variants that may exist in the DB
