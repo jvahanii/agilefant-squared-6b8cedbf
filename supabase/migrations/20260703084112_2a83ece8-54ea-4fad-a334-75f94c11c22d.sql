@@ -1,0 +1,1 @@
+ALTER TABLE public.backlogs ADD COLUMN view_mode text NOT NULL DEFAULT 'list';
