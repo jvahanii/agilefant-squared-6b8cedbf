@@ -4,6 +4,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useLabelsStore } from "@/store/labelsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
+import { useBoardColumnsStore, type BoardColumn as BoardColumnDef } from "@/store/boardColumnsStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
 import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon } from "lucide-react";
