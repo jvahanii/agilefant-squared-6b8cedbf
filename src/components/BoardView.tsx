@@ -56,6 +56,7 @@ interface BoardViewProps {
 }
 
 const EMPTY_ARR: string[] = [];
+const EMPTY_COLS: BoardColumnDef[] = [];
 
 /** Delay (in ms) to allow React to complete reconciliation before scrolling to an element.
  *  This ensures the element exists in the DOM when we call scrollIntoView(). */
