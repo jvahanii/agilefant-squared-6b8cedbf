@@ -435,32 +435,25 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
               setAddingColumnKey(null);
               setAddAfterSlot(null);
             }}
-            onToggleHidden={() => toggleHideStatusKey(col.key)}
+            onDeleteColumn={() => deleteColumn(col.id)}
+            availableStatuses={availableStatuses}
+            onAddColumn={(statusKey, label) => createColumn(backlogId, statusKey, label)}
             addAfterSlot={
               addAfterSlot?.columnKey === col.key ? addAfterSlot.afterIndex : null
             }
             setViewMode={setViewMode}
             allColumnKeys={orderedColumns.map((c) => c.key)}
-            labelOverride={labelOverrides[col.key]}
-            onSaveLabel={saveLabelOverride}
-            onMoveColumn={(fromKey, toKey) => {
-              const current = orderedColumns.map((c) => c.key);
-              const fromIdx = current.indexOf(fromKey);
-              const toIdx = current.indexOf(toKey);
+            onSaveLabel={(_key, label) => renameColumn(col.id, label)}
+            onMoveColumn={(fromId, toId) => {
+              const current = orderedColumns.map((c) => c.id);
+              const fromIdx = current.indexOf(fromId);
+              const toIdx = current.indexOf(toId);
               if (fromIdx === -1 || toIdx === -1) return;
               const next = [...current];
               next.splice(fromIdx, 1);
-              next.splice(toIdx, 0, fromKey);
-              saveColumnOrder(next);
+              next.splice(toIdx, 0, fromId);
+              reorderColumns(backlogId, next);
             }}
-          />
-        ))}
-        {hiddenColumns.map((col) => (
-          <HiddenColumnStrip
-            key={col.id}
-            column={col}
-            itemCount={cardsByStatus[col.key]?.length ?? 0}
-            onShow={() => toggleHideStatusKey(col.key)}
           />
         ))}
       </div>
