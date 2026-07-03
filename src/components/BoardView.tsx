@@ -694,9 +694,36 @@ function BoardColumn({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem className="text-xs" onSelect={onToggleHidden}>
-            <EyeOff className="w-3 h-3 mr-2" />
-            Hide column
+          <ContextMenuItem className="text-xs" onSelect={() => startEditingLabel()}>
+            Rename column
+          </ContextMenuItem>
+          {availableStatuses.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                <Plus className="w-3 h-3 mr-2" />
+                Add column
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {availableStatuses.map((s) => (
+                  <ContextMenuItem
+                    key={s.key}
+                    className="text-xs"
+                    onSelect={() => onAddColumn(s.key, s.label)}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0 mr-2"
+                      style={{ backgroundColor: s.color }}
+                    />
+                    {s.label}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs text-destructive focus:text-destructive" onSelect={onDeleteColumn}>
+            <Trash2 className="w-3 h-3 mr-2" />
+            Remove column
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
