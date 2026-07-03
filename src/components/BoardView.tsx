@@ -665,7 +665,6 @@ function BoardColumn({
               <span
                 className={cn(
                   "text-xs font-semibold truncate",
-                  labelOverride && "text-primary italic",
                 )}
                 title={displayLabel}
                 onDoubleClick={(e) => {
