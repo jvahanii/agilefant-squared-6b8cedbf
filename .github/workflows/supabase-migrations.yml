@@ -57,4 +57,4 @@ jobs:
           echo "value=$db_url" >> "$GITHUB_OUTPUT"
 
       - name: Deploy migrations to remote
-        run: supabase db push --db-url "${{ steps.db_url.outputs.value }}"
+        run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
