@@ -4,6 +4,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useLabelsStore } from "@/store/labelsStore";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
+import { useBoardColumnsStore, type BoardColumn as BoardColumnDef } from "@/store/boardColumnsStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
 import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon } from "lucide-react";
@@ -55,6 +56,7 @@ interface BoardViewProps {
 }
 
 const EMPTY_ARR: string[] = [];
+const EMPTY_COLS: BoardColumnDef[] = [];
 
 /** Delay (in ms) to allow React to complete reconciliation before scrolling to an element.
  *  This ensures the element exists in the DOM when we call scrollIntoView(). */
@@ -184,10 +186,15 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
-  const setBacklogHiddenStatusKeys = useAppStore((s) => s.setBacklogHiddenStatusKeys);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
+  const columnsByBacklog = useBoardColumnsStore((s) => s.columnsByBacklog);
+  const loadColumnsForBacklog = useBoardColumnsStore((s) => s.loadForBacklog);
+  const createColumn = useBoardColumnsStore((s) => s.createColumn);
+  const renameColumn = useBoardColumnsStore((s) => s.renameColumn);
+  const deleteColumn = useBoardColumnsStore((s) => s.deleteColumn);
+  const reorderColumns = useBoardColumnsStore((s) => s.reorderColumns);
 
-  const allColumns = useMemo<TreeStatus[]>(() => {
+  const allStatuses = useMemo<TreeStatus[]>(() => {
     const list = statusesByTree[treeId];
     if (list && list.length > 0) return list;
     return DEFAULT_TREE_STATUSES.map((s, i) => ({
@@ -198,86 +205,44 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
 
-  // Per-backlog column visibility, persisted on the backlog row so it's
-  // shared across users viewing the same backlog.
-  const persistedHiddenKeys = backlogs[backlogId]?.boardHiddenStatusKeys ?? EMPTY_ARR;
-  const hiddenStatusKeys = useMemo(() => new Set(persistedHiddenKeys), [persistedHiddenKeys]);
+  // Lazy-load (and one-shot migrate legacy state into) board_columns for this backlog.
+  useEffect(() => {
+    loadColumnsForBacklog(backlogId, treeId);
+  }, [backlogId, treeId, loadColumnsForBacklog]);
 
-  const toggleHideStatusKey = useCallback(
-    (key: string) => {
-      const current = useAppStore.getState().backlogs[backlogId]?.boardHiddenStatusKeys ?? [];
-      const set = new Set(current);
-      if (set.has(key)) set.delete(key); else set.add(key);
-      setBacklogHiddenStatusKeys(backlogId, Array.from(set));
-    },
-    [backlogId, setBacklogHiddenStatusKeys],
-  );
+  const backlogColumns = columnsByBacklog[backlogId] ?? EMPTY_COLS;
 
-  const columns = useMemo(() => allColumns.filter((c) => !hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
-  const hiddenColumns = useMemo(() => allColumns.filter((c) => hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
+  // Build the visible column list, shaped as TreeStatus so all existing
+  // consumers (BoardColumn, BoardCard) can keep using `col.id`, `col.key`,
+  // `col.label`, `col.color`. `id` here is the `board_columns.id` — stable
+  // per column and used for rename/delete/reorder writes.
+  const orderedColumns = useMemo<TreeStatus[]>(() => {
+    const byKey = new Map(allStatuses.map((s) => [s.key, s]));
+    return backlogColumns.map((c) => {
+      const s = byKey.get(c.statusKey);
+      return {
+        id: c.id,
+        treeId,
+        key: c.statusKey,
+        label: c.label,
+        color: s?.color ?? "#94a3b8",
+        rank: c.rank,
+      };
+    });
+  }, [backlogColumns, allStatuses, treeId]);
 
-  // Per-backlog column order persisted in localStorage.
-  const storageKey = `board-column-order:${backlogId}`;
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) return JSON.parse(raw) as string[];
-    } catch { /* ignore */ }
-    return [];
-  });
-
-  // Per-backlog column label overrides persisted in localStorage.
-  const labelStorageKey = `board-column-labels:${backlogId}`;
-  const [labelOverrides, setLabelOverrides] = useState<Record<string, string>>(() => {
-    try {
-      const raw = localStorage.getItem(labelStorageKey);
-      if (raw) return JSON.parse(raw) as Record<string, string>;
-    } catch { /* ignore */ }
-    return {};
-  });
-
-  const saveLabelOverride = useCallback(
-    (statusKey: string, label: string) => {
-      setLabelOverrides((prev) => {
-        const next = { ...prev };
-        if (label) {
-          next[statusKey] = label;
-        } else {
-          delete next[statusKey];
-        }
-        localStorage.setItem(labelStorageKey, JSON.stringify(next));
-        return next;
-      });
-    },
-    [labelStorageKey],
-  );
-
-  const saveColumnOrder = useCallback(
-    (order: string[]) => {
-      setColumnOrder(order);
-      localStorage.setItem(storageKey, JSON.stringify(order));
-    },
-    [storageKey],
-  );
-
-  // Sort visible columns by the persisted order; columns not yet in the
-  // order list appear after any ordered ones in their default sequence.
-  const orderedColumns = useMemo(() => {
-    const visible = columns;
-    const keySet = new Set(visible.map((c) => c.key));
-    // Keep only keys that still exist (prune removed statuses).
-    const pruned = columnOrder.filter((k) => keySet.has(k));
-    const orderedSet = new Set(pruned);
-    const tail = visible.filter((c) => !orderedSet.has(c.key));
-    const map = new Map(visible.map((c) => [c.key, c]));
-    return [...pruned.map((k) => map.get(k)!).filter(Boolean), ...tail];
-  }, [columns, columnOrder]);
+  // Statuses that don't yet have a column in this backlog — offered in the
+  // header context menu as "Add column".
+  const availableStatuses = useMemo(() => {
+    const used = new Set(backlogColumns.map((c) => c.statusKey));
+    return allStatuses.filter((s) => !used.has(s.key));
+  }, [allStatuses, backlogColumns]);
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
-    const known = new Set(allColumns.map((c) => c.key));
+    const known = new Set(allStatuses.map((c) => c.key));
     const map: Record<string, WorkItem[]> = {};
-    for (const c of allColumns) map[c.key] = [];
+    for (const c of allStatuses) map[c.key] = [];
     const leaves: WorkItem[] = [];
     for (const wi of Object.values(workItems)) {
       const assigned = wi.backlogAssignments?.[treeId];
@@ -298,7 +263,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       (map[key] ??= []).push(wi);
     }
     return map;
-  }, [workItems, backlogs, backlogId, treeId, allColumns]);
+  }, [workItems, backlogs, backlogId, treeId, allStatuses]);
 
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
@@ -454,7 +419,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             items={cardsByStatus[col.key] ?? []}
             selectedIds={selectedWorkItemIds}
             onSelectItem={(id, ctrl) => selectWorkItem(id, ctrl)}
-            treeStatuses={allColumns}
+            treeStatuses={allStatuses}
             treeId={treeId}
             backlogId={backlogId}
             allBacklogIds={allBacklogIds}
@@ -470,32 +435,25 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
               setAddingColumnKey(null);
               setAddAfterSlot(null);
             }}
-            onToggleHidden={() => toggleHideStatusKey(col.key)}
+            onDeleteColumn={() => deleteColumn(col.id)}
+            availableStatuses={availableStatuses}
+            onAddColumn={(statusKey, label) => createColumn(backlogId, statusKey, label)}
             addAfterSlot={
               addAfterSlot?.columnKey === col.key ? addAfterSlot.afterIndex : null
             }
             setViewMode={setViewMode}
             allColumnKeys={orderedColumns.map((c) => c.key)}
-            labelOverride={labelOverrides[col.key]}
-            onSaveLabel={saveLabelOverride}
-            onMoveColumn={(fromKey, toKey) => {
-              const current = orderedColumns.map((c) => c.key);
-              const fromIdx = current.indexOf(fromKey);
-              const toIdx = current.indexOf(toKey);
+            onSaveLabel={(_key, label) => renameColumn(col.id, label)}
+            onMoveColumn={(fromId, toId) => {
+              const current = orderedColumns.map((c) => c.id);
+              const fromIdx = current.indexOf(fromId);
+              const toIdx = current.indexOf(toId);
               if (fromIdx === -1 || toIdx === -1) return;
               const next = [...current];
               next.splice(fromIdx, 1);
-              next.splice(toIdx, 0, fromKey);
-              saveColumnOrder(next);
+              next.splice(toIdx, 0, fromId);
+              reorderColumns(backlogId, next);
             }}
-          />
-        ))}
-        {hiddenColumns.map((col) => (
-          <HiddenColumnStrip
-            key={col.id}
-            column={col}
-            itemCount={cardsByStatus[col.key]?.length ?? 0}
-            onShow={() => toggleHideStatusKey(col.key)}
           />
         ))}
       </div>
@@ -503,42 +461,6 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   );
 }
 
-/** Thin vertical strip shown for hidden columns; click to restore. */
-function HiddenColumnStrip({
-  column,
-  itemCount,
-  onShow,
-}: {
-  column: TreeStatus;
-  itemCount: number;
-  onShow: () => void;
-}) {
-  const label = `Show "${column.label}" column (${itemCount} ${itemCount === 1 ? "item" : "items"})`;
-  return (
-    <button
-      onClick={onShow}
-      title={label}
-      aria-label={label}
-      className="flex flex-col items-center justify-center w-8 shrink-0 rounded-lg border bg-muted/20 h-full gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group"
-    >
-      <span
-        className="w-2 h-2 rounded-full shrink-0"
-        style={{ backgroundColor: column.color }}
-      />
-      <span
-        className="text-[10px] font-semibold"
-        style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)" }}
-        title={column.label}
-      >
-        {column.label}
-      </span>
-      {itemCount > 0 && (
-        <span className="text-[10px] tabular-nums">{itemCount}</span>
-      )}
-      <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
-  );
-}
 
 function BoardColumn({
   column,
@@ -554,11 +476,12 @@ function BoardColumn({
   onStartAdd,
   onCommitAdd,
   onCancelAdd,
-  onToggleHidden,
+  onDeleteColumn,
+  availableStatuses,
+  onAddColumn,
   setViewMode,
   allColumnKeys,
   onMoveColumn,
-  labelOverride,
   onSaveLabel,
 }: {
   column: TreeStatus;
@@ -574,11 +497,12 @@ function BoardColumn({
   onStartAdd: () => void;
   onCommitAdd: (title: string) => void;
   onCancelAdd: () => void;
-  onToggleHidden: () => void;
+  onDeleteColumn: () => void;
+  availableStatuses: TreeStatus[];
+  onAddColumn: (statusKey: string, label: string) => void;
   setViewMode: (mode: "list" | "board") => void;
   allColumnKeys?: string[];
-  onMoveColumn?: (fromKey: string, toKey: string) => void;
-  labelOverride?: string;
+  onMoveColumn?: (fromId: string, toId: string) => void;
   onSaveLabel: (statusKey: string, label: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -606,7 +530,7 @@ function BoardColumn({
   }, [isEditingLabel]);
 
   const startEditingLabel = () => {
-    setEditLabel(labelOverride ?? column.label);
+    setEditLabel(column.label);
     setIsEditingLabel(true);
   };
 
@@ -614,13 +538,11 @@ function BoardColumn({
     const trimmed = editLabel.trim();
     if (trimmed && trimmed !== column.label) {
       onSaveLabel(column.key, trimmed);
-    } else if (trimmed === column.label || !trimmed) {
-      onSaveLabel(column.key, "");
     }
     setIsEditingLabel(false);
   };
 
-  const displayLabel = labelOverride ?? column.label;
+  const displayLabel = column.label;
 
   return (
     <div
@@ -643,7 +565,7 @@ function BoardColumn({
             className="flex items-center gap-1.5 px-2.5 py-2 border-b sticky top-0 bg-background/80 backdrop-blur-sm rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
             onDragStart={(e) => {
               if (!onMoveColumn) return;
-              e.dataTransfer.setData("text/plain", column.key);
+              e.dataTransfer.setData("text/plain", column.id);
               e.dataTransfer.effectAllowed = "move";
             }}
             onDragOver={(e) => {
@@ -659,9 +581,9 @@ function BoardColumn({
             onDrop={(e) => {
               e.preventDefault();
               setDragOverDir(null);
-              const fromKey = e.dataTransfer.getData("text/plain");
-              if (fromKey && fromKey !== column.key && onMoveColumn) {
-                onMoveColumn(fromKey, column.key);
+              const fromId = e.dataTransfer.getData("text/plain");
+              if (fromId && fromId !== column.id && onMoveColumn) {
+                onMoveColumn(fromId, column.id);
               }
             }}
             onDragEnd={() => setDragOverDir(null)}
@@ -707,7 +629,6 @@ function BoardColumn({
               <span
                 className={cn(
                   "text-xs font-semibold truncate",
-                  labelOverride && "text-primary italic",
                 )}
                 title={displayLabel}
                 onDoubleClick={(e) => {
@@ -737,9 +658,36 @@ function BoardColumn({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem className="text-xs" onSelect={onToggleHidden}>
-            <EyeOff className="w-3 h-3 mr-2" />
-            Hide column
+          <ContextMenuItem className="text-xs" onSelect={() => startEditingLabel()}>
+            Rename column
+          </ContextMenuItem>
+          {availableStatuses.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                <Plus className="w-3 h-3 mr-2" />
+                Add column
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {availableStatuses.map((s) => (
+                  <ContextMenuItem
+                    key={s.key}
+                    className="text-xs"
+                    onSelect={() => onAddColumn(s.key, s.label)}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0 mr-2"
+                      style={{ backgroundColor: s.color }}
+                    />
+                    {s.label}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          <ContextMenuSeparator />
+          <ContextMenuItem className="text-xs text-destructive focus:text-destructive" onSelect={onDeleteColumn}>
+            <Trash2 className="w-3 h-3 mr-2" />
+            Remove column
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

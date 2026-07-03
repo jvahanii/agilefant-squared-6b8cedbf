@@ -127,6 +127,44 @@ export type Database = {
           },
         ]
       }
+      board_columns: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          id: string
+          label: string
+          rank: number
+          status_key: string
+          updated_at: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          id?: string
+          label: string
+          rank?: number
+          status_key: string
+          updated_at?: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          rank?: number
+          status_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_columns_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       change_log: {
         Row: {
           action: string

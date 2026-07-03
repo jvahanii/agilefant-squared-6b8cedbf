@@ -10,6 +10,7 @@ import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
+import { useBoardColumnsStore } from '@/store/boardColumnsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -46,6 +47,7 @@ export function useRealtimeSync() {
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
+  const applyRealtimeBoardColumn = useBoardColumnsStore((s) => s.applyRealtime);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -442,6 +444,24 @@ export function useRealtimeSync() {
       )
       .subscribe();
     channels.push(targetsChannel);
+
+    // Board columns: single channel; RLS restricts to accessible backlogs so no filter needed.
+    const boardColumnsChannel = supabase
+      .channel(`board-columns-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'board_columns' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          const backlogId = row?.backlog_id as string | undefined;
+          if (!backlogId) return;
+          const accessible = useAppStore.getState().backlogs;
+          if (!accessible[backlogId]) return;
+          applyRealtimeBoardColumn(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .subscribe();
+    channels.push(boardColumnsChannel);
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
