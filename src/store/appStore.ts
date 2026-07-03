@@ -3257,6 +3257,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           treeId: row.tree_id as string,
           rank: row.rank as number,
           boardHiddenStatusKeys: (row.board_hidden_status_keys as string[] | null) ?? [],
+          viewMode: ((row.view_mode as string | null) === 'board' ? 'board' : 'list'),
         };
 
         const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };
