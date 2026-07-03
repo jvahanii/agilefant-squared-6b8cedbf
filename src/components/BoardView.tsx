@@ -601,7 +601,7 @@ function BoardColumn({
             className="flex items-center gap-1.5 px-2.5 py-2 border-b sticky top-0 bg-background/80 backdrop-blur-sm rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
             onDragStart={(e) => {
               if (!onMoveColumn) return;
-              e.dataTransfer.setData("text/plain", column.key);
+              e.dataTransfer.setData("text/plain", column.id);
               e.dataTransfer.effectAllowed = "move";
             }}
             onDragOver={(e) => {
@@ -617,9 +617,9 @@ function BoardColumn({
             onDrop={(e) => {
               e.preventDefault();
               setDragOverDir(null);
-              const fromKey = e.dataTransfer.getData("text/plain");
-              if (fromKey && fromKey !== column.key && onMoveColumn) {
-                onMoveColumn(fromKey, column.key);
+              const fromId = e.dataTransfer.getData("text/plain");
+              if (fromId && fromId !== column.id && onMoveColumn) {
+                onMoveColumn(fromId, column.id);
               }
             }}
             onDragEnd={() => setDragOverDir(null)}
