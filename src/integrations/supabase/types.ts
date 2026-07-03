@@ -81,6 +81,7 @@ export type Database = {
           parent_id: string | null
           rank: number
           tree_id: string
+          view_mode: string
         }
         Insert: {
           board_hidden_status_keys?: string[]
@@ -90,6 +91,7 @@ export type Database = {
           parent_id?: string | null
           rank?: number
           tree_id: string
+          view_mode?: string
         }
         Update: {
           board_hidden_status_keys?: string[]
@@ -99,6 +101,7 @@ export type Database = {
           parent_id?: string | null
           rank?: number
           tree_id?: string
+          view_mode?: string
         }
         Relationships: [
           {
