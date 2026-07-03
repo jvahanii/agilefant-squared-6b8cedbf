@@ -1,27 +1,24 @@
 ## Goal
-Persist board hidden columns per backlog in the database (shared across all users viewing that backlog), replacing the current `localStorage` implementation.
+Persist the List/Board view choice per backlog in the database (shared across users), matching what we just did for board hidden columns.
 
 ## Changes
 
 ### 1. Database migration
-Add a new column to `public.backlogs`:
-- `board_hidden_status_keys text[] NOT NULL DEFAULT '{}'` — list of status keys hidden on the board view for this backlog.
+Add to `public.backlogs`:
+- `view_mode text NOT NULL DEFAULT 'list'` — either `'list'` or `'board'`.
 
-Existing RLS policies on `backlogs` already cover reads and updates by org members / tree-share partners, so no policy changes are needed.
+No RLS changes needed (existing backlog policies cover it).
 
-### 2. App store (`src/store/appStore.ts`)
-- Extend the in-memory `Backlog` type / mapper to carry `boardHiddenStatusKeys: string[]`.
-- Load it in `loadFromSupabase` and in the realtime CDC mapper in `src/store/supabaseSync.ts`.
-- Add a `setBoardHiddenStatusKeys(backlogId, keys)` action that optimistically updates the store and writes to Supabase.
+### 2. Types + store
+- `src/types/models.ts`: add `viewMode?: 'list' | 'board'` to `Backlog`.
+- `src/store/appStore.ts`: map `view_mode` in the backlog loader/mapper; add `setBacklogViewMode(backlogId, mode)` action (optimistic + DB write), mirroring `setBacklogHiddenStatusKeys`.
+- `src/store/supabaseSync.ts`: include `view_mode` in the realtime CDC mapper and add `updateBacklogViewMode` writer.
 
-### 3. BoardView (`src/components/BoardView.tsx`)
-- Remove the `localStorage` read/write (`board-hidden-cols:${backlogId}` key at line 177).
-- Read `hiddenStatusKeys` from the backlog record via a selector.
-- Hide/restore handlers call the new store action instead of `setState` + `localStorage`.
+### 3. UI
+- `src/components/WorkItemTreePanel.tsx`: remove the `localStorage` read/write for the List/Board toggle. Read view mode from the selected backlog record; on toggle call `setBacklogViewMode`.
 
 ### 4. Cleanup
-- One-time: no data migration required; existing localStorage values are ignored (safe to leave in the browser — they'll simply be unused).
+No data migration needed; stale localStorage entries are harmless.
 
 ## Technical notes
-- Using a column on `backlogs` (not a separate table) keeps this a single write per toggle and rides existing realtime for `backlogs`, so other viewers see hides/unhides live.
-- Array of text keys mirrors how `tree_statuses.key` is already referenced elsewhere.
+- Single column on `backlogs` keeps this simple and rides existing realtime, so switching view mode is reflected live for other viewers of the same backlog.
