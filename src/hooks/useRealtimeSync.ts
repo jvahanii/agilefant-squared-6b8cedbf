@@ -47,6 +47,7 @@ export function useRealtimeSync() {
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
+  const applyRealtimeBoardColumn = useBoardColumnsStore((s) => s.applyRealtime);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
