@@ -240,9 +240,9 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
-    const known = new Set(allColumns.map((c) => c.key));
+    const known = new Set(allStatuses.map((c) => c.key));
     const map: Record<string, WorkItem[]> = {};
-    for (const c of allColumns) map[c.key] = [];
+    for (const c of allStatuses) map[c.key] = [];
     const leaves: WorkItem[] = [];
     for (const wi of Object.values(workItems)) {
       const assigned = wi.backlogAssignments?.[treeId];
@@ -263,7 +263,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       (map[key] ??= []).push(wi);
     }
     return map;
-  }, [workItems, backlogs, backlogId, treeId, allColumns]);
+  }, [workItems, backlogs, backlogId, treeId, allStatuses]);
 
   // Track which column has an active inline add-input (null = none open)
   const [addingColumnKey, setAddingColumnKey] = useState<string | null>(null);
@@ -419,7 +419,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             items={cardsByStatus[col.key] ?? []}
             selectedIds={selectedWorkItemIds}
             onSelectItem={(id, ctrl) => selectWorkItem(id, ctrl)}
-            treeStatuses={allColumns}
+            treeStatuses={allStatuses}
             treeId={treeId}
             backlogId={backlogId}
             allBacklogIds={allBacklogIds}
