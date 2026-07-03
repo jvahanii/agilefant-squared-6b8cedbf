@@ -211,19 +211,24 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const backlogColumns = columnsByBacklog[backlogId] ?? EMPTY_COLS;
 
-  // Build the visible column list. Each row references a status by key; we
-  // resolve its color/canonical label from the tree's status definitions.
-  const orderedColumns = useMemo<Array<BoardColumnDef & { color: string; statusLabel: string }>>(() => {
+  // Build the visible column list, shaped as TreeStatus so all existing
+  // consumers (BoardColumn, BoardCard) can keep using `col.id`, `col.key`,
+  // `col.label`, `col.color`. `id` here is the `board_columns.id` — stable
+  // per column and used for rename/delete/reorder writes.
+  const orderedColumns = useMemo<TreeStatus[]>(() => {
     const byKey = new Map(allStatuses.map((s) => [s.key, s]));
     return backlogColumns.map((c) => {
       const s = byKey.get(c.statusKey);
       return {
-        ...c,
+        id: c.id,
+        treeId,
+        key: c.statusKey,
+        label: c.label,
         color: s?.color ?? "#94a3b8",
-        statusLabel: s?.label ?? c.statusKey,
+        rank: c.rank,
       };
     });
-  }, [backlogColumns, allStatuses]);
+  }, [backlogColumns, allStatuses, treeId]);
 
   // Statuses that don't yet have a column in this backlog — offered in the
   // header context menu as "Add column".
