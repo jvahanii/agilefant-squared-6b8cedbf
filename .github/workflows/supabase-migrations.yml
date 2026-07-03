@@ -9,6 +9,7 @@ on:
 
 jobs:
   deploy:
+    if: ${{ !contains(github.actor, 'lovable') && !contains(github.event.head_commit.author.name, 'lovable') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
