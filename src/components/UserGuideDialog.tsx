@@ -341,7 +341,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Switch back to List",
-                how: 'Click "List" in the same toolbar toggle. Your preference is remembered globally.',
+                how: 'Click "List" in the same toolbar toggle. Your List/Board choice is remembered per backlog and shared with everyone viewing that backlog.',
               },
               {
                 action: "Change item status",
