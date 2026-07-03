@@ -461,42 +461,6 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   );
 }
 
-/** Thin vertical strip shown for hidden columns; click to restore. */
-function HiddenColumnStrip({
-  column,
-  itemCount,
-  onShow,
-}: {
-  column: TreeStatus;
-  itemCount: number;
-  onShow: () => void;
-}) {
-  const label = `Show "${column.label}" column (${itemCount} ${itemCount === 1 ? "item" : "items"})`;
-  return (
-    <button
-      onClick={onShow}
-      title={label}
-      aria-label={label}
-      className="flex flex-col items-center justify-center w-8 shrink-0 rounded-lg border bg-muted/20 h-full gap-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors group"
-    >
-      <span
-        className="w-2 h-2 rounded-full shrink-0"
-        style={{ backgroundColor: column.color }}
-      />
-      <span
-        className="text-[10px] font-semibold"
-        style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)" }}
-        title={column.label}
-      >
-        {column.label}
-      </span>
-      {itemCount > 0 && (
-        <span className="text-[10px] tabular-nums">{itemCount}</span>
-      )}
-      <Eye className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
-  );
-}
 
 function BoardColumn({
   column,
