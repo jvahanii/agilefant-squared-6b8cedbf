@@ -10,6 +10,7 @@ import { useTreeStatusesStore } from '@/store/treeStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
+import { useBoardColumnsStore } from '@/store/boardColumnsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
