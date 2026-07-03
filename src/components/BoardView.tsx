@@ -185,10 +185,15 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
-  const setBacklogHiddenStatusKeys = useAppStore((s) => s.setBacklogHiddenStatusKeys);
   const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
+  const columnsByBacklog = useBoardColumnsStore((s) => s.columnsByBacklog);
+  const loadColumnsForBacklog = useBoardColumnsStore((s) => s.loadForBacklog);
+  const createColumn = useBoardColumnsStore((s) => s.createColumn);
+  const renameColumn = useBoardColumnsStore((s) => s.renameColumn);
+  const deleteColumn = useBoardColumnsStore((s) => s.deleteColumn);
+  const reorderColumns = useBoardColumnsStore((s) => s.reorderColumns);
 
-  const allColumns = useMemo<TreeStatus[]>(() => {
+  const allStatuses = useMemo<TreeStatus[]>(() => {
     const list = statusesByTree[treeId];
     if (list && list.length > 0) return list;
     return DEFAULT_TREE_STATUSES.map((s, i) => ({
@@ -199,80 +204,33 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     })) as TreeStatus[];
   }, [statusesByTree, treeId]);
 
-  // Per-backlog column visibility, persisted on the backlog row so it's
-  // shared across users viewing the same backlog.
-  const persistedHiddenKeys = backlogs[backlogId]?.boardHiddenStatusKeys ?? EMPTY_ARR;
-  const hiddenStatusKeys = useMemo(() => new Set(persistedHiddenKeys), [persistedHiddenKeys]);
+  // Lazy-load (and one-shot migrate legacy state into) board_columns for this backlog.
+  useEffect(() => {
+    loadColumnsForBacklog(backlogId, treeId);
+  }, [backlogId, treeId, loadColumnsForBacklog]);
 
-  const toggleHideStatusKey = useCallback(
-    (key: string) => {
-      const current = useAppStore.getState().backlogs[backlogId]?.boardHiddenStatusKeys ?? [];
-      const set = new Set(current);
-      if (set.has(key)) set.delete(key); else set.add(key);
-      setBacklogHiddenStatusKeys(backlogId, Array.from(set));
-    },
-    [backlogId, setBacklogHiddenStatusKeys],
-  );
+  const backlogColumns = columnsByBacklog[backlogId] ?? EMPTY_COLS;
 
-  const columns = useMemo(() => allColumns.filter((c) => !hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
-  const hiddenColumns = useMemo(() => allColumns.filter((c) => hiddenStatusKeys.has(c.key)), [allColumns, hiddenStatusKeys]);
+  // Build the visible column list. Each row references a status by key; we
+  // resolve its color/canonical label from the tree's status definitions.
+  const orderedColumns = useMemo<Array<BoardColumnDef & { color: string; statusLabel: string }>>(() => {
+    const byKey = new Map(allStatuses.map((s) => [s.key, s]));
+    return backlogColumns.map((c) => {
+      const s = byKey.get(c.statusKey);
+      return {
+        ...c,
+        color: s?.color ?? "#94a3b8",
+        statusLabel: s?.label ?? c.statusKey,
+      };
+    });
+  }, [backlogColumns, allStatuses]);
 
-  // Per-backlog column order persisted in localStorage.
-  const storageKey = `board-column-order:${backlogId}`;
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) return JSON.parse(raw) as string[];
-    } catch { /* ignore */ }
-    return [];
-  });
-
-  // Per-backlog column label overrides persisted in localStorage.
-  const labelStorageKey = `board-column-labels:${backlogId}`;
-  const [labelOverrides, setLabelOverrides] = useState<Record<string, string>>(() => {
-    try {
-      const raw = localStorage.getItem(labelStorageKey);
-      if (raw) return JSON.parse(raw) as Record<string, string>;
-    } catch { /* ignore */ }
-    return {};
-  });
-
-  const saveLabelOverride = useCallback(
-    (statusKey: string, label: string) => {
-      setLabelOverrides((prev) => {
-        const next = { ...prev };
-        if (label) {
-          next[statusKey] = label;
-        } else {
-          delete next[statusKey];
-        }
-        localStorage.setItem(labelStorageKey, JSON.stringify(next));
-        return next;
-      });
-    },
-    [labelStorageKey],
-  );
-
-  const saveColumnOrder = useCallback(
-    (order: string[]) => {
-      setColumnOrder(order);
-      localStorage.setItem(storageKey, JSON.stringify(order));
-    },
-    [storageKey],
-  );
-
-  // Sort visible columns by the persisted order; columns not yet in the
-  // order list appear after any ordered ones in their default sequence.
-  const orderedColumns = useMemo(() => {
-    const visible = columns;
-    const keySet = new Set(visible.map((c) => c.key));
-    // Keep only keys that still exist (prune removed statuses).
-    const pruned = columnOrder.filter((k) => keySet.has(k));
-    const orderedSet = new Set(pruned);
-    const tail = visible.filter((c) => !orderedSet.has(c.key));
-    const map = new Map(visible.map((c) => [c.key, c]));
-    return [...pruned.map((k) => map.get(k)!).filter(Boolean), ...tail];
-  }, [columns, columnOrder]);
+  // Statuses that don't yet have a column in this backlog — offered in the
+  // header context menu as "Add column".
+  const availableStatuses = useMemo(() => {
+    const used = new Set(backlogColumns.map((c) => c.statusKey));
+    return allStatuses.filter((s) => !used.has(s.key));
+  }, [allStatuses, backlogColumns]);
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
