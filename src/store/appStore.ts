@@ -2614,6 +2614,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogViewMode: (backlogId, mode) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      if (bl.viewMode === mode) return;
+      updateBacklogViewMode(backlogId, mode);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, viewMode: mode } },
+      });
+    },
+
 
 
     reorderBacklogAmongSiblings: (backlogId, targetIndex, _targetParentId, _treeId) => {
