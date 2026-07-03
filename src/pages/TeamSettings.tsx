@@ -758,38 +758,6 @@ export default function TeamSettings() {
           </p>
         </div>
 
-        {/* Savings & Income (Labs) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Hash className="w-4 h-4" /> Savings &amp; Income
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Enable savings &amp; income</p>
-                <p className="text-xs text-muted-foreground">
-                  Attach a monthly savings and monthly income amount to work items, then see cumulative flow diagrams
-                  per backlog tree sliced by different perspectives.
-                </p>
-              </div>
-              <Switch
-                checked={(orgSettings as { savingsIncomeEnabled?: boolean }).savingsIncomeEnabled ?? false}
-                onCheckedChange={(checked) => {
-                  if (activeOrgId) {
-                    useOrgSettingsStore.getState().setSavingsIncomeEnabled(activeOrgId, checked);
-                    toast({ title: checked ? "Savings & Income enabled" : "Savings & Income disabled" });
-                  }
-                }}
-              />
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground italic border-l-2 border-muted pl-3">
-              "Eliminate numerical targets for the work force. Substitute with leadership." — W. Edwards Deming
-            </p>
-          </CardContent>
-        </Card>
-
         {/* Boards / Kanban (Labs) */}
         <Card>
           <CardHeader>
