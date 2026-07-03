@@ -445,6 +445,24 @@ export function useRealtimeSync() {
       .subscribe();
     channels.push(targetsChannel);
 
+    // Board columns: single channel; RLS restricts to accessible backlogs so no filter needed.
+    const boardColumnsChannel = supabase
+      .channel(`board-columns-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'board_columns' },
+        (payload) => {
+          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+          const backlogId = row?.backlog_id as string | undefined;
+          if (!backlogId) return;
+          const accessible = useAppStore.getState().backlogs;
+          if (!accessible[backlogId]) return;
+          applyRealtimeBoardColumn(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+        },
+      )
+      .subscribe();
+    channels.push(boardColumnsChannel);
+
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
     (async () => {
