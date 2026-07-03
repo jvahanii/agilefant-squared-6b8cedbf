@@ -226,6 +226,32 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     return [];
   });
 
+  // Per-backlog column label overrides persisted in localStorage.
+  const labelStorageKey = `board-column-labels:${backlogId}`;
+  const [labelOverrides, setLabelOverrides] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(labelStorageKey);
+      if (raw) return JSON.parse(raw) as Record<string, string>;
+    } catch { /* ignore */ }
+    return {};
+  });
+
+  const saveLabelOverride = useCallback(
+    (statusKey: string, label: string) => {
+      setLabelOverrides((prev) => {
+        const next = { ...prev };
+        if (label) {
+          next[statusKey] = label;
+        } else {
+          delete next[statusKey];
+        }
+        localStorage.setItem(labelStorageKey, JSON.stringify(next));
+        return next;
+      });
+    },
+    [labelStorageKey],
+  );
+
   const saveColumnOrder = useCallback(
     (order: string[]) => {
       setColumnOrder(order);
@@ -450,6 +476,8 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             }
             setViewMode={setViewMode}
             allColumnKeys={orderedColumns.map((c) => c.key)}
+            labelOverride={labelOverrides[col.key]}
+            onSaveLabel={saveLabelOverride}
             onMoveColumn={(fromKey, toKey) => {
               const current = orderedColumns.map((c) => c.key);
               const fromIdx = current.indexOf(fromKey);
@@ -530,6 +558,8 @@ function BoardColumn({
   setViewMode,
   allColumnKeys,
   onMoveColumn,
+  labelOverride,
+  onSaveLabel,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -548,6 +578,8 @@ function BoardColumn({
   setViewMode: (mode: "list" | "board") => void;
   allColumnKeys?: string[];
   onMoveColumn?: (fromKey: string, toKey: string) => void;
+  labelOverride?: string;
+  onSaveLabel: (statusKey: string, label: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -560,6 +592,35 @@ function BoardColumn({
   const headerRef = useRef<HTMLDivElement>(null);
 
   const columnRef = useRef<HTMLDivElement>(null);
+
+  // Inline editing of column label (double-click to edit)
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editLabel, setEditLabel] = useState("");
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingLabel) {
+      labelInputRef.current?.focus();
+      labelInputRef.current?.select();
+    }
+  }, [isEditingLabel]);
+
+  const startEditingLabel = () => {
+    setEditLabel(labelOverride ?? column.label);
+    setIsEditingLabel(true);
+  };
+
+  const commitLabel = () => {
+    const trimmed = editLabel.trim();
+    if (trimmed && trimmed !== column.label) {
+      onSaveLabel(column.key, trimmed);
+    } else if (trimmed === column.label || !trimmed) {
+      onSaveLabel(column.key, "");
+    }
+    setIsEditingLabel(false);
+  };
+
+  const displayLabel = labelOverride ?? column.label;
 
   return (
     <div
@@ -628,7 +689,36 @@ function BoardColumn({
               className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: column.color }}
             />
-            <span className="text-xs font-semibold truncate" title={column.label}>{column.label}</span>
+            {isEditingLabel ? (
+              <input
+                ref={labelInputRef}
+                className="text-xs font-semibold bg-transparent border-b border-primary/40 outline-none px-0.5 w-20"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitLabel();
+                  if (e.key === "Escape") setIsEditingLabel(false);
+                  e.stopPropagation();
+                }}
+                onBlur={commitLabel}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                className={cn(
+                  "text-xs font-semibold truncate",
+                  labelOverride && "text-primary italic",
+                )}
+                title={displayLabel}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  startEditingLabel();
+                }}
+              >
+                {displayLabel}
+              </span>
+            )}
             {items.length > 0 && (
               <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded-full bg-muted/80 text-muted-foreground ml-0.5">
                 {items.length}
