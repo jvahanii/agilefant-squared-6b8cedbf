@@ -65,7 +65,7 @@ const ShortcutRow = ({ keys, description }: { keys: string[]; description: strin
   </div>
 );
 
-const ActionRow = ({ action, how, labelWidth = "sm:w-36" }: { action: string; how: string; labelWidth?: string }) => (
+const ActionRow = ({ action, how, labelWidth = "sm:w-36" }: { action: string; how: React.ReactNode; labelWidth?: string }) => (
   <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-2 text-sm border-b border-border/40 pb-2 last:border-0">
     <span className={`font-medium text-foreground sm:shrink-0 ${labelWidth}`}>{action}</span>
     <span className="text-muted-foreground">{how}</span>
