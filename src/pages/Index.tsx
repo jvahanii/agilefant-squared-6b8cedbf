@@ -112,9 +112,8 @@ const Index = () => {
     import('@/store/ratesStore').then(({ useRatesStore }) =>
       useRatesStore.getState().load(),
     );
-    // Load per-tree status definitions for every accessible tree
-    const treeIds = Object.keys(backlogTrees);
-    if (treeIds.length > 0) loadStatusesForTrees(treeIds);
+    // Load per-backlog status definitions for the active + partner orgs.
+    loadStatusesForOrgs([...orgIds]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId, treeIdsKey]);
 
