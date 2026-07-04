@@ -1277,6 +1277,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       const changed: WorkItem[] = [];
       const removedRanks: Array<{ workItemId: string; backlogId: string }> = [];
 
+      // A cross-tree move is when the root item is being added to a tree it
+      // didn't already belong to.  In that case we must also propagate the new
+      // tree assignment to every descendant that exists in the hierarchy
+      // (regardless of whether they already have the target-tree assignment),
+      // so that a subsequent removeWorkItemFromTree call doesn't delete them.
+      const isCrossTreeMove = !item.backlogAssignments[targetTreeId];
+
       const moveRecursive = (id: string, isRoot: boolean) => {
         const wi = updatedItems[id];
         if (!wi) return;
@@ -1285,7 +1292,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         // we would silently add a stray tree assignment to items that belong
         // to a different tree, creating the same class of orphan sibling that
         // caused items to appear in the wrong backlog after a move.
-        if (!isRoot && !oldBlId) return;
+        // Exception: for cross-tree moves the root is NEW to targetTreeId, so
+        // its descendants (which also won't have targetTreeId yet) must be
+        // included so they gain the new tree context.
+        if (!isRoot && !oldBlId && !isCrossTreeMove) return;
         const newRanks = { ...wi.ranks };
         // Remove rank for old backlog, add rank for new backlog
         if (oldBlId && oldBlId !== cleanTargetBl) {
