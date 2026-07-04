@@ -679,7 +679,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         onOpenChange={setShowMobileAttributesSheet}
         onOpenTimeLog={() => setShowTimeLogDialog(true)}
       />
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      {showStatusesDialog && (
+        <BacklogStatusesDialog
+          backlogId={backlogId}
+          backlogName={backlog.name}
+          open={showStatusesDialog}
+          onOpenChange={setShowStatusesDialog}
+        />
+      )}
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete backlog?</AlertDialogTitle>
