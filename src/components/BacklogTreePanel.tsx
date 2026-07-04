@@ -584,6 +584,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <SlidersHorizontal className="w-3 h-3 mr-2" />
           Attributes
         </ContextMenuItem>
+        {customStatusesEnabled && (
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => setShowStatusesDialog(true)}
+          >
+            <Settings2 className="w-3 h-3 mr-2" />
+            Statuses…
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
@@ -594,6 +603,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         </ContextMenuItem>
       </ContextMenuContent>
       </ContextMenu>
+
       {(expanded || isAdding) && (
         <div>
           {hasChildren &&
