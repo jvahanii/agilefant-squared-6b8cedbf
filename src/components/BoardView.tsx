@@ -421,6 +421,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             onDeleteColumn={() => deleteColumn(col.id)}
             availableStatuses={availableStatuses}
             onAddColumn={(statusKey, label) => createColumn(backlogId, statusKey, label)}
+            locked={isPinnedStatus(col.key)}
             addAfterSlot={
               addAfterSlot?.columnKey === col.key ? addAfterSlot.afterIndex : null
             }
