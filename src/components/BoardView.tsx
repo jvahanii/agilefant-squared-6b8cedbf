@@ -489,6 +489,7 @@ function BoardColumn({
   allColumnKeys?: string[];
   onMoveColumn?: (fromId: string, toId: string) => void;
   onSaveLabel: (statusKey: string, label: string) => void;
+  locked?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
