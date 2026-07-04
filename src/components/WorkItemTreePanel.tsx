@@ -1332,9 +1332,20 @@ function WorkItemNodeContent({
                 <div className="absolute tree-line" style={{ left: `${depth * 20 + 24}px`, top: 0, bottom: 0 }} />
 
                 {(() => {
+                  const visibleBacklogSet = new Set(allBacklogIds);
                   const sortedChildren = [...item.childrenIds]
                     .map((id) => workItems[id])
-                    .filter((child): child is WorkItem => !!child && getEffectiveParentId(child, treeId) === workItemId)
+                    .filter((child): child is WorkItem => {
+                      if (!child) return false;
+                      if (getEffectiveParentId(child, treeId) !== workItemId) return false;
+                      // Only render children that are actually assigned to a
+                      // backlog visible in this tree/backlog view. Prevents
+                      // stale/legacy siblings (assigned to a different tree, or
+                      // to a deleted backlog) from visually leaking into the
+                      // parent's backlog.
+                      const childBl = child.backlogAssignments[treeId];
+                      return !!childBl && visibleBacklogSet.has(childBl);
+                    })
                     .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
                   const isMultiBacklog = allBacklogIds.length > 1;
                   return (
@@ -1353,7 +1364,7 @@ function WorkItemNodeContent({
                         />
                       )}
                       {sortedChildren.map((child, index) => {
-                        const childBacklogId = child.backlogAssignments[treeId] ?? backlogId;
+                        const childBacklogId = child.backlogAssignments[treeId];
                         return (
                           <div key={child.id}>
                             <ReorderDropZone
@@ -1381,8 +1392,8 @@ function WorkItemNodeContent({
                         );
                       })}
                       <ReorderDropZone
-                        id={`reorder-${workItemId}-${item.childrenIds.length}`}
-                        index={item.childrenIds.length}
+                        id={`reorder-${workItemId}-${sortedChildren.length}`}
+                        index={sortedChildren.length}
                         treeId={treeId}
                         backlogIds={allBacklogIds}
                         parentId={workItemId}
