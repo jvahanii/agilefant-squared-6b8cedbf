@@ -25,7 +25,7 @@ import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
-import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
 import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 import {
