@@ -1298,8 +1298,14 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Preserve existing rank value or default to current
           newRanks[cleanTargetBl] = newRanks[cleanTargetBl] ?? (wi.ranks[oldBlId] ?? 0);
         }
+        // Remap status if the destination backlog's effective status set
+        // doesn't include the current status (falls back to 'not_started').
+        const destStatuses = getEffectiveStatuses(cleanTargetBl);
+        const destStatusKeys = new Set(destStatuses.map((s) => s.key));
+        const remappedStatus = destStatusKeys.has(wi.status) ? wi.status : ('not_started' as WorkItemStatus);
         updatedItems[id] = {
           ...wi,
+          status: remappedStatus,
           backlogAssignments: { ...wi.backlogAssignments, [targetTreeId]: cleanTargetBl },
           ranks: newRanks,
         };
