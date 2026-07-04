@@ -2,6 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { useBoardColumnsStore } from "@/store/boardColumnsStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -285,14 +286,35 @@ function WorkItemNodeContent({
   const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
   const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
+  // Per-backlog board column labels, used to show "Column name (Status)" when
+  // columns have been renamed from their default tree status labels.
+  const boardColumns = useBoardColumnsStore((s) => s.columnsByBacklog[backlogId]);
+  const columnLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!boardColumns) return map;
+    for (const col of boardColumns) {
+      map.set(col.statusKey, col.label);
+    }
+    return map;
+  }, [boardColumns]);
+
   // Per-tree status definitions (falls back to defaults if not loaded yet).
+  // displayLabel respects per-backlog column renames.
   const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
   const treeStatuses = useMemo(
-    () =>
-      treeStatusList && treeStatusList.length > 0
+    () => {
+      const base = treeStatusList && treeStatusList.length > 0
         ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
-        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color })),
-    [treeStatusList],
+        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color }));
+      return base.map((s) => {
+        const colLabel = columnLabelMap.get(s.key);
+        const displayLabel = colLabel && colLabel !== s.label
+          ? `${colLabel} (${s.label})`
+          : s.label;
+        return { ...s, displayLabel };
+      });
+    },
+    [treeStatusList, columnLabelMap],
   );
 
   const [isAdding, setIsAdding] = useState(false);
@@ -690,7 +712,7 @@ function WorkItemNodeContent({
                     treeStatuses.find((s) => s.key === item.status)?.color ?? treeStatuses[0]?.color ?? "#94a3b8",
                 }}
                 onClick={(e) => e.stopPropagation()}
-                title={treeStatuses.find((s) => s.key === item.status)?.label ?? item.status}
+                title={treeStatuses.find((s) => s.key === item.status)?.displayLabel ?? item.status}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[140px]">
@@ -710,7 +732,7 @@ function WorkItemNodeContent({
                   className="flex items-center gap-2 text-xs"
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.label}
+                  {s.displayLabel}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -1083,7 +1105,7 @@ function WorkItemNodeContent({
                 {treeStatuses.map((s) => (
                   <ContextMenuRadioItem key={s.key} value={s.key} className="text-xs">
                     <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: s.color }} />
-                    {s.label}
+                    {s.displayLabel}
                   </ContextMenuRadioItem>
                 ))}
               </ContextMenuRadioGroup>
