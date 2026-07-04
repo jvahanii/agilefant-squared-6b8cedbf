@@ -421,6 +421,152 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     return Array.from(ids);
   }, [backlogId, backlogs]);
 
+  // ---------------------------------------------------------------------------
+  // Arrow-key navigation for the board view
+  //   Left/Right → move between columns (select closest-index item)
+  //   Up/Down    → move up/down within the current column
+  // ---------------------------------------------------------------------------
+  // Stable refs so the keyboard handler always sees the latest data without
+  // needing to re-register the listener on every render.
+  const orderedColumnsRef = useRef(orderedColumns);
+  orderedColumnsRef.current = orderedColumns;
+
+  const cardsByStatusRef = useRef(cardsByStatus);
+  cardsByStatusRef.current = cardsByStatus;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't fire when the focus is in an input/textarea/contenteditable
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (isInput) return;
+
+      // Don't fire when a modal dialog is open
+      if (document.querySelector('[role="dialog"]')) return;
+
+      // Don't intercept when Ctrl/Cmd/Alt modifiers are pressed (global shortcuts)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+
+      const state = useAppStore.getState();
+      const ids = state.selectedWorkItemIds;
+      if (ids.length === 0) return;
+
+      const selectedId = ids[0];
+      const item = state.workItems[selectedId];
+      if (!item) return;
+
+      const cols = orderedColumnsRef.current;
+      const cards = cardsByStatusRef.current;
+
+      const currentColumnKey = item.status;
+      const currentColIndex = cols.findIndex((c) => c.key === currentColumnKey);
+
+      // The column may not exist as a visible column (e.g., the item's status
+      // was removed from the board).  Fall back to treating it as if it were
+      // in the first column so navigation can recover.
+      const effectiveColCards = cards[currentColumnKey] ?? [];
+
+      const currentCardIndex = effectiveColCards.findIndex((wi) => wi.id === selectedId);
+      // If the selected item is not found in any card list, try to find it
+      // across all columns as a fallback.
+      let fallbackColKey: string = currentColumnKey;
+      let fallbackCardIndex = currentCardIndex;
+      if (currentCardIndex === -1) {
+        for (const col of cols) {
+          const colCards = cards[col.key] ?? [];
+          const idx = colCards.findIndex((wi) => wi.id === selectedId);
+          if (idx >= 0) {
+            fallbackColKey = col.key;
+            fallbackCardIndex = idx;
+            break;
+          }
+        }
+      }
+
+      e.preventDefault();
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        // Move between columns
+        const direction = e.key === "ArrowLeft" ? -1 : 1;
+        let targetColIndex = (currentColIndex >= 0 ? currentColIndex : cols.findIndex((c) => c.key === fallbackColKey)) + direction;
+
+        // Clamp to valid range
+        if (targetColIndex < 0) targetColIndex = 0;
+        if (targetColIndex >= cols.length) targetColIndex = cols.length - 1;
+
+        const targetCol = cols[targetColIndex];
+        if (!targetCol) return;
+
+        const targetCards = cards[targetCol.key] ?? [];
+
+        // If no cards in the target column, just move to the column header
+        // (select nothing, but scroll to the column).
+        if (targetCards.length === 0) {
+          // Scroll the target column into view
+          const colEl = document.querySelector(`[data-board-column="${targetCol.key}"]`);
+          if (colEl) colEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+          return;
+        }
+
+        // Select the item at the closest index in the target column
+        const sourceIdx = currentCardIndex >= 0 ? currentCardIndex : fallbackCardIndex;
+        const clampedIdx = Math.max(0, Math.min(sourceIdx, targetCards.length - 1));
+        const targetItem = targetCards[clampedIdx];
+        if (targetItem) {
+          state.selectWorkItem(targetItem.id, false);
+          // Scroll the newly selected card into view after React reconciles
+          setTimeout(() => {
+            const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
+            if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }, 50);
+        }
+      } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        // Move up/down within the current column
+        let cardIndex = currentCardIndex;
+        let colKey: string = currentColumnKey;
+
+        // Fallback: if the item is not in its current status column, use the
+        // first column where we found it.
+        if (cardIndex === -1) {
+          for (const col of cols) {
+            const colCards = cards[col.key] ?? [];
+            const idx = colCards.findIndex((wi) => wi.id === selectedId);
+            if (idx >= 0) {
+              colKey = col.key;
+              cardIndex = idx;
+              break;
+            }
+          }
+        }
+
+        if (cardIndex === -1) return;
+
+        const colCards = cards[colKey] ?? [];
+        const direction = e.key === "ArrowDown" ? 1 : -1;
+        let newIndex = cardIndex + direction;
+
+        // Clamp to valid range
+        if (newIndex < 0) newIndex = 0;
+        if (newIndex >= colCards.length) newIndex = colCards.length - 1;
+
+        const targetItem = colCards[newIndex];
+        if (targetItem && targetItem.id !== selectedId) {
+          state.selectWorkItem(targetItem.id, false);
+          // Scroll the newly selected card into view after React reconciles
+          setTimeout(() => {
+            const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
+            if (el) el.scrollIntoView({ block: "nearest" });
+          }, 50);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []); // Intentionally empty — we use refs for all dynamic data
+
   return (
     <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2">
       <div className="flex gap-1.5 h-full min-w-max">
@@ -596,6 +742,7 @@ function BoardColumn({
   return (
     <div
       ref={columnRef}
+      data-board-column={column.key}
       className={cn(
         "flex flex-col w-44 shrink-0 rounded-lg border bg-muted/20 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
@@ -969,6 +1116,7 @@ function BoardCard({
             ref={setNodeRef}
             {...cardListeners}
             {...attributes}
+            data-board-card-id={item.id}
             onClick={(e) => {
               e.stopPropagation();
               onClick(e.ctrlKey || e.metaKey);
