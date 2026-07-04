@@ -509,6 +509,12 @@ function AppLayoutInner() {
         }
         case "arrowup":
         case "arrowdown": {
+          // When the selected backlog is in board view mode, BoardView
+          // handles arrow-key navigation within columns.  Skip the flat-
+          // list based navigation here to avoid double-stepping.
+          const selectedBacklogId = state.selectedBacklogIds[0];
+          if (selectedBacklogId && state.backlogs[selectedBacklogId]?.viewMode === "board") return;
+
           const isDown = e.key.toLowerCase() === "arrowdown";
           if (state.selectedWorkItemIds.length > 0) {
 
