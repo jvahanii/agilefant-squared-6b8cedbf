@@ -12,7 +12,7 @@ export interface BacklogStatus {
 }
 
 /** Keys of the statuses that every backlog must always have and that cannot be edited or deleted. */
-export const PINNED_STATUS_KEYS = ['not_started', 'in_progress', 'done'] as const;
+export const PINNED_STATUS_KEYS = ['not_started', 'done'] as const;
 export type PinnedStatusKey = typeof PINNED_STATUS_KEYS[number];
 
 export function isPinnedStatus(key: string): boolean {

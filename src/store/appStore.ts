@@ -1830,6 +1830,28 @@ export const useAppStore = create<AppState>()((set, get) => {
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
       const isLeavingNotStarted = item.status === "not_started" && status !== "not_started";
       if (isLeavingNotStarted || status === "in_progress" || status === "done") {
+        // Helper: pick the best "started" status for an ancestor based on its
+        // backlog's effective status set. Prefers "in_progress" (most common),
+        // falls back to the lowest-ranked non-pinned status.
+        const getStartedStatus = (ancestor: WorkItem): WorkItemStatus => {
+          // Find which backlog the ancestor belongs to in any tree context.
+          const backlogIds = Object.values(ancestor.backlogAssignments);
+          for (const blId of backlogIds) {
+            const effective = getEffectiveStatuses(blId);
+            // Prefer exact "in_progress" match.
+            if (effective.some((s) => s.key === "in_progress")) return "in_progress";
+            // Fall back to the lowest-ranked status that isn't "not_started" or "done".
+            const sorted = [...effective].sort((a, b) => a.rank - b.rank);
+            for (const s of sorted) {
+              if (s.key !== "not_started" && s.key !== "done") {
+                return s.key as WorkItemStatus;
+              }
+            }
+          }
+          // Ultimate fallback: DEFAULT_STATUSES always has "in_progress".
+          return "in_progress";
+        };
+
         const visited = new Set<string>([workItemId]);
         let ancestorId = item.parentId;
         while (ancestorId && !visited.has(ancestorId)) {
@@ -1839,9 +1861,10 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Only promote ancestors that are still in the "not_started" state.
           const shouldUpdate = ancestor.status === "not_started";
           if (shouldUpdate) {
-            updatedWorkItems[ancestorId] = { ...ancestor, status: "in_progress" };
+            const startedStatus = getStartedStatus(ancestor);
+            updatedWorkItems[ancestorId] = { ...ancestor, status: startedStatus };
             upsertWorkItem(updatedWorkItems[ancestorId], orgId);
-            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "in_progress" (auto)` });
+            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "${startedStatus}" (auto)` });
           }
           ancestorId = ancestor.parentId;
         }
