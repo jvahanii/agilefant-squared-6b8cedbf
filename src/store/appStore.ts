@@ -312,6 +312,8 @@ export function sanitizeData(data: any, orgId: string) {
     const validAssignments: Record<string, string> = {};
     const validRanks: Record<string, number> = {};
 
+    const totalAssignments = Object.keys(wi.backlogAssignments || {}).length;
+    let droppedCount = 0;
     Object.entries(wi.backlogAssignments || {}).forEach(([tId, bId]) => {
       const cleanT = ensureCleanId(tId, orgId);
       const cleanB = ensureCleanId(bId as string, orgId);
@@ -320,8 +322,21 @@ export function sanitizeData(data: any, orgId: string) {
         // Re-key ranks: try original backlogId first, then cleaned
         const origRank = (wi.ranks ?? {})[bId as string] ?? (wi.ranks ?? {})[cleanB] ?? 0;
         validRanks[cleanB] = origRank;
+      } else {
+        droppedCount++;
+        console.warn(
+          `sanitizeData: dropped backlog assignment for item ${wi.id} ` +
+          `(tree: ${cleanT} exists=${!!cleanTrees[cleanT]}, backlog: ${cleanB} exists=${!!cleanBacklogs[cleanB]}). ` +
+          `If this item becomes orphaned after a reload, investigate missing tree/backlog data.`
+        );
       }
     });
+    if (droppedCount > 0 && totalAssignments === droppedCount) {
+      console.error(
+        `sanitizeData: ALL ${droppedCount} backlog assignments dropped for item ${wi.id} — ` +
+        `item is now orphaned and invisible in all trees. Original assignments: ${JSON.stringify(wi.backlogAssignments)}`
+      );
+    }
 
     // Clean per-tree parent overrides
     const cleanParentIds: Record<string, string | null> = {};
@@ -3038,7 +3053,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // via applyRealtimeWorkItemRank; we keep the existing local ranks here.
         const rawAssignments = row.backlog_assignments as Record<string, unknown> | null;
         const parsedAssignments: Record<string, string> = {};
-        if (rawAssignments) {
+        if (rawAssignments && typeof rawAssignments === 'object') {
           for (const [tId, value] of Object.entries(rawAssignments)) {
             if (typeof value === 'string') {
               parsedAssignments[tId] = value;
@@ -3048,6 +3063,15 @@ export const useAppStore = create<AppState>()((set, get) => {
             }
           }
         }
+        // If the realtime payload did not include backlog_assignments at all
+        // (missing key, null, or empty object), preserve the existing local
+        // assignments so a partial UPDATE never silently wipes them.  Without
+        // this guard, an external event like a status change arriving without
+        // the backlog_assignments column would orphan the item.
+        const effectiveAssignments =
+          Object.keys(parsedAssignments).length > 0
+            ? parsedAssignments
+            : state.workItems[id]?.backlogAssignments ?? {};
 
         // Seed initial ranks from the legacy work_items.rank column for new
         // INSERT events. This ensures items inserted by external sources (e.g.
@@ -3095,7 +3119,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           parentId: (row.parent_id as string | null) ?? null,
           parentIds: parsedParentIds,
           childrenIds: state.workItems[id]?.childrenIds ?? [],
-          backlogAssignments: parsedAssignments,
+          backlogAssignments: effectiveAssignments,
           ranks: initialRanks,
           organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
