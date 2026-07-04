@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2 } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -35,7 +35,8 @@ import { scrambleName } from "@/lib/scramble";
 import { computeBacklogTotalMinutes, computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
-import { MobileWorkItemAttributesSheet } from "./MobileAttributesSheet";
+import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
+import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -2053,6 +2054,10 @@ export function WorkItemTreePanel() {
   }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
   const [showSortRootPrompt, setShowSortRootPrompt] = useState(false);
+  const [showBacklogAttributesSheet, setShowBacklogAttributesSheet] = useState(false);
+  const [showBacklogStatusesDialog, setShowBacklogStatusesDialog] = useState(false);
+  const [showBacklogDeleteConfirm, setShowBacklogDeleteConfirm] = useState(false);
+  const deleteBacklog = useAppStore((s) => s.deleteBacklog);
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
   // stable comma-joined string so zustand only triggers a re-render when the
@@ -2715,7 +2720,10 @@ export function WorkItemTreePanel() {
           </div>
         ) : (
         <>
-        <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
+        {!isSearchMode && !isLabelFilterMode && selectedBacklogId ? (
+          <ContextMenu>
+            <ContextMenuTrigger asChild>
+              <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
           <div className="min-w-0 flex-1">
             {isSearchMode ? (
               <>
@@ -2835,7 +2843,55 @@ export function WorkItemTreePanel() {
             )}
           </div>
         </div>
-
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-44">
+          <ContextMenuLabel className="text-xs truncate">{isScrambled ? scrambleName(backlogs[selectedBacklogId!]?.name ?? "") : (backlogs[selectedBacklogId!]?.name ?? "")}</ContextMenuLabel>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => setShowBacklogAttributesSheet(true)}
+          >
+            <SlidersHorizontal className="w-3 h-3 mr-2" />
+            Attributes
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => setShowBacklogStatusesDialog(true)}
+          >
+            <Settings2 className="w-3 h-3 mr-2" />
+            Statuses…
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            className="text-xs text-destructive focus:text-destructive"
+            onSelect={() => setShowBacklogDeleteConfirm(true)}
+          >
+            <Trash2 className="w-3 h-3 mr-2" />
+            Delete backlog
+          </ContextMenuItem>
+        </ContextMenuContent>
+        </ContextMenu>
+        ) : (
+          <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
+            <div className="min-w-0 flex-1">
+              {isSearchMode ? (
+                <>
+                  <h2 className="text-base font-semibold">Search results</h2>
+                  <p className="text-xs text-foreground mt-0.5">
+                    {searchResults?.length ?? 0} item{searchResults?.length !== 1 ? "s" : ""} found
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-base font-semibold">Label filter results</h2>
+                  <p className="text-xs text-foreground mt-0.5">
+                    {labelSearchResults?.length ?? 0} item{labelSearchResults?.length !== 1 ? "s" : ""} found
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {!isSearchMode && !isLabelFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
           <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} setViewMode={setViewMode} />
         ) : isSearchMode ? (
@@ -3069,6 +3125,42 @@ export function WorkItemTreePanel() {
               setShowSortRootPrompt(false);
             }}
             onCancel={() => setShowSortRootPrompt(false)}
+          />
+        )}
+        {showBacklogAttributesSheet && selectedBacklogId && (
+          <MobileBacklogAttributesSheet
+            backlogId={selectedBacklogId}
+            totalPoints={0}
+            open={showBacklogAttributesSheet}
+            onOpenChange={setShowBacklogAttributesSheet}
+            onOpenTimeLog={() => setShowBacklogTimeLogDialog(true)}
+          />
+        )}
+        {showBacklogStatusesDialog && selectedBacklogId && (
+          <BacklogStatusesDialog
+            backlogId={selectedBacklogId}
+            backlogName={backlogs[selectedBacklogId]?.name ?? ""}
+            open={showBacklogStatusesDialog}
+            onOpenChange={setShowBacklogStatusesDialog}
+          />
+        )}
+        {showBacklogDeleteConfirm && selectedBacklogId && (
+          <ActionPrompt
+            title="Delete backlog?"
+            options={[
+              {
+                label: "Delete",
+                description: `Permanently delete "${isScrambled ? scrambleName(backlogs[selectedBacklogId]?.name ?? "") : (backlogs[selectedBacklogId]?.name ?? "")}" and all its contents. This action cannot be undone.`,
+                value: "confirm",
+                variant: "destructive",
+                isDefault: true,
+              },
+            ]}
+            onSelect={() => {
+              deleteBacklog(selectedBacklogId);
+              setShowBacklogDeleteConfirm(false);
+            }}
+            onCancel={() => setShowBacklogDeleteConfirm(false)}
           />
         )}
         </>
