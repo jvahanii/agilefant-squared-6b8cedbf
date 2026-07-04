@@ -127,6 +127,14 @@ function AppLayoutInner() {
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) {
       return [...pointerCollisions].sort((a, b) => {
+        // Prioritize backlog-drop (reparent) over backlog-reorder zones
+        // so dropping a backlog onto another backlog reparents it under
+        // that backlog rather than reordering it among siblings.
+        const aIsBacklogDrop = String(a.id).startsWith("backlog-drop-");
+        const bIsBacklogDrop = String(b.id).startsWith("backlog-drop-");
+        if (aIsBacklogDrop !== bIsBacklogDrop) {
+          return aIsBacklogDrop ? -1 : 1;
+        }
         const rA = args.droppableRects.get(a.id);
         const rB = args.droppableRects.get(b.id);
         const areaA = rA ? rA.width * rA.height : Infinity;
