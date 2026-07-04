@@ -1267,6 +1267,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         const wi = updatedItems[id];
         if (!wi) return;
         const oldBlId = wi.backlogAssignments[targetTreeId];
+        // Only reassign descendants that actually live in this tree. Otherwise
+        // we would silently add a stray tree assignment to items that belong
+        // to a different tree, creating the same class of orphan sibling that
+        // caused items to appear in the wrong backlog after a move.
+        if (!isRoot && !oldBlId) return;
         const newRanks = { ...wi.ranks };
         // Remove rank for old backlog, add rank for new backlog
         if (oldBlId && oldBlId !== cleanTargetBl) {
