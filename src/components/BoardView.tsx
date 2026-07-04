@@ -467,6 +467,7 @@ function BoardColumn({
   allColumnKeys,
   onMoveColumn,
   onSaveLabel,
+  locked = false,
 }: {
   column: TreeStatus;
   items: WorkItem[];
