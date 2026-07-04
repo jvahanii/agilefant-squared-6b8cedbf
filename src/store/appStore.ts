@@ -23,7 +23,7 @@ import {
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
-import { useTreeStatusesStore } from "./treeStatusesStore";
+import { getEffectiveStatuses } from "./backlogStatusesStore";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 
 function generateMockData() {
