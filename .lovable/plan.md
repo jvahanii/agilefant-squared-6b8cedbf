@@ -1,58 +1,50 @@
-## Goal
-Move board columns out of `tree_statuses` + `localStorage` and into their own DB table, per backlog. Each column is a distinct object with its own name and order, and points to exactly one work item status key. Renaming a column no longer renames the status; hiding a column is now just "delete the column"; reordering is a persistent `rank`.
+## Root cause
 
-## Data model
+The item "Exit" that appears in *both* backlogs isn't the same DB row — there are three separate `work_items` rows all titled "Exit" that share the same `parent_id` (the "Employed…" MWB, `41af4c8f`):
 
-New table `public.board_columns`:
-- `id uuid pk`
-- `backlog_id uuid not null → backlogs.id on delete cascade`
-- `status_key text not null` — must match a `tree_statuses.key` in the backlog's tree at render time (not FK-enforced, since keys are strings and can be renamed by the tree status editor)
-- `label text not null` — column display name, defaults to the status label at creation
-- `rank double precision not null` — ordering within the backlog
-- `created_at`, `updated_at` timestamps + update trigger
-- Index on `backlog_id`
-- No uniqueness on `(backlog_id, status_key)` — allowing the same status to appear in multiple columns is out of scope, but we don't want the DB to reject a transient duplicate during reorder/rename
+| id | tree assignment | backlog assignment |
+|---|---|---|
+| `wi-8f6905f7` | `bt-47861693` | `bl-45de20e8` (No next steps) — this is the one you moved |
+| `c17fc55f…` | `54a41273…` (legacy, tree no longer exists) | `bl-02aa81f7` (legacy, backlog no longer exists) |
+| `wi-3c75f3bb` | `bt-d80652b9` | `bl-a46f86f7` |
 
-RLS: same pattern as `backlogs` (readable/writable by members of the owning org via existing `has_backlog_access` helper); include the standard 4-step `CREATE TABLE → GRANT → ENABLE RLS → CREATE POLICY` block, plus `ALTER PUBLICATION supabase_realtime ADD TABLE public.board_columns`.
+`sanitizeData` correctly drops the stale assignment for `c17fc55f…` in memory, so it isn't assigned to any tree at all. **But the tree panel still renders it under the MWB parent in Funnel & todo**, because `WorkItemTreePanel`'s child-rendering pass (line 1335) only filters children by `getEffectiveParentId(child, treeId) === parent` — it never checks that the child is actually assigned to the current backlog/tree. Line 1356's `childBacklogId = child.backlogAssignments[treeId] ?? backlogId` then falls back to the parent's backlog, so the orphan visually inherits Funnel & todo.
 
-Remove `backlogs.board_hidden_status_keys` in a follow-up (kept for now to make migration reversible; not read after this change lands).
+Same untreed-child leak exists in the DB for many other items: 20+ `work_items` rows reference tree/backlog IDs that no longer exist in `backlog_trees` / `backlogs`. All are legacy duplicates whose parent still lives in Funnel & todo — that's why the backlog looks "full" and specifically why this doesn't happen in trees that don't have such legacy siblings.
 
-## Auto-migration (one-shot, client-side on first load per backlog)
-When a backlog is opened in board view and has zero rows in `board_columns`:
-1. Read the backlog's tree statuses.
-2. Read legacy `boardHiddenStatusKeys` (DB) + `board-column-order:{id}` and `board-column-labels:{id}` (localStorage).
-3. Insert one `board_columns` row per non-hidden status, in the persisted order (unknown-order statuses appended by status rank), applying label overrides.
-4. On success, clear the two localStorage keys.
+## Fix
 
-If the user has no legacy state, seed one column per status in status rank order using the status's own label.
+Two-part fix: presentation + data cleanup. The presentation fix alone is enough to make Funnel & todo look right; the data cleanup makes the DB self-consistent so future features don't repeat the bug.
 
-## Store + sync
-- New `boardColumnsStore` (Zustand) keyed by `backlogId → BoardColumn[]`, with:
-  - `loadForBacklog(backlogId)` (lazy, on first board render)
-  - `createColumn`, `renameColumn`, `deleteColumn`, `reorderColumns(backlogId, orderedIds)`
-  - `applyRealtime(event, row)` handler
-- Wire into `useRealtimeSync` alongside existing tables.
-- All writes are optimistic + DB write, matching `treeStatusesStore` patterns.
+### 1. Presentation: filter children by tree membership
 
-## UI changes (`BoardView.tsx` only)
-- Replace `allColumns`/`orderedColumns` derivation with `boardColumnsStore` rows for `backlogId`.
-- Column header rename writes to `board_columns.label` instead of `localStorage`.
-- Column drag-reorder writes new `rank` values instead of `localStorage`.
-- "Hide column" becomes "Remove column" (deletes the row). "Show hidden" menu becomes "Add column", listing statuses that don't currently have a column in this backlog; picking one creates a `board_columns` row.
-- Cards are still grouped by `wi.status`; a card lands in the column whose `status_key` matches. If a status has no column, its cards are not shown (same behavior as today's hidden state).
-- Dropping a card into a column sets `wi.status = column.status_key` (unchanged behavior, just sourced from the column row).
+`src/components/WorkItemTreePanel.tsx`:
 
-## Out of scope
-- Multiple statuses per column, predicate rules, cross-backlog board definitions — the earlier Labs boards memory stays aspirational; this change is strictly the "columns as separate objects, one status each" step the user asked for.
-- Dropping `backlogs.board_hidden_status_keys` — leave the column in place for one release; remove in a follow-up once migration has run everywhere.
+- In the expanded-children block (around line 1335) add a filter: keep a child only if `child.backlogAssignments[treeId]` is defined AND is in the current view's backlog set (`allBacklogIds` / `backlogIdSet`). Same rule the root filter already uses at line 2382.
+- Apply the identical filter inside `visibleItemIds` traversal (line 2401) so Tab / arrow navigation matches what is rendered.
+- Drop the `?? backlogId` fallback at line 1356 — after the filter, `child.backlogAssignments[treeId]` is guaranteed to be present. Same for line 1390's `targetBacklogId` computation.
 
-## Technical notes
-```text
-board_columns
-┌────────────┬─────────────┬────────────┬────────┬──────┐
-│ id         │ backlog_id  │ status_key │ label  │ rank │
-├────────────┼─────────────┼────────────┼────────┼──────┤
-│ uuid       │ → backlogs  │ text       │ text   │ f8   │
-└────────────┴─────────────┴────────────┴────────┴──────┘
-```
-Files touched: new migration; new `src/store/boardColumnsStore.ts`; edits to `src/hooks/useRealtimeSync.ts`, `src/components/BoardView.tsx`; small type addition. No changes to `tree_statuses`, `work_items`, or list view.
+`src/components/BoardView.tsx`: audit the analogous child-rendering path; apply the same tree/backlog-membership filter if it uses `childrenIds` directly.
+
+Net effect: an item shows up under a parent in a given tree only when it *itself* is assigned to a backlog visible in that tree.
+
+### 2. Data cleanup migration
+
+One-off SQL migration (via `supabase--migration`) scoped to `public.work_items`:
+
+- Rebuild each row's `backlog_assignments` JSON: for every `(treeId → backlogId)` pair, keep it only if `treeId` exists in `backlog_trees` AND `backlogId` exists in `backlogs` AND that backlog's `tree_id = treeId`. Write the cleaned JSON back.
+- Delete `work_item_backlog_ranks` rows whose `backlog_id` is not in `backlogs`.
+- For any `work_items` row that ends up with `backlog_assignments = '{}'`: leave it in place (don't auto-delete — user may want to recover it). Log the count in the migration description so the user can review afterwards in the SQL editor.
+
+This purges the phantom "Exit" (`c17fc55f…`) style rows from ever being rendered, whether or not the presentation filter is in place.
+
+### 3. Prevent regression
+
+`src/store/appStore.ts` — `moveWorkItemToBacklog` (line 1266 `moveRecursive`): only recurse into a child when the child currently has an assignment for `targetTreeId`. Today it unconditionally *adds* an assignment for the target tree to every descendant it walks, which can silently create the same class of orphan (child appearing in a tree it never belonged to). Skipping non-tree-members keeps moves scoped to the tree the user is operating in.
+
+## Verification
+
+- Reload the app after the migration; run `SELECT count(*) FROM work_items WHERE backlog_assignments->>'…bt-47861693' = '…bl-33bb5eb1'` — expect a smaller number matching what's actually visible in Funnel & todo.
+- In the UI, open Funnel & todo — "Exit" (and other legacy duplicates) should no longer appear.
+- Move a fresh branch from Funnel & todo → No next steps; hard reload; confirm nothing residual shows up in Funnel & todo.
+- Run existing tests: `bunx vitest run src/test/appStore.test.ts`.
