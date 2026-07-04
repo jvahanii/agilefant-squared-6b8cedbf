@@ -423,7 +423,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   return (
     <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2">
-      <div className="flex gap-2 h-full min-w-max">
+      <div className="flex gap-1.5 h-full min-w-max">
         {orderedColumns.map((col) => (
             <BoardColumn
             key={col.id}
@@ -471,7 +471,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
         ))}
         {/* Add Column button / inline input */}
         {isAddingColumn ? (
-          <div className="w-56 shrink-0 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/10 p-3 self-start">
+          <div className="w-44 shrink-0 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/10 p-3 self-start">
             <input
               ref={newColumnInputRef}
               className="w-full text-xs bg-card rounded border px-1.5 py-1 outline-none focus:border-primary"
@@ -489,7 +489,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           </div>
         ) : (
           <button
-            className="w-56 shrink-0 rounded-lg border border-dashed border-muted-foreground/30 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/50 transition-colors p-3 self-start flex items-center gap-2 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+            className="w-44 shrink-0 rounded-lg border border-dashed border-muted-foreground/30 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/50 transition-colors p-3 self-start flex items-center gap-2 text-xs text-muted-foreground/60 hover:text-muted-foreground"
             onClick={(e) => {
               e.stopPropagation();
               setNewColumnLabel("");
@@ -598,7 +598,7 @@ function BoardColumn({
     <div
       ref={columnRef}
       className={cn(
-        "flex flex-col w-56 shrink-0 rounded-lg border bg-muted/20 h-full",
+        "flex flex-col w-44 shrink-0 rounded-lg border bg-muted/20 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
       onDragOver={(e) => {
@@ -612,7 +612,7 @@ function BoardColumn({
           <div
             ref={headerRef}
             draggable={onMoveColumn != null}
-            className="flex items-center gap-1.5 px-2.5 py-2 border-b sticky top-0 bg-background/80 backdrop-blur-sm rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
+            className="flex items-center gap-1 px-2 py-2 border-b sticky top-0 bg-background/80 backdrop-blur-sm rounded-t-lg cursor-grab active:cursor-grabbing select-none relative"
             onDragStart={(e) => {
               if (!onMoveColumn) return;
               e.dataTransfer.setData("text/plain", column.id);
@@ -736,7 +736,7 @@ function BoardColumn({
             onCancel={onCancelAdd}
           />
         )}
-        <div className="p-1.5">
+        <div className="p-1">
           {/* Reorder drop zone before the first card */}
           <BoardReorderDropZone
             id={`board-reorder-${column.id}-0`}
@@ -978,7 +978,7 @@ function BoardCard({
               onClick(e.ctrlKey || e.metaKey);
             }}
             className={cn(
-              "relative group rounded-md border bg-card shadow-sm p-2 text-xs select-none overflow-hidden",
+              "relative group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none overflow-hidden",
               !isMobile && "cursor-grab active:cursor-grabbing hover:border-accent-foreground/30 touch-none",
               selected && "ring-2 ring-primary border-primary",
               isDragging && "opacity-40",
