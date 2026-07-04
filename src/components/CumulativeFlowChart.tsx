@@ -101,7 +101,8 @@ export function CumulativeFlowChart({ treeId, inPopout = false }: Props) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
-  const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  useBacklogStatusesStore((s) => s.statusesByBacklog);
+  const statusesList = getEffectiveStatusesForTree(treeId);
   const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
   const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setDisplayCurrency);
   const rates = useRatesStore((s) => s.rates);
