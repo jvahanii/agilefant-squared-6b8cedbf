@@ -634,7 +634,7 @@ function BoardColumn({
                   "text-xs font-semibold truncate cursor-text",
                 )}
                 title={displayLabel}
-                onDoubleClick={(e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
                   startEditingLabel();
