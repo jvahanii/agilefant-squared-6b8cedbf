@@ -48,8 +48,8 @@ import {
 interface BoardViewProps {
   backlogId: string;
   treeId: string;
-  /** Function to add a new work item. Called with title, parentId, backlogId, treeId. */
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
+  /** Function to add a new work item. Called with title, parentId, backlogId, treeId, optional rank and initialStatus. */
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus) => void;
   /** Function to switch between list and board views */
   setViewMode: (mode: "list" | "board") => void;
 }
@@ -386,8 +386,6 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      // Save the current ID set to find the new item after creation.
-      const before = new Set(Object.keys(useAppStore.getState().workItems));
       // Compute a rank that places the new item after the card at `afterIndex`.
       let rank: number | undefined;
       if (afterIndex !== undefined && afterIndex >= 0) {
@@ -404,15 +402,10 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           }
         }
       }
-      addWorkItem(title, null, backlogId, treeId, rank);
-      // After the synchronous store update, find the new ID and set its status
-      setTimeout(() => {
-        const after = Object.keys(useAppStore.getState().workItems);
-        const newIds = after.filter((id) => !before.has(id));
-        if (newIds.length === 1) {
-          useAppStore.getState().setWorkItemStatus(newIds[0], statusKey as WorkItemStatus);
-        }
-      }, 0);
+      // Pass initialStatus so the item is created directly in the correct column
+      // without firing setWorkItemStatus (which would trigger undesired ancestor
+      // propagation for a brand-new item).
+      addWorkItem(title, null, backlogId, treeId, rank, statusKey as WorkItemStatus);
     },
     [addWorkItem, backlogId, treeId, cardsByStatus],
   );

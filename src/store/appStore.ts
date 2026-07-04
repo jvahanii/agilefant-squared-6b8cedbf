@@ -162,8 +162,8 @@ interface AppState extends DataSnapshot {
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number) => void;
-  bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus) => void;
+  bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string, initialStatus?: WorkItemStatus) => void;
   deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
   deleteWorkItemsBulk: (workItemIds: string[], direction?: 'up' | 'down') => void;
   /** Duplicate work items (deep — includes descendants). Each new root is
@@ -1384,7 +1384,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: updatedItems, undoStack: pushUndoEntry(state) });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId, requestedRank) => {
+    addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus) => {
       const state = get();
       const orgId = state.organizationId;
       if (!orgId) return;
@@ -1417,7 +1417,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         parentId,
         ranks: { [backlogId]: insertIndex },
         backlogAssignments: { [treeId]: backlogId },
-        status: "not_started" as WorkItemStatus,
+        status: initialStatus ?? ("not_started" as WorkItemStatus),
         childrenIds: [],
         points: undefined,
       };
