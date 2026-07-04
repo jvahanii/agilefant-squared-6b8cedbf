@@ -1131,16 +1131,6 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
         />
       )}
 
-      {editingStatusesTree && (
-        <TreeStatusesDialog
-          treeId={editingStatusesTree.id}
-          treeName={editingStatusesTree.name}
-          open={!!editingStatusesTree}
-          onOpenChange={(open) => {
-            if (!open) setEditingStatusesTree(null);
-          }}
-        />
-      )}
 
       <AlertDialog open={!!pendingDeleteTree} onOpenChange={(open) => { if (!open) setPendingDeleteTree(null); }}>
         <AlertDialogContent>
