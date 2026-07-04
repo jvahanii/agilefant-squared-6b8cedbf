@@ -248,6 +248,8 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
       title: "Restore complete",
       description: `Mode: ${mode} · ${data?.work_items ?? 0} work items, ${data?.backlogs ?? 0} backlogs, ${data?.trees ?? 0} trees`,
     });
+    // Refresh local state so restored items appear immediately without a hard refresh
+    useAppStore.getState().loadFromSupabase();
     onClose(true);
   };
 

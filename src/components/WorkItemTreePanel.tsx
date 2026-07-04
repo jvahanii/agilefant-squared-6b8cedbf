@@ -550,9 +550,13 @@ function WorkItemNodeContent({
 
   if (!item) return null;
 
+  const visibleBacklogSet = new Set(allBacklogIds);
   const hasChildren = item.childrenIds.some((id) => {
     const child = workItems[id];
-    return child && getEffectiveParentId(child, treeId) === workItemId;
+    if (!child) return false;
+    if (getEffectiveParentId(child, treeId) !== workItemId) return false;
+    const childBl = child.backlogAssignments[treeId];
+    return !!childBl && visibleBacklogSet.has(childBl);
   });
 
   const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
@@ -2501,12 +2505,15 @@ export function WorkItemTreePanel() {
             const targetBacklogId = grandparentId
               ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
               : backlogId;
-            return { id, grandparentId, targetBacklogId };
+            // Place the outdented item right after its former parent.
+            const parentRank = parent.ranks[targetBacklogId] ?? 0;
+            const insertRank = parentRank + 1;
+            return { id, grandparentId, targetBacklogId, insertRank };
           })
-          .filter((p): p is { id: string; grandparentId: string | null; targetBacklogId: string } => p !== null);
+          .filter((p): p is { id: string; grandparentId: string | null; targetBacklogId: string; insertRank: number } => p !== null);
         if (plans.length === 0) return;
         useAppStore.getState().runBulk(() => {
-          plans.forEach((p) => state.reparentWorkItem(p.id, p.grandparentId, treeId, p.targetBacklogId));
+          plans.forEach((p) => state.reparentWorkItem(p.id, p.grandparentId, treeId, p.targetBacklogId, undefined, p.insertRank));
         });
         toast({
           title:

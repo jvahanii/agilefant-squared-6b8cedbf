@@ -178,7 +178,7 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
-  reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror") => void;
+  reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", rank?: number) => void;
   setWorkItemRespawn: (workItemId: string, respawnEnabled: boolean, respawnIntervalDays?: number, respawnHour?: number, respawnMinute?: number) => void;
   respawnItem: (workItemId: string) => void;
   addBacklog: (name: string, parentId: string | null, treeId: string) => void;
@@ -1992,7 +1992,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    reparentWorkItem: (workItemId, newParentId, treeId, backlogId, strategy) => {
+    reparentWorkItem: (workItemId, newParentId, treeId, backlogId, strategy, rank) => {
       const state = get();
       const orgId = state.organizationId!;
       const item = state.workItems[workItemId];
@@ -2354,18 +2354,34 @@ export const useAppStore = create<AppState>()((set, get) => {
             // Same-tree, same-backlog reparent: assign a rank that avoids conflicts
             // with existing siblings in the new parent's context for every backlog
             // the item belongs to.
+            // When rank is provided (e.g. from the outdent handler), insert the item
+            // at that specific position and cascade-shift later siblings.
             const newRanks = { ...item.ranks };
-            for (const [tId, blId] of Object.entries(item.backlogAssignments)) {
-              let maxRank = -1;
-              Object.values(state.workItems).forEach((wi) => {
-                if (wi.id === workItemId) return;
-                if (getEffectiveParentId(wi, tId) !== newParentId) return;
-                if (wi.backlogAssignments[tId] === blId) {
-                  const wiRank = wi.ranks[blId] ?? 0;
-                  if (wiRank > maxRank) maxRank = wiRank;
-                }
-              });
-              newRanks[blId] = maxRank + 1;
+            if (rank !== undefined) {
+              for (const [tId, blId] of Object.entries(item.backlogAssignments)) {
+                const toShift = buildCascadedShiftSet(
+                  updatedItems, newParentId, rank, workItemId, blId, tId,
+                );
+                toShift.forEach((sid) => {
+                  const sWi = updatedItems[sid];
+                  const shifted = { ...sWi, ranks: { ...sWi.ranks, [blId]: (sWi.ranks[blId] ?? 0) + 1 } };
+                  updatedItems[sid] = shifted;
+                });
+                newRanks[blId] = rank;
+              }
+            } else {
+              for (const [tId, blId] of Object.entries(item.backlogAssignments)) {
+                let maxRank = -1;
+                Object.values(state.workItems).forEach((wi) => {
+                  if (wi.id === workItemId) return;
+                  if (getEffectiveParentId(wi, tId) !== newParentId) return;
+                  if (wi.backlogAssignments[tId] === blId) {
+                    const wiRank = wi.ranks[blId] ?? 0;
+                    if (wiRank > maxRank) maxRank = wiRank;
+                  }
+                });
+                newRanks[blId] = maxRank + 1;
+              }
             }
             updatedItems[workItemId] = { ...item, parentId: newParentId, ranks: newRanks };
           }
