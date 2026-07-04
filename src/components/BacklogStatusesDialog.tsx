@@ -11,14 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowDown, ArrowUp, Lock, Plus, Trash2 } from "lucide-react";
 import {
-  useTreeStatusesStore,
+  useBacklogStatusesStore,
   isPinnedStatus,
-  type TreeStatus,
-} from "@/store/treeStatusesStore";
+  getEffectiveStatuses,
+  hasOwnStatuses,
+  findInheritedFromBacklogId,
+  type BacklogStatus,
+} from "@/store/backlogStatusesStore";
+import { useAppStore } from "@/store/appStore";
 
 interface Props {
-  treeId: string;
-  treeName: string;
+  backlogId: string;
+  backlogName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -37,29 +41,31 @@ function slugifyKey(label: string): string {
     .slice(0, 40) || `status_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Props) {
-  const statuses = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
-  const loadStatusesForTrees = useTreeStatusesStore((s) => s.loadStatusesForTrees);
-  const createStatus = useTreeStatusesStore((s) => s.createStatus);
-  const updateStatus = useTreeStatusesStore((s) => s.updateStatus);
-  const deleteStatus = useTreeStatusesStore((s) => s.deleteStatus);
-  const reorderStatuses = useTreeStatusesStore((s) => s.reorderStatuses);
+export function BacklogStatusesDialog({ backlogId, backlogName, open, onOpenChange }: Props) {
+  const ownStatuses = useBacklogStatusesStore((s) => s.statusesByBacklog[backlogId]);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const createStatus = useBacklogStatusesStore((s) => s.createStatus);
+  const updateStatus = useBacklogStatusesStore((s) => s.updateStatus);
+  const deleteStatus = useBacklogStatusesStore((s) => s.deleteStatus);
+  const reorderStatuses = useBacklogStatusesStore((s) => s.reorderStatuses);
+  const materializeStatuses = useBacklogStatusesStore((s) => s.materializeStatuses);
 
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState(COLOR_PRESETS[0]);
 
-  useEffect(() => {
-    if (open) loadStatusesForTrees([treeId]);
-  }, [open, treeId, loadStatusesForTrees]);
+  const isInherited = !ownStatuses || ownStatuses.length === 0;
 
-  const list: TreeStatus[] = useMemo(
-    () =>
-      statuses && statuses.length > 0
-        ? statuses
-        : // Show defaults as a hint while loading; not editable until persisted.
-          [],
-    [statuses],
+  const inheritedFromId = useMemo(
+    () => (isInherited ? findInheritedFromBacklogId(backlogId) : null),
+    [isInherited, backlogId, backlogs],
   );
+
+  const list: BacklogStatus[] = useMemo(
+    () => (ownStatuses && ownStatuses.length > 0 ? ownStatuses : getEffectiveStatuses(backlogId)),
+    [ownStatuses, backlogId],
+  );
+
+  const inheritedFromName = inheritedFromId ? backlogs[inheritedFromId]?.name : null;
 
   const handleAdd = async () => {
     const label = newLabel.trim();
@@ -68,42 +74,50 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
     let key = slugifyKey(label);
     let i = 2;
     while (usedKeys.has(key)) key = `${slugifyKey(label)}_${i++}`;
-    await createStatus(treeId, key, label, newColor);
+    await createStatus(backlogId, key, label, newColor);
     setNewLabel("");
   };
 
-  const moveUp = (index: number) => {
+  const moveUp = async (index: number) => {
     if (index === 0) return;
-    const ids = list.map((s) => s.id);
+    await materializeStatuses(backlogId);
+    const cur = useBacklogStatusesStore.getState().statusesByBacklog[backlogId] ?? [];
+    const ids = cur.map((s) => s.id);
     [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
-    reorderStatuses(treeId, ids);
+    reorderStatuses(backlogId, ids);
   };
 
-  const moveDown = (index: number) => {
-    if (index === list.length - 1) return;
-    const ids = list.map((s) => s.id);
+  const moveDown = async (index: number) => {
+    await materializeStatuses(backlogId);
+    const cur = useBacklogStatusesStore.getState().statusesByBacklog[backlogId] ?? [];
+    if (index === cur.length - 1) return;
+    const ids = cur.map((s) => s.id);
     [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
-    reorderStatuses(treeId, ids);
+    reorderStatuses(backlogId, ids);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Statuses — {treeName}</DialogTitle>
+          <DialogTitle>Statuses — {backlogName}</DialogTitle>
           <DialogDescription>
-            Configure the statuses available for work items in this backlog tree. Anyone
-            with access to the tree can edit these. Statuses marked with a lock icon are
-            required and cannot be edited or removed.
+            Statuses are the board columns for this backlog. Add, rename, reorder, or
+            remove them below. Statuses marked with a lock icon are required and cannot
+            be edited or removed.
           </DialogDescription>
         </DialogHeader>
 
+        {isInherited && inheritedFromName && (
+          <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              Inherited from <span className="font-medium text-foreground">{inheritedFromName}</span>.
+              Any edit here will create a copy for this backlog.
+            </span>
+          </div>
+        )}
+
         <div className="space-y-3">
-          {list.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">
-              No statuses yet. Defaults will appear here once loaded; add your own below.
-            </p>
-          )}
           {list.map((s, idx) => (
             <StatusRow
               key={s.id}
@@ -111,11 +125,11 @@ export function TreeStatusesDialog({ treeId, treeName, open, onOpenChange }: Pro
               isFirst={idx === 0}
               isLast={idx === list.length - 1}
               locked={isPinnedStatus(s.key)}
-              onLabel={(label) => updateStatus(s.id, { label })}
-              onColor={(color) => updateStatus(s.id, { color })}
+              onLabel={(label) => updateStatus(backlogId, s.id, { label })}
+              onColor={(color) => updateStatus(backlogId, s.id, { color })}
               onUp={() => moveUp(idx)}
               onDown={() => moveDown(idx)}
-              onDelete={() => deleteStatus(s.id)}
+              onDelete={() => deleteStatus(backlogId, s.id)}
               canDelete={list.length > 1}
             />
           ))}
@@ -171,7 +185,7 @@ function StatusRow({
   onDelete,
   canDelete,
 }: {
-  status: TreeStatus;
+  status: BacklogStatus;
   isFirst: boolean;
   isLast: boolean;
   locked: boolean;
@@ -231,7 +245,7 @@ function StatusRow({
             onClick={onDelete}
             disabled={!canDelete}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            title={canDelete ? "Delete" : "Tree must keep at least one status"}
+            title={canDelete ? "Delete" : "Backlog must keep at least one status"}
           >
             <Trash2 className="w-4 h-4" />
           </Button>

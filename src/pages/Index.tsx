@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
-import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 
@@ -28,7 +28,7 @@ const Index = () => {
   const { user } = useAuth();
   const loadSettings = useOrgSettingsStore(s => s.loadSettings);
   const loadLabels = useLabelsStore(s => s.loadLabels);
-  const loadStatusesForTrees = useTreeStatusesStore(s => s.loadStatusesForTrees);
+  const loadStatusesForOrgs = useBacklogStatusesStore(s => s.loadStatusesForOrgs);
   const backlogTrees = useAppStore(s => s.backlogTrees);
   const loadSnoozes = useSnoozeStore(s => s.loadSnoozes);
   const clearSnoozes = useSnoozeStore(s => s.clearSnoozes);
@@ -112,9 +112,8 @@ const Index = () => {
     import('@/store/ratesStore').then(({ useRatesStore }) =>
       useRatesStore.getState().load(),
     );
-    // Load per-tree status definitions for every accessible tree
-    const treeIds = Object.keys(backlogTrees);
-    if (treeIds.length > 0) loadStatusesForTrees(treeIds);
+    // Load per-backlog status definitions for the active + partner orgs.
+    loadStatusesForOrgs([...orgIds]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId, treeIdsKey]);
 
