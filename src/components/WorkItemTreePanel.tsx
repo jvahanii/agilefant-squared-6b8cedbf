@@ -195,9 +195,9 @@ interface WorkItemNodeProps {
   treeId: string;
   backlogId: string;
   allBacklogIds: string[];
-  isChildBacklog?: boolean;
   parentBacklogId?: string;
   isScrambled: boolean;
+  selectedBacklogId: string;
   onSelect: (id: string, multi: boolean, shift: boolean) => void;
   setViewMode: (mode: "list" | "board") => void;
 }
@@ -216,12 +216,13 @@ function WorkItemNodeContent({
   treeId,
   backlogId,
   allBacklogIds,
-  isChildBacklog,
   parentBacklogId,
   isScrambled,
   onSelect,
   setViewMode,
+  selectedBacklogId,
 }: WorkItemNodeProps) {
+  const isChildBacklog = backlogId !== selectedBacklogId;
   const runningNumber = useContext(RunningNumberContext)?.get(workItemId);
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
@@ -1372,7 +1373,7 @@ function WorkItemNodeContent({
                               treeId={treeId}
                               backlogId={childBacklogId}
                               allBacklogIds={allBacklogIds}
-                              isChildBacklog={isChildBacklog}
+                              selectedBacklogId={selectedBacklogId}
                               parentBacklogId={backlogId}
                               isScrambled={isScrambled}
                               onSelect={onSelect}
@@ -3073,9 +3074,9 @@ export function WorkItemTreePanel() {
                               treeId={selectedTreeId!}
                               backlogId={itemBacklogId}
                               allBacklogIds={allBacklogIds}
-                              isChildBacklog={itemBacklogId !== selectedBacklogId}
                               parentBacklogId={selectedBacklogId!}
                               isScrambled={isScrambled}
+                              selectedBacklogId={selectedBacklogId!}
                               onSelect={handleSelect}
                               setViewMode={setViewMode}
                             />
