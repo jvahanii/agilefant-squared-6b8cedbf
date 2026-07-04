@@ -200,7 +200,6 @@ function StatusRow({
   useEffect(() => setLabel(status.label), [status.label]);
 
   const commit = () => {
-    if (locked) return;
     const trimmed = label.trim();
     if (trimmed && trimmed !== status.label) onLabel(trimmed);
     else if (!trimmed) setLabel(status.label);
@@ -214,7 +213,7 @@ function StatusRow({
         onChange={(e) => onColor(e.target.value)}
         disabled={locked}
         className="w-8 h-8 rounded border border-input bg-background cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
-        title={locked ? "Required status — color cannot be changed" : "Color"}
+        title={locked ? "Required status — only the label can be changed" : "Color"}
       />
       <Input
         value={label}
@@ -223,12 +222,11 @@ function StatusRow({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        readOnly={locked}
-        className={`flex-1 ${locked ? "cursor-default opacity-80" : ""}`}
-        title={locked ? "Required status — label cannot be changed" : undefined}
+        className="flex-1"
+        title={locked ? "Label can be renamed, but color and deletion are locked" : undefined}
       />
       {locked ? (
-        <span title="Required status — cannot be edited or removed" className="shrink-0 inline-flex">
+        <span title="Required status — only the label can be changed" className="shrink-0 inline-flex">
           <Lock className="w-4 h-4 text-muted-foreground" />
         </span>
       ) : (

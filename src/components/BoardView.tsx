@@ -579,7 +579,6 @@ function BoardColumn({
   }, [isEditingLabel]);
 
   const startEditingLabel = () => {
-    if (locked) return;
     setEditLabel(column.label);
     setIsEditingLabel(true);
   };
@@ -688,8 +687,7 @@ function BoardColumn({
                 }}
               >
                 {displayLabel}
-              </span>
-            )}
+              </span>            )}
             {items.length > 0 && (
               <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded-full bg-muted/80 text-muted-foreground ml-0.5">
                 {items.length}
@@ -710,11 +708,9 @@ function BoardColumn({
         <ContextMenuContent>
           <ContextMenuItem
             className="text-xs"
-            disabled={locked}
-            onSelect={() => !locked && startEditingLabel()}
+            onSelect={() => startEditingLabel()}
           >
             Rename column
-            {locked && <span className="ml-auto text-[10px] text-muted-foreground">Required</span>}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem

@@ -210,13 +210,17 @@ export const useBacklogStatusesStore = create<BacklogStatusesState>((set, get) =
     const list = get().statusesByBacklog[backlogId] ?? [];
     const status = list.find((s) => s.id === id);
     if (!status) return;
-    if (isPinnedStatus(status.key)) return;
+    // Pinned statuses may only have their label changed; all other edits are blocked.
+    const effectivePatch = isPinnedStatus(status.key)
+      ? (patch.label !== undefined ? { label: patch.label } : {})
+      : patch;
+    if (Object.keys(effectivePatch).length === 0) return;
 
     set((state) => {
       const cur = state.statusesByBacklog[backlogId] ?? [];
       const idx = cur.findIndex((s) => s.id === id);
       if (idx === -1) return state;
-      const updated = { ...cur[idx], ...patch };
+      const updated = { ...cur[idx], ...effectivePatch };
       return {
         statusesByBacklog: {
           ...state.statusesByBacklog,
