@@ -6,7 +6,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, getEffectiveStatuses, isPinnedStatus, type BacklogStatus as TreeStatus } from "@/store/backlogStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
-import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon } from "lucide-react";
+import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon, Columns2 } from "lucide-react";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -56,6 +56,14 @@ interface BoardViewProps {
 
 const EMPTY_ARR: string[] = [];
 
+function slugifyKey(label: string): string {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40) || `status_${Math.random().toString(36).slice(2, 7)}`;
+}
 /** Delay (in ms) to allow React to complete reconciliation before scrolling to an element.
  *  This ensures the element exists in the DOM when we call scrollIntoView(). */
 const REACT_RECONCILIATION_DELAY = 100;
@@ -254,6 +262,34 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   // When a card is selected and Enter is pressed, open an inline add-input
   // immediately below the selected card (just like list view).
   const [addAfterSlot, setAddAfterSlot] = useState<{ columnKey: string; afterIndex: number } | null>(null);
+
+  // Show inline input for adding a new column at the end of the board
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [newColumnLabel, setNewColumnLabel] = useState("");
+  const newColumnInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAddingColumn) {
+      requestAnimationFrame(() => {
+        newColumnInputRef.current?.focus();
+      });
+    }
+  }, [isAddingColumn]);
+
+  const handleAddColumnSubmit = () => {
+    const trimmed = newColumnLabel.trim();
+    if (trimmed) {
+      const existingKeys = new Set(orderedColumns.map((c) => c.key));
+      let key = slugifyKey(trimmed);
+      let i = 2;
+      while (existingKeys.has(key)) key = `${slugifyKey(trimmed)}_${i++}`;
+      createColumn(backlogId, key, trimmed);
+      setNewColumnLabel("");
+      setIsAddingColumn(false);
+    } else {
+      setIsAddingColumn(false);
+    }
+  };
   const addAfterSlotRef = useRef(addAfterSlot);
   addAfterSlotRef.current = addAfterSlot;
 
@@ -440,6 +476,37 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             }}
           />
         ))}
+        {/* Add Column button / inline input */}
+        {isAddingColumn ? (
+          <div className="w-56 shrink-0 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/10 p-3 self-start">
+            <input
+              ref={newColumnInputRef}
+              className="w-full text-xs bg-card rounded border px-1.5 py-1 outline-none focus:border-primary"
+              placeholder="Column name…"
+              value={newColumnLabel}
+              onChange={(e) => setNewColumnLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddColumnSubmit();
+                if (e.key === "Escape") { setIsAddingColumn(false); setNewColumnLabel(""); }
+                e.stopPropagation();
+              }}
+              onBlur={handleAddColumnSubmit}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : (
+          <button
+            className="w-56 shrink-0 rounded-lg border border-dashed border-muted-foreground/30 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/50 transition-colors p-3 self-start flex items-center gap-2 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNewColumnLabel("");
+              setIsAddingColumn(true);
+            }}
+          >
+            <Columns2 className="w-3.5 h-3.5" />
+            Add Column
+          </button>
+        )}
       </div>
     </div>
   );
