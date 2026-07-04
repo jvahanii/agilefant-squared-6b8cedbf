@@ -2622,16 +2622,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    setBacklogHiddenStatusKeys: (backlogId, keys) => {
-      const state = get();
-      const bl = state.backlogs[backlogId];
-      if (!bl) return;
-      const dedup = Array.from(new Set(keys));
-      updateBacklogHiddenStatusKeys(backlogId, dedup);
-      set({
-        backlogs: { ...state.backlogs, [backlogId]: { ...bl, boardHiddenStatusKeys: dedup } },
-      });
+    setBacklogHiddenStatusKeys: (_backlogId, _keys) => {
+      // Legacy no-op: board columns are now fully derived from backlog_statuses.
+      // Hiding a column is done by deleting the corresponding status.
     },
+
 
     setBacklogViewMode: (backlogId, mode) => {
       const state = get();
