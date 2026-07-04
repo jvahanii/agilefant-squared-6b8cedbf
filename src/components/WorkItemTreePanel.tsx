@@ -2418,7 +2418,11 @@ export function WorkItemTreePanel() {
         if (item && selectedTreeId) {
           [...item.childrenIds]
             .map((cid) => workItems[cid])
-            .filter(Boolean)
+            .filter((child): child is WorkItem => {
+              if (!child) return false;
+              const childBl = child.backlogAssignments[selectedTreeId];
+              return !!childBl && backlogIdSet.has(childBl);
+            })
             .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0))
             .forEach((child) => traverse(child.id));
         }
@@ -2426,7 +2430,7 @@ export function WorkItemTreePanel() {
     };
     displayedRootItems.forEach((root) => traverse(root.id));
     return ids;
-  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId]);
+  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet]);
 
   // Keep a ref to the latest visible list so the Tab/Shift-Tab handler always
   // operates on the current order without requiring the effect to re-register.
