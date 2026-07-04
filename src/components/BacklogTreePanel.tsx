@@ -882,13 +882,6 @@ function DraggableTreeHeader({
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
-          {canEditStatuses && (
-            <button
-              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
-              title="Edit statuses"
-            ><Settings2 className="w-3.5 h-3.5" /></button>
-          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); onShareTree(); }}
