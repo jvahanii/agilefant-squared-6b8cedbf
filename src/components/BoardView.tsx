@@ -519,6 +519,7 @@ function BoardColumn({
   }, [isEditingLabel]);
 
   const startEditingLabel = () => {
+    if (locked) return;
     setEditLabel(column.label);
     setIsEditingLabel(true);
   };
