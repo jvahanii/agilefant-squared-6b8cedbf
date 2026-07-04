@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/appStore";
 import { ChevronRight } from "lucide-react";
-import { DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { DEFAULT_STATUSES as DEFAULT_TREE_STATUSES } from "@/store/backlogStatusesStore";
 import { toast } from "@/hooks/use-toast";
 
 const DEFAULT_STATUS_COLOR = "#94a3b8";
