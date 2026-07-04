@@ -25,7 +25,7 @@ import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, isPastMonth, type MonthlyMap } from "@/store/financialsStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useTargetsStore, type TargetMetric } from "@/store/targetsStore";
-import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
+import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
 import { useRatesStore, convertCurrency } from "@/store/ratesStore";
 import {
@@ -101,7 +101,8 @@ export function CumulativeFlowChart({ treeId, inPopout = false }: Props) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
-  const statusesList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  useBacklogStatusesStore((s) => s.statusesByBacklog);
+  const statusesList = getEffectiveStatusesForTree(treeId);
   const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
   const setDisplayCurrency = useDisplayCurrencyStore((s) => s.setDisplayCurrency);
   const rates = useRatesStore((s) => s.rates);

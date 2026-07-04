@@ -1,8 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
-import { useTreeStatusesStore, DEFAULT_TREE_STATUSES } from "@/store/treeStatusesStore";
-import { useBoardColumnsStore } from "@/store/boardColumnsStore";
+import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
 import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -286,35 +285,21 @@ function WorkItemNodeContent({
   const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
   const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
 
-  // Per-backlog board column labels, used to show "Column name (Status)" when
-  // columns have been renamed from their default tree status labels.
-  const boardColumns = useBoardColumnsStore((s) => s.columnsByBacklog[backlogId]);
-  const columnLabelMap = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!boardColumns) return map;
-    for (const col of boardColumns) {
-      map.set(col.statusKey, col.label);
-    }
-    return map;
-  }, [boardColumns]);
-
-  // Per-tree status definitions (falls back to defaults if not loaded yet).
-  // displayLabel respects per-backlog column renames.
-  const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  // Per-backlog effective statuses (walks up parent chain until a materialized
+  // set is found; falls back to defaults). Board columns and status list are
+  // now unified — column labels ARE status labels.
+  // Subscribe to the store so re-renders happen on realtime updates.
+  useBacklogStatusesStore((s) => s.statusesByBacklog[backlogId]);
   const treeStatuses = useMemo(
-    () => {
-      const base = treeStatusList && treeStatusList.length > 0
-        ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
-        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color }));
-      return base.map((s) => {
-        const colLabel = columnLabelMap.get(s.key);
-        const displayLabel = colLabel && colLabel !== s.label
-          ? `${colLabel} (${s.label})`
-          : s.label;
-        return { ...s, displayLabel };
-      });
-    },
-    [treeStatusList, columnLabelMap],
+    () =>
+      getEffectiveStatuses(backlogId).map((s) => ({
+        key: s.key,
+        label: s.label,
+        color: s.color,
+        displayLabel: s.label,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [backlogId, useBacklogStatusesStore((s) => s.statusesByBacklog)],
   );
 
   const [isAdding, setIsAdding] = useState(false);
@@ -1707,13 +1692,14 @@ function SearchResultItem({
     return ids;
   }, [backlogs, treeId]);
 
-  const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  // Search-result cards can span multiple backlogs; use the tree's default
+  // status set (root backlog's effective statuses) for display.
+  useBacklogStatusesStore((s) => s.statusesByBacklog);
   const treeStatuses = useMemo(
     () =>
-      treeStatusList && treeStatusList.length > 0
-        ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
-        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color })),
-    [treeStatusList],
+      getEffectiveStatusesForTree(treeId).map((s) => ({ key: s.key, label: s.label, color: s.color })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [treeId, useBacklogStatusesStore((s) => s.statusesByBacklog)],
   );
 
   const {

@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      backlog_statuses: {
+        Row: {
+          backlog_id: string
+          color: string
+          created_at: string
+          id: string
+          key: string
+          label: string
+          rank: number
+          updated_at: string
+        }
+        Insert: {
+          backlog_id: string
+          color?: string
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          rank?: number
+          updated_at?: string
+        }
+        Update: {
+          backlog_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          rank?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlog_statuses_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlog_tree_shares: {
         Row: {
           created_at: string | null
@@ -74,7 +115,6 @@ export type Database = {
       }
       backlogs: {
         Row: {
-          board_hidden_status_keys: string[]
           id: string
           name: string
           organization_id: string | null
@@ -84,7 +124,6 @@ export type Database = {
           view_mode: string
         }
         Insert: {
-          board_hidden_status_keys?: string[]
           id: string
           name: string
           organization_id?: string | null
@@ -94,7 +133,6 @@ export type Database = {
           view_mode?: string
         }
         Update: {
-          board_hidden_status_keys?: string[]
           id?: string
           name?: string
           organization_id?: string | null
@@ -123,44 +161,6 @@ export type Database = {
             columns: ["tree_id"]
             isOneToOne: false
             referencedRelation: "backlog_trees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      board_columns: {
-        Row: {
-          backlog_id: string
-          created_at: string
-          id: string
-          label: string
-          rank: number
-          status_key: string
-          updated_at: string
-        }
-        Insert: {
-          backlog_id: string
-          created_at?: string
-          id?: string
-          label: string
-          rank?: number
-          status_key: string
-          updated_at?: string
-        }
-        Update: {
-          backlog_id?: string
-          created_at?: string
-          id?: string
-          label?: string
-          rank?: number
-          status_key?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "board_columns_backlog_id_fkey"
-            columns: ["backlog_id"]
-            isOneToOne: false
-            referencedRelation: "backlogs"
             referencedColumns: ["id"]
           },
         ]
@@ -689,39 +689,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      tree_statuses: {
-        Row: {
-          color: string
-          created_at: string
-          id: string
-          key: string
-          label: string
-          rank: number
-          tree_id: string
-          updated_at: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          id?: string
-          key: string
-          label: string
-          rank?: number
-          tree_id: string
-          updated_at?: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          id?: string
-          key?: string
-          label?: string
-          rank?: number
-          tree_id?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       whatsapp_integrations: {
         Row: {

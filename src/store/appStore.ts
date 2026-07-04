@@ -7,7 +7,6 @@ import {
   deleteWorkItems,
   deleteWorkItemBacklogRanks,
   upsertBacklog,
-  updateBacklogHiddenStatusKeys,
   updateBacklogViewMode,
   upsertBacklogs,
   deleteBacklogs,
@@ -24,7 +23,7 @@ import {
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
-import { useTreeStatusesStore } from "./treeStatusesStore";
+import { getEffectiveStatuses } from "./backlogStatusesStore";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 
 function generateMockData() {
@@ -1299,8 +1298,14 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Preserve existing rank value or default to current
           newRanks[cleanTargetBl] = newRanks[cleanTargetBl] ?? (wi.ranks[oldBlId] ?? 0);
         }
+        // Remap status if the destination backlog's effective status set
+        // doesn't include the current status (falls back to 'not_started').
+        const destStatuses = getEffectiveStatuses(cleanTargetBl);
+        const destStatusKeys = new Set(destStatuses.map((s) => s.key));
+        const remappedStatus = destStatusKeys.has(wi.status) ? wi.status : ('not_started' as WorkItemStatus);
         updatedItems[id] = {
           ...wi,
+          status: remappedStatus,
           backlogAssignments: { ...wi.backlogAssignments, [targetTreeId]: cleanTargetBl },
           ranks: newRanks,
         };
@@ -2639,16 +2644,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    setBacklogHiddenStatusKeys: (backlogId, keys) => {
-      const state = get();
-      const bl = state.backlogs[backlogId];
-      if (!bl) return;
-      const dedup = Array.from(new Set(keys));
-      updateBacklogHiddenStatusKeys(backlogId, dedup);
-      set({
-        backlogs: { ...state.backlogs, [backlogId]: { ...bl, boardHiddenStatusKeys: dedup } },
-      });
+    setBacklogHiddenStatusKeys: (_backlogId, _keys) => {
+      // Legacy no-op: board columns are now fully derived from backlog_statuses.
+      // Hiding a column is done by deleting the corresponding status.
     },
+
 
     setBacklogViewMode: (backlogId, mode) => {
       const state = get();
@@ -2806,8 +2806,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const rank = maxRank + 1;
       const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
       upsertBacklogTree(newTree, orgId);
-      // Seed the required pinned statuses for the new tree.
-      useTreeStatusesStore.getState().seedPinnedStatuses(id);
+      // Pinned statuses are seeded automatically on new root backlogs by a DB trigger.
       internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
       set({
         backlogTrees: { ...state.backlogTrees, [id]: newTree },

@@ -3,8 +3,7 @@ import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useLabelsStore } from "@/store/labelsStore";
-import { useTreeStatusesStore, DEFAULT_TREE_STATUSES, type TreeStatus } from "@/store/treeStatusesStore";
-import { useBoardColumnsStore, type BoardColumn as BoardColumnDef } from "@/store/boardColumnsStore";
+import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, getEffectiveStatuses, isPinnedStatus, type BacklogStatus as TreeStatus } from "@/store/backlogStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
 import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon } from "lucide-react";
@@ -56,7 +55,6 @@ interface BoardViewProps {
 }
 
 const EMPTY_ARR: string[] = [];
-const EMPTY_COLS: BoardColumnDef[] = [];
 
 /** Delay (in ms) to allow React to complete reconciliation before scrolling to an element.
  *  This ensures the element exists in the DOM when we call scrollIntoView(). */
@@ -186,57 +184,42 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
-  const statusesByTree = useTreeStatusesStore((s) => s.statusesByTree);
-  const columnsByBacklog = useBoardColumnsStore((s) => s.columnsByBacklog);
-  const loadColumnsForBacklog = useBoardColumnsStore((s) => s.loadForBacklog);
-  const createColumn = useBoardColumnsStore((s) => s.createColumn);
-  const renameColumn = useBoardColumnsStore((s) => s.renameColumn);
-  const deleteColumn = useBoardColumnsStore((s) => s.deleteColumn);
-  const reorderColumns = useBoardColumnsStore((s) => s.reorderColumns);
+  // Subscribe so realtime edits re-render.
+  const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
+  const createStatus = useBacklogStatusesStore((s) => s.createStatus);
+  const updateStatus = useBacklogStatusesStore((s) => s.updateStatus);
+  const deleteStatus = useBacklogStatusesStore((s) => s.deleteStatus);
+  const reorderStatuses = useBacklogStatusesStore((s) => s.reorderStatuses);
 
-  const allStatuses = useMemo<TreeStatus[]>(() => {
-    const list = statusesByTree[treeId];
-    if (list && list.length > 0) return list;
-    return DEFAULT_TREE_STATUSES.map((s, i) => ({
-      id: `default-${s.key}`,
-      treeId,
-      ...s,
-      rank: i,
-    })) as TreeStatus[];
-  }, [statusesByTree, treeId]);
+  // Board columns ARE statuses — no per-backlog column overrides anymore.
+  const allStatuses = useMemo<TreeStatus[]>(
+    () => getEffectiveStatuses(backlogId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [backlogId, statusesByBacklog, backlogs],
+  );
+  const orderedColumns = allStatuses;
 
-  // Lazy-load (and one-shot migrate legacy state into) board_columns for this backlog.
-  useEffect(() => {
-    loadColumnsForBacklog(backlogId, treeId);
-  }, [backlogId, treeId, loadColumnsForBacklog]);
+  // Nothing to add via the "Add column" submenu now that every status IS a column;
+  // that submenu is removed from the header context menu below.
+  const availableStatuses: TreeStatus[] = EMPTY_ARR as unknown as TreeStatus[];
 
-  const backlogColumns = columnsByBacklog[backlogId] ?? EMPTY_COLS;
+  const renameColumn = useCallback(
+    (id: string, label: string) => updateStatus(backlogId, id, { label }),
+    [updateStatus, backlogId],
+  );
+  const deleteColumn = useCallback(
+    (id: string) => deleteStatus(backlogId, id),
+    [deleteStatus, backlogId],
+  );
+  const reorderColumns = useCallback(
+    (_bid: string, orderedIds: string[]) => reorderStatuses(backlogId, orderedIds),
+    [reorderStatuses, backlogId],
+  );
+  const createColumn = useCallback(
+    (_bid: string, statusKey: string, label: string) => createStatus(backlogId, statusKey, label, "#94a3b8"),
+    [createStatus, backlogId],
+  );
 
-  // Build the visible column list, shaped as TreeStatus so all existing
-  // consumers (BoardColumn, BoardCard) can keep using `col.id`, `col.key`,
-  // `col.label`, `col.color`. `id` here is the `board_columns.id` — stable
-  // per column and used for rename/delete/reorder writes.
-  const orderedColumns = useMemo<TreeStatus[]>(() => {
-    const byKey = new Map(allStatuses.map((s) => [s.key, s]));
-    return backlogColumns.map((c) => {
-      const s = byKey.get(c.statusKey);
-      return {
-        id: c.id,
-        treeId,
-        key: c.statusKey,
-        label: c.label,
-        color: s?.color ?? "#94a3b8",
-        rank: c.rank,
-      };
-    });
-  }, [backlogColumns, allStatuses, treeId]);
-
-  // Statuses that don't yet have a column in this backlog — offered in the
-  // header context menu as "Add column".
-  const availableStatuses = useMemo(() => {
-    const used = new Set(backlogColumns.map((c) => c.statusKey));
-    return allStatuses.filter((s) => !used.has(s.key));
-  }, [allStatuses, backlogColumns]);
 
   const cardsByStatus = useMemo(() => {
     const backlogSet = collectBacklogIds(backlogId, backlogs);
@@ -438,6 +421,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             onDeleteColumn={() => deleteColumn(col.id)}
             availableStatuses={availableStatuses}
             onAddColumn={(statusKey, label) => createColumn(backlogId, statusKey, label)}
+            locked={isPinnedStatus(col.key)}
             addAfterSlot={
               addAfterSlot?.columnKey === col.key ? addAfterSlot.afterIndex : null
             }
@@ -483,6 +467,7 @@ function BoardColumn({
   allColumnKeys,
   onMoveColumn,
   onSaveLabel,
+  locked = false,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -504,6 +489,7 @@ function BoardColumn({
   allColumnKeys?: string[];
   onMoveColumn?: (fromId: string, toId: string) => void;
   onSaveLabel: (statusKey: string, label: string) => void;
+  locked?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -533,6 +519,7 @@ function BoardColumn({
   }, [isEditingLabel]);
 
   const startEditingLabel = () => {
+    if (locked) return;
     setEditLabel(column.label);
     setIsEditingLabel(true);
   };
@@ -661,39 +648,27 @@ function BoardColumn({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem className="text-xs" onSelect={() => startEditingLabel()}>
+          <ContextMenuItem
+            className="text-xs"
+            disabled={locked}
+            onSelect={() => !locked && startEditingLabel()}
+          >
             Rename column
+            {locked && <span className="ml-auto text-[10px] text-muted-foreground">Required</span>}
           </ContextMenuItem>
-          {availableStatuses.length > 0 && (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">
-                <Plus className="w-3 h-3 mr-2" />
-                Add column
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                {availableStatuses.map((s) => (
-                  <ContextMenuItem
-                    key={s.key}
-                    className="text-xs"
-                    onSelect={() => onAddColumn(s.key, s.label)}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0 mr-2"
-                      style={{ backgroundColor: s.color }}
-                    />
-                    {s.label}
-                  </ContextMenuItem>
-                ))}
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          )}
           <ContextMenuSeparator />
-          <ContextMenuItem className="text-xs text-destructive focus:text-destructive" onSelect={onDeleteColumn}>
+          <ContextMenuItem
+            className="text-xs text-destructive focus:text-destructive"
+            disabled={locked}
+            onSelect={() => !locked && onDeleteColumn()}
+          >
             <Trash2 className="w-3 h-3 mr-2" />
             Remove column
+            {locked && <span className="ml-auto text-[10px] text-muted-foreground">Required</span>}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
       <div ref={setNodeRef} className="flex-1 overflow-y-auto">
         {isAdding && (
           <ColumnAddInput

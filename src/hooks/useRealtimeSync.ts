@@ -6,11 +6,10 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
-import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
-import { useBoardColumnsStore } from '@/store/boardColumnsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -43,11 +42,10 @@ export function useRealtimeSync() {
   const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
   const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
   const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
-  const applyRealtimeStatus = useTreeStatusesStore((s) => s.applyRealtimeStatus);
+  const applyRealtimeStatus = useBacklogStatusesStore((s) => s.applyRealtimeStatus);
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
-  const applyRealtimeBoardColumn = useBoardColumnsStore((s) => s.applyRealtime);
 
   // Stable serialized key so the effect re-runs only when the set of accessible
   // tree IDs actually changes (i.e. sharing membership changes).
@@ -407,20 +405,18 @@ export function useRealtimeSync() {
     addLabelHandlers(ownChannel, activeOrgId).subscribe();
     channels.push(ownChannel);
 
-    // Tree statuses: a single channel for all accessible trees. Filtering is done
-    // client-side because the rows are tree-scoped and RLS already restricts
-    // visibility to trees the user can access.
+    // Backlog statuses: a single channel; RLS restricts to accessible backlogs.
     const statusChannel = supabase
-      .channel(`tree-statuses-${activeOrgId}`)
+      .channel(`backlog-statuses-${activeOrgId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tree_statuses' },
+        { event: '*', schema: 'public', table: 'backlog_statuses' },
         (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const treeId = row?.tree_id as string | undefined;
-          if (!treeId) return;
-          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
-          if (!accessible.has(treeId)) return;
+          const backlogId = row?.backlog_id as string | undefined;
+          if (!backlogId) return;
+          const accessible = useAppStore.getState().backlogs;
+          if (!accessible[backlogId]) return;
           applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
@@ -445,23 +441,6 @@ export function useRealtimeSync() {
       .subscribe();
     channels.push(targetsChannel);
 
-    // Board columns: single channel; RLS restricts to accessible backlogs so no filter needed.
-    const boardColumnsChannel = supabase
-      .channel(`board-columns-${activeOrgId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'board_columns' },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const backlogId = row?.backlog_id as string | undefined;
-          if (!backlogId) return;
-          const accessible = useAppStore.getState().backlogs;
-          if (!accessible[backlogId]) return;
-          applyRealtimeBoardColumn(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .subscribe();
-    channels.push(boardColumnsChannel);
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.

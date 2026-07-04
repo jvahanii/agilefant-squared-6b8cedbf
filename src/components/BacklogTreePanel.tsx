@@ -33,7 +33,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
-import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
@@ -304,6 +304,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const backlogFinancials = useBacklogFinancialTotals(backlogId, treeId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
+  const [showStatusesDialog, setShowStatusesDialog] = useState(false);
+  const customStatusesEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
+  );
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -580,6 +584,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <SlidersHorizontal className="w-3 h-3 mr-2" />
           Attributes
         </ContextMenuItem>
+        {customStatusesEnabled && (
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => setShowStatusesDialog(true)}
+          >
+            <Settings2 className="w-3 h-3 mr-2" />
+            Statuses…
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
@@ -590,6 +603,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         </ContextMenuItem>
       </ContextMenuContent>
       </ContextMenu>
+
       {(expanded || isAdding) && (
         <div>
           {hasChildren &&
@@ -665,7 +679,17 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         onOpenChange={setShowMobileAttributesSheet}
         onOpenTimeLog={() => setShowTimeLogDialog(true)}
       />
+      {showStatusesDialog && (
+        <BacklogStatusesDialog
+          backlogId={backlogId}
+          backlogName={backlog.name}
+          open={showStatusesDialog}
+          onOpenChange={setShowStatusesDialog}
+        />
+      )}
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete backlog?</AlertDialogTitle>
@@ -858,13 +882,6 @@ function DraggableTreeHeader({
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
-          {canEditStatuses && (
-            <button
-              className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
-              title="Edit statuses"
-            ><Settings2 className="w-3.5 h-3.5" /></button>
-          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); onShareTree(); }}
@@ -879,15 +896,6 @@ function DraggableTreeHeader({
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
-          {canEditStatuses && (
-            <button
-              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
-              title="Edit statuses for this tree"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
-          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
@@ -1107,16 +1115,6 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
         />
       )}
 
-      {editingStatusesTree && (
-        <TreeStatusesDialog
-          treeId={editingStatusesTree.id}
-          treeName={editingStatusesTree.name}
-          open={!!editingStatusesTree}
-          onOpenChange={(open) => {
-            if (!open) setEditingStatusesTree(null);
-          }}
-        />
-      )}
 
       <AlertDialog open={!!pendingDeleteTree} onOpenChange={(open) => { if (!open) setPendingDeleteTree(null); }}>
         <AlertDialogContent>
