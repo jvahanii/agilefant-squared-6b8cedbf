@@ -687,6 +687,8 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           onOpenChange={setShowStatusesDialog}
         />
       )}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+
 
         <AlertDialogContent>
           <AlertDialogHeader>
