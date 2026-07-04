@@ -304,6 +304,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const backlogFinancials = useBacklogFinancialTotals(backlogId, treeId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
+  const [showStatusesDialog, setShowStatusesDialog] = useState(false);
+  const customStatusesEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
+  );
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
