@@ -524,8 +524,11 @@ function BoardColumn({
 
   useEffect(() => {
     if (isEditingLabel) {
-      labelInputRef.current?.focus();
-      labelInputRef.current?.select();
+      // Use rAF to ensure React has flushed the input to the DOM before focusing/selecting.
+      requestAnimationFrame(() => {
+        labelInputRef.current?.focus();
+        labelInputRef.current?.select();
+      });
     }
   }, [isEditingLabel]);
 
@@ -628,7 +631,7 @@ function BoardColumn({
             ) : (
               <span
                 className={cn(
-                  "text-xs font-semibold truncate",
+                  "text-xs font-semibold truncate cursor-text",
                 )}
                 title={displayLabel}
                 onDoubleClick={(e) => {
