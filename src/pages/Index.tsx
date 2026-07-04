@@ -28,7 +28,7 @@ const Index = () => {
   const { user } = useAuth();
   const loadSettings = useOrgSettingsStore(s => s.loadSettings);
   const loadLabels = useLabelsStore(s => s.loadLabels);
-  const loadStatusesForTrees = useTreeStatusesStore(s => s.loadStatusesForTrees);
+  const loadStatusesForOrgs = useBacklogStatusesStore(s => s.loadStatusesForOrgs);
   const backlogTrees = useAppStore(s => s.backlogTrees);
   const loadSnoozes = useSnoozeStore(s => s.loadSnoozes);
   const clearSnoozes = useSnoozeStore(s => s.clearSnoozes);
