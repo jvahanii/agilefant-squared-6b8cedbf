@@ -33,7 +33,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
-import { TreeStatusesDialog } from "./TreeStatusesDialog";
+import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
