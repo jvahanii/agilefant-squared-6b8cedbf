@@ -2784,8 +2784,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const rank = maxRank + 1;
       const newTree: BacklogTree = { id, name, rootBacklogIds: [], rank };
       upsertBacklogTree(newTree, orgId);
-      // Seed the required pinned statuses for the new tree.
-      useTreeStatusesStore.getState().seedPinnedStatuses(id);
+      // Pinned statuses are seeded automatically on new root backlogs by a DB trigger.
       internalLog({ action: "Add", entityType: "backlog_tree", entityId: id, entityName: name });
       set({
         backlogTrees: { ...state.backlogTrees, [id]: newTree },
