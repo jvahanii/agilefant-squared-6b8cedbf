@@ -6,11 +6,10 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useOrgSettingsStore } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
-import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
-import { useBoardColumnsStore } from '@/store/boardColumnsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
