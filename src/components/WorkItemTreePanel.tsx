@@ -1688,13 +1688,14 @@ function SearchResultItem({
     return ids;
   }, [backlogs, treeId]);
 
-  const treeStatusList = useTreeStatusesStore((s) => s.statusesByTree[treeId]);
+  // Search-result cards can span multiple backlogs; use the tree's default
+  // status set (root backlog's effective statuses) for display.
+  useBacklogStatusesStore((s) => s.statusesByBacklog);
   const treeStatuses = useMemo(
     () =>
-      treeStatusList && treeStatusList.length > 0
-        ? treeStatusList.map((s) => ({ key: s.key, label: s.label, color: s.color }))
-        : DEFAULT_TREE_STATUSES.map((s) => ({ key: s.key, label: s.label, color: s.color })),
-    [treeStatusList],
+      getEffectiveStatusesForTree(treeId).map((s) => ({ key: s.key, label: s.label, color: s.color })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [treeId, useBacklogStatusesStore((s) => s.statusesByBacklog)],
   );
 
   const {
