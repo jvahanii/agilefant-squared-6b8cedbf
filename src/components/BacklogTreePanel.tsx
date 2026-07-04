@@ -896,15 +896,6 @@ function DraggableTreeHeader({
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
-          {canEditStatuses && (
-            <button
-              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onClick={(e) => { e.stopPropagation(); onEditStatuses(); }}
-              title="Edit statuses for this tree"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
-          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
