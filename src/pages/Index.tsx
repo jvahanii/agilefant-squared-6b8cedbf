@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 import { useLabelsStore } from '@/store/labelsStore';
-import { useTreeStatusesStore } from '@/store/treeStatusesStore';
+import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 
