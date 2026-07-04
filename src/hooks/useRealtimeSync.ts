@@ -405,20 +405,18 @@ export function useRealtimeSync() {
     addLabelHandlers(ownChannel, activeOrgId).subscribe();
     channels.push(ownChannel);
 
-    // Tree statuses: a single channel for all accessible trees. Filtering is done
-    // client-side because the rows are tree-scoped and RLS already restricts
-    // visibility to trees the user can access.
+    // Backlog statuses: a single channel; RLS restricts to accessible backlogs.
     const statusChannel = supabase
-      .channel(`tree-statuses-${activeOrgId}`)
+      .channel(`backlog-statuses-${activeOrgId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tree_statuses' },
+        { event: '*', schema: 'public', table: 'backlog_statuses' },
         (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const treeId = row?.tree_id as string | undefined;
-          if (!treeId) return;
-          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
-          if (!accessible.has(treeId)) return;
+          const backlogId = row?.backlog_id as string | undefined;
+          if (!backlogId) return;
+          const accessible = useAppStore.getState().backlogs;
+          if (!accessible[backlogId]) return;
           applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
@@ -443,23 +441,6 @@ export function useRealtimeSync() {
       .subscribe();
     channels.push(targetsChannel);
 
-    // Board columns: single channel; RLS restricts to accessible backlogs so no filter needed.
-    const boardColumnsChannel = supabase
-      .channel(`board-columns-${activeOrgId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'board_columns' },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const backlogId = row?.backlog_id as string | undefined;
-          if (!backlogId) return;
-          const accessible = useAppStore.getState().backlogs;
-          if (!accessible[backlogId]) return;
-          applyRealtimeBoardColumn(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .subscribe();
-    channels.push(boardColumnsChannel);
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
