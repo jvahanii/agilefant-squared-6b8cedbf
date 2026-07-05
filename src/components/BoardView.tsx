@@ -762,7 +762,7 @@ function BoardColumn({
       ref={columnRef}
       data-board-column={column.key}
       className={cn(
-        "flex flex-col w-44 shrink-0 rounded-lg border bg-muted/20 h-full",
+        "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/20 h-full",
         isOver && "ring-2 ring-primary bg-primary/5",
       )}
       onDragOver={(e) => {
@@ -1195,7 +1195,7 @@ function BoardCard({
               setIsEditingTitle(true);
             }}
             className={cn(
-              "relative group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none overflow-hidden w-full block",
+              "relative group rounded-md border bg-card shadow-sm p-2 text-sm select-none overflow-hidden w-full block",
               !isMobile && "cursor-pointer hover:border-accent-foreground/30 touch-none",
               selected && "ring-2 ring-primary border-primary",
               isDragging && "opacity-40",
