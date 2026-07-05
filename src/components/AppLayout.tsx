@@ -798,6 +798,11 @@ function AppLayoutInner() {
       if (data?.type === "workitem") {
         const store = useAppStore.getState();
         const ids: string[] = data.selectedIds ?? [data.workItemId];
+        // Auto-select the dragged item if it's not already part of the current selection,
+        // so board cards can be dragged without needing a prior click-to-select.
+        if (!store.selectedWorkItemIds.some((id) => ids.includes(id))) {
+          store.selectWorkItem(ids[0], false);
+        }
         const totalCount = countWithDescendants(ids);
         const titles = ids.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
         const title = titles[0] ?? "";

@@ -1001,9 +1001,10 @@ function BoardCard({
   setViewMode: (mode: "list" | "board") => void;
 }) {
   const isMobile = useIsMobile();
+  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `board-card:${item.id}`,
-    data: { type: "workitem", workItemId: item.id, selectedIds: [item.id] },
+    data: { type: "workitem", workItemId: item.id, selectedIds: selectedWorkItemIds.includes(item.id) ? selectedWorkItemIds : [item.id] },
   });
   const cardListeners = !isMobile ? listeners : undefined;
 
