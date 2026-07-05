@@ -1867,10 +1867,16 @@ export const useAppStore = create<AppState>()((set, get) => {
           const shouldUpdate = ancestor.status === "not_started";
           if (shouldUpdate) {
             const startedStatus = getStartedStatus(ancestor);
-            if (startedStatus === null) break; // stop propagation — no valid started status for this ancestor
-            updatedWorkItems[ancestorId] = { ...ancestor, status: startedStatus };
-            upsertWorkItem(updatedWorkItems[ancestorId], orgId);
-            internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "${startedStatus}" (auto)` });
+            if (startedStatus !== null) {
+              // Ancestor's backlog supports a started intermediate status — promote it.
+              updatedWorkItems[ancestorId] = { ...ancestor, status: startedStatus };
+              upsertWorkItem(updatedWorkItems[ancestorId], orgId);
+              internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "${startedStatus}" (auto)` });
+            }
+            // When startedStatus is null the ancestor's backlogs don't support any
+            // started intermediate status.  Leave this ancestor unchanged and
+            // continue walking up the chain so ancestors higher up that DO support
+            // "in_progress" still receive the propagation.
           }
           ancestorId = ancestor.parentId;
         }

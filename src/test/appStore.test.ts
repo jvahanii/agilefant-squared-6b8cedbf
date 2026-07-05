@@ -28,6 +28,26 @@ vi.mock("@/store/mockData", () => ({
   generateMockData: vi.fn(() => ({ workItems: {}, backlogs: {}, backlogTrees: {} })),
 }));
 
+const MOCK_NO_IN_PROGRESS_STATUSES = [
+  { key: "not_started", label: "Not Started", color: "#94a3b8", rank: 0, id: "default-not_started", backlogId: "" },
+  { key: "pending", label: "Pending", color: "#93c5fd", rank: 1, id: "default-pending", backlogId: "" },
+  { key: "blocked", label: "Blocked", color: "#ef4444", rank: 2, id: "default-blocked", backlogId: "" },
+  { key: "done", label: "Done", color: "#22c55e", rank: 3, id: "default-done", backlogId: "" },
+];
+
+vi.mock("@/store/backlogStatusesStore", async () => {
+  const actual = await vi.importActual<typeof import("@/store/backlogStatusesStore")>("@/store/backlogStatusesStore");
+  return {
+    ...actual,
+    getEffectiveStatuses: vi.fn((backlogId: string | null | undefined) => {
+      if (backlogId && (backlogId.includes("no-in-progress") || backlogId.includes("no-intermediate"))) {
+        return MOCK_NO_IN_PROGRESS_STATUSES.map((s) => ({ ...s, backlogId: backlogId || "" }));
+      }
+      return actual.getEffectiveStatuses(backlogId);
+    }),
+  };
+});
+
 const ORG = "test-org";
 
 function seedStore() {
@@ -378,6 +398,93 @@ describe("setWorkItemStatus", () => {
     useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "in_progress");
     const items = useAppStore.getState().workItems;
     expect(items[`${ORG}::wi-parent`].status).toBe("in_progress");
+  });
+
+  it("skips intermediate ancestors that don't support 'in_progress' and continues propagation upward", () => {
+    // P (grandparent) is in a backlog that supports "in_progress".
+    // A (parent) is in a separate backlog that does NOT support "in_progress".
+    // B (child) goes "in_progress" → B stays in_progress, A stays not_started, P gets in_progress.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-progress`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-no-progress`]: { id: `${ORG}::bl-no-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {
+        [`${ORG}::wi-grandparent`]: {
+          id: `${ORG}::wi-grandparent`, title: "Grandparent P", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-parent`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent A (no in_progress)", status: "not_started" as const,
+          parentId: `${ORG}::wi-grandparent`, childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child B", status: "not_started" as const,
+          parentId: `${ORG}::wi-parent`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 1 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-child`, "in_progress");
+    const items = useAppStore.getState().workItems;
+    // B stays in_progress
+    expect(items[`${ORG}::wi-child`].status).toBe("in_progress");
+    // A stays not_started (its backlog has no "in_progress" status)
+    expect(items[`${ORG}::wi-parent`].status).toBe("not_started");
+    // P gets promoted to "in_progress" (its backlog supports it)
+    expect(items[`${ORG}::wi-grandparent`].status).toBe("in_progress");
+  });
+
+  it("also propagates past intermediate when the leaf goes to pending (non-not_started)", () => {
+    // Same structure as above but child goes to "pending" instead of "in_progress".
+    // The "isLeavingNotStarted" condition should still trigger propagation.
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-progress`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-no-progress`]: { id: `${ORG}::bl-no-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+      },
+      workItems: {
+        [`${ORG}::wi-grandparent`]: {
+          id: `${ORG}::wi-grandparent`, title: "Grandparent P", status: "not_started" as const,
+          parentId: null, childrenIds: [`${ORG}::wi-parent`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [`${ORG}::wi-parent`]: {
+          id: `${ORG}::wi-parent`, title: "Parent A (no intermediate)", status: "not_started" as const,
+          parentId: `${ORG}::wi-grandparent`, childrenIds: [`${ORG}::wi-child`],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 0 },
+        },
+        [`${ORG}::wi-child`]: {
+          id: `${ORG}::wi-child`, title: "Child B", status: "not_started" as const,
+          parentId: `${ORG}::wi-parent`, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 1 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-child`, "pending");
+    const items = useAppStore.getState().workItems;
+    // B stays pending
+    expect(items[`${ORG}::wi-child`].status).toBe("pending");
+    // A stays not_started (its backlog has no intermediate status besides not_started and done)
+    expect(items[`${ORG}::wi-parent`].status).toBe("not_started");
+    // P gets promoted to "pending" (lowest-ranked non-pinned status in its backlog)
+    expect(items[`${ORG}::wi-grandparent`].status).toBe("pending");
   });
 });
 
@@ -2858,5 +2965,6 @@ describe("duplicateWorkItems", () => {
     expect(store.selectedWorkItemIds).toEqual([newParentId]);
   });
 });
+
 
 
