@@ -910,16 +910,37 @@ function AppLayoutInner() {
         const targetBacklogId = overData.backlogId as string | undefined;
         const reorderStatusKey = overData.statusKey as string | undefined;
 
-        // If the drop zone has a statusKey (board reorder zones), change the
-        // item's status to match the target column.
+        // If the drop zone has a statusKey (board reorder zones), this is a
+        // board-level drop. Change the status and compute the rank from the
+        // IDs of the two adjacent cards in the target column.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
+          const prevId = overData.prevCardId as string | null;
+          const nextId = overData.nextCardId as string | null;
+          let prevRank = 0;
+          let nextRank: number | undefined;
+          if (prevId) {
+            const prevWi = reorderStore.workItems[prevId];
+            const prevBl = prevWi?.backlogAssignments[treeId];
+            prevRank = (prevBl ? prevWi.ranks[prevBl] : 0) ?? 0;
+          }
+          if (nextId) {
+            const nextWi = reorderStore.workItems[nextId];
+            const nextBl = nextWi?.backlogAssignments[treeId];
+            nextRank = nextBl ? (nextWi.ranks[nextBl] ?? 0) : undefined;
+          }
+          const rank = nextRank != null ? prevRank + (nextRank - prevRank) / 2 : prevRank + 1;
           draggedIds.forEach((id) => {
             const wi = reorderStore.workItems[id];
-            if (wi && wi.status !== reorderStatusKey) {
+            if (!wi) return;
+            if (wi.status !== reorderStatusKey) {
               reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
             }
+            // Use reparentWorkItem to set the rank (keeping the same parent).
+            const blId = wi.backlogAssignments[treeId] ?? backlogIds[0] ?? "";
+            reorderStore.reparentWorkItem(id, targetParentId, treeId, blId, undefined, rank);
           });
+          return;
         }
 
         // If the drop zone targets a specific sub-backlog, move items to that backlog first
