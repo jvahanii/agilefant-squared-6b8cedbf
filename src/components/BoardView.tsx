@@ -1166,12 +1166,16 @@ function BoardCard({
             {...attributes}
             data-board-card-id={item.id}
             onClick={(e) => {
-              e.stopPropagation();
+              // Only stop propagation if the click was not on an interactive child
+              const target = e.target as HTMLElement;
+              if (!target.closest("input, textarea, button, [data-drag-handle]")) {
+                e.stopPropagation();
+              }
               onClick(e.ctrlKey || e.metaKey);
             }}
             className={cn(
-              "relative group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none overflow-hidden",
-              !isMobile && "cursor-grab active:cursor-grabbing hover:border-accent-foreground/30 touch-none",
+              "relative group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none overflow-hidden w-full block",
+              !isMobile && "cursor-pointer hover:border-accent-foreground/30 touch-none",
               selected && "ring-2 ring-primary border-primary",
               isDragging && "opacity-40",
               isSnoozed && "opacity-60",
