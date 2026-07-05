@@ -838,10 +838,10 @@ function AppLayoutInner() {
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
         const store = useAppStore.getState();
-        // Use the first dragged item's treeId to determine context
         const firstWi = store.workItems[draggedIds[0]];
         const treeContext = firstWi ? Object.keys(firstWi.backlogAssignments)[0] : undefined;
-        // Find the smallest rank in the target column to place at top
+
+        // Find the smallest rank in the target column to place at top.
         let minRank = 0;
         if (treeContext) {
           for (const wi of Object.values(store.workItems)) {
@@ -853,18 +853,37 @@ function AppLayoutInner() {
           }
         }
         const topRank = minRank - 1;
-        for (const id of draggedIds) {
+
+        // Apply status + rank atomically via setState.
+        const colUpdatedItems: Record<string, import("@/types/models").WorkItem> = {};
+        draggedIds.forEach((id, idx) => {
           const wi = store.workItems[id];
-          if (!wi) continue;
-          if (wi.status !== statusKey) {
-            store.setWorkItemStatus(id, statusKey);
+          if (!wi || !treeContext) return;
+          const blId = wi.backlogAssignments[treeContext];
+          if (!blId) return;
+          colUpdatedItems[id] = {
+            ...wi,
+            status: statusKey,
+            ranks: { ...wi.ranks, [blId]: topRank + idx },
+          };
+        });
+
+        useAppStore.setState((s) => ({
+          workItems: { ...s.workItems, ...colUpdatedItems },
+        }));
+
+        // Persist rank changes to Supabase.
+        const colRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+        for (const [id, wi] of Object.entries(colUpdatedItems)) {
+          const blId = wi.backlogAssignments[treeContext];
+          if (blId) {
+            colRankRows.push({ workItemId: id, backlogId: blId, rank: wi.ranks[blId] ?? 0, organizationId: wi.organizationId ?? '' });
           }
-          if (treeContext) {
-            const blId = wi.backlogAssignments[treeContext];
-            if (blId) {
-              store.reparentWorkItem(id, getEffectiveParentId(wi, treeContext), treeContext, blId, undefined, topRank);
-            }
-          }
+        }
+        if (colRankRows.length > 0) {
+          import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
+            upsertWorkItemBacklogRankRows(colRankRows).catch(() => {});
+          });
         }
         return;
       }
