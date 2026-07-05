@@ -933,46 +933,59 @@ function AppLayoutInner() {
         const targetBacklogId = overData.backlogId as string | undefined;
         const reorderStatusKey = overData.statusKey as string | undefined;
 
-        // If the drop zone has a statusKey (board reorder zones), change the
-        // item's status and compute its rank from the adjacent cards.
+        // If the drop zone has a statusKey (board reorder zones), collect
+        // all items in the target column, insert the dragged items at the
+        // drop position, and assign sequential integer ranks.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
-          const prevId = overData.prevCardId as string | null;
-          const nextId = overData.nextCardId as string | null;
+          const dropIndex = overData.index as number;
 
-          // Compute target rank from adjacent cards' global ranks.
-          let prevRank = 0;
-          let nextRank: number | undefined;
-          if (prevId) {
-            const prevWi = reorderStore.workItems[prevId];
-            const prevBl = prevWi?.backlogAssignments[treeId];
-            prevRank = (prevBl != null ? (prevWi?.ranks?.[prevBl] ?? 0) : 0);
+          // Collect all items in the target column, sorted by rank.
+          const colItems: { id: string; rank: number; blId: string }[] = [];
+          const backlogIdSet = new Set(backlogIds);
+          for (const wi of Object.values(reorderStore.workItems)) {
+            const blId = wi.backlogAssignments[treeId];
+            if (!blId || !backlogIdSet.has(blId)) continue;
+            if (wi.status !== reorderStatusKey) continue;
+            colItems.push({ id: wi.id, rank: wi.ranks[blId] ?? 0, blId });
           }
-          if (nextId) {
-            const nextWi = reorderStore.workItems[nextId];
-            const nextBl = nextWi?.backlogAssignments[treeId];
-            nextRank = nextBl != null ? (nextWi?.ranks?.[nextBl] ?? 0) : undefined;
-          }
-          const targetRank = nextRank != null
-            ? prevRank + (nextRank - prevRank) / 2
-            : prevRank + 1;
+          colItems.sort((a, b) => a.rank - b.rank);
 
-          // Apply status + rank to each dragged item atomically via setState.
-          const updatedItems: Record<string, import("@/types/models").WorkItem> = {};
-          draggedIds.forEach((id, idx) => {
+          // Remove dragged items from the collection so they don't appear twice.
+          const draggedIdSet = new Set(draggedIds);
+          const withoutDragged = colItems.filter((item) => !draggedIdSet.has(item.id));
+
+          // Build the new ordered list: items before dropIndex, then dragged, then rest.
+          const newOrder: { id: string; blId: string }[] = [];
+          for (let i = 0; i < Math.min(dropIndex, withoutDragged.length); i++) {
+            newOrder.push(withoutDragged[i]);
+          }
+          for (const id of draggedIds) {
             const wi = reorderStore.workItems[id];
+            const blId = wi?.backlogAssignments[treeId] ?? Object.values(wi?.backlogAssignments ?? {})[0];
+            if (blId) newOrder.push({ id, blId });
+          }
+          for (let i = dropIndex; i < withoutDragged.length; i++) {
+            newOrder.push(withoutDragged[i]);
+          }
+
+          // Assign sequential integer ranks (0, 1, 2, ...).
+          const updatedItems: Record<string, import("@/types/models").WorkItem> = {};
+          newOrder.forEach((item, rank) => {
+            const wi = reorderStore.workItems[item.id];
             if (!wi) return;
-            const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
-            if (!blId) return;
-            const rank = targetRank + idx * 0.0001;
-            updatedItems[id] = { ...wi, status: reorderStatusKey as WorkItemStatus, ranks: { ...wi.ranks, [blId]: rank } };
+            updatedItems[item.id] = {
+              ...wi,
+              status: reorderStatusKey as WorkItemStatus,
+              ranks: { ...wi.ranks, [item.blId]: rank },
+            };
           });
 
           useAppStore.setState((s) => ({
             workItems: { ...s.workItems, ...updatedItems },
           }));
 
-          // Persist rank changes to Supabase.
+          // Persist integer ranks to Supabase.
           const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
           for (const [id, wi] of Object.entries(updatedItems)) {
             const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
