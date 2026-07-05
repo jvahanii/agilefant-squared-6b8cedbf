@@ -961,12 +961,43 @@ function AppLayoutInner() {
             };
           });
 
+          // Collect rank rows for Supabase persistence.
+          const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+
+          // Propagate rank changes to ancestors: set each parent's rank to
+          // the minimum rank of its direct children so list view ordering
+          // follows board ordering.
+          const finalItems = { ...reorderStore.workItems, ...updatedItems };
+          for (const [id] of Object.entries(updatedItems)) {
+            let parentId = finalItems[id]?.parentId;
+            while (parentId && finalItems[parentId]) {
+              const parent = finalItems[parentId];
+              const blId = parent.backlogAssignments[treeId];
+              if (!blId) break;
+              // Find min rank among parent's children.
+              let minRank = Infinity;
+              for (const cid of parent.childrenIds) {
+                const child = finalItems[cid];
+                if (!child) continue;
+                const cBlId = child.backlogAssignments[treeId];
+                if (cBlId && new Set(backlogIds).has(cBlId)) {
+                  const cr = child.ranks[cBlId] ?? Infinity;
+                  if (cr < minRank) minRank = cr;
+                }
+              }
+              if (minRank !== Infinity && (parent.ranks[blId] ?? Infinity) !== minRank) {
+                updatedItems[parentId] = { ...parent, ranks: { ...parent.ranks, [blId]: minRank } };
+              }
+              parentId = parent.parentId;
+            }
+          }
+
+          // Apply ancestor rank updates.
           useAppStore.setState((s) => ({
             workItems: { ...s.workItems, ...updatedItems },
           }));
 
-          // Persist integer ranks to Supabase.
-          const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+          // Build rank rows for all updated items (including ancestors).
           for (const [id, wi] of Object.entries(updatedItems)) {
             const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
             if (blId) {
