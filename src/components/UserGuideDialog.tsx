@@ -251,8 +251,12 @@ function buildSections(): Section[] {
               <StatusBadge color="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" label="Done" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              When you set a child item to <strong>In Progress</strong> or <strong>Done</strong>, its ancestors are
-              automatically promoted to <strong>In Progress</strong> so the hierarchy reflects active work.
+              When a child item transitions away from <strong>Not Started</strong> (to In Progress, Pending,
+              Blocked, or Done), any ancestor that is still <strong>Not Started</strong> is automatically
+              promoted to <strong>In Progress</strong> (or the nearest equivalent intermediate status in
+              that ancestor's backlog). Propagation walks up the full ancestry chain. If an intermediate
+              ancestor belongs to a backlog without any intermediate statuses, it stays Not Started but
+              the promotion continues upward to the next ancestor whose backlog supports one.
             </p>
           </div>
           <Tip>
