@@ -412,8 +412,21 @@ const MAX_UNDO = 100;
 let undoBatchDepth = 0;
 let pendingBatchSnapshot: DataSnapshot | null = null;
 
+/**
+ * Mutation counter that increments on every user-initiated change to workItems,
+ * backlogs, or backlogTrees.  The background refresh uses this to detect
+ * whether the user made edits while the Supabase fetch was in-flight, and
+ * skips overwriting state with potentially stale data if so.
+ */
+let localMutationVersion = 0;
+
+function bumpMutationVersion() {
+  localMutationVersion++;
+}
+
 function pushUndoEntry(state: AppState): DataSnapshot[] {
   if (undoBatchDepth > 0) return state.undoStack;
+  bumpMutationVersion();
   return [...state.undoStack.slice(-(MAX_UNDO - 1)), snapshot(state)];
 }
 
@@ -824,43 +837,90 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Refresh in the background so the cache stays fresh.
         void (async () => {
           try {
+            // Snapshot the mutation version before fetching so we can
+            // detect whether the user made any edits while the network
+            // round-trip was in-flight. If they did, we skip overwriting
+            // state to avoid losing their changes.
+            const versionBeforeFetch = localMutationVersion;
             await flushPendingRankUpserts().catch(() => {});
             const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
               loadFromSupabase(orgId),
               loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
               loadChangeLog(orgId).catch(() => [] as ChangeLogEntry[]),
             ]);
-            const cleanData = sanitizeData(rawData, orgId);
-            const workItemIdSet = new Set(Object.keys(cleanData.workItems));
-            const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
-            for (const [wiId, links] of Object.entries(allHyperlinks)) {
-              if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
-            }
-            writeCachedAppData(orgId, {
-              workItems: cleanData.workItems,
-              backlogs: cleanData.backlogs,
-              backlogTrees: cleanData.backlogTrees,
-              hyperlinks,
-              changeLog: dbChangeLog as ChangeLogEntry[],
-              selectedBacklogIds: get().selectedBacklogIds,
-              selectedTreeId: get().selectedTreeId,
-              selectedWorkItemIds: get().selectedWorkItemIds,
-            });
-            // Only replace state if the user hasn't switched orgs while the
-            // background refresh was in flight.
-            if (get().organizationId === orgId) {
-              set({
-                workItems: cleanData.workItems,
-                backlogs: cleanData.backlogs,
-                backlogTrees: cleanData.backlogTrees,
-                hyperlinks,
+            // If the user made any edits while we were fetching, skip
+            // the state update so their changes aren't overwritten.
+            // The fresh data is still written to the cache so the next
+            // page load benefits from it.
+            if (localMutationVersion !== versionBeforeFetch) {
+              // User edited — don't overwrite, but still update cache
+              // for next visit.
+              const cleanDataBg = sanitizeData(rawData, orgId);
+              writeCachedAppData(orgId, {
+                workItems: cleanDataBg.workItems,
+                backlogs: cleanDataBg.backlogs,
+                backlogTrees: cleanDataBg.backlogTrees,
+                hyperlinks: allHyperlinks as Record<string, import('@/types/models').Hyperlink[]> ?? {},
                 changeLog: dbChangeLog as ChangeLogEntry[],
-                // Preserve current selection.
                 selectedBacklogIds: get().selectedBacklogIds,
                 selectedTreeId: get().selectedTreeId,
                 selectedWorkItemIds: get().selectedWorkItemIds,
               });
+              return;
             }
+            const cleanData = sanitizeData(rawData, orgId);
+
+        // Bug fix: if sanitizeData dropped ALL backlog assignments for an
+        // item that existed in the current store with valid assignments,
+        // preserve the current store's copy so the item doesn't disappear.
+        // This guards against partial Supabase responses where trees or
+        // backlogs referenced by an item happen to be missing from the
+        // fetched dataset (e.g. replication lag, pagination gaps).
+        const currentWorkItems = get().workItems;
+        for (const [id, currentWi] of Object.entries(currentWorkItems)) {
+          const cleanWi = cleanData.workItems[id];
+          if (!cleanWi) continue;
+          if (Object.keys(cleanWi.backlogAssignments).length === 0 &&
+              Object.keys(currentWi.backlogAssignments).length > 0) {
+            console.warn(
+              `loadFromSupabase: preserving item ${id} from current store — ` +
+              `sanitizeData dropped all ${Object.keys(currentWi.backlogAssignments).length} assignments. ` +
+              `Missing trees/backlogs in Supabase response likely caused this.`
+            );
+            cleanData.workItems[id] = currentWi;
+          }
+        }
+
+        const workItemIdSet = new Set(Object.keys(cleanData.workItems));
+        const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
+        for (const [wiId, links] of Object.entries(allHyperlinks)) {
+          if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
+        }
+        writeCachedAppData(orgId, {
+          workItems: cleanData.workItems,
+          backlogs: cleanData.backlogs,
+          backlogTrees: cleanData.backlogTrees,
+          hyperlinks,
+          changeLog: dbChangeLog as ChangeLogEntry[],
+          selectedBacklogIds: get().selectedBacklogIds,
+          selectedTreeId: get().selectedTreeId,
+          selectedWorkItemIds: get().selectedWorkItemIds,
+        });
+        // Only replace state if the user hasn't switched orgs while the
+        // background refresh was in flight.
+        if (get().organizationId === orgId) {
+          set({
+            workItems: cleanData.workItems,
+            backlogs: cleanData.backlogs,
+            backlogTrees: cleanData.backlogTrees,
+            hyperlinks,
+            changeLog: dbChangeLog as ChangeLogEntry[],
+            // Preserve current selection.
+            selectedBacklogIds: get().selectedBacklogIds,
+            selectedTreeId: get().selectedTreeId,
+            selectedWorkItemIds: get().selectedWorkItemIds,
+          });
+        }
           } catch {
             // Background refresh failed — cached data is still shown.
           }
@@ -2962,6 +3022,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         const stack = [...state.undoStack];
         const prev = stack.pop();
         if (!prev) return state;
+        bumpMutationVersion();
         return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
       }),
 
@@ -2970,6 +3031,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         const stack = [...state.redoStack];
         const next = stack.pop();
         if (!next) return state;
+        bumpMutationVersion();
         return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
       }),
 
@@ -3128,10 +3190,24 @@ export const useAppStore = create<AppState>()((set, get) => {
         // assignments so a partial UPDATE never silently wipes them.  Without
         // this guard, an external event like a status change arriving without
         // the backlog_assignments column would orphan the item.
-        const effectiveAssignments =
-          Object.keys(parsedAssignments).length > 0
-            ? parsedAssignments
-            : state.workItems[id]?.backlogAssignments ?? {};
+        //
+        // Also, when the payload DOES include backlog_assignments but is a
+        // SUBSET of the local assignments (e.g. another client changed a
+        // single tree assignment), MERGE with the local state so multi-tree
+        // items don't vanish from the trees that weren't mentioned in the
+        // realtime event.
+        const existingAssignments = state.workItems[id]?.backlogAssignments ?? {};
+        let effectiveAssignments: Record<string, string>;
+        if (Object.keys(parsedAssignments).length > 0) {
+          // Merge: locally-known trees not in the payload are preserved.
+          effectiveAssignments = { ...existingAssignments, ...parsedAssignments };
+          // If a tree IS in the payload but its value is missing/null/empty, remove it.
+          for (const tId of Object.keys(effectiveAssignments)) {
+            if (!effectiveAssignments[tId]) delete effectiveAssignments[tId];
+          }
+        } else {
+          effectiveAssignments = existingAssignments;
+        }
 
         // Seed initial ranks from the legacy work_items.rank column for new
         // INSERT events. This ensures items inserted by external sources (e.g.
