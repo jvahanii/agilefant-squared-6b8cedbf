@@ -911,52 +911,41 @@ function AppLayoutInner() {
         const reorderStatusKey = overData.statusKey as string | undefined;
 
         // If the drop zone has a statusKey (board reorder zones), this is a
-        // board-level drop. Change the status and compute the rank from the
-        // IDs of the two adjacent cards in the target column.
+        // board-level drop. Compute rank from adjacent cards and apply both
+        // status and rank in one step via reparentWorkItem.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
-          const dropIndex = overData.index as number;
+          const prevId = overData.prevCardId as string | null;
+          const nextId = overData.nextCardId as string | null;
 
-          // Collect all cards currently in the target column, sorted by rank.
-          const colCards: { id: string; rank: number }[] = [];
-          for (const wi of Object.values(reorderStore.workItems)) {
-            const wBl = wi.backlogAssignments[treeId];
-            if (!wBl || !new Set(backlogIds).has(wBl)) continue;
-            if (wi.status !== reorderStatusKey) continue;
-            colCards.push({ id: wi.id, rank: wi.ranks[wBl] ?? 0 });
+          // Compute rank from adjacent cards' ranks.
+          let prevRank = 0;
+          let nextRank: number | undefined;
+          if (prevId) {
+            const prevWi = reorderStore.workItems[prevId];
+            const prevBl = prevWi?.backlogAssignments[treeId];
+            prevRank = (prevBl != null ? (prevWi?.ranks?.[prevBl] ?? 0) : 0);
           }
-          colCards.sort((a, b) => a.rank - b.rank);
+          if (nextId) {
+            const nextWi = reorderStore.workItems[nextId];
+            const nextBl = nextWi?.backlogAssignments[treeId];
+            nextRank = nextBl != null ? (nextWi?.ranks?.[nextBl] ?? 0) : undefined;
+          }
+          const targetRank = nextRank != null
+            ? prevRank + (nextRank - prevRank) / 2
+            : prevRank + 1;
 
-          // Compute a rank that fits between the cards at dropIndex-1 and dropIndex.
-          const beforeRank = dropIndex > 0 && dropIndex - 1 < colCards.length
-            ? colCards[dropIndex - 1].rank : 0;
-          const afterRank = dropIndex < colCards.length
-            ? colCards[dropIndex].rank : undefined;
-          const targetRank = afterRank != null
-            ? beforeRank + (afterRank - beforeRank) / 2
-            : beforeRank + 1;
-
-      // Apply status change + rank change for all dragged items.
-          // First change the status (this also handles reordering within
-          // the column), then adjust ranks for items already in the column.
-          draggedIds.forEach((id) => {
-            const wi = reorderStore.workItems[id];
-            if (!wi) return;
-            if (wi.status !== reorderStatusKey) {
-              reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
-            }
-          });
-
-          // Now set the rank of each dragged item to position it at the drop slot.
-          // The rank is computed from the cards before/after the drop point.
+          // For each dragged item: set its status AND rank via reparentWorkItem
+          // with the same effective parent, same tree, same backlog, and computed rank.
           draggedIds.forEach((id, idx) => {
             const wi = reorderStore.workItems[id];
             if (!wi) return;
-            const rank = targetRank + idx * 0.0001; // sub-rank offset for multi-drag
             const blId = wi.backlogAssignments[treeId] ?? backlogIds[0] ?? "";
-            if (blId) {
-              // Directly mutate the item's rank in the store via reparent (same parent, new rank).
-              reorderStore.reparentWorkItem(id, getEffectiveParentId(wi, treeId), treeId, blId, undefined, rank);
+            const rank = targetRank + idx * 0.0001;
+            reorderStore.reparentWorkItem(id, getEffectiveParentId(wi, treeId), treeId, blId, undefined, rank);
+            // If the reparent doesn't update status, set it explicitly.
+            if (reorderStore.workItems[id]?.status !== reorderStatusKey) {
+              reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
             }
           });
           return;
