@@ -187,6 +187,11 @@ function ColumnAddInput({
   );
 }
 
+const COLOR_PRESETS = [
+  "#94a3b8", "#3b82f6", "#f59e0b", "#ef4444", "#22c55e",
+  "#a855f7", "#ec4899", "#93c5fd", "#eab308", "#64748b",
+];
+
 export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: BoardViewProps) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -213,6 +218,10 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const renameColumn = useCallback(
     (id: string, label: string) => updateStatus(backlogId, id, { label }),
+    [updateStatus, backlogId],
+  );
+  const setColumnColor = useCallback(
+    (id: string, color: string) => updateStatus(backlogId, id, { color }),
     [updateStatus, backlogId],
   );
   const deleteColumn = useCallback(
@@ -603,6 +612,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             setViewMode={setViewMode}
             allColumnKeys={orderedColumns.map((c) => c.key)}
             onSaveLabel={(_key, label) => renameColumn(col.id, label)}
+            onSetColor={(color) => setColumnColor(col.id, color)}
             onMoveColumn={(fromId, toId) => {
               const current = orderedColumns.map((c) => c.id);
               const fromIdx = current.indexOf(fromId);
@@ -674,6 +684,7 @@ function BoardColumn({
   onMoveColumn,
   onSaveLabel,
   locked = false,
+  onSetColor,
 }: {
   column: TreeStatus;
   items: WorkItem[];
@@ -696,6 +707,7 @@ function BoardColumn({
   onMoveColumn?: (fromId: string, toId: string) => void;
   onSaveLabel: (statusKey: string, label: string) => void;
   locked?: boolean;
+  onSetColor?: (color: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `board-column:${column.id}`,
@@ -859,6 +871,42 @@ function BoardColumn({
           >
             Rename column
           </ContextMenuItem>
+          {!locked && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="text-xs">
+                <span
+                  className="w-2 h-2 rounded-full mr-2 shrink-0 inline-block"
+                  style={{ backgroundColor: column.color }}
+                />
+                Colour
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <div className="grid grid-cols-5 gap-1 p-1.5">
+                  {COLOR_PRESETS.map((color) => (
+                    <button
+                      key={color}
+                      className="w-6 h-6 rounded cursor-pointer border border-transparent hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color, borderColor: column.color === color ? "hsl(var(--foreground))" : "transparent" }}
+                      onClick={() => onSetColor?.(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-1 px-1.5 pb-1.5">
+                  <input
+                    type="color"
+                    value={column.color}
+                    onChange={(e) => {
+                      const newColor = e.target.value;
+                      onSetColor?.(newColor);
+                    }}
+                    className="w-5 h-5 rounded border border-input bg-background cursor-pointer shrink-0"
+                  />
+                  <span className="text-[10px] text-muted-foreground">Custom</span>
+                </div>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             className="text-xs text-destructive focus:text-destructive"
