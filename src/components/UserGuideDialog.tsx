@@ -240,11 +240,11 @@ function buildSections(): Section[] {
             <div className="flex flex-wrap gap-2">
               <StatusBadge color="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" label="Not Started" />
               <StatusBadge
-                color="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                color="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
                 label="In Progress"
               />
               <StatusBadge
-                color="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                color="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
                 label="Pending"
               />
               <StatusBadge color="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" label="Blocked" />
@@ -334,18 +334,22 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             The <strong className="text-foreground">Board View</strong> shows leaf (non-parent) work items as
-            cards grouped by status column. Each status becomes a column where you can see and manage items at
-            a glance.
+            cards grouped by status columns. Each status is a column — they are one and the same. Only items
+            without children appear on the board; parent items remain visible only in the list view.
           </p>
           <div className="space-y-2">
             {[
               {
+                action: "Enable Board View",
+                how: 'A superuser opens Settings and toggles the "Boards" switch on. Once enabled, a List / Board toggle appears in the work items panel toolbar. The setting is per-organisation.',
+              },
+              {
                 action: "Switch to Board",
-                how: 'Click the "Board" tab in the toolbar above the work items panel. The List / Board toggle appears when boards are enabled in Settings.',
+                how: 'Click "Board" in the List / Board toggle in the work items panel header. Your choice is remembered per backlog and shared with everyone viewing that backlog.',
               },
               {
                 action: "Switch back to List",
-                how: 'Click "List" in the same toolbar toggle. Your List/Board choice is remembered per backlog and shared with everyone viewing that backlog.',
+                how: 'Click "List" in the same toggle, or right-click any board card and choose "View in list" to switch and select that item.',
               },
               {
                 action: "Change item status",
@@ -358,30 +362,39 @@ function buildSections(): Section[] {
               },
               {
                 action: "Add item to a column",
-                how: 'Click the "+" button in any column header to add a new item directly with that status.',
+                how: 'Click the "+" button in any column header to add a new item directly with that status. You can also press Enter with a card selected to add an item after it.',
               },
               {
                 action: "Reorder within a column",
-                how: "Drag a card up or down within a column to reorder it. Drop zones appear between cards.",
+                how: "Drag a card up or down within a column to reorder it. Glowing drop zones appear between cards during dragging.",
               },
               {
                 action: "Board cards show",
-                how: "Cards display the item title, story points (if enabled), assigned labels, and team badges.",
+                how: "Each card shows the item title, a left-side status color accent bar, story points (if enabled), assigned labels, team badges, and a snooze indicator when snoozed. Right-click any card for the full context menu — Status, Rename, Duplicate, Move, Reparent, Labels, Teams, Time Log, Snooze, Respawn, Hyperlinks, and more.",
               },
               {
-                action: "Hidden columns",
-                how: (
-                  <>
-                    Click the <strong>Columns</strong> dropdown above the board to toggle column visibility. 
-                    Hidden columns disappear from the board but items in those statuses remain intact. 
-                    Visibility is per-tree and persisted to the database — everyone sharing the tree sees 
-                    the same column layout. A badge shows the count of visible columns (e.g. 3/5).
-                  </>
-                ),
+                action: "Add a column",
+                how: 'Click the "+ Add Column" button at the right end of the board. A new column is also a new status — give it a name and it appears immediately. Use the custom color picker or presets in the column context menu.',
               },
               {
-                action: "All hidden state",
-                how: "If every column is hidden, a message appears suggesting you use the Columns dropdown to show them.",
+                action: "Rename a column",
+                how: "Double-click the column header label to edit it inline, or right-click the header and choose Rename.",
+              },
+              {
+                action: "Recolor a column",
+                how: "Right-click the column header and choose Colour. Pick from 10 presets or use the custom color picker at the bottom.",
+              },
+              {
+                action: "Reorder columns",
+                how: "Drag a column header by its grip handle to reorder columns left or right. Drop indicators (glowing bars) appear on either side of the target column.",
+              },
+              {
+                action: "Remove a column",
+                how: "Right-click the column header and choose Remove column. Items in that status are reassigned to Not Started. Pinned columns (Not Started and Done) cannot be removed.",
+              },
+              {
+                action: "Arrow-key navigation",
+                how: "Use ← → to move between columns, ↑ ↓ to move up and down within a column. The selected card scrolls into view automatically.",
               },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
@@ -389,7 +402,8 @@ function buildSections(): Section[] {
           </div>
           <Tip>
             Board view is ideal for kanban-style workflows — drag an item from "Not Started" to "In Progress"
-            to "Done" as it moves through your pipeline.
+            to "Done" as it moves through your pipeline. Columns and statuses are the same thing, so adding a
+            column also creates a new status available everywhere in that backlog tree.
           </Tip>
         </div>
       ),
@@ -740,7 +754,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Locked statuses",
-                how: 'Statuses marked with a lock icon are required (e.g. "Not Started" and "Done") and cannot be renamed, recolored, or removed.',
+                how: '"Not Started" and "Done" are locked (marked with a lock icon). Their label can be renamed but their color cannot be changed and they cannot be removed — every backlog must have at least these two.',
               },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
