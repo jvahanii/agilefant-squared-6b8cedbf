@@ -933,15 +933,14 @@ function AppLayoutInner() {
         const targetBacklogId = overData.backlogId as string | undefined;
         const reorderStatusKey = overData.statusKey as string | undefined;
 
-        // If the drop zone has a statusKey (board reorder zones), this is a
-        // board-level drop. Compute rank from adjacent cards and apply both
-        // status and rank in one step via reparentWorkItem.
+        // If the drop zone has a statusKey (board reorder zones), change the
+        // item's status and compute its rank from the adjacent cards.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
           const prevId = overData.prevCardId as string | null;
           const nextId = overData.nextCardId as string | null;
 
-          // Compute rank from adjacent cards' ranks.
+          // Compute target rank from adjacent cards' global ranks.
           let prevRank = 0;
           let nextRank: number | undefined;
           if (prevId) {
@@ -958,19 +957,34 @@ function AppLayoutInner() {
             ? prevRank + (nextRank - prevRank) / 2
             : prevRank + 1;
 
-          // For each dragged item: set its status AND rank via reparentWorkItem
-          // with the same effective parent, same tree, same backlog, and computed rank.
+          // Apply status + rank to each dragged item atomically via setState.
+          const updatedItems: Record<string, import("@/types/models").WorkItem> = {};
           draggedIds.forEach((id, idx) => {
             const wi = reorderStore.workItems[id];
             if (!wi) return;
-            const blId = wi.backlogAssignments[treeId] ?? backlogIds[0] ?? "";
+            const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
+            if (!blId) return;
             const rank = targetRank + idx * 0.0001;
-            reorderStore.reparentWorkItem(id, getEffectiveParentId(wi, treeId), treeId, blId, undefined, rank);
-            // If the reparent doesn't update status, set it explicitly.
-            if (reorderStore.workItems[id]?.status !== reorderStatusKey) {
-              reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
-            }
+            updatedItems[id] = { ...wi, status: reorderStatusKey as WorkItemStatus, ranks: { ...wi.ranks, [blId]: rank } };
           });
+
+          useAppStore.setState((s) => ({
+            workItems: { ...s.workItems, ...updatedItems },
+          }));
+
+          // Persist rank changes to Supabase.
+          const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+          for (const [id, wi] of Object.entries(updatedItems)) {
+            const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
+            if (blId) {
+              rankRows.push({ workItemId: id, backlogId: blId, rank: wi.ranks[blId] ?? 0, organizationId: wi.organizationId ?? '' });
+            }
+          }
+          if (rankRows.length > 0) {
+            import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
+              upsertWorkItemBacklogRankRows(rankRows).catch(() => {});
+            });
+          }
           return;
         }
 

@@ -774,7 +774,7 @@ function BoardColumn({
 
   return (
     <div
-      ref={columnRef}
+      ref={columnDroppable.setNodeRef}
       data-board-column={column.key}
       className={cn(
         "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/20 h-full",
@@ -1034,7 +1034,7 @@ function BoardCard({
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `board-card:${item.id}`,
-    data: { type: "workitem", workItemId: item.id, selectedIds: selectedWorkItemIds.includes(item.id) ? selectedWorkItemIds : [item.id] },
+    data: { type: "workitem", workItemId: item.id, selectedIds: selectedWorkItemIds.includes(item.id) ? selectedWorkItemIds : [item.id], treeId },
   });
   const cardListeners = !isMobile ? listeners : undefined;
 
