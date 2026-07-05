@@ -767,7 +767,6 @@ function BoardColumn({
 
   return (
     <div
-      ref={columnDroppable.setNodeRef}
       data-board-column={column.key}
       className={cn(
         "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/20 h-full",
@@ -935,7 +934,7 @@ function BoardColumn({
       </ContextMenu>
 
       <div
-        ref={columnRef}
+        ref={columnDroppable.setNodeRef}
         className="flex-1 overflow-y-auto"
         onDoubleClick={(e) => {
           // Only trigger on the empty area of the column, not on cards or inputs
