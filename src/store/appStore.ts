@@ -1839,21 +1839,33 @@ export const useAppStore = create<AppState>()((set, get) => {
         const getStartedStatus = (ancestor: WorkItem): WorkItemStatus | null => {
           // Find which backlog the ancestor belongs to in any tree context.
           const backlogIds = Object.values(ancestor.backlogAssignments);
-          for (const blId of backlogIds) {
-            const effective = getEffectiveStatuses(blId);
-            // Prefer exact "in_progress" match.
-            if (effective.some((s) => s.key === "in_progress")) return "in_progress";
-            // Fall back to the lowest-ranked status that isn't "not_started" or "done".
-            const sorted = [...effective].sort((a, b) => a.rank - b.rank);
-            for (const s of sorted) {
-              if (s.key !== "not_started" && s.key !== "done") {
-                return s.key as WorkItemStatus;
+          if (status === "done") {
+            // When a child is marked done, promote ancestors to their preferred
+            // "started" status: prefer "in_progress", then the lowest-ranked
+            // non-pinned intermediate status.
+            for (const blId of backlogIds) {
+              const effective = getEffectiveStatuses(blId);
+              if (effective.some((s) => s.key === "in_progress")) return "in_progress";
+              const sorted = [...effective].sort((a, b) => a.rank - b.rank);
+              for (const s of sorted) {
+                if (s.key !== "not_started" && s.key !== "done") {
+                  return s.key as WorkItemStatus;
+                }
               }
             }
+          } else {
+            // For any other status (in_progress, pending, blocked, …): only
+            // propagate if the ancestor's backlog explicitly supports the exact
+            // same status. No fallback — if the backlog doesn't recognise it,
+            // leave this ancestor unchanged and continue walking upward.
+            for (const blId of backlogIds) {
+              const effective = getEffectiveStatuses(blId);
+              if (effective.some((s) => s.key === status)) return status;
+            }
           }
-          // None of the ancestor's backlogs define a started intermediate status.
-          // Do not propagate: this ancestor stays "not_started" and propagation
-          // stops here to avoid setting a status that the backlog doesn't recognise.
+          // None of the ancestor's backlogs define a suitable status.
+          // Leave this ancestor unchanged and continue walking up the chain so
+          // ancestors higher up that DO support the status still receive it.
           return null;
         };
 
