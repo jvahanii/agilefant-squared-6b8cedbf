@@ -1833,7 +1833,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Helper: pick the best "started" status for an ancestor based on its
         // backlog's effective status set. Prefers "in_progress" (most common),
         // falls back to the lowest-ranked non-pinned status.
-        const getStartedStatus = (ancestor: WorkItem): WorkItemStatus => {
+        // Returns null when none of the ancestor's backlogs support a started
+        // intermediate status, in which case propagation should stop at the
+        // ancestor immediately above the one that lacks valid started statuses.
+        const getStartedStatus = (ancestor: WorkItem): WorkItemStatus | null => {
           // Find which backlog the ancestor belongs to in any tree context.
           const backlogIds = Object.values(ancestor.backlogAssignments);
           for (const blId of backlogIds) {
@@ -1848,8 +1851,10 @@ export const useAppStore = create<AppState>()((set, get) => {
               }
             }
           }
-          // Ultimate fallback: DEFAULT_STATUSES always has "in_progress".
-          return "in_progress";
+          // None of the ancestor's backlogs define a started intermediate status.
+          // Do not propagate: this ancestor stays "not_started" and propagation
+          // stops here to avoid setting a status that the backlog doesn't recognise.
+          return null;
         };
 
         const visited = new Set<string>([workItemId]);
@@ -1862,6 +1867,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           const shouldUpdate = ancestor.status === "not_started";
           if (shouldUpdate) {
             const startedStatus = getStartedStatus(ancestor);
+            if (startedStatus === null) break; // stop propagation — no valid started status for this ancestor
             updatedWorkItems[ancestorId] = { ...ancestor, status: startedStatus };
             upsertWorkItem(updatedWorkItems[ancestorId], orgId);
             internalLog({ action: "Status Change", entityType: "work_item", entityId: ancestorId, entityName: ancestor.title, details: `"${ancestor.status}" → "${startedStatus}" (auto)` });
