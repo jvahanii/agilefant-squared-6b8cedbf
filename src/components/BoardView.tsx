@@ -1173,6 +1173,11 @@ function BoardCard({
               }
               onClick(e.ctrlKey || e.metaKey);
             }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditTitle(item.title);
+              setIsEditingTitle(true);
+            }}
             className={cn(
               "relative group rounded-md border bg-card shadow-sm p-1.5 text-xs select-none overflow-hidden w-full block",
               !isMobile && "cursor-pointer hover:border-accent-foreground/30 touch-none",
