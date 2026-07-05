@@ -40,8 +40,14 @@ vi.mock("@/store/backlogStatusesStore", async () => {
   return {
     ...actual,
     getEffectiveStatuses: vi.fn((backlogId: string | null | undefined) => {
-      if (backlogId && (backlogId.includes("no-in-progress") || backlogId.includes("no-intermediate"))) {
+      if (backlogId && (backlogId.includes("no-in-progress") || backlogId.includes("no-progress"))) {
         return MOCK_NO_IN_PROGRESS_STATUSES.map((s) => ({ ...s, backlogId: backlogId || "" }));
+      }
+      if (backlogId && backlogId.includes("no-intermediate")) {
+        return [
+          { key: "not_started", label: "Not Started", color: "#94a3b8", rank: 0, id: "default-not_started", backlogId },
+          { key: "done", label: "Done", color: "#22c55e", rank: 1, id: "default-done", backlogId },
+        ];
       }
       return actual.getEffectiveStatuses(backlogId);
     }),
