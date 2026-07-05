@@ -30,9 +30,7 @@ vi.mock("@/store/mockData", () => ({
 
 const MOCK_NO_IN_PROGRESS_STATUSES = [
   { key: "not_started", label: "Not Started", color: "#94a3b8", rank: 0, id: "default-not_started", backlogId: "" },
-  { key: "pending", label: "Pending", color: "#93c5fd", rank: 1, id: "default-pending", backlogId: "" },
-  { key: "blocked", label: "Blocked", color: "#ef4444", rank: 2, id: "default-blocked", backlogId: "" },
-  { key: "done", label: "Done", color: "#22c55e", rank: 3, id: "default-done", backlogId: "" },
+  { key: "done", label: "Done", color: "#22c55e", rank: 1, id: "default-done", backlogId: "" },
 ];
 
 vi.mock("@/store/backlogStatusesStore", async () => {
@@ -413,11 +411,11 @@ describe("setWorkItemStatus", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
-        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-progress`], rank: 0 },
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-in-progress`], rank: 0 },
       },
       backlogs: {
         [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-no-progress`]: { id: `${ORG}::bl-no-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-grandparent`]: {
@@ -428,12 +426,12 @@ describe("setWorkItemStatus", () => {
         [`${ORG}::wi-parent`]: {
           id: `${ORG}::wi-parent`, title: "Parent A (no in_progress)", status: "not_started" as const,
           parentId: `${ORG}::wi-grandparent`, childrenIds: [`${ORG}::wi-child`],
-          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 0 },
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-in-progress` }, ranks: { [`${ORG}::bl-no-in-progress`]: 0 },
         },
         [`${ORG}::wi-child`]: {
           id: `${ORG}::wi-child`, title: "Child B", status: "not_started" as const,
           parentId: `${ORG}::wi-parent`, childrenIds: [],
-          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 1 },
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-in-progress` }, ranks: { [`${ORG}::bl-no-in-progress`]: 1 },
         },
       },
       undoStack: [],
@@ -456,11 +454,11 @@ describe("setWorkItemStatus", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
-        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-progress`], rank: 0 },
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-in-progress`], rank: 0 },
       },
       backlogs: {
         [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-no-progress`]: { id: `${ORG}::bl-no-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-grandparent`]: {
@@ -471,12 +469,12 @@ describe("setWorkItemStatus", () => {
         [`${ORG}::wi-parent`]: {
           id: `${ORG}::wi-parent`, title: "Parent A (no intermediate)", status: "not_started" as const,
           parentId: `${ORG}::wi-grandparent`, childrenIds: [`${ORG}::wi-child`],
-          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 0 },
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-in-progress` }, ranks: { [`${ORG}::bl-no-in-progress`]: 0 },
         },
         [`${ORG}::wi-child`]: {
           id: `${ORG}::wi-child`, title: "Child B", status: "not_started" as const,
           parentId: `${ORG}::wi-parent`, childrenIds: [],
-          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-progress` }, ranks: { [`${ORG}::bl-no-progress`]: 1 },
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-no-in-progress` }, ranks: { [`${ORG}::bl-no-in-progress`]: 1 },
         },
       },
       undoStack: [],
