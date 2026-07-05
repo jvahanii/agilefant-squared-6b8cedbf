@@ -915,30 +915,49 @@ function AppLayoutInner() {
         // IDs of the two adjacent cards in the target column.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
-          const prevId = overData.prevCardId as string | null;
-          const nextId = overData.nextCardId as string | null;
-          let prevRank = 0;
-          let nextRank: number | undefined;
-          if (prevId) {
-            const prevWi = reorderStore.workItems[prevId];
-            const prevBl = prevWi?.backlogAssignments[treeId];
-            prevRank = (prevBl ? prevWi.ranks[prevBl] : 0) ?? 0;
+          const dropIndex = overData.index as number;
+
+          // Collect all cards currently in the target column, sorted by rank.
+          const colCards: { id: string; rank: number }[] = [];
+          for (const wi of Object.values(reorderStore.workItems)) {
+            const wBl = wi.backlogAssignments[treeId];
+            if (!wBl || !new Set(backlogIds).has(wBl)) continue;
+            if (wi.status !== reorderStatusKey) continue;
+            colCards.push({ id: wi.id, rank: wi.ranks[wBl] ?? 0 });
           }
-          if (nextId) {
-            const nextWi = reorderStore.workItems[nextId];
-            const nextBl = nextWi?.backlogAssignments[treeId];
-            nextRank = nextBl ? (nextWi.ranks[nextBl] ?? 0) : undefined;
-          }
-          const rank = nextRank != null ? prevRank + (nextRank - prevRank) / 2 : prevRank + 1;
+          colCards.sort((a, b) => a.rank - b.rank);
+
+          // Compute a rank that fits between the cards at dropIndex-1 and dropIndex.
+          const beforeRank = dropIndex > 0 && dropIndex - 1 < colCards.length
+            ? colCards[dropIndex - 1].rank : 0;
+          const afterRank = dropIndex < colCards.length
+            ? colCards[dropIndex].rank : undefined;
+          const targetRank = afterRank != null
+            ? beforeRank + (afterRank - beforeRank) / 2
+            : beforeRank + 1;
+
+      // Apply status change + rank change for all dragged items.
+          // First change the status (this also handles reordering within
+          // the column), then adjust ranks for items already in the column.
           draggedIds.forEach((id) => {
             const wi = reorderStore.workItems[id];
             if (!wi) return;
             if (wi.status !== reorderStatusKey) {
               reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
             }
-            // Use reparentWorkItem to set the rank (keeping the same parent).
+          });
+
+          // Now set the rank of each dragged item to position it at the drop slot.
+          // The rank is computed from the cards before/after the drop point.
+          draggedIds.forEach((id, idx) => {
+            const wi = reorderStore.workItems[id];
+            if (!wi) return;
+            const rank = targetRank + idx * 0.0001; // sub-rank offset for multi-drag
             const blId = wi.backlogAssignments[treeId] ?? backlogIds[0] ?? "";
-            reorderStore.reparentWorkItem(id, targetParentId, treeId, blId, undefined, rank);
+            if (blId) {
+              // Directly mutate the item's rank in the store via reparent (same parent, new rank).
+              reorderStore.reparentWorkItem(id, getEffectiveParentId(wi, treeId), treeId, blId, undefined, rank);
+            }
           });
           return;
         }
