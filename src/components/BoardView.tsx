@@ -728,13 +728,6 @@ function BoardColumn({
     data: { type: "board-column", statusKey: column.key },
   });
 
-  // Separate droppable for the scrollable body (used for the empty-area
-  // double-click and the ref for the reorder zone nesting).
-  const bodyDroppable = useDroppable({
-    id: `board-column-body:${column.id}`,
-    data: { type: "board-column-body", statusKey: column.key },
-  });
-
   // HTML5 dragover indicator
   const [dragOverDir, setDragOverDir] = useState<"left" | "right" | null>(null);
 
@@ -942,7 +935,7 @@ function BoardColumn({
       </ContextMenu>
 
       <div
-        ref={bodyDroppable.setNodeRef}
+        ref={columnRef}
         className="flex-1 overflow-y-auto"
         onDoubleClick={(e) => {
           // Only trigger on the empty area of the column, not on cards or inputs
