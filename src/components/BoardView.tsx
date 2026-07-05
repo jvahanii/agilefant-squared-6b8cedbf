@@ -594,9 +594,15 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             onStartAdd={() => setAddingColumnKey(col.key)}
             onCommitAdd={(title) => {
               const slot = addAfterSlotRef.current;
-              handleColumnAdd(col.key, title, slot?.columnKey === col.key ? slot.afterIndex : undefined);
-              setAddingColumnKey(null);
-              setAddAfterSlot(null);
+              const isAddAfter = slot?.columnKey === col.key;
+              handleColumnAdd(col.key, title, isAddAfter ? slot.afterIndex : undefined);
+              if (isAddAfter) {
+                // Advance the slot to point after the newly created item so the
+                // inline input stays open for another item (matching list-view behavior).
+                setAddingColumnKey(null);
+                setAddAfterSlot({ columnKey: col.key, afterIndex: slot.afterIndex + 1 });
+              }
+              // Column-header add: keep the input open at the top by not clearing addingColumnKey.
             }}
             onCancelAdd={() => {
               setAddingColumnKey(null);
