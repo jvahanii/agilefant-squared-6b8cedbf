@@ -908,6 +908,19 @@ function AppLayoutInner() {
         const treeId = overData.treeId as string;
         const backlogIds = overData.backlogIds as string[];
         const targetBacklogId = overData.backlogId as string | undefined;
+        const reorderStatusKey = overData.statusKey as string | undefined;
+
+        // If the drop zone has a statusKey (board reorder zones), change the
+        // item's status to match the target column.
+        if (reorderStatusKey) {
+          const reorderStore = useAppStore.getState();
+          draggedIds.forEach((id) => {
+            const wi = reorderStore.workItems[id];
+            if (wi && wi.status !== reorderStatusKey) {
+              reorderStore.setWorkItemStatus(id, reorderStatusKey as WorkItemStatus);
+            }
+          });
+        }
 
         // If the drop zone targets a specific sub-backlog, move items to that backlog first
         // (handles the combined parent-backlog view where items from multiple sub-backlogs

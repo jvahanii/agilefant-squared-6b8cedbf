@@ -98,17 +98,19 @@ function BoardReorderDropZone({
   index,
   treeId,
   backlogIds,
+  statusKey,
 }: {
   id: string;
   index: number;
   treeId: string;
   backlogIds: string[];
+  statusKey: string;
 }) {
   const { active } = useDndContext();
   const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId: null },
+    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId: null, statusKey },
   });
 
   return (
@@ -949,6 +951,7 @@ function BoardColumn({
             index={0}
             treeId={treeId}
             backlogIds={allBacklogIds}
+            statusKey={column.key}
           />
           {items.map((wi, i) => (
             <div key={wi.id}>
@@ -975,6 +978,7 @@ function BoardColumn({
                 index={i + 1}
                 treeId={treeId}
                 backlogIds={allBacklogIds}
+                statusKey={column.key}
               />
             </div>
           ))}
