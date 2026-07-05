@@ -926,7 +926,16 @@ function BoardColumn({
         </ContextMenuContent>
       </ContextMenu>
 
-      <div ref={setNodeRef} className="flex-1 overflow-y-auto">
+      <div
+        ref={setNodeRef}
+        className="flex-1 overflow-y-auto"
+        onDoubleClick={(e) => {
+          // Only trigger on the empty area of the column, not on cards or inputs
+          const target = e.target as HTMLElement;
+          if (target.closest("[data-board-card-id], input, textarea, button")) return;
+          onStartAdd();
+        }}
+      >
         {isAdding && (
           <ColumnAddInput
             onAdd={onCommitAdd}
