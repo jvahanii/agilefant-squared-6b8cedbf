@@ -721,9 +721,18 @@ function BoardColumn({
   locked?: boolean;
   onSetColor?: (color: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
+  // Droppable covers the ENTIRE column (header + body) so cards dropped
+  // on the header are treated as "put at the top of this column".
+  const columnDroppable = useDroppable({
     id: `board-column:${column.id}`,
     data: { type: "board-column", statusKey: column.key },
+  });
+
+  // Separate droppable for the scrollable body (used for the empty-area
+  // double-click and the ref for the reorder zone nesting).
+  const bodyDroppable = useDroppable({
+    id: `board-column-body:${column.id}`,
+    data: { type: "board-column-body", statusKey: column.key },
   });
 
   // HTML5 dragover indicator
@@ -769,7 +778,7 @@ function BoardColumn({
       data-board-column={column.key}
       className={cn(
         "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/20 h-full",
-        isOver && "ring-2 ring-primary bg-primary/5",
+        columnDroppable.isOver && "ring-2 ring-primary bg-primary/5",
       )}
       onDragOver={(e) => {
         // Allow column-header drags to happen over the column body without
@@ -933,7 +942,7 @@ function BoardColumn({
       </ContextMenu>
 
       <div
-        ref={setNodeRef}
+        ref={bodyDroppable.setNodeRef}
         className="flex-1 overflow-y-auto"
         onDoubleClick={(e) => {
           // Only trigger on the empty area of the column, not on cards or inputs

@@ -838,9 +838,32 @@ function AppLayoutInner() {
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
         const store = useAppStore.getState();
+        // Use the first dragged item's treeId to determine context
+        const firstWi = store.workItems[draggedIds[0]];
+        const treeContext = firstWi ? Object.keys(firstWi.backlogAssignments)[0] : undefined;
+        // Find the smallest rank in the target column to place at top
+        let minRank = 0;
+        if (treeContext) {
+          for (const wi of Object.values(store.workItems)) {
+            const wBl = wi.backlogAssignments?.[treeContext];
+            if (!wBl) continue;
+            if (wi.status !== statusKey) continue;
+            const r = wi.ranks[wBl] ?? 0;
+            if (r < minRank) minRank = r;
+          }
+        }
+        const topRank = minRank - 1;
         for (const id of draggedIds) {
-          if (store.workItems[id]?.status !== statusKey) {
+          const wi = store.workItems[id];
+          if (!wi) continue;
+          if (wi.status !== statusKey) {
             store.setWorkItemStatus(id, statusKey);
+          }
+          if (treeContext) {
+            const blId = wi.backlogAssignments[treeContext];
+            if (blId) {
+              store.reparentWorkItem(id, getEffectiveParentId(wi, treeContext), treeContext, blId, undefined, topRank);
+            }
           }
         }
         return;
