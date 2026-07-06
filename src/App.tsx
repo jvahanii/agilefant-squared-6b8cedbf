@@ -75,7 +75,9 @@ function AppRoutes() {
       //    backlog/work-item panels don't stay blank.
       const orgId = useOrgStore.getState().activeOrgId;
       const app = useAppStore.getState();
-      if (orgId && !app.isLoading && Object.keys(app.backlogTrees).length === 0) {
+      // loadingProgress === -1 means the 15 s safety timeout fired without
+      // populating data — retry the fetch.
+      if (orgId && !app.isLoading && (Object.keys(app.backlogTrees).length === 0 || app.loadingProgress === -1)) {
         app.loadFromSupabase();
       }
     };
@@ -92,7 +94,7 @@ function AppRoutes() {
   useEffect(() => {
     if (authLoading || orgLoading || !user || !activeOrgId) return;
     const app = useAppStore.getState();
-    if (!app.isLoading && Object.keys(app.backlogTrees).length === 0) {
+    if (!app.isLoading && (Object.keys(app.backlogTrees).length === 0 || app.loadingProgress === -1)) {
       app.loadFromSupabase();
     }
   }, [authLoading, orgLoading, user, activeOrgId]);

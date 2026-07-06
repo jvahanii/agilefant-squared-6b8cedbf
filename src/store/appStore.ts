@@ -934,9 +934,14 @@ export const useAppStore = create<AppState>()((set, get) => {
       // a hung network request), unblock the UI so the app renders in an empty state
       // rather than showing the loading spinner indefinitely. The isLoading check
       // prevents a no-op state update if the timeout fires after a successful load.
+      // Safety timeout: if data loading takes longer than 15 seconds
+      // (e.g. due to a hung network request), don't leave the UI
+      // stuck in a loading spinner. Instead, flip isLoading to false
+      // BUT set loadingProgress to -1 as a sentinel so App.tsx can
+      // detect the failed load and retry.
       const timeoutId = setTimeout(() => {
         if (get().isLoading) {
-          set({ isLoading: false, loadingProgress: 0 });
+          set({ isLoading: false, loadingProgress: -1 });
         }
       }, 15000);
 
