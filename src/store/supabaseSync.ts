@@ -951,7 +951,105 @@ async function upsertWorkItemBacklogRanksBatch(
   }
 }
 
-// ─── Hyperlink CRUD ───────────────────────────────────────────────────────
+// ─── Work Item Board Ranks CRUD (independent from list ranks) ─────────────
+
+async function loadWorkItemBoardRanks(
+  workItemIds: string[],
+  organizationIds?: string[],
+): Promise<Record<string, Record<string, number>>> {
+  if (workItemIds.length === 0) return {};
+  const wanted = new Set(workItemIds);
+  const result: Record<string, Record<string, number>> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const collect = (rows: any[]) => {
+    for (const row of rows) {
+      const wiId = row.work_item_id as string;
+      if (!wanted.has(wiId)) continue;
+      if (!result[wiId]) result[wiId] = {};
+      result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+    }
+  };
+  if (organizationIds && organizationIds.length > 0) {
+    const PAGE = 1000;
+    let from = 0;
+    for (;;) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase
+        .from('work_item_board_ranks' as any)
+        .select('*')
+        .in('organization_id', organizationIds)
+        .order('work_item_id', { ascending: true })
+        .order('backlog_id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) { console.error('loadWorkItemBoardRanks:', error); return {}; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (data ?? []) as any[];
+      collect(rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+    return result;
+  }
+  const CHUNK = 100;
+  for (let i = 0; i < workItemIds.length; i += CHUNK) {
+    const chunk = workItemIds.slice(i, i + CHUNK);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await supabase
+      .from('work_item_board_ranks' as any)
+      .select('*')
+      .in('work_item_id', chunk);
+    if (error) { console.error('loadWorkItemBoardRanks:', error); return {}; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    collect((data ?? []) as any[]);
+  }
+  return result;
+}
+
+export async function upsertWorkItemBoardRankRows(
+  rowsToUpsert: WorkItemBoardRankUpsert[],
+): Promise<boolean> {
+  return enqueueWorkItemMutation(async () => {
+    const rows = rowsToUpsert.map((row) => ({
+      work_item_id: row.workItemId,
+      backlog_id: row.backlogId,
+      rank: safeRank(row.rank),
+      organization_id: row.organizationId,
+    }));
+    if (rows.length === 0) return true;
+    rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
+      .from('work_item_board_ranks' as any)
+      .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
+    if (error) {
+      console.error('upsertWorkItemBoardRankRows:', error);
+      toast({ title: 'Failed to save board ranking', description: error.message || 'Your changes could not be saved.', variant: 'destructive' });
+      return false;
+    }
+    return true;
+  });
+}
+
+export async function deleteWorkItemBoardRanks(
+  pairs: Array<{ workItemId: string; backlogId: string }>,
+): Promise<void> {
+  if (pairs.length === 0) return;
+  const byItem = new Map<string, string[]>();
+  for (const { workItemId, backlogId } of pairs) {
+    if (!byItem.has(workItemId)) byItem.set(workItemId, []);
+    byItem.get(workItemId)!.push(backlogId);
+  }
+  for (const [workItemId, backlogIds] of byItem) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase
+      .from('work_item_board_ranks' as any)
+      .delete()
+      .eq('work_item_id', workItemId)
+      .in('backlog_id', backlogIds);
+    if (error) console.error('deleteWorkItemBoardRanks:', error);
+  }
+}
+
 
 export async function loadHyperlinksForWorkItems(
   workItemIds: string[],
