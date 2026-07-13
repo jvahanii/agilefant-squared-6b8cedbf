@@ -1,66 +1,57 @@
-
 ## Goal
 
-Statuses become **per-backlog with parent inheritance**. Board columns are **fully derived** from the effective status set — reorder/add/rename/delete a column = reorder/add/rename/delete the status.
+Split work-item ordering into two fully independent ranks: **list rank** (existing, per backlog) and **board rank** (new, per backlog). Reordering in one view never touches the other.
 
 ## Data model
 
-Rename `tree_statuses` → `backlog_statuses`, scoped to a single backlog.
+Add a per-backlog board rank alongside the existing per-backlog list rank.
 
-```
-backlog_statuses(
-  id uuid pk,
-  backlog_id text fk backlogs.id on delete cascade,
-  key text, label text, color text, rank int,
-  created_at, updated_at,
-  unique (backlog_id, key)
-)
-```
+- New table `work_item_board_ranks` mirroring `work_item_backlog_ranks`:
+  - `organization_id`, `work_item_id`, `backlog_id`, `rank double precision`, timestamps
+  - Unique on `(work_item_id, backlog_id)`, same RLS + GRANTs pattern as the list-rank table
+- `WorkItem.ranks` stays as the list rank map. Add `WorkItem.boardRanks: Record<backlogId, number>`.
+- Realtime + snapshot/restore extended to cover the new table.
 
-**Inheritance rule (resolved client-side):** for a backlog B, the effective status set = rows on B if any exist, otherwise walk `parent_id` up until a backlog with rows is found, otherwise fall back to the hardcoded defaults. As soon as a user edits statuses on a sub-backlog, that backlog gets its own rows (a full copy of the currently-inherited set is materialized), and it stops inheriting.
+## Migration of existing data
 
-Pinned keys (`not_started`, `in_progress`, `done`) still can't be renamed/deleted and are auto-seeded whenever a backlog gets its own row set.
+For every `(backlog_id, status)` group, seed `work_item_board_ranks.rank` by taking the current list rank order within that group and re-numbering 0..N-1. Runs once in the SQL migration.
 
-Retire `board_columns` — the board reads the effective statuses directly. Migration copies any custom labels/order back into `backlog_statuses` (label overrides applied, rank set from column order) before the table is dropped. Legacy `boardHiddenStatusKeys` is dropped too (columns are fully derived; hiding is done by deleting the status).
+## Store changes (`appStore.ts`, `supabaseSync.ts`)
 
-## Migration (single SQL migration)
+- Load/write `boardRanks` alongside `ranks`. Reuse the pending-upserts + auto-heal machinery, duplicated for the board table.
+- New actions:
+  - `reorderBoardItems(backlogId, statusKey, orderedIds)` — writes only `boardRanks`.
+  - `setWorkItemStatus` no longer implicitly changes list rank (already true); when moving between columns, it also assigns a board rank at the drop position (top / after neighbour) without touching `ranks`.
+- List reorder paths (`reorderWorkItems`, drag in `WorkItemTreePanel`, keyboard move) touch only `ranks`.
+- `addWorkItem` / WhatsApp / respawn / duplicate:
+  - List rank: unchanged (top of list, or explicit rank when provided).
+  - Board rank: **after the selected board card** in the target column if the user is in board view and a card is selected in that column; otherwise **top of the column**. A new optional `boardRank?: number` argument on `addWorkItem` carries the caller's choice; default = top.
+- `moveWorkItemToBacklog` seeds a fresh board rank at the top of the target column (and drops the old backlog's entry).
 
-1. Create `backlog_statuses` with GRANTs, RLS mirroring `backlogs` access, `updated_at` trigger, and a seed trigger that inserts the 3 pinned statuses when a backlog first gets any row (or on backlog insert — TBD; simplest: seed on first insert via app code, no DB trigger).
-2. **Seed root backlogs** by copying each tree's `tree_statuses` rows into every root backlog of that tree (root = `parent_id IS NULL`). Sub-backlogs get no rows and inherit at read time.
-3. **Fold `board_columns` overrides in** before dropping: for each root-backlog copy, if a `board_columns` row exists for that backlog+status_key, use its `label` and `rank` instead of the tree_statuses ones. For non-root backlogs that had custom board_columns, materialize a status set on that backlog from its inherited set + overrides.
-4. Drop `board_columns` and `tree_statuses` tables and related realtime publications.
-5. Drop the `board_hidden_status_keys` column on `backlogs` (if present).
-6. Replace `seed_default_tree_statuses` / `touch_tree_statuses_updated_at` with equivalents for `backlog_statuses`.
+## BoardView
 
-## Frontend
+- Sort cards in each column by `boardRanks[backlogId]` (fallback to `ranks[backlogId]` only for items still missing a board rank post-migration).
+- Drag-between/within columns calls the new `reorderBoardItems` and, when the column changed, `setWorkItemStatus`. No writes to `ranks`.
+- Inline "add card" computes the board rank from the currently selected card in that column (after it), else top; passes it as `boardRank` to `addWorkItem`.
+- Column-level "move to top/bottom" acts on board rank only.
 
-- Rename `treeStatusesStore.ts` → `backlogStatusesStore.ts`. State becomes `statusesByBacklog: Record<string, BacklogStatus[]>`. Add `getEffectiveStatuses(backlogId)` that walks up `backlogs[id].parentId` to find the nearest backlog with a materialized set, else defaults.
-- Add `materializeStatuses(backlogId)`: if the backlog has no rows, insert copies of the currently-effective set so future edits apply only here. Called automatically on the first create/rename/delete/reorder in an inherited backlog.
-- Delete `boardColumnsStore.ts` and all usage. `BoardView` reads columns directly from `getEffectiveStatuses(backlogId)`:
-  - Column order = status rank.
-  - Rename column → `updateStatus({label})`.
-  - Reorder columns → `reorderStatuses`.
-  - Add column → status picker becomes "add new status" (create + auto-column). Adding a column that already exists elsewhere is no longer a concept.
-  - Delete column → delete the status (blocked for pinned). Items with that status are re-mapped to `not_started`.
-- Replace `TreeStatusesDialog` with `BacklogStatusesDialog`, opened from the backlog (not the tree). Show a subtle "Inherited from *ParentName*" banner when the backlog has no own rows, with an "Override" button that materializes.
-- Update the tree context menu: remove "Statuses…"; add "Statuses…" to the backlog context menu.
-- Work-item status validation: when moving/reassigning an item to a different backlog, if the item's `status` key isn't in the destination backlog's effective set, set it to `not_started` (silent, matches the answered rule). Handle in `appStore` move/assign paths (`moveWorkItemToBacklog`, drag-to-backlog reorder, cross-backlog reassignment, and paste).
-- `WorkItem.status` typing already allows arbitrary keys via the string cast pattern used today; no type churn.
+## List view
 
-## Files to touch (non-exhaustive)
+No behavioural change beyond: reordering never writes `boardRanks`.
 
-- New: `supabase/migrations/<ts>_per_backlog_statuses.sql`
-- New: `src/store/backlogStatusesStore.ts` (replaces `treeStatusesStore.ts`)
-- New: `src/components/BacklogStatusesDialog.tsx` (replaces `TreeStatusesDialog.tsx`)
-- Edit: `src/components/BoardView.tsx` — drop board_columns wiring, read from effective statuses, keep drag/reorder/rename hooks pointed at status store.
-- Edit: `src/components/BacklogTreePanel.tsx` / `WorkItemTreePanel.tsx` — move "Statuses…" menu item from tree to backlog.
-- Edit: `src/store/appStore.ts` — auto-map status to `not_started` on cross-backlog moves; drop `boardHiddenStatusKeys` usage.
-- Edit: `src/hooks/useRealtimeSync.ts` — replace `tree_statuses`/`board_columns` channels with `backlog_statuses`.
-- Delete: `src/store/boardColumnsStore.ts`, `src/store/treeStatusesStore.ts`, `src/components/TreeStatusesDialog.tsx`.
-- Update all imports of `getTreeStatuses` / `useTreeStatusesStore` (financials, snooze, list view, etc.) to `getEffectiveStatuses(backlogId)`; callers that only have a `treeId` will need to receive `backlogId` too — likely the majority of touch points.
+## Realtime + integrity
 
-## Risks / notes
+- `useRealtimeSync` subscribes to `work_item_board_ranks` and merges into `boardRanks`.
+- `dataIntegrity` gains a duplicate-board-rank healer analogous to the list-rank one, grouped by `(backlog_id, status)`.
 
-- Callers that resolve statuses from only a `treeId` (e.g. list view header, financial rollups) need a `backlogId` in scope. Where a work item spans backlogs, resolve against the **current view's** backlog.
-- Sub-backlogs that had customized board columns will become materialized standalone status sets, which is intentional given the answer.
-- After migration, users who had renamed board columns will see the renames now attached to the status itself — expected per the requirement.
+## Out of scope
+
+- Cross-view syncing of any kind.
+- Changing how statuses themselves are stored (already per-backlog).
+- List-view UI.
+
+## Technical notes
+
+- `WorkItem.boardRanks` defaults to `{}`; selectors fall back to `ranks[backlogId] ?? 0` so pre-migration clients still render sensibly.
+- Board rank inserts use the same "midpoint between neighbours, else neighbour±1" scheme already used for list ranks in `BoardView.tsx`.
+- Snapshot/restore edge functions (`build_organization_snapshot`, `restore_organization_backup`) updated to include the new table.
