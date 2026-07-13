@@ -237,6 +237,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     ]),
   ];
   const ranksMap = await loadWorkItemBacklogRanks(workItemIds, rankOrgIds);
+  const boardRanksMap = await loadWorkItemBoardRanks(workItemIds, rankOrgIds);
 
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
