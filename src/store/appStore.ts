@@ -3412,6 +3412,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    applyRealtimeWorkItemBoardRank: (eventType, row) => {
+      set((state) => {
+        const workItemId = row.work_item_id as string;
+        const backlogId = row.backlog_id as string;
+        const wi = state.workItems[workItemId];
+        if (!wi) return state;
+        const current = wi.boardRanks ?? {};
+        if (eventType === 'DELETE') {
+          const next = { ...current };
+          delete next[backlogId];
+          return { workItems: { ...state.workItems, [workItemId]: { ...wi, boardRanks: next } } };
+        }
+        const next = { ...current, [backlogId]: (row.rank as number) ?? 0 };
+        return { workItems: { ...state.workItems, [workItemId]: { ...wi, boardRanks: next } } };
+      });
+    },
+
     applyRealtimeBacklog: (eventType, row) => {
       set((state) => {
         const id = row.id as string;
