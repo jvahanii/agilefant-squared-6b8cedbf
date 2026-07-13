@@ -268,6 +268,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
         : undefined,
       backlogAssignments,
       ranks,
+      boardRanks: boardRanksMap[row.id] ?? {},
       organizationId: row.organization_id ?? undefined,
       respawnEnabled: row.respawn_enabled ?? false,
       respawnIntervalDays: row.respawn_interval_days ?? undefined,
