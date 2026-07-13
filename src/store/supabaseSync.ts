@@ -41,6 +41,8 @@ export type WorkItemBacklogRankUpsert = {
   organizationId: string;
 };
 
+export type WorkItemBoardRankUpsert = WorkItemBacklogRankUpsert;
+
 // ─── Pure helpers (used by both load and sync) ────────────────────────────
 
 /**
