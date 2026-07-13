@@ -310,6 +310,7 @@ export function sanitizeData(data: any, orgId: string) {
     const id = ensureCleanId(wi.id, orgId);
     const validAssignments: Record<string, string> = {};
     const validRanks: Record<string, number> = {};
+    const validBoardRanks: Record<string, number> = {};
 
     const totalAssignments = Object.keys(wi.backlogAssignments || {}).length;
     let droppedCount = 0;
@@ -321,6 +322,8 @@ export function sanitizeData(data: any, orgId: string) {
         // Re-key ranks: try original backlogId first, then cleaned
         const origRank = (wi.ranks ?? {})[bId as string] ?? (wi.ranks ?? {})[cleanB] ?? 0;
         validRanks[cleanB] = origRank;
+        const origBoardRank = (wi.boardRanks ?? {})[bId as string] ?? (wi.boardRanks ?? {})[cleanB];
+        if (typeof origBoardRank === 'number') validBoardRanks[cleanB] = origBoardRank;
       } else {
         droppedCount++;
         console.warn(
@@ -355,6 +358,7 @@ export function sanitizeData(data: any, orgId: string) {
       parentIds: Object.keys(cleanParentIds).length > 0 ? cleanParentIds : undefined,
       backlogAssignments: validAssignments,
       ranks: validRanks,
+      boardRanks: validBoardRanks,
       childrenIds: [],
     };
   });
