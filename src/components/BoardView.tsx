@@ -48,8 +48,8 @@ import {
 interface BoardViewProps {
   backlogId: string;
   treeId: string;
-  /** Function to add a new work item. Called with title, parentId, backlogId, treeId, optional rank and initialStatus. */
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus) => void;
+  /** Function to add a new work item. Called with title, parentId, backlogId, treeId, optional list rank, initialStatus, and optional board rank. */
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   /** Function to switch between list and board views */
   setViewMode: (mode: "list" | "board") => void;
 }
