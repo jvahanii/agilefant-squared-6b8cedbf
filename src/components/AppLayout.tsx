@@ -837,15 +837,50 @@ function AppLayoutInner() {
 
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
-        // Dropping on the column header/surface only changes the status,
-        // not the rank. The item keeps its existing rank.
+        // Dropping on the column header/surface only changes the status
+        // and seeds a board rank at the top of the target column. List rank
+        // is unaffected — the two views have fully independent orderings.
         const surfaceStore = useAppStore.getState();
+        const boardRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
         draggedIds.forEach((id) => {
           const wi = surfaceStore.workItems[id];
-          if (wi && wi.status !== statusKey) {
+          if (!wi) return;
+          if (wi.status !== statusKey) {
             surfaceStore.setWorkItemStatus(id, statusKey);
           }
+          const blId = wi.backlogAssignments[Object.keys(wi.backlogAssignments)[0]];
+          // Find target backlog: use the item's current backlog assignment in any accessible tree.
+          const targetBlId = Object.values(wi.backlogAssignments)[0];
+          if (!targetBlId) return;
+          // Compute "top of column" = min existing boardRank in (targetBlId, statusKey) minus 1.
+          let minBoard = Infinity;
+          for (const other of Object.values(surfaceStore.workItems)) {
+            if (other.id === id) continue;
+            if (other.status !== statusKey) continue;
+            if (!Object.values(other.backlogAssignments).includes(targetBlId)) continue;
+            const br = other.boardRanks?.[targetBlId];
+            if (typeof br === 'number' && br < minBoard) minBoard = br;
+          }
+          const newBoardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+          // Optimistic local update.
+          useAppStore.setState((s) => {
+            const cur = s.workItems[id];
+            if (!cur) return s;
+            return {
+              workItems: {
+                ...s.workItems,
+                [id]: { ...cur, boardRanks: { ...(cur.boardRanks ?? {}), [targetBlId]: newBoardRank } },
+              },
+            };
+          });
+          boardRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newBoardRank, organizationId: wi.organizationId ?? '' });
+          void blId;
         });
+        if (boardRankRows.length > 0) {
+          import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
+            upsertWorkItemBoardRankRows(boardRankRows).catch(() => {});
+          });
+        }
         return;
       }
 
