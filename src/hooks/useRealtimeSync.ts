@@ -33,6 +33,7 @@ export function useRealtimeSync() {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const applyRealtimeWorkItem = useAppStore((s) => s.applyRealtimeWorkItem);
   const applyRealtimeWorkItemRank = useAppStore((s) => s.applyRealtimeWorkItemRank);
+  const applyRealtimeWorkItemBoardRank = useAppStore((s) => s.applyRealtimeWorkItemBoardRank);
   const applyRealtimeBacklog = useAppStore((s) => s.applyRealtimeBacklog);
   const applyRealtimeBacklogTree = useAppStore((s) => s.applyRealtimeBacklogTree);
   const applyRealtimeHyperlink = useAppStore((s) => s.applyRealtimeHyperlink);
