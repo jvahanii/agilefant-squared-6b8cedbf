@@ -256,17 +256,19 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       if (wi.childrenIds.length > 0) continue; // leaf-only
       leaves.push(wi);
     }
-    // Order by rank within their assigned backlog for deterministic display.
-    leaves.sort((a, b) => {
-      const ab = a.backlogAssignments[treeId];
-      const bb = b.backlogAssignments[treeId];
-      const ar = a.ranks?.[ab] ?? 0;
-      const br = b.ranks?.[bb] ?? 0;
-      return ar - br;
-    });
     for (const wi of leaves) {
       const key = known.has(wi.status) ? wi.status : "not_started";
       (map[key] ??= []).push(wi);
+    }
+    // Board order: sort each column by its own boardRanks (fallback to list rank).
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => {
+        const ab = a.backlogAssignments[treeId];
+        const bb = b.backlogAssignments[treeId];
+        const ar = a.boardRanks?.[ab] ?? a.ranks?.[ab] ?? 0;
+        const br = b.boardRanks?.[bb] ?? b.ranks?.[bb] ?? 0;
+        return ar - br;
+      });
     }
     return map;
   }, [workItems, backlogs, backlogId, treeId, allStatuses]);
