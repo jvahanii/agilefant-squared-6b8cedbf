@@ -756,6 +756,33 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_board_ranks: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          rank: number
+          work_item_id: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          rank?: number
+          work_item_id: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          rank?: number
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       work_item_financials: {
         Row: {
           actual_income_by_month: Json

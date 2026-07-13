@@ -837,15 +837,50 @@ function AppLayoutInner() {
 
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
-        // Dropping on the column header/surface only changes the status,
-        // not the rank. The item keeps its existing rank.
+        // Dropping on the column header/surface only changes the status
+        // and seeds a board rank at the top of the target column. List rank
+        // is unaffected — the two views have fully independent orderings.
         const surfaceStore = useAppStore.getState();
+        const boardRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
         draggedIds.forEach((id) => {
           const wi = surfaceStore.workItems[id];
-          if (wi && wi.status !== statusKey) {
+          if (!wi) return;
+          if (wi.status !== statusKey) {
             surfaceStore.setWorkItemStatus(id, statusKey);
           }
+          const blId = wi.backlogAssignments[Object.keys(wi.backlogAssignments)[0]];
+          // Find target backlog: use the item's current backlog assignment in any accessible tree.
+          const targetBlId = Object.values(wi.backlogAssignments)[0];
+          if (!targetBlId) return;
+          // Compute "top of column" = min existing boardRank in (targetBlId, statusKey) minus 1.
+          let minBoard = Infinity;
+          for (const other of Object.values(surfaceStore.workItems)) {
+            if (other.id === id) continue;
+            if (other.status !== statusKey) continue;
+            if (!Object.values(other.backlogAssignments).includes(targetBlId)) continue;
+            const br = other.boardRanks?.[targetBlId];
+            if (typeof br === 'number' && br < minBoard) minBoard = br;
+          }
+          const newBoardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+          // Optimistic local update.
+          useAppStore.setState((s) => {
+            const cur = s.workItems[id];
+            if (!cur) return s;
+            return {
+              workItems: {
+                ...s.workItems,
+                [id]: { ...cur, boardRanks: { ...(cur.boardRanks ?? {}), [targetBlId]: newBoardRank } },
+              },
+            };
+          });
+          boardRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newBoardRank, organizationId: wi.organizationId ?? '' });
+          void blId;
         });
+        if (boardRankRows.length > 0) {
+          import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
+            upsertWorkItemBoardRankRows(boardRankRows).catch(() => {});
+          });
+        }
         return;
       }
 
@@ -913,133 +948,93 @@ function AppLayoutInner() {
         const targetBacklogId = overData.backlogId as string | undefined;
         const reorderStatusKey = overData.statusKey as string | undefined;
 
-        // If the drop zone has a statusKey (board reorder zones), collect
-        // all items in the target column, insert the dragged items at the
-        // drop position, and assign sequential integer ranks.
+        // If the drop zone has a statusKey (board reorder zones), reorder
+        // via boardRanks ONLY. List ranks are never touched from the board.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
           const dropIndex = overData.index as number;
-
-          // Ranks are per-backlog per-parent-group, not per-status.  Renumber
-          // ALL siblings in the same (parent, backlogId) group across ALL
-          // statuses so no duplicate ranks are introduced when a card moves
-          // between columns.
           const draggedIdSet = new Set(draggedIds);
           const backlogIdSet = new Set(backlogIds);
 
-          // Group: (targetBlId, effectiveParentId) — items that share the parent
-          // context of each dragged item.
-          type BlParent = { blId: string; parentId: string | null };
-          const groups = new Set<string>();
-          const blParents: Set<BlParent> = new Set();
+          // Group by target backlog: dragged items share the same board
+          // context when they land in the same (backlogId, statusKey) column.
+          const targetBacklogs = new Set<string>();
           for (const id of draggedIds) {
             const wi = reorderStore.workItems[id];
             if (!wi) continue;
             const blId = wi.backlogAssignments[treeId];
-            if (!blId || !backlogIdSet.has(blId)) continue;
-            const parentId = getEffectiveParentId(wi, treeId) ?? null;
-            const key = `${blId}::${parentId ?? 'ROOT'}`;
-            if (groups.has(key)) continue;
-            groups.add(key);
-            blParents.add({ blId, parentId });
+            if (blId && backlogIdSet.has(blId)) targetBacklogs.add(blId);
           }
 
           const updatedItems: Record<string, import("@/types/models").WorkItem> = {};
           const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
 
-          for (const bp of blParents) {
-            // Collect ALL siblings in this (blId, parentId) group across all statuses.
-            const sibList: { id: string; rank: number }[] = [];
+          for (const blId of targetBacklogs) {
+            // Collect every card currently in this (blId, statusKey) column
+            // that is NOT being dragged, ordered by their current boardRank.
+            const colCards: { id: string; rank: number }[] = [];
             for (const wi of Object.values(reorderStore.workItems)) {
               const wBl = wi.backlogAssignments[treeId];
-              if (!wBl || wBl !== bp.blId || !backlogIdSet.has(wBl)) continue;
-              const wParent = getEffectiveParentId(wi, treeId) ?? null;
-              if (wParent !== bp.parentId) continue;
-              sibList.push({ id: wi.id, rank: wi.ranks[wBl] ?? 0 });
+              if (wBl !== blId) continue;
+              if (wi.status !== reorderStatusKey) continue;
+              if (draggedIdSet.has(wi.id)) continue;
+              const br = wi.boardRanks?.[blId] ?? wi.ranks?.[blId] ?? 0;
+              colCards.push({ id: wi.id, rank: br });
             }
-            sibList.sort((a, b) => a.rank - b.rank);
+            colCards.sort((a, b) => a.rank - b.rank);
 
-            // Compute global index: find where the target-column drop position
-            // maps in the global sibling list.
-            // The board reorder zone index is relative to the target column.
-            // We need to find which global index corresponds to "after the
-            // dropIndex-th card that is currently in the target column".
-            let targetColCardCount = 0;
-            let globalIdx = 0;
-            for (const sib of sibList) {
-              const sibWi = reorderStore.workItems[sib.id];
-              if (sibWi?.status === reorderStatusKey) {
-                if (targetColCardCount >= dropIndex) break;
-                targetColCardCount++;
-              }
-              globalIdx++;
-            }
-
-            // Remove dragged items from the sibling list.
-            const withoutDragged = sibList.filter((s) => !draggedIdSet.has(s.id));
-            // Build reordered list: items before globalIdx, then dragged, then rest.
+            // Build the new column order: existing cards up to dropIndex,
+            // then dragged items, then the rest.
             const newOrder: string[] = [];
-            for (let i = 0; i < Math.min(globalIdx, withoutDragged.length); i++) {
-              newOrder.push(withoutDragged[i].id);
-            }
+            for (let i = 0; i < Math.min(dropIndex, colCards.length); i++) newOrder.push(colCards[i].id);
             for (const id of draggedIds) {
+              const wi = reorderStore.workItems[id];
+              if (!wi) continue;
+              if (wi.backlogAssignments[treeId] !== blId) continue;
               newOrder.push(id);
             }
-            for (let i = globalIdx; i < withoutDragged.length; i++) {
-              newOrder.push(withoutDragged[i].id);
-            }
+            for (let i = dropIndex; i < colCards.length; i++) newOrder.push(colCards[i].id);
 
-            // Assign sequential integer ranks.
             newOrder.forEach((id, rank) => {
               const wi = reorderStore.workItems[id];
               if (!wi) return;
+              const merged = updatedItems[id] ?? wi;
               updatedItems[id] = {
-                ...wi,
-                status: draggedIdSet.has(id) ? (reorderStatusKey as WorkItemStatus) : wi.status,
-                ranks: { ...wi.ranks, [bp.blId]: rank },
+                ...merged,
+                status: draggedIdSet.has(id) ? (reorderStatusKey as WorkItemStatus) : merged.status,
+                boardRanks: { ...(merged.boardRanks ?? {}), [blId]: rank },
               };
+              rankRows.push({
+                workItemId: id,
+                backlogId: blId,
+                rank,
+                organizationId: wi.organizationId ?? '',
+              });
             });
           }
 
-          // Propagate ancestor ranks and persist.
-          const finalItems = { ...reorderStore.workItems, ...updatedItems };
-          for (const [id] of Object.entries(updatedItems)) {
-            let parentId = finalItems[id]?.parentId;
-            while (parentId && finalItems[parentId]) {
-              const parent = finalItems[parentId];
-              const blId = parent.backlogAssignments[treeId];
-              if (!blId) break;
-              let minRank = Infinity;
-              for (const cid of parent.childrenIds) {
-                const child = finalItems[cid];
-                if (!child) continue;
-                const cBlId = child.backlogAssignments[treeId];
-                if (cBlId && backlogIdSet.has(cBlId)) {
-                  const cr = child.ranks[cBlId] ?? Infinity;
-                  if (cr < minRank) minRank = cr;
-                }
-              }
-              if (minRank !== Infinity && (parent.ranks[blId] ?? Infinity) !== minRank) {
-                updatedItems[parentId] = { ...parent, ranks: { ...parent.ranks, [blId]: minRank } };
-              }
-              parentId = parent.parentId;
-            }
-          }
-
-          useAppStore.setState((s) => ({
-            workItems: { ...s.workItems, ...updatedItems },
-          }));
-
-          for (const [id, wi] of Object.entries(updatedItems)) {
-            const blId = wi.backlogAssignments[treeId] ?? Object.values(wi.backlogAssignments)[0];
-            if (blId) {
-              rankRows.push({ workItemId: id, backlogId: blId, rank: wi.ranks[blId] ?? 0, organizationId: wi.organizationId ?? '' });
-            }
+          if (Object.keys(updatedItems).length > 0) {
+            useAppStore.setState((s) => ({
+              workItems: { ...s.workItems, ...updatedItems },
+            }));
           }
           if (rankRows.length > 0) {
-            import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
-              upsertWorkItemBacklogRankRows(rankRows).catch(() => {});
+            import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
+              upsertWorkItemBoardRankRows(rankRows).catch(() => {});
             });
+          }
+          // Persist any status changes on the work_items rows.
+          const persistStore = useAppStore.getState();
+          for (const id of draggedIds) {
+            const wi = persistStore.workItems[id];
+            if (!wi) continue;
+            const originalStatus = reorderStore.workItems[id]?.status;
+            if (originalStatus && originalStatus !== wi.status) {
+              // setWorkItemStatus already persists and handles cascading.
+              // Calling it after the local state update is a no-op for the
+              // status field but ensures DB persistence + change log entry.
+              persistStore.setWorkItemStatus(id, wi.status);
+            }
           }
           return;
         }

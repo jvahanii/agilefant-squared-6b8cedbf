@@ -48,8 +48,8 @@ import {
 interface BoardViewProps {
   backlogId: string;
   treeId: string;
-  /** Function to add a new work item. Called with title, parentId, backlogId, treeId, optional rank and initialStatus. */
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus) => void;
+  /** Function to add a new work item. Called with title, parentId, backlogId, treeId, optional list rank, initialStatus, and optional board rank. */
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   /** Function to switch between list and board views */
   setViewMode: (mode: "list" | "board") => void;
 }
@@ -256,17 +256,19 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       if (wi.childrenIds.length > 0) continue; // leaf-only
       leaves.push(wi);
     }
-    // Order by rank within their assigned backlog for deterministic display.
-    leaves.sort((a, b) => {
-      const ab = a.backlogAssignments[treeId];
-      const bb = b.backlogAssignments[treeId];
-      const ar = a.ranks?.[ab] ?? 0;
-      const br = b.ranks?.[bb] ?? 0;
-      return ar - br;
-    });
     for (const wi of leaves) {
       const key = known.has(wi.status) ? wi.status : "not_started";
       (map[key] ??= []).push(wi);
+    }
+    // Board order: sort each column by its own boardRanks (fallback to list rank).
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => {
+        const ab = a.backlogAssignments[treeId];
+        const bb = b.backlogAssignments[treeId];
+        const ar = a.boardRanks?.[ab] ?? a.ranks?.[ab] ?? 0;
+        const br = b.boardRanks?.[bb] ?? b.ranks?.[bb] ?? 0;
+        return ar - br;
+      });
     }
     return map;
   }, [workItems, backlogs, backlogId, treeId, allStatuses]);
@@ -401,26 +403,28 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      // Compute a rank that places the new item after the card at `afterIndex`.
-      let rank: number | undefined;
+      // Compute a board rank that places the new item after the card at
+      // `afterIndex`. List rank is left unset so addWorkItem picks the
+      // default "top of the list" behavior — list order is fully independent.
+      let boardRank: number | undefined;
+      const colCards = cardsByStatus[statusKey] ?? [];
       if (afterIndex !== undefined && afterIndex >= 0) {
-        const colCards = cardsByStatus[statusKey] ?? [];
         const afterCard = colCards[afterIndex];
         if (afterCard) {
-          const afterRank = afterCard.ranks[afterCard.backlogAssignments[treeId]] ?? 0;
+          const afterBl = afterCard.backlogAssignments[treeId];
+          const afterBr = afterCard.boardRanks?.[afterBl] ?? afterCard.ranks?.[afterBl] ?? 0;
           const nextCard = colCards[afterIndex + 1];
           if (nextCard) {
-            const nextRank = nextCard.ranks[nextCard.backlogAssignments[treeId]] ?? 0;
-            rank = afterRank + (nextRank - afterRank) / 2;
+            const nextBl = nextCard.backlogAssignments[treeId];
+            const nextBr = nextCard.boardRanks?.[nextBl] ?? nextCard.ranks?.[nextBl] ?? 0;
+            boardRank = afterBr + (nextBr - afterBr) / 2;
           } else {
-            rank = afterRank + 1;
+            boardRank = afterBr + 1;
           }
         }
       }
-      // Pass initialStatus so the item is created directly in the correct column
-      // without firing setWorkItemStatus (which would trigger undesired ancestor
-      // propagation for a brand-new item).
-      addWorkItem(title, null, backlogId, treeId, rank, statusKey as WorkItemStatus);
+      // If no explicit anchor, addWorkItem seeds it at the top of the column.
+      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, boardRank);
     },
     [addWorkItem, backlogId, treeId, cardsByStatus],
   );

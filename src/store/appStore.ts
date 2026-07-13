@@ -19,6 +19,7 @@ import {
   deleteHyperlink as deleteHyperlinkDB,
   registerWorkItemRenameCallback,
   upsertWorkItemBacklogRankRows,
+  upsertWorkItemBoardRankRows,
   type WorkItemBacklogRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
@@ -162,7 +163,7 @@ interface AppState extends DataSnapshot {
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
-  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus) => void;
+  addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string, initialStatus?: WorkItemStatus) => void;
   deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
   deleteWorkItemsBulk: (workItemIds: string[], direction?: 'up' | 'down') => void;
@@ -207,6 +208,7 @@ interface AppState extends DataSnapshot {
   loadHyperlinksForItem: (workItemId: string) => Promise<void>;
   applyRealtimeWorkItem: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeWorkItemRank: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
+  applyRealtimeWorkItemBoardRank: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklog: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeBacklogTree: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
   applyRealtimeHyperlink: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
@@ -310,6 +312,7 @@ export function sanitizeData(data: any, orgId: string) {
     const id = ensureCleanId(wi.id, orgId);
     const validAssignments: Record<string, string> = {};
     const validRanks: Record<string, number> = {};
+    const validBoardRanks: Record<string, number> = {};
 
     const totalAssignments = Object.keys(wi.backlogAssignments || {}).length;
     let droppedCount = 0;
@@ -321,6 +324,8 @@ export function sanitizeData(data: any, orgId: string) {
         // Re-key ranks: try original backlogId first, then cleaned
         const origRank = (wi.ranks ?? {})[bId as string] ?? (wi.ranks ?? {})[cleanB] ?? 0;
         validRanks[cleanB] = origRank;
+        const origBoardRank = (wi.boardRanks ?? {})[bId as string] ?? (wi.boardRanks ?? {})[cleanB];
+        if (typeof origBoardRank === 'number') validBoardRanks[cleanB] = origBoardRank;
       } else {
         droppedCount++;
         console.warn(
@@ -355,6 +360,7 @@ export function sanitizeData(data: any, orgId: string) {
       parentIds: Object.keys(cleanParentIds).length > 0 ? cleanParentIds : undefined,
       backlogAssignments: validAssignments,
       ranks: validRanks,
+      boardRanks: validBoardRanks,
       childrenIds: [],
     };
   });
@@ -1449,7 +1455,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: updatedItems, undoStack: pushUndoEntry(state) });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus) => {
+    addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus, requestedBoardRank) => {
       const state = get();
       const orgId = state.organizationId;
       if (!orgId) return;
@@ -1475,14 +1481,32 @@ export const useAppStore = create<AppState>()((set, get) => {
         ? (requestedIndex === -1 ? siblingIds.length : requestedIndex)
         : 0;
 
+      // Compute board rank: caller-provided value, else "top of column" =
+      // one less than the minimum existing board rank in (backlogId, status).
+      const targetStatus = initialStatus ?? ("not_started" as WorkItemStatus);
+      let boardRank: number;
+      if (typeof requestedBoardRank === 'number') {
+        boardRank = requestedBoardRank;
+      } else {
+        let minBoard = Infinity;
+        for (const wi of Object.values(updatedWorkItems)) {
+          if (wi.status !== targetStatus) continue;
+          if (wi.backlogAssignments[treeId] !== backlogId) continue;
+          const br = wi.boardRanks?.[backlogId];
+          if (typeof br === 'number' && br < minBoard) minBoard = br;
+        }
+        boardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+      }
+
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
         id,
         title,
         parentId,
         ranks: { [backlogId]: insertIndex },
+        boardRanks: { [backlogId]: boardRank },
         backlogAssignments: { [treeId]: backlogId },
-        status: initialStatus ?? ("not_started" as WorkItemStatus),
+        status: targetStatus,
         childrenIds: [],
         points: undefined,
       };
@@ -1493,6 +1517,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       upsertWorkItems(itemsToUpdateInDB, orgId);
+      // Persist the new item's board rank.
+      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: boardRank, organizationId: orgId }]).catch(() => {});
 
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
@@ -3403,6 +3429,23 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
 
         return { workItems: updatedWorkItems };
+      });
+    },
+
+    applyRealtimeWorkItemBoardRank: (eventType, row) => {
+      set((state) => {
+        const workItemId = row.work_item_id as string;
+        const backlogId = row.backlog_id as string;
+        const wi = state.workItems[workItemId];
+        if (!wi) return state;
+        const current = wi.boardRanks ?? {};
+        if (eventType === 'DELETE') {
+          const next = { ...current };
+          delete next[backlogId];
+          return { workItems: { ...state.workItems, [workItemId]: { ...wi, boardRanks: next } } };
+        }
+        const next = { ...current, [backlogId]: (row.rank as number) ?? 0 };
+        return { workItems: { ...state.workItems, [workItemId]: { ...wi, boardRanks: next } } };
       });
     },
 
