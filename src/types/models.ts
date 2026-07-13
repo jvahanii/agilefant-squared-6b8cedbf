@@ -23,8 +23,12 @@ export interface WorkItem {
   childrenIds: string[];
   /** Maps backlogTreeId -> backlogId */
   backlogAssignments: Record<string, string>;
-  /** Maps backlogId -> rank within that backlog */
+  /** Maps backlogId -> list rank within that backlog */
   ranks: Record<string, number>;
+  /** Maps backlogId -> board rank within that backlog (independent from `ranks`).
+   *  Board view orders cards by (statusKey, boardRank).  Falls back to `ranks`
+   *  for items that have no board rank yet (pre-migration data). */
+  boardRanks?: Record<string, number>;
   /** The actual organization_id stored in the DB row. Used for upserts to avoid
    *  deriving org ownership from a potentially stale ID prefix. */
   organizationId?: string;
