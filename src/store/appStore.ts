@@ -19,6 +19,7 @@ import {
   deleteHyperlink as deleteHyperlinkDB,
   registerWorkItemRenameCallback,
   upsertWorkItemBacklogRankRows,
+  upsertWorkItemBoardRankRows,
   type WorkItemBacklogRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
