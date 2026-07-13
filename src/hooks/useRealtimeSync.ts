@@ -187,11 +187,27 @@ export function useRealtimeSync() {
           (payload) => {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             if (payload.eventType !== 'DELETE') {
-              // Only apply if the work item is in our store.
               const workItemId = row.work_item_id as string;
               if (!useAppStore.getState().workItems[workItemId]) return;
             }
             applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_board_ranks',
+            filter: `organization_id=eq.${orgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            if (payload.eventType !== 'DELETE') {
+              const workItemId = row.work_item_id as string;
+              if (!useAppStore.getState().workItems[workItemId]) return;
+            }
+            applyRealtimeWorkItemBoardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         )
         .on(
