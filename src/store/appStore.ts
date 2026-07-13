@@ -1455,7 +1455,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ workItems: updatedItems, undoStack: pushUndoEntry(state) });
     },
 
-    addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus) => {
+    addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus, requestedBoardRank) => {
       const state = get();
       const orgId = state.organizationId;
       if (!orgId) return;
@@ -1481,14 +1481,32 @@ export const useAppStore = create<AppState>()((set, get) => {
         ? (requestedIndex === -1 ? siblingIds.length : requestedIndex)
         : 0;
 
+      // Compute board rank: caller-provided value, else "top of column" =
+      // one less than the minimum existing board rank in (backlogId, status).
+      const targetStatus = initialStatus ?? ("not_started" as WorkItemStatus);
+      let boardRank: number;
+      if (typeof requestedBoardRank === 'number') {
+        boardRank = requestedBoardRank;
+      } else {
+        let minBoard = Infinity;
+        for (const wi of Object.values(updatedWorkItems)) {
+          if (wi.status !== targetStatus) continue;
+          if (wi.backlogAssignments[treeId] !== backlogId) continue;
+          const br = wi.boardRanks?.[backlogId];
+          if (typeof br === 'number' && br < minBoard) minBoard = br;
+        }
+        boardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+      }
+
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
         id,
         title,
         parentId,
         ranks: { [backlogId]: insertIndex },
+        boardRanks: { [backlogId]: boardRank },
         backlogAssignments: { [treeId]: backlogId },
-        status: initialStatus ?? ("not_started" as WorkItemStatus),
+        status: targetStatus,
         childrenIds: [],
         points: undefined,
       };
@@ -1499,6 +1517,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       upsertWorkItems(itemsToUpdateInDB, orgId);
+      // Persist the new item's board rank.
+      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: boardRank, organizationId: orgId }]).catch(() => {});
 
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
