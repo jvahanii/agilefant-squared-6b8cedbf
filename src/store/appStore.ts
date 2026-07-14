@@ -1245,6 +1245,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           updatedItems[s.id] = {
             ...updatedItems[s.id],
             ranks: { ...updatedItems[s.id].ranks, [blId]: i },
+            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
           };
         }
       });
@@ -1257,6 +1258,15 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );
+      // Also persist board ranks so the board view stays in sync.
+      upsertWorkItemBoardRankRows(
+        reordered.flatMap((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          if (!blId) return [];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }),
+      ).catch(() => {});
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
