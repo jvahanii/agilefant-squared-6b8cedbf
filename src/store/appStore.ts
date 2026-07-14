@@ -1481,21 +1481,21 @@ export const useAppStore = create<AppState>()((set, get) => {
         ? (requestedIndex === -1 ? siblingIds.length : requestedIndex)
         : 0;
 
-      // Compute board rank: caller-provided value, else "top of column" =
-      // one less than the minimum existing board rank in (backlogId, status).
+      // Compute board rank: caller-provided value, else "bottom of column" =
+      // one more than the maximum existing board rank in (backlogId, status).
       const targetStatus = initialStatus ?? ("not_started" as WorkItemStatus);
       let boardRank: number;
       if (typeof requestedBoardRank === 'number') {
         boardRank = requestedBoardRank;
       } else {
-        let minBoard = Infinity;
+        let maxBoard = -Infinity;
         for (const wi of Object.values(updatedWorkItems)) {
           if (wi.status !== targetStatus) continue;
           if (wi.backlogAssignments[treeId] !== backlogId) continue;
           const br = wi.boardRanks?.[backlogId];
-          if (typeof br === 'number' && br < minBoard) minBoard = br;
+          if (typeof br === 'number' && br > maxBoard) maxBoard = br;
         }
-        boardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+        boardRank = Number.isFinite(maxBoard) ? maxBoard + 1 : 0;
       }
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
