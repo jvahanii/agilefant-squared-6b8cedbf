@@ -1481,22 +1481,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         ? (requestedIndex === -1 ? siblingIds.length : requestedIndex)
         : 0;
 
-      // Compute board rank: caller-provided value, else "bottom of column" =
-      // one more than the maximum existing board rank in (backlogId, status).
       const targetStatus = initialStatus ?? ("not_started" as WorkItemStatus);
-      let boardRank: number;
-      if (typeof requestedBoardRank === 'number') {
-        boardRank = requestedBoardRank;
-      } else {
-        let maxBoard = -Infinity;
-        for (const wi of Object.values(updatedWorkItems)) {
-          if (wi.status !== targetStatus) continue;
-          if (wi.backlogAssignments[treeId] !== backlogId) continue;
-          const br = wi.boardRanks?.[backlogId];
-          if (typeof br === 'number' && br > maxBoard) maxBoard = br;
-        }
-        boardRank = Number.isFinite(maxBoard) ? maxBoard + 1 : 0;
-      }
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
       const newItem: WorkItem = {
@@ -1504,12 +1489,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         title,
         parentId,
         ranks: { [backlogId]: insertIndex },
-        boardRanks: { [backlogId]: boardRank },
         backlogAssignments: { [treeId]: backlogId },
         status: targetStatus,
         childrenIds: [],
         points: undefined,
       };
+
+      // Only set a board rank when the caller explicitly requested one (e.g.
+      // inserting between two existing cards).  Otherwise board sorting falls
+      // back to list rank, producing the same order as the list view.
+      if (typeof requestedBoardRank === 'number') {
+        newItem.boardRanks = { [backlogId]: requestedBoardRank };
+      }
 
       updatedWorkItems[id] = newItem;
       const orderedIds = [...siblingIds];
@@ -1517,8 +1508,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       upsertWorkItems(itemsToUpdateInDB, orgId);
-      // Persist the new item's board rank.
-      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: boardRank, organizationId: orgId }]).catch(() => {});
+      // Persist the board rank only when an explicit position was requested.
+      if (typeof requestedBoardRank === 'number') {
+        upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: requestedBoardRank, organizationId: orgId }]).catch(() => {});
+      }
 
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
