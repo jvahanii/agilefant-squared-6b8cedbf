@@ -949,7 +949,7 @@ function AppLayoutInner() {
         const reorderStatusKey = overData.statusKey as string | undefined;
 
         // If the drop zone has a statusKey (board reorder zones), reorder
-        // via boardRanks ONLY. List ranks are never touched from the board.
+        // via boardRanks AND list ranks so both views stay in sync.
         if (reorderStatusKey) {
           const reorderStore = useAppStore.getState();
           const dropIndex = overData.index as number;
@@ -967,7 +967,8 @@ function AppLayoutInner() {
           }
 
           const updatedItems: Record<string, import("@/types/models").WorkItem> = {};
-          const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+          const boardRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+          const listRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
 
           for (const blId of targetBacklogs) {
             // Collect every card currently in this (blId, statusKey) column
@@ -1002,9 +1003,17 @@ function AppLayoutInner() {
               updatedItems[id] = {
                 ...merged,
                 status: draggedIdSet.has(id) ? (reorderStatusKey as WorkItemStatus) : merged.status,
+                ranks: { ...merged.ranks, [blId]: rank },
                 boardRanks: { ...(merged.boardRanks ?? {}), [blId]: rank },
               };
-              rankRows.push({
+              boardRankRows.push({
+                workItemId: id,
+                backlogId: blId,
+                rank,
+                organizationId: wi.organizationId ?? '',
+              });
+              // Also persist the list rank change.
+              listRankRows.push({
                 workItemId: id,
                 backlogId: blId,
                 rank,
@@ -1018,9 +1027,14 @@ function AppLayoutInner() {
               workItems: { ...s.workItems, ...updatedItems },
             }));
           }
-          if (rankRows.length > 0) {
+          if (boardRankRows.length > 0) {
             import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
-              upsertWorkItemBoardRankRows(rankRows).catch(() => {});
+              upsertWorkItemBoardRankRows(boardRankRows).catch(() => {});
+            });
+          }
+          if (listRankRows.length > 0) {
+            import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
+              upsertWorkItemBacklogRankRows(listRankRows).catch(() => {});
             });
           }
           // Persist any status changes on the work_items rows.
