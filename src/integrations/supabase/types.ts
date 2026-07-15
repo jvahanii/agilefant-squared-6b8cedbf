@@ -612,6 +612,7 @@ export type Database = {
           note: string | null
           organization_id: string
           spent_date: string
+          tree_id: string | null
           user_id: string
           work_item_id: string | null
         }
@@ -623,6 +624,7 @@ export type Database = {
           note?: string | null
           organization_id: string
           spent_date?: string
+          tree_id?: string | null
           user_id: string
           work_item_id?: string | null
         }
@@ -634,10 +636,19 @@ export type Database = {
           note?: string | null
           organization_id?: string
           spent_date?: string
+          tree_id?: string | null
           user_id?: string
           work_item_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tree_financial_targets: {
         Row: {

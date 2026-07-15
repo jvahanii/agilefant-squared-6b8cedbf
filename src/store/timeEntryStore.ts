@@ -7,6 +7,7 @@ export interface TimeEntry {
   userId: string;
   workItemId: string | null;
   backlogId: string | null;
+  treeId: string | null;
   durationMinutes: number;
   spentDate: string; // YYYY-MM-DD
   note: string | null;
@@ -20,12 +21,14 @@ function rowToTimeEntry(row: Record<string, unknown>): TimeEntry {
     userId: row.user_id as string,
     workItemId: (row.work_item_id as string) ?? null,
     backlogId: (row.backlog_id as string) ?? null,
+    treeId: (row.tree_id as string) ?? null,
     durationMinutes: row.duration_minutes as number,
     spentDate: row.spent_date as string,
     note: (row.note as string) ?? null,
     createdAt: row.created_at as string,
   };
 }
+
 
 interface TimeEntryState {
   timeEntries: Record<string, TimeEntry>;
