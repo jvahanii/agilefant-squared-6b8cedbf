@@ -403,12 +403,30 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      // Column-header add: place at top → boardRank = 0 (integer).
-      // Enter-key add: place after selected card → boardRank = afterIndex + 1.
-      const boardRank = afterIndex !== undefined && afterIndex >= 0 ? afterIndex + 1 : 0;
+      // Compute a board rank that places the new item after the card at
+      // `afterIndex`. List rank is left unset so addWorkItem picks the
+      // default "top of the list" behavior — list order is fully independent.
+      let boardRank: number | undefined;
+      const colCards = cardsByStatus[statusKey] ?? [];
+      if (afterIndex !== undefined && afterIndex >= 0) {
+        const afterCard = colCards[afterIndex];
+        if (afterCard) {
+          const afterBl = afterCard.backlogAssignments[treeId];
+          const afterBr = afterCard.boardRanks?.[afterBl] ?? afterCard.ranks?.[afterBl] ?? 0;
+          const nextCard = colCards[afterIndex + 1];
+          if (nextCard) {
+            const nextBl = nextCard.backlogAssignments[treeId];
+            const nextBr = nextCard.boardRanks?.[nextBl] ?? nextCard.ranks?.[nextBl] ?? 0;
+            boardRank = afterBr + (nextBr - afterBr) / 2;
+          } else {
+            boardRank = afterBr + 1;
+          }
+        }
+      }
+      // If no explicit anchor, addWorkItem seeds it at the top of the column.
       addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, boardRank);
     },
-    [addWorkItem, backlogId, treeId],
+    [addWorkItem, backlogId, treeId, cardsByStatus],
   );
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
