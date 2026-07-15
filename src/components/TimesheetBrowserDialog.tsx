@@ -65,6 +65,8 @@ function exportToCsv(
       subject = workItems[entry.workItemId].title;
     } else if (entry.backlogId && backlogs[entry.backlogId]) {
       subject = backlogs[entry.backlogId].name;
+    } else if (entry.treeId) {
+      subject = `Tree`;
     }
 
     const h = Math.floor(entry.durationMinutes / 60);
