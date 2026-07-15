@@ -812,8 +812,17 @@ function DraggableTreeHeader({
   const savingsIncomeVisible = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const workItems = useAppStore((s) => s.workItems);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const treeTotalMinutes = useMemo(
+    () => timeLoggingVisible ? computeTreeTotalMinutes(tree.id, backlogs, workItems, timeEntries) : 0,
+    [timeLoggingVisible, tree.id, backlogs, workItems, timeEntries],
+  );
+  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const {
     attributes,
     listeners,
