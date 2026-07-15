@@ -37,7 +37,7 @@ import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
-import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
+import { computeBacklogTotalMinutes, computeTreeTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 
