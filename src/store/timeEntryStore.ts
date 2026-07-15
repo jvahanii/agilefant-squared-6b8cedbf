@@ -40,6 +40,7 @@ interface TimeEntryState {
     userId: string;
     workItemId?: string | null;
     backlogId?: string | null;
+    treeId?: string | null;
     durationMinutes: number;
     spentDate: string;
     note?: string | null;
@@ -47,11 +48,13 @@ interface TimeEntryState {
   updateTimeEntry: (id: string, updates: Partial<{
     workItemId: string | null;
     backlogId: string | null;
+    treeId: string | null;
     durationMinutes: number;
     spentDate: string;
     note: string | null;
     userId: string;
   }>) => Promise<void>;
+
   deleteTimeEntry: (id: string) => void;
   clearTimeEntries: () => void;
 
