@@ -19,9 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface TimeLogDialogProps {
   workItemId?: string;
   backlogId?: string;
+  treeId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 
 export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
