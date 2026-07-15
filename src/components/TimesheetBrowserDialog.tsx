@@ -143,6 +143,7 @@ function getEntryGroupKey(
       return "__none__";
     }
     case "tree": {
+      if (entry.treeId) return entry.treeId;
       let blId = entry.backlogId;
       if (!blId && entry.workItemId) {
         const wi = workItems[entry.workItemId];
