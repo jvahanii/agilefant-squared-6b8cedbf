@@ -65,6 +65,8 @@ function exportToCsv(
       subject = workItems[entry.workItemId].title;
     } else if (entry.backlogId && backlogs[entry.backlogId]) {
       subject = backlogs[entry.backlogId].name;
+    } else if (entry.treeId) {
+      subject = `Tree`;
     }
 
     const h = Math.floor(entry.durationMinutes / 60);
@@ -141,6 +143,7 @@ function getEntryGroupKey(
       return "__none__";
     }
     case "tree": {
+      if (entry.treeId) return entry.treeId;
       let blId = entry.backlogId;
       if (!blId && entry.workItemId) {
         const wi = workItems[entry.workItemId];
@@ -407,6 +410,9 @@ export function TimesheetBrowserDialog({
     }
     if (entry.backlogId && backlogs[entry.backlogId]) {
       return backlogs[entry.backlogId].name;
+    }
+    if (entry.treeId && backlogTrees[entry.treeId]) {
+      return `${backlogTrees[entry.treeId].name} (tree)`;
     }
     return "(unlinked)";
   };

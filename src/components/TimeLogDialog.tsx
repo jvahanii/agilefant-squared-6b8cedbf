@@ -19,9 +19,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface TimeLogDialogProps {
   workItemId?: string;
   backlogId?: string;
+  treeId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 
 export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -57,10 +59,11 @@ export function parseDuration(input: string): number | null {
 
 const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
 
-export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: TimeLogDialogProps) {
+export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChange }: TimeLogDialogProps) {
   const item = useAppStore((s) => workItemId ? s.workItems[workItemId] : null);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const backlog = useAppStore((s) => backlogId ? s.backlogs[backlogId] : null);
+  const tree = useAppStore((s) => treeId ? s.backlogTrees[treeId] : null);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const addTimeEntry = useTimeEntryStore((s) => s.addTimeEntry);
   const updateTimeEntry = useTimeEntryStore((s) => s.updateTimeEntry);
@@ -87,9 +90,15 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
 
   const itemEntries = useMemo(() => {
     return Object.values(timeEntries)
-      .filter((e) => workItemId ? e.workItemId === workItemId : e.backlogId === backlogId && e.workItemId === null)
+      .filter((e) => {
+        if (workItemId) return e.workItemId === workItemId;
+        if (backlogId) return e.backlogId === backlogId && e.workItemId === null;
+        if (treeId) return e.treeId === treeId && e.workItemId === null && e.backlogId === null;
+        return false;
+      })
       .sort((a, b) => b.spentDate.localeCompare(a.spentDate) || b.createdAt.localeCompare(a.createdAt));
-  }, [timeEntries, workItemId, backlogId]);
+  }, [timeEntries, workItemId, backlogId, treeId]);
+
 
   const totalMinutes = useMemo(
     () => itemEntries.reduce((sum, e) => sum + e.durationMinutes, 0),
@@ -168,8 +177,8 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (!item && !backlog) return null;
-  const displayTitle = item?.title ?? backlog?.name ?? "";
+  if (!item && !backlog && !tree) return null;
+  const displayTitle = item?.title ?? backlog?.name ?? tree?.name ?? "";
 
   const handleAdd = async (): Promise<boolean> => {
     const minutes = parseDuration(durationInput);
@@ -184,10 +193,12 @@ export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: Tim
       userId: user.id,
       workItemId: workItemId ?? null,
       backlogId: backlogId ?? null,
+      treeId: treeId ?? null,
       durationMinutes: minutes,
       spentDate: dateInput,
       note: noteInput.trim() || null,
     });
+
 
     if (workItemId && item?.status === "not_started") {
       setWorkItemStatus(workItemId, "in_progress");

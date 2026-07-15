@@ -37,7 +37,7 @@ import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
-import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
+import { computeBacklogTotalMinutes, computeTreeTotalMinutes } from "@/lib/timeUtils";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 
@@ -812,8 +812,17 @@ function DraggableTreeHeader({
   const savingsIncomeVisible = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
+  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const workItems = useAppStore((s) => s.workItems);
+  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
+  const treeTotalMinutes = useMemo(
+    () => timeLoggingVisible ? computeTreeTotalMinutes(tree.id, backlogs, workItems, timeEntries) : 0,
+    [timeLoggingVisible, tree.id, backlogs, workItems, timeEntries],
+  );
+  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const {
     attributes,
     listeners,
@@ -882,6 +891,19 @@ function DraggableTreeHeader({
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+              title="Log time"
+            >
+              {treeTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(treeTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); onShareTree(); }}
@@ -896,6 +918,19 @@ function DraggableTreeHeader({
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+              title="Log time"
+            >
+              {treeTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(treeTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
@@ -928,9 +963,17 @@ function DraggableTreeHeader({
           </button>
         </div>
       </div>
+      {timeLoggingVisible && (
+        <TimeLogDialog
+          treeId={tree.id}
+          open={showTimeLogDialog}
+          onOpenChange={setShowTimeLogDialog}
+        />
+      )}
     </div>
   );
 }
+
 
 interface BacklogTreePanelProps {
   mobileCollapsed?: boolean;

@@ -7,6 +7,7 @@ export interface TimeEntry {
   userId: string;
   workItemId: string | null;
   backlogId: string | null;
+  treeId: string | null;
   durationMinutes: number;
   spentDate: string; // YYYY-MM-DD
   note: string | null;
@@ -20,12 +21,14 @@ function rowToTimeEntry(row: Record<string, unknown>): TimeEntry {
     userId: row.user_id as string,
     workItemId: (row.work_item_id as string) ?? null,
     backlogId: (row.backlog_id as string) ?? null,
+    treeId: (row.tree_id as string) ?? null,
     durationMinutes: row.duration_minutes as number,
     spentDate: row.spent_date as string,
     note: (row.note as string) ?? null,
     createdAt: row.created_at as string,
   };
 }
+
 
 interface TimeEntryState {
   timeEntries: Record<string, TimeEntry>;
@@ -37,6 +40,7 @@ interface TimeEntryState {
     userId: string;
     workItemId?: string | null;
     backlogId?: string | null;
+    treeId?: string | null;
     durationMinutes: number;
     spentDate: string;
     note?: string | null;
@@ -44,11 +48,13 @@ interface TimeEntryState {
   updateTimeEntry: (id: string, updates: Partial<{
     workItemId: string | null;
     backlogId: string | null;
+    treeId: string | null;
     durationMinutes: number;
     spentDate: string;
     note: string | null;
     userId: string;
   }>) => Promise<void>;
+
   deleteTimeEntry: (id: string) => void;
   clearTimeEntries: () => void;
 
@@ -174,6 +180,7 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
         user_id: entry.userId,
         work_item_id: entry.workItemId ?? null,
         backlog_id: entry.backlogId ?? null,
+        tree_id: entry.treeId ?? null,
         duration_minutes: entry.durationMinutes,
         spent_date: entry.spentDate,
         note: entry.note ?? null,
@@ -194,6 +201,7 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
     const dbUpdates: Record<string, unknown> = {};
     if (updates.workItemId !== undefined) dbUpdates.work_item_id = updates.workItemId;
     if (updates.backlogId !== undefined) dbUpdates.backlog_id = updates.backlogId;
+    if (updates.treeId !== undefined) dbUpdates.tree_id = updates.treeId;
     if (updates.durationMinutes !== undefined) dbUpdates.duration_minutes = updates.durationMinutes;
     if (updates.spentDate !== undefined) dbUpdates.spent_date = updates.spentDate;
     if (updates.note !== undefined) dbUpdates.note = updates.note;
