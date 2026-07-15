@@ -201,6 +201,7 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
     const dbUpdates: Record<string, unknown> = {};
     if (updates.workItemId !== undefined) dbUpdates.work_item_id = updates.workItemId;
     if (updates.backlogId !== undefined) dbUpdates.backlog_id = updates.backlogId;
+    if (updates.treeId !== undefined) dbUpdates.tree_id = updates.treeId;
     if (updates.durationMinutes !== undefined) dbUpdates.duration_minutes = updates.durationMinutes;
     if (updates.spentDate !== undefined) dbUpdates.spent_date = updates.spentDate;
     if (updates.note !== undefined) dbUpdates.note = updates.note;
