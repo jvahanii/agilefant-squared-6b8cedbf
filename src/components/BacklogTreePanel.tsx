@@ -891,6 +891,19 @@ function DraggableTreeHeader({
           )}
         </div>
         <div className="flex md:hidden items-center gap-0.5 shrink-0">
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.5rem] h-6"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+              title="Log time"
+            >
+              {treeTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(treeTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => { e.stopPropagation(); onShareTree(); }}
@@ -905,6 +918,19 @@ function DraggableTreeHeader({
           ><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all hidden md:flex">
+          {timeLoggingVisible && (
+            <button
+              className="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5"
+              onClick={(e) => { e.stopPropagation(); setShowTimeLogDialog(true); }}
+              title="Log time"
+            >
+              {treeTotalMinutes > 0 ? (
+                <span className="text-xs font-medium tabular-nums">{formatDuration(treeTotalMinutes)}</span>
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={(e) => {
@@ -937,9 +963,17 @@ function DraggableTreeHeader({
           </button>
         </div>
       </div>
+      {timeLoggingVisible && (
+        <TimeLogDialog
+          treeId={tree.id}
+          open={showTimeLogDialog}
+          onOpenChange={setShowTimeLogDialog}
+        />
+      )}
     </div>
   );
 }
+
 
 interface BacklogTreePanelProps {
   mobileCollapsed?: boolean;
