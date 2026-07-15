@@ -403,35 +403,12 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      const colCards = cardsByStatus[statusKey] ?? [];
-      const insertAt = afterIndex !== undefined && afterIndex >= 0 ? afterIndex + 1 : 0;
-
-      // Shift existing items at or above `insertAt` one slot up so the
-      // new item can claim that integer position without collisions.
-      const state = useAppStore.getState();
-      const nextItems = { ...state.workItems };
-      const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
-      for (const card of colCards) {
-        const wi = nextItems[card.id];
-        const blId = wi.backlogAssignments[treeId];
-        const currentRank = wi.boardRanks?.[blId] ?? wi.ranks?.[blId] ?? 0;
-        if (currentRank >= insertAt) {
-          const shifted = currentRank + 1;
-          nextItems[card.id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: shifted } };
-          rankRows.push({ workItemId: card.id, backlogId: blId, rank: shifted, organizationId: wi.organizationId ?? '' });
-        }
-      }
-      if (rankRows.length > 0) {
-        useAppStore.setState({ workItems: nextItems });
-        import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
-          upsertWorkItemBoardRankRows(rankRows).catch(() => {});
-        });
-      }
-
-      // Create the new item at the freed integer position.
-      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, insertAt);
+      // Column-header add: place at top → boardRank = 0 (integer).
+      // Enter-key add: place after selected card → boardRank = afterIndex + 1.
+      const boardRank = afterIndex !== undefined && afterIndex >= 0 ? afterIndex + 1 : 0;
+      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, boardRank);
     },
-    [addWorkItem, backlogId, treeId, cardsByStatus],
+    [addWorkItem, backlogId, treeId],
   );
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
