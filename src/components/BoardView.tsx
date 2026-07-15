@@ -507,39 +507,31 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       e.preventDefault();
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        // Move between columns
+        // Move between columns, skipping empty ones.
         const direction = e.key === "ArrowLeft" ? -1 : 1;
-        let targetColIndex = (currentColIndex >= 0 ? currentColIndex : cols.findIndex((c) => c.key === fallbackColKey)) + direction;
+        const startColIndex = currentColIndex >= 0 ? currentColIndex : cols.findIndex((c) => c.key === fallbackColKey);
+        let targetColIndex = startColIndex + direction;
 
-        // Clamp to valid range
-        if (targetColIndex < 0) targetColIndex = 0;
-        if (targetColIndex >= cols.length) targetColIndex = cols.length - 1;
-
-        const targetCol = cols[targetColIndex];
-        if (!targetCol) return;
-
-        const targetCards = cards[targetCol.key] ?? [];
-
-        // If no cards in the target column, just move to the column header
-        // (select nothing, but scroll to the column).
-        if (targetCards.length === 0) {
-          // Scroll the target column into view
-          const colEl = document.querySelector(`[data-board-column="${targetCol.key}"]`);
-          if (colEl) colEl.scrollIntoView({ block: "nearest", inline: "nearest" });
-          return;
-        }
-
-        // Select the item at the closest index in the target column
-        const sourceIdx = currentCardIndex >= 0 ? currentCardIndex : fallbackCardIndex;
-        const clampedIdx = Math.max(0, Math.min(sourceIdx, targetCards.length - 1));
-        const targetItem = targetCards[clampedIdx];
-        if (targetItem) {
-          state.selectWorkItem(targetItem.id, false);
-          // Scroll the newly selected card into view after React reconciles
-          setTimeout(() => {
-            const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
-            if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
-          }, 50);
+        // Walk in the pressed direction until we find a column with cards,
+        // or hit the board boundary.
+        while (targetColIndex >= 0 && targetColIndex < cols.length) {
+          const targetCol = cols[targetColIndex];
+          const targetCards = targetCol ? (cards[targetCol.key] ?? []) : [];
+          if (targetCards.length > 0) {
+            // Found a non-empty column — select the closest-index item.
+            const sourceIdx = currentCardIndex >= 0 ? currentCardIndex : fallbackCardIndex;
+            const clampedIdx = Math.max(0, Math.min(sourceIdx, targetCards.length - 1));
+            const targetItem = targetCards[clampedIdx];
+            if (targetItem) {
+              state.selectWorkItem(targetItem.id, false);
+              setTimeout(() => {
+                const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
+                if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+              }, 50);
+            }
+            return;
+          }
+          targetColIndex += direction;
         }
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         // Move up/down within the current column
