@@ -411,6 +411,9 @@ export function TimesheetBrowserDialog({
     if (entry.backlogId && backlogs[entry.backlogId]) {
       return backlogs[entry.backlogId].name;
     }
+    if (entry.treeId && backlogTrees[entry.treeId]) {
+      return `${backlogTrees[entry.treeId].name} (tree)`;
+    }
     return "(unlinked)";
   };
 
