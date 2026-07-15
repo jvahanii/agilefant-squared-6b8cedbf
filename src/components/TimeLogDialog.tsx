@@ -59,10 +59,11 @@ export function parseDuration(input: string): number | null {
 
 const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
 
-export function TimeLogDialog({ workItemId, backlogId, open, onOpenChange }: TimeLogDialogProps) {
+export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChange }: TimeLogDialogProps) {
   const item = useAppStore((s) => workItemId ? s.workItems[workItemId] : null);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const backlog = useAppStore((s) => backlogId ? s.backlogs[backlogId] : null);
+  const tree = useAppStore((s) => treeId ? s.backlogTrees[treeId] : null);
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const addTimeEntry = useTimeEntryStore((s) => s.addTimeEntry);
   const updateTimeEntry = useTimeEntryStore((s) => s.updateTimeEntry);
