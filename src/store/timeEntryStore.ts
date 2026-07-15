@@ -180,6 +180,7 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
         user_id: entry.userId,
         work_item_id: entry.workItemId ?? null,
         backlog_id: entry.backlogId ?? null,
+        tree_id: entry.treeId ?? null,
         duration_minutes: entry.durationMinutes,
         spent_date: entry.spentDate,
         note: entry.note ?? null,
