@@ -177,8 +177,8 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (!item && !backlog) return null;
-  const displayTitle = item?.title ?? backlog?.name ?? "";
+  if (!item && !backlog && !tree) return null;
+  const displayTitle = item?.title ?? backlog?.name ?? tree?.name ?? "";
 
   const handleAdd = async (): Promise<boolean> => {
     const minutes = parseDuration(durationInput);
@@ -193,10 +193,12 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
       userId: user.id,
       workItemId: workItemId ?? null,
       backlogId: backlogId ?? null,
+      treeId: treeId ?? null,
       durationMinutes: minutes,
       spentDate: dateInput,
       note: noteInput.trim() || null,
     });
+
 
     if (workItemId && item?.status === "not_started") {
       setWorkItemStatus(workItemId, "in_progress");
