@@ -90,9 +90,15 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
 
   const itemEntries = useMemo(() => {
     return Object.values(timeEntries)
-      .filter((e) => workItemId ? e.workItemId === workItemId : e.backlogId === backlogId && e.workItemId === null)
+      .filter((e) => {
+        if (workItemId) return e.workItemId === workItemId;
+        if (backlogId) return e.backlogId === backlogId && e.workItemId === null;
+        if (treeId) return e.treeId === treeId && e.workItemId === null && e.backlogId === null;
+        return false;
+      })
       .sort((a, b) => b.spentDate.localeCompare(a.spentDate) || b.createdAt.localeCompare(a.createdAt));
-  }, [timeEntries, workItemId, backlogId]);
+  }, [timeEntries, workItemId, backlogId, treeId]);
+
 
   const totalMinutes = useMemo(
     () => itemEntries.reduce((sum, e) => sum + e.durationMinutes, 0),
