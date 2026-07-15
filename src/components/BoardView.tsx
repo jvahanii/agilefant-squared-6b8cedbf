@@ -403,54 +403,35 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      // Create the item without a pre-computed board rank.
-      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, undefined);
-
-      // Renumber all items in this column with sequential integer board
-      // ranks so the new item lands at the correct position (top for
-      // header adds, or after the selected card for Enter-key adds).
-      const freshState = useAppStore.getState();
-      const newId = freshState.selectedWorkItemIds[0];
-      if (!newId) return;
-
-      const blSet = collectBacklogIds(backlogId, freshState.backlogs);
-      const colWiIds = Object.values(freshState.workItems)
-        .filter((wi) => {
-          const bl = wi.backlogAssignments?.[treeId];
-          if (!bl || !blSet.has(bl)) return false;
-          if (wi.childrenIds.length > 0) return false;
-          return wi.status === statusKey;
-        })
-        .sort((a, b) => {
-          const ab = a.backlogAssignments[treeId];
-          const bb = b.backlogAssignments[treeId];
-          return (a.boardRanks?.[ab] ?? a.ranks?.[ab] ?? 0) - (b.boardRanks?.[bb] ?? b.ranks?.[bb] ?? 0);
-        })
-        .map((wi) => wi.id);
-
-      const withoutNew = colWiIds.filter((id) => id !== newId);
+      const colCards = cardsByStatus[statusKey] ?? [];
       const insertAt = afterIndex !== undefined && afterIndex >= 0 ? afterIndex + 1 : 0;
-      withoutNew.splice(Math.min(insertAt, withoutNew.length), 0, newId);
 
+      // Shift existing items at or above `insertAt` one slot up so the
+      // new item can claim that integer position without collisions.
+      const state = useAppStore.getState();
+      const nextItems = { ...state.workItems };
       const rankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
-      useAppStore.setState((s) => {
-        const next = { ...s.workItems };
-        withoutNew.forEach((id, i) => {
-          const wi = next[id];
-          const blId = wi.backlogAssignments[treeId];
-          next[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: i } };
-          rankRows.push({ workItemId: id, backlogId: blId, rank: i, organizationId: wi.organizationId ?? '' });
-        });
-        return { workItems: next };
-      });
-
+      for (const card of colCards) {
+        const wi = nextItems[card.id];
+        const blId = wi.backlogAssignments[treeId];
+        const currentRank = wi.boardRanks?.[blId] ?? wi.ranks?.[blId] ?? 0;
+        if (currentRank >= insertAt) {
+          const shifted = currentRank + 1;
+          nextItems[card.id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: shifted } };
+          rankRows.push({ workItemId: card.id, backlogId: blId, rank: shifted, organizationId: wi.organizationId ?? '' });
+        }
+      }
       if (rankRows.length > 0) {
+        useAppStore.setState({ workItems: nextItems });
         import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
           upsertWorkItemBoardRankRows(rankRows).catch(() => {});
         });
       }
+
+      // Create the new item at the freed integer position.
+      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, insertAt);
     },
-    [addWorkItem, backlogId, treeId],
+    [addWorkItem, backlogId, treeId, cardsByStatus],
   );
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
