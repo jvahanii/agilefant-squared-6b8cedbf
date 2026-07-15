@@ -85,3 +85,36 @@ export function computeBacklogTotalMinutes(
   }
   return total;
 }
+
+/**
+ * Compute total logged minutes for a backlog tree.
+ * Includes:
+ *  - time entries logged directly on the tree
+ *  - time entries logged on any backlog in the tree
+ *  - time entries logged on work items assigned to any backlog in the tree
+ */
+export function computeTreeTotalMinutes(
+  treeId: string,
+  backlogs: Record<string, Backlog>,
+  workItems: Record<string, WorkItem>,
+  timeEntries: Record<string, TimeEntry>,
+): number {
+  const backlogIdsInTree = new Set<string>();
+  for (const b of Object.values(backlogs)) {
+    if (b.treeId === treeId) backlogIdsInTree.add(b.id);
+  }
+
+  let total = 0;
+  for (const entry of Object.values(timeEntries)) {
+    if (entry.workItemId) {
+      const wi = workItems[entry.workItemId];
+      if (wi?.backlogAssignments?.[treeId]) total += entry.durationMinutes;
+    } else if (entry.backlogId) {
+      if (backlogIdsInTree.has(entry.backlogId)) total += entry.durationMinutes;
+    } else if (entry.treeId === treeId) {
+      total += entry.durationMinutes;
+    }
+  }
+  return total;
+}
+
