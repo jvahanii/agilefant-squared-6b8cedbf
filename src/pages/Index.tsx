@@ -122,6 +122,7 @@ const Index = () => {
   // re-register the listener on every load-state change).
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
+  const visibilityRetryRef = useRef<string | null>(null);
 
   // On mobile, iOS Safari may restore the page from bfcache (back-forward
   // cache) or bring it out of background suspension with in-flight Supabase
@@ -131,6 +132,9 @@ const Index = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !activeOrgId || !isLoadingRef.current) return;
+      const retryKey = `${activeOrgId}:visible-loading`;
+      if (visibilityRetryRef.current === retryKey) return;
+      visibilityRetryRef.current = retryKey;
       setOrganizationId(activeOrgId);
       loadData();
     };
@@ -140,6 +144,10 @@ const Index = () => {
     // are stable Zustand references that never change identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
+
+  useEffect(() => {
+    if (!activeOrgId || !isLoading) visibilityRetryRef.current = null;
+  }, [activeOrgId, isLoading]);
 
   useRespawnCheck();
   useRealtimeSync();

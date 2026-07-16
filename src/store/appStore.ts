@@ -614,6 +614,10 @@ const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
 const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
 
+let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null;
+let appDataBackgroundRefreshInFlight: { orgId: string; promise: Promise<void> } | null = null;
+let lastAppliedCachedSnapshotKey: string | null = null;
+
 type PendingWorkItemUpsert = {
   item: WorkItem;
   organizationId: string;
@@ -656,6 +660,31 @@ function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | '
   } catch {
     // Storage full or unavailable — not critical.
   }
+}
+
+function sameStringArray(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+function buildCachedSnapshotKey(
+  orgId: string,
+  timestamp: number,
+  data: Pick<CachedAppData, 'workItems' | 'backlogs' | 'backlogTrees'>,
+  selectedBacklogIds: string[],
+  selectedTreeId: string | null,
+  selectedWorkItemIds: string[],
+): string {
+  return [
+    orgId,
+    timestamp,
+    Object.keys(data.workItems).sort().join(','),
+    Object.keys(data.backlogs).sort().join(','),
+    Object.keys(data.backlogTrees).sort().join(','),
+    selectedBacklogIds.join(','),
+    selectedTreeId ?? '',
+    selectedWorkItemIds.join(','),
+  ].join('|');
 }
 
 function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
@@ -1008,18 +1037,26 @@ export const useAppStore = create<AppState>()((set, get) => {
     userEmail: null,
     searchQuery: "",
 
-    setOrganizationId: (orgId) => set({ organizationId: orgId }),
-    setUser: (userId, userEmail) => set({ userId, userEmail }),
-    setSearchQuery: (q) => set({ searchQuery: q }),
+    setOrganizationId: (orgId) => set((state) => state.organizationId === orgId ? state : { organizationId: orgId }),
+    setUser: (userId, userEmail) => set((state) =>
+      state.userId === userId && state.userEmail === userEmail ? state : { userId, userEmail },
+    ),
+    setSearchQuery: (q) => set((state) => state.searchQuery === q ? state : { searchQuery: q }),
     logChange: (entry) => internalLog(entry),
     clearChangeLog: () => set({ changeLog: [] }),
 
     loadFromSupabase: async () => {
       const orgId = get().organizationId;
       if (!orgId) {
-        set({ isLoading: false });
+        set((state) => state.isLoading ? { isLoading: false } : state);
         return;
       }
+
+      if (appDataLoadInFlight?.orgId === orgId) {
+        return appDataLoadInFlight.promise;
+      }
+
+      const runLoad = async () => {
 
       // Restore from localStorage cache immediately so repeat visits show
       // the previous state without any loading spinner.  Fresh data from
@@ -1045,25 +1082,61 @@ export const useAppStore = create<AppState>()((set, get) => {
         const validTreeId = storedTreeId && cachedDataWithPending.backlogTrees[storedTreeId] ? storedTreeId : null;
         const validWorkItemIds = storedWorkItemIds.filter((id) => cachedDataWithPending.workItems[id]);
 
-        set({
-          workItems: cachedDataWithPending.workItems,
-          backlogs: cachedDataWithPending.backlogs,
-          backlogTrees: cachedDataWithPending.backlogTrees,
-          hyperlinks: cached.hyperlinks,
-          changeLog: cached.changeLog,
-          selectedBacklogIds: validBacklogIds,
-          selectedTreeId: validTreeId,
-          selectedWorkItemIds: validWorkItemIds,
-          isLoading: false,
-          loadingProgress: 100,
-          undoStack: [],
-          redoStack: [],
-          expandedWorkItems: new Set<string>(),
-          expandedBacklogs: new Set<string>(),
-        });
+        const cachedSnapshotKey = buildCachedSnapshotKey(
+          orgId,
+          cached.timestamp,
+          cachedDataWithPending,
+          validBacklogIds,
+          validTreeId,
+          validWorkItemIds,
+        );
+        const currentState = get();
+        const canSkipCachedApply =
+          lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
+          currentState.organizationId === orgId &&
+          Object.keys(currentState.backlogTrees).length > 0 &&
+          !currentState.isLoading;
+        if (!canSkipCachedApply) {
+          lastAppliedCachedSnapshotKey = cachedSnapshotKey;
+          set((state) => {
+            const selectionUnchanged =
+              sameStringArray(state.selectedBacklogIds, validBacklogIds) &&
+              state.selectedTreeId === validTreeId &&
+              sameStringArray(state.selectedWorkItemIds, validWorkItemIds);
+            if (
+              state.workItems === cachedDataWithPending.workItems &&
+              state.backlogs === cachedDataWithPending.backlogs &&
+              state.backlogTrees === cachedDataWithPending.backlogTrees &&
+              state.hyperlinks === cached.hyperlinks &&
+              state.changeLog === cached.changeLog &&
+              selectionUnchanged &&
+              !state.isLoading &&
+              state.loadingProgress === 100
+            ) {
+              return state;
+            }
+            return {
+              workItems: cachedDataWithPending.workItems,
+              backlogs: cachedDataWithPending.backlogs,
+              backlogTrees: cachedDataWithPending.backlogTrees,
+              hyperlinks: cached.hyperlinks,
+              changeLog: cached.changeLog,
+              selectedBacklogIds: validBacklogIds,
+              selectedTreeId: validTreeId,
+              selectedWorkItemIds: validWorkItemIds,
+              isLoading: false,
+              loadingProgress: 100,
+              undoStack: [],
+              redoStack: [],
+              expandedWorkItems: new Set<string>(),
+              expandedBacklogs: new Set<string>(),
+            };
+          });
+        }
 
         // Refresh in the background so the cache stays fresh.
-        void (async () => {
+        if (appDataBackgroundRefreshInFlight?.orgId !== orgId) {
+          const backgroundPromise = (async () => {
           try {
             // Snapshot the mutation version before fetching so we can
             // detect whether the user made any edits while the network
@@ -1155,11 +1228,18 @@ export const useAppStore = create<AppState>()((set, get) => {
           } catch {
             // Background refresh failed — cached data is still shown.
           }
-        })();
+          })().finally(() => {
+            if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
+              appDataBackgroundRefreshInFlight = null;
+            }
+          });
+          appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
+          void backgroundPromise;
+        }
         return;
       }
 
-      set({ isLoading: true, loadingProgress: 0 });
+      set((state) => state.isLoading && state.loadingProgress === 0 ? state : { isLoading: true, loadingProgress: 0 });
 
       // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
       // a hung network request), unblock the UI so the app renders in an empty state
@@ -1171,12 +1251,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       // BUT set loadingProgress to -1 as a sentinel so App.tsx can
       // detect the failed load and retry.
       const timeoutId = setTimeout(() => {
-        if (get().isLoading) {
+        if (get().organizationId === orgId && get().isLoading) {
           set({ isLoading: false, loadingProgress: -1 });
         }
       }, 15000);
 
       try {
+        if (get().organizationId !== orgId) return;
         set({ loadingProgress: 5 });
 
         // Fire flushPendingRankUpserts concurrently with the main data load
@@ -1199,11 +1280,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         // panel) instead of eagerly on every page load.  This saves one
         // network round-trip on mobile for the common case.
         const [rawData, allHyperlinks] = await Promise.all([
-          loadFromSupabase(orgId).then((r) => { set({ loadingProgress: 50 }); return r; }),
+          loadFromSupabase(orgId).then((r) => {
+            if (get().organizationId === orgId) set({ loadingProgress: 50 });
+            return r;
+          }),
           loadHyperlinksForWorkItems([], orgId)
             .catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>))
-            .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) })); return r; }),
+            .then((r) => {
+              if (get().organizationId === orgId) set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) }));
+              return r;
+            }),
         ]);
+        if (get().organizationId !== orgId) return;
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
@@ -1301,8 +1389,17 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       } catch (err) {
         clearTimeout(timeoutId);
-        set({ isLoading: false, loadingProgress: 0 });
+        if (get().organizationId === orgId) set({ isLoading: false, loadingProgress: 0 });
       }
+      };
+
+      const promise = Promise.resolve().then(runLoad).finally(() => {
+        if (appDataLoadInFlight?.promise === promise) {
+          appDataLoadInFlight = null;
+        }
+      });
+      appDataLoadInFlight = { orgId, promise };
+      return promise;
     },
 
     toggleWorkItemExpand: (id) =>
