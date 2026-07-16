@@ -717,13 +717,20 @@ function removeQueuedWorkItemUpserts(items: WorkItem[], organizationId: string) 
 function mergePendingWorkItems(
   data: ReturnType<typeof sanitizeData>,
   orgId: string,
+  pendingAtLoad: PendingWorkItemUpsert[] = [],
 ): ReturnType<typeof sanitizeData> {
-  const pending = readPendingWorkItemUpserts(orgId);
-  if (pending.length === 0) return data;
+  const pending = [...readPendingWorkItemUpserts(orgId), ...pendingAtLoad]
+    .filter((entry) => entry.organizationId === orgId && entry.item?.id)
+    .reduce((map, entry) => {
+      const existing = map.get(entry.item.id);
+      if (!existing || entry.updatedAt >= existing.updatedAt) map.set(entry.item.id, entry);
+      return map;
+    }, new Map<string, PendingWorkItemUpsert>());
+  if (pending.size === 0) return data;
 
   const workItems = { ...data.workItems };
   let changed = false;
-  pending
+  [...pending.values()]
     .sort((a, b) => a.updatedAt - b.updatedAt)
     .forEach(({ item }) => {
       const validAssignments: Record<string, string> = {};
@@ -758,11 +765,35 @@ function mergePendingWorkItems(
   return { ...data, workItems };
 }
 
-function persistWorkItemUpserts(items: WorkItem[], organizationId: string) {
+function removeQueuedBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
+    const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(existing)) return;
+    const remaining = existing.filter((row) => {
+      const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+      return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+    });
+    if (remaining.length > 0) localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+    else localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
+
+function persistWorkItemUpserts(items: WorkItem[], organizationId: string, boardRankRows: WorkItemBoardRankUpsert[] = []) {
   if (items.length === 0) return;
   queueWorkItemUpsertsForRetry(items, organizationId);
-  upsertWorkItems(items, organizationId).then((ok) => {
-    if (ok) removeQueuedWorkItemUpserts(items, organizationId);
+  if (boardRankRows.length > 0) queueBoardRankUpsertsForRetry(boardRankRows);
+  upsertWorkItems(items, organizationId).then(async (ok) => {
+    if (!ok) return;
+    if (boardRankRows.length > 0) {
+      const boardOk = await upsertWorkItemBoardRankRows(boardRankRows);
+      if (!boardOk) return;
+      removeQueuedBoardRankUpserts(boardRankRows);
+    }
+    removeQueuedWorkItemUpserts(items, organizationId);
   });
 }
 
@@ -826,19 +857,7 @@ function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
   queueBoardRankUpsertsForRetry(rows);
   upsertWorkItemBoardRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
-    try {
-      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
-      const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
-      if (!Array.isArray(existing)) return;
-      const remaining = existing.filter((row) => {
-        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
-        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
-      });
-      if (remaining.length > 0) localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify(remaining));
-      else localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
-    } catch {
-      // Best-effort cleanup only.
-    }
+    removeQueuedBoardRankUpserts(rows);
   });
 }
 
@@ -1028,6 +1047,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             // round-trip was in-flight. If they did, we skip overwriting
             // state to avoid losing their changes.
             const versionBeforeFetch = localMutationVersion;
+            const pendingAtLoad = readPendingWorkItemUpserts(orgId);
             await flushPendingWorkItemUpserts(orgId).catch(() => {});
             await flushPendingRankUpserts().catch(() => {});
             await flushPendingBoardRankUpserts().catch(() => {});
@@ -1043,7 +1063,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (localMutationVersion !== versionBeforeFetch) {
               // User edited — don't overwrite, but still update cache
               // for next visit.
-              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
+              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
               writeCachedAppData(orgId, {
                 workItems: cleanDataBg.workItems,
                 backlogs: cleanDataBg.backlogs,
@@ -1056,7 +1076,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               });
               return;
             }
-            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
+            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
 
         // Bug fix: if sanitizeData dropped ALL backlog assignments for an
         // item that existed in the current store with valid assignments,
@@ -1139,6 +1159,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Fire flushPendingRankUpserts concurrently with the main data load
         // instead of blocking on it first.  If it fails or hangs the data
         // still arrives and the UI becomes interactive sooner.
+        const pendingAtLoad = readPendingWorkItemUpserts(orgId);
         const rankFlushPromise = Promise.all([
           flushPendingWorkItemUpserts(orgId).catch(() => {}),
           flushPendingRankUpserts().catch(() => {}),
@@ -1163,7 +1184,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
-        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
         set({ loadingProgress: 80 });
 
         // Filter hyperlinks to the work items that survived sanitization.
@@ -1717,9 +1738,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       orderedIds.splice(insertIndex, 0, id);
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
-      persistWorkItemUpserts(itemsToUpdateInDB, orgId);
-      // Always persist the board rank so echoes/reloads reproduce the position.
-      persistBoardRankUpserts([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]);
+      const newItemBoardRankRows = [{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }];
+      persistWorkItemUpserts(itemsToUpdateInDB, orgId, newItemBoardRankRows);
 
 
       if (parentId && updatedWorkItems[parentId]) {
@@ -1801,13 +1821,13 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      persistWorkItemUpserts(newItems, orgId);
-      persistBoardRankUpserts(newItems.map((item) => ({
+      const newItemBoardRankRows = newItems.map((item) => ({
         workItemId: item.id,
         backlogId,
         rank: item.boardRanks?.[backlogId] ?? item.ranks[backlogId] ?? 0,
         organizationId: orgId,
-      })));
+      }));
+      persistWorkItemUpserts(newItems, orgId, newItemBoardRankRows);
       internalLog({ action: "Bulk Add", entityType: "work_item", details: `${titles.length} items added` });
 
       set({
