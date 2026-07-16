@@ -614,6 +614,9 @@ const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
 const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
 
+let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null;
+let lastAppliedCachedSnapshotKey: string | null = null;
+
 type PendingWorkItemUpsert = {
   item: WorkItem;
   organizationId: string;
@@ -656,6 +659,31 @@ function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | '
   } catch {
     // Storage full or unavailable — not critical.
   }
+}
+
+function sameStringArray(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+function buildCachedSnapshotKey(
+  orgId: string,
+  timestamp: number,
+  data: Pick<CachedAppData, 'workItems' | 'backlogs' | 'backlogTrees'>,
+  selectedBacklogIds: string[],
+  selectedTreeId: string | null,
+  selectedWorkItemIds: string[],
+): string {
+  return [
+    orgId,
+    timestamp,
+    Object.keys(data.workItems).sort().join(','),
+    Object.keys(data.backlogs).sort().join(','),
+    Object.keys(data.backlogTrees).sort().join(','),
+    selectedBacklogIds.join(','),
+    selectedTreeId ?? '',
+    selectedWorkItemIds.join(','),
+  ].join('|');
 }
 
 function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
