@@ -852,6 +852,19 @@ function queueBoardRankUpsertsForRetry(rows: WorkItemBoardRankUpsert[]) {
   }
 }
 
+function readPendingBoardRankUpserts(): WorkItemBoardRankUpsert[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending)) return [];
+    return pending.filter((row): row is WorkItemBoardRankUpsert =>
+      !!row?.workItemId && !!row?.backlogId && typeof row?.rank === "number" && !!row?.organizationId,
+    );
+  } catch {
+    return [];
+  }
+}
+
 function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
   if (rows.length === 0) return;
   queueBoardRankUpsertsForRetry(rows);
@@ -876,8 +889,8 @@ async function flushPendingRankUpserts() {
 async function flushPendingBoardRankUpserts() {
   if (typeof localStorage === "undefined") return;
   try {
-    const pending = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
-    if (!Array.isArray(pending) || pending.length === 0) return;
+    const pending = readPendingBoardRankUpserts();
+    if (pending.length === 0) return;
     const ok = await upsertWorkItemBoardRankRows(pending);
     if (ok) localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
   } catch {
@@ -889,8 +902,18 @@ async function flushPendingWorkItemUpserts(orgId: string) {
   const pending = readPendingWorkItemUpserts(orgId);
   if (pending.length === 0) return;
   const items = pending.map((entry) => entry.item);
+  const itemIds = new Set(items.map((item) => item.id));
+  const boardRows = readPendingBoardRankUpserts().filter(
+    (row) => row.organizationId === orgId && itemIds.has(row.workItemId),
+  );
   const ok = await upsertWorkItems(items, orgId);
-  if (ok) removeQueuedWorkItemUpserts(items, orgId);
+  if (!ok) return;
+  if (boardRows.length > 0) {
+    const boardOk = await upsertWorkItemBoardRankRows(boardRows);
+    if (!boardOk) return;
+    removeQueuedBoardRankUpserts(boardRows);
+  }
+  removeQueuedWorkItemUpserts(items, orgId);
 }
 
 /**
