@@ -311,6 +311,33 @@ describe("addWorkItem", () => {
   });
 });
 
+describe("loadFromSupabase refresh guards", () => {
+  it("coalesces overlapping app data loads for the same organization", async () => {
+    const rawData = {
+      workItems: {},
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+    };
+    let resolveLoad!: (value: typeof rawData) => void;
+    vi.mocked(loadDataFromSupabase).mockReturnValueOnce(new Promise((resolve) => {
+      resolveLoad = resolve;
+    }) as ReturnType<typeof loadDataFromSupabase>);
+    useAppStore.setState({ organizationId: ORG, isLoading: false, workItems: {}, backlogs: {}, backlogTrees: {} });
+
+    const first = useAppStore.getState().loadFromSupabase();
+    const second = useAppStore.getState().loadFromSupabase();
+    resolveLoad(rawData);
+    await Promise.all([first, second]);
+
+    expect(loadDataFromSupabase).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().backlogTrees[`${ORG}::bt-1`]?.name).toBe("Tree 1");
+  });
+});
+
 describe("deleteWorkItem", () => {
   it("removes item from store", () => {
     seedStore();
