@@ -1090,7 +1090,13 @@ export const useAppStore = create<AppState>()((set, get) => {
           validTreeId,
           validWorkItemIds,
         );
-        if (lastAppliedCachedSnapshotKey !== cachedSnapshotKey) {
+        const currentState = get();
+        const canSkipCachedApply =
+          lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
+          currentState.organizationId === orgId &&
+          Object.keys(currentState.backlogTrees).length > 0 &&
+          !currentState.isLoading;
+        if (!canSkipCachedApply) {
           lastAppliedCachedSnapshotKey = cachedSnapshotKey;
           set((state) => {
             const selectionUnchanged =
