@@ -837,31 +837,51 @@ function AppLayoutInner() {
 
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
-        // Dropping on the column header/surface only changes the status
-        // and seeds a board rank at the top of the target column. List rank
-        // is unaffected — the two views have fully independent orderings.
+        // Dropping on the column empty space places the item at the END of
+        // the column and updates both board and list ranks to keep both views
+        // in sync.
         const surfaceStore = useAppStore.getState();
         const boardRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+        const listRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
+
+        // Find the treeId from the droppable to resolve the backlog context.
+        const treeId = overData.treeId as string | undefined;
+
         draggedIds.forEach((id) => {
           const wi = surfaceStore.workItems[id];
           if (!wi) return;
           if (wi.status !== statusKey) {
             surfaceStore.setWorkItemStatus(id, statusKey);
           }
-          const blId = wi.backlogAssignments[Object.keys(wi.backlogAssignments)[0]];
-          // Find target backlog: use the item's current backlog assignment in any accessible tree.
           const targetBlId = Object.values(wi.backlogAssignments)[0];
           if (!targetBlId) return;
-          // Compute "top of column" = min existing boardRank in (targetBlId, statusKey) minus 1.
-          let minBoard = Infinity;
+
+          // Compute board rank at the END of the column: max + 1.
+          let maxBoard = -Infinity;
+          let maxList = -Infinity;
+          // Also compute max list rank among siblings for the list-view position.
+          const effectiveParentId = treeId
+            ? (wi.parentIds?.[treeId] ?? wi.parentId)
+            : wi.parentId;
           for (const other of Object.values(surfaceStore.workItems)) {
             if (other.id === id) continue;
-            if (other.status !== statusKey) continue;
             if (!Object.values(other.backlogAssignments).includes(targetBlId)) continue;
-            const br = other.boardRanks?.[targetBlId];
-            if (typeof br === 'number' && br < minBoard) minBoard = br;
+            // Board rank: same-status items in the target backlog
+            if (other.status === statusKey) {
+              const br = other.boardRanks?.[targetBlId];
+              if (typeof br === 'number' && br > maxBoard) maxBoard = br;
+            }
+            // List rank: same-parent siblings in the target backlog
+            const otherEffectiveParent = treeId
+              ? (other.parentIds?.[treeId] ?? other.parentId)
+              : other.parentId;
+            if (otherEffectiveParent === effectiveParentId) {
+              const lr = other.ranks?.[targetBlId];
+              if (typeof lr === 'number' && lr > maxList) maxList = lr;
+            }
           }
-          const newBoardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+          const newBoardRank = Number.isFinite(maxBoard) ? maxBoard + 1 : 0;
+          const newListRank = Number.isFinite(maxList) ? maxList + 1 : 0;
           // Optimistic local update.
           useAppStore.setState((s) => {
             const cur = s.workItems[id];
@@ -869,16 +889,25 @@ function AppLayoutInner() {
             return {
               workItems: {
                 ...s.workItems,
-                [id]: { ...cur, boardRanks: { ...(cur.boardRanks ?? {}), [targetBlId]: newBoardRank } },
+                [id]: {
+                  ...cur,
+                  boardRanks: { ...(cur.boardRanks ?? {}), [targetBlId]: newBoardRank },
+                  ranks: { ...cur.ranks, [targetBlId]: newListRank },
+                },
               },
             };
           });
           boardRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newBoardRank, organizationId: wi.organizationId ?? '' });
-          void blId;
+          listRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newListRank, organizationId: wi.organizationId ?? '' });
         });
         if (boardRankRows.length > 0) {
           import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
             upsertWorkItemBoardRankRows(boardRankRows).catch(() => {});
+          });
+        }
+        if (listRankRows.length > 0) {
+          import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
+            upsertWorkItemBacklogRankRows(listRankRows).catch(() => {});
           });
         }
         return;
