@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData } from "@/store/appStore";
 import { getEffectiveParentId } from "@/types/models";
-import { upsertWorkItemBacklogRankRows, upsertWorkItems } from "@/store/supabaseSync";
+import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
 vi.mock("@/store/supabaseSync", () => ({
@@ -83,7 +83,11 @@ function seedStore() {
 
 beforeEach(() => {
   localStorage.clear();
+  vi.mocked(loadDataFromSupabase).mockClear();
+  vi.mocked(loadDataFromSupabase).mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} });
   vi.mocked(upsertWorkItemBacklogRankRows).mockClear();
+  vi.mocked(upsertWorkItemBoardRankRows).mockClear();
+  vi.mocked(upsertWorkItemBoardRankRows).mockResolvedValue(true);
   vi.mocked(upsertWorkItems).mockClear();
   vi.mocked(upsertWorkItems).mockResolvedValue(true);
   useAppStore.setState({
@@ -249,6 +253,61 @@ describe("addWorkItem", () => {
         }),
       }),
     ]));
+  });
+
+  it("keeps the full work item queued until its board rank is saved", async () => {
+    vi.mocked(upsertWorkItems).mockResolvedValueOnce(true);
+    vi.mocked(upsertWorkItemBoardRankRows).mockResolvedValueOnce(false);
+    seedStore();
+
+    useAppStore.getState().addWorkItem("Board Rank Pending", null, `${ORG}::bl-1`, `${ORG}::bt-1`, undefined, "in_progress", 5);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const pendingItems = JSON.parse(localStorage.getItem("pending_work_item_upserts") ?? "[]");
+    const pendingBoardRanks = JSON.parse(localStorage.getItem("pending_work_item_board_rank_upserts") ?? "[]");
+    expect(pendingItems).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        organizationId: ORG,
+        item: expect.objectContaining({ title: "Board Rank Pending" }),
+      }),
+    ]));
+    expect(pendingBoardRanks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ backlogId: `${ORG}::bl-1`, rank: 5, organizationId: ORG }),
+    ]));
+  });
+
+  it("keeps a pending item visible during reload even if the flush succeeds first", async () => {
+    const pendingItem = {
+      id: `${ORG}::wi-pending`,
+      title: "Reload Pending",
+      status: "not_started" as const,
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      ranks: { [`${ORG}::bl-1`]: 0 },
+      boardRanks: { [`${ORG}::bl-1`]: 0 },
+      organizationId: ORG,
+    };
+    localStorage.setItem("pending_work_item_upserts", JSON.stringify([
+      { item: pendingItem, organizationId: ORG, updatedAt: Date.now() },
+    ]));
+    vi.mocked(upsertWorkItems).mockResolvedValueOnce(true);
+    vi.mocked(loadDataFromSupabase).mockResolvedValueOnce({
+      workItems: {},
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+    });
+    useAppStore.setState({ organizationId: ORG, isLoading: false });
+
+    await useAppStore.getState().loadFromSupabase();
+
+    expect(useAppStore.getState().workItems[pendingItem.id]?.title).toBe("Reload Pending");
+    expect(localStorage.getItem("pending_work_item_upserts")).toBeNull();
   });
 });
 
