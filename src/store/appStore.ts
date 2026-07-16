@@ -21,6 +21,7 @@ import {
   upsertWorkItemBacklogRankRows,
   upsertWorkItemBoardRankRows,
   type WorkItemBacklogRankUpsert,
+  type WorkItemBoardRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -608,8 +609,16 @@ function assignSequentialRanksForContext(
 
 
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
+const PENDING_BOARD_RANK_UPSERTS_KEY = "pending_work_item_board_rank_upserts";
+const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
 const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
+
+type PendingWorkItemUpsert = {
+  item: WorkItem;
+  organizationId: string;
+  updatedAt: number;
+};
 
 interface CachedAppData {
   orgId: string;
@@ -647,6 +656,114 @@ function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | '
   } catch {
     // Storage full or unavailable — not critical.
   }
+}
+
+function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
+  const cached = readCachedAppData(orgId);
+  if (!cached) return;
+  const { orgId: _cachedOrgId, timestamp: _cachedTimestamp, ...cachedData } = cached;
+  writeCachedAppData(orgId, {
+    ...cachedData,
+    workItems: { ...cachedData.workItems, ...workItemsPatch },
+    selectedWorkItemIds: selectedWorkItemIds ?? cachedData.selectedWorkItemIds,
+  });
+}
+
+function readPendingWorkItemUpserts(orgId: string): PendingWorkItemUpsert[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending)) return [];
+    return pending.filter((entry): entry is PendingWorkItemUpsert =>
+      entry?.organizationId === orgId && entry?.item?.id && entry.item.backlogAssignments,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function queueWorkItemUpsertsForRetry(items: WorkItem[], organizationId: string) {
+  if (typeof localStorage === "undefined" || items.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, PendingWorkItemUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((entry) => {
+        if (entry?.item?.id && entry?.organizationId) deduped.set(`${entry.organizationId}::${entry.item.id}`, entry);
+      });
+    }
+    const now = Date.now();
+    items.forEach((item) => deduped.set(`${organizationId}::${item.id}`, { item, organizationId, updatedAt: now }));
+    localStorage.setItem(PENDING_WORK_ITEM_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function removeQueuedWorkItemUpserts(items: WorkItem[], organizationId: string) {
+  if (typeof localStorage === "undefined" || items.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(existing)) return;
+    const saved = new Set(items.map((item) => `${organizationId}::${item.id}`));
+    const remaining = existing.filter((entry) => !saved.has(`${entry?.organizationId}::${entry?.item?.id}`));
+    if (remaining.length > 0) localStorage.setItem(PENDING_WORK_ITEM_UPSERTS_KEY, JSON.stringify(remaining));
+    else localStorage.removeItem(PENDING_WORK_ITEM_UPSERTS_KEY);
+  } catch {
+    // Keep the queue rather than risking data loss.
+  }
+}
+
+function mergePendingWorkItems(
+  data: ReturnType<typeof sanitizeData>,
+  orgId: string,
+): ReturnType<typeof sanitizeData> {
+  const pending = readPendingWorkItemUpserts(orgId);
+  if (pending.length === 0) return data;
+
+  const workItems = { ...data.workItems };
+  let changed = false;
+  pending
+    .sort((a, b) => a.updatedAt - b.updatedAt)
+    .forEach(({ item }) => {
+      const validAssignments: Record<string, string> = {};
+      for (const [treeId, backlogId] of Object.entries(item.backlogAssignments ?? {})) {
+        if (data.backlogTrees[treeId] && data.backlogs[backlogId]) validAssignments[treeId] = backlogId;
+      }
+      if (Object.keys(validAssignments).length === 0) return;
+      workItems[item.id] = {
+        ...item,
+        backlogAssignments: validAssignments,
+        childrenIds: [],
+      };
+      changed = true;
+    });
+
+  if (!changed) return data;
+
+  for (const wi of Object.values(workItems)) wi.childrenIds = [];
+  for (const wi of Object.values(workItems)) {
+    if (wi.parentId && workItems[wi.parentId]) {
+      workItems[wi.parentId].childrenIds.push(wi.id);
+    }
+    if (wi.parentIds) {
+      for (const treeParentId of Object.values(wi.parentIds)) {
+        if (treeParentId && treeParentId !== wi.parentId && workItems[treeParentId]) {
+          if (!workItems[treeParentId].childrenIds.includes(wi.id)) workItems[treeParentId].childrenIds.push(wi.id);
+        }
+      }
+    }
+  }
+
+  return { ...data, workItems };
+}
+
+function persistWorkItemUpserts(items: WorkItem[], organizationId: string) {
+  if (items.length === 0) return;
+  queueWorkItemUpsertsForRetry(items, organizationId);
+  upsertWorkItems(items, organizationId).then((ok) => {
+    if (ok) removeQueuedWorkItemUpserts(items, organizationId);
+  });
 }
 
 function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
@@ -687,6 +804,44 @@ function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   });
 }
 
+function queueBoardRankUpsertsForRetry(rows: WorkItemBoardRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, WorkItemBoardRankUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((row) => {
+        if (row?.workItemId && row?.backlogId && row?.organizationId) deduped.set(`${row.workItemId}::${row.backlogId}`, row);
+      });
+    }
+    rows.forEach((row) => deduped.set(`${row.workItemId}::${row.backlogId}`, row));
+    localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
+  if (rows.length === 0) return;
+  queueBoardRankUpsertsForRetry(rows);
+  upsertWorkItemBoardRankRows(rows).then((ok) => {
+    if (!ok || typeof localStorage === "undefined") return;
+    try {
+      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
+      const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+      if (!Array.isArray(existing)) return;
+      const remaining = existing.filter((row) => {
+        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+      });
+      if (remaining.length > 0) localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+      else localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+    } catch {
+      // Best-effort cleanup only.
+    }
+  });
+}
+
 async function flushPendingRankUpserts() {
   if (typeof localStorage === "undefined") return;
   try {
@@ -697,6 +852,26 @@ async function flushPendingRankUpserts() {
   } catch {
     localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   }
+}
+
+async function flushPendingBoardRankUpserts() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    const ok = await upsertWorkItemBoardRankRows(pending);
+    if (ok) localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+  } catch {
+    localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+  }
+}
+
+async function flushPendingWorkItemUpserts(orgId: string) {
+  const pending = readPendingWorkItemUpserts(orgId);
+  if (pending.length === 0) return;
+  const items = pending.map((entry) => entry.item);
+  const ok = await upsertWorkItems(items, orgId);
+  if (ok) removeQueuedWorkItemUpserts(items, orgId);
 }
 
 /**
@@ -809,6 +984,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Supabase replaces the cache asynchronously afterwards.
       const cached = readCachedAppData(orgId);
       if (cached && Object.keys(cached.workItems).length > 0) {
+        const cachedDataWithPending = mergePendingWorkItems({
+          workItems: cached.workItems,
+          backlogs: cached.backlogs,
+          backlogTrees: cached.backlogTrees,
+        }, orgId);
         const parseStoredIdsCached = (key: string): string[] => {
           try {
             const raw = localStorage.getItem(key);
@@ -819,14 +999,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         const storedBacklogIds = parseStoredIdsCached(`selection_${orgId}_backlogIds`);
         const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
         const storedWorkItemIds = parseStoredIdsCached(`selection_${orgId}_workItemIds`);
-        const validBacklogIds = storedBacklogIds.filter((id) => cached.backlogs[id]);
-        const validTreeId = storedTreeId && cached.backlogTrees[storedTreeId] ? storedTreeId : null;
-        const validWorkItemIds = storedWorkItemIds.filter((id) => cached.workItems[id]);
+        const validBacklogIds = storedBacklogIds.filter((id) => cachedDataWithPending.backlogs[id]);
+        const validTreeId = storedTreeId && cachedDataWithPending.backlogTrees[storedTreeId] ? storedTreeId : null;
+        const validWorkItemIds = storedWorkItemIds.filter((id) => cachedDataWithPending.workItems[id]);
 
         set({
-          workItems: cached.workItems,
-          backlogs: cached.backlogs,
-          backlogTrees: cached.backlogTrees,
+          workItems: cachedDataWithPending.workItems,
+          backlogs: cachedDataWithPending.backlogs,
+          backlogTrees: cachedDataWithPending.backlogTrees,
           hyperlinks: cached.hyperlinks,
           changeLog: cached.changeLog,
           selectedBacklogIds: validBacklogIds,
@@ -848,7 +1028,9 @@ export const useAppStore = create<AppState>()((set, get) => {
             // round-trip was in-flight. If they did, we skip overwriting
             // state to avoid losing their changes.
             const versionBeforeFetch = localMutationVersion;
+            await flushPendingWorkItemUpserts(orgId).catch(() => {});
             await flushPendingRankUpserts().catch(() => {});
+            await flushPendingBoardRankUpserts().catch(() => {});
             const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
               loadFromSupabase(orgId),
               loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
@@ -861,7 +1043,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (localMutationVersion !== versionBeforeFetch) {
               // User edited — don't overwrite, but still update cache
               // for next visit.
-              const cleanDataBg = sanitizeData(rawData, orgId);
+              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
               writeCachedAppData(orgId, {
                 workItems: cleanDataBg.workItems,
                 backlogs: cleanDataBg.backlogs,
@@ -874,7 +1056,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               });
               return;
             }
-            const cleanData = sanitizeData(rawData, orgId);
+            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
 
         // Bug fix: if sanitizeData dropped ALL backlog assignments for an
         // item that existed in the current store with valid assignments,
@@ -957,7 +1139,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Fire flushPendingRankUpserts concurrently with the main data load
         // instead of blocking on it first.  If it fails or hangs the data
         // still arrives and the UI becomes interactive sooner.
-        const rankFlushPromise = flushPendingRankUpserts().catch(() => {});
+        const rankFlushPromise = Promise.all([
+          flushPendingWorkItemUpserts(orgId).catch(() => {}),
+          flushPendingRankUpserts().catch(() => {}),
+          flushPendingBoardRankUpserts().catch(() => {}),
+        ]).catch(() => {});
 
         // Run the main data load, hyperlinks (org-scoped), change log, and
         // rank flush all concurrently. Hyperlinks can be fetched by
@@ -977,7 +1163,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
-        const cleanData = sanitizeData(rawData, orgId);
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
         set({ loadingProgress: 80 });
 
         // Filter hyperlinks to the work items that survived sanitization.
@@ -1259,14 +1445,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         }),
       );
       // Also persist board ranks so the board view stays in sync.
-      upsertWorkItemBoardRankRows(
+      persistBoardRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
-      ).catch(() => {});
+      );
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -1523,6 +1709,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         status: targetStatus,
         childrenIds: [],
         points: undefined,
+        organizationId: orgId,
       };
 
       updatedWorkItems[id] = newItem;
@@ -1530,9 +1717,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       orderedIds.splice(insertIndex, 0, id);
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
-      upsertWorkItems(itemsToUpdateInDB, orgId);
+      persistWorkItemUpserts(itemsToUpdateInDB, orgId);
       // Always persist the board rank so echoes/reloads reproduce the position.
-      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]).catch(() => {});
+      persistBoardRankUpserts([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]);
 
 
       if (parentId && updatedWorkItems[parentId]) {
@@ -1552,6 +1739,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
+      patchCachedWorkItems(orgId, {
+        ...Object.fromEntries(itemsToUpdateInDB.map((wi) => [wi.id, updatedWorkItems[wi.id] ?? wi])),
+        ...(parentId && updatedWorkItems[parentId] ? { [parentId]: updatedWorkItems[parentId] } : {}),
+      }, [id]);
 
       const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
@@ -1592,10 +1783,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           title,
           parentId,
           ranks: { [backlogId]: maxRank + 1 + i },
+          boardRanks: { [backlogId]: maxRank + 1 + i },
           backlogAssignments: { [treeId]: backlogId },
           status: "not_started" as WorkItemStatus,
           childrenIds: [],
           points: undefined,
+          organizationId: orgId,
         };
         updatedWorkItems[id] = newItem;
         newItems.push(newItem);
@@ -1608,13 +1801,23 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      upsertWorkItems(newItems, orgId);
+      persistWorkItemUpserts(newItems, orgId);
+      persistBoardRankUpserts(newItems.map((item) => ({
+        workItemId: item.id,
+        backlogId,
+        rank: item.boardRanks?.[backlogId] ?? item.ranks[backlogId] ?? 0,
+        organizationId: orgId,
+      })));
       internalLog({ action: "Bulk Add", entityType: "work_item", details: `${titles.length} items added` });
 
       set({
         workItems: updatedWorkItems,
         undoStack: pushUndoEntry(state),
         redoStack: [],
+      });
+      patchCachedWorkItems(orgId, {
+        ...Object.fromEntries(newItems.map((wi) => [wi.id, updatedWorkItems[wi.id] ?? wi])),
+        ...(parentId && updatedWorkItems[parentId] ? { [parentId]: updatedWorkItems[parentId] } : {}),
       });
     },
 

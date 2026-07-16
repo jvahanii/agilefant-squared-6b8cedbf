@@ -444,11 +444,11 @@ async function withSessionRetry(
   return operation();
 }
 
-export async function upsertWorkItem(item: WorkItem, organizationId: string) {
+export async function upsertWorkItem(item: WorkItem, organizationId: string): Promise<boolean> {
   return enqueueWorkItemMutation(async () => upsertWorkItemImmediate(item, organizationId));
 }
 
-async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
+async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): Promise<boolean> {
   // Repair stale org prefix (if any) before writing.  This renames the DB row
   // and notifies the store callback so local state stays consistent.
   const oldToNew = await repairStaleOrgPrefixes([item], organizationId);
@@ -476,9 +476,10 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string) {
   if (error) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    return false;
   }
   // Persist per-backlog ranks to the dedicated table
-  await upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
+  return upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
 }
 
 /** Delete stale per-backlog rank rows for a set of (workItemId, backlogId) pairs. */
@@ -575,12 +576,12 @@ export async function deleteBacklogTree(id: string) {
   if (error) console.error('deleteBacklogTree:', error);
 }
 
-export async function upsertWorkItems(items: WorkItem[], organizationId: string) {
+export async function upsertWorkItems(items: WorkItem[], organizationId: string): Promise<boolean> {
   return enqueueWorkItemMutation(async () => upsertWorkItemsImmediate(items, organizationId));
 }
 
-async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: string) {
-  if (items.length === 0) return;
+async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: string): Promise<boolean> {
+  if (items.length === 0) return true;
 
   // Repair any stale org prefixes before writing.
   const oldToNew = await repairStaleOrgPrefixes(items, organizationId);
@@ -614,9 +615,10 @@ async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: strin
   if (error) {
     console.error('upsertWorkItems:', error, 'rows:', dedupedRows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    return false;
   }
   // Persist per-backlog ranks to the dedicated table
-  await upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
+  return upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
@@ -876,9 +878,9 @@ async function upsertWorkItemBacklogRanks(
   workItemId: string,
   ranks: Record<string, number>,
   organizationId: string,
-): Promise<void> {
+): Promise<boolean> {
   const rows = Object.entries(ranks).map(([backlogId, rank]) => ({ workItemId, backlogId, rank, organizationId }));
-  await upsertWorkItemBacklogRankRowsImmediate(rows);
+  return upsertWorkItemBacklogRankRowsImmediate(rows);
 }
 
 export async function upsertWorkItemBacklogRankRows(
@@ -917,7 +919,7 @@ async function upsertWorkItemBacklogRanksBatch(
   items: WorkItem[],
   oldToNew: Record<string, string>,
   organizationId: string,
-): Promise<void> {
+): Promise<boolean> {
   const rows: Array<{ work_item_id: string; backlog_id: string; rank: number; organization_id: string }> = [];
   for (const item of items) {
     const resolvedId = oldToNew[item.id] ?? item.id;
@@ -931,7 +933,7 @@ async function upsertWorkItemBacklogRanksBatch(
       });
     }
   }
-  if (rows.length === 0) return;
+  if (rows.length === 0) return true;
   // Dedupe by (work_item_id, backlog_id) so a single payload never has two
   // rows targeting the same conflict key (would raise "cannot affect row a
   // second time"). Last write wins.
@@ -948,7 +950,9 @@ async function upsertWorkItemBacklogRanksBatch(
   if (error) {
     console.error('upsertWorkItemBacklogRanksBatch:', error);
     toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    return false;
   }
+  return true;
 }
 
 // ─── Work Item Board Ranks CRUD (independent from list ranks) ─────────────
