@@ -7,7 +7,7 @@ import { upsertWorkItemBacklogRankRows, upsertWorkItems } from "@/store/supabase
 vi.mock("@/store/supabaseSync", () => ({
   loadFromSupabase: vi.fn().mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} }),
   upsertWorkItem: vi.fn(),
-  upsertWorkItems: vi.fn(),
+  upsertWorkItems: vi.fn().mockResolvedValue(true),
   upsertWorkItemBacklogRankRows: vi.fn().mockResolvedValue(true),
   upsertWorkItemBoardRankRows: vi.fn().mockResolvedValue(true),
   deleteWorkItemBoardRanks: vi.fn().mockResolvedValue(undefined),
@@ -85,6 +85,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(upsertWorkItemBacklogRankRows).mockClear();
   vi.mocked(upsertWorkItems).mockClear();
+  vi.mocked(upsertWorkItems).mockResolvedValue(true);
   useAppStore.setState({
     workItems: {}, backlogs: {}, backlogTrees: {}, hyperlinks: {},
     selectedBacklogIds: [], selectedTreeId: null, selectedWorkItemIds: [],
