@@ -66,11 +66,19 @@ interface Member {
   role: "owner" | "admin" | "member";
 }
 
+const DEFAULT_TEAM_SETTINGS_ORG_SETTINGS = {
+  timeLoggingEnabled: false,
+  pointsEnabled: false,
+  labelsEnabled: false,
+};
+
 export default function TeamSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const activeOrg = useOrgStore((s) => s.getActiveOrg());
+  const memberships = useOrgStore((s) => s.memberships);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const activeOrg = memberships.find((m) => m.organization_id === activeOrgId) ?? null;
   const loadMemberships = useOrgStore((s) => s.loadMemberships);
   const [members, setMembers] = useState<Member[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -90,7 +98,7 @@ export default function TeamSettings() {
 
   // Org settings from backend
   const orgSettings = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""] ?? { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false },
+    (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_TEAM_SETTINGS_ORG_SETTINGS,
   );
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setOrganizationId = useAppStore((s) => s.setOrganizationId);
@@ -106,7 +114,7 @@ export default function TeamSettings() {
   // Terms of Service state
   const [tosOpen, setTosOpen] = useState(false);
 
-  const currentRole = activeOrg?.role;
+  const currentRole = roleOverride ?? activeOrg?.role;
   const canManage = currentRole === "owner" || currentRole === "admin";
 
   // Load data that may not be populated when landing directly on this page

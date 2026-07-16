@@ -17,6 +17,12 @@ import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Link2, RotateCcw, T
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 
+const DEFAULT_MOBILE_ORG_SETTINGS = {
+  pointsEnabled: false,
+  timeLoggingEnabled: false,
+  labelsEnabled: false,
+};
+
 // ─── Work Item Attributes Sheet ──────────────────────────────────────────────
 
 interface MobileWorkItemAttributesSheetProps {
@@ -49,7 +55,7 @@ export function MobileWorkItemAttributesSheet({
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false, labelsEnabled: false },
+    (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
@@ -307,7 +313,7 @@ export function MobileBacklogAttributesSheet({
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""] ?? { pointsEnabled: false, timeLoggingEnabled: false, labelsEnabled: false },
+    (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
   const pointsVisible = orgSettings.pointsEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
