@@ -5,6 +5,24 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://hwwjwkdbautfkhpxuord.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3d2p3a2RiYXV0ZmtocHh1b3JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzkwNDAsImV4cCI6MjA4OTk1NTA0MH0.PN9xhG95nXlaUJn5DmtoQJ62yn3XJWOsHvZyQF8Zq2I";
 
+const authLocks = new Map<string, Promise<void>>();
+
+const authLock = async <R>(name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => {
+  const previous = authLocks.get(name) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => { release = resolve; });
+  const tail = previous.then(() => current, () => current);
+  authLocks.set(name, tail);
+
+  await previous.catch(() => undefined);
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (authLocks.get(name) === tail) authLocks.delete(name);
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -13,5 +31,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    lock: authLock,
   }
 });
