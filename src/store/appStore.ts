@@ -1037,18 +1037,26 @@ export const useAppStore = create<AppState>()((set, get) => {
     userEmail: null,
     searchQuery: "",
 
-    setOrganizationId: (orgId) => set({ organizationId: orgId }),
-    setUser: (userId, userEmail) => set({ userId, userEmail }),
-    setSearchQuery: (q) => set({ searchQuery: q }),
+    setOrganizationId: (orgId) => set((state) => state.organizationId === orgId ? state : { organizationId: orgId }),
+    setUser: (userId, userEmail) => set((state) =>
+      state.userId === userId && state.userEmail === userEmail ? state : { userId, userEmail },
+    ),
+    setSearchQuery: (q) => set((state) => state.searchQuery === q ? state : { searchQuery: q }),
     logChange: (entry) => internalLog(entry),
     clearChangeLog: () => set({ changeLog: [] }),
 
     loadFromSupabase: async () => {
       const orgId = get().organizationId;
       if (!orgId) {
-        set({ isLoading: false });
+        set((state) => state.isLoading ? { isLoading: false } : state);
         return;
       }
+
+      if (appDataLoadInFlight?.orgId === orgId) {
+        return appDataLoadInFlight.promise;
+      }
+
+      const runLoad = async () => {
 
       // Restore from localStorage cache immediately so repeat visits show
       // the previous state without any loading spinner.  Fresh data from
@@ -1074,25 +1082,55 @@ export const useAppStore = create<AppState>()((set, get) => {
         const validTreeId = storedTreeId && cachedDataWithPending.backlogTrees[storedTreeId] ? storedTreeId : null;
         const validWorkItemIds = storedWorkItemIds.filter((id) => cachedDataWithPending.workItems[id]);
 
-        set({
-          workItems: cachedDataWithPending.workItems,
-          backlogs: cachedDataWithPending.backlogs,
-          backlogTrees: cachedDataWithPending.backlogTrees,
-          hyperlinks: cached.hyperlinks,
-          changeLog: cached.changeLog,
-          selectedBacklogIds: validBacklogIds,
-          selectedTreeId: validTreeId,
-          selectedWorkItemIds: validWorkItemIds,
-          isLoading: false,
-          loadingProgress: 100,
-          undoStack: [],
-          redoStack: [],
-          expandedWorkItems: new Set<string>(),
-          expandedBacklogs: new Set<string>(),
-        });
+        const cachedSnapshotKey = buildCachedSnapshotKey(
+          orgId,
+          cached.timestamp,
+          cachedDataWithPending,
+          validBacklogIds,
+          validTreeId,
+          validWorkItemIds,
+        );
+        if (lastAppliedCachedSnapshotKey !== cachedSnapshotKey) {
+          lastAppliedCachedSnapshotKey = cachedSnapshotKey;
+          set((state) => {
+            const selectionUnchanged =
+              sameStringArray(state.selectedBacklogIds, validBacklogIds) &&
+              state.selectedTreeId === validTreeId &&
+              sameStringArray(state.selectedWorkItemIds, validWorkItemIds);
+            if (
+              state.workItems === cachedDataWithPending.workItems &&
+              state.backlogs === cachedDataWithPending.backlogs &&
+              state.backlogTrees === cachedDataWithPending.backlogTrees &&
+              state.hyperlinks === cached.hyperlinks &&
+              state.changeLog === cached.changeLog &&
+              selectionUnchanged &&
+              !state.isLoading &&
+              state.loadingProgress === 100
+            ) {
+              return state;
+            }
+            return {
+              workItems: cachedDataWithPending.workItems,
+              backlogs: cachedDataWithPending.backlogs,
+              backlogTrees: cachedDataWithPending.backlogTrees,
+              hyperlinks: cached.hyperlinks,
+              changeLog: cached.changeLog,
+              selectedBacklogIds: validBacklogIds,
+              selectedTreeId: validTreeId,
+              selectedWorkItemIds: validWorkItemIds,
+              isLoading: false,
+              loadingProgress: 100,
+              undoStack: [],
+              redoStack: [],
+              expandedWorkItems: new Set<string>(),
+              expandedBacklogs: new Set<string>(),
+            };
+          });
+        }
 
         // Refresh in the background so the cache stays fresh.
-        void (async () => {
+        if (appDataBackgroundRefreshInFlight?.orgId !== orgId) {
+          const backgroundPromise = (async () => {
           try {
             // Snapshot the mutation version before fetching so we can
             // detect whether the user made any edits while the network
@@ -1184,11 +1222,18 @@ export const useAppStore = create<AppState>()((set, get) => {
           } catch {
             // Background refresh failed — cached data is still shown.
           }
-        })();
+          })().finally(() => {
+            if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
+              appDataBackgroundRefreshInFlight = null;
+            }
+          });
+          appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
+          void backgroundPromise;
+        }
         return;
       }
 
-      set({ isLoading: true, loadingProgress: 0 });
+      set((state) => state.isLoading && state.loadingProgress === 0 ? state : { isLoading: true, loadingProgress: 0 });
 
       // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
       // a hung network request), unblock the UI so the app renders in an empty state
@@ -1332,6 +1377,15 @@ export const useAppStore = create<AppState>()((set, get) => {
         clearTimeout(timeoutId);
         set({ isLoading: false, loadingProgress: 0 });
       }
+      };
+
+      const promise = runLoad().finally(() => {
+        if (appDataLoadInFlight?.promise === promise) {
+          appDataLoadInFlight = null;
+        }
+      });
+      appDataLoadInFlight = { orgId, promise };
+      return promise;
     },
 
     toggleWorkItemExpand: (id) =>
