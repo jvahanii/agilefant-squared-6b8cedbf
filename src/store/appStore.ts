@@ -1843,22 +1843,44 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
 
-      // Compute an effective board rank.  Always seed one so the item's
-      // position in board view is stable across realtime echoes and reloads.
+      // Compute an effective board rank.  When the caller provides one
+      // (board-view adds), use it directly.  Otherwise derive one from the
+      // list insertion point so same-status siblings keep the same relative
+      // order in both views.
       let effectiveBoardRank: number;
       if (typeof requestedBoardRank === 'number') {
         effectiveBoardRank = requestedBoardRank;
       } else {
-        // Top of the target column: min existing boardRank in
-        // (backlogId, targetStatus) minus 1; default 0 when empty.
-        let minBoard = Infinity;
-        for (const other of Object.values(updatedWorkItems)) {
-          if (other.status !== targetStatus) continue;
-          if (other.backlogAssignments[treeId] !== backlogId) continue;
-          const br = other.boardRanks?.[backlogId] ?? other.ranks?.[backlogId];
-          if (typeof br === 'number' && br < minBoard) minBoard = br;
+        // Walk outward from the list insertion point to find the nearest
+        // same-status siblings and interpolate their board ranks.
+        const siblingItems = siblingIds
+          .map((id) => updatedWorkItems[id])
+          .filter((wi) => wi != null);
+        let prevBoard: number | null = null;
+        let nextBoard: number | null = null;
+        // Look backward from insertIndex
+        for (let i = insertIndex - 1; i >= 0; i--) {
+          const wi = siblingItems[i];
+          if (!wi || wi.status !== targetStatus) continue;
+          prevBoard = wi.boardRanks?.[backlogId] ?? wi.ranks?.[backlogId] ?? undefined;
+          if (typeof prevBoard === 'number') break;
         }
-        effectiveBoardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+        // Look forward from insertIndex
+        for (let i = insertIndex; i < siblingItems.length; i++) {
+          const wi = siblingItems[i];
+          if (!wi || wi.status !== targetStatus) continue;
+          nextBoard = wi.boardRanks?.[backlogId] ?? wi.ranks?.[backlogId] ?? undefined;
+          if (typeof nextBoard === 'number') break;
+        }
+        if (typeof prevBoard === 'number' && typeof nextBoard === 'number') {
+          effectiveBoardRank = prevBoard + (nextBoard - prevBoard) / 2;
+        } else if (typeof prevBoard === 'number') {
+          effectiveBoardRank = prevBoard + 1;
+        } else if (typeof nextBoard === 'number') {
+          effectiveBoardRank = nextBoard - 1;
+        } else {
+          effectiveBoardRank = 0;
+        }
       }
 
       const newItem: WorkItem = {
