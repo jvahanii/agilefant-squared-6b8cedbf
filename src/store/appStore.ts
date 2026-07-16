@@ -1738,7 +1738,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
-      patchCachedWorkItems(orgId, Object.fromEntries(itemsToUpdateInDB.map((wi) => [wi.id, wi])), [id]);
+      patchCachedWorkItems(orgId, {
+        ...Object.fromEntries(itemsToUpdateInDB.map((wi) => [wi.id, updatedWorkItems[wi.id] ?? wi])),
+        ...(parentId && updatedWorkItems[parentId] ? { [parentId]: updatedWorkItems[parentId] } : {}),
+      }, [id]);
 
       const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
@@ -1811,7 +1814,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
-      patchCachedWorkItems(orgId, Object.fromEntries(newItems.map((wi) => [wi.id, wi])));
+      patchCachedWorkItems(orgId, {
+        ...Object.fromEntries(newItems.map((wi) => [wi.id, updatedWorkItems[wi.id] ?? wi])),
+        ...(parentId && updatedWorkItems[parentId] ? { [parentId]: updatedWorkItems[parentId] } : {}),
+      });
     },
 
     deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => {
