@@ -599,8 +599,8 @@ function assignSequentialRanksForContext(
     // tree owns their global parent.
     const wiEffectiveParent = wi ? getEffectiveParentId(wi, treeId) : null;
     if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wiEffectiveParent !== parentId) return;
-    if (wi.ranks[wiBacklogId] === rank) return;
-    const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank } };
+    if (wi.ranks[wiBacklogId] === rank && (wi.boardRanks?.[wiBacklogId] ?? wi.ranks[wiBacklogId]) === rank) return;
+    const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank }, boardRanks: { ...(wi.boardRanks ?? {}), [wiBacklogId]: rank } };
     items[id] = updated;
     changed.push(updated);
   });
@@ -1646,6 +1646,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           updatedItems[s.id] = {
             ...updatedItems[s.id],
             ranks: { ...updatedItems[s.id].ranks, [blId]: i },
+            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
           };
         }
       });
@@ -1656,6 +1657,15 @@ export const useAppStore = create<AppState>()((set, get) => {
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+        }),
+      );
+      // Also persist board ranks so the board view stays in sync.
+      persistBoardRankUpserts(
+        siblings.flatMap((s) => {
+          const updated = updatedItems[s.id];
+          const blId = updated.backlogAssignments[treeId];
+          if (!blId) return [];
+          return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );
       const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
