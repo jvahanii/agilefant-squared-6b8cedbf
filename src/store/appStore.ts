@@ -1494,23 +1494,36 @@ export const useAppStore = create<AppState>()((set, get) => {
       const targetStatus = initialStatus ?? ("not_started" as WorkItemStatus);
 
       const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+
+      // Compute an effective board rank.  Always seed one so the item's
+      // position in board view is stable across realtime echoes and reloads.
+      let effectiveBoardRank: number;
+      if (typeof requestedBoardRank === 'number') {
+        effectiveBoardRank = requestedBoardRank;
+      } else {
+        // Top of the target column: min existing boardRank in
+        // (backlogId, targetStatus) minus 1; default 0 when empty.
+        let minBoard = Infinity;
+        for (const other of Object.values(updatedWorkItems)) {
+          if (other.status !== targetStatus) continue;
+          if (other.backlogAssignments[treeId] !== backlogId) continue;
+          const br = other.boardRanks?.[backlogId] ?? other.ranks?.[backlogId];
+          if (typeof br === 'number' && br < minBoard) minBoard = br;
+        }
+        effectiveBoardRank = Number.isFinite(minBoard) ? minBoard - 1 : 0;
+      }
+
       const newItem: WorkItem = {
         id,
         title,
         parentId,
         ranks: { [backlogId]: insertIndex },
+        boardRanks: { [backlogId]: effectiveBoardRank },
         backlogAssignments: { [treeId]: backlogId },
         status: targetStatus,
         childrenIds: [],
         points: undefined,
       };
-
-      // Only set a board rank when the caller explicitly requested one (e.g.
-      // inserting between two existing cards).  Otherwise board sorting falls
-      // back to list rank, producing the same order as the list view.
-      if (typeof requestedBoardRank === 'number') {
-        newItem.boardRanks = { [backlogId]: requestedBoardRank };
-      }
 
       updatedWorkItems[id] = newItem;
       const orderedIds = [...siblingIds];
@@ -1518,10 +1531,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       upsertWorkItems(itemsToUpdateInDB, orgId);
-      // Persist the board rank only when an explicit position was requested.
-      if (typeof requestedBoardRank === 'number') {
-        upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: requestedBoardRank, organizationId: orgId }]).catch(() => {});
-      }
+      // Always persist the board rank so echoes/reloads reproduce the position.
+      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]).catch(() => {});
+
 
       if (parentId && updatedWorkItems[parentId]) {
         updatedWorkItems[parentId] = {
