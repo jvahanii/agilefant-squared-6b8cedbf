@@ -404,16 +404,22 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
       // Compute a board rank that places the new item after the card at
-      // `afterIndex`. List rank is left unset so addWorkItem picks the
-      // default "top of the list" behavior — list order is fully independent.
+      // `afterIndex`. When no explicit slot is given, fall back to the single
+      // selected card in this column (if any) as the anchor. Otherwise
+      // addWorkItem seeds top-of-column.
       let boardRank: number | undefined;
       const colCards = cardsByStatus[statusKey] ?? [];
-      if (afterIndex !== undefined && afterIndex >= 0) {
-        const afterCard = colCards[afterIndex];
+      let anchorIndex = afterIndex;
+      if (anchorIndex === undefined && selectedWorkItemIds.length === 1) {
+        const idx = colCards.findIndex((c) => c.id === selectedWorkItemIds[0]);
+        if (idx >= 0) anchorIndex = idx;
+      }
+      if (anchorIndex !== undefined && anchorIndex >= 0) {
+        const afterCard = colCards[anchorIndex];
         if (afterCard) {
           const afterBl = afterCard.backlogAssignments[treeId];
           const afterBr = afterCard.boardRanks?.[afterBl] ?? afterCard.ranks?.[afterBl] ?? 0;
-          const nextCard = colCards[afterIndex + 1];
+          const nextCard = colCards[anchorIndex + 1];
           if (nextCard) {
             const nextBl = nextCard.backlogAssignments[treeId];
             const nextBr = nextCard.boardRanks?.[nextBl] ?? nextCard.ranks?.[nextBl] ?? 0;
@@ -426,8 +432,9 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       // If no explicit anchor, addWorkItem seeds it at the top of the column.
       addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, boardRank);
     },
-    [addWorkItem, backlogId, treeId, cardsByStatus],
+    [addWorkItem, backlogId, treeId, cardsByStatus, selectedWorkItemIds],
   );
+
 
   // Compute all backlog IDs in this tree for "Move to backlog" submenu
   const allBacklogIds = useMemo(() => {
