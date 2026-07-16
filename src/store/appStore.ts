@@ -983,6 +983,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Supabase replaces the cache asynchronously afterwards.
       const cached = readCachedAppData(orgId);
       if (cached && Object.keys(cached.workItems).length > 0) {
+        const cachedDataWithPending = mergePendingWorkItems({
+          workItems: cached.workItems,
+          backlogs: cached.backlogs,
+          backlogTrees: cached.backlogTrees,
+        }, orgId);
         const parseStoredIdsCached = (key: string): string[] => {
           try {
             const raw = localStorage.getItem(key);
@@ -993,14 +998,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         const storedBacklogIds = parseStoredIdsCached(`selection_${orgId}_backlogIds`);
         const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
         const storedWorkItemIds = parseStoredIdsCached(`selection_${orgId}_workItemIds`);
-        const validBacklogIds = storedBacklogIds.filter((id) => cached.backlogs[id]);
-        const validTreeId = storedTreeId && cached.backlogTrees[storedTreeId] ? storedTreeId : null;
-        const validWorkItemIds = storedWorkItemIds.filter((id) => cached.workItems[id]);
+        const validBacklogIds = storedBacklogIds.filter((id) => cachedDataWithPending.backlogs[id]);
+        const validTreeId = storedTreeId && cachedDataWithPending.backlogTrees[storedTreeId] ? storedTreeId : null;
+        const validWorkItemIds = storedWorkItemIds.filter((id) => cachedDataWithPending.workItems[id]);
 
         set({
-          workItems: cached.workItems,
-          backlogs: cached.backlogs,
-          backlogTrees: cached.backlogTrees,
+          workItems: cachedDataWithPending.workItems,
+          backlogs: cachedDataWithPending.backlogs,
+          backlogTrees: cachedDataWithPending.backlogTrees,
           hyperlinks: cached.hyperlinks,
           changeLog: cached.changeLog,
           selectedBacklogIds: validBacklogIds,
@@ -1022,7 +1027,9 @@ export const useAppStore = create<AppState>()((set, get) => {
             // round-trip was in-flight. If they did, we skip overwriting
             // state to avoid losing their changes.
             const versionBeforeFetch = localMutationVersion;
+            await flushPendingWorkItemUpserts(orgId).catch(() => {});
             await flushPendingRankUpserts().catch(() => {});
+            await flushPendingBoardRankUpserts().catch(() => {});
             const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
               loadFromSupabase(orgId),
               loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
@@ -1035,7 +1042,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (localMutationVersion !== versionBeforeFetch) {
               // User edited — don't overwrite, but still update cache
               // for next visit.
-              const cleanDataBg = sanitizeData(rawData, orgId);
+              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
               writeCachedAppData(orgId, {
                 workItems: cleanDataBg.workItems,
                 backlogs: cleanDataBg.backlogs,
@@ -1048,7 +1055,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               });
               return;
             }
-            const cleanData = sanitizeData(rawData, orgId);
+            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
 
         // Bug fix: if sanitizeData dropped ALL backlog assignments for an
         // item that existed in the current store with valid assignments,
@@ -1131,7 +1138,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Fire flushPendingRankUpserts concurrently with the main data load
         // instead of blocking on it first.  If it fails or hangs the data
         // still arrives and the UI becomes interactive sooner.
-        const rankFlushPromise = flushPendingRankUpserts().catch(() => {});
+        const rankFlushPromise = Promise.all([
+          flushPendingWorkItemUpserts(orgId).catch(() => {}),
+          flushPendingRankUpserts().catch(() => {}),
+          flushPendingBoardRankUpserts().catch(() => {}),
+        ]).catch(() => {});
 
         // Run the main data load, hyperlinks (org-scoped), change log, and
         // rank flush all concurrently. Hyperlinks can be fetched by
@@ -1151,7 +1162,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
-        const cleanData = sanitizeData(rawData, orgId);
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId);
         set({ loadingProgress: 80 });
 
         // Filter hyperlinks to the work items that survived sanitization.
