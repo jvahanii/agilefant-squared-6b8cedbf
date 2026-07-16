@@ -1,42 +1,33 @@
+## Goal
+Fix the refresh-time React crash (`Minified React error #185`) in both production and Lovable preview without regressing the newly working item persistence.
+
+## Root cause to address
+React error #185 is an infinite update loop. The likely trigger is the new reload/cache reconciliation path combined with refresh-side effects that repeatedly re-enter `loadFromSupabase` or repeatedly apply store updates while React is mounting after refresh.
+
 ## Plan
+1. **Add a single-flight guard for app data loads**
+   - Ensure `loadFromSupabase()` cannot run multiple overlapping times for the same organization during refresh.
+   - Return the existing in-flight promise instead of starting a second load.
+   - Prevent stale completion from an older org/load from overwriting current state.
 
-1. **Reproduce with evidence first**
-   - Use the live preview with the injected logged-in session.
-   - Add one item in list view and one in board view, refresh immediately, and capture:
-     - whether the `work_items` row exists,
-     - whether its rank rows exist,
-     - whether the referenced tree/backlog exists,
-     - whether the UI is showing cached-only data or fresh Supabase data.
+2. **Harden retry-on-empty refresh logic**
+   - Update the `App.tsx` and `Index.tsx` safety retry effects so they do not call `loadFromSupabase()` repeatedly on every render when `loadingProgress === -1` or cached state is empty.
+   - Track the last retried org/load state with refs and only retry once per failure transition, resetting after a successful load or org change.
 
-2. **Fix stale-cache item creation**
-   - The logs show `sanitizeData` dropping assignments because referenced tree/backlog IDs are missing after reload.
-   - Update the cache/load flow so users cannot add items against stale cached trees/backlogs that are no longer present in Supabase.
-   - When fresh data arrives, do not overwrite the cache/state with a server snapshot that drops newly-added local items unless the target tree/backlog is confirmed missing and the user is shown a save failure.
+3. **Make cached refresh state updates idempotent**
+   - Before applying cached/fresh state snapshots, avoid setting large store objects when the same org/load snapshot is already applied.
+   - Keep pending work item merge behavior intact, but prevent background refresh from repeatedly writing identical state in a way that cascades through realtime/subscription effects.
 
-3. **Make add persistence truly atomic**
-   - Persist the new work item, list rank, and board rank through one ordered save path instead of separate fire-and-forget calls.
-   - Keep the local item in the pending outbox until all required rows are confirmed saved.
-   - If any part fails, keep the item visible as pending and retry rather than letting refresh hide it.
+4. **Reduce refresh-time effect churn**
+   - Review the reload-triggered effects in `Index.tsx` and `useRealtimeSync` and keep subscriptions tied only to stable keys (`activeOrgId`, serialized tree IDs).
+   - Avoid any state update from those effects unless the new value actually differs from the current value.
 
-4. **Stop Supabase auth-lock request storms**
-   - The current runtime error shows concurrent Supabase auth/session access stealing the same lock, aborting downstream loads.
-   - Add a shared session-ready/in-flight load guard so initial app data loads, target loads, and refresh retries do not stampede Supabase auth.
-   - Retry non-critical store loads that fail with the lock/AbortError instead of treating them as final failures.
+5. **Add regression tests**
+   - Add tests for duplicate `loadFromSupabase()` calls during initial refresh.
+   - Add tests that retry guards do not loop when the store is empty or `loadingProgress === -1`.
+   - Keep the existing item persistence tests passing.
 
-5. **Tighten reload reconciliation**
-   - On reload, merge pending work items only after validating their tree/backlog against the latest Supabase data.
-   - If a pending item’s target tree/backlog is absent from Supabase, surface a clear save error and remove the pending queue entry only after the user-visible state is consistent.
-
-6. **Add regression coverage**
-   - Add tests for:
-     - list add followed by reload,
-     - board add followed by reload,
-     - cached stale tree/backlog add path,
-     - pending outbox retained until work item + list rank + board rank all save,
-     - auth-lock/duplicate-load guard behavior.
-
-## Technical notes
-
-- This likely is no longer only a board-rank issue.
-- The current signals point to two root causes: stale cached tree/backlog data being used for adds, and Supabase auth-lock contention causing some refresh/load calls to abort.
-- I do not expect a database migration unless reproduction proves an RLS/policy failure on insert.
+6. **Verify with browser refresh**
+   - Run the app in a fresh authenticated browser session where possible.
+   - Refresh the main route and confirm the error boundary no longer appears.
+   - Confirm newly added items still show after refresh.
