@@ -615,6 +615,7 @@ const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
 const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
 
 let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null;
+let appDataBackgroundRefreshInFlight: { orgId: string; promise: Promise<void> } | null = null;
 let lastAppliedCachedSnapshotKey: string | null = null;
 
 type PendingWorkItemUpsert = {
