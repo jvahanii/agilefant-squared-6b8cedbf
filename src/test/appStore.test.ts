@@ -208,6 +208,48 @@ describe("addWorkItem", () => {
     expect(ordered.map((wi) => wi.title)).toEqual(["C", "B", "A"]);
     expect(ordered.map((wi) => wi.ranks[`${ORG}::bl-1`])).toEqual([0, 1, 2]);
   });
+
+  it("patches the local data cache when adding so refresh does not show stale data", () => {
+    seedStore();
+    const before = useAppStore.getState();
+    localStorage.setItem(`cached_app_data_${ORG}`, JSON.stringify({
+      orgId: ORG,
+      workItems: before.workItems,
+      backlogs: before.backlogs,
+      backlogTrees: before.backlogTrees,
+      hyperlinks: {},
+      changeLog: [],
+      selectedBacklogIds: [`${ORG}::bl-1`],
+      selectedTreeId: `${ORG}::bt-1`,
+      selectedWorkItemIds: [],
+      timestamp: Date.now(),
+    }));
+
+    useAppStore.getState().addWorkItem("Cached Item", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+
+    const cached = JSON.parse(localStorage.getItem(`cached_app_data_${ORG}`)!);
+    const cachedItems = Object.values(cached.workItems) as Array<{ title: string }>;
+    expect(cachedItems.some((item) => item.title === "Cached Item")).toBe(true);
+    expect(cached.selectedWorkItemIds).toHaveLength(1);
+  });
+
+  it("queues the full work item for retry before async persistence completes", () => {
+    vi.mocked(upsertWorkItems).mockResolvedValueOnce(false);
+    seedStore();
+
+    useAppStore.getState().addWorkItem("Pending Item", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+
+    const pending = JSON.parse(localStorage.getItem("pending_work_item_upserts") ?? "[]");
+    expect(pending).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        organizationId: ORG,
+        item: expect.objectContaining({
+          title: "Pending Item",
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+        }),
+      }),
+    ]));
+  });
 });
 
 describe("deleteWorkItem", () => {
