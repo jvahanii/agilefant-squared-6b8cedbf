@@ -599,8 +599,8 @@ function assignSequentialRanksForContext(
     // tree owns their global parent.
     const wiEffectiveParent = wi ? getEffectiveParentId(wi, treeId) : null;
     if (!wi || !wiBacklogId || !backlogIds.has(wiBacklogId) || wiEffectiveParent !== parentId) return;
-    if (wi.ranks[wiBacklogId] === rank && (wi.boardRanks?.[wiBacklogId] ?? wi.ranks[wiBacklogId]) === rank) return;
-    const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank }, boardRanks: { ...(wi.boardRanks ?? {}), [wiBacklogId]: rank } };
+    if (wi.ranks[wiBacklogId] === rank) return;
+    const updated = { ...wi, ranks: { ...wi.ranks, [wiBacklogId]: rank } };
     items[id] = updated;
     changed.push(updated);
   });

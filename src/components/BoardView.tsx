@@ -403,11 +403,13 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
-      // Compute a board rank that places the new item after the card at
-      // `afterIndex`. When no explicit slot is given, fall back to the single
-      // selected card in this column (if any) as the anchor. Otherwise
-      // addWorkItem seeds top-of-column.
+      // Compute board rank and list rank that place the new item after the
+      // card at `afterIndex`.  When no explicit slot is given, fall back to
+      // the single selected card in this column (if any) as the anchor.
+      // Otherwise addWorkItem seeds top-of-column for board rank and top of
+      // sibling list for list rank.
       let boardRank: number | undefined;
+      let listRank: number | undefined;
       const colCards = cardsByStatus[statusKey] ?? [];
       let anchorIndex = afterIndex;
       if (anchorIndex === undefined && selectedWorkItemIds.length === 1) {
@@ -419,18 +421,22 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
         if (afterCard) {
           const afterBl = afterCard.backlogAssignments[treeId];
           const afterBr = afterCard.boardRanks?.[afterBl] ?? afterCard.ranks?.[afterBl] ?? 0;
+          const afterListR = afterCard.ranks?.[afterBl] ?? 0;
           const nextCard = colCards[anchorIndex + 1];
           if (nextCard) {
             const nextBl = nextCard.backlogAssignments[treeId];
             const nextBr = nextCard.boardRanks?.[nextBl] ?? nextCard.ranks?.[nextBl] ?? 0;
+            const nextListR = nextCard.ranks?.[nextBl] ?? 0;
             boardRank = afterBr + (nextBr - afterBr) / 2;
+            listRank = afterListR + (nextListR - afterListR) / 2;
           } else {
             boardRank = afterBr + 1;
+            listRank = afterListR + 1;
           }
         }
       }
-      // If no explicit anchor, addWorkItem seeds it at the top of the column.
-      addWorkItem(title, null, backlogId, treeId, undefined, statusKey as WorkItemStatus, boardRank);
+      // If no explicit anchor, addWorkItem seeds top of column/sibling list.
+      addWorkItem(title, null, backlogId, treeId, listRank, statusKey as WorkItemStatus, boardRank);
     },
     [addWorkItem, backlogId, treeId, cardsByStatus, selectedWorkItemIds],
   );
