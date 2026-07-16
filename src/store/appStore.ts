@@ -1271,6 +1271,17 @@ export const useAppStore = create<AppState>()((set, get) => {
           persistRankUpserts(rowsWithOrg);
         }
 
+        writeCachedAppData(orgId, {
+          workItems: finalWorkItems,
+          backlogs: cleanData.backlogs,
+          backlogTrees: cleanData.backlogTrees,
+          hyperlinks,
+          changeLog: [],
+          selectedBacklogIds: validBacklogIds,
+          selectedTreeId: validTreeId,
+          selectedWorkItemIds: validWorkItemIds,
+        });
+
         set({
           ...cleanData,
           workItems: finalWorkItems,
