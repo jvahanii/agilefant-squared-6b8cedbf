@@ -42,6 +42,8 @@ function AppRoutes() {
   const { memberships, activeOrgId, loading: orgLoading, loadMemberships } = useOrgStore();
   const location = useLocation();
   const isResetPasswordRoute = location.pathname === "/reset-password";
+  const retriedAppLoadRef = useRef<string | null>(null);
+  const retriedMembershipLoadRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (user?.id && !isResetPasswordRoute) {
@@ -65,7 +67,11 @@ function AppRoutes() {
       if (document.visibilityState !== 'visible') return;
       // 1) Memberships still loading → re-trigger.
       if (orgLoadingRef.current) {
-        loadMemberships(userId);
+        const key = `${userId}:visible`;
+        if (retriedMembershipLoadRef.current !== key) {
+          retriedMembershipLoadRef.current = key;
+          loadMemberships(userId);
+        }
         return;
       }
       // 2) Memberships done and an org is active, but the app store is
@@ -78,6 +84,9 @@ function AppRoutes() {
       // loadingProgress === -1 means the 15 s safety timeout fired without
       // populating data — retry the fetch.
       if (orgId && !app.isLoading && (Object.keys(app.backlogTrees).length === 0 || app.loadingProgress === -1)) {
+        const retryKey = `${orgId}:${Object.keys(app.backlogTrees).length}:${app.loadingProgress}`;
+        if (retriedAppLoadRef.current === retryKey) return;
+        retriedAppLoadRef.current = retryKey;
         app.loadFromSupabase();
       }
     };
@@ -95,9 +104,20 @@ function AppRoutes() {
     if (authLoading || orgLoading || !user || !activeOrgId) return;
     const app = useAppStore.getState();
     if (!app.isLoading && (Object.keys(app.backlogTrees).length === 0 || app.loadingProgress === -1)) {
+      const retryKey = `${activeOrgId}:${Object.keys(app.backlogTrees).length}:${app.loadingProgress}`;
+      if (retriedAppLoadRef.current === retryKey) return;
+      retriedAppLoadRef.current = retryKey;
       app.loadFromSupabase();
     }
-  }, [authLoading, orgLoading, user, activeOrgId]);
+    if (Object.keys(app.backlogTrees).length > 0 && app.loadingProgress === 100) {
+      retriedAppLoadRef.current = null;
+    }
+  }, [authLoading, orgLoading, user?.id, activeOrgId]);
+
+  useEffect(() => {
+    retriedAppLoadRef.current = null;
+    retriedMembershipLoadRef.current = null;
+  }, [user?.id, activeOrgId]);
 
   useEffect(() => {
     const activeOrg = memberships.find(m => m.organization_id === activeOrgId) ?? null;
