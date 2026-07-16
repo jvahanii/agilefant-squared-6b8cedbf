@@ -11,14 +11,15 @@ const authLock = async <R>(name: string, _acquireTimeout: number, fn: () => Prom
   const previous = authLocks.get(name) ?? Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolve) => { release = resolve; });
-  authLocks.set(name, previous.then(() => current, () => current));
+  const tail = previous.then(() => current, () => current);
+  authLocks.set(name, tail);
 
   await previous.catch(() => undefined);
   try {
     return await fn();
   } finally {
     release();
-    if (authLocks.get(name) === current) authLocks.delete(name);
+    if (authLocks.get(name) === tail) authLocks.delete(name);
   }
 };
 
