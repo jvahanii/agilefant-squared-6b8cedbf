@@ -1387,7 +1387,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       };
 
-      const promise = runLoad().finally(() => {
+      const promise = Promise.resolve().then(runLoad).finally(() => {
         if (appDataLoadInFlight?.promise === promise) {
           appDataLoadInFlight = null;
         }
