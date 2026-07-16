@@ -25,6 +25,11 @@ import {
   Shield,
   TrendingUp,
   LayoutGrid,
+  Github,
+  MessageCircle,
+  Download,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -230,6 +235,10 @@ function buildSections(): Section[] {
               {
                 action: "Outdent (elevate)",
                 how: "Select an item and press Shift+Tab to move it up to its parent's level (becomes a sibling of its current parent).",
+              },
+              {
+                action: "Duplicate item(s)",
+                how: "Right-click any work item and choose Duplicate (or Duplicate on the mobile attributes sheet). Creates a deep copy including all child items, hyperlinks, labels, team assignments, financials, and respawn settings. The new copy is inserted directly below the original.",
               },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
@@ -568,6 +577,55 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>Time entries are synced in real time — your teammates will see logged time as soon as it is saved.</Tip>
+        </div>
+      ),
+    },
+    {
+      id: "timesheet",
+      icon: <Download className="w-4 h-4" />,
+      label: "Timesheet Browser",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The <strong className="text-foreground">Timesheet Browser</strong> lets you view, filter, group, and
+            export all time entries across the organisation. Open it from{" "}
+            <strong className="text-foreground">Settings → Time Logging → Browse</strong> (only visible when
+            time logging is enabled).
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Open the browser",
+                how: "Go to Settings, enable Time Logging, then click the Browse button that appears below the toggle.",
+              },
+              {
+                action: "Filter entries",
+                how: "Use the period presets (Today, This Week, This Month, All Time) or set custom From / To dates. Filter by user with the User dropdown.",
+              },
+              {
+                action: "Entries tab",
+                how: "Lists every time entry in a scrollable table showing duration, date, user, work item/backlog, and note. Click any row you own to edit the duration, date, or note inline. Press Enter to save, Escape to cancel.",
+              },
+              {
+                action: "Summary tab",
+                how: "Group entries hierarchically by any combination of Tree, Backlog, Work Item, Person, and Date. Click dimension pills to toggle them — the numbered badges show nesting order. Expand/collapse group rows to drill down.",
+              },
+              {
+                action: "Export as CSV",
+                how: "Click the Export CSV button to download the currently filtered entries as a UTF-8 CSV file with columns for Date, User, Work Item / Backlog, Duration (minutes), Duration (formatted), and Note.",
+              },
+              {
+                action: "Delete an entry",
+                how: "Hover any row you own and click the trash icon. Only the person who logged the entry can delete it.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Use the Summary tab with "Person" and "Date" groups to quickly see who logged what each day — great
+            for sprint retrospectives and client billing.
+          </Tip>
         </div>
       ),
     },
@@ -948,6 +1006,173 @@ function buildSections(): Section[] {
           <Tip>
             Use <strong>Export data</strong> to copy the current data snapshot to the clipboard, or{" "}
             <strong>Export history</strong> to copy a CSV of all recorded changes.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "github",
+      icon: <Github className="w-4 h-4" />,
+      label: "GitHub Integration",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Connect <strong className="text-foreground">GitHub repositories</strong> so every merged pull request
+            automatically creates a "Done" work item at the top of your chosen backlog. Configure webhooks per
+            repository from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → GitHub repositories</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Add a repository",
+                how: "Enter the repo in owner/name format (e.g. acme/website) and click Add. A unique webhook secret is generated automatically.",
+              },
+              {
+                action: "Configure the webhook",
+                how: "In your GitHub repo settings, add a webhook with the Payload URL and Secret shown in the integration card. Set Content type to application/json and select the Pull requests event.",
+              },
+              {
+                action: "Add target backlogs",
+                how: "For each integration, pick a backlog tree and backlog node as a target. You can add multiple targets per repo — each merged PR creates a Done item in every target.",
+              },
+              {
+                action: "Enable / disable",
+                how: "Toggle the switch next to any integration to pause or resume PR processing without deleting the configuration.",
+              },
+              {
+                action: "Rotate secret",
+                how: "Click the refresh icon to generate a new webhook secret. Update the secret in your GitHub repo settings to match.",
+              },
+              {
+                action: "Remove a target or integration",
+                how: "Click the trash icon on a target row or on the full integration card to remove it.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            The created work item's title includes the PR number and title (e.g. "#42 Fix login bug"), so you
+            always know which PR triggered it. The item also gets a hyperlink back to the merged PR.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "whatsapp",
+      icon: <MessageCircle className="w-4 h-4" />,
+      label: "WhatsApp Integration",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Connect a <strong className="text-foreground">WhatsApp chat</strong> via a bridge such as{" "}
+            <em>whapi.cloud</em> so every text message creates an "In Progress" work item in your chosen
+            backlog. Configure integrations from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → WhatsApp</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Add an integration",
+                how: "Give it a label, optionally restrict to a specific Chat ID, then pick the target tree and backlog. Click Add integration.",
+              },
+              {
+                action: "Configure the bridge",
+                how: "In your WhatsApp bridge (e.g. whapi.cloud), set the Webhook URL and add the X-Webhook-Token request header shown in the integration card for the messages.post event.",
+              },
+              {
+                action: "Chat ID filtering",
+                how: "Leave Chat ID blank to accept messages from any chat. Enter a group ID (e.g. 1203630412345678@g.us) or individual ID (e.g. 15551234567@s.whatsapp.net) to restrict to one conversation.",
+              },
+              {
+                action: "Enable / disable",
+                how: "Toggle the switch to pause or resume message processing.",
+              },
+              {
+                action: "Rotate secret",
+                how: "Click the refresh icon to generate a new webhook token. Update the token in your bridge settings to match.",
+              },
+              {
+                action: "Delete an integration",
+                how: "Click the trash icon on the integration card.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            The created work item's title is the first 120 characters of the WhatsApp message. Long messages
+            are truncated with an ellipsis. The full message is stored as the item's description/note.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "pricing",
+      icon: <CreditCard className="w-4 h-4" />,
+      label: "Pricing & Plans",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Agilefant² offers three plans. The Free plan is fully functional with no time limit.{" "}
+            <strong className="text-foreground">Starter</strong> and{" "}
+            <strong className="text-foreground">Enterprise</strong> plans unlock additional capacity
+            and features. Manage your subscription from{" "}
+            <strong className="text-foreground">Settings → Team → Subscription</strong>.
+          </p>
+          <div className="space-y-3">
+            {[
+              {
+                icon: <CheckCircle2 className="w-4 h-4 text-green-500" />,
+                title: "Free",
+                body: "Everything you need for personal or small-team use. Unlimited backlog trees, work items, and team members. Data export always included.",
+              },
+              {
+                icon: <CreditCard className="w-4 h-4 text-primary" />,
+                title: "Starter",
+                body: "Higher limits and priority support. Best for growing teams that need more capacity. Manage billing via Stripe customer portal.",
+              },
+              {
+                icon: <ExternalLink className="w-4 h-4 text-primary" />,
+                title: "Enterprise",
+                body: "Custom limits, dedicated support, and tailored onboarding. Contact sales@agilefant.org to discuss your needs.",
+              },
+            ].map((card) => (
+              <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
+                <div className="mt-0.5 shrink-0">{card.icon}</div>
+                <div>
+                  <p className="text-sm font-medium">{card.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{card.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {[
+              {
+                action: "View current plan",
+                how: "Go to Settings → Team. Your current plan and billing period (if applicable) are shown at the top of the Subscription card.",
+              },
+              {
+                action: "Upgrade or switch",
+                how: "Click Upgrade on the Starter plan to open the Stripe checkout. For Enterprise, click Contact Us to send an email inquiry.",
+              },
+              {
+                action: "Manage billing",
+                how: "If you have an active paid subscription, click Manage to open the Stripe customer portal where you can update payment methods, view invoices, or cancel.",
+              },
+              {
+                action: "Start a trial",
+                how: "New organisations can select a plan during onboarding. If you skip, your org starts on the Free plan and you can upgrade later from Settings.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            All plans include unlimited team members, data export, and access to every feature. Plan
+            differences are about capacity limits — you will never be locked out of a feature you rely on.
           </Tip>
         </div>
       ),
