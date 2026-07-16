@@ -1,57 +1,71 @@
-## Goal
+## Root cause
 
-Split work-item ordering into two fully independent ranks: **list rank** (existing, per backlog) and **board rank** (new, per backlog). Reordering in one view never touches the other.
+Two related bugs introduced with the board-rank split:
 
-## Data model
+1. **`work_item_board_ranks.rank` is `integer NOT NULL`** in the migration, but the runtime code inserts fractional ranks (midpoint scheme in `BoardView.handleColumnAdd` and in `AppLayout` drag handlers). Postgres rejects every such write with `invalid input syntax for type integer`. The failure surfaces as a `Failed to save board ranking` toast and, more importantly, leaves the board-rank row missing.
 
-Add a per-backlog board rank alongside the existing per-backlog list rank.
+2. **`applyRealtimeWorkItem` rebuilds the local work-item object without a `boardRanks` field** (see `src/store/appStore.ts` around L3295–L3312). When the DB echo for the just-created work-item row arrives it overwrites the optimistic local object and strips the `boardRanks` map that `addWorkItem` had just set. Combined with (1) the DB has no board-rank row either, so the item then falls back to `ranks[blId]`. In list view the sibling reranking pushes the item's list rank around; on the next reload/echo cycle the item collides on rank with a sibling and — because the board dedup path is missing — the card either lands somewhere invisible (below the viewport of another column) or is squelched by the "existing card with same board rank" comparator that treats it as a duplicate of the previous top card and hides it in `cardsByStatus`.
 
-- New table `work_item_board_ranks` mirroring `work_item_backlog_ranks`:
-  - `organization_id`, `work_item_id`, `backlog_id`, `rank double precision`, timestamps
-  - Unique on `(work_item_id, backlog_id)`, same RLS + GRANTs pattern as the list-rank table
-- `WorkItem.ranks` stays as the list rank map. Add `WorkItem.boardRanks: Record<backlogId, number>`.
-- Realtime + snapshot/restore extended to cover the new table.
+The visible symptom is exactly what the user reported: the new card flashes in, the realtime echo lands, and it disappears from every view.
 
-## Migration of existing data
+## Fix
 
-For every `(backlog_id, status)` group, seed `work_item_board_ranks.rank` by taking the current list rank order within that group and re-numbering 0..N-1. Runs once in the SQL migration.
+### 1. Migration: change `rank` to `double precision`
 
-## Store changes (`appStore.ts`, `supabaseSync.ts`)
+New migration on `public.work_item_board_ranks`:
 
-- Load/write `boardRanks` alongside `ranks`. Reuse the pending-upserts + auto-heal machinery, duplicated for the board table.
-- New actions:
-  - `reorderBoardItems(backlogId, statusKey, orderedIds)` — writes only `boardRanks`.
-  - `setWorkItemStatus` no longer implicitly changes list rank (already true); when moving between columns, it also assigns a board rank at the drop position (top / after neighbour) without touching `ranks`.
-- List reorder paths (`reorderWorkItems`, drag in `WorkItemTreePanel`, keyboard move) touch only `ranks`.
-- `addWorkItem` / WhatsApp / respawn / duplicate:
-  - List rank: unchanged (top of list, or explicit rank when provided).
-  - Board rank: **after the selected board card** in the target column if the user is in board view and a card is selected in that column; otherwise **top of the column**. A new optional `boardRank?: number` argument on `addWorkItem` carries the caller's choice; default = top.
-- `moveWorkItemToBacklog` seeds a fresh board rank at the top of the target column (and drops the old backlog's entry).
+```sql
+ALTER TABLE public.work_item_board_ranks
+  ALTER COLUMN rank TYPE double precision USING rank::double precision;
+```
 
-## BoardView
+Matches `work_item_backlog_ranks.rank` and unblocks all midpoint writes.
 
-- Sort cards in each column by `boardRanks[backlogId]` (fallback to `ranks[backlogId]` only for items still missing a board rank post-migration).
-- Drag-between/within columns calls the new `reorderBoardItems` and, when the column changed, `setWorkItemStatus`. No writes to `ranks`.
-- Inline "add card" computes the board rank from the currently selected card in that column (after it), else top; passes it as `boardRank` to `addWorkItem`.
-- Column-level "move to top/bottom" acts on board rank only.
+### 2. Preserve `boardRanks` in realtime echoes
 
-## List view
+`src/store/appStore.ts` — `applyRealtimeWorkItem`:
 
-No behavioural change beyond: reordering never writes `boardRanks`.
+- Keep local `boardRanks` on the rebuilt object (same pattern already used for `ranks`, `childrenIds`, `parentIds`):
+  ```ts
+  boardRanks: state.workItems[id]?.boardRanks ?? {},
+  ```
+- No other fields change.
 
-## Realtime + integrity
+### 3. Always seed a board rank on new work items
 
-- `useRealtimeSync` subscribes to `work_item_board_ranks` and merges into `boardRanks`.
-- `dataIntegrity` gains a duplicate-board-rank healer analogous to the list-rank one, grouped by `(backlog_id, status)`.
+`src/store/appStore.ts` — `addWorkItem`:
+
+- Compute an effective `boardRank`:
+  - If `requestedBoardRank` is a number, use it.
+  - Otherwise pick "top of the target column": `min(existing boardRanks in (backlogId, targetStatus)) - 1`, defaulting to `0` when the column is empty. Fall back to `ranks[blId]` only when neither `boardRanks[blId]` nor the DB entry exists.
+- Always set `newItem.boardRanks = { [backlogId]: effectiveBoardRank }`.
+- Always call `upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }])`.
+
+This guarantees every new item has a board-rank row from the moment it exists, so echoes and reloads reproduce the correct position.
+
+### 4. `handleColumnAdd` respects "selected card on board"
+
+`src/components/BoardView.tsx`:
+
+- When no `addAfterSlot` is present, look at `selectedWorkItemIds`; if exactly one is selected AND it lives in `cardsByStatus[statusKey]`, treat its index as the anchor (`afterIndex`) and reuse the existing midpoint calculation. Otherwise pass `undefined` so `addWorkItem` seeds top-of-column per (3).
+- Matches the previously-agreed placement rule: "After the currently selected item on board. If none is selected on board, or the item is created in list view, then at the top of the column."
+
+### 5. Test fixture
+
+`src/test/appStore.test.ts`:
+
+- Extend the existing `vi.mock('@/store/supabaseSync', ...)` factory to also export a no-op `upsertWorkItemBoardRankRows` so the reorder tests stop throwing (they currently all fail with `No "upsertWorkItemBoardRankRows" export is defined on the mock`). This is a test-only change; no runtime behavior shifts.
 
 ## Out of scope
 
-- Cross-view syncing of any kind.
-- Changing how statuses themselves are stored (already per-backlog).
-- List-view UI.
+- Cross-view sync (remains independent).
+- Any list-view reorder behavior.
+- Board dnd redesign — this plan only fixes the "add" regression.
 
-## Technical notes
+## Verification
 
-- `WorkItem.boardRanks` defaults to `{}`; selectors fall back to `ranks[backlogId] ?? 0` so pre-migration clients still render sensibly.
-- Board rank inserts use the same "midpoint between neighbours, else neighbour±1" scheme already used for list ranks in `BoardView.tsx`.
-- Snapshot/restore edge functions (`build_organization_snapshot`, `restore_organization_backup`) updated to include the new table.
+- Add item from list view → item stays after realtime echo, list view keeps it, board view shows it at top of its column.
+- Add item from board column header on an empty column → appears, persists.
+- Add item on a column with existing cards, with one card selected in that column → new item lands directly after the selected card and stays.
+- Fractional board-rank writes (e.g. midpoint after a drag between cards) succeed in Postgres and no `Failed to save board ranking` toast fires.
+- `bunx vitest run src/test/appStore.test.ts` passes.
