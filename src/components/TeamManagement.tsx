@@ -24,8 +24,11 @@ interface MemberProfile {
 
 export function TeamManagement() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const activeOrg = useOrgStore((s) => s.getActiveOrg());
-  const canManage = activeOrg?.role === "owner" || activeOrg?.role === "admin";
+  const memberships = useOrgStore((s) => s.memberships);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const activeOrg = memberships.find((m) => m.organization_id === activeOrgId) ?? null;
+  const activeRole = roleOverride ?? activeOrg?.role;
+  const canManage = activeRole === "owner" || activeRole === "admin";
   const isMember = !!activeOrg;
   const teams = useTeamStore((s) => s.teams);
   const teamMembers = useTeamStore((s) => s.teamMembers);
