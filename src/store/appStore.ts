@@ -1444,14 +1444,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         }),
       );
       // Also persist board ranks so the board view stays in sync.
-      upsertWorkItemBoardRankRows(
+      persistBoardRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
-      ).catch(() => {});
+      );
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
