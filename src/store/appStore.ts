@@ -661,10 +661,11 @@ function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | '
 function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
   const cached = readCachedAppData(orgId);
   if (!cached) return;
+  const { orgId: _cachedOrgId, timestamp: _cachedTimestamp, ...cachedData } = cached;
   writeCachedAppData(orgId, {
-    ...cached,
-    workItems: { ...cached.workItems, ...workItemsPatch },
-    selectedWorkItemIds: selectedWorkItemIds ?? cached.selectedWorkItemIds,
+    ...cachedData,
+    workItems: { ...cachedData.workItems, ...workItemsPatch },
+    selectedWorkItemIds: selectedWorkItemIds ?? cachedData.selectedWorkItemIds,
   });
 }
 
