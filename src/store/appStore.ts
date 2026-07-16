@@ -3315,6 +3315,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: state.workItems[id]?.childrenIds ?? [],
           backlogAssignments: effectiveAssignments,
           ranks: initialRanks,
+          boardRanks: state.workItems[id]?.boardRanks ?? {},
           organizationId: (row.organization_id as string) ?? undefined,
           respawnEnabled: (row.respawn_enabled as boolean) ?? false,
           respawnIntervalDays: (row.respawn_interval_days as number | null) ?? undefined,
