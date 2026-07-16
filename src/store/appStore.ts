@@ -21,6 +21,7 @@ import {
   upsertWorkItemBacklogRankRows,
   upsertWorkItemBoardRankRows,
   type WorkItemBacklogRankUpsert,
+  type WorkItemBoardRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -608,8 +609,16 @@ function assignSequentialRanksForContext(
 
 
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
+const PENDING_BOARD_RANK_UPSERTS_KEY = "pending_work_item_board_rank_upserts";
+const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
 const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
+
+type PendingWorkItemUpsert = {
+  item: WorkItem;
+  organizationId: string;
+  updatedAt: number;
+};
 
 interface CachedAppData {
   orgId: string;
@@ -647,6 +656,113 @@ function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | '
   } catch {
     // Storage full or unavailable — not critical.
   }
+}
+
+function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
+  const cached = readCachedAppData(orgId);
+  if (!cached) return;
+  writeCachedAppData(orgId, {
+    ...cached,
+    workItems: { ...cached.workItems, ...workItemsPatch },
+    selectedWorkItemIds: selectedWorkItemIds ?? cached.selectedWorkItemIds,
+  });
+}
+
+function readPendingWorkItemUpserts(orgId: string): PendingWorkItemUpsert[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending)) return [];
+    return pending.filter((entry): entry is PendingWorkItemUpsert =>
+      entry?.organizationId === orgId && entry?.item?.id && entry.item.backlogAssignments,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function queueWorkItemUpsertsForRetry(items: WorkItem[], organizationId: string) {
+  if (typeof localStorage === "undefined" || items.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, PendingWorkItemUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((entry) => {
+        if (entry?.item?.id && entry?.organizationId) deduped.set(`${entry.organizationId}::${entry.item.id}`, entry);
+      });
+    }
+    const now = Date.now();
+    items.forEach((item) => deduped.set(`${organizationId}::${item.id}`, { item, organizationId, updatedAt: now }));
+    localStorage.setItem(PENDING_WORK_ITEM_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function removeQueuedWorkItemUpserts(items: WorkItem[], organizationId: string) {
+  if (typeof localStorage === "undefined" || items.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(existing)) return;
+    const saved = new Set(items.map((item) => `${organizationId}::${item.id}`));
+    const remaining = existing.filter((entry) => !saved.has(`${entry?.organizationId}::${entry?.item?.id}`));
+    if (remaining.length > 0) localStorage.setItem(PENDING_WORK_ITEM_UPSERTS_KEY, JSON.stringify(remaining));
+    else localStorage.removeItem(PENDING_WORK_ITEM_UPSERTS_KEY);
+  } catch {
+    // Keep the queue rather than risking data loss.
+  }
+}
+
+function mergePendingWorkItems(
+  data: ReturnType<typeof sanitizeData>,
+  orgId: string,
+): ReturnType<typeof sanitizeData> {
+  const pending = readPendingWorkItemUpserts(orgId);
+  if (pending.length === 0) return data;
+
+  const workItems = { ...data.workItems };
+  let changed = false;
+  pending
+    .sort((a, b) => a.updatedAt - b.updatedAt)
+    .forEach(({ item }) => {
+      const validAssignments: Record<string, string> = {};
+      for (const [treeId, backlogId] of Object.entries(item.backlogAssignments ?? {})) {
+        if (data.backlogTrees[treeId] && data.backlogs[backlogId]) validAssignments[treeId] = backlogId;
+      }
+      if (Object.keys(validAssignments).length === 0) return;
+      workItems[item.id] = {
+        ...item,
+        backlogAssignments: validAssignments,
+        childrenIds: [],
+      };
+      changed = true;
+    });
+
+  if (!changed) return data;
+
+  for (const wi of Object.values(workItems)) wi.childrenIds = [];
+  for (const wi of Object.values(workItems)) {
+    if (wi.parentId && workItems[wi.parentId]) {
+      workItems[wi.parentId].childrenIds.push(wi.id);
+    }
+    if (wi.parentIds) {
+      for (const treeParentId of Object.values(wi.parentIds)) {
+        if (treeParentId && treeParentId !== wi.parentId && workItems[treeParentId]) {
+          if (!workItems[treeParentId].childrenIds.includes(wi.id)) workItems[treeParentId].childrenIds.push(wi.id);
+        }
+      }
+    }
+  }
+
+  return { ...data, workItems };
+}
+
+function persistWorkItemUpserts(items: WorkItem[], organizationId: string) {
+  if (items.length === 0) return;
+  queueWorkItemUpsertsForRetry(items, organizationId);
+  upsertWorkItems(items, organizationId).then((ok) => {
+    if (ok) removeQueuedWorkItemUpserts(items, organizationId);
+  });
 }
 
 function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
@@ -687,6 +803,44 @@ function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   });
 }
 
+function queueBoardRankUpsertsForRetry(rows: WorkItemBoardRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    const deduped = new Map<string, WorkItemBoardRankUpsert>();
+    if (Array.isArray(existing)) {
+      existing.forEach((row) => {
+        if (row?.workItemId && row?.backlogId && row?.organizationId) deduped.set(`${row.workItemId}::${row.backlogId}`, row);
+      });
+    }
+    rows.forEach((row) => deduped.set(`${row.workItemId}::${row.backlogId}`, row));
+    localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify([...deduped.values()]));
+  } catch {
+    // Best-effort only; DB persistence still runs immediately.
+  }
+}
+
+function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
+  if (rows.length === 0) return;
+  queueBoardRankUpsertsForRetry(rows);
+  upsertWorkItemBoardRankRows(rows).then((ok) => {
+    if (!ok || typeof localStorage === "undefined") return;
+    try {
+      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
+      const existing = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+      if (!Array.isArray(existing)) return;
+      const remaining = existing.filter((row) => {
+        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+      });
+      if (remaining.length > 0) localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+      else localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+    } catch {
+      // Best-effort cleanup only.
+    }
+  });
+}
+
 async function flushPendingRankUpserts() {
   if (typeof localStorage === "undefined") return;
   try {
@@ -697,6 +851,26 @@ async function flushPendingRankUpserts() {
   } catch {
     localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   }
+}
+
+async function flushPendingBoardRankUpserts() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const pending = JSON.parse(localStorage.getItem(PENDING_BOARD_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(pending) || pending.length === 0) return;
+    const ok = await upsertWorkItemBoardRankRows(pending);
+    if (ok) localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+  } catch {
+    localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+  }
+}
+
+async function flushPendingWorkItemUpserts(orgId: string) {
+  const pending = readPendingWorkItemUpserts(orgId);
+  if (pending.length === 0) return;
+  const items = pending.map((entry) => entry.item);
+  const ok = await upsertWorkItems(items, orgId);
+  if (ok) removeQueuedWorkItemUpserts(items, orgId);
 }
 
 /**
