@@ -1708,6 +1708,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         status: targetStatus,
         childrenIds: [],
         points: undefined,
+        organizationId: orgId,
       };
 
       updatedWorkItems[id] = newItem;
@@ -1715,9 +1716,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       orderedIds.splice(insertIndex, 0, id);
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
-      upsertWorkItems(itemsToUpdateInDB, orgId);
+      persistWorkItemUpserts(itemsToUpdateInDB, orgId);
       // Always persist the board rank so echoes/reloads reproduce the position.
-      upsertWorkItemBoardRankRows([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]).catch(() => {});
+      persistBoardRankUpserts([{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }]);
 
 
       if (parentId && updatedWorkItems[parentId]) {
@@ -1737,6 +1738,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
+      patchCachedWorkItems(orgId, Object.fromEntries(itemsToUpdateInDB.map((wi) => [wi.id, wi])), [id]);
 
       const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
       internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
@@ -1777,10 +1779,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           title,
           parentId,
           ranks: { [backlogId]: maxRank + 1 + i },
+          boardRanks: { [backlogId]: maxRank + 1 + i },
           backlogAssignments: { [treeId]: backlogId },
           status: "not_started" as WorkItemStatus,
           childrenIds: [],
           points: undefined,
+          organizationId: orgId,
         };
         updatedWorkItems[id] = newItem;
         newItems.push(newItem);
@@ -1793,7 +1797,13 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
-      upsertWorkItems(newItems, orgId);
+      persistWorkItemUpserts(newItems, orgId);
+      persistBoardRankUpserts(newItems.map((item) => ({
+        workItemId: item.id,
+        backlogId,
+        rank: item.boardRanks?.[backlogId] ?? item.ranks[backlogId] ?? 0,
+        organizationId: orgId,
+      })));
       internalLog({ action: "Bulk Add", entityType: "work_item", details: `${titles.length} items added` });
 
       set({
@@ -1801,6 +1811,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
+      patchCachedWorkItems(orgId, Object.fromEntries(newItems.map((wi) => [wi.id, wi])));
     },
 
     deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => {
