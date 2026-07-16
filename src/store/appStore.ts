@@ -1245,12 +1245,13 @@ export const useAppStore = create<AppState>()((set, get) => {
       // BUT set loadingProgress to -1 as a sentinel so App.tsx can
       // detect the failed load and retry.
       const timeoutId = setTimeout(() => {
-        if (get().isLoading) {
+        if (get().organizationId === orgId && get().isLoading) {
           set({ isLoading: false, loadingProgress: -1 });
         }
       }, 15000);
 
       try {
+        if (get().organizationId !== orgId) return;
         set({ loadingProgress: 5 });
 
         // Fire flushPendingRankUpserts concurrently with the main data load
@@ -1273,11 +1274,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         // panel) instead of eagerly on every page load.  This saves one
         // network round-trip on mobile for the common case.
         const [rawData, allHyperlinks] = await Promise.all([
-          loadFromSupabase(orgId).then((r) => { set({ loadingProgress: 50 }); return r; }),
+          loadFromSupabase(orgId).then((r) => {
+            if (get().organizationId === orgId) set({ loadingProgress: 50 });
+            return r;
+          }),
           loadHyperlinksForWorkItems([], orgId)
             .catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>))
-            .then((r) => { set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) })); return r; }),
+            .then((r) => {
+              if (get().organizationId === orgId) set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) }));
+              return r;
+            }),
         ]);
+        if (get().organizationId !== orgId) return;
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
@@ -1375,7 +1383,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       } catch (err) {
         clearTimeout(timeoutId);
-        set({ isLoading: false, loadingProgress: 0 });
+        if (get().organizationId === orgId) set({ isLoading: false, loadingProgress: 0 });
       }
       };
 
