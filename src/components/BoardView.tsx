@@ -551,7 +551,9 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           targetColIndex += direction;
         }
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        // Move up/down within the current column
+        // Move up/down within the current column.  With Shift held, extend
+        // the selection range instead of replacing it.
+        const shift = e.shiftKey;
         let cardIndex = currentCardIndex;
         let colKey: string = currentColumnKey;
 
@@ -581,7 +583,11 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
         const targetItem = colCards[newIndex];
         if (targetItem && targetItem.id !== selectedId) {
-          state.selectWorkItem(targetItem.id, false);
+          if (shift) {
+            state.selectWorkItem(targetItem.id, true);
+          } else {
+            state.selectWorkItem(targetItem.id, false);
+          }
           // Scroll the newly selected card into view after React reconciles
           setTimeout(() => {
             const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
