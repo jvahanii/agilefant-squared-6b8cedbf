@@ -489,7 +489,9 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       const ids = state.selectedWorkItemIds;
       if (ids.length === 0) return;
 
-      const selectedId = ids[0];
+      // With Shift held, extend from the last selected item (not the first)
+      // so repeated Shift+Arrow presses extend the range outward.
+      const selectedId = e.shiftKey && ids.length > 0 ? ids[ids.length - 1] : ids[0];
       const item = state.workItems[selectedId];
       if (!item) return;
 
