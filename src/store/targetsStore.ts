@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 
 export type TargetMetric = 'savings' | 'income' | 'both';
 
