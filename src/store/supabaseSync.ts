@@ -69,6 +69,47 @@ function isStalePrefix(id: string, effectiveOrgId: string): boolean {
   return sep > 0 && id.slice(0, sep) !== effectiveOrgId;
 }
 
+type SupabaseReadResult<T = any> = { data: T[] | null; error: any };
+
+async function loadAllRows(table: string, column: string, value: string): Promise<SupabaseReadResult> {
+  const PAGE = 1000;
+  const rows: any[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select('*')
+      .eq(column, value)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    rows.push(...((data ?? []) as any[]));
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
+  return { data: rows, error: null };
+}
+
+async function loadAllRowsIn(table: string, column: string, values: string[]): Promise<SupabaseReadResult> {
+  if (values.length === 0) return { data: [], error: null };
+  const PAGE = 1000;
+  const rows: any[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select('*')
+      .in(column, values)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    rows.push(...((data ?? []) as any[]));
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
+  return { data: rows, error: null };
+}
+
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
 export async function loadFromSupabase(organizationId: string): Promise<{
