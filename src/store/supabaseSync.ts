@@ -126,7 +126,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
   // shares, own trees, and own work items are independent of each other.
-    const [sharesRes, ownTreesRes, ownItemsRes] = await Promise.all([
+  const [sharesRes, ownTreesRes, ownItemsRes] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
     supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
     loadAllRows('work_items', 'organization_id', organizationId),
