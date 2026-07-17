@@ -84,13 +84,12 @@ describe('supabase pagination guard', () => {
           const selectIdx = source.indexOf('.select(', match.index);
           if (selectIdx === -1 || selectIdx - match.index > 300) continue;
 
-          // Look backwards ~300 chars for `paginateSelect(` wrapping this call.
-          const preceding = source.slice(Math.max(0, match.index - 400), match.index);
-          if (/paginateSelect\s*\(/.test(preceding)) continue;
-
-          // Delete / update / insert / upsert don't return rows in bulk.
-          const afterSelect = source.slice(selectIdx, selectIdx + 400);
-          if (/^\.select\(\)\s*\.single/.test(afterSelect.trim())) continue;
+          // Look at a wider window around this call: if it uses `.range(` or
+          // is wrapped by `paginateSelect(` it is paginated.
+          const before = source.slice(Math.max(0, match.index - 800), match.index);
+          const after = source.slice(selectIdx, selectIdx + 600);
+          if (/paginateSelect\s*\(/.test(before)) continue;
+          if (/\.range\s*\(/.test(after)) continue;
 
           if (looksBounded(source, selectIdx)) continue;
 
