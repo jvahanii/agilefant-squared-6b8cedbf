@@ -69,6 +69,47 @@ function isStalePrefix(id: string, effectiveOrgId: string): boolean {
   return sep > 0 && id.slice(0, sep) !== effectiveOrgId;
 }
 
+type SupabaseReadResult<T = any> = { data: T[] | null; error: any };
+
+async function loadAllRows(table: string, column: string, value: string): Promise<SupabaseReadResult> {
+  const PAGE = 1000;
+  const rows: any[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select('*')
+      .eq(column, value)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    rows.push(...((data ?? []) as any[]));
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
+  return { data: rows, error: null };
+}
+
+async function loadAllRowsIn(table: string, column: string, values: string[]): Promise<SupabaseReadResult> {
+  if (values.length === 0) return { data: [], error: null };
+  const PAGE = 1000;
+  const rows: any[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select('*')
+      .in(column, values)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    rows.push(...((data ?? []) as any[]));
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
+  return { data: rows, error: null };
+}
+
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
 export async function loadFromSupabase(organizationId: string): Promise<{
@@ -88,7 +129,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   const [sharesRes, ownTreesRes, ownItemsRes] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
     supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
-    supabase.from('work_items').select('*').eq('organization_id', organizationId),
+    loadAllRows('work_items', 'organization_id', organizationId),
   ]);
 
   const sharedTreeIds = ((sharesRes.data ?? []) as any[]).map((s) => s.tree_id as string);
@@ -126,7 +167,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
       )]
     : [];
   const incomingItemsPromise = incomingPartnerOrgIds.length > 0
-    ? supabase.from('work_items').select('*').in('organization_id', incomingPartnerOrgIds)
+    ? loadAllRowsIn('work_items', 'organization_id', incomingPartnerOrgIds)
     : Promise.resolve({ data: [], error: null });
 
   // (B) Outgoing: orgs that have been granted access to our own trees.
@@ -138,7 +179,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     ),
   ];
   const outgoingItemsPromise = outgoingPartnerOrgIds.length > 0
-    ? supabase.from('work_items').select('*').in('organization_id', outgoingPartnerOrgIds)
+    ? loadAllRowsIn('work_items', 'organization_id', outgoingPartnerOrgIds)
     : Promise.resolve({ data: [], error: null });
 
   const [backlogsRes, incomingItemsRes, outgoingItemsRes] = await Promise.all([
