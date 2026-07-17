@@ -1118,7 +1118,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           workItems: cached.workItems,
           backlogs: cached.backlogs,
           backlogTrees: cached.backlogTrees,
-        }, orgId);
+        }, orgId, [], { backlogs: cached.backlogs, backlogTrees: cached.backlogTrees });
         const parseStoredIdsCached = (key: string): string[] => {
           try {
             const raw = localStorage.getItem(key);
@@ -1195,7 +1195,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             // state to avoid losing their changes.
             const versionBeforeFetch = localMutationVersion;
             const pendingAtLoad = readPendingWorkItemUpserts(orgId);
-            await flushPendingWorkItemUpserts(orgId).catch(() => {});
+            await flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {});
             await flushPendingRankUpserts().catch(() => {});
             await flushPendingBoardRankUpserts().catch(() => {});
             const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
@@ -1210,7 +1210,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (localMutationVersion !== versionBeforeFetch) {
               // User edited — don't overwrite, but still update cache
               // for next visit.
-              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
+              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
               writeCachedAppData(orgId, {
                 workItems: cleanDataBg.workItems,
                 backlogs: cleanDataBg.backlogs,
@@ -1223,7 +1223,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               });
               return;
             }
-            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
+            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
 
         // Bug fix: if sanitizeData dropped ALL backlog assignments for an
         // item that existed in the current store with valid assignments,
@@ -1316,7 +1316,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // still arrives and the UI becomes interactive sooner.
         const pendingAtLoad = readPendingWorkItemUpserts(orgId);
         const rankFlushPromise = Promise.all([
-          flushPendingWorkItemUpserts(orgId).catch(() => {}),
+          flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {}),
           flushPendingRankUpserts().catch(() => {}),
           flushPendingBoardRankUpserts().catch(() => {}),
         ]).catch(() => {});
@@ -1346,7 +1346,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Ensure the rank flush has had at least the duration of the main
         // data fetch to complete, but don't block the UI if it hasn't.
         rankFlushPromise.catch(() => {});
-        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad);
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
         set({ loadingProgress: 80 });
 
         // Filter hyperlinks to the work items that survived sanitization.
@@ -1953,7 +1953,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       const itemsToUpdateInDB = assignSequentialRanksForContext(updatedWorkItems, parentId, treeId, visibleBacklogIds, orderedIds);
       if (!itemsToUpdateInDB.some((wi) => wi.id === id)) itemsToUpdateInDB.push(updatedWorkItems[id]);
       const newItemBoardRankRows = [{ workItemId: id, backlogId, rank: effectiveBoardRank, organizationId: orgId }];
-      persistWorkItemUpserts(itemsToUpdateInDB, orgId, newItemBoardRankRows);
+      persistWorkItemUpserts(itemsToUpdateInDB, orgId, newItemBoardRankRows, { backlogs: state.backlogs, backlogTrees: state.backlogTrees });
 
 
       if (parentId && updatedWorkItems[parentId]) {
@@ -2041,7 +2041,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         rank: item.boardRanks?.[backlogId] ?? item.ranks[backlogId] ?? 0,
         organizationId: orgId,
       }));
-      persistWorkItemUpserts(newItems, orgId, newItemBoardRankRows);
+      persistWorkItemUpserts(newItems, orgId, newItemBoardRankRows, { backlogs: state.backlogs, backlogTrees: state.backlogTrees });
       internalLog({ action: "Bulk Add", entityType: "work_item", details: `${titles.length} items added` });
 
       set({
