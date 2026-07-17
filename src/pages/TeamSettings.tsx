@@ -329,10 +329,14 @@ export default function TeamSettings() {
 
           // Transfer work items that reference this tree
           // (items owned by the deleted org that have assignments to this tree)
-          const { data: items } = await supabase
-            .from("work_items")
-            .select("id, backlog_assignments")
-            .eq("organization_id", activeOrgId);
+          const { data: items } = await paginateSelect<any>((from, to) =>
+            supabase
+              .from("work_items")
+              .select("id, backlog_assignments")
+              .eq("organization_id", activeOrgId)
+              .order("id", { ascending: true })
+              .range(from, to),
+          );
 
           const itemsInTree = (items ?? []).filter((item: any) => {
             const assignments = item.backlog_assignments as Record<string, string>;
