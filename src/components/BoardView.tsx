@@ -203,6 +203,10 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const backlogs = useAppStore((s) => s.backlogs);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
+  const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
+
+  // Track the last clicked card ID for shift-click range selection.
+  const lastBoardSelectedIdRef = useRef<string | null>(null);
   // Subscribe so realtime edits re-render.
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const createStatus = useBacklogStatusesStore((s) => s.createStatus);
@@ -600,7 +604,29 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
             column={col}
             items={cardsByStatus[col.key] ?? []}
             selectedIds={selectedWorkItemIds}
-            onSelectItem={(id, ctrl) => selectWorkItem(id, ctrl)}
+            onSelectItem={(id, ctrl, shift) => {
+              if (shift && lastBoardSelectedIdRef.current) {
+                // Build flat ordered list of all board cards
+                const allCards: string[] = [];
+                for (const c of orderedColumns) {
+                  for (const wi of cardsByStatus[c.key] ?? []) allCards.push(wi.id);
+                }
+                const startIdx = allCards.indexOf(lastBoardSelectedIdRef.current);
+                const endIdx = allCards.indexOf(id);
+                if (startIdx !== -1 && endIdx !== -1) {
+                  const rangeIds = allCards.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+                  if (ctrl) {
+                    rangeIds.forEach((rid) => selectWorkItem(rid, true));
+                  } else {
+                    clearWorkItemSelection();
+                    rangeIds.forEach((rid) => selectWorkItem(rid, true));
+                  }
+                  return;
+                }
+              }
+              selectWorkItem(id, ctrl);
+              lastBoardSelectedIdRef.current = id;
+            }}
             treeStatuses={allStatuses}
             treeId={treeId}
             backlogId={backlogId}
@@ -710,7 +736,7 @@ function BoardColumn({
   column: TreeStatus;
   items: WorkItem[];
   selectedIds: string[];
-  onSelectItem: (id: string, ctrl: boolean) => void;
+  onSelectItem: (id: string, ctrl: boolean, shift?: boolean) => void;
   treeStatuses: TreeStatus[];
   treeId: string;
   backlogId: string;
@@ -974,7 +1000,7 @@ function BoardColumn({
               <BoardCard
                 item={wi}
                 selected={selectedIds.includes(wi.id)}
-                onClick={(ctrl) => onSelectItem(wi.id, ctrl)}
+                onClick={(ctrl, shift) => onSelectItem(wi.id, ctrl, shift)}
                 treeStatuses={treeStatuses}
                 treeId={treeId}
                 backlogId={backlogId}
@@ -1024,7 +1050,7 @@ function BoardCard({
 }: {
   item: WorkItem;
   selected: boolean;
-  onClick: (ctrl: boolean) => void;
+  onClick: (ctrl: boolean, shift?: boolean) => void;
   treeStatuses: TreeStatus[];
   treeId: string;
   backlogId: string;
@@ -1209,7 +1235,7 @@ function BoardCard({
               if (!target.closest("input, textarea, button, [data-drag-handle]")) {
                 e.stopPropagation();
               }
-              onClick(e.ctrlKey || e.metaKey);
+              onClick(e.ctrlKey || e.metaKey, e.shiftKey);
             }}
             onDoubleClick={(e) => {
               e.stopPropagation();
