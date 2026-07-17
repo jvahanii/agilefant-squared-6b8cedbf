@@ -80,9 +80,13 @@ describe('supabase pagination guard', () => {
         // Reset each file
         re.lastIndex = 0;
         while ((match = re.exec(source)) !== null) {
-          // Find the first `.select(` after this .from(...) call
+          // Find the first `.select(` or `.upsert(`/`.insert(`/`.update(`/`.delete(` after this .from(...) call
           const selectIdx = source.indexOf('.select(', match.index);
           if (selectIdx === -1 || selectIdx - match.index > 300) continue;
+
+          // Skip mutations that chain `.select()` to return the affected row(s).
+          const between = source.slice(match.index, selectIdx);
+          if (/\.(upsert|insert|update|delete)\s*\(/.test(between)) continue;
 
           // Look at a wider window around this call: if it uses `.range(` or
           // is wrapped by `paginateSelect(` it is paginated.
