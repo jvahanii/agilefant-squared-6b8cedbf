@@ -383,10 +383,14 @@ export default function TeamSettings() {
 
         // Fetch all items owned by this org once; filter per tree and remove transferred items
         // to avoid re-transferring items that have assignments to multiple shared trees.
-        const { data: remainingSharedItems } = await supabase
-          .from("work_items")
-          .select("id, backlog_assignments")
-          .eq("organization_id", activeOrgId);
+        const { data: remainingSharedItems } = await paginateSelect<any>((from, to) =>
+          supabase
+            .from("work_items")
+            .select("id, backlog_assignments")
+            .eq("organization_id", activeOrgId)
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
 
         let pendingItems: any[] = remainingSharedItems ?? [];
 
