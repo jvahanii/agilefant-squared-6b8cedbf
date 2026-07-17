@@ -156,7 +156,13 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   // ── Wave 3: backlogs + partner work items (all independent) ─────────────
   const backlogsPromise = allTreeIds.length > 0
-    ? supabase.from('backlogs').select('*').in('tree_id', allTreeIds)
+    ? paginateSelect<any>((from, to) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from('backlogs' as any).select('*') as any)
+          .in('tree_id', allTreeIds)
+          .order('id', { ascending: true })
+          .range(from, to),
+      )
     : Promise.resolve({ data: [], error: null });
 
   // (A) Incoming: orgs that own the trees shared to us.
