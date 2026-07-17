@@ -69,14 +69,15 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
   loadTimeEntries: async (organizationId) => {
     set({ isLoading: true });
 
-    // Run own-org entries fetch, incoming-share lookup, and own-trees lookup in parallel.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ownEntriesPromise = (supabase as any)
-      .from('time_entries')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .order('spent_date', { ascending: false })
-      .limit(5000);
+    // Paginate own-org time entries: active orgs blow past 1k rows quickly.
+    const ownEntriesPromise = paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('time_entries' as any).select('*') as any)
+        .eq('organization_id', organizationId)
+        .order('spent_date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const incomingSharesPromise = (supabase as any)
