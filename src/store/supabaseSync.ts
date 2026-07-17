@@ -909,11 +909,14 @@ async function loadWorkItemBacklogRanks(
   const CHUNK = 100;
   for (let i = 0; i < workItemIds.length; i += CHUNK) {
     const chunk = workItemIds.slice(i, i + CHUNK);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await supabase
-      .from('work_item_backlog_ranks' as any)
-      .select('*')
-      .in('work_item_id', chunk);
+    // Paginate inside the chunk: a hot work item could still exceed 1k ranks.
+    const { data, error } = await paginateSelect<any>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('work_item_backlog_ranks' as any).select('*') as any)
+        .in('work_item_id', chunk)
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
     if (error) { console.error('loadWorkItemBacklogRanks:', error); return {}; }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     collect((data ?? []) as any[]);
