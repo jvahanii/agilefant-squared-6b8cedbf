@@ -624,6 +624,11 @@ type PendingWorkItemUpsert = {
   updatedAt: number;
 };
 
+type ContainerSnapshot = {
+  backlogs: Record<string, Backlog>;
+  backlogTrees: Record<string, BacklogTree>;
+};
+
 interface CachedAppData {
   orgId: string;
   workItems: Record<string, WorkItem>;
@@ -711,6 +716,44 @@ function readPendingWorkItemUpserts(orgId: string): PendingWorkItemUpsert[] {
   }
 }
 
+function collectReferencedContainers(items: WorkItem[], fallback?: ContainerSnapshot): ContainerSnapshot {
+  const backlogs: Record<string, Backlog> = {};
+  const backlogTrees: Record<string, BacklogTree> = {};
+  if (!fallback) return { backlogs, backlogTrees };
+
+  const addTree = (treeId: string | null | undefined) => {
+    if (!treeId || backlogTrees[treeId]) return;
+    const tree = fallback.backlogTrees[treeId];
+    if (tree) backlogTrees[treeId] = tree;
+  };
+
+  const addBacklog = (backlogId: string | null | undefined) => {
+    if (!backlogId || backlogs[backlogId]) return;
+    const backlog = fallback.backlogs[backlogId];
+    if (!backlog) return;
+    if (backlog.parentId) addBacklog(backlog.parentId);
+    addTree(backlog.treeId);
+    backlogs[backlogId] = backlog;
+  };
+
+  for (const item of items) {
+    for (const [treeId, backlogId] of Object.entries(item.backlogAssignments ?? {})) {
+      addTree(treeId);
+      addBacklog(backlogId);
+    }
+  }
+
+  return { backlogs, backlogTrees };
+}
+
+async function persistReferencedContainersForItems(items: WorkItem[], organizationId: string, fallback?: ContainerSnapshot) {
+  const containers = collectReferencedContainers(items, fallback);
+  const trees = Object.values(containers.backlogTrees);
+  const backlogsToPersist = Object.values(containers.backlogs);
+  if (trees.length > 0) await upsertBacklogTrees(trees, organizationId);
+  if (backlogsToPersist.length > 0) await upsertBacklogs(backlogsToPersist, organizationId);
+}
+
 function queueWorkItemUpsertsForRetry(items: WorkItem[], organizationId: string) {
   if (typeof localStorage === "undefined" || items.length === 0) return;
   try {
@@ -747,6 +790,7 @@ function mergePendingWorkItems(
   data: ReturnType<typeof sanitizeData>,
   orgId: string,
   pendingAtLoad: PendingWorkItemUpsert[] = [],
+  fallbackContainers?: ContainerSnapshot,
 ): ReturnType<typeof sanitizeData> {
   const pending = [...readPendingWorkItemUpserts(orgId), ...pendingAtLoad]
     .filter((entry) => entry.organizationId === orgId && entry.item?.id)
@@ -758,13 +802,19 @@ function mergePendingWorkItems(
   if (pending.size === 0) return data;
 
   const workItems = { ...data.workItems };
+  const backlogs = { ...data.backlogs };
+  const backlogTrees = { ...data.backlogTrees };
   let changed = false;
+  const pendingItems = [...pending.values()].map((entry) => entry.item);
+  const referencedContainers = collectReferencedContainers(pendingItems, fallbackContainers);
+  Object.assign(backlogTrees, referencedContainers.backlogTrees);
+  Object.assign(backlogs, referencedContainers.backlogs);
   [...pending.values()]
     .sort((a, b) => a.updatedAt - b.updatedAt)
     .forEach(({ item }) => {
       const validAssignments: Record<string, string> = {};
       for (const [treeId, backlogId] of Object.entries(item.backlogAssignments ?? {})) {
-        if (data.backlogTrees[treeId] && data.backlogs[backlogId]) validAssignments[treeId] = backlogId;
+        if (backlogTrees[treeId] && backlogs[backlogId]) validAssignments[treeId] = backlogId;
       }
       if (Object.keys(validAssignments).length === 0) return;
       workItems[item.id] = {
@@ -791,7 +841,7 @@ function mergePendingWorkItems(
     }
   }
 
-  return { ...data, workItems };
+  return { ...data, workItems, backlogs, backlogTrees };
 }
 
 function removeQueuedBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
@@ -811,11 +861,11 @@ function removeQueuedBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
   }
 }
 
-function persistWorkItemUpserts(items: WorkItem[], organizationId: string, boardRankRows: WorkItemBoardRankUpsert[] = []) {
+function persistWorkItemUpserts(items: WorkItem[], organizationId: string, boardRankRows: WorkItemBoardRankUpsert[] = [], fallbackContainers?: ContainerSnapshot) {
   if (items.length === 0) return;
   queueWorkItemUpsertsForRetry(items, organizationId);
   if (boardRankRows.length > 0) queueBoardRankUpsertsForRetry(boardRankRows);
-  upsertWorkItems(items, organizationId).then(async (ok) => {
+  persistReferencedContainersForItems(items, organizationId, fallbackContainers).then(() => upsertWorkItems(items, organizationId)).then(async (ok) => {
     if (!ok) return;
     if (boardRankRows.length > 0) {
       const boardOk = await upsertWorkItemBoardRankRows(boardRankRows);
@@ -927,7 +977,7 @@ async function flushPendingBoardRankUpserts() {
   }
 }
 
-async function flushPendingWorkItemUpserts(orgId: string) {
+async function flushPendingWorkItemUpserts(orgId: string, fallbackContainers?: ContainerSnapshot) {
   const pending = readPendingWorkItemUpserts(orgId);
   if (pending.length === 0) return;
   const items = pending.map((entry) => entry.item);
@@ -935,6 +985,7 @@ async function flushPendingWorkItemUpserts(orgId: string) {
   const boardRows = readPendingBoardRankUpserts().filter(
     (row) => row.organizationId === orgId && itemIds.has(row.workItemId),
   );
+  await persistReferencedContainersForItems(items, orgId, fallbackContainers);
   const ok = await upsertWorkItems(items, orgId);
   if (!ok) return;
   if (boardRows.length > 0) {
