@@ -141,12 +141,14 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from('work_item_snoozes')
-      .select('*')
-      .eq('user_id', userId)
-      .limit(5000);
+    // Paginate: heavy users may have thousands of snoozes across orgs.
+    const { data, error } = await paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('work_item_snoozes' as any).select('*') as any)
+        .eq('user_id', userId)
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
 
     if (error) {
       console.error('Failed to load snoozes', error);
