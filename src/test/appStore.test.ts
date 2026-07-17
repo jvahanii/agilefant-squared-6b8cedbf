@@ -309,6 +309,45 @@ describe("addWorkItem", () => {
     expect(useAppStore.getState().workItems[pendingItem.id]?.title).toBe("Reload Pending");
     expect(localStorage.getItem("pending_work_item_upserts")).toBeNull();
   });
+
+  it("keeps pending items visible when their cached backlog has not reached Supabase yet", async () => {
+    const treeId = `${ORG}::bt-local`;
+    const backlogId = `${ORG}::bl-local`;
+    const pendingItem = {
+      id: `${ORG}::wi-local-pending`,
+      title: "Local Container Pending",
+      status: "not_started" as const,
+      parentId: null,
+      childrenIds: [],
+      backlogAssignments: { [treeId]: backlogId },
+      ranks: { [backlogId]: 0 },
+      boardRanks: { [backlogId]: 0 },
+      organizationId: ORG,
+    };
+    localStorage.setItem("pending_work_item_upserts", JSON.stringify([
+      { item: pendingItem, organizationId: ORG, updatedAt: Date.now() },
+    ]));
+    useAppStore.setState({
+      organizationId: ORG,
+      isLoading: false,
+      workItems: {},
+      backlogs: {
+        [backlogId]: { id: backlogId, name: "Unsynced Backlog", parentId: null, childrenIds: [], treeId, rank: 0 },
+      },
+      backlogTrees: {
+        [treeId]: { id: treeId, name: "Unsynced Tree", rootBacklogIds: [backlogId], rank: 0 },
+      },
+    });
+    vi.mocked(upsertWorkItems).mockResolvedValueOnce(true);
+    vi.mocked(loadDataFromSupabase).mockResolvedValueOnce({ workItems: {}, backlogs: {}, backlogTrees: {} });
+
+    await useAppStore.getState().loadFromSupabase();
+
+    const loaded = useAppStore.getState();
+    expect(loaded.backlogTrees[treeId]?.name).toBe("Unsynced Tree");
+    expect(loaded.backlogs[backlogId]?.name).toBe("Unsynced Backlog");
+    expect(loaded.workItems[pendingItem.id]?.title).toBe("Local Container Pending");
+  });
 });
 
 describe("loadFromSupabase refresh guards", () => {
