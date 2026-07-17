@@ -350,6 +350,114 @@ describe("addWorkItem", () => {
   });
 });
 
+// ─── E2E: create items → refresh → items still appear in correct tree ─────
+describe("end-to-end: create work items and refresh", () => {
+  it("keeps newly created items in the correct backlog tree after a refresh", async () => {
+    seedStore();
+
+    // Create three items under bl-1 / bt-1 via the real user-facing action.
+    useAppStore.getState().addWorkItem("E2E Item A", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    useAppStore.getState().addWorkItem("E2E Item B", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    // A nested child under the first new item.
+    const created = Object.values(useAppStore.getState().workItems);
+    const itemA = created.find((wi) => wi.title === "E2E Item A")!;
+    useAppStore.getState().addWorkItem("E2E Child", itemA.id, `${ORG}::bl-1`, `${ORG}::bt-1`);
+
+    // Let queued microtasks (persistence) settle.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const beforeRefresh = useAppStore.getState();
+    const newIds = Object.values(beforeRefresh.workItems)
+      .filter((wi) => wi.title.startsWith("E2E "))
+      .map((wi) => wi.id);
+    expect(newIds).toHaveLength(3);
+
+    // Simulate the server having persisted everything: the next
+    // loadFromSupabase returns the full snapshot (seed + new items).
+    vi.mocked(loadDataFromSupabase).mockResolvedValueOnce({
+      workItems: { ...beforeRefresh.workItems },
+      backlogs: { ...beforeRefresh.backlogs },
+      backlogTrees: { ...beforeRefresh.backlogTrees },
+    });
+
+    // Wipe local in-memory state to emulate a full page refresh; pending
+    // queue is empty (persistence succeeded) so only the server load matters.
+    useAppStore.setState({
+      workItems: {}, backlogs: {}, backlogTrees: {},
+      selectedBacklogIds: [], selectedTreeId: null, selectedWorkItemIds: [],
+      isLoading: false, organizationId: ORG,
+    });
+
+    await useAppStore.getState().loadFromSupabase();
+
+    const afterRefresh = useAppStore.getState();
+    // All new items are still present.
+    for (const id of newIds) {
+      expect(afterRefresh.workItems[id]).toBeDefined();
+    }
+    // They are assigned to the correct tree/backlog.
+    const titlesInTree = Object.values(afterRefresh.workItems)
+      .filter((wi) => wi.backlogAssignments[`${ORG}::bt-1`] === `${ORG}::bl-1`)
+      .map((wi) => wi.title)
+      .sort();
+    expect(titlesInTree).toEqual(
+      expect.arrayContaining(["E2E Item A", "E2E Item B", "E2E Child"]),
+    );
+    // Parent/child hierarchy survives the refresh.
+    const reloadedA = afterRefresh.workItems[itemA.id];
+    const child = Object.values(afterRefresh.workItems).find((wi) => wi.title === "E2E Child")!;
+    expect(child.parentId).toBe(itemA.id);
+    expect(reloadedA.childrenIds).toContain(child.id);
+    // Tree structure is intact.
+    expect(afterRefresh.backlogTrees[`${ORG}::bt-1`]?.rootBacklogIds).toContain(`${ORG}::bl-1`);
+    expect(afterRefresh.backlogs[`${ORG}::bl-1`]?.treeId).toBe(`${ORG}::bt-1`);
+  });
+
+  it("recovers newly created items from the pending queue when the server hasn't caught up yet", async () => {
+    seedStore();
+    const beforeSeed = useAppStore.getState();
+
+    // Force the persistence layer to fail so items land in the pending queue.
+    vi.mocked(upsertWorkItems).mockResolvedValue(false);
+
+    useAppStore.getState().addWorkItem("Offline Item 1", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    useAppStore.getState().addWorkItem("Offline Item 2", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const pending = JSON.parse(localStorage.getItem("pending_work_item_upserts") ?? "[]");
+    expect(pending.length).toBeGreaterThanOrEqual(2);
+
+    // Simulate refresh: server still doesn't know about the new items, only
+    // returns the original seed.
+    vi.mocked(loadDataFromSupabase).mockResolvedValueOnce({
+      workItems: { ...beforeSeed.workItems },
+      backlogs: { ...beforeSeed.backlogs },
+      backlogTrees: { ...beforeSeed.backlogTrees },
+    });
+
+    useAppStore.setState({
+      workItems: {}, backlogs: {}, backlogTrees: {},
+      selectedBacklogIds: [], selectedTreeId: null, selectedWorkItemIds: [],
+      isLoading: false, organizationId: ORG,
+    });
+
+    // Allow the pending flush during load to succeed so the queue clears cleanly.
+    vi.mocked(upsertWorkItems).mockResolvedValue(true);
+
+    await useAppStore.getState().loadFromSupabase();
+
+    const afterRefresh = useAppStore.getState();
+    const offlineTitles = Object.values(afterRefresh.workItems)
+      .filter((wi) => wi.backlogAssignments[`${ORG}::bt-1`] === `${ORG}::bl-1`)
+      .map((wi) => wi.title);
+    expect(offlineTitles).toEqual(expect.arrayContaining(["Offline Item 1", "Offline Item 2"]));
+  });
+});
+
+
+
 describe("loadFromSupabase refresh guards", () => {
   it("coalesces overlapping app data loads for the same organization", async () => {
     const rawData = {
