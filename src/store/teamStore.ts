@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 import { toast } from '@/hooks/use-toast';
 
 export interface Team {
@@ -103,9 +104,12 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
 
   loadWorkItemTeams: async (_orgId: string) => {
     // RLS handles visibility; don't filter by org so shared items' assignments are included
-    const { data } = await supabase
-      .from('work_item_team_assignments' as any)
-      .select('work_item_id, team_id');
+    const { data } = await paginateSelect<any>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('work_item_team_assignments' as any).select('work_item_id, team_id') as any)
+        .order('work_item_id', { ascending: true })
+        .range(from, to),
+    );
     const map: Record<string, string[]> = {};
     for (const row of (data ?? []) as any[]) {
       const wid = row.work_item_id as string;

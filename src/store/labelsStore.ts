@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 
 export type LabelEntityType = 'work_item' | 'backlog';
 
@@ -136,8 +137,20 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
 
     const [{ data: labelRows, error: labelErr }, { data: assignRows, error: assignErr }] =
       await Promise.all([
-        supabase.from('labels').select('*').in('organization_id', orgIds),
-        supabase.from('label_assignments').select('*').in('organization_id', orgIds),
+        paginateSelect<Record<string, unknown>>((from, to) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from('labels' as any).select('*') as any)
+            .in('organization_id', orgIds)
+            .order('id', { ascending: true })
+            .range(from, to),
+        ),
+        paginateSelect<Record<string, unknown>>((from, to) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from('label_assignments' as any).select('*') as any)
+            .in('organization_id', orgIds)
+            .order('id', { ascending: true })
+            .range(from, to),
+        ),
       ]);
 
     if (labelErr) console.error('loadLabels: labels query failed', labelErr);

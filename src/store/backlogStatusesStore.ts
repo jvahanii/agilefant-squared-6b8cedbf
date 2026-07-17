@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 import { useAppStore } from './appStore';
 
 export interface BacklogStatus {
@@ -129,11 +130,14 @@ export const useBacklogStatusesStore = create<BacklogStatusesState>((set, get) =
   loadStatusesForOrgs: async (orgIds) => {
     if (orgIds.length === 0) return;
     set({ loading: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from('backlog_statuses')
-      .select('*, backlogs!inner(organization_id)')
-      .in('backlogs.organization_id', orgIds);
+    // Paginate: multi-backlog orgs with custom statuses can exceed 1k rows.
+    const { data, error } = await paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('backlog_statuses' as any).select('*, backlogs!inner(organization_id)') as any)
+        .in('backlogs.organization_id', orgIds)
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
     if (error) {
       console.error('loadStatusesForOrgs failed', error);
       set({ loading: false });

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 
 export interface TimeEntry {
   id: string;
@@ -68,14 +69,15 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
   loadTimeEntries: async (organizationId) => {
     set({ isLoading: true });
 
-    // Run own-org entries fetch, incoming-share lookup, and own-trees lookup in parallel.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ownEntriesPromise = (supabase as any)
-      .from('time_entries')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .order('spent_date', { ascending: false })
-      .limit(5000);
+    // Paginate own-org time entries: active orgs blow past 1k rows quickly.
+    const ownEntriesPromise = paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('time_entries' as any).select('*') as any)
+        .eq('organization_id', organizationId)
+        .order('spent_date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const incomingSharesPromise = (supabase as any)
@@ -150,12 +152,14 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
       await Promise.all(
         [...partnerOrgIds].map(async (partnerOrgId) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: partnerData, error: partnerError } = await (supabase as any)
-            .from('time_entries')
-            .select('*')
-            .eq('organization_id', partnerOrgId)
-            .order('spent_date', { ascending: false })
-            .limit(5000);
+          const { data: partnerData, error: partnerError } = await paginateSelect<Record<string, unknown>>((from, to) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase.from('time_entries' as any).select('*') as any)
+              .eq('organization_id', partnerOrgId)
+              .order('spent_date', { ascending: false })
+              .order('id', { ascending: true })
+              .range(from, to),
+          );
           if (partnerError) {
             console.error(`Failed to load time entries for partner org ${partnerOrgId}`, partnerError);
             return;

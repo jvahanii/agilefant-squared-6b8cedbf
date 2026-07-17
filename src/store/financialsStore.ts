@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 
 /** YYYY-MM key, UTC. */
 export type MonthKey = string;
@@ -77,10 +78,13 @@ export const useFinancialsStore = create<FinancialsState>((set, get) => ({
   load: async (orgIds) => {
     if (orgIds.length === 0) return;
     set({ loading: true });
-    const { data, error } = await supabase
-      .from('work_item_financials' as any)
-      .select('*')
-      .in('organization_id', orgIds);
+    const { data, error } = await paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('work_item_financials' as any).select('*') as any)
+        .in('organization_id', orgIds)
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
     if (error) {
       console.error('financialsStore.load failed', error);
       set({ loading: false });

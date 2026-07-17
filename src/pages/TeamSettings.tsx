@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { paginateSelect } from "@/integrations/supabase/pagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
 import { Button } from "@/components/ui/button";
@@ -328,10 +329,14 @@ export default function TeamSettings() {
 
           // Transfer work items that reference this tree
           // (items owned by the deleted org that have assignments to this tree)
-          const { data: items } = await supabase
-            .from("work_items")
-            .select("id, backlog_assignments")
-            .eq("organization_id", activeOrgId);
+          const { data: items } = await paginateSelect<any>((from, to) =>
+            supabase
+              .from("work_items")
+              .select("id, backlog_assignments")
+              .eq("organization_id", activeOrgId)
+              .order("id", { ascending: true })
+              .range(from, to),
+          );
 
           const itemsInTree = (items ?? []).filter((item: any) => {
             const assignments = item.backlog_assignments as Record<string, string>;
@@ -378,10 +383,14 @@ export default function TeamSettings() {
 
         // Fetch all items owned by this org once; filter per tree and remove transferred items
         // to avoid re-transferring items that have assignments to multiple shared trees.
-        const { data: remainingSharedItems } = await supabase
-          .from("work_items")
-          .select("id, backlog_assignments")
-          .eq("organization_id", activeOrgId);
+        const { data: remainingSharedItems } = await paginateSelect<any>((from, to) =>
+          supabase
+            .from("work_items")
+            .select("id, backlog_assignments")
+            .eq("organization_id", activeOrgId)
+            .order("id", { ascending: true })
+            .range(from, to),
+        );
 
         let pendingItems: any[] = remainingSharedItems ?? [];
 

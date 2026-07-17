@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 
 export type TargetMetric = 'savings' | 'income' | 'both';
 
@@ -50,10 +51,13 @@ export const useTargetsStore = create<TargetsState>((set, get) => ({
 
   load: async (orgIds) => {
     if (orgIds.length === 0) return;
-    const { data, error } = await supabase
-      .from('tree_financial_targets' as any)
-      .select('*')
-      .in('organization_id', orgIds);
+    const { data, error } = await paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('tree_financial_targets' as any).select('*') as any)
+        .in('organization_id', orgIds)
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
     if (error) {
       console.error('targetsStore.load failed', error);
       return;
