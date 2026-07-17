@@ -1146,9 +1146,14 @@ export async function loadHyperlinksForWorkItems(
     const collected: any[] = [];
     for (let i = 0; i < workItemIds.length; i += CHUNK) {
       const slice = workItemIds.slice(i, i + CHUNK);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await supabase.from('work_item_hyperlinks' as any)
-        .select('*').in('work_item_id', slice).order('rank');
+      const res = await paginateSelect<any>((from, to) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from('work_item_hyperlinks' as any).select('*') as any)
+          .in('work_item_id', slice)
+          .order('rank', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      );
       if (res.error) { error = res.error; break; }
       if (res.data) collected.push(...(res.data as any[]));
     }
