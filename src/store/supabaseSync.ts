@@ -1112,20 +1112,23 @@ export async function loadHyperlinksForWorkItems(
   let data: any[] | null = null;
   let error: unknown = null;
   if (organizationId) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await supabase.from('work_item_hyperlinks' as any)
-      .select('*')
-      .eq('organization_id', organizationId)
-      .order('rank');
+    // Paginate: an org with many links can easily exceed the 1000-row cap.
+    const res = await paginateSelect<Record<string, unknown>>((from, to) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('work_item_hyperlinks' as any).select('*') as any)
+        .eq('organization_id', organizationId)
+        .order('rank', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
     data = res.data as any[] | null;
     error = res.error;
-    // Filter to the requested work items so callers don't see hyperlinks for
-    // items they didn't ask about (defensive — orgs are isolated anyway).
-    // When workItemIds is empty, treat that as "all hyperlinks for the org".
     if (data && workItemIds.length > 0) {
       const idSet = new Set(workItemIds);
       data = data.filter((row) => idSet.has(row.work_item_id));
     }
+
+
 
   } else {
     const CHUNK = 100;
