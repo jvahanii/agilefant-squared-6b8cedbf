@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { paginateSelect } from '@/integrations/supabase/pagination';
 import { toast } from '@/hooks/use-toast';
 
 export interface Team {
