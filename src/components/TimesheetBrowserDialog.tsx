@@ -594,19 +594,32 @@ export function TimesheetBrowserDialog({
 
           {/* ── Entries tab ── */}
           <TabsContent value="entries" className="mt-2">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 gap-2">
               <span className="text-xs text-muted-foreground">
                 {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} —{" "}
                 <strong className="text-foreground">{formatDuration(totalMinutes)}</strong> total
+                {selectedEntryIds.size > 0 && (
+                  <> · <strong className="text-foreground">{selectedEntryIds.size}</strong> selected</>
+                )}
               </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCsv}
-                disabled={filteredEntries.length === 0}
-              >
-                <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMoveOpen(true)}
+                  disabled={selectedEntryIds.size === 0}
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1" /> Move…
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCsv}
+                  disabled={filteredEntries.length === 0}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                </Button>
+              </div>
             </div>
             <ScrollArea className="h-[380px] rounded-md border">
               <div className="overflow-x-auto">
