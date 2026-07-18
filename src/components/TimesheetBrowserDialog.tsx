@@ -318,6 +318,10 @@ export function TimesheetBrowserDialog({
   const [editNoteInput, setEditNoteInput] = useState("");
   const editDurationRef = useRef<HTMLInputElement>(null);
 
+  // Selection for Move
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
+  const [moveOpen, setMoveOpen] = useState(false);
+
   // Fetch user display names when dialog opens
   useEffect(() => {
     if (!open) return;
