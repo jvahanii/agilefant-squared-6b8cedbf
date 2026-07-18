@@ -88,6 +88,7 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
 
   // Cache for user display names (userId -> display name)
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const itemEntries = useMemo(() => {
     return Object.values(timeEntries)
