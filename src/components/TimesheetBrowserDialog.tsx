@@ -725,11 +725,27 @@ export function TimesheetBrowserDialog({
                           /* ── Read-only row ── */
                           <TableRow
                             key={entry.id}
-                            className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
-                            onClick={() => canModify(entry) && startEditing(entry)}
-                            title={canModify(entry) ? "Click to edit" : undefined}
+                            className={cn("group", canModify(entry) && "hover:bg-muted/40")}
+                            title={canModify(entry) ? "Click duration/date/note to edit" : undefined}
                           >
-                            <TableCell className="text-xs tabular-nums text-right">
+                            <TableCell className="py-1" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedEntryIds.has(entry.id)}
+                                onCheckedChange={() => {
+                                  setSelectedEntryIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(entry.id)) next.delete(entry.id);
+                                    else next.add(entry.id);
+                                    return next;
+                                  });
+                                }}
+                                aria-label="Select entry"
+                              />
+                            </TableCell>
+                            <TableCell
+                              className={cn("text-xs tabular-nums text-right", canModify(entry) && "cursor-pointer")}
+                              onClick={() => canModify(entry) && startEditing(entry)}
+                            >
                               {formatDuration(entry.durationMinutes)}
                             </TableCell>
                             <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
