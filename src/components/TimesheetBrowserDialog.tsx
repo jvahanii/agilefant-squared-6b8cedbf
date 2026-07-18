@@ -647,7 +647,7 @@ export function TimesheetBrowserDialog({
                   <TableBody>
                     {filteredEntries.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           No time entries found.
                         </TableCell>
                       </TableRow>
@@ -656,7 +656,7 @@ export function TimesheetBrowserDialog({
                         editingEntryId === entry.id ? (
                           /* ── Inline edit row ── */
                           <TableRow key={entry.id} className="bg-muted/20">
-                            <TableCell colSpan={6} className="py-2 px-3">
+                            <TableCell colSpan={7} className="py-2 px-3">
                               <div className="flex flex-wrap items-end gap-2">
                                 <div className="space-y-1">
                                   <Label className="text-xs">Duration</Label>
