@@ -626,6 +626,16 @@ export function TimesheetBrowserDialog({
                 <Table className="min-w-[480px]">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-8">
+                        <Checkbox
+                          checked={filteredEntries.length > 0 && filteredEntries.every((e) => selectedEntryIds.has(e.id))}
+                          onCheckedChange={(v) => {
+                            if (v) setSelectedEntryIds(new Set(filteredEntries.map((e) => e.id)));
+                            else setSelectedEntryIds(new Set());
+                          }}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
                       <TableHead className="w-20 text-right">Duration</TableHead>
                       <TableHead className="w-24">Date</TableHead>
                       <TableHead className="w-32 hidden sm:table-cell">User</TableHead>
