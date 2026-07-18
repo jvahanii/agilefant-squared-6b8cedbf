@@ -12,8 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Clock, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Clock, RotateCcw, ArrowRightLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { MoveTimeDialog, MoveSourceContext } from "@/components/MoveTimeDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 interface TimeLogDialogProps {
