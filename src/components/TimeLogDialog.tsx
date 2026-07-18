@@ -456,6 +456,32 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
             </Button>
           </div>
         )}
+
+        {itemEntries.length > 0 && (
+          <div className="flex justify-end mt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMoveOpen(true)}
+              title="Move logged time to another item, backlog, or tree"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 mr-1" /> Move time…
+            </Button>
+          </div>
+        )}
+
+        {moveOpen && (() => {
+          const sourceCtx: MoveSourceContext | null = workItemId
+            ? { kind: "work_item", id: workItemId }
+            : backlogId
+              ? { kind: "backlog", id: backlogId }
+              : treeId
+                ? { kind: "tree", id: treeId }
+                : null;
+          return sourceCtx ? (
+            <MoveTimeDialog open={moveOpen} onOpenChange={setMoveOpen} source={sourceCtx} />
+          ) : null;
+        })()}
       </DialogContent>
     </Dialog>
   );
