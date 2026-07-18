@@ -56,6 +56,11 @@ interface TimeEntryState {
     userId: string;
   }>) => Promise<void>;
 
+  moveTimeEntries: (
+    ids: string[],
+    target: { kind: 'work_item' | 'backlog' | 'tree'; id: string },
+  ) => Promise<number>;
+
   deleteTimeEntry: (id: string) => void;
   clearTimeEntries: () => void;
 
