@@ -860,6 +860,17 @@ export function TimesheetBrowserDialog({
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+        {moveOpen && (
+          <MoveTimeDialog
+            open={moveOpen}
+            onOpenChange={(o) => {
+              setMoveOpen(o);
+              if (!o) setSelectedEntryIds(new Set());
+            }}
+            source={{ kind: "selection", entryIds: [...selectedEntryIds] }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
