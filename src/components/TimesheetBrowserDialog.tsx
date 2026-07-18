@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, ChevronDown, ChevronRight, Clock, Download, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, Check, ChevronDown, ChevronRight, Clock, Download, Trash2, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MoveTimeDialog } from "@/components/MoveTimeDialog";
 import { cn } from "@/lib/utils";
 import { useTimeEntryStore, TimeEntry } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
