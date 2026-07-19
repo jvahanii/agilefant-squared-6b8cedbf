@@ -80,6 +80,7 @@ export default function AppLayout() {
   return (
     <ScrambleProvider>
       <AppLayoutInner />
+      <DeleteGuardHost />
     </ScrambleProvider>
   );
 }
