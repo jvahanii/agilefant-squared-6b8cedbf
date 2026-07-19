@@ -1292,7 +1292,7 @@ function BoardCard({
   const handleDeleteChoice = useCallback((value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk([{ workItemId: item.id, treeId }]);
-    else if (value === "delete-everywhere") deleteWorkItem(item.id);
+    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   }, [item.id, treeId, deleteWorkItem, removeWorkItemsFromTreeBulk]);
 
   const handleDuplicate = useCallback(() => {
