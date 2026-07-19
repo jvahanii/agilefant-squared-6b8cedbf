@@ -1220,10 +1220,6 @@ export type Database = {
           name: string
         }[]
       }
-      move_time_entries: {
-        Args: { _entry_ids: string[]; _target_id: string; _target_kind: string }
-        Returns: number
-      }
       redeem_invite: { Args: { _token: string }; Returns: Json }
       remove_tree_share_with_copy: {
         Args: { _share_id: string }

@@ -1,64 +1,72 @@
+
 ## Goal
 
-Let users reassign already-logged time from one target (work item / backlog / backlog tree) to another. Available from:
-- **TimeLogDialog** — a new "Move time…" action to move entries currently logged on the open target.
-- **TimesheetBrowserDialog** — a new "Move…" action for selected rows in the Entries tab.
+Sweep every `supabase.from(...).select(...)` in the codebase and convert any query that could realistically return more than 1,000 rows to use the paginated `loadAllRows` / `loadAllRowsIn` helpers (already used in `loadDataFromSupabase`). This eliminates the class of "silently truncated read → missing data" bug that recently caused new items to disappear.
 
-## UX
+## Approach
 
-### New component: `MoveTimeDialog`
+1. Extract the pagination helpers (`loadAllRows`, `loadAllRowsIn`) from `supabaseSync.ts` into a shared module `src/integrations/supabase/pagination.ts` so every caller can use them.
+2. Classify each `.select()` call site into one of:
+   - **Bounded** (single row / by id / small enum / count-only) → leave as-is, add a short `// bounded:` comment where non-obvious.
+   - **Potentially unbounded** (org-scoped list, tree-scoped list, cross-org aggregation) → convert to paginated fetch.
+3. Convert the risky sites (see list below), keeping return shapes identical so callers don't change.
+4. Add a lightweight ESLint-style guard: a unit test in `src/test/` that greps the source for `.select(` calls on a denylist of tables (`work_items`, `work_item_backlog_ranks`, `work_item_board_ranks`, `work_item_hyperlinks`, `work_item_financials`, `work_item_snoozes`, `label_assignments`, `time_entries`, `change_log`, `backlogs`, `backlog_statuses`) and fails if any such call is not wrapped by the pagination helper. This prevents regressions.
 
-- Header: "Move time" with a summary line "Moving N entries · total Xh Ym".
-- **Mode selector** at the top (only shown when opened from TimeLogDialog — Browser passes explicit selection):
-  - **All entries on this target** (default, when opened from TimeLogDialog)
-  - **Selected entries only** — reveals a compact scroll list of the current target's entries with checkboxes (date, duration, user, note).
-- **Destination picker** with three tabs (per user's answer):
-  - **Trees** — list of backlog trees in the active org (searchable).
-  - **Backlogs** — list of backlogs grouped by tree (searchable).
-  - **Work items** — searchable list (title match), showing parent backlog for context. Uses existing lookup pattern from `MoveToBacklogDialog`.
-- Footer: **Cancel** / **Move N entries**. Destructive-style confirmation only when moving across orgs (shared trees).
+## Sites to convert (unbounded / org-wide reads)
 
-### Entry points
+`src/store/supabaseSync.ts`
+- L886, L908 — `work_item_backlog_ranks` full-org read
+- L1024, L1044 — `work_item_board_ranks` full-org read
+- L1116, L1136 — `work_item_hyperlinks` batched reads (already sliced but each `.in(...)` slice may still return >1k; verify slice size ≤ safe limit or paginate)
+- L130–L158 — backlog_trees / backlogs / shares (org-scoped; paginate)
 
-- **TimeLogDialog**: add a small "Move…" button next to "Log time" (visible only when `itemEntries.length > 0`). Opens `MoveTimeDialog` pre-scoped to the current work item / backlog / tree.
-- **TimesheetBrowserDialog**: add a checkbox column to the Entries tab plus a "Move…" toolbar button that's enabled when ≥1 row is checked. Opens `MoveTimeDialog` with the selected IDs.
+`src/store/labelsStore.ts`
+- L139–L140 — `labels` and `label_assignments` across all `orgIds`
 
-## Behavior
+`src/store/financialsStore.ts`
+- L82, L136 — `work_item_financials` org-wide
 
-Moving an entry rewrites its target columns:
-- To **work item**: `work_item_id = <id>`, `backlog_id = null`, `tree_id = null`.
-- To **backlog**: `backlog_id = <id>`, `work_item_id = null`, `tree_id = null`.
-- To **tree**: `tree_id = <id>`, `work_item_id = null`, `backlog_id = null`.
+`src/store/snoozeStore.ts`
+- L146 — `work_item_snoozes` org-wide
 
-`organization_id` is updated to the target's org (matters for entries on shared trees). `user_id`, `spent_date`, `duration_minutes`, `note`, `created_at` are preserved.
+`src/store/timeEntryStore.ts`
+- L75 — `time_entries` org-wide
+- L155 — `time_entries` follow-up read
 
-Realtime already covers UPDATE echoes, so all open views refresh automatically. `computeWorkItemTotalMinutes` / `computeBacklogTotalMinutes` / `computeTreeTotalMinutes` recalculate from the new assignments.
+`src/store/changeLog.ts`
+- L42 — `change_log` (already has explicit `.limit()` for UI; verify and leave, or paginate the "export all" path if one exists)
 
-## Permissions
+`src/store/targetsStore.ts`
+- L55, L100 — `tree_financial_targets` org-wide
 
-Per user's answer, **any org member** may move entries (not just the owner). Current RLS restricts UPDATE to entry owner or admins, so we add a SECURITY DEFINER RPC to bypass that check safely:
+`src/store/backlogStatusesStore.ts`
+- L135 — org-wide via inner join; paginate
 
-```
-move_time_entries(entry_ids uuid[], target_kind text, target_id text)
-```
+`src/pages/TeamSettings.tsx`
+- L187 (memberships), L300 (backlog_trees by org), L308/333/368/376/383 (delete-flow reads)
 
-- Verifies caller `is_member_of` every source `organization_id` **and** the destination's org.
-- Verifies the destination exists and belongs to a reachable org (own org or a shared tree partner org).
-- Updates the rows in one statement; returns the count moved.
-- Grants EXECUTE to `authenticated`.
+`src/pages/ManagerScreen.tsx`
+- L115–L118 — cross-org lists for the manager dashboard (superuser view can exceed 1k as tenants grow)
 
-Existing per-owner UPDATE policy stays untouched — duration/note edits remain owner-only via the client dialogs.
+`src/components/GithubIntegrationsCard.tsx`, `src/components/WhatsappIntegrationsCard.tsx`, `src/hooks/useYouTubeChannels.ts`
+- Org-scoped integration lists; unlikely to exceed 1k but cheap to paginate for consistency.
 
-## Files
+## Sites intentionally left as-is (bounded)
 
-- **New**: `src/components/MoveTimeDialog.tsx` — the dialog with tabbed picker and mode toggle.
-- **New migration**: `move_time_entries` RPC + GRANT.
-- **Edit** `src/store/timeEntryStore.ts` — add `moveTimeEntries(ids, target)` that calls the RPC and optimistically updates local state.
-- **Edit** `src/components/TimeLogDialog.tsx` — add "Move…" button and mount `MoveTimeDialog`.
-- **Edit** `src/components/TimesheetBrowserDialog.tsx` — add checkbox column, "Move…" toolbar button, and mount `MoveTimeDialog`.
+- Anything filtered by primary key (`.eq('id', …).maybeSingle()` / `.single()`)
+- `count: 'exact', head: true` queries
+- `is_superuser` / profile lookups by user id
+- Auth-related single-row reads
 
-## Out of scope
+## Technical notes
 
-- Splitting one entry across multiple targets.
-- Bulk editing duration/date/note (still owner-only via existing edit flow).
-- Undo — a moved-back operation is a second move.
+- `loadAllRows(query, pageSize = 1000)` iterates using `.range(from, to)` until a short page is returned.
+- For `.in('col', ids)` reads on large id sets, chunk `ids` into ≤500-item slices AND paginate within each slice.
+- Preserve `.order(...)` on the query so ranges are deterministic across pages.
+- No schema or business-logic changes; return shapes stay identical, so downstream store logic and tests remain untouched.
+
+## Verification
+
+- Existing `src/test/appStore.test.ts` E2E tests must still pass.
+- New regression test: source-scan guard described above.
+- Manual smoke: load an org with >1k `work_item_backlog_ranks` rows and confirm every item retains its list position after refresh.

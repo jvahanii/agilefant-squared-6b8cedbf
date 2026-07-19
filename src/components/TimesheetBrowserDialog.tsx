@@ -25,9 +25,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRightLeft, Check, ChevronDown, ChevronRight, Clock, Download, Trash2, X } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { MoveTimeDialog } from "@/components/MoveTimeDialog";
+import { Check, ChevronDown, ChevronRight, Clock, Download, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTimeEntryStore, TimeEntry } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
@@ -318,10 +316,6 @@ export function TimesheetBrowserDialog({
   const [editNoteInput, setEditNoteInput] = useState("");
   const editDurationRef = useRef<HTMLInputElement>(null);
 
-  // Selection for Move
-  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
-  const [moveOpen, setMoveOpen] = useState(false);
-
   // Fetch user display names when dialog opens
   useEffect(() => {
     if (!open) return;
@@ -594,48 +588,25 @@ export function TimesheetBrowserDialog({
 
           {/* ── Entries tab ── */}
           <TabsContent value="entries" className="mt-2">
-            <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-muted-foreground">
                 {filteredEntries.length} {filteredEntries.length === 1 ? "entry" : "entries"} —{" "}
                 <strong className="text-foreground">{formatDuration(totalMinutes)}</strong> total
-                {selectedEntryIds.size > 0 && (
-                  <> · <strong className="text-foreground">{selectedEntryIds.size}</strong> selected</>
-                )}
               </span>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMoveOpen(true)}
-                  disabled={selectedEntryIds.size === 0}
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1" /> Move…
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCsv}
-                  disabled={filteredEntries.length === 0}
-                >
-                  <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={filteredEntries.length === 0}
+              >
+                <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+              </Button>
             </div>
             <ScrollArea className="h-[380px] rounded-md border">
               <div className="overflow-x-auto">
                 <Table className="min-w-[480px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-8">
-                        <Checkbox
-                          checked={filteredEntries.length > 0 && filteredEntries.every((e) => selectedEntryIds.has(e.id))}
-                          onCheckedChange={(v) => {
-                            if (v) setSelectedEntryIds(new Set(filteredEntries.map((e) => e.id)));
-                            else setSelectedEntryIds(new Set());
-                          }}
-                          aria-label="Select all"
-                        />
-                      </TableHead>
                       <TableHead className="w-20 text-right">Duration</TableHead>
                       <TableHead className="w-24">Date</TableHead>
                       <TableHead className="w-32 hidden sm:table-cell">User</TableHead>
@@ -647,7 +618,7 @@ export function TimesheetBrowserDialog({
                   <TableBody>
                     {filteredEntries.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                           No time entries found.
                         </TableCell>
                       </TableRow>
@@ -656,7 +627,7 @@ export function TimesheetBrowserDialog({
                         editingEntryId === entry.id ? (
                           /* ── Inline edit row ── */
                           <TableRow key={entry.id} className="bg-muted/20">
-                            <TableCell colSpan={7} className="py-2 px-3">
+                            <TableCell colSpan={6} className="py-2 px-3">
                               <div className="flex flex-wrap items-end gap-2">
                                 <div className="space-y-1">
                                   <Label className="text-xs">Duration</Label>
@@ -725,27 +696,11 @@ export function TimesheetBrowserDialog({
                           /* ── Read-only row ── */
                           <TableRow
                             key={entry.id}
-                            className={cn("group", canModify(entry) && "hover:bg-muted/40")}
-                            title={canModify(entry) ? "Click duration/date/note to edit" : undefined}
+                            className={cn("group", canModify(entry) && "cursor-pointer hover:bg-muted/40")}
+                            onClick={() => canModify(entry) && startEditing(entry)}
+                            title={canModify(entry) ? "Click to edit" : undefined}
                           >
-                            <TableCell className="py-1" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={selectedEntryIds.has(entry.id)}
-                                onCheckedChange={() => {
-                                  setSelectedEntryIds((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(entry.id)) next.delete(entry.id);
-                                    else next.add(entry.id);
-                                    return next;
-                                  });
-                                }}
-                                aria-label="Select entry"
-                              />
-                            </TableCell>
-                            <TableCell
-                              className={cn("text-xs tabular-nums text-right", canModify(entry) && "cursor-pointer")}
-                              onClick={() => canModify(entry) && startEditing(entry)}
-                            >
+                            <TableCell className="text-xs tabular-nums text-right">
                               {formatDuration(entry.durationMinutes)}
                             </TableCell>
                             <TableCell className="text-xs tabular-nums">{entry.spentDate}</TableCell>
@@ -860,17 +815,6 @@ export function TimesheetBrowserDialog({
             </ScrollArea>
           </TabsContent>
         </Tabs>
-
-        {moveOpen && (
-          <MoveTimeDialog
-            open={moveOpen}
-            onOpenChange={(o) => {
-              setMoveOpen(o);
-              if (!o) setSelectedEntryIds(new Set());
-            }}
-            source={{ kind: "selection", entryIds: [...selectedEntryIds] }}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );
