@@ -235,6 +235,7 @@ function WorkItemNodeContent({
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const deleteWorkItemsBulk = useAppStore((s) => s.deleteWorkItemsBulk);
+  const guardedDeleteBulk = useDeleteWithTimeGuard();
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
