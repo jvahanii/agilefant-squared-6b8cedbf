@@ -702,7 +702,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { deleteBacklog(backlogId); setConfirmDeleteOpen(false); }}
+              onClick={() => {
+                setConfirmDeleteOpen(false);
+                guardedDelete({ kind: 'backlog', id: backlogId }, backlog.name, () => deleteBacklog(backlogId));
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
