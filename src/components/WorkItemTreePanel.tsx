@@ -1642,6 +1642,7 @@ function SearchResultItem({
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
+  const guardedDelete = useDeleteWithTimeGuard();
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const backlogs = useAppStore((s) => s.backlogs);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
