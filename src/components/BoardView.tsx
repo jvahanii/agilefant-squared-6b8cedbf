@@ -7,6 +7,7 @@ import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, get
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
 import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon, Columns2 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -778,6 +779,25 @@ function BoardColumn({
 
   const columnRef = useRef<HTMLDivElement>(null);
 
+  // --- Virtualization ---
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 72, // approximate card height in px
+    overscan: 5,
+  });
+
+  // Combine the droppable ref with the scroll ref so dnd-kit and the
+  // virtualizer use the same scrollable container.
+  const setScrollAndDroppableRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      columnDroppable.setNodeRef(el);
+    },
+    [columnDroppable.setNodeRef],
+  );
+
   // Inline editing of column label (double-click to edit)
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editLabel, setEditLabel] = useState("");
@@ -977,7 +997,7 @@ function BoardColumn({
       </ContextMenu>
 
       <div
-        ref={columnDroppable.setNodeRef}
+        ref={setScrollAndDroppableRef}
         className="flex-1 overflow-y-auto"
         onDoubleClick={(e) => {
           // Only trigger on the empty area of the column, not on cards or inputs
@@ -992,55 +1012,75 @@ function BoardColumn({
             onCancel={onCancelAdd}
           />
         )}
-        <div className="p-1">
-          {/* Reorder drop zone before the first card */}
-          <BoardReorderDropZone
-            id={`board-reorder-${column.id}-0`}
-            index={0}
-            treeId={treeId}
-            backlogIds={allBacklogIds}
-            statusKey={column.key}
-            prevCardId={null}
-            nextCardId={items.length > 0 ? items[0].id : null}
-          />
-          {items.map((wi, i) => (
-            <div key={wi.id}>
-              <BoardCard
-                item={wi}
-                selected={selectedIds.includes(wi.id)}
-                onClick={(ctrl, shift) => onSelectItem(wi.id, ctrl, shift)}
-                treeStatuses={treeStatuses}
-                treeId={treeId}
-                backlogId={backlogId}
-                allBacklogIds={allBacklogIds}
-                setViewMode={setViewMode}
-              />
-              {/* Inline add-input opened via Enter key right after the selected card */}
-              {addAfterSlot === i && (
-                <ColumnAddInput
-                  onAdd={onCommitAdd}
-                  onCancel={onCancelAdd}
-                />
-              )}
-              {/* Reorder drop zone after this card */}
-              <BoardReorderDropZone
-                id={`board-reorder-${column.id}-${i + 1}`}
-                index={i + 1}
-                treeId={treeId}
-                backlogIds={allBacklogIds}
-                statusKey={column.key}
-                prevCardId={items[i].id}
-                nextCardId={items[i + 1]?.id ?? null}
-              />
-            </div>
-          ))}
-          {items.length === 0 && !isAdding && (
-            <div className="flex flex-col items-center justify-center gap-1 py-10 text-muted-foreground/50">
-              <Plus className="w-5 h-5 stroke-[1.5]" />
-              <span className="text-[11px]">Drop cards here</span>
-            </div>
-          )}
-        </div>
+        {items.length === 0 && !isAdding && (
+          <div className="flex flex-col items-center justify-center gap-1 py-10 text-muted-foreground/50">
+            <Plus className="w-5 h-5 stroke-[1.5]" />
+            <span className="text-[11px]">Drop cards here</span>
+          </div>
+        )}
+        {items.length > 0 && (
+          <div className="p-1 relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+            {/* Anchor the first drop zone outside the virtualized flow so it is
+                always rendered (it is tiny and dnd-kit needs it for reordering
+                to the very top). */}
+            <BoardReorderDropZone
+              id={`board-reorder-${column.id}-0`}
+              index={0}
+              treeId={treeId}
+              backlogIds={allBacklogIds}
+              statusKey={column.key}
+              prevCardId={null}
+              nextCardId={items[0]?.id ?? null}
+            />
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const i = virtualRow.index;
+              const wi = items[i];
+              if (!wi) return null;
+              return (
+                <div
+                  key={wi.id}
+                  data-index={i}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  ref={virtualizer.measureElement}
+                >
+                  <BoardCard
+                    item={wi}
+                    selected={selectedIds.includes(wi.id)}
+                    onClick={(ctrl, shift) => onSelectItem(wi.id, ctrl, shift)}
+                    treeStatuses={treeStatuses}
+                    treeId={treeId}
+                    backlogId={backlogId}
+                    allBacklogIds={allBacklogIds}
+                    setViewMode={setViewMode}
+                  />
+                  {/* Inline add-input opened via Enter key right after the selected card */}
+                  {addAfterSlot === i && (
+                    <ColumnAddInput
+                      onAdd={onCommitAdd}
+                      onCancel={onCancelAdd}
+                    />
+                  )}
+                  {/* Reorder drop zone after this card */}
+                  <BoardReorderDropZone
+                    id={`board-reorder-${column.id}-${i + 1}`}
+                    index={i + 1}
+                    treeId={treeId}
+                    backlogIds={allBacklogIds}
+                    statusKey={column.key}
+                    prevCardId={items[i].id}
+                    nextCardId={items[i + 1]?.id ?? null}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
