@@ -1209,6 +1209,7 @@ function BoardCard({
   // App store actions
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
+  const guardedDelete = useDeleteWithTimeGuard();
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
