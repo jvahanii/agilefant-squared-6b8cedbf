@@ -118,3 +118,75 @@ export function computeTreeTotalMinutes(
   return total;
 }
 
+export type DeleteTarget =
+  | { kind: 'work_item'; id: string }
+  | { kind: 'backlog'; id: string }
+  | { kind: 'tree'; id: string };
+
+/**
+ * Collect IDs of time entries that would become orphaned when the given
+ * target (work item, backlog, or entire backlog tree) is deleted.
+ * Includes entries directly on the target and — for containers — on any
+ * descendant backlogs and on any work items that will disappear as a result
+ * (i.e. whose only backlog assignment lives inside the deleted subtree).
+ */
+export function collectAffectedTimeEntryIds(
+  target: DeleteTarget,
+  data: {
+    workItems: Record<string, WorkItem>;
+    backlogs: Record<string, Backlog>;
+    timeEntries: Record<string, TimeEntry>;
+  },
+): string[] {
+  const { workItems, backlogs, timeEntries } = data;
+  const ids: string[] = [];
+
+  if (target.kind === 'work_item') {
+    const subtree = collectWorkItemSubtree(target.id, workItems);
+    for (const e of Object.values(timeEntries)) {
+      if (e.workItemId && subtree.has(e.workItemId)) ids.push(e.id);
+    }
+    return ids;
+  }
+
+  // Determine the set of backlogs whose contents will be deleted, and the
+  // set of trees (only for the tree case).
+  let doomedBacklogIds: Set<string>;
+  let doomedTreeId: string | null = null;
+  if (target.kind === 'backlog') {
+    doomedBacklogIds = collectBacklogSubtree(target.id, backlogs);
+  } else {
+    doomedTreeId = target.id;
+    doomedBacklogIds = new Set<string>();
+    for (const b of Object.values(backlogs)) {
+      if (b.treeId === target.id) doomedBacklogIds.add(b.id);
+    }
+  }
+
+  // Work items that will actually disappear: those whose *every* backlog
+  // assignment falls inside the doomed set (or, for tree deletes, whose only
+  // remaining assignment is in the doomed tree).
+  const doomedItemIds = new Set<string>();
+  for (const wi of Object.values(workItems)) {
+    const assignments = Object.entries(wi.backlogAssignments || {});
+    if (assignments.length === 0) continue;
+    const survives = assignments.some(([treeId, backlogId]) => {
+      if (doomedTreeId && treeId === doomedTreeId) return false;
+      return !doomedBacklogIds.has(backlogId);
+    });
+    if (!survives) doomedItemIds.add(wi.id);
+  }
+
+  for (const e of Object.values(timeEntries)) {
+    if (e.workItemId) {
+      if (doomedItemIds.has(e.workItemId)) ids.push(e.id);
+    } else if (e.backlogId) {
+      if (doomedBacklogIds.has(e.backlogId)) ids.push(e.id);
+    } else if (e.treeId && doomedTreeId && e.treeId === doomedTreeId) {
+      ids.push(e.id);
+    }
+  }
+  return ids;
+}
+
+
