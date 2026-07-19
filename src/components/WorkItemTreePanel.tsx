@@ -1744,7 +1744,7 @@ function SearchResultItem({
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemFromTree(item.id, treeId);
-    else if (value === "delete-everywhere") deleteWorkItem(item.id);
+    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   };
 
   return (
