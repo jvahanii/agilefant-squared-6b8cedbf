@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
