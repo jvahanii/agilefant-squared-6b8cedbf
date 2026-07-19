@@ -60,6 +60,7 @@ import {
 } from "@/store/snoozeStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import { toast } from "@/hooks/use-toast";
+import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 /**
  * When a label filter is active, this context holds the Set of work item IDs
  * that should be visible (matching items + their ancestors).  Null means "show
@@ -234,6 +235,7 @@ function WorkItemNodeContent({
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const deleteWorkItemsBulk = useAppStore((s) => s.deleteWorkItemsBulk);
+  const guardedDeleteBulk = useDeleteWithTimeGuard();
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
@@ -575,7 +577,11 @@ function WorkItemNodeContent({
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk(deleteItemIds.map((id) => ({ workItemId: id, treeId })));
-    else if (value === "delete-everywhere") deleteWorkItemsBulk(deleteItemIds);
+    else if (value === "delete-everywhere") {
+      const targets = deleteItemIds.map((id) => ({ kind: 'work_item' as const, id }));
+      const label = deleteItemIds.length === 1 ? (workItems[deleteItemIds[0]]?.title ?? 'this item') : `${deleteItemIds.length} items`;
+      guardedDeleteBulk(targets, label, () => deleteWorkItemsBulk(deleteItemIds));
+    }
   };
 
   const startEditingTitle = () => {
@@ -1641,6 +1647,7 @@ function SearchResultItem({
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
+  const guardedDelete = useDeleteWithTimeGuard();
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const backlogs = useAppStore((s) => s.backlogs);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
@@ -1728,7 +1735,7 @@ function SearchResultItem({
 
   const handleDeleteClick = useCallback(() => {
     if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(item.id);
+    else guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   }, [assignmentCount, deleteWorkItem, item.id]);
 
   const handleQuickSnooze = useCallback(
@@ -1742,7 +1749,7 @@ function SearchResultItem({
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemFromTree(item.id, treeId);
-    else if (value === "delete-everywhere") deleteWorkItem(item.id);
+    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   };
 
   return (
@@ -2059,6 +2066,7 @@ export function WorkItemTreePanel() {
   const [showBacklogStatusesDialog, setShowBacklogStatusesDialog] = useState(false);
   const [showBacklogDeleteConfirm, setShowBacklogDeleteConfirm] = useState(false);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
+  const guardedDelete = useDeleteWithTimeGuard();
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
   // stable comma-joined string so zustand only triggers a re-render when the
@@ -3158,8 +3166,9 @@ export function WorkItemTreePanel() {
               },
             ]}
             onSelect={() => {
-              deleteBacklog(selectedBacklogId);
               setShowBacklogDeleteConfirm(false);
+              const id = selectedBacklogId;
+              guardedDelete({ kind: 'backlog', id }, backlogs[id]?.name ?? 'this backlog', () => deleteBacklog(id));
             }}
             onCancel={() => setShowBacklogDeleteConfirm(false)}
           />

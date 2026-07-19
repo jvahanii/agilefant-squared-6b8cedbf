@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -255,6 +256,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const addBacklog = useAppStore((s) => s.addBacklog);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
+  const guardedDelete = useDeleteWithTimeGuard();
   const renameBacklog = useAppStore((s) => s.renameBacklog);
   const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
@@ -700,7 +702,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { deleteBacklog(backlogId); setConfirmDeleteOpen(false); }}
+              onClick={() => {
+                setConfirmDeleteOpen(false);
+                guardedDelete({ kind: 'backlog', id: backlogId }, backlog.name, () => deleteBacklog(backlogId));
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -985,6 +990,7 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
+  const guardedDelete = useDeleteWithTimeGuard();
   // activeOrgId / savingsIncomeVisible are declared below alongside other org-scoped selectors.
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
@@ -1170,7 +1176,12 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { if (pendingDeleteTree) { deleteBacklogTree(pendingDeleteTree.id); setPendingDeleteTree(null); } }}
+              onClick={() => {
+                if (!pendingDeleteTree) return;
+                const t = pendingDeleteTree;
+                setPendingDeleteTree(null);
+                guardedDelete({ kind: 'tree', id: t.id }, t.name, () => deleteBacklogTree(t.id));
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

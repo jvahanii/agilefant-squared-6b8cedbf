@@ -15,6 +15,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
+import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { toast } from "@/hooks/use-toast";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
@@ -1208,6 +1209,7 @@ function BoardCard({
   // App store actions
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
+  const guardedDelete = useDeleteWithTimeGuard();
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
@@ -1284,13 +1286,13 @@ function BoardCard({
 
   const handleDeleteClick = useCallback(() => {
     if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(item.id);
+    else guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   }, [assignmentCount, deleteWorkItem, item.id]);
 
   const handleDeleteChoice = useCallback((value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk([{ workItemId: item.id, treeId }]);
-    else if (value === "delete-everywhere") deleteWorkItem(item.id);
+    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   }, [item.id, treeId, deleteWorkItem, removeWorkItemsFromTreeBulk]);
 
   const handleDuplicate = useCallback(() => {

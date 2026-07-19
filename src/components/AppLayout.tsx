@@ -31,6 +31,7 @@ import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
+import { DeleteGuardHost } from "@/components/DeleteGuardHost";
 import {
   Undo2,
   Redo2,
@@ -80,6 +81,7 @@ export default function AppLayout() {
   return (
     <ScrambleProvider>
       <AppLayoutInner />
+      <DeleteGuardHost />
     </ScrambleProvider>
   );
 }
