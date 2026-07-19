@@ -3166,8 +3166,9 @@ export function WorkItemTreePanel() {
               },
             ]}
             onSelect={() => {
-              deleteBacklog(selectedBacklogId);
               setShowBacklogDeleteConfirm(false);
+              const id = selectedBacklogId;
+              guardedDelete({ kind: 'backlog', id }, backlogs[id]?.name ?? 'this backlog', () => deleteBacklog(id));
             }}
             onCancel={() => setShowBacklogDeleteConfirm(false)}
           />
