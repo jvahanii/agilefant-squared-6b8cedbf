@@ -990,6 +990,7 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
   const addBacklog = useAppStore((s) => s.addBacklog);
   const addBacklogTree = useAppStore((s) => s.addBacklogTree);
   const deleteBacklogTree = useAppStore((s) => s.deleteBacklogTree);
+  const guardedDelete = useDeleteWithTimeGuard();
   // activeOrgId / savingsIncomeVisible are declared below alongside other org-scoped selectors.
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [isAddingTree, setIsAddingTree] = useState(false);
