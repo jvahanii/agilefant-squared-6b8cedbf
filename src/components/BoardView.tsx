@@ -351,6 +351,44 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     return () => window.removeEventListener("shortcut:add-sibling-workitem", handler);
   }, [cardsByStatus]);
 
+  // Bulk delete prompt state for the keyboard shortcut.
+  const [showBulkDeletePrompt, setShowBulkDeletePrompt] = useState(false);
+  const bulkDeleteRef = useRef<{ ids: string[]; nextId: string | null }>({ ids: [], nextId: null });
+
+  const handleBulkDeleteChoice = useCallback(
+    (value: string) => {
+      setShowBulkDeletePrompt(false);
+      const { ids, nextId } = bulkDeleteRef.current;
+      const state = useAppStore.getState();
+
+      const removeFromTree: { workItemId: string; treeId: string }[] = [];
+      const deleteEverywhere: string[] = [];
+      for (const id of ids) {
+        const wi = state.workItems[id];
+        if (!wi) continue;
+        if (value === "remove-from-backlog" && Object.keys(wi.backlogAssignments).length > 1) {
+          removeFromTree.push({ workItemId: id, treeId });
+        } else {
+          deleteEverywhere.push(id);
+        }
+      }
+
+      if (removeFromTree.length > 0) state.removeWorkItemsFromTreeBulk(removeFromTree);
+      if (deleteEverywhere.length > 0) state.deleteWorkItemsBulk(deleteEverywhere);
+
+      if (nextId) {
+        setTimeout(() => {
+          useAppStore.getState().selectWorkItem(nextId, false);
+        }, 50);
+      } else {
+        setTimeout(() => {
+          useAppStore.setState({ selectedWorkItemIds: [] });
+        }, 0);
+      }
+    },
+    [treeId],
+  );
+
   // Listen for Delete / Backspace so the board handles card deletion with selection navigation.
   useEffect(() => {
     const handler = () => {
@@ -385,22 +423,21 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
         }
       }
 
-      // Split into multi-backlog removals and full deletions.
-      const removeFromTree: { workItemId: string; treeId: string }[] = [];
-      const deleteEverywhere: string[] = [];
-      for (const id of ids) {
+      // If any selected item is multi-backlog, prompt the user instead of
+      // guessing whether to remove from this tree or delete everywhere.
+      const hasMultiBacklogItem = ids.some((id) => {
         const wi = state.workItems[id];
-        if (!wi) continue;
-        if (Object.keys(wi.backlogAssignments).length > 1) {
-          removeFromTree.push({ workItemId: id, treeId });
-        } else {
-          deleteEverywhere.push(id);
-        }
+        return wi && Object.keys(wi.backlogAssignments).length > 1;
+      });
+
+      if (hasMultiBacklogItem) {
+        bulkDeleteRef.current = { ids, nextId };
+        setShowBulkDeletePrompt(true);
+        return;
       }
 
-      // Use bulk operations so undo treats this as a single action.
-      if (removeFromTree.length > 0) state.removeWorkItemsFromTreeBulk(removeFromTree);
-      if (deleteEverywhere.length > 0) state.deleteWorkItemsBulk(deleteEverywhere);
+      // All items are single-backlog → delete everywhere.
+      state.deleteWorkItemsBulk(ids);
 
       // Navigate selection after the store settles.
       if (nextId) {
@@ -725,6 +762,29 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           </button>
         )}
       </div>
+
+      {/* Bulk delete prompt for keyboard shortcut when multi-backlog items are selected */}
+      {showBulkDeletePrompt && (
+        <ActionPrompt
+          title={`Delete ${bulkDeleteRef.current.ids.length} item${bulkDeleteRef.current.ids.length !== 1 ? "s" : ""}?`}
+          options={[
+            {
+              label: "Remove from this backlog",
+              description: "Items in other backlogs will be kept.",
+              value: "remove-from-backlog",
+              isDefault: true,
+            },
+            {
+              label: "Delete everywhere",
+              description: "Permanently delete from all backlogs.",
+              value: "delete-everywhere",
+              variant: "destructive",
+            },
+          ]}
+          onSelect={handleBulkDeleteChoice}
+          onCancel={() => setShowBulkDeletePrompt(false)}
+        />
+      )}
     </div>
   );
 }
