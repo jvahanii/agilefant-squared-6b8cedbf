@@ -256,6 +256,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const addBacklog = useAppStore((s) => s.addBacklog);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
+  const guardedDelete = useDeleteWithTimeGuard();
   const renameBacklog = useAppStore((s) => s.renameBacklog);
   const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
