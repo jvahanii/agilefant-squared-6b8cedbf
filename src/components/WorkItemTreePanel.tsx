@@ -1730,7 +1730,7 @@ function SearchResultItem({
 
   const handleDeleteClick = useCallback(() => {
     if (assignmentCount > 1) setShowDeletePrompt(true);
-    else deleteWorkItem(item.id);
+    else guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
   }, [assignmentCount, deleteWorkItem, item.id]);
 
   const handleQuickSnooze = useCallback(
