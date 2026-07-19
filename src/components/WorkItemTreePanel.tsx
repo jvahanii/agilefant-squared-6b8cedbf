@@ -2066,6 +2066,7 @@ export function WorkItemTreePanel() {
   const [showBacklogStatusesDialog, setShowBacklogStatusesDialog] = useState(false);
   const [showBacklogDeleteConfirm, setShowBacklogDeleteConfirm] = useState(false);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
+  const guardedDelete = useDeleteWithTimeGuard();
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
   // stable comma-joined string so zustand only triggers a re-render when the
