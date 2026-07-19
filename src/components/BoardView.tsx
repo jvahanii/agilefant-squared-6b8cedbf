@@ -357,9 +357,8 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       const state = useAppStore.getState();
       const ids = state.selectedWorkItemIds;
       if (ids.length === 0) return;
-      const itemId = ids[0];
-      const item = state.workItems[itemId];
-      if (!item) return;
+
+      const deletedSet = new Set(ids);
 
       // Build a flat, ordered list of all visible cards across all columns.
       const allCards: { id: string; statusKey: string }[] = [];
@@ -370,32 +369,45 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
         }
       }
 
-      const currentIdx = allCards.findIndex((c) => c.id === itemId);
-      if (currentIdx === -1) return;
-
-      // Determine next selection: item below > item above > none.
-      const isOnlyCardOnBoard = allCards.length <= 1;
+      // Determine next selection from among cards NOT being deleted.
+      const firstDeletedIdx = allCards.findIndex((c) => deletedSet.has(c.id));
       let nextId: string | null = null;
-      if (currentIdx + 1 < allCards.length) {
-        nextId = allCards[currentIdx + 1].id;
-      } else if (currentIdx - 1 >= 0) {
-        nextId = allCards[currentIdx - 1].id;
+      if (firstDeletedIdx >= 0) {
+        // Look downward first for a surviving card.
+        for (let i = firstDeletedIdx + 1; i < allCards.length; i++) {
+          if (!deletedSet.has(allCards[i].id)) { nextId = allCards[i].id; break; }
+        }
+        // Then upward.
+        if (!nextId) {
+          for (let i = firstDeletedIdx - 1; i >= 0; i--) {
+            if (!deletedSet.has(allCards[i].id)) { nextId = allCards[i].id; break; }
+          }
+        }
       }
 
-      // Perform the delete.
-      const assignmentCount = Object.keys(item.backlogAssignments).length;
-      if (assignmentCount > 1) {
-        state.removeWorkItemsFromTreeBulk([{ workItemId: itemId, treeId }]);
-      } else {
-        state.deleteWorkItem(itemId);
+      // Split into multi-backlog removals and full deletions.
+      const removeFromTree: { workItemId: string; treeId: string }[] = [];
+      const deleteEverywhere: string[] = [];
+      for (const id of ids) {
+        const wi = state.workItems[id];
+        if (!wi) continue;
+        if (Object.keys(wi.backlogAssignments).length > 1) {
+          removeFromTree.push({ workItemId: id, treeId });
+        } else {
+          deleteEverywhere.push(id);
+        }
       }
+
+      // Use bulk operations so undo treats this as a single action.
+      if (removeFromTree.length > 0) state.removeWorkItemsFromTreeBulk(removeFromTree);
+      if (deleteEverywhere.length > 0) state.deleteWorkItemsBulk(deleteEverywhere);
 
       // Navigate selection after the store settles.
       if (nextId) {
         setTimeout(() => {
           useAppStore.getState().selectWorkItem(nextId, false);
         }, 50);
-      } else if (isOnlyCardOnBoard) {
+      } else {
         setTimeout(() => {
           useAppStore.setState({ selectedWorkItemIds: [] });
         }, 0);
