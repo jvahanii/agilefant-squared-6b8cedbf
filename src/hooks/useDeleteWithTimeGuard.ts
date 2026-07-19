@@ -4,29 +4,37 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useDeleteGuardStore } from '@/store/deleteGuardStore';
 import { collectAffectedTimeEntryIds, type DeleteTarget } from '@/lib/timeUtils';
 
-/**
- * Returns a function that, given a delete target and the actual delete
- * callback, prompts the user to move logged time first when applicable.
- * When no time entries would be orphaned, runs the delete immediately.
- */
 export function useDeleteWithTimeGuard() {
   const request = useDeleteGuardStore((s) => s.request);
 
   return useCallback(
-    (target: DeleteTarget, label: string, onConfirm: () => void) => {
+    (
+      target: DeleteTarget | DeleteTarget[],
+      label: string,
+      onConfirm: () => void,
+    ) => {
       const { workItems, backlogs } = useAppStore.getState();
       const { timeEntries } = useTimeEntryStore.getState();
-      const entryIds = collectAffectedTimeEntryIds(target, {
-        workItems,
-        backlogs,
-        timeEntries,
-      });
+      const targets = Array.isArray(target) ? target : [target];
+      const seen = new Set<string>();
+      const entryIds: string[] = [];
+      for (const t of targets) {
+        for (const id of collectAffectedTimeEntryIds(t, { workItems, backlogs, timeEntries })) {
+          if (!seen.has(id)) { seen.add(id); entryIds.push(id); }
+        }
+      }
       if (entryIds.length === 0) {
         onConfirm();
         return;
       }
-      request({ target, entryIds, label, onConfirm });
+      request({
+        target: targets[0],
+        entryIds,
+        label,
+        onConfirm,
+      });
     },
     [request],
   );
 }
+
