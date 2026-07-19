@@ -60,6 +60,7 @@ import {
 } from "@/store/snoozeStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import { toast } from "@/hooks/use-toast";
+import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 /**
  * When a label filter is active, this context holds the Set of work item IDs
  * that should be visible (matching items + their ancestors).  Null means "show
