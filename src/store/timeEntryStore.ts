@@ -239,6 +239,36 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
     });
   },
 
+  moveTimeEntries: async (ids, target) => {
+    if (ids.length === 0) return 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('move_time_entries', {
+      _entry_ids: ids,
+      _target_kind: target.kind,
+      _target_id: target.id,
+    });
+    if (error) {
+      console.error('Failed to move time entries', error);
+      throw error;
+    }
+    set((s) => {
+      const next = { ...s.timeEntries };
+      for (const id of ids) {
+        const existing = next[id];
+        if (!existing) continue;
+        next[id] = {
+          ...existing,
+          workItemId: target.kind === 'work_item' ? target.id : null,
+          backlogId: target.kind === 'backlog' ? target.id : null,
+          treeId: target.kind === 'tree' ? target.id : null,
+        };
+      }
+      return { timeEntries: next };
+    });
+    return (data as number) ?? ids.length;
+  },
+
+
   deleteTimeEntry: (id) => {
     // Fire-and-forget
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
