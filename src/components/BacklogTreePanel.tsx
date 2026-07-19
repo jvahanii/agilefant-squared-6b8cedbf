@@ -1175,7 +1175,12 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => { if (pendingDeleteTree) { deleteBacklogTree(pendingDeleteTree.id); setPendingDeleteTree(null); } }}
+              onClick={() => {
+                if (!pendingDeleteTree) return;
+                const t = pendingDeleteTree;
+                setPendingDeleteTree(null);
+                guardedDelete({ kind: 'tree', id: t.id }, t.name, () => deleteBacklogTree(t.id));
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
