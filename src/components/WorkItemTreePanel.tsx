@@ -577,7 +577,11 @@ function WorkItemNodeContent({
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk(deleteItemIds.map((id) => ({ workItemId: id, treeId })));
-    else if (value === "delete-everywhere") deleteWorkItemsBulk(deleteItemIds);
+    else if (value === "delete-everywhere") {
+      const targets = deleteItemIds.map((id) => ({ kind: 'work_item' as const, id }));
+      const label = deleteItemIds.length === 1 ? (workItems[deleteItemIds[0]]?.title ?? 'this item') : `${deleteItemIds.length} items`;
+      guardedDeleteBulk(targets, label, () => deleteWorkItemsBulk(deleteItemIds));
+    }
   };
 
   const startEditingTitle = () => {
