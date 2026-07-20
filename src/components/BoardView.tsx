@@ -356,6 +356,10 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
   const [showBulkDeletePrompt, setShowBulkDeletePrompt] = useState(false);
   const bulkDeleteRef = useRef<{ ids: string[]; nextId: string | null }>({ ids: [], nextId: null });
 
+  // Move to backlog dialog state for the keyboard shortcut (M key).
+  const [showBoardMoveToBacklogDialog, setShowBoardMoveToBacklogDialog] = useState(false);
+  const boardMoveToBacklogItemIdsRef = useRef<string[]>([]);
+
   const handleBulkDeleteChoice = useCallback(
     (value: string) => {
       setShowBulkDeletePrompt(false);
@@ -455,6 +459,19 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
     window.addEventListener("shortcut:delete-selected", handler);
     return () => window.removeEventListener("shortcut:delete-selected", handler);
   }, [cardsByStatus, orderedColumns, treeId]);
+
+  // Listen for M key shortcut (move to backlog) while the board is visible.
+  useEffect(() => {
+    const handler = () => {
+      const state = useAppStore.getState();
+      const ids = state.selectedWorkItemIds;
+      if (ids.length === 0) return;
+      boardMoveToBacklogItemIdsRef.current = ids;
+      setShowBoardMoveToBacklogDialog(true);
+    };
+    window.addEventListener("shortcut:move-to-backlog", handler);
+    return () => window.removeEventListener("shortcut:move-to-backlog", handler);
+  }, []);
 
   const handleColumnAdd = useCallback(
     (statusKey: string, title: string, afterIndex?: number) => {
@@ -784,6 +801,17 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           ]}
           onSelect={handleBulkDeleteChoice}
           onCancel={() => setShowBulkDeletePrompt(false)}
+        />
+      )}
+
+      {/* Move to backlog dialog for keyboard shortcut (M key) */}
+      {showBoardMoveToBacklogDialog && (
+        <MoveToBacklogDialog
+          workItemIds={boardMoveToBacklogItemIdsRef.current}
+          treeId={treeId}
+          currentBacklogId={backlogId}
+          open={showBoardMoveToBacklogDialog}
+          onOpenChange={setShowBoardMoveToBacklogDialog}
         />
       )}
     </div>
