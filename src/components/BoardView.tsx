@@ -1345,6 +1345,19 @@ function BoardCard({
     setIsEditingPoints(false);
   };
 
+  // Listen for Ctrl+Enter shortcut to open inline rename
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.workItemId === item.id) {
+        setEditTitle(item.title);
+        setIsEditingTitle(true);
+      }
+    };
+    window.addEventListener("shortcut:edit-title", handler);
+    return () => window.removeEventListener("shortcut:edit-title", handler);
+  }, [item.id, item.title]);
+
   const handleMoveToTop = useCallback(() => {
     const state = useAppStore.getState();
     const backlogIds: string[] = [];

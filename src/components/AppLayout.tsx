@@ -254,6 +254,19 @@ function AppLayoutInner() {
         useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
       };
 
+      // Ctrl+Enter: rename the first selected work item
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        if (state.selectedWorkItemIds.length > 0) {
+          e.preventDefault();
+          window.dispatchEvent(
+            new CustomEvent("shortcut:edit-title", {
+              detail: { workItemId: state.selectedWorkItemIds[0] },
+            }),
+          );
+        }
+        return;
+      }
+
       if (e.ctrlKey || e.metaKey) return;
 
       switch (e.key.toLowerCase()) {
