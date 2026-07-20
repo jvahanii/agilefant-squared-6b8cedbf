@@ -175,19 +175,29 @@ function BacklogReorderDropZone({
 
   return (
     <div
-      className="relative py-px"
-      style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px` }}
+      className="relative"
+      style={{ marginLeft: `${depth * INDENT_PER_LEVEL + BASE_INDENT}px`, height: isDragActive ? 6 : 3 }}
     >
-      {/* Absolutely-positioned hit area: expands during drag without shifting layout.
-          Bigger zones make reorder gaps far easier to hit with a mouse. */}
+      {/* Generous invisible hit area (±12 px → 24 px total on desktop, ±10 px on
+          mobile) that does not affect the flow layout. */}
       <div
         ref={setNodeRef}
-        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-2 -bottom-2" : "-top-2.5 -bottom-2.5") : "inset-y-0"}`}
+        className="absolute inset-0 z-10"
+        style={{ top: isDragActive ? (isMobile ? -10 : -12) : -4, bottom: isDragActive ? (isMobile ? -10 : -12) : -4 }}
       />
-      {/* Indicator is absolutely positioned so showing it doesn't change layout
-          (which previously caused the hit area to shift and oscillate isOver). */}
+      {/* Subtle guide line visible at every drop slot while dragging */}
+      <div
+        className={`absolute inset-x-1 top-1/2 -translate-y-1/2 rounded-full transition-all duration-200 ease-out ${
+          isOver
+            ? "h-1 bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]"
+            : isDragActive
+              ? "h-px bg-muted-foreground/25"
+              : "h-0 bg-transparent"
+        }`}
+      />
+      {/* Glowing dot on the active drop zone */}
       {isOver && (
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" />
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150" />
       )}
     </div>
   );
@@ -778,15 +788,30 @@ function TreeReorderDropZone({ id, index }: { id: string; index: number }) {
   });
 
   return (
-    <div className="relative py-px mx-2">
-      {/* Absolutely-positioned hit area: expands during drag without shifting layout. */}
+    <div
+      className="relative mx-2"
+      style={{ height: isDragActive ? 6 : 3 }}
+    >
+      {/* Generous invisible hit area (±12 px → 24 px total on desktop, ±10 px on
+          mobile) that does not affect the flow layout. */}
       <div
         ref={setNodeRef}
-        className={`absolute inset-x-0 ${isDragActive ? (isMobile ? "-top-2 -bottom-2" : "-top-2.5 -bottom-2.5") : "inset-y-0"}`}
+        className="absolute inset-0 z-10"
+        style={{ top: isDragActive ? (isMobile ? -10 : -12) : -4, bottom: isDragActive ? (isMobile ? -10 : -12) : -4 }}
       />
-      {/* Indicator absolutely positioned to prevent layout-shift oscillation. */}
+      {/* Subtle guide line visible at every drop slot while dragging */}
+      <div
+        className={`absolute inset-x-1 top-1/2 -translate-y-1/2 rounded-full transition-all duration-200 ease-out ${
+          isOver
+            ? "h-1 bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]"
+            : isDragActive
+              ? "h-px bg-muted-foreground/25"
+              : "h-0 bg-transparent"
+        }`}
+      />
+      {/* Glowing dot on the active drop zone */}
       {isOver && (
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-selection shadow-[0_0_0_3px_hsl(var(--selection)/0.25)]" />
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_2px_hsl(var(--primary)/0.5)] animate-in zoom-in duration-150" />
       )}
     </div>
   );
