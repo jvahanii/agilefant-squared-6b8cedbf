@@ -889,14 +889,14 @@ function BoardColumn({
     overscan: 5,
   });
 
-  // Combine the droppable ref with the scroll ref so dnd-kit and the
-  // virtualizer use the same scrollable container.
-  const setScrollAndDroppableRef = useCallback(
+  // The droppable's setNodeRef goes on the outer wrapper so isOver
+  // fires when dragging over the header as well. The scroll ref stays
+  // on the inner overflow container for the virtualizer.
+  const setScrollRef = useCallback(
     (el: HTMLDivElement | null) => {
       (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-      columnDroppable.setNodeRef(el);
     },
-    [columnDroppable.setNodeRef],
+    [],
   );
 
   // Inline editing of column label (double-click to edit)
@@ -931,6 +931,7 @@ function BoardColumn({
 
   return (
     <div
+      ref={columnDroppable.setNodeRef}
       data-board-column={column.key}
       className={cn(
         "flex flex-col w-52 shrink-0 rounded-lg border bg-muted/20 h-full",
@@ -1098,7 +1099,7 @@ function BoardColumn({
       </ContextMenu>
 
       <div
-        ref={setScrollAndDroppableRef}
+        ref={setScrollRef}
         className="flex-1 overflow-y-auto"
         onDoubleClick={(e) => {
           // Only trigger on the empty area of the column, not on cards or inputs
