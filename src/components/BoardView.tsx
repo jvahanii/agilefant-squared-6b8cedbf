@@ -1435,8 +1435,9 @@ function BoardCard({
             <div className="flex items-start gap-1 justify-between">
               {isEditingTitle ? (
                 <input
-                  autoFocus
+                  ref={titleInputRef}
                   className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-0.5 py-0"
+
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   onKeyDown={(e) => {
