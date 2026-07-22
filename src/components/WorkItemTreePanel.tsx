@@ -21,6 +21,7 @@ import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,16 +84,14 @@ const EMPTY_ARRAY: string[] = [];
 function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
+  const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isEditing]);
+    if (isEditing) focusForEdit(inputRef.current, isMobile);
+  }, [isEditing, isMobile]);
 
   const startEditing = () => {
     setEditValue(backlog?.name ?? "");
@@ -449,19 +448,15 @@ function WorkItemNodeContent({
 
   useEffect(() => {
     if (isEditingTitle && titleRef.current) {
-      titleRef.current.focus();
-      titleRef.current.select();
+      focusForEdit(titleRef.current, isMobile);
       titleRef.current.style.height = "auto";
       titleRef.current.style.height = `${titleRef.current.scrollHeight}px`;
     }
-  }, [isEditingTitle]);
+  }, [isEditingTitle, isMobile]);
 
   useEffect(() => {
-    if (isEditingPoints) {
-      pointsRef.current?.focus();
-      pointsRef.current?.select();
-    }
-  }, [isEditingPoints]);
+    if (isEditingPoints) focusForEdit(pointsRef.current, isMobile);
+  }, [isEditingPoints, isMobile]);
 
   useEffect(() => {
     if (!isSelected) return;

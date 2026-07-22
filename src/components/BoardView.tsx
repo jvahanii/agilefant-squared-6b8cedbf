@@ -11,6 +11,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -866,6 +867,7 @@ function BoardColumn({
   locked?: boolean;
   onSetColor?: (color: string) => void;
 }) {
+  const isMobile = useIsMobile();
   // Droppable covers the ENTIRE column (header + body) so cards dropped
   // on the header are treated as "put at the top of this column".
   const columnDroppable = useDroppable({
@@ -908,11 +910,10 @@ function BoardColumn({
     if (isEditingLabel) {
       // Use rAF to ensure React has flushed the input to the DOM before focusing/selecting.
       requestAnimationFrame(() => {
-        labelInputRef.current?.focus();
-        labelInputRef.current?.select();
+        focusForEdit(labelInputRef.current, isMobile);
       });
     }
-  }, [isEditingLabel]);
+  }, [isEditingLabel, isMobile]);
 
   const startEditingLabel = () => {
     setEditLabel(column.label);

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   AlertDialog,
@@ -335,11 +336,8 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   }, [labelsVisible, byEntity, labelsMap, backlogId]);
 
   useEffect(() => {
-    if (isEditing) {
-      editRef.current?.focus();
-      editRef.current?.select();
-    }
-  }, [isEditing]);
+    if (isEditing) focusForEdit(editRef.current, isMobile);
+  }, [isEditing, isMobile]);
 
   useEffect(() => {
     if (!isSelected) return;
@@ -729,16 +727,14 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
 
 function EditableTreeName({ treeId, name, isScrambled }: { treeId: string; name: string; isScrambled: boolean }) {
   const renameBacklogTree = useAppStore((s) => s.renameBacklogTree);
+  const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isEditing]);
+    if (isEditing) focusForEdit(inputRef.current, isMobile);
+  }, [isEditing, isMobile]);
 
   const startEditing = () => {
     setEditValue(name);
