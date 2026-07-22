@@ -1296,6 +1296,12 @@ function BoardCard({
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
   const [editPoints, setEditPoints] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingTitle) focusForEdit(titleInputRef.current, isMobile);
+  }, [isEditingTitle, isMobile]);
+
 
   const assignmentCount = Object.keys(item.backlogAssignments).length;
 
