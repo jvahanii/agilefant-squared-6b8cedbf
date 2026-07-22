@@ -254,8 +254,8 @@ function AppLayoutInner() {
         useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
       };
 
-      // Ctrl+Enter: rename the first selected work item
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      // Alt+Enter or F2: rename the first selected work item
+      if ((e.altKey && e.key === "Enter") || e.key === "F2") {
         if (state.selectedWorkItemIds.length > 0) {
           e.preventDefault();
           window.dispatchEvent(
