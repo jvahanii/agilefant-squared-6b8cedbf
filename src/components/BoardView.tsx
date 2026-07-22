@@ -866,6 +866,7 @@ function BoardColumn({
   locked?: boolean;
   onSetColor?: (color: string) => void;
 }) {
+  const isMobile = useIsMobile();
   // Droppable covers the ENTIRE column (header + body) so cards dropped
   // on the header are treated as "put at the top of this column".
   const columnDroppable = useDroppable({
