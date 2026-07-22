@@ -21,6 +21,7 @@ import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   AlertDialog,

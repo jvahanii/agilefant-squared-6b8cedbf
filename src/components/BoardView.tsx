@@ -11,6 +11,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
