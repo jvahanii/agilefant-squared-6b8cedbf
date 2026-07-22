@@ -908,11 +908,10 @@ function BoardColumn({
     if (isEditingLabel) {
       // Use rAF to ensure React has flushed the input to the DOM before focusing/selecting.
       requestAnimationFrame(() => {
-        labelInputRef.current?.focus();
-        labelInputRef.current?.select();
+        focusForEdit(labelInputRef.current, isMobile);
       });
     }
-  }, [isEditingLabel]);
+  }, [isEditingLabel, isMobile]);
 
   const startEditingLabel = () => {
     setEditLabel(column.label);
