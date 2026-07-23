@@ -226,6 +226,34 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" /> Labs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Burnups</p>
+              <p className="text-xs text-muted-foreground">
+                Show cumulative flow diagrams for work item branches, backlogs and backlog trees,
+                by item count or points.
+              </p>
+            </div>
+            <Switch
+              checked={burnupsEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setBurnupsEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Burnups enabled" : "Burnups disabled" });
+                }
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <TimesheetBrowserDialog
         open={timesheetBrowserOpen}
         onOpenChange={setTimesheetBrowserOpen}
