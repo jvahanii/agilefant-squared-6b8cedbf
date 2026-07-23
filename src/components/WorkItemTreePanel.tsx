@@ -1118,11 +1118,9 @@ function WorkItemNodeContent({
           {burnupsVisible && (
             <ContextMenuItem
               className="text-xs"
-              onSelect={() => {
-                import("@/store/burnupDialogStore").then(({ useBurnupDialogStore }) =>
-                  useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
-                );
-              }}
+              onSelect={() =>
+                useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
+              }
             >
               View burnup…
             </ContextMenuItem>
