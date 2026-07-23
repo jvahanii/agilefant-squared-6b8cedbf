@@ -32,6 +32,7 @@ const defaults: OrgSettings = {
   customStatusesEnabled: false,
   savingsIncomeEnabled: false,
   boardsEnabled: false,
+  burnupsEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
