@@ -1114,6 +1114,18 @@ function WorkItemNodeContent({
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
           </ContextMenuItem>
+          {burnupsVisible && (
+            <ContextMenuItem
+              className="text-xs"
+              onSelect={() => {
+                import("@/store/burnupDialogStore").then(({ useBurnupDialogStore }) =>
+                  useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
+                );
+              }}
+            >
+              View burnup…
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             className="text-xs"
             onSelect={() => {
