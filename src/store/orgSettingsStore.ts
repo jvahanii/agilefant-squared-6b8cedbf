@@ -22,6 +22,7 @@ interface OrgSettingsState {
   setCustomStatusesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setSavingsIncomeEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setBoardsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setBurnupsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
