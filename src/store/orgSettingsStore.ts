@@ -168,6 +168,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setBurnupsEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), burnupsEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, burnups_enabled: enabled, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'organization_id' },
+      );
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -181,11 +197,17 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           customStatusesEnabled: row.custom_statuses_enabled ?? false,
           savingsIncomeEnabled: row.savings_income_enabled ?? false,
           boardsEnabled: row.boards_enabled ?? false,
+          burnupsEnabled: row.burnups_enabled ?? false,
         },
       },
     }));
   },
 }));
+
+export function isBurnupsEnabled(orgId: string | null): boolean {
+  if (!orgId) return false;
+  return useOrgSettingsStore.getState().settings[orgId]?.burnupsEnabled ?? false;
+}
 
 // Convenience selectors
 export function isTimeLoggingEnabled(orgId: string | null): boolean {
