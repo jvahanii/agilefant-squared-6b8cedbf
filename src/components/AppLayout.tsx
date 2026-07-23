@@ -84,7 +84,19 @@ export default function AppLayout() {
     <ScrambleProvider>
       <AppLayoutInner />
       <DeleteGuardHost />
+      <BurnupDialogHost />
     </ScrambleProvider>
+  );
+}
+
+function BurnupDialogHost() {
+  const { scope, open, close } = useBurnupDialogStore();
+  return (
+    <BurnupChartDialog
+      open={open}
+      onOpenChange={(v) => { if (!v) close(); }}
+      scope={scope}
+    />
   );
 }
 
