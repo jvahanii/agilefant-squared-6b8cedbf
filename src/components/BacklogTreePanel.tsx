@@ -604,6 +604,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             Statuses…
           </ContextMenuItem>
         )}
+        {burnupsEnabled && (
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => useBurnupDialogStore.getState().openBurnup({ kind: 'backlog', id: backlogId, name: backlog.name })}
+          >
+            <TrendingUp className="w-3 h-3 mr-2" />
+            View burnup…
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
