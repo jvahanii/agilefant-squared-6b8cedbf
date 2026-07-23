@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -247,6 +248,7 @@ function WorkItemNodeContent({
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const burnupsVisible = useOrgSettingsStore((s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
@@ -1113,6 +1115,16 @@ function WorkItemNodeContent({
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
           </ContextMenuItem>
+          {burnupsVisible && (
+            <ContextMenuItem
+              className="text-xs"
+              onSelect={() =>
+                useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
+              }
+            >
+              View burnup…
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             className="text-xs"
             onSelect={() => {

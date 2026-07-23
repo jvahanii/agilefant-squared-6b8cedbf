@@ -32,6 +32,8 @@ import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
+import { BurnupChartDialog } from "@/components/BurnupChartDialog";
+import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   Undo2,
   Redo2,
@@ -82,7 +84,19 @@ export default function AppLayout() {
     <ScrambleProvider>
       <AppLayoutInner />
       <DeleteGuardHost />
+      <BurnupDialogHost />
     </ScrambleProvider>
+  );
+}
+
+function BurnupDialogHost() {
+  const { scope, open, close } = useBurnupDialogStore();
+  return (
+    <BurnupChartDialog
+      open={open}
+      onOpenChange={(v) => { if (!v) close(); }}
+      scope={scope}
+    />
   );
 }
 

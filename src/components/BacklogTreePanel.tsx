@@ -1,5 +1,6 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2 } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp } from "lucide-react";
+import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -321,6 +322,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
+  const burnupsEnabled = useOrgSettingsStore(
+    (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
+  );
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -603,6 +607,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             Statuses…
           </ContextMenuItem>
         )}
+        {burnupsEnabled && (
+          <ContextMenuItem
+            className="text-xs"
+            onSelect={() => useBurnupDialogStore.getState().openBurnup({ kind: 'backlog', id: backlogId, name: backlog.name })}
+          >
+            <TrendingUp className="w-3 h-3 mr-2" />
+            View burnup…
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
@@ -839,6 +852,9 @@ function DraggableTreeHeader({
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const burnupsVisible = useOrgSettingsStore(
+    (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
+  );
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -955,6 +971,18 @@ function DraggableTreeHeader({
               ) : (
                 <Clock className="w-3.5 h-3.5" />
               )}
+            </button>
+          )}
+          {burnupsVisible && (
+            <button
+              className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                useBurnupDialogStore.getState().openBurnup({ kind: 'tree', id: tree.id, name: tree.name });
+              }}
+              title="View burnup"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
             </button>
           )}
           <button
