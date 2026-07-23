@@ -163,7 +163,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const data = await paginateSelect(
+      const { data } = await paginateSelect<HistoryRow>(
         (from, to) =>
           (supabase as any)
             .from("work_item_history")
@@ -174,7 +174,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
         1000,
       );
       if (!cancelled) {
-        setRows((data as HistoryRow[]) ?? []);
+        setRows(data ?? []);
         setLoading(false);
       }
     })();
