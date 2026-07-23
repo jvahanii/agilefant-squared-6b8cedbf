@@ -852,6 +852,9 @@ function DraggableTreeHeader({
     (s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false,
   );
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const burnupsVisible = useOrgSettingsStore(
+    (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
+  );
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
   const backlogs = useAppStore((s) => s.backlogs);
