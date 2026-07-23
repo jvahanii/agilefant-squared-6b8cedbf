@@ -8,6 +8,7 @@ interface OrgSettings {
   customStatusesEnabled: boolean;
   savingsIncomeEnabled: boolean;
   boardsEnabled: boolean;
+  burnupsEnabled: boolean;
 }
 
 interface OrgSettingsState {
