@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
