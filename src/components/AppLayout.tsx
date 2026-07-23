@@ -32,6 +32,8 @@ import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
+import { BurnupChartDialog } from "@/components/BurnupChartDialog";
+import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   Undo2,
   Redo2,
