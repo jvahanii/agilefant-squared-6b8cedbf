@@ -322,6 +322,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
+  const burnupsEnabled = useOrgSettingsStore(
+    (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
+  );
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
