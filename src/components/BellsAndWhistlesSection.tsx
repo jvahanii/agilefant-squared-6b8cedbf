@@ -36,6 +36,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
   const setSavingsIncomeEnabledSetting = useOrgSettingsStore((s) => s.setSavingsIncomeEnabled);
+  const setBurnupsEnabledSetting = useOrgSettingsStore((s) => s.setBurnupsEnabled);
+  const burnupsEnabled = (orgSettings as { burnupsEnabled?: boolean }).burnupsEnabled ?? false;
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const loadLabels = useLabelsStore((s) => s.loadLabels);
 
