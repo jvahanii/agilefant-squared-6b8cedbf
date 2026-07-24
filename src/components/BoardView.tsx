@@ -11,6 +11,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -866,6 +867,7 @@ function BoardColumn({
   locked?: boolean;
   onSetColor?: (color: string) => void;
 }) {
+  const isMobile = useIsMobile();
   // Droppable covers the ENTIRE column (header + body) so cards dropped
   // on the header are treated as "put at the top of this column".
   const columnDroppable = useDroppable({
@@ -908,11 +910,10 @@ function BoardColumn({
     if (isEditingLabel) {
       // Use rAF to ensure React has flushed the input to the DOM before focusing/selecting.
       requestAnimationFrame(() => {
-        labelInputRef.current?.focus();
-        labelInputRef.current?.select();
+        focusForEdit(labelInputRef.current, isMobile);
       });
     }
-  }, [isEditingLabel]);
+  }, [isEditingLabel, isMobile]);
 
   const startEditingLabel = () => {
     setEditLabel(column.label);
@@ -1295,6 +1296,12 @@ function BoardCard({
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
   const [editPoints, setEditPoints] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingTitle) focusForEdit(titleInputRef.current, isMobile);
+  }, [isEditingTitle, isMobile]);
+
 
   const assignmentCount = Object.keys(item.backlogAssignments).length;
 
@@ -1428,8 +1435,9 @@ function BoardCard({
             <div className="flex items-start gap-1 justify-between">
               {isEditingTitle ? (
                 <input
-                  autoFocus
+                  ref={titleInputRef}
                   className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-0.5 py-0"
+
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   onKeyDown={(e) => {

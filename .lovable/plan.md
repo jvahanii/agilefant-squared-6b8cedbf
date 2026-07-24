@@ -1,71 +1,53 @@
-## Goal
-When deleting a work item, backlog, or backlog tree that has time entries logged (directly or on descendants), prompt the user first. If they choose to preserve the time, open the existing `MoveTimeDialog` to reassign those entries before proceeding with the deletion.
 
-## Flow
+# Root-cause investigation: sign-in blocked by PGRST002 + auth 504
 
-```text
-User triggers delete
-        │
-        ▼
-Collect affected time entries (self + descendants)
-        │
-   any entries?
-   ┌────┴────┐
-   no        yes
-   │         ▼
-   │   ActionPrompt: "N time entries are logged here"
-   │     • Move time entries…      (default)
-   │     • Delete without moving   (destructive)
-   │     • Cancel
-   │         │
-   │   ┌─────┼───────────────┐
-   │   move  delete-anyway   cancel
-   │   ▼         ▼             ▼
-   │  MoveTimeDialog  proceed  abort
-   │   (on success) → proceed
-   ▼
-Original delete runs
-```
+## What we already know
 
-Deleting without moving leaves the DB rows: `time_entries.work_item_id/backlog_id/tree_id` FKs are `ON DELETE SET NULL` (or similar) so entries become unattached — same as today. The prompt just gives users a chance to preserve attribution.
+Symptoms from this session:
+- `POST /auth/v1/token?grant_type=password` and `refresh_token` returned **504 upstream request timeout** repeatedly, then eventually 200.
+- Right after 200, `GET /rest/v1/profiles` and `POST /rest/v1/rpc/get_user_memberships` returned **503 PGRST002** "Could not query the database for the schema cache. Retrying." — this is PostgREST unable to (re)load its schema cache from Postgres.
+- Postgres logs are full of `canceling statement due to statement timeout` and a couple of `FATAL: connection to client lost`.
+- App UI is stuck at "Setting up your organization…" because `loadMemberships` fails with PGRST002 and never recovers.
 
-## Scope of "affected entries"
+What is NOT the cause:
+- Data volume: DB is ~30 MB total, ~3k work items, only 11 idle / 2 active connections. Not saturated.
+- App code paths: sign-in flow itself works — the failing calls happen against Supabase infra.
 
-- **Work item delete**: entries with `workItemId === id`. (Work items have no descendants that carry their own time; children are separate items handled by their own cascade.)
-- **Backlog delete**: entries with `backlogId === id` OR `workItemId ∈ items assigned to this backlog (only)`. For simplicity of the first pass, include only entries directly on the backlog plus entries on work items whose *only* backlog assignment is this one (i.e. items that will actually disappear). Items still assigned elsewhere keep their entries untouched.
-- **Tree delete**: entries with `treeId === id` OR on any backlog under the tree OR on work items reachable only via this tree.
+## Likely contributing causes to verify
 
-If exhaustive descendant scanning becomes complex for backlog/tree, fall back to "entries directly on this container" for v1 and note the limitation — most usage logs to the container itself or to items visible via one tree.
+1. **PostgREST schema-cache thrash from recent migrations.** In the last few turns we added/altered many public-schema objects (`work_item_board_ranks`, `backlog_statuses`, `work_item_history`, `work_item_chart_prefs`, plus columns on `time_entries`, `organization_settings`). Every DDL sends `NOTIFY pgrst`, which forces PostgREST to reload its full schema cache. If DDLs land back-to-back while a reload is running, PostgREST can get stuck in a retry loop and answer PGRST002 until it settles.
+2. **Trigger amplification on hot paths.**
+   - `trim_change_log` runs on every `change_log` INSERT and does `DELETE ... WHERE id NOT IN (SELECT id ... ORDER BY created_at DESC LIMIT 5000)` — that's an O(n) scan per row inserted. `pg_stat_statements` shows the change_log insert as the #1 query by total time (10 830 calls, 1.3 M ms total, max 6.9 s).
+   - `snapshot_work_item_change` (added this turn for Burnups) inserts into `work_item_history` on every work_items INSERT/UPDATE/DELETE, roughly doubling write work and cache pressure on that table.
+3. **Auth service upstream 504s.** GoTrue itself timed out on `/token` for ~4 minutes before recovering. This overlaps with the DB stress window and can be a symptom of the same shared-infra pressure or a transient Supabase-side incident.
 
-## Implementation
+## Investigation plan (no code changes yet)
 
-### 1. Helper — `src/lib/timeUtils.ts`
-Add `collectAffectedTimeEntryIds(target, { workItems, backlogs, trees, timeEntries })` returning `string[]`. One function, three branches by target kind, using the scoping rules above.
+Step 1 — Confirm current PostgREST state
+- Poll `/rest/v1/` and `/auth/v1/health` from the sandbox to see whether PGRST002 is still being returned right now, or whether it has already cleared. If it's still failing after ~15 minutes with no ongoing DDL, that's PostgREST wedged and needs a reload from the dashboard.
 
-### 2. New component — `src/components/DeleteWithTimeGuard.tsx`
-Small wrapper that, given a target and an `onConfirmedDelete` callback:
-1. Computes affected entry IDs.
-2. If zero → call `onConfirmedDelete()` immediately.
-3. Else → render `ActionPrompt` with the three options.
-4. On "Move" → open `MoveTimeDialog` with `source={ kind: 'selection', entryIds }`; after it closes successfully, call `onConfirmedDelete()`.
-5. On "Delete without moving" → `onConfirmedDelete()`.
-6. On "Cancel" → close.
+Step 2 — Confirm trigger cost on hot writes
+- `EXPLAIN (ANALYZE, BUFFERS)` a representative `change_log` INSERT to quantify `trim_change_log` cost.
+- Check `pg_stat_user_tables` for `work_item_history` write volume vs `work_items` to confirm the 1:1 amplification.
 
-Exposed as an imperative helper (`useDeleteWithTimeGuard()` hook returning `requestDelete(target, onConfirmed)`) mounted once at `AppLayout` level so any caller can trigger it without wiring dialogs locally.
+Step 3 — Look for a DDL storm signature
+- `select query, calls, total_exec_time from pg_stat_statements where query ilike 'alter %' or query ilike 'create %' order by total_exec_time desc limit 20;`
+- Look at recent migrations in `supabase/migrations/` to see how many DDL statements shipped in the past day.
 
-### 3. Wire into existing delete call sites
-Replace direct `deleteWorkItem` / `deleteBacklog` / `deleteBacklogTree` invocations with `requestDelete({ kind, id }, () => deleteX(id))` in:
-- `WorkItemTreePanel.tsx` (context menu + keyboard delete)
-- `BacklogTreePanel.tsx` (backlog + tree context menus)
-- `AppLayout.tsx` (any global delete shortcut)
-- `MobileAttributesSheet.tsx` if it exposes delete
+Step 4 — Report findings
+Deliver a short root-cause writeup with:
+- Which of the three causes above actually contributed (with evidence).
+- What is fixable in the app (e.g. batching change_log inserts, moving history capture off the hot path, guarding loadMemberships against transient PGRST002).
+- What has to be done in Supabase (dashboard restart, index tweaks, or a support ticket).
 
-Multi-select delete: aggregate affected entries across all selected targets, show a single prompt, then run deletes.
+Only after you approve the findings will I propose a follow-up plan that actually changes code or schema.
 
-### 4. No DB changes
-`MoveTimeDialog` and `move_time_entries` RPC already exist and cover the reassignment.
+## Technical details
 
-## Out of scope
-- Changing FK cascade behavior on `time_entries`.
-- Undo of the delete after move.
-- Auto-moving to the parent container (explicit user choice via existing picker).
+Reads used, no writes:
+- `pg_stat_activity`, `pg_stat_user_tables`, `pg_stat_statements` via `supabase--read_query`.
+- `postgres_logs` via `supabase--analytics_query`.
+- HTTP probes of `https://hwwjwkdbautfkhpxuord.supabase.co/rest/v1/` and `/auth/v1/health` from the sandbox.
+- File reads of recent migrations under `supabase/migrations/`.
+
+No migrations, no `INSERT/UPDATE/DELETE`, no edge function deploys, no dashboard restarts in this step.

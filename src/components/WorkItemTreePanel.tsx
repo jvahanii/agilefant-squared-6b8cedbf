@@ -21,6 +21,7 @@ import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -83,16 +85,14 @@ const EMPTY_ARRAY: string[] = [];
 function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
+  const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isEditing]);
+    if (isEditing) focusForEdit(inputRef.current, isMobile);
+  }, [isEditing, isMobile]);
 
   const startEditing = () => {
     setEditValue(backlog?.name ?? "");
@@ -248,6 +248,7 @@ function WorkItemNodeContent({
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const burnupsVisible = useOrgSettingsStore((s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
@@ -449,19 +450,15 @@ function WorkItemNodeContent({
 
   useEffect(() => {
     if (isEditingTitle && titleRef.current) {
-      titleRef.current.focus();
-      titleRef.current.select();
+      focusForEdit(titleRef.current, isMobile);
       titleRef.current.style.height = "auto";
       titleRef.current.style.height = `${titleRef.current.scrollHeight}px`;
     }
-  }, [isEditingTitle]);
+  }, [isEditingTitle, isMobile]);
 
   useEffect(() => {
-    if (isEditingPoints) {
-      pointsRef.current?.focus();
-      pointsRef.current?.select();
-    }
-  }, [isEditingPoints]);
+    if (isEditingPoints) focusForEdit(pointsRef.current, isMobile);
+  }, [isEditingPoints, isMobile]);
 
   useEffect(() => {
     if (!isSelected) return;
@@ -1118,6 +1115,16 @@ function WorkItemNodeContent({
             <LayoutGrid className="w-3 h-3 mr-2" />
             View in board
           </ContextMenuItem>
+          {burnupsVisible && (
+            <ContextMenuItem
+              className="text-xs"
+              onSelect={() =>
+                useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
+              }
+            >
+              View burnup…
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             className="text-xs"
             onSelect={() => {

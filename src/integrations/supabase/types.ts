@@ -458,6 +458,7 @@ export type Database = {
       organization_settings: {
         Row: {
           boards_enabled: boolean
+          burnups_enabled: boolean
           created_at: string
           custom_statuses_enabled: boolean
           id: string
@@ -470,6 +471,7 @@ export type Database = {
         }
         Insert: {
           boards_enabled?: boolean
+          burnups_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string
@@ -482,6 +484,7 @@ export type Database = {
         }
         Update: {
           boards_enabled?: boolean
+          burnups_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
           id?: string
@@ -794,6 +797,39 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_chart_prefs: {
+        Row: {
+          created_at: string
+          id: string
+          metric: string
+          organization_id: string
+          scope_id: string
+          scope_kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric: string
+          organization_id: string
+          scope_id: string
+          scope_kind: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric?: string
+          organization_id?: string
+          scope_id?: string
+          scope_kind?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       work_item_financials: {
         Row: {
           actual_income_by_month: Json
@@ -835,6 +871,48 @@ export type Database = {
           organization_id?: string
           savings_by_month?: Json
           updated_at?: string
+          work_item_id?: string
+        }
+        Relationships: []
+      }
+      work_item_history: {
+        Row: {
+          backlog_assignments: Json
+          event: string
+          existed: boolean
+          id: string
+          organization_id: string
+          parent_id: string | null
+          points: number | null
+          snapshot_at: string
+          status: string | null
+          title: string | null
+          work_item_id: string
+        }
+        Insert: {
+          backlog_assignments?: Json
+          event: string
+          existed: boolean
+          id?: string
+          organization_id: string
+          parent_id?: string | null
+          points?: number | null
+          snapshot_at?: string
+          status?: string | null
+          title?: string | null
+          work_item_id: string
+        }
+        Update: {
+          backlog_assignments?: Json
+          event?: string
+          existed?: boolean
+          id?: string
+          organization_id?: string
+          parent_id?: string | null
+          points?: number | null
+          snapshot_at?: string
+          status?: string | null
+          title?: string | null
           work_item_id?: string
         }
         Relationships: []

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -36,6 +36,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
   const setSavingsIncomeEnabledSetting = useOrgSettingsStore((s) => s.setSavingsIncomeEnabled);
+  const setBurnupsEnabledSetting = useOrgSettingsStore((s) => s.setBurnupsEnabled);
+  const burnupsEnabled = (orgSettings as { burnupsEnabled?: boolean }).burnupsEnabled ?? false;
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const loadLabels = useLabelsStore((s) => s.loadLabels);
 
@@ -217,6 +219,34 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setSavingsIncomeEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Savings & Income enabled" : "Savings & Income disabled" });
+                }
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FlaskConical className="w-4 h-4" /> Labs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Burnups</p>
+              <p className="text-xs text-muted-foreground">
+                Show cumulative flow diagrams for work item branches, backlogs and backlog trees,
+                by item count or points.
+              </p>
+            </div>
+            <Switch
+              checked={burnupsEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setBurnupsEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Burnups enabled" : "Burnups disabled" });
                 }
               }}
             />
