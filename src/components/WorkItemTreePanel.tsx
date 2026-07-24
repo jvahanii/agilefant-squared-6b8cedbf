@@ -1139,7 +1139,7 @@ function WorkItemNodeContent({
               toast({ title: "Moved item to top", description: item.title });
             }}
           >
-            Move to top
+            Rank to top
           </ContextMenuItem>
           <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
             Rename
