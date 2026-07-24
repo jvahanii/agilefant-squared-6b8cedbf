@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { withSupabaseRetry } from '@/lib/supabaseRetry';
 import { resetOrgData } from './supabaseSync';
 import { mockData as staticMockData } from './mockData';
+
 
 export interface Organization {
   id: string;
@@ -36,11 +38,14 @@ interface OrgState {
 }
 
 async function ensureProfileExists(userId: string): Promise<void> {
-  const { data: existingProfile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle();
+  const { data: existingProfile, error: profileError } = await withSupabaseRetry(() =>
+    supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle(),
+  );
+
 
   if (profileError) throw profileError;
   if (existingProfile) return;
@@ -117,7 +122,10 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       set({ memberships: cached.memberships, activeOrgId, loading: false });
       // Fire a background refresh so the data stays fresh.
       void (async () => {
-        const { data, error } = await supabase.rpc('get_user_memberships', { _user_id: userId });
+        const { data, error } = await withSupabaseRetry(() =>
+          supabase.rpc('get_user_memberships', { _user_id: userId }),
+        );
+
         if (error || !data) return;
         const fresh = data as Membership[];
         writeCachedMemberships(userId, fresh);
@@ -140,8 +148,11 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       }
     }, 10000);
 
-    const { data, error } = await supabase.rpc('get_user_memberships', { _user_id: userId });
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase.rpc('get_user_memberships', { _user_id: userId }),
+    );
     clearTimeout(timeoutId);
+
 
     if (error) {
       console.error('loadMemberships:', error);
