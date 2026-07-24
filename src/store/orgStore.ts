@@ -122,7 +122,10 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       set({ memberships: cached.memberships, activeOrgId, loading: false });
       // Fire a background refresh so the data stays fresh.
       void (async () => {
-        const { data, error } = await supabase.rpc('get_user_memberships', { _user_id: userId });
+        const { data, error } = await withSupabaseRetry(() =>
+          supabase.rpc('get_user_memberships', { _user_id: userId }),
+        );
+
         if (error || !data) return;
         const fresh = data as Membership[];
         writeCachedMemberships(userId, fresh);
