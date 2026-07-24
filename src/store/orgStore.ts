@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { withSupabaseRetry } from '@/lib/supabaseRetry';
 import { resetOrgData } from './supabaseSync';
 import { mockData as staticMockData } from './mockData';
+
 
 export interface Organization {
   id: string;
