@@ -1,53 +1,38 @@
+## Root cause
 
-# Root-cause investigation: sign-in blocked by PGRST002 + auth 504
+The Burnups migration added a `FOR EACH ROW` trigger `trg_work_items_snapshot` on `public.work_items` that fires on **every** INSERT/UPDATE/DELETE and writes a row into `work_item_history`. On top of that, `work_item_history` was added to the `supabase_realtime` publication, so every write also produces a WAL/realtime broadcast.
 
-## What we already know
+Backlog create/delete is slow because it fans out into a lot of `work_items` writes:
 
-Symptoms from this session:
-- `POST /auth/v1/token?grant_type=password` and `refresh_token` returned **504 upstream request timeout** repeatedly, then eventually 200.
-- Right after 200, `GET /rest/v1/profiles` and `POST /rest/v1/rpc/get_user_memberships` returned **503 PGRST002** "Could not query the database for the schema cache. Retrying." — this is PostgREST unable to (re)load its schema cache from Postgres.
-- Postgres logs are full of `canceling statement due to statement timeout` and a couple of `FATAL: connection to client lost`.
-- App UI is stuck at "Setting up your organization…" because `loadMemberships` fails with PGRST002 and never recovers.
+- Deleting a backlog rewrites `backlog_assignments` (and often `parent_id`, `ranks`) on every item that was assigned to it — one history INSERT per item, per touched column-set.
+- Creating a backlog itself is cheap, but the flows around it (moves, re-ranks, sanitize passes on load) update many `work_items` rows in sequence and each one now pays the trigger cost.
+- The trigger fires even on updates that don't change any burnup-relevant field (e.g. `rank`, `respawn_*`, `description`), so we're writing history rows nobody will ever read.
+- The realtime publication multiplies this: every history INSERT is also a WAL decode + broadcast to every subscribed client.
 
-What is NOT the cause:
-- Data volume: DB is ~30 MB total, ~3k work items, only 11 idle / 2 active connections. Not saturated.
-- App code paths: sign-in flow itself works — the failing calls happen against Supabase infra.
+Combined with the existing `trim_change_log` trigger (already the #1 query by total time), this is what's pushing statement timeouts and the PGRST002 we saw earlier.
 
-## Likely contributing causes to verify
+## What to change
 
-1. **PostgREST schema-cache thrash from recent migrations.** In the last few turns we added/altered many public-schema objects (`work_item_board_ranks`, `backlog_statuses`, `work_item_history`, `work_item_chart_prefs`, plus columns on `time_entries`, `organization_settings`). Every DDL sends `NOTIFY pgrst`, which forces PostgREST to reload its full schema cache. If DDLs land back-to-back while a reload is running, PostgREST can get stuck in a retry loop and answer PGRST002 until it settles.
-2. **Trigger amplification on hot paths.**
-   - `trim_change_log` runs on every `change_log` INSERT and does `DELETE ... WHERE id NOT IN (SELECT id ... ORDER BY created_at DESC LIMIT 5000)` — that's an O(n) scan per row inserted. `pg_stat_statements` shows the change_log insert as the #1 query by total time (10 830 calls, 1.3 M ms total, max 6.9 s).
-   - `snapshot_work_item_change` (added this turn for Burnups) inserts into `work_item_history` on every work_items INSERT/UPDATE/DELETE, roughly doubling write work and cache pressure on that table.
-3. **Auth service upstream 504s.** GoTrue itself timed out on `/token` for ~4 minutes before recovering. This overlaps with the DB stress window and can be a symptom of the same shared-infra pressure or a transient Supabase-side incident.
+Keep Burnups working, but make the trigger cheap and quiet:
 
-## Investigation plan (no code changes yet)
+1. **Only snapshot when a burnup-relevant field actually changed.** In `snapshot_work_item_change`, on `UPDATE` compare the fields we chart (`status`, `points`, `parent_id`, `backlog_assignments`, `title`) between `OLD` and `NEW` and `RETURN NEW` early if none of them changed. INSERT and DELETE still snapshot unconditionally. This alone eliminates the vast majority of history writes triggered by rank/board-rank/respawn/description edits.
 
-Step 1 — Confirm current PostgREST state
-- Poll `/rest/v1/` and `/auth/v1/health` from the sandbox to see whether PGRST002 is still being returned right now, or whether it has already cleared. If it's still failing after ~15 minutes with no ongoing DDL, that's PostgREST wedged and needs a reload from the dashboard.
+2. **Skip snapshots during bulk structural operations.** Add a session-level guard (`SET LOCAL burnups.skip_history = 'on'`) that the trigger checks first and short-circuits on. Wrap the server-side bulk paths — `remove_tree_share_with_copy`, `restore_organization_backup`, `rename_work_items_org_prefix`, and any app-side "cascade delete backlog / move all items" flow — so their internal work_items churn doesn't generate thousands of history rows.
 
-Step 2 — Confirm trigger cost on hot writes
-- `EXPLAIN (ANALYZE, BUFFERS)` a representative `change_log` INSERT to quantify `trim_change_log` cost.
-- Check `pg_stat_user_tables` for `work_item_history` write volume vs `work_items` to confirm the 1:1 amplification.
+3. **Remove `work_item_history` from the realtime publication.** `ALTER PUBLICATION supabase_realtime DROP TABLE public.work_item_history;`. The Burnup dialog fetches history on open via `paginateSelect`; it does not need live push. Removing it kills the WAL-decode + broadcast cost per row.
 
-Step 3 — Look for a DDL storm signature
-- `select query, calls, total_exec_time from pg_stat_statements where query ilike 'alter %' or query ilike 'create %' order by total_exec_time desc limit 20;`
-- Look at recent migrations in `supabase/migrations/` to see how many DDL statements shipped in the past day.
+4. **Add a covering index for the query the dialog actually runs.** The dialog filters `work_item_id IN (...)` ordered by `snapshot_at`. Replace `work_item_history_item_time_idx` with `(work_item_id, snapshot_at)` (already the shape) and confirm it's used; also add a partial index `WHERE existed = true` if plans show sequential scans. (Verify with EXPLAIN before adding — this step is conditional.)
 
-Step 4 — Report findings
-Deliver a short root-cause writeup with:
-- Which of the three causes above actually contributed (with evidence).
-- What is fixable in the app (e.g. batching change_log inserts, moving history capture off the hot path, guarding loadMemberships against transient PGRST002).
-- What has to be done in Supabase (dashboard restart, index tweaks, or a support ticket).
+5. **(Optional, follow-up) Batch history writes as statement-level, not row-level.** Convert the trigger to `AFTER ... FOR EACH STATEMENT` using transition tables (`REFERENCING NEW TABLE AS new_rows`) and do a single `INSERT ... SELECT` from the transition table. Bulk updates then produce one plan, one insert, instead of N per-row trigger invocations. This is the biggest structural win but is more invasive, so gate it behind (1)–(3) landing first.
 
-Only after you approve the findings will I propose a follow-up plan that actually changes code or schema.
+## Expected impact
 
-## Technical details
+- Steps 1–3 are a single small migration and should immediately restore backlog create/delete to pre-Burnups latency for the common case (rank/description edits stop hitting history entirely, backlog deletion no longer produces N realtime broadcasts).
+- Step 5 removes the remaining per-row overhead for genuine bulk status/points updates.
+- No change to the Burnup UI or `chart_prefs` — the dialog keeps working exactly as today, it just sees fewer redundant rows.
 
-Reads used, no writes:
-- `pg_stat_activity`, `pg_stat_user_tables`, `pg_stat_statements` via `supabase--read_query`.
-- `postgres_logs` via `supabase--analytics_query`.
-- HTTP probes of `https://hwwjwkdbautfkhpxuord.supabase.co/rest/v1/` and `/auth/v1/health` from the sandbox.
-- File reads of recent migrations under `supabase/migrations/`.
+## Verification
 
-No migrations, no `INSERT/UPDATE/DELETE`, no edge function deploys, no dashboard restarts in this step.
+- Run `EXPLAIN (ANALYZE, BUFFERS)` on a representative "delete backlog with N items" update before and after.
+- Check `pg_stat_user_tables` for `work_item_history` insert rate — should drop by an order of magnitude on typical editing sessions.
+- Open a Burnup on an item that has real status changes and confirm the chart still renders the same series.
