@@ -1542,7 +1542,7 @@ function BoardCard({
             className="text-xs"
             onSelect={handleMoveToTop}
           >
-            Move to top
+            Rank to top
           </ContextMenuItem>
           <ContextMenuItem
             className="text-xs"
