@@ -1,89 +1,53 @@
 
-# Burnups (Cumulative Flow Diagrams)
+# Root-cause investigation: sign-in blocked by PGRST002 + auth 504
 
-Adds a per-org Labs toggle "Burnups" that unlocks stacked-by-status cumulative flow charts for backlog trees, backlogs, and individual work-item branches, based on either item count or points.
+## What we already know
 
-## 1. Labs toggle
+Symptoms from this session:
+- `POST /auth/v1/token?grant_type=password` and `refresh_token` returned **504 upstream request timeout** repeatedly, then eventually 200.
+- Right after 200, `GET /rest/v1/profiles` and `POST /rest/v1/rpc/get_user_memberships` returned **503 PGRST002** "Could not query the database for the schema cache. Retrying." — this is PostgREST unable to (re)load its schema cache from Postgres.
+- Postgres logs are full of `canceling statement due to statement timeout` and a couple of `FATAL: connection to client lost`.
+- App UI is stuck at "Setting up your organization…" because `loadMemberships` fails with PGRST002 and never recovers.
 
-- Add `burnups_enabled boolean not null default false` to `organization_settings`.
-- Extend `orgSettingsStore` with `burnupsEnabled` state + setter, mirroring the existing `boardsEnabled` pattern.
-- Add a "Burnups" switch card in `BellsAndWhistlesSection.tsx` (Labs section) using `TrendingUp`/`AreaChart` icon.
+What is NOT the cause:
+- Data volume: DB is ~30 MB total, ~3k work items, only 11 idle / 2 active connections. Not saturated.
+- App code paths: sign-in flow itself works — the failing calls happen against Supabase infra.
 
-## 2. History storage (on-demand snapshots)
+## Likely contributing causes to verify
 
-New table `work_item_history` capturing every meaningful change:
+1. **PostgREST schema-cache thrash from recent migrations.** In the last few turns we added/altered many public-schema objects (`work_item_board_ranks`, `backlog_statuses`, `work_item_history`, `work_item_chart_prefs`, plus columns on `time_entries`, `organization_settings`). Every DDL sends `NOTIFY pgrst`, which forces PostgREST to reload its full schema cache. If DDLs land back-to-back while a reload is running, PostgREST can get stuck in a retry loop and answer PGRST002 until it settles.
+2. **Trigger amplification on hot paths.**
+   - `trim_change_log` runs on every `change_log` INSERT and does `DELETE ... WHERE id NOT IN (SELECT id ... ORDER BY created_at DESC LIMIT 5000)` — that's an O(n) scan per row inserted. `pg_stat_statements` shows the change_log insert as the #1 query by total time (10 830 calls, 1.3 M ms total, max 6.9 s).
+   - `snapshot_work_item_change` (added this turn for Burnups) inserts into `work_item_history` on every work_items INSERT/UPDATE/DELETE, roughly doubling write work and cache pressure on that table.
+3. **Auth service upstream 504s.** GoTrue itself timed out on `/token` for ~4 minutes before recovering. This overlaps with the DB stress window and can be a symptom of the same shared-infra pressure or a transient Supabase-side incident.
 
-```
-work_item_history
-  id            uuid pk
-  work_item_id  text (FK-less, matches work_items.id format)
-  organization_id uuid
-  recorded_at   timestamptz default now()
-  event         text check in ('created','updated','deleted','restored')
-  status        text        -- status key at this point in time
-  points        int         -- points at this point in time (nullable)
-  exists_flag   boolean     -- false on delete events
-  parent_id     text        -- effective parent captured for branch rollups
-  backlog_assignments jsonb -- {treeId: backlogId} snapshot
-```
+## Investigation plan (no code changes yet)
 
-- Indexes on `(work_item_id, recorded_at)` and `(organization_id, recorded_at)`.
-- RLS: same access model as `work_items` (member of org OR accessible via shared tree). Grants to `authenticated` + `service_role`.
-- Written by a Postgres trigger on `work_items` (AFTER INSERT/UPDATE/DELETE) so snapshots are guaranteed for every write path (client, RPC, restore, respawn). Trigger records a row only when a tracked column changes: `status`, `points`, `parent_id`, `backlog_assignments`, or existence.
-- Backfill: seed one row per current work item at migration time (event `'created'`, `recorded_at = now()`) so charts have a starting point.
+Step 1 — Confirm current PostgREST state
+- Poll `/rest/v1/` and `/auth/v1/health` from the sandbox to see whether PGRST002 is still being returned right now, or whether it has already cleared. If it's still failing after ~15 minutes with no ongoing DDL, that's PostgREST wedged and needs a reload from the dashboard.
 
-## 3. View-preference persistence
+Step 2 — Confirm trigger cost on hot writes
+- `EXPLAIN (ANALYZE, BUFFERS)` a representative `change_log` INSERT to quantify `trim_change_log` cost.
+- Check `pg_stat_user_tables` for `work_item_history` write volume vs `work_items` to confirm the 1:1 amplification.
 
-New table `work_item_chart_prefs` keyed by `(organization_id, scope_type, scope_id)` where:
-- `scope_type` ∈ `'tree' | 'backlog' | 'work_item'`
-- `metric` ∈ `'count' | 'points'`
-- `range_days` int, `stacked` bool (future-proof)
+Step 3 — Look for a DDL storm signature
+- `select query, calls, total_exec_time from pg_stat_statements where query ilike 'alter %' or query ilike 'create %' order by total_exec_time desc limit 20;`
+- Look at recent migrations in `supabase/migrations/` to see how many DDL statements shipped in the past day.
 
-Store both the user's explicit metric choice and a null value meaning "auto". Zustand store `chartPrefsStore.ts` mirrors it; loaded lazily when a chart opens.
+Step 4 — Report findings
+Deliver a short root-cause writeup with:
+- Which of the three causes above actually contributed (with evidence).
+- What is fixable in the app (e.g. batching change_log inserts, moving history capture off the hot path, guarding loadMemberships against transient PGRST002).
+- What has to be done in Supabase (dashboard restart, index tweaks, or a support ticket).
 
-## 4. Chart dialog
+Only after you approve the findings will I propose a follow-up plan that actually changes code or schema.
 
-New `BurnupChartDialog.tsx` opened from context menus on:
-- Backlog tree header (`BacklogTreePanel.tsx`) — scope = whole tree
-- Backlog row (`BacklogTreePanel.tsx`) — scope = backlog subtree
-- Work item (`WorkItemTreePanel.tsx` + `BoardView.tsx`) — scope = item branch
+## Technical details
 
-Dialog content:
-- Header: scope name, metric toggle (Items / Points), date range picker (default last 30 days, daily buckets).
-- Body: stacked area chart via Recharts (`AreaChart`, one `Area` per effective status in stack order). Colors pulled from `backlog_statuses` for the scope (root backlog for tree/backlog scope; nearest effective statuses for item branches via the item's primary backlog).
-- Legend shows status labels; hovering a day shows counts/points per status.
+Reads used, no writes:
+- `pg_stat_activity`, `pg_stat_user_tables`, `pg_stat_statements` via `supabase--read_query`.
+- `postgres_logs` via `supabase--analytics_query`.
+- HTTP probes of `https://hwwjwkdbautfkhpxuord.supabase.co/rest/v1/` and `/auth/v1/health` from the sandbox.
+- File reads of recent migrations under `supabase/migrations/`.
 
-## 5. Metric selection defaults
-
-Resolver `resolveDefaultMetric(scope)`:
-- If org `pointsEnabled` is false → `'count'`.
-- Tree/backlog scope: if points selected in DB prefs → honor it; else default `'points'` when `pointsEnabled`, otherwise `'count'`.
-- Item-branch scope: default `'points'` iff any descendant item in the branch has a non-null `points` at the currently-viewed timestamp, else `'count'`.
-- When metric = `'points'`, items with null points count as `1` (mirrors existing rollup rule in `points-system` memory).
-
-## 6. Aggregation logic
-
-Client-side computation in `src/lib/burnupData.ts`:
-1. Fetch `work_item_history` rows for the item set in scope (paginated via `paginateSelect`).
-2. For each day in the selected range, reduce to the latest row per work item on/before that day → determines existence + status + points.
-3. Filter by scope membership (branch = item + recursive descendants using `parent_id` snapshot; backlog/tree = items whose snapshot `backlog_assignments` matched at that day).
-4. Group by status → sums (count or points-with-null-as-1).
-
-Membership uses each day's historical `parent_id` / `backlog_assignments` so re-parented or moved items are attributed correctly over time.
-
-## 7. Realtime
-
-Extend `useRealtimeSync.ts` with a subscription on `work_item_history` INSERTs for the active org; append into an in-memory cache used by open dialogs so charts update live.
-
-## 8. Technical details
-
-- Recharts is already in `package.json`; no new dependencies.
-- Snapshot trigger is written in a single migration together with the table + backfill + prefs table + settings column + grants + RLS + realtime publication additions.
-- All new stores follow existing paginated-select and realtime patterns; unit-tested aggregation via a small vitest suite covering (a) count default, (b) branch with points, (c) null-points-as-1, (d) re-parented items across time.
-- Chart dialog is lazy-imported so it doesn't affect first paint.
-
-## Out of scope
-
-- No burndown target lines (pure burnup/CFD).
-- No email/export of charts.
-- History for backlogs/trees themselves (only work items — backlog/tree existence changes are rare and current-state is sufficient for scope resolution).
+No migrations, no `INSERT/UPDATE/DELETE`, no edge function deploys, no dashboard restarts in this step.
