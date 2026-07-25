@@ -231,9 +231,9 @@ function WorkItemNodeContent({
   const backlogs = useAppStore((s) => s.backlogs);
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
-  // Narrow scalar so all 200 rows don't re-render on every selection change.
-  // Reads the actual array via getState() in handlers below.
-  const selectionCount = useAppStore((s) => s.selectedWorkItemIds.length);
+  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+  const selectionCount = selectedWorkItemIds.length;
+  void selectionCount;
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
