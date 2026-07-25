@@ -1,69 +1,58 @@
 ## Goal
 
-Make the work-item tree panel snappy with 200+ items. Today every node re-renders on every store change (any edit, any selection, any time entry, any label update), because each node subscribes to the *entire* `workItems`, `backlogs`, `selectedWorkItemIds`, `hyperlinks`, `labels`, `byEntity`, and `timeEntries` maps. There's also no virtualization, and each node walks its full subtree to compute time totals.
+Deleting ~20 selected items from a 200-item list hangs or takes many seconds. Fix the two synchronous hotspots on the delete path.
 
-Scope is limited to the list/tree rendering path — no schema, RPC, or business-logic changes.
+## Root causes (verified)
+
+1. **`snapshot()` deep-clones everything on every mutation.** `src/store/appStore.ts:398` uses `JSON.parse(JSON.stringify(...))` over `workItems`, `backlogs`, `backlogTrees`, `hyperlinks`, *and* `changeLog` (capped at 5000 entries). `pushUndoEntry` runs this on every `set()` that pushes undo — including `deleteWorkItemsBulk`. With 200 items and a long changeLog this single call is the dominant cost. Because our reducers already produce new object references for anything they change, a shallow snapshot is sufficient for undo.
+
+2. **`collectAffectedTimeEntryIds` is O(targets × timeEntries) per delete.** `src/hooks/useDeleteWithTimeGuard.ts` loops over each target and re-scans all time entries inside (`src/lib/timeUtils.ts:133`). For a 20-item bulk delete that's 20 full scans of `timeEntries` + 20 subtree walks and 20 full scans of `workItems`.
+
+Secondary contributors on the same click:
+- `handleDeleteClick` at `WorkItemTreePanel.tsx:355` bypasses the time-guard entirely when none of the selected items are multi-assigned, so time entries owned by deleted items never prompt the move dialog. Not a perf bug, but worth noting.
+- `internalLog` (`appStore.ts:1056`) copies the full `changeLog` on each entry; only one call happens per bulk delete, so this is fine once (1) is fixed.
 
 ## Plan
 
-### 1. Narrow every per-node store subscription
+### 1. Make `snapshot()` shallow (biggest win)
 
-In `WorkItemNodeContent` (and mirror in `BacklogNode` / the tree header row):
+In `src/store/appStore.ts`:
+- Replace the `JSON.parse(JSON.stringify(...))` clones with shallow copies:
+  - `workItems: { ...state.workItems }`
+  - `backlogs: { ...state.backlogs }`
+  - `backlogTrees: { ...state.backlogTrees }`
+  - `hyperlinks: { ...state.hyperlinks }`
+- Keep the existing shallow copies for `selectedBacklogIds`, `selectedWorkItemIds`, `changeLog`, and the `Set` copies for expanded state.
+- All reducers in this file already spread (`{ ...state.workItems, [id]: ... }`) or build a fresh object before mutating, so entries the snapshot references are never mutated in place. Undo/redo continues to restore the correct prior map by identity.
 
-- `s.workItems` → don't subscribe to the map at all. Keep `s.workItems[workItemId]` (already narrow). Replace the general `workItems` reference used by `computeWorkItemTotalMinutes` and `sortedChildren` with narrow reads via `useAppStore.getState()` inside callbacks, or dedicated child-id selectors.
-- `s.backlogs` → replace with a small selector that returns just what this node needs (the backlog path segments and the assigned-backlog display list). For the common case only `backlogs[backlogId]` is needed; grab that specifically.
-- `s.selectedWorkItemIds` → replace with two narrow selectors: `isSelected = useAppStore(s => s.selectedWorkItemIds.includes(workItemId))` (already there) and a `selectionCount` when multi-select behavior needs it. Read the full array via `useAppStore.getState()` inside handlers, not as a subscription.
-- `s.hyperlinks` → already narrowed to length; fine.
-- Labels store: replace `s.labels` + `s.byEntity` full-map subscriptions with `s.byEntity[key]` and `s.labels` looked up lazily. `orgLabels` (used only inside the label picker) moves to a lazy `useMemo` computed from `getState()` when the picker opens, or is lifted to the parent panel and passed via context so it's computed once for the tree.
-- Team store: `s.workItemTeams[workItemId]` (already narrow) is fine; `s.teams` moves to context (computed once at the panel).
-- Time entries: replace `useTimeEntryStore(s => s.timeEntries)` with a shared cached selector — see step 3.
+Audit before landing: grep the file for direct mutation patterns (`workItems[x] =`, `.push(`, `delete workItems[`, `childrenIds.push`) to confirm no reducer mutates a shared child object; wrap the two or three spots (if any) that do so in a spread. This is the only correctness risk.
 
-Effect: an edit to item X only re-renders node X, not all 200.
+### 2. Compute affected time entries in one pass for bulk deletes
 
-### 2. Memoize `WorkItemNode`
+In `src/lib/timeUtils.ts`, add a `collectAffectedTimeEntryIdsBulk(targets, data)` that:
+- Unions the doomed work-item subtree(s), doomed backlog subtree(s), and doomed tree id(s) once.
+- For work-item targets, also computes the "doomed if only-assignment-in-deleted-tree" set exactly like the single-target case, but sharing one pass over `workItems`.
+- Does one pass over `Object.values(timeEntries)` classifying each entry against the unioned sets.
 
-Wrap `WorkItemNode` in `React.memo` with a shallow prop comparison. All the store data now comes through narrow selectors, so the props (`workItemId`, `treeId`, `backlogId`, `depth`, flags) are stable and memo is effective. Same for `BacklogNode`.
+Update `src/hooks/useDeleteWithTimeGuard.ts` to call the bulk helper when given an array target. Keep the single-target path unchanged.
 
-### 3. Cache per-item time totals
+### 3. Route bulk deletion through the time guard consistently
 
-`computeWorkItemTotalMinutes(workItemId, workItems, timeEntries)` walks the subtree on every render of every node. With 200 items and time logging enabled that's O(N²)-ish per keystroke.
+In `WorkItemTreePanel.tsx` `handleDeleteClick` (line ~355), always call `guardedDeleteBulk(targets, label, () => deleteWorkItemsBulk(idsToProcess))` instead of skipping the guard when nothing is multi-assigned. This closes a real correctness gap (time entries on deleted items get silently orphaned today) and reuses the fast bulk collector from step 2 so there is no perf regression.
 
-Add a memoized selector in `timeEntryStore`:
+### 4. Verification
 
-- Build `totalsByWorkItemId: Record<string, number>` once per `(timeEntries, workItems)` change, using a single bottom-up pass over the work-item map.
-- Expose `useWorkItemTotalMinutes(id)` that subscribes to `totalsByWorkItemId[id]` (a scalar), not to the raw `timeEntries` map.
-
-Same treatment for `computeBacklogTotalMinutes` and `computeTreeTotalMinutes` (used in `BacklogTreePanel` and tree header). One pass, scalar subscription per node.
-
-### 4. Virtualize the flat visible list
-
-The tree renders recursively today. Flatten the currently-visible nodes (respecting `expandedWorkItems`) into a single array in the panel and render it with `@tanstack/react-virtual` (already used by `BoardView`).
-
-- Panel builds `visibleRows: Array<{ kind: 'wi'|'backlog', id, depth, parentBacklogId, treeId }>` from `expandedWorkItems` + current search/filter state.
-- `useVirtualizer` with a reasonable `estimateSize` and dynamic measurement via `measureElement` (the board already does this).
-- Row component becomes the outer positioning wrapper; inside it renders the existing `WorkItemNode` / `BacklogNode` without their own children — children come from later rows in the flat list.
-
-This caps DOM cost at whatever's on screen (~20–30 rows) regardless of list length.
-
-### 5. Small hygiene fixes uncovered along the way
-
-- Remove the hook-inside-`useMemo`-deps antipattern on line 307 (`useBacklogStatusesStore((s) => s.statusesByBacklog)` inside a deps array). Replace with a top-level subscription to the specific `statusesByBacklog[backlogId]` entry.
-- Hoist `orgLabels` and `teams` computation from every node to the panel via a small React context, so it's O(1) work per tree instead of O(N).
-
-### 6. Verification
-
-- Add a temporary render counter in `WorkItemNode` in dev, load a tree with 200 items, edit one title, confirm only one node re-renders (previously all 200).
-- Profile with the React DevTools Profiler before/after on a 200-item tree: expect commit time to drop from hundreds of ms to under ~20 ms for a single-item edit, and initial mount cost bounded by the viewport once virtualization lands.
-- Run the existing vitest suite (`appStore.test.ts`, `paginationGuard.test.ts`) to confirm no store contract changed.
-- Manually exercise: keyboard multi-select, drag-and-drop reorder, expand/collapse, inline rename, search — all of which depend on the flat visible list being correct.
+- Type-check: `bunx tsgo --noEmit`.
+- Run existing tests: `bunx vitest run src/test/appStore.test.ts`.
+- Manual perf sanity: with 200 items, select 20 via shift-click and press Delete. Confirm the click resolves within ~100 ms and the row count drops immediately. Repeat with a few thousand entries in `changeLog` to exercise the snapshot fix.
+- Undo/redo one delete step to confirm the shallow snapshot restores state correctly.
 
 ### Order of landing
 
-Steps 1–3 give the biggest per-edit win and are low-risk. Step 4 (virtualization) is the biggest structural win for very long lists and is the largest single change; land it after 1–3 so the diff is smaller and easier to review. Step 5 is a small cleanup that rides along with step 1.
+Steps 1 and 2 are independent and each fix a different linear-time-per-target cost; land them together. Step 3 is a small correctness follow-up that piggybacks on step 2.
 
-### Technical details
+### Technical notes
 
-- No database, RPC, or types changes.
-- New file: a `timeEntryStore` selector module for the cached totals maps (or extend the existing store — reader's choice at implementation time).
-- New file: shared row-context (`orgLabels`, `teams`, effective-statuses cache) inside `WorkItemTreePanel.tsx`.
-- Virtualization reuses `@tanstack/react-virtual`, already installed.
+- No database, schema, or RPC changes.
+- No changes to virtualization or memoization from the previous perf pass.
+- Files touched: `src/store/appStore.ts`, `src/lib/timeUtils.ts`, `src/hooks/useDeleteWithTimeGuard.ts`, `src/components/WorkItemTreePanel.tsx`.

@@ -365,9 +365,13 @@ function WorkItemNodeContent({
     if (anyMultiAssigned) {
       setShowDeletePrompt(true);
     } else {
-      deleteWorkItemsBulk(idsToProcess);
+      const targets = idsToProcess.map((id) => ({ kind: 'work_item' as const, id }));
+      const label = idsToProcess.length === 1
+        ? (state.workItems[idsToProcess[0]]?.title ?? 'this item')
+        : `${idsToProcess.length} items`;
+      guardedDeleteBulk(targets, label, () => deleteWorkItemsBulk(idsToProcess));
     }
-  }, [deleteWorkItemsBulk, isSelected, item, workItemId]);
+  }, [deleteWorkItemsBulk, guardedDeleteBulk, isSelected, item, workItemId]);
 
   const handleEditHyperlinks = useCallback(() => {
     if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;

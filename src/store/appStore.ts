@@ -395,15 +395,20 @@ export function sanitizeData(data: any, orgId: string) {
   return { workItems: cleanWorkItems, backlogs: cleanBacklogs, backlogTrees: cleanTrees };
 }
 
+// Shallow snapshot for undo/redo. All reducers construct fresh objects when
+// modifying entries (spread-and-replace), so sharing child references between
+// a snapshot and live state is safe — nothing mutates a stored object in
+// place after the fact. Keeping this shallow is critical for perf on bulk
+// operations over large maps.
 const snapshot = (state: DataSnapshot): DataSnapshot => ({
-  workItems: JSON.parse(JSON.stringify(state.workItems)),
-  backlogs: JSON.parse(JSON.stringify(state.backlogs)),
-  backlogTrees: JSON.parse(JSON.stringify(state.backlogTrees)),
-  hyperlinks: JSON.parse(JSON.stringify(state.hyperlinks)),
+  workItems: { ...state.workItems },
+  backlogs: { ...state.backlogs },
+  backlogTrees: { ...state.backlogTrees },
+  hyperlinks: { ...state.hyperlinks },
   selectedBacklogIds: [...state.selectedBacklogIds],
   selectedTreeId: state.selectedTreeId,
   selectedWorkItemIds: [...state.selectedWorkItemIds],
-  changeLog: [...state.changeLog],
+  changeLog: state.changeLog,
   expandedWorkItems: new Set(state.expandedWorkItems),
   expandedBacklogs: new Set(state.expandedBacklogs),
 });
