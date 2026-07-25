@@ -563,8 +563,15 @@ export async function deleteWorkItems(ids: string[]) {
       allIds.add(`${parts[0]}::${id}`);
     }
   });
-  const { error } = await supabase.from('work_items').delete().in('id', [...allIds]);
-  if (error) console.error('deleteWorkItems:', error);
+  // Route through bulk_delete_work_items RPC which sets burnups.skip_history=on
+  // to suppress per-row history snapshots for cascade deletes.
+  const { error } = await supabase.rpc('bulk_delete_work_items', { _ids: [...allIds] });
+  if (error) {
+    console.error('deleteWorkItems (rpc):', error);
+    // Fallback in case RPC is unavailable
+    const { error: fallbackErr } = await supabase.from('work_items').delete().in('id', [...allIds]);
+    if (fallbackErr) console.error('deleteWorkItems (fallback):', fallbackErr);
+  }
 }
 
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
