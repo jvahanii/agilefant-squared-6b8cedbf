@@ -204,13 +204,13 @@ interface WorkItemNodeProps {
   setViewMode: (mode: "list" | "board") => void;
 }
 
-function WorkItemNode(props: WorkItemNodeProps) {
+const WorkItemNode = memo(function WorkItemNode(props: WorkItemNodeProps) {
   const labelFilter = useContext(LabelFilterContext);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(props.workItemId));
   if (isSnoozed) return null;
   if (labelFilter !== null && !labelFilter.has(props.workItemId)) return null;
   return <WorkItemNodeContent {...props} />;
-}
+});
 
 function WorkItemNodeContent({
   workItemId,
