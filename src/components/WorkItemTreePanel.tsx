@@ -232,8 +232,6 @@ function WorkItemNodeContent({
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
-  const selectionCount = selectedWorkItemIds.length;
-  void selectionCount;
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
