@@ -1682,12 +1682,8 @@ function SearchResultItem({
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
 
-  const workItemsSearch = useAppStore((s) => s.workItems);
-  const timeEntriesSearch = useTimeEntryStore((s) => s.timeEntries);
-  const itemTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeWorkItemTotalMinutes(item.id, workItemsSearch, timeEntriesSearch);
-  }, [timeEntriesSearch, item.id, workItemsSearch, timeLoggingVisible]);
+  const itemTotalMinutesCached = useWorkItemTotalMinutes(item.id);
+  const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
 
   const orgLabels = useMemo(
     () =>
