@@ -189,4 +189,74 @@ export function collectAffectedTimeEntryIds(
   return ids;
 }
 
+/**
+ * Bulk variant of collectAffectedTimeEntryIds that unions the doomed sets
+ * across many targets and scans workItems + timeEntries exactly once.
+ * O(targets + workItems + timeEntries) instead of O(targets * (workItems + timeEntries)).
+ */
+export function collectAffectedTimeEntryIdsBulk(
+  targets: DeleteTarget[],
+  data: {
+    workItems: Record<string, WorkItem>;
+    backlogs: Record<string, Backlog>;
+    timeEntries: Record<string, TimeEntry>;
+  },
+): string[] {
+  const { workItems, backlogs, timeEntries } = data;
+  if (targets.length === 0) return [];
+
+  // Union of doomed work-item subtrees (from work_item targets).
+  const doomedItemSeed = new Set<string>();
+  // Union of doomed backlog subtrees (from backlog targets).
+  const doomedBacklogIds = new Set<string>();
+  // Doomed tree ids.
+  const doomedTreeIds = new Set<string>();
+
+  for (const t of targets) {
+    if (t.kind === 'work_item') {
+      for (const id of collectWorkItemSubtree(t.id, workItems)) doomedItemSeed.add(id);
+    } else if (t.kind === 'backlog') {
+      for (const id of collectBacklogSubtree(t.id, backlogs)) doomedBacklogIds.add(id);
+    } else {
+      doomedTreeIds.add(t.id);
+    }
+  }
+
+  // Expand tree targets into doomed backlog ids (single pass over backlogs).
+  if (doomedTreeIds.size > 0) {
+    for (const b of Object.values(backlogs)) {
+      if (doomedTreeIds.has(b.treeId)) doomedBacklogIds.add(b.id);
+    }
+  }
+
+  // Work items that disappear because every assignment lives in a doomed
+  // backlog or a doomed tree — single pass over workItems.
+  const doomedItemIds = new Set<string>(doomedItemSeed);
+  if (doomedBacklogIds.size > 0 || doomedTreeIds.size > 0) {
+    for (const wi of Object.values(workItems)) {
+      if (doomedItemIds.has(wi.id)) continue;
+      const assignments = Object.entries(wi.backlogAssignments || {});
+      if (assignments.length === 0) continue;
+      const survives = assignments.some(([treeId, backlogId]) => {
+        if (doomedTreeIds.has(treeId)) return false;
+        return !doomedBacklogIds.has(backlogId);
+      });
+      if (!survives) doomedItemIds.add(wi.id);
+    }
+  }
+
+  const ids: string[] = [];
+  for (const e of Object.values(timeEntries)) {
+    if (e.workItemId) {
+      if (doomedItemIds.has(e.workItemId)) ids.push(e.id);
+    } else if (e.backlogId) {
+      if (doomedBacklogIds.has(e.backlogId)) ids.push(e.id);
+    } else if (e.treeId && doomedTreeIds.has(e.treeId)) {
+      ids.push(e.id);
+    }
+  }
+  return ids;
+}
+
+
 
