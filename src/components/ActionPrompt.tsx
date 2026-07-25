@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface PromptOption {
@@ -40,7 +41,7 @@ export function ActionPrompt({ title, options, onSelect, onCancel }: ActionPromp
     return () => window.removeEventListener('keydown', handler);
   }, [onCancel, onSelect, options, selected]);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]" onClick={onCancel} />
       <div
@@ -82,6 +83,7 @@ export function ActionPrompt({ title, options, onSelect, onCancel }: ActionPromp
           <span><kbd className="px-1 py-0.5 rounded border bg-muted text-[10px]">Esc</kbd> cancel</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
