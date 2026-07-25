@@ -208,16 +208,10 @@ function BacklogReorderDropZone({
 /** Compute total logged minutes for a backlog subtree (direct backlog entries +
  *  descendant backlog entries + all work-item entries in those backlogs). */
 function useBacklogTotalMinutes(backlogId: string, treeId: string) {
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
-
-  return useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeBacklogTotalMinutes(backlogId, treeId, backlogs, workItems, timeEntries);
-  }, [timeEntries, workItems, backlogs, backlogId, treeId, timeLoggingVisible]);
+  const cached = useBacklogTotalMinutesCached(backlogId, treeId);
+  return timeLoggingVisible ? cached : 0;
 }
 
 /** Compute total points for a backlog (including descendant backlogs) */
