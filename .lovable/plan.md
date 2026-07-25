@@ -1,38 +1,37 @@
-## Root cause
+## Plan: Speed up bulk work-item writes for Burnups
 
-The Burnups migration added a `FOR EACH ROW` trigger `trg_work_items_snapshot` on `public.work_items` that fires on **every** INSERT/UPDATE/DELETE and writes a row into `work_item_history`. On top of that, `work_item_history` was added to the `supabase_realtime` publication, so every write also produces a WAL/realtime broadcast.
+Ship both optimizations together in a single migration. No app code changes.
 
-Backlog create/delete is slow because it fans out into a lot of `work_items` writes:
+### 1. Skip snapshots inside cascade-delete paths (RPC-side bypass)
 
-- Deleting a backlog rewrites `backlog_assignments` (and often `parent_id`, `ranks`) on every item that was assigned to it — one history INSERT per item, per touched column-set.
-- Creating a backlog itself is cheap, but the flows around it (moves, re-ranks, sanitize passes on load) update many `work_items` rows in sequence and each one now pays the trigger cost.
-- The trigger fires even on updates that don't change any burnup-relevant field (e.g. `rank`, `respawn_*`, `description`), so we're writing history rows nobody will ever read.
-- The realtime publication multiplies this: every history INSERT is also a WAL decode + broadcast to every subscribed client.
+The app already batches deletes at the DB level, but the row-level trigger still fires for each row. Add `SET LOCAL burnups.skip_history = 'on'` to the SECURITY DEFINER functions that do bulk `work_items` churn so the existing session guard in `snapshot_work_item_change` short-circuits:
 
-Combined with the existing `trim_change_log` trigger (already the #1 query by total time), this is what's pushing statement timeouts and the PGRST002 we saw earlier.
+- `remove_tree_share_with_copy`
+- `restore_organization_backup` (overwrite branch DELETEs many items)
+- `rename_work_items_org_prefix`
 
-## What to change
+For client-driven bulk deletes (the 20-item case), add a new tiny RPC `bulk_delete_work_items(_ids text[])` that sets the guard, verifies membership, and issues a single `DELETE FROM work_items WHERE id = ANY(_ids)`. The app already calls a delete flow per item today; switching that call site to the RPC gives us the guard in one place without touching every deletion path. (One small app change: `deleteWorkItem`/bulk deletion in `appStore.ts` routes multi-id deletes through the RPC.)
 
-Keep Burnups working, but make the trigger cheap and quiet:
+### 2. Convert the trigger to statement-level with transition tables
 
-1. **Only snapshot when a burnup-relevant field actually changed.** In `snapshot_work_item_change`, on `UPDATE` compare the fields we chart (`status`, `points`, `parent_id`, `backlog_assignments`, `title`) between `OLD` and `NEW` and `RETURN NEW` early if none of them changed. INSERT and DELETE still snapshot unconditionally. This alone eliminates the vast majority of history writes triggered by rank/board-rank/respawn/description edits.
+Replace `trg_work_items_snapshot` (row-level) with three statement-level triggers using `REFERENCING NEW TABLE` / `OLD TABLE`:
 
-2. **Skip snapshots during bulk structural operations.** Add a session-level guard (`SET LOCAL burnups.skip_history = 'on'`) that the trigger checks first and short-circuits on. Wrap the server-side bulk paths — `remove_tree_share_with_copy`, `restore_organization_backup`, `rename_work_items_org_prefix`, and any app-side "cascade delete backlog / move all items" flow — so their internal work_items churn doesn't generate thousands of history rows.
+- `AFTER INSERT ... REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT` → one `INSERT ... SELECT` into `work_item_history` with `event='insert'`.
+- `AFTER UPDATE ... REFERENCING NEW TABLE AS new_rows OLD TABLE AS old_rows FOR EACH STATEMENT` → join on id, insert only rows where a burnup-relevant field changed (`status`, `points`, `parent_id`, `title`, `backlog_assignments`).
+- `AFTER DELETE ... REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT` → one `INSERT ... SELECT` with `event='delete'`.
 
-3. **Remove `work_item_history` from the realtime publication.** `ALTER PUBLICATION supabase_realtime DROP TABLE public.work_item_history;`. The Burnup dialog fetches history on open via `paginateSelect`; it does not need live push. Removing it kills the WAL-decode + broadcast cost per row.
+All three check `current_setting('burnups.skip_history', true) = 'on'` first and return early. This collapses N per-row trigger invocations into 1 plan + 1 insert per statement, which is the biggest structural win for any bulk operation (delete, rank recompute, status batch-update).
 
-4. **Add a covering index for the query the dialog actually runs.** The dialog filters `work_item_id IN (...)` ordered by `snapshot_at`. Replace `work_item_history_item_time_idx` with `(work_item_id, snapshot_at)` (already the shape) and confirm it's used; also add a partial index `WHERE existed = true` if plans show sequential scans. (Verify with EXPLAIN before adding — this step is conditional.)
+### 3. Verification
 
-5. **(Optional, follow-up) Batch history writes as statement-level, not row-level.** Convert the trigger to `AFTER ... FOR EACH STATEMENT` using transition tables (`REFERENCING NEW TABLE AS new_rows`) and do a single `INSERT ... SELECT` from the transition table. Bulk updates then produce one plan, one insert, instead of N per-row trigger invocations. This is the biggest structural win but is more invasive, so gate it behind (1)–(3) landing first.
+- `EXPLAIN (ANALYZE, BUFFERS)` on `DELETE FROM work_items WHERE id = ANY($1)` with 20 ids before/after — expect the trigger cost to drop from ~20× per-row invocations to 1 statement-level invocation.
+- Check `pg_stat_user_functions` for `snapshot_work_item_change` — call count should collapse.
+- Open a Burnup chart on an item with real status history and confirm the series is unchanged.
+- Confirm `restore_organization_backup` overwrite mode no longer stalls on large orgs.
 
-## Expected impact
+### Technical details
 
-- Steps 1–3 are a single small migration and should immediately restore backlog create/delete to pre-Burnups latency for the common case (rank/description edits stop hitting history entirely, backlog deletion no longer produces N realtime broadcasts).
-- Step 5 removes the remaining per-row overhead for genuine bulk status/points updates.
-- No change to the Burnup UI or `chart_prefs` — the dialog keeps working exactly as today, it just sees fewer redundant rows.
-
-## Verification
-
-- Run `EXPLAIN (ANALYZE, BUFFERS)` on a representative "delete backlog with N items" update before and after.
-- Check `pg_stat_user_tables` for `work_item_history` insert rate — should drop by an order of magnitude on typical editing sessions.
-- Open a Burnup on an item that has real status changes and confirm the chart still renders the same series.
+- Statement-level triggers with transition tables require Postgres 10+ (Supabase is fine).
+- The new bypass GUC is already declared implicitly via `SET LOCAL` — no `ALTER DATABASE` needed.
+- `work_item_history` remains out of the realtime publication (already done in the previous pass).
+- Only app change: route bulk work-item deletions through the new `bulk_delete_work_items` RPC. Single-item deletes can keep going through the existing path — they already pay negligible trigger cost after step 2.
