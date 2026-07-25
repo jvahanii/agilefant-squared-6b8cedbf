@@ -40,7 +40,7 @@ import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
-import { computeBacklogTotalMinutes, computeTreeTotalMinutes } from "@/lib/timeUtils";
+import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 
@@ -208,16 +208,10 @@ function BacklogReorderDropZone({
 /** Compute total logged minutes for a backlog subtree (direct backlog entries +
  *  descendant backlog entries + all work-item entries in those backlogs). */
 function useBacklogTotalMinutes(backlogId: string, treeId: string) {
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
-
-  return useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeBacklogTotalMinutes(backlogId, treeId, backlogs, workItems, timeEntries);
-  }, [timeEntries, workItems, backlogs, backlogId, treeId, timeLoggingVisible]);
+  const cached = useBacklogTotalMinutesCached(backlogId, treeId);
+  return timeLoggingVisible ? cached : 0;
 }
 
 /** Compute total points for a backlog (including descendant backlogs) */
@@ -857,13 +851,8 @@ function DraggableTreeHeader({
   );
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const workItems = useAppStore((s) => s.workItems);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const treeTotalMinutes = useMemo(
-    () => timeLoggingVisible ? computeTreeTotalMinutes(tree.id, backlogs, workItems, timeEntries) : 0,
-    [timeLoggingVisible, tree.id, backlogs, workItems, timeEntries],
-  );
+  const treeTotalCached = useTreeTotalMinutesCached(tree.id);
+  const treeTotalMinutes = timeLoggingVisible ? treeTotalCached : 0;
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const {
     attributes,

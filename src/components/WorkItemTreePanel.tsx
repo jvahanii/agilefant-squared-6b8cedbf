@@ -7,7 +7,7 @@ import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 
-import { createContext, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { createContext, memo, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
@@ -34,7 +34,8 @@ import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
-import { computeBacklogTotalMinutes, computeWorkItemTotalMinutes } from "@/lib/timeUtils";
+import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
+import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -203,13 +204,13 @@ interface WorkItemNodeProps {
   setViewMode: (mode: "list" | "board") => void;
 }
 
-function WorkItemNode(props: WorkItemNodeProps) {
+const WorkItemNode = memo(function WorkItemNode(props: WorkItemNodeProps) {
   const labelFilter = useContext(LabelFilterContext);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(props.workItemId));
   if (isSnoozed) return null;
   if (labelFilter !== null && !labelFilter.has(props.workItemId)) return null;
   return <WorkItemNodeContent {...props} />;
-}
+});
 
 function WorkItemNodeContent({
   workItemId,
@@ -252,11 +253,10 @@ function WorkItemNodeContent({
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const itemTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeWorkItemTotalMinutes(workItemId, workItems, timeEntries);
-  }, [timeEntries, workItemId, workItems, timeLoggingVisible]);
+  // Cached subtree total; scalar output means this row only re-renders when
+  // its own subtree total changes, not on every unrelated time-entry mutation.
+  const itemTotalMinutesCached = useWorkItemTotalMinutes(workItemId);
+  const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -1680,12 +1680,8 @@ function SearchResultItem({
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
 
-  const workItemsSearch = useAppStore((s) => s.workItems);
-  const timeEntriesSearch = useTimeEntryStore((s) => s.timeEntries);
-  const itemTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeWorkItemTotalMinutes(item.id, workItemsSearch, timeEntriesSearch);
-  }, [timeEntriesSearch, item.id, workItemsSearch, timeLoggingVisible]);
+  const itemTotalMinutesCached = useWorkItemTotalMinutes(item.id);
+  const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
 
   const orgLabels = useMemo(
     () =>
