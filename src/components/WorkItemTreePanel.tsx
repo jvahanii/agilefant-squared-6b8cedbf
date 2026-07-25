@@ -231,7 +231,9 @@ function WorkItemNodeContent({
   const backlogs = useAppStore((s) => s.backlogs);
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
-  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+  // Narrow scalar so all 200 rows don't re-render on every selection change.
+  // Reads the actual array via getState() in handlers below.
+  const selectionCount = useAppStore((s) => s.selectedWorkItemIds.length);
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
@@ -253,11 +255,10 @@ function WorkItemNodeContent({
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const itemTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeWorkItemTotalMinutes(workItemId, workItems, timeEntries);
-  }, [timeEntries, workItemId, workItems, timeLoggingVisible]);
+  // Cached subtree total; scalar output means this row only re-renders when
+  // its own subtree total changes, not on every unrelated time-entry mutation.
+  const itemTotalMinutesCached = useWorkItemTotalMinutes(workItemId);
+  const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
