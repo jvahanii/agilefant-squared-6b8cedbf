@@ -40,7 +40,7 @@ import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
-import { computeBacklogTotalMinutes, computeTreeTotalMinutes } from "@/lib/timeUtils";
+import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 
