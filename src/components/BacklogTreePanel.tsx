@@ -851,13 +851,8 @@ function DraggableTreeHeader({
   );
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
-  const backlogs = useAppStore((s) => s.backlogs);
-  const workItems = useAppStore((s) => s.workItems);
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const treeTotalMinutes = useMemo(
-    () => timeLoggingVisible ? computeTreeTotalMinutes(tree.id, backlogs, workItems, timeEntries) : 0,
-    [timeLoggingVisible, tree.id, backlogs, workItems, timeEntries],
-  );
+  const treeTotalCached = useTreeTotalMinutesCached(tree.id);
+  const treeTotalMinutes = timeLoggingVisible ? treeTotalCached : 0;
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const {
     attributes,
