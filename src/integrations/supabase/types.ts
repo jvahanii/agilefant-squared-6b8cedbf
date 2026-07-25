@@ -1213,6 +1213,7 @@ export type Database = {
     }
     Functions: {
       build_organization_snapshot: { Args: { _org_id: string }; Returns: Json }
+      bulk_delete_work_items: { Args: { _ids: string[] }; Returns: number }
       can_view_org_labels: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
