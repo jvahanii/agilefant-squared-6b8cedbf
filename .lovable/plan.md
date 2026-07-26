@@ -1,58 +1,42 @@
-## Goal
+# Per-Tree Points Toggle
 
-Deleting ~20 selected items from a 200-item list hangs or takes many seconds. Fix the two synchronous hotspots on the delete path.
+Allow each backlog tree to opt out of points, even when points are enabled at the organization level. Default: a tree inherits the org setting (enabled if org is enabled).
 
-## Root causes (verified)
+## Rules
 
-1. **`snapshot()` deep-clones everything on every mutation.** `src/store/appStore.ts:398` uses `JSON.parse(JSON.stringify(...))` over `workItems`, `backlogs`, `backlogTrees`, `hyperlinks`, *and* `changeLog` (capped at 5000 entries). `pushUndoEntry` runs this on every `set()` that pushes undo — including `deleteWorkItemsBulk`. With 200 items and a long changeLog this single call is the dominant cost. Because our reducers already produce new object references for anything they change, a shallow snapshot is sufficient for undo.
+- Org points OFF → points hidden everywhere (unchanged).
+- Org points ON, tree not overridden → points shown for that tree (default).
+- Org points ON, tree overridden to disabled → points hidden for that tree's backlogs, boards and items.
+- We only expose "disable for this tree" (matching the request). If the org later turns points off, the tree-level override becomes moot.
 
-2. **`collectAffectedTimeEntryIds` is O(targets × timeEntries) per delete.** `src/hooks/useDeleteWithTimeGuard.ts` loops over each target and re-scans all time entries inside (`src/lib/timeUtils.ts:133`). For a 20-item bulk delete that's 20 full scans of `timeEntries` + 20 subtree walks and 20 full scans of `workItems`.
+## Data model
 
-Secondary contributors on the same click:
-- `handleDeleteClick` at `WorkItemTreePanel.tsx:355` bypasses the time-guard entirely when none of the selected items are multi-assigned, so time entries owned by deleted items never prompt the move dialog. Not a perf bug, but worth noting.
-- `internalLog` (`appStore.ts:1056`) copies the full `changeLog` on each entry; only one call happens per bulk delete, so this is fine once (1) is fixed.
+Add `points_enabled BOOLEAN NULL` to `backlog_trees` (null = inherit). Extend the `BacklogTree` type with `pointsEnabled?: boolean | null` and wire it through the tree sync/serialization paths in `supabaseSync.ts` and `appStore.ts`.
 
-## Plan
+## Effective-points helper
 
-### 1. Make `snapshot()` shallow (biggest win)
+Add `isPointsEnabledForTree(orgId, tree)` next to the existing `isPointsEnabled` in `orgSettingsStore.ts` (or a small `src/lib/pointsVisibility.ts`) returning `orgPointsEnabled && tree.pointsEnabled !== false`.
 
-In `src/store/appStore.ts`:
-- Replace the `JSON.parse(JSON.stringify(...))` clones with shallow copies:
-  - `workItems: { ...state.workItems }`
-  - `backlogs: { ...state.backlogs }`
-  - `backlogTrees: { ...state.backlogTrees }`
-  - `hyperlinks: { ...state.hyperlinks }`
-- Keep the existing shallow copies for `selectedBacklogIds`, `selectedWorkItemIds`, `changeLog`, and the `Set` copies for expanded state.
-- All reducers in this file already spread (`{ ...state.workItems, [id]: ... }`) or build a fresh object before mutating, so entries the snapshot references are never mutated in place. Undo/redo continues to restore the correct prior map by identity.
+## UI wiring
 
-Audit before landing: grep the file for direct mutation patterns (`workItems[x] =`, `.push(`, `delete workItems[`, `childrenIds.push`) to confirm no reducer mutates a shared child object; wrap the two or three spots (if any) that do so in a spread. This is the only correctness risk.
+Replace the current `pointsVisible = orgSettings.pointsEnabled` reads with the tree-aware helper in:
 
-### 2. Compute affected time entries in one pass for bulk deletes
+- `src/components/BoardView.tsx` (already has `treeId`)
+- `src/components/WorkItemTreePanel.tsx` (has active tree in scope)
+- `src/components/BacklogTreePanel.tsx` (iterate per tree row; each backlog knows its `treeId`)
+- `src/components/MobileAttributesSheet.tsx` (accept `treeId` from callers; both usages already know it)
 
-In `src/lib/timeUtils.ts`, add a `collectAffectedTimeEntryIdsBulk(targets, data)` that:
-- Unions the doomed work-item subtree(s), doomed backlog subtree(s), and doomed tree id(s) once.
-- For work-item targets, also computes the "doomed if only-assignment-in-deleted-tree" set exactly like the single-target case, but sharing one pass over `workItems`.
-- Does one pass over `Object.values(timeEntries)` classifying each entry against the unioned sets.
+`BellsAndWhistlesSection` keeps the org-level switch as-is.
 
-Update `src/hooks/useDeleteWithTimeGuard.ts` to call the bulk helper when given an array target. Keep the single-target path unchanged.
+## Toggle placement
 
-### 3. Route bulk deletion through the time guard consistently
+Add a "Points" switch to the backlog-tree context menu (same menu as Burnups / statuses gear in `BacklogTreePanel.tsx`), shown only when org points are enabled and the user has manage rights. Persists via a new `setTreePointsEnabled(treeId, enabled | null)` action on `appStore` that updates state and upserts to Supabase.
 
-In `WorkItemTreePanel.tsx` `handleDeleteClick` (line ~355), always call `guardedDeleteBulk(targets, label, () => deleteWorkItemsBulk(idsToProcess))` instead of skipping the guard when nothing is multi-assigned. This closes a real correctness gap (time entries on deleted items get silently orphaned today) and reuses the fast bulk collector from step 2 so there is no perf regression.
+## Migration
 
-### 4. Verification
+Single migration adding the nullable column with no backfill (null = inherit = current behavior).
 
-- Type-check: `bunx tsgo --noEmit`.
-- Run existing tests: `bunx vitest run src/test/appStore.test.ts`.
-- Manual perf sanity: with 200 items, select 20 via shift-click and press Delete. Confirm the click resolves within ~100 ms and the row count drops immediately. Repeat with a few thousand entries in `changeLog` to exercise the snapshot fix.
-- Undo/redo one delete step to confirm the shallow snapshot restores state correctly.
+## Out of scope
 
-### Order of landing
-
-Steps 1 and 2 are independent and each fix a different linear-time-per-target cost; land them together. Step 3 is a small correctness follow-up that piggybacks on step 2.
-
-### Technical notes
-
-- No database, schema, or RPC changes.
-- No changes to virtualization or memoization from the previous perf pass.
-- Files touched: `src/store/appStore.ts`, `src/lib/timeUtils.ts`, `src/hooks/useDeleteWithTimeGuard.ts`, `src/components/WorkItemTreePanel.tsx`.
+- No change to how points values are stored on items; only visibility flips.
+- No per-backlog (sub-backlog) override — request is per tree.
