@@ -89,18 +89,21 @@ export type Database = {
           id: string
           name: string
           organization_id: string | null
+          points_enabled: boolean | null
           rank: number
         }
         Insert: {
           id: string
           name: string
           organization_id?: string | null
+          points_enabled?: boolean | null
           rank?: number
         }
         Update: {
           id?: string
           name?: string
           organization_id?: string | null
+          points_enabled?: boolean | null
           rank?: number
         }
         Relationships: [
