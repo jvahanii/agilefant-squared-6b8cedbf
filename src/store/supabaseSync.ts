@@ -232,7 +232,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   const backlogTrees: Record<string, BacklogTree> = {};
   for (const row of cleanTreeRows) {
-    backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
+    backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank, pointsEnabled: (row as { points_enabled?: boolean | null }).points_enabled ?? null };
   }
 
   // Auto-cleanup malformed (double-prefixed) backlog IDs
