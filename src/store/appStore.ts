@@ -3479,7 +3479,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    reorderBacklogTree: (treeId, targetIndex) => {
+    setTreePointsEnabled: (treeId, enabled) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const tree = state.backlogTrees[treeId];
+      if (!tree) return;
+      const updated = { ...tree, pointsEnabled: enabled };
+      upsertBacklogTree(updated, orgId);
+      internalLog({
+        action: "Update",
+        entityType: "backlog_tree",
+        entityId: treeId,
+        entityName: tree.name,
+        details: `Points: ${enabled === false ? "disabled" : enabled === true ? "enabled" : "inherit"}`,
+      });
+      set({
+        backlogTrees: { ...state.backlogTrees, [treeId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
       const state = get();
       const orgId = state.organizationId!;
       const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
