@@ -39,6 +39,7 @@ import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import {
   ContextMenu,
