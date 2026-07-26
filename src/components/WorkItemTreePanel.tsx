@@ -961,15 +961,15 @@ function WorkItemNodeContent({
                         {pointsLabel}
                       </span>
                     )}
-                    {/* Mobile: read-only points display (edit via attributes sheet) — only shown when there are actual points */}
-                    {totalPoints > 0 && (
-                      <span
-                        className={`md:hidden text-xs tabular-nums shrink-0 min-w-[20px] text-center ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                        title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Story points"}
-                      >
-                        {pointsLabel}
-                      </span>
-                    )}
+                    {/* Mobile: points display — tappable to open the attributes sheet for editing.
+                        Always visible when points are enabled so zero-point items can also be edited. */}
+                    <span
+                      className={`md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center ${(totalPoints > 0 && isRolledUp) ? "text-primary font-medium" : "text-muted-foreground"}`}
+                      title="Story points (tap to edit)"
+                      onClick={(e) => { e.stopPropagation(); setShowMobileAttributesSheet(true); }}
+                    >
+                      {totalPoints > 0 ? pointsLabel : "–"}
+                    </span>
                   </>
                 );
               })()}
