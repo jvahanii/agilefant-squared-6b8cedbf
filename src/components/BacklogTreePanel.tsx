@@ -43,6 +43,7 @@ import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFi
 import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
