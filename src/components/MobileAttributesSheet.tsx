@@ -320,7 +320,7 @@ export function MobileBacklogAttributesSheet({
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
-  const pointsVisible = orgSettings.pointsEnabled;
+  const pointsVisible = usePointsVisibleForTree(backlog?.treeId ?? null);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
