@@ -26,6 +26,7 @@ import { SnoozeDialog } from "./SnoozeDialog";
 import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { ActionPrompt } from "./ActionPrompt";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import {
   useSnoozeStore,
   snoozeOptionLaterToday,
