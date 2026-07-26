@@ -1253,7 +1253,7 @@ function BoardCard({
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = useOrgSettingsStore((s) => {
     if (!activeOrgId) return false;
-    return s.settings[activeOrgId]?.pointsEnabled ?? false;
+    return (s.settings[activeOrgId]?.pointsEnabled ?? false) && useAppStore.getState().backlogTrees[treeId]?.pointsEnabled !== false;
   });
   const timeLoggingVisible = useOrgSettingsStore((s) => {
     if (!activeOrgId) return false;
