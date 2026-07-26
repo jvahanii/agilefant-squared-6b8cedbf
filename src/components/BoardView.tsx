@@ -1251,10 +1251,7 @@ function BoardCard({
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
 
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = useOrgSettingsStore((s) => {
-    if (!activeOrgId) return false;
-    return (s.settings[activeOrgId]?.pointsEnabled ?? false) && useAppStore.getState().backlogTrees[treeId]?.pointsEnabled !== false;
-  });
+  const pointsVisible = usePointsVisibleForTree(treeId);
   const timeLoggingVisible = useOrgSettingsStore((s) => {
     if (!activeOrgId) return false;
     return s.settings[activeOrgId]?.timeLoggingEnabled ?? false;
