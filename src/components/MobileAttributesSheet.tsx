@@ -8,6 +8,7 @@ import {
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
