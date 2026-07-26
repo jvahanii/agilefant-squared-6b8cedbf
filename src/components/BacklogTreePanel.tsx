@@ -850,6 +850,14 @@ function DraggableTreeHeader({
   const burnupsVisible = useOrgSettingsStore(
     (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
   );
+  const orgPointsEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false,
+  );
+  const treePointsEnabled = useAppStore(
+    (s) => s.backlogTrees[tree.id]?.pointsEnabled ?? null,
+  );
+  const setTreePointsEnabled = useAppStore((s) => s.setTreePointsEnabled);
+  const treePointsVisible = orgPointsEnabled && treePointsEnabled !== false;
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
   const treeTotalCached = useTreeTotalMinutesCached(tree.id);
