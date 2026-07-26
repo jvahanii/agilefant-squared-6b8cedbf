@@ -305,7 +305,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? "");
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const pointsVisible = usePointsVisibleForTree(treeId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
