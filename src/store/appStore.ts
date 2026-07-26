@@ -197,6 +197,7 @@ interface AppState extends DataSnapshot {
   addBacklogTree: (name: string) => void;
   deleteBacklogTree: (treeId: string) => void;
   renameBacklogTree: (treeId: string, name: string) => void;
+  setTreePointsEnabled: (treeId: string, enabled: boolean | null) => void;
   reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
