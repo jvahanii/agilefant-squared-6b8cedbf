@@ -616,7 +616,8 @@ export async function upsertBacklogTree(tree: BacklogTree, organizationId: strin
   const { error } = await supabase.from('backlog_trees').upsert({
     id: tree.id, name: tree.name, rank: safeRank(tree.rank),
     organization_id: ownerOrgOf(tree.id, organizationId),
-  });
+    points_enabled: tree.pointsEnabled ?? null,
+  } as never);
   if (error) console.error('upsertBacklogTree:', error);
 }
 
