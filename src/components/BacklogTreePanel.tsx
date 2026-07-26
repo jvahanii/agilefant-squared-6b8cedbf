@@ -874,6 +874,8 @@ function DraggableTreeHeader({
   });
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
     <div
       ref={setDragRef}
       {...attributes}
