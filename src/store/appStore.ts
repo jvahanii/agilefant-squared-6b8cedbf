@@ -3500,6 +3500,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    reorderBacklogTree: (treeId, targetIndex) => {
       const state = get();
       const orgId = state.organizationId!;
       const sorted = Object.values(state.backlogTrees).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
