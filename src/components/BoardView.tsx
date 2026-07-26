@@ -1349,7 +1349,16 @@ function BoardCard({
 
   const commitPoints = () => {
     const num = parseInt(editPoints, 10);
-    setWorkItemPoints(item.id, isNaN(num) || num <= 0 ? undefined : num);
+    const points = isNaN(num) || num <= 0 ? undefined : num;
+    const state = useAppStore.getState();
+    const selectedIds = state.selectedWorkItemIds;
+    if (selectedIds.length > 1 && selectedIds.includes(item.id)) {
+      state.runBulk(() => {
+        selectedIds.forEach((id) => setWorkItemPoints(id, points));
+      });
+    } else {
+      setWorkItemPoints(item.id, points);
+    }
     setIsEditingPoints(false);
   };
 

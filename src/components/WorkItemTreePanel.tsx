@@ -602,7 +602,14 @@ function WorkItemNodeContent({
 
   const commitPoints = () => {
     const num = parseInt(editPoints, 10);
-    setWorkItemPoints(workItemId, isNaN(num) || num <= 0 ? undefined : num);
+    const points = isNaN(num) || num <= 0 ? undefined : num;
+    if (isSelected && selectedWorkItemIds.length > 1) {
+      useAppStore.getState().runBulk(() => {
+        selectedWorkItemIds.forEach((id) => setWorkItemPoints(id, points));
+      });
+    } else {
+      setWorkItemPoints(workItemId, points);
+    }
     setIsEditingPoints(false);
   };
 
