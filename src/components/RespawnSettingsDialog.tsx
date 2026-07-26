@@ -122,7 +122,7 @@ export function RespawnSettingsDialog({
 
         <div className="flex items-center justify-between mb-6">
           <Label htmlFor="respawn-enabled" className="text-sm font-medium">
-            Enable respawn
+            Activate respawn
           </Label>
           <Switch
             id="respawn-enabled"
