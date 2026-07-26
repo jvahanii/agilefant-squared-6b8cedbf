@@ -1025,6 +1025,16 @@ function DraggableTreeHeader({
         />
       )}
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem
+          onClick={() => setTreePointsEnabled(tree.id, treePointsEnabled === false ? null : false)}
+          disabled={!orgPointsEnabled}
+        >
+          {treePointsVisible ? "Disable points for this tree" : "Enable points for this tree"}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
