@@ -58,6 +58,12 @@ export interface BacklogTree {
   name: string;
   rootBacklogIds: string[];
   rank: number;
+  /** Per-tree override for the org-level points setting.
+   *  - `undefined` / `null`: inherit from org (default)
+   *  - `false`: hide points for this tree even when org points are enabled
+   *  - `true`: reserved for future symmetry (currently equivalent to inherit)
+   */
+  pointsEnabled?: boolean | null;
 }
 
 export interface Hyperlink {
