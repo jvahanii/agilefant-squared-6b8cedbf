@@ -1364,9 +1364,11 @@ function WorkItemNodeContent({
                           onSubmit={(title) => {
                             addWorkItem(title, workItemId, backlogId, treeId);
                             setIsAdding(false);
-                            setTimeout(() => {
-                              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-                            }, 50);
+                            if (!isMobile) {
+                              setTimeout(() => {
+                                window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                              }, 50);
+                            }
                           }}
                           onCancel={() => setIsAdding(false)}
                         />
@@ -1419,9 +1421,11 @@ function WorkItemNodeContent({
                 onSubmit={(title) => {
                   addWorkItem(title, workItemId, backlogId, treeId, 0);
                   setIsAdding(false);
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-                  }, 50);
+                  if (!isMobile) {
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                    }, 50);
+                  }
                 }}
                 onCancel={() => setIsAdding(false)}
               />
@@ -1435,9 +1439,11 @@ function WorkItemNodeContent({
           onSubmit={(title) => {
             addWorkItem(title, item.parentId, backlogId, treeId, (item.ranks[backlogId] ?? 0) + 1);
             setIsAddingSibling(false);
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-            }, 50);
+            if (!isMobile) {
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+              }, 50);
+            }
           }}
           onCancel={() => setIsAddingSibling(false)}
         />
