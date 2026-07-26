@@ -58,7 +58,11 @@ export function MobileWorkItemAttributesSheet({
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
-  const pointsVisible = orgSettings.pointsEnabled;
+  const assignedTreeIds = useMemo(
+    () => (item ? Object.keys(item.backlogAssignments) : []),
+    [item],
+  );
+  const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
