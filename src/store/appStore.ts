@@ -197,6 +197,7 @@ interface AppState extends DataSnapshot {
   addBacklogTree: (name: string) => void;
   deleteBacklogTree: (treeId: string) => void;
   renameBacklogTree: (treeId: string, name: string) => void;
+  setTreePointsEnabled: (treeId: string, enabled: boolean | null) => void;
   reorderBacklogTree: (treeId: string, targetIndex: number) => void;
   resetToMockData: () => Promise<void>;
   undo: () => void;
@@ -3478,6 +3479,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setTreePointsEnabled: (treeId, enabled) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const tree = state.backlogTrees[treeId];
+      if (!tree) return;
+      const updated = { ...tree, pointsEnabled: enabled };
+      upsertBacklogTree(updated, orgId);
+      internalLog({
+        action: "Update",
+        entityType: "backlog_tree",
+        entityId: treeId,
+        entityName: tree.name,
+        details: `Points: ${enabled === false ? "disabled" : enabled === true ? "enabled" : "inherit"}`,
+      });
+      set({
+        backlogTrees: { ...state.backlogTrees, [treeId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
     reorderBacklogTree: (treeId, targetIndex) => {
       const state = get();
       const orgId = state.organizationId!;
@@ -4013,6 +4035,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           name: row.name as string,
           rank: row.rank as number,
           rootBacklogIds: state.backlogTrees[id]?.rootBacklogIds ?? [],
+          pointsEnabled: (row as { points_enabled?: boolean | null }).points_enabled ?? null,
         };
 
         return { backlogTrees: { ...state.backlogTrees, [id]: newTree } };

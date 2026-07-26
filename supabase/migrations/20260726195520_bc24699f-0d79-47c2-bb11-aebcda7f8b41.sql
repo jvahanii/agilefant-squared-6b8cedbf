@@ -1,0 +1,1 @@
+ALTER TABLE public.backlog_trees ADD COLUMN IF NOT EXISTS points_enabled boolean;

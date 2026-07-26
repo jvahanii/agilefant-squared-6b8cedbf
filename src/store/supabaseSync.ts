@@ -232,7 +232,7 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   const backlogTrees: Record<string, BacklogTree> = {};
   for (const row of cleanTreeRows) {
-    backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank };
+    backlogTrees[row.id] = { id: row.id, name: row.name, rootBacklogIds: [], rank: row.rank, pointsEnabled: (row as { points_enabled?: boolean | null }).points_enabled ?? null };
   }
 
   // Auto-cleanup malformed (double-prefixed) backlog IDs
@@ -616,7 +616,8 @@ export async function upsertBacklogTree(tree: BacklogTree, organizationId: strin
   const { error } = await supabase.from('backlog_trees').upsert({
     id: tree.id, name: tree.name, rank: safeRank(tree.rank),
     organization_id: ownerOrgOf(tree.id, organizationId),
-  });
+    points_enabled: tree.pointsEnabled ?? null,
+  } as never);
   if (error) console.error('upsertBacklogTree:', error);
 }
 
@@ -691,8 +692,9 @@ export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: s
   const rows = trees.map(t => ({
     id: t.id, name: t.name, rank: safeRank(t.rank),
     organization_id: ownerOrgOf(t.id, organizationId),
+    points_enabled: t.pointsEnabled ?? null,
   }));
-  const { error } = await supabase.from('backlog_trees').upsert(rows);
+  const { error } = await supabase.from('backlog_trees').upsert(rows as never);
   if (error) console.error('upsertBacklogTrees:', error);
 }
 

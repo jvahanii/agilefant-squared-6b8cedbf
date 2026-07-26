@@ -26,6 +26,7 @@ import { SnoozeDialog } from "./SnoozeDialog";
 import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { ActionPrompt } from "./ActionPrompt";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import {
   useSnoozeStore,
   snoozeOptionLaterToday,
@@ -1251,10 +1252,7 @@ function BoardCard({
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
 
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = useOrgSettingsStore((s) => {
-    if (!activeOrgId) return false;
-    return s.settings[activeOrgId]?.pointsEnabled ?? false;
-  });
+  const pointsVisible = usePointsVisibleForTree(treeId);
   const timeLoggingVisible = useOrgSettingsStore((s) => {
     if (!activeOrgId) return false;
     return s.settings[activeOrgId]?.timeLoggingEnabled ?? false;

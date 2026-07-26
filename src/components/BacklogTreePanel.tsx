@@ -43,6 +43,7 @@ import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFi
 import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -305,7 +306,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
 
   const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? "");
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const pointsVisible = usePointsVisibleForTree(treeId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
@@ -849,6 +850,14 @@ function DraggableTreeHeader({
   const burnupsVisible = useOrgSettingsStore(
     (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
   );
+  const orgPointsEnabled = useOrgSettingsStore(
+    (s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false,
+  );
+  const treePointsEnabled = useAppStore(
+    (s) => s.backlogTrees[tree.id]?.pointsEnabled ?? null,
+  );
+  const setTreePointsEnabled = useAppStore((s) => s.setTreePointsEnabled);
+  const treePointsVisible = orgPointsEnabled && treePointsEnabled !== false;
   const treeFinancials = useTreeFinancialTotals(tree.id);
   const selectTree = useAppStore((s) => s.selectTree);
   const treeTotalCached = useTreeTotalMinutesCached(tree.id);
@@ -865,6 +874,8 @@ function DraggableTreeHeader({
   });
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
     <div
       ref={setDragRef}
       {...attributes}
@@ -1014,6 +1025,16 @@ function DraggableTreeHeader({
         />
       )}
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem
+          onClick={() => setTreePointsEnabled(tree.id, treePointsEnabled === false ? null : false)}
+          disabled={!orgPointsEnabled}
+        >
+          {treePointsVisible ? "Disable points for this tree" : "Enable points for this tree"}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 

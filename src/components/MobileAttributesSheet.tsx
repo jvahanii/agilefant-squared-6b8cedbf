@@ -8,6 +8,7 @@ import {
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -57,7 +58,11 @@ export function MobileWorkItemAttributesSheet({
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
-  const pointsVisible = orgSettings.pointsEnabled;
+  const assignedTreeIds = useMemo(
+    () => (item ? Object.keys(item.backlogAssignments) : []),
+    [item],
+  );
+  const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
@@ -315,7 +320,7 @@ export function MobileBacklogAttributesSheet({
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
   );
-  const pointsVisible = orgSettings.pointsEnabled;
+  const pointsVisible = usePointsVisibleForTree(backlog?.treeId ?? null);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 

@@ -39,6 +39,7 @@ import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
+import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import {
   ContextMenu,
@@ -248,7 +249,7 @@ function WorkItemNodeContent({
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const isMobile = useIsMobile();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.pointsEnabled ?? false);
+  const pointsVisible = usePointsVisibleForTree(treeId);
   const burnupsVisible = useOrgSettingsStore((s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
