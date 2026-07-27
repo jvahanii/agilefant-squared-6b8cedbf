@@ -2875,11 +2875,16 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Single-tree item (or no treeId context): update the global parentId as
           // before.  This preserves unchanged behaviour for the common case.
 
-          // Remove from old parent
-          if (item.parentId && updatedItems[item.parentId]) {
-            updatedItems[item.parentId] = {
-              ...updatedItems[item.parentId],
-              childrenIds: updatedItems[item.parentId].childrenIds.filter((id) => id !== workItemId),
+          // Determine the true old parent in this tree, honoring per-tree overrides.
+          const singleTreeOldParentId = treeId
+            ? getEffectiveParentId(item, treeId)
+            : item.parentId;
+
+          // Remove from old parent (effective, not just global)
+          if (singleTreeOldParentId && updatedItems[singleTreeOldParentId]) {
+            updatedItems[singleTreeOldParentId] = {
+              ...updatedItems[singleTreeOldParentId],
+              childrenIds: updatedItems[singleTreeOldParentId].childrenIds.filter((id) => id !== workItemId),
             };
           }
           // Add to new parent
@@ -2889,6 +2894,20 @@ export const useAppStore = create<AppState>()((set, get) => {
               childrenIds: [...updatedItems[newParentId].childrenIds, workItemId],
             };
           }
+
+          // If a treeId was provided, clear any stale per-tree parent override for
+          // it so the new global parentId is honored in that tree. Without this,
+          // an existing override silently keeps pointing at the old parent and the
+          // reparent appears to do nothing in the UI.
+          const clearedParentIds = (() => {
+            if (!treeId || !item.parentIds || !(treeId in item.parentIds)) {
+              return item.parentIds;
+            }
+            const next = { ...item.parentIds };
+            delete next[treeId];
+            return next;
+          })();
+
 
           if (isBacklogChange) {
             // Same-tree reparent into a different backlog: migrate the item and all
