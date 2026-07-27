@@ -2929,6 +2929,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             updatedItems[workItemId] = {
               ...item,
               parentId: newParentId,
+              parentIds: clearedParentIds,
               backlogAssignments: { ...item.backlogAssignments, [treeId!]: cleanBlId! },
               ranks: newRanks,
             };
