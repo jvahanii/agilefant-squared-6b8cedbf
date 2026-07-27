@@ -265,6 +265,7 @@ function WorkItemNodeContent({
   const byEntity = useLabelsStore((s) => s.byEntity);
   const assignLabel = useLabelsStore((s) => s.assignLabel);
   const unassignLabel = useLabelsStore((s) => s.unassignLabel);
+  const createLabel = useLabelsStore((s) => s.createLabel);
   const itemLabels = useMemo(() => {
     if (!labelsVisible) return [];
     const labelIds = byEntity[`work_item:${workItemId}`] ?? [];
@@ -313,6 +314,12 @@ function WorkItemNodeContent({
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   const [deleteItemIds, setDeleteItemIds] = useState<string[]>([]);
   const [showSortPrompt, setShowSortPrompt] = useState(false);
+  // Inline new-label creation in context menu
+  const [ctxNewLabelForm, setCtxNewLabelForm] = useState(false);
+  const [ctxNewLabelName, setCtxNewLabelName] = useState("");
+  const [ctxNewLabelColor, setCtxNewLabelColor] = useState("#6366f1");
+  const [ctxLabelSearchQuery, setCtxLabelSearchQuery] = useState("");
+  const ctxNewLabelNameRef = useRef<HTMLInputElement>(null);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
@@ -1227,32 +1234,67 @@ function WorkItemNodeContent({
           {labelsVisible && orgLabels.length > 0 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                {orgLabels.map((label) => {
-                  const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
-                  const assignedCount = contextIds.filter((id) => (byEntity[`work_item:${id}`] ?? []).includes(label.id)).length;
-                  const fullyAssigned = assignedCount === contextIds.length;
-                  const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
-                  return (
-                    <ContextMenuCheckboxItem
-                      key={label.id}
-                      className="text-xs"
-                      checked={fullyAssigned}
-                      data-partially={partiallyAssigned || undefined}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
-                        } else {
-                          contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
-                        }
-                      }}
-                    >
-                      <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                      {label.name}
-                      {partiallyAssigned && <span className="ml-auto text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
-                    </ContextMenuCheckboxItem>
-                  );
-                })}
+              <ContextMenuSubContent className="max-h-60 overflow-y-auto">
+                <div className="px-2 pt-1 pb-0.5">
+                  <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
+                    <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <input
+                      className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
+                      placeholder="Search labels…"
+                      value={ctxLabelSearchQuery}
+                      onChange={(e) => setCtxLabelSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                    {ctxLabelSearchQuery && (
+                      <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setCtxLabelSearchQuery(""); }}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {orgLabels
+                  .filter((l) => !ctxLabelSearchQuery.trim() || l.name.toLowerCase().includes(ctxLabelSearchQuery.toLowerCase()))
+                  .map((label) => {
+                    const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+                    const assignedCount = contextIds.filter((id) => (byEntity[`work_item:${id}`] ?? []).includes(label.id)).length;
+                    const fullyAssigned = assignedCount === contextIds.length;
+                    const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
+                    return (
+                      <ContextMenuCheckboxItem
+                        key={label.id}
+                        className="text-xs"
+                        checked={fullyAssigned}
+                        data-partially={partiallyAssigned || undefined}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            contextIds.forEach((id) => assignLabel(label.id, "work_item", id, label.organizationId));
+                          } else {
+                            contextIds.forEach((id) => unassignLabel(label.id, "work_item", id));
+                          }
+                        }}
+                      >
+                        <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
+                        {label.name}
+                        {partiallyAssigned && <span className="ml-auto text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
+                      </ContextMenuCheckboxItem>
+                    );
+                  })}
+                <ContextMenuSeparator />
+                {ctxNewLabelForm ? (
+                  <div className="px-2 py-1.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <input type="color" value={ctxNewLabelColor} onChange={(e) => setCtxNewLabelColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent shrink-0" />
+                      <input ref={ctxNewLabelNameRef} className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-1 py-0.5" placeholder="Label name…" value={ctxNewLabelName} onChange={(e) => setCtxNewLabelName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const handleCreate = async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }; handleCreate(); } if (e.key === "Escape") { setCtxNewLabelForm(false); setCtxNewLabelName(""); } e.stopPropagation(); }} />
+                      <button className="text-muted-foreground hover:text-foreground" onClick={() => { setCtxNewLabelForm(false); setCtxNewLabelName(""); }}><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                    <button className="w-full text-xs text-center py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={!ctxNewLabelName.trim()} onClick={async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }}>Create</button>
+                  </div>
+                ) : (
+                  <ContextMenuItem className="text-xs" onSelect={(e) => { e.preventDefault(); setCtxNewLabelForm(true); setCtxLabelSearchQuery(""); }}>
+                    <Plus className="w-3 h-3 mr-2" /> New label
+                  </ContextMenuItem>
+                )}
               </ContextMenuSubContent>
             </ContextMenuSub>
           )}
@@ -1683,6 +1725,7 @@ function SearchResultItem({
   const byEntity = useLabelsStore((s) => s.byEntity);
   const assignLabel = useLabelsStore((s) => s.assignLabel);
   const unassignLabel = useLabelsStore((s) => s.unassignLabel);
+  const createLabel = useLabelsStore((s) => s.createLabel);
   const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
@@ -1698,6 +1741,12 @@ function SearchResultItem({
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  // Inline new-label creation in context menu (SearchResultItem)
+  const [srNewLabelForm, setSrNewLabelForm] = useState(false);
+  const [srNewLabelName, setSrNewLabelName] = useState("");
+  const [srNewLabelColor, setSrNewLabelColor] = useState("#6366f1");
+  const [srLabelSearch, setSrLabelSearch] = useState("");
+  const srNewLabelNameRef = useRef<HTMLInputElement>(null);
 
   const itemTotalMinutesCached = useWorkItemTotalMinutes(item.id);
   const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
@@ -1898,28 +1947,63 @@ function SearchResultItem({
             <ContextMenuSeparator />
             {labelsVisible && orgLabels.length > 0 && (
               <ContextMenuSub>
-                <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-                <ContextMenuSubContent>
-                  {orgLabels.map((label) => {
-                    const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
-                    return (
-                      <ContextMenuCheckboxItem
-                        key={label.id}
-                        className="text-xs"
-                        checked={isAssigned}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            assignLabel(label.id, "work_item", item.id, label.organizationId);
-                          } else {
-                            unassignLabel(label.id, "work_item", item.id);
-                          }
-                        }}
-                      >
-                        <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                        {label.name}
-                      </ContextMenuCheckboxItem>
-                    );
-                  })}
+              <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
+                <ContextMenuSubContent className="max-h-60 overflow-y-auto">
+                  <div className="px-2 pt-1 pb-0.5">
+                    <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
+                      <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <input
+                        className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
+                        placeholder="Search labels…"
+                        value={srLabelSearch}
+                        onChange={(e) => setSrLabelSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                      {srLabelSearch && (
+                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSrLabelSearch(""); }}>
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {orgLabels
+                    .filter((l) => !srLabelSearch.trim() || l.name.toLowerCase().includes(srLabelSearch.toLowerCase()))
+                    .map((label) => {
+                      const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
+                      return (
+                        <ContextMenuCheckboxItem
+                          key={label.id}
+                          className="text-xs"
+                          checked={isAssigned}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              assignLabel(label.id, "work_item", item.id, label.organizationId);
+                            } else {
+                              unassignLabel(label.id, "work_item", item.id);
+                            }
+                          }}
+                        >
+                          <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
+                          {label.name}
+                        </ContextMenuCheckboxItem>
+                      );
+                    })}
+                  <ContextMenuSeparator />
+                  {srNewLabelForm ? (
+                    <div className="px-2 py-1.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={srNewLabelColor} onChange={(e) => setSrNewLabelColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent shrink-0" />
+                        <input ref={srNewLabelNameRef} className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-1 py-0.5" placeholder="Label name…" value={srNewLabelName} onChange={(e) => setSrNewLabelName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const hc = async () => { if (!activeOrgId || !srNewLabelName.trim()) return; const lbl = await createLabel(activeOrgId, srNewLabelName.trim(), srNewLabelColor); if (lbl) { assignLabel(lbl.id, "work_item", item.id, activeOrgId); } setSrNewLabelName(""); setSrNewLabelForm(false); }; hc(); } if (e.key === "Escape") { setSrNewLabelForm(false); setSrNewLabelName(""); } e.stopPropagation(); }} />
+                        <button className="text-muted-foreground hover:text-foreground" onClick={() => { setSrNewLabelForm(false); setSrNewLabelName(""); }}><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <button className="w-full text-xs text-center py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={!srNewLabelName.trim()} onClick={async () => { if (!activeOrgId || !srNewLabelName.trim()) return; const lbl = await createLabel(activeOrgId, srNewLabelName.trim(), srNewLabelColor); if (lbl) { assignLabel(lbl.id, "work_item", item.id, activeOrgId); } setSrNewLabelName(""); setSrNewLabelForm(false); }}>Create</button>
+                    </div>
+                  ) : (
+                    <ContextMenuItem className="text-xs" onSelect={(e) => { e.preventDefault(); setSrNewLabelForm(true); setSrLabelSearch(""); }}>
+                      <Plus className="w-3 h-3 mr-2" /> New label
+                    </ContextMenuItem>
+                  )}
                 </ContextMenuSubContent>
               </ContextMenuSub>
             )}
