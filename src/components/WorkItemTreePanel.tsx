@@ -855,26 +855,6 @@ function WorkItemNodeContent({
             </TooltipProvider>
           )}
 
-          {labelsVisible && itemLabels.length > 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded shrink-0 mt-0.5"
-                    title="Labels"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Tag className="w-3 h-3" />
-                    <span className="text-[10px] font-medium tabular-nums leading-none">{itemLabels.length}</span>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {itemLabels.map((l) => l.name).join(", ")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
           {parentItemChain.length > 0 && (
             <div className="hidden md:flex items-center shrink-0 mt-0.5 text-[10px] text-muted-foreground/70 max-w-[200px]">
               {parentItemChain.map((ancestor, i) => (
