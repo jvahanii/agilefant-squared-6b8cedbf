@@ -266,6 +266,7 @@ function WorkItemNodeContent({
   const assignLabel = useLabelsStore((s) => s.assignLabel);
   const unassignLabel = useLabelsStore((s) => s.unassignLabel);
   const createLabel = useLabelsStore((s) => s.createLabel);
+  const deleteLabel = useLabelsStore((s) => s.deleteLabel);
   const itemLabels = useMemo(() => {
     if (!labelsVisible) return [];
     const labelIds = byEntity[`work_item:${workItemId}`] ?? [];
@@ -320,6 +321,7 @@ function WorkItemNodeContent({
   const [ctxNewLabelColor, setCtxNewLabelColor] = useState("#6366f1");
   const [ctxLabelSearchQuery, setCtxLabelSearchQuery] = useState("");
   const ctxNewLabelNameRef = useRef<HTMLInputElement>(null);
+  const [ctxDeleteLabelId, setCtxDeleteLabelId] = useState<string | null>(null);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
@@ -1277,6 +1279,13 @@ function WorkItemNodeContent({
                         <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
                         {label.name}
                         {partiallyAssigned && <span className="ml-auto text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
+                        <button
+                          className="ml-auto text-muted-foreground/40 hover:text-destructive shrink-0"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCtxDeleteLabelId(label.id); }}
+                          title={`Delete label "${label.name}"`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </ContextMenuCheckboxItem>
                     );
                   })}
@@ -1549,6 +1558,22 @@ function WorkItemNodeContent({
           onCancel={() => setShowSortPrompt(false)}
         />
       )}
+      {ctxDeleteLabelId && (
+        <ActionPrompt
+          title={`Delete label "${labelsMap[ctxDeleteLabelId]?.name ?? ctxDeleteLabelId}"?`}
+          options={[
+            {
+              label: "Delete",
+              description: "Permanently delete this label from all items. This cannot be undone.",
+              value: "confirm",
+              variant: "destructive",
+              isDefault: true,
+            },
+          ]}
+          onSelect={() => { deleteLabel(ctxDeleteLabelId); setCtxDeleteLabelId(null); }}
+          onCancel={() => setCtxDeleteLabelId(null)}
+        />
+      )}
       <RespawnSettingsDialog
         workItemId={workItemId}
         open={showRespawnDialog}
@@ -1726,6 +1751,7 @@ function SearchResultItem({
   const assignLabel = useLabelsStore((s) => s.assignLabel);
   const unassignLabel = useLabelsStore((s) => s.unassignLabel);
   const createLabel = useLabelsStore((s) => s.createLabel);
+  const deleteLabel = useLabelsStore((s) => s.deleteLabel);
   const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
@@ -1747,6 +1773,7 @@ function SearchResultItem({
   const [srNewLabelColor, setSrNewLabelColor] = useState("#6366f1");
   const [srLabelSearch, setSrLabelSearch] = useState("");
   const srNewLabelNameRef = useRef<HTMLInputElement>(null);
+  const [srDeleteLabelId, setSrDeleteLabelId] = useState<string | null>(null);
 
   const itemTotalMinutesCached = useWorkItemTotalMinutes(item.id);
   const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
@@ -1986,6 +2013,13 @@ function SearchResultItem({
                         >
                           <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
                           {label.name}
+                          <button
+                            className="ml-auto text-muted-foreground/40 hover:text-destructive shrink-0"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSrDeleteLabelId(label.id); }}
+                            title={`Delete label "${label.name}"`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </ContextMenuCheckboxItem>
                       );
                     })}
@@ -2088,6 +2122,22 @@ function SearchResultItem({
           </ContextMenuContent>
         </ContextMenu>
       </div>
+      {srDeleteLabelId && (
+        <ActionPrompt
+          title={`Delete label "${labelsMap[srDeleteLabelId]?.name ?? srDeleteLabelId}"?`}
+          options={[
+            {
+              label: "Delete",
+              description: "Permanently delete this label from all items. This cannot be undone.",
+              value: "confirm",
+              variant: "destructive",
+              isDefault: true,
+            },
+          ]}
+          onSelect={() => { deleteLabel(srDeleteLabelId); setSrDeleteLabelId(null); }}
+          onCancel={() => setSrDeleteLabelId(null)}
+        />
+      )}
       {showDeletePrompt && (
         <ActionPrompt
           title={`"${item.title}" is in ${assignmentCount} backlogs`}
