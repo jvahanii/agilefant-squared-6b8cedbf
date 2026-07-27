@@ -3014,7 +3014,7 @@ export const useAppStore = create<AppState>()((set, get) => {
                 newRanks[blId] = maxRank + 1;
               }
             }
-            updatedItems[workItemId] = { ...item, parentId: newParentId, ranks: newRanks };
+            updatedItems[workItemId] = { ...item, parentId: newParentId, parentIds: clearedParentIds, ranks: newRanks };
           }
         }
       }
