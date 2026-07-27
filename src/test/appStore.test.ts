@@ -1039,6 +1039,55 @@ describe("reparentWorkItem", () => {
     expect(movedItem.ranks[`${ORG}::bl-1`]).toBe(0);
   });
 
+  it("clears a stale per-tree parent override when reparenting a single-tree item", () => {
+    // Reproduce the Agilefant bug: item has global parentId=A, but a per-tree
+    // override for treeId=bt-1 points at B. Reparenting to A in that tree must
+    // clear the override so the effective parent updates.
+    const parentAId = `${ORG}::wi-parent-a`;
+    const parentBId = `${ORG}::wi-parent-b`;
+    const targetId = `${ORG}::wi-target`;
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      },
+      workItems: {
+        [parentAId]: {
+          id: parentAId, title: "Parent A", status: "not_started" as const,
+          parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
+        },
+        [parentBId]: {
+          id: parentBId, title: "Parent B", status: "not_started" as const,
+          parentId: null, childrenIds: [targetId], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 1 },
+        },
+        [targetId]: {
+          id: targetId, title: "Target", status: "not_started" as const,
+          parentId: parentAId, // global parent = A
+          parentIds: { [`${ORG}::bt-1`]: parentBId }, // but per-tree override -> B
+          childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+          ranks: { [`${ORG}::bl-1`]: 2 },
+        },
+      },
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+
+    useAppStore.getState().reparentWorkItem(targetId, parentAId, `${ORG}::bt-1`, `${ORG}::bl-1`);
+
+    const moved = useAppStore.getState().workItems[targetId];
+    const a = useAppStore.getState().workItems[parentAId];
+    const b = useAppStore.getState().workItems[parentBId];
+    expect(getEffectiveParentId(moved, `${ORG}::bt-1`)).toBe(parentAId);
+    expect(a.childrenIds).toContain(targetId);
+    expect(b.childrenIds).not.toContain(targetId);
+  });
+
+
   it("strategy=move-to-tree: updates backlogAssignments to only contain the new tree", () => {
     // Set up two trees with one item in each
     useAppStore.setState({
