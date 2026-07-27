@@ -19,6 +19,8 @@ const BREADCRUMB_MAX_WIDTH = "max-w-[120px]";
 interface MoveToParentDialogProps {
   /** The IDs of items that will be reparented. */
   workItemIds: string[];
+  /** The tree from which the reparent operation was triggered. */
+  treeId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -30,7 +32,7 @@ interface PendingCrossTreeParent {
   treeName: string;
 }
 
-export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToParentDialogProps) {
+export function MoveToParentDialog({ workItemIds, treeId: currentTreeId, open, onOpenChange }: MoveToParentDialogProps) {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
@@ -81,9 +83,10 @@ export function MoveToParentDialog({ workItemIds, open, onOpenChange }: MoveToPa
         return true;
       })
       .map((wi) => {
-        // Pick the first tree assignment for context.
+        // Pick the tree that matches the user's currently selected tree,
+        // falling back to the first assignment when no tree context is provided.
         const treeIds = Object.keys(wi.backlogAssignments);
-        const treeId = treeIds[0] ?? null;
+        const treeId = currentTreeId && treeIds.includes(currentTreeId) ? currentTreeId : (treeIds[0] ?? null);
         const backlogId = treeId ? wi.backlogAssignments[treeId] : null;
         const tree = treeId ? backlogTrees[treeId] : null;
 

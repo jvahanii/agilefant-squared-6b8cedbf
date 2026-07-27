@@ -1772,6 +1772,7 @@ function BoardCard({
       />
       <MoveToParentDialog
         workItemIds={[item.id]}
+        treeId={treeId}
         open={showMoveToParentDialog}
         onOpenChange={setShowMoveToParentDialog}
       />

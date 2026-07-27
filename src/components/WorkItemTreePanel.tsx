@@ -1550,6 +1550,7 @@ function WorkItemNodeContent({
       />
       <MoveToParentDialog
         workItemIds={moveToParentItemIds}
+        treeId={treeId}
         open={showMoveToParentDialog}
         onOpenChange={setShowMoveToParentDialog}
       />
@@ -2048,6 +2049,7 @@ function SearchResultItem({
       />
       <MoveToParentDialog
         workItemIds={[item.id]}
+        treeId={treeId}
         open={showMoveToParentDialog}
         onOpenChange={setShowMoveToParentDialog}
       />
