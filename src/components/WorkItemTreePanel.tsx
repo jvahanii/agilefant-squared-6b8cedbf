@@ -856,20 +856,23 @@ function WorkItemNodeContent({
           )}
 
           {labelsVisible && itemLabels.length > 0 && (
-            <LabelPicker
-              entityType="work_item"
-              entityId={workItemId}
-              entityIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : undefined}
-            >
-              <span
-                className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer shrink-0 mt-0.5"
-                title="Labels"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Tag className="w-3 h-3" />
-                <span className="text-[10px] font-medium tabular-nums leading-none">{itemLabels.length}</span>
-              </span>
-            </LabelPicker>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded shrink-0 mt-0.5"
+                    title="Labels"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Tag className="w-3 h-3" />
+                    <span className="text-[10px] font-medium tabular-nums leading-none">{itemLabels.length}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {itemLabels.map((l) => l.name).join(", ")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           {parentItemChain.length > 0 && (
