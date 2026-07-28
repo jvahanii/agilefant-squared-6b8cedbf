@@ -1246,7 +1246,6 @@ function WorkItemNodeContent({
                       value={ctxLabelSearchQuery}
                       onChange={(e) => setCtxLabelSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
-                      autoFocus
                     />
                     {ctxLabelSearchQuery && (
                       <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setCtxLabelSearchQuery(""); }}>
@@ -1985,7 +1984,6 @@ function SearchResultItem({
                         value={srLabelSearch}
                         onChange={(e) => setSrLabelSearch(e.target.value)}
                         onKeyDown={(e) => e.stopPropagation()}
-                        autoFocus
                       />
                       {srLabelSearch && (
                         <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSrLabelSearch(""); }}>
