@@ -1978,7 +1978,10 @@ function SearchResultItem({
             {labelsVisible && orgLabels.length > 0 && (
               <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-                <ContextMenuSubContent className="max-h-60 overflow-y-auto">
+                <ContextMenuSubContent
+                  className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
+                  collisionPadding={8}
+                >
                   <div className="px-2 pt-1 pb-0.5">
                     <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
                       <Search className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -2003,7 +2006,7 @@ function SearchResultItem({
                       return (
                         <ContextMenuCheckboxItem
                           key={label.id}
-                          className="text-xs"
+                          className="text-xs pr-1"
                           checked={isAssigned}
                           onCheckedChange={(checked) => {
                             if (checked) {
@@ -2014,11 +2017,12 @@ function SearchResultItem({
                           }}
                         >
                           <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                          {label.name}
+                          <span className="flex-1 min-w-0 truncate">{label.name}</span>
                           <button
-                            className="ml-auto text-muted-foreground/40 hover:text-destructive shrink-0"
+                            className="ml-1 shrink-0 p-1 -my-1 rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSrDeleteLabelId(label.id); }}
                             title={`Delete label "${label.name}"`}
+                            aria-label={`Delete label ${label.name}`}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
