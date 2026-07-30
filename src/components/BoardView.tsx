@@ -1631,7 +1631,7 @@ function BoardCard({
           {labelsVisible && orgLabels.length > 0 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-              <ContextMenuSubContent>
+              <ContextMenuSubContent className="w-56 max-w-[calc(100vw-1.5rem)]" collisionPadding={8}>
                 {orgLabels.map((label) => {
                   const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
                   return (
@@ -1648,7 +1648,7 @@ function BoardCard({
                       }}
                     >
                       <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                      {label.name}
+                      <span className="flex-1 min-w-0 truncate">{label.name}</span>
                     </ContextMenuCheckboxItem>
                   );
                 })}
