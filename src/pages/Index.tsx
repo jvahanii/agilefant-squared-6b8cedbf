@@ -6,6 +6,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { useResyncOnWake } from '@/hooks/useResyncOnWake';
 import { usePasteImageOnSelected } from '@/hooks/usePasteImageOnSelected';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -151,6 +152,7 @@ const Index = () => {
 
   useRespawnCheck();
   useRealtimeSync();
+  useResyncOnWake();
   usePasteImageOnSelected();
 
   if (isLoading) {
