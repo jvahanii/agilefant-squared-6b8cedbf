@@ -449,8 +449,8 @@ export function useRealtimeSync() {
           if (!accessible[backlogId]) return;
           applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
-      )
-      .subscribe();
+      );
+    subscribeWithHealth(statusChannel);
     channels.push(statusChannel);
 
     // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
