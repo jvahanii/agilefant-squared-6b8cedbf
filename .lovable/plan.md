@@ -1,54 +1,37 @@
-# Cross-device sync without refresh
+## Short answer
 
-## What's happening today
+Yes — very likely. The sync work itself is cheap, but the *catch-up resync* it added is not: `requestResync` in `src/lib/realtimeHealth.ts` re-fetches the entire dataset (`loadFromSupabase`) plus ~8 sibling stores (teams, work-item teams, labels, statuses, snoozes, settings, time entries, financials, targets). On a big org that's a burst of large queries followed by wholesale store replacement, which re-renders the long lists and boards.
 
-The app does subscribe to Supabase Realtime (`src/hooks/useRealtimeSync.ts`) for work items, backlogs, trees, ranks, time entries, labels, statuses, financials and settings — and the relevant tables are in the `supabase_realtime` publication (verified). So sync *does* work while the socket is healthy.
+What confirms it from the code:
 
-What's missing is recovery. Verified in the code:
-
-- No channel-status handling anywhere: `.subscribe()` is called with no callback, so `CHANNEL_ERROR`, `TIMED_OUT` and `CLOSED` are never observed and never retried.
-- No `visibilitychange` / `focus` / `online` handler that resyncs data. The two existing `visibilitychange` handlers (`src/App.tsx`, `src/pages/Index.tsx`) only fire when the store is *empty* or still loading — a laptop with data already loaded does nothing on wake.
-
-A laptop tab that has been idle (screen sleep, backgrounded, Wi-Fi blip, laptop lid closed) loses its WebSocket. Any change made on the phone during that window is broadcast to nobody, and on wake there's no re-subscribe and no catch-up fetch — so the stale state persists until a manual refresh. This matches the reported symptom exactly.
-
-Two other gaps found while auditing:
-
-- `teams` and `work_item_team_assignments` are subscribed to in the client but are **not** in the realtime publication, so team changes never propagate live.
-- `work_item_board_ranks`, `time_entries`, `teams` and `work_item_team_assignments` have `REPLICA IDENTITY DEFAULT`, so DELETE events carry only the primary key. Board-rank and time-entry deletions may not be applied correctly on other devices.
+- `markChannelStatus` keeps **one global** healthy flag shared by the own-org channel and every partner-org channel. Any single channel reporting `CLOSED` / `CHANNEL_ERROR` flips it unhealthy, and then the *next* `SUBSCRIBED` of *any* channel reports "recovered" and fires a full resync.
+- `useRealtimeSync`'s effect is keyed on `activeOrgId` + `treeIdsKey`, so whenever the accessible tree set changes the channels are torn down and rebuilt — the teardown/rebuild cycle is exactly the pattern that produces `CLOSED` → `SUBSCRIBED` and therefore a spurious full resync on top of the load that is already running.
+- `useResyncOnWake`'s `focus` handler resyncs whenever `isSocketConnected()` reads false, with no stale-window and no debounce of its own (the 5 s coalescing window in `requestResync` is short relative to how long a full reload takes), so ordinary tab focus can queue extra full reloads.
 
 ## The fix
 
-### 1. Realtime connection health module (new `src/lib/realtimeHealth.ts`)
-- Track a single "realtime healthy" flag plus a `lastResyncAt` timestamp.
-- Expose `markChannelStatus(status)` and `requestResync(reason)`.
-- `requestResync` calls `useAppStore.getState().loadFromSupabase()` (plus the sibling store loaders: time entries, teams, labels, statuses, financials, targets, snoozes) behind a debounce (~5 s) so multiple triggers coalesce into one fetch.
+### 1. Don't treat teardown as an outage (`src/lib/realtimeHealth.ts`, `src/hooks/useRealtimeSync.ts`)
+- Track health **per channel** (keyed by channel topic) instead of one module-level boolean; "recovered" means *that* channel went unhealthy and came back.
+- Mark a channel as intentionally closed before `removeChannel` in the effect cleanup so its `CLOSED` status never counts as an outage.
+- Suppress "recovered" resyncs for a channel that has never successfully subscribed yet (first join after mount is not a recovery).
 
-### 2. Observe channel status in `useRealtimeSync.ts`
-- Pass a status callback to every `.subscribe()`.
-- On `SUBSCRIBED` after a prior failure → `requestResync('resubscribed')` to catch up on missed events.
-- On `CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED` → mark unhealthy and schedule a re-subscribe with backoff (remove + recreate the channel; the effect body is already factored so channels can be rebuilt).
+### 2. Make resync cheap and rare
+- Raise the coalescing window (5 s → ~30 s) and add a hard floor between two resyncs, so bursts of channel churn cannot chain full reloads.
+- Skip a resync entirely when a full app load is already in flight (`appDataLoadInFlight` / the background-refresh promise in `appStore`) — today a resync can pile on top of the initial load.
+- Skip while the tab is hidden; defer to the next visibility change instead.
 
-### 3. Resync on wake (new `src/hooks/useResyncOnWake.ts`, mounted in `src/pages/Index.tsx`)
-Triggers `requestResync` when:
-- `visibilitychange` → visible and the tab was hidden longer than ~20 s;
-- `window` `focus` after a hidden period;
-- `online` event after `offline`.
-Also calls `supabase.realtime.connect()` if the socket is not open, so channels rejoin immediately rather than waiting for the next heartbeat.
+### 3. Narrow what a resync actually re-fetches
+- Default resync = work items/backlogs/trees only (`loadFromSupabase`). The satellite stores (labels, statuses, financials, targets, teams, snoozes) change far less often and are the bulk of the extra request volume; refresh those only on a *long* outage (e.g. offline > 2 min or socket down > 2 min), not on every focus.
 
-This keeps the existing loading-state retry logic in `App.tsx` / `Index.tsx` untouched; the new hook handles the "data present but possibly stale" case they deliberately skip.
-
-### 4. Heartbeat safety net
-A low-frequency interval (e.g. every 60 s, only while the tab is visible) checks whether the realtime socket is connected; if not, mark unhealthy, reconnect and resync. This covers silent socket death where no browser event fires.
-
-### 5. Database migration (fixes the remaining gaps)
-- `ALTER PUBLICATION supabase_realtime ADD TABLE public.teams, public.work_item_team_assignments;`
-- `ALTER TABLE ... REPLICA IDENTITY FULL` for `work_item_board_ranks`, `time_entries`, `teams`, `work_item_team_assignments` so DELETE payloads include the columns the client handlers read.
+### 4. Tighten the wake triggers (`src/hooks/useResyncOnWake.ts`)
+- `focus` should only resync when the tab was actually hidden past the stale window, or when the socket has been observed closed for more than one heartbeat — not on the first `isSocketConnected()` false reading (which is also true briefly during normal reconnect).
+- Keep the 60 s heartbeat, but have it reconnect the socket first and only resync if the socket is still down on the following tick.
 
 ## Verification
 
-- Add a unit test for the debounce/coalescing behaviour of `requestResync`.
-- Manual check: open the app in two browser contexts, background one for a minute, change a title in the other, bring the first back → the change appears without refresh.
+- Extend `src/test/realtimeHealth.test.ts`: per-channel recovery (channel A closing must not make channel B's `SUBSCRIBED` a recovery), intentional-close suppression, no resync while a load is in flight, and the longer debounce.
+- Manual: with the network tab open, switch org / expand a shared tree and confirm exactly one dataset fetch (no second resync burst); background the tab for 30 s and confirm one catch-up fetch on return.
 
 ## Technical notes
 
-Reconnect uses capped exponential backoff (1s → 30s) and never fires while the tab is hidden, to avoid battery drain and request storms. The resync path reuses the existing paginated loaders, so no new query patterns or RLS surface is introduced.
+No database or schema changes — the migration from the sync work (publication membership, `REPLICA IDENTITY FULL`) stays as-is; it only affects payload contents, not client cost. All changes are in `realtimeHealth.ts`, `useRealtimeSync.ts`, `useResyncOnWake.ts`, plus a small exported "is a load in flight" accessor on `appStore`.
