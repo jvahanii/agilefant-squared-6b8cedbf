@@ -152,6 +152,7 @@ const Index = () => {
 
   useRespawnCheck();
   useRealtimeSync();
+  useResyncOnWake();
   usePasteImageOnSelected();
 
   if (isLoading) {
