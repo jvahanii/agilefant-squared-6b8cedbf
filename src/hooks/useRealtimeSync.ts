@@ -432,7 +432,7 @@ export function useRealtimeSync() {
           applyRealtimeSettings(payload as any);
         },
       );
-    addLabelHandlers(ownChannel, activeOrgId).subscribe();
+    subscribeWithHealth(addLabelHandlers(ownChannel, activeOrgId));
     channels.push(ownChannel);
 
     // Backlog statuses: a single channel; RLS restricts to accessible backlogs.
