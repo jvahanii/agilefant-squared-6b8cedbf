@@ -10,6 +10,11 @@ import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
+import {
+  ensureSocketConnected,
+  markChannelStatus,
+  requestResync,
+} from '@/lib/realtimeHealth';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -72,6 +77,43 @@ export function useRealtimeSync() {
     // regardless of whether they were created synchronously or asynchronously.
     const channels: ReturnType<typeof supabase.channel>[] = [];
     let destroyed = false;
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
+
+    /**
+     * Subscribe a channel while observing its status so a dropped socket is
+     * detected, retried with capped backoff, and followed by a catch-up fetch
+     * of anything broadcast while we were disconnected.
+     */
+    function subscribeWithHealth(channel: ReturnType<typeof supabase.channel>) {
+      let attempt = 0;
+      const attach = () => {
+        if (destroyed) return;
+        channel.subscribe((status) => {
+          if (destroyed) return;
+          const recovered = markChannelStatus(status);
+          if (status === 'SUBSCRIBED') {
+            attempt = 0;
+            if (recovered) requestResync('resubscribed');
+            return;
+          }
+          if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+          // Never retry while hidden — avoids battery drain and request storms.
+          if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+          const delay = Math.min(30_000, 1000 * 2 ** attempt);
+          attempt += 1;
+          const timer = setTimeout(() => {
+            retryTimers.delete(timer);
+            if (destroyed) return;
+            ensureSocketConnected();
+            attach();
+          }, delay);
+          retryTimers.add(timer);
+        });
+      };
+      attach();
+      return channel;
+    }
+
 
     /**
      * Attaches `labels` and `label_assignments` Postgres CDC listeners to the
@@ -282,7 +324,7 @@ export function useRealtimeSync() {
             applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         );
-      addLabelHandlers(channel, orgId).subscribe();
+      subscribeWithHealth(addLabelHandlers(channel, orgId));
       channels.push(channel);
     }
 
@@ -432,7 +474,7 @@ export function useRealtimeSync() {
           applyRealtimeSettings(payload as any);
         },
       );
-    addLabelHandlers(ownChannel, activeOrgId).subscribe();
+    subscribeWithHealth(addLabelHandlers(ownChannel, activeOrgId));
     channels.push(ownChannel);
 
     // Backlog statuses: a single channel; RLS restricts to accessible backlogs.
@@ -449,8 +491,8 @@ export function useRealtimeSync() {
           if (!accessible[backlogId]) return;
           applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
-      )
-      .subscribe();
+      );
+    subscribeWithHealth(statusChannel);
     channels.push(statusChannel);
 
     // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
@@ -467,8 +509,8 @@ export function useRealtimeSync() {
           if (!accessible.has(treeId)) return;
           applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
-      )
-      .subscribe();
+      );
+    subscribeWithHealth(targetsChannel);
     channels.push(targetsChannel);
 
 
@@ -492,8 +534,8 @@ export function useRealtimeSync() {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
-        )
-        .subscribe();
+        );
+      subscribeWithHealth(snoozeChannel);
       channels.push(snoozeChannel);
     })();
 
@@ -533,6 +575,8 @@ export function useRealtimeSync() {
 
     return () => {
       destroyed = true;
+      for (const timer of retryTimers) clearTimeout(timer);
+      retryTimers.clear();
       for (const ch of channels) supabase.removeChannel(ch);
     };
     // applyRealtime* actions are stable Zustand references; omitting them is intentional.
