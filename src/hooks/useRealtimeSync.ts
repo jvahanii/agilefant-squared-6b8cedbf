@@ -492,7 +492,6 @@ export function useRealtimeSync() {
             const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
             applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
-        )
         );
       subscribeWithHealth(snoozeChannel);
       channels.push(snoozeChannel);
