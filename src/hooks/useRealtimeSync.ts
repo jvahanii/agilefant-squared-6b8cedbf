@@ -10,6 +10,11 @@ import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
+import {
+  ensureSocketConnected,
+  markChannelStatus,
+  requestResync,
+} from '@/lib/realtimeHealth';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
