@@ -493,7 +493,8 @@ export function useRealtimeSync() {
             applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         )
-        .subscribe();
+        );
+      subscribeWithHealth(snoozeChannel);
       channels.push(snoozeChannel);
     })();
 
