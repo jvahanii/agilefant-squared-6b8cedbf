@@ -78,6 +78,26 @@ const LabelFilterContext = createContext<Set<string> | null>(null);
  */
 const RunningNumberContext = createContext<Map<string, number> | null>(null);
 
+/** Shared data computed once per panel render — avoids per-row recomputation. */
+interface SharedData {
+  orgLabels: Label[];
+  teams: ReturnType<typeof useTeamStore.getState>["teams"];
+  labelsVisible: boolean;
+  labelsMap: ReturnType<typeof useLabelsStore.getState>["labels"];
+  byEntity: ReturnType<typeof useLabelsStore.getState>["byEntity"];
+  assignLabel: ReturnType<typeof useLabelsStore.getState>["assignLabel"];
+  unassignLabel: ReturnType<typeof useLabelsStore.getState>["unassignLabel"];
+  createLabel: ReturnType<typeof useLabelsStore.getState>["createLabel"];
+  deleteLabel: ReturnType<typeof useLabelsStore.getState>["deleteLabel"];
+  assignTeam: ReturnType<typeof useTeamStore.getState>["assignTeamToWorkItem"];
+  unassignTeam: ReturnType<typeof useTeamStore.getState>["unassignTeamFromWorkItem"];
+  activeOrgId: string | null;
+  timeLoggingVisible: boolean;
+  savingsIncomeVisible: boolean;
+  burnupsVisible: boolean;
+}
+const SharedDataContext = createContext<SharedData | null>(null);
+
 // Minimum pointer movement (in px) required before treating an interaction as a
 // drag rather than a click.  Matches PointerSensor's activationConstraint.distance.
 const DRAG_THRESHOLD_PX = 8;
@@ -227,6 +247,7 @@ function WorkItemNodeContent({
 }: WorkItemNodeProps) {
   const isChildBacklog = backlogId !== selectedBacklogId;
   const runningNumber = useContext(RunningNumberContext)?.get(workItemId);
+  const shared = useContext(SharedDataContext)!;
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -248,25 +269,24 @@ function WorkItemNodeContent({
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const isMobile = useIsMobile();
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeOrgId = shared.activeOrgId;
   const pointsVisible = usePointsVisibleForTree(treeId);
-  const burnupsVisible = useOrgSettingsStore((s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false);
-  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
-  const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
+  const labelsVisible = shared.labelsVisible;
+  const timeLoggingVisible = shared.timeLoggingVisible;
+  const savingsIncomeVisible = shared.savingsIncomeVisible;
+  const burnupsVisible = shared.burnupsVisible;
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
-  // Cached subtree total; scalar output means this row only re-renders when
-  // its own subtree total changes, not on every unrelated time-entry mutation.
   const itemTotalMinutesCached = useWorkItemTotalMinutes(workItemId);
   const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
 
-  // Labels
-  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
-  const labelsMap = useLabelsStore((s) => s.labels);
-  const byEntity = useLabelsStore((s) => s.byEntity);
-  const assignLabel = useLabelsStore((s) => s.assignLabel);
-  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
-  const createLabel = useLabelsStore((s) => s.createLabel);
-  const deleteLabel = useLabelsStore((s) => s.deleteLabel);
+  // Labels — from shared context (computed once per panel)
+  const labelsMap = shared.labelsMap;
+  const byEntity = shared.byEntity;
+  const assignLabel = shared.assignLabel;
+  const unassignLabel = shared.unassignLabel;
+  const createLabel = shared.createLabel;
+  const deleteLabel = shared.deleteLabel;
+  const orgLabels = shared.orgLabels;
   const itemLabels = useMemo(() => {
     if (!labelsVisible) return [];
     const labelIds = byEntity[`work_item:${workItemId}`] ?? [];
@@ -275,23 +295,12 @@ function WorkItemNodeContent({
       .filter(Boolean)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [labelsVisible, byEntity, labelsMap, workItemId]);
-  const orgLabels = useMemo(
-    () =>
-      Object.values(labelsMap)
-        .filter((l) => l.organizationId === activeOrgId)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [labelsMap, activeOrgId],
-  );
-  const assignedIds = useMemo(
-    () => new Set(byEntity[`work_item:${workItemId}`] ?? []),
-    [byEntity, workItemId],
-  );
 
-  // Teams
-  const teams = useTeamStore((s) => s.teams);
+  // Teams — from shared context
+  const teams = shared.teams;
   const workItemTeams = useTeamStore((s) => s.workItemTeams[workItemId] ?? EMPTY_ARRAY);
-  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
-  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
+  const assignTeam = shared.assignTeam;
+  const unassignTeam = shared.unassignTeam;
 
   // Per-backlog effective statuses (walks up parent chain until a materialized
   // set is found; falls back to defaults). Board columns and status list are
@@ -2791,10 +2800,45 @@ export function WorkItemTreePanel() {
   const isSearchMode = searchQuery.trim().length >= 3;
   const isLabelFilterMode = filterLabelIds.size > 0;
 
+  // Shared data computed once per panel render — avoids per-row store subscriptions.
+  const savingsIncomeVisible2 = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
+  const burnupsVisible2 = useOrgSettingsStore((s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false);
+  const teamsStore = useTeamStore((s) => s.teams);
+  const labelsStoreMap = useLabelsStore((s) => s.labels);
+  const labelsStoreByEntity = useLabelsStore((s) => s.byEntity);
+  const assignLabelFn = useLabelsStore((s) => s.assignLabel);
+  const unassignLabelFn = useLabelsStore((s) => s.unassignLabel);
+  const createLabelFn = useLabelsStore((s) => s.createLabel);
+  const deleteLabelFn = useLabelsStore((s) => s.deleteLabel);
+  const assignTeamFn = useTeamStore((s) => s.assignTeamToWorkItem);
+  const unassignTeamFn = useTeamStore((s) => s.unassignTeamFromWorkItem);
+  const orgLabelsShared = useMemo(
+    () => Object.values(labelsStoreMap).filter((l) => l.organizationId === activeOrgId).sort((a, b) => a.name.localeCompare(b.name)),
+    [labelsStoreMap, activeOrgId],
+  );
+  const sharedData: SharedData = {
+    orgLabels: orgLabelsShared,
+    teams: teamsStore,
+    labelsVisible,
+    labelsMap: labelsStoreMap,
+    byEntity: labelsStoreByEntity,
+    assignLabel: assignLabelFn,
+    unassignLabel: unassignLabelFn,
+    createLabel: createLabelFn,
+    deleteLabel: deleteLabelFn,
+    assignTeam: assignTeamFn,
+    unassignTeam: unassignTeamFn,
+    activeOrgId,
+    timeLoggingVisible,
+    savingsIncomeVisible: savingsIncomeVisible2,
+    burnupsVisible: burnupsVisible2,
+  };
+
   return (
     // In search/label-filter mode the normal tree is replaced by a flat results list,
     // so pass null (no tree-level filtering) to avoid hiding nodes in the hidden tree.
     // Null already means "no filter active" per the LabelFilterContext contract (line 57).
+    <SharedDataContext.Provider value={sharedData}>
     <LabelFilterContext.Provider value={isSearchMode || isLabelFilterMode ? null : visibleFilterSet}>
     <RunningNumberContext.Provider value={isSearchMode || isLabelFilterMode ? null : runningNumbers}>
       <div
@@ -3341,5 +3385,6 @@ export function WorkItemTreePanel() {
       </div>
     </RunningNumberContext.Provider>
     </LabelFilterContext.Provider>
+    </SharedDataContext.Provider>
   );
 }
