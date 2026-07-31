@@ -282,7 +282,7 @@ export function useRealtimeSync() {
             applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         );
-      addLabelHandlers(channel, orgId).subscribe();
+      subscribeWithHealth(addLabelHandlers(channel, orgId));
       channels.push(channel);
     }
 
