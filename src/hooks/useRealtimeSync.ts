@@ -12,8 +12,12 @@ import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
 import {
   ensureSocketConnected,
+  forgetChannel,
+  getOutageDurationMs,
+  markChannelIntentionalClose,
   markChannelStatus,
   requestResync,
+  FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
 
 /**

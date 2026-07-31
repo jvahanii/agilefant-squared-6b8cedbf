@@ -624,6 +624,15 @@ let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null
 let appDataBackgroundRefreshInFlight: { orgId: string; promise: Promise<void> } | null = null;
 let lastAppliedCachedSnapshotKey: string | null = null;
 
+/**
+ * True while a full dataset load (or its stale-while-revalidate background
+ * refresh) is already running.  Used by the realtime catch-up logic to avoid
+ * piling a redundant refetch on top of an in-progress load.
+ */
+export function isAppDataLoadInFlight(): boolean {
+  return appDataLoadInFlight !== null || appDataBackgroundRefreshInFlight !== null;
+}
+
 type PendingWorkItemUpsert = {
   item: WorkItem;
   organizationId: string;
