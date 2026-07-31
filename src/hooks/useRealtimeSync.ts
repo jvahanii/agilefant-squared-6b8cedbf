@@ -12,8 +12,12 @@ import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
 import {
   ensureSocketConnected,
+  forgetChannel,
+  getOutageDurationMs,
+  markChannelIntentionalClose,
   markChannelStatus,
   requestResync,
+  FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
 
 /**
@@ -86,14 +90,20 @@ export function useRealtimeSync() {
      */
     function subscribeWithHealth(channel: ReturnType<typeof supabase.channel>) {
       let attempt = 0;
+      const topic = channel.topic;
       const attach = () => {
         if (destroyed) return;
         channel.subscribe((status) => {
           if (destroyed) return;
-          const recovered = markChannelStatus(status);
+          const outage = getOutageDurationMs();
+          const recovered = markChannelStatus(topic, status);
           if (status === 'SUBSCRIBED') {
             attempt = 0;
-            if (recovered) requestResync('resubscribed');
+            // Only a channel that genuinely dropped needs a catch-up; a long
+            // outage additionally refreshes the slow-moving satellite stores.
+            if (recovered) {
+              requestResync('resubscribed', { full: outage >= FULL_RESYNC_OUTAGE_MS });
+            }
             return;
           }
           if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
@@ -577,7 +587,13 @@ export function useRealtimeSync() {
       destroyed = true;
       for (const timer of retryTimers) clearTimeout(timer);
       retryTimers.clear();
-      for (const ch of channels) supabase.removeChannel(ch);
+      for (const ch of channels) {
+        // Flag the teardown so the resulting CLOSED status isn't treated as an
+        // outage (which used to trigger a spurious full dataset refetch).
+        markChannelIntentionalClose(ch.topic);
+        supabase.removeChannel(ch);
+        forgetChannel(ch.topic);
+      }
     };
     // applyRealtime* actions are stable Zustand references; omitting them is intentional.
     // treeIdsKey captures changes to accessible tree IDs so the effect re-subscribes
