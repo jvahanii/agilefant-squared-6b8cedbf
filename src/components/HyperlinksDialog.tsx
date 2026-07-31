@@ -34,6 +34,7 @@ export function HyperlinksDialog({
   onOpenChange,
 }: HyperlinksDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
+  const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const hyperlinksRaw = useAppStore((s) => s.hyperlinks[workItemId]);
   const hyperlinks = useMemo(() => hyperlinksRaw ?? [], [hyperlinksRaw]);
   const addHyperlink = useAppStore((s) => s.addHyperlink);
@@ -46,6 +47,10 @@ export function HyperlinksDialog({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editAltText, setEditAltText] = useState("");
+  // Inline title editing
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const editUrlRef = useRef<HTMLInputElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
@@ -126,9 +131,35 @@ export function HyperlinksDialog({
         <DialogHeader>
           <DialogTitle>Hyperlinks</DialogTitle>
         </DialogHeader>
-        <div className="text-sm text-muted-foreground mb-4 truncate" title={item.title}>
-          {item.title}
-        </div>
+        {isEditingTitle ? (
+          <div className="flex items-center gap-2 mb-4">
+            <Input
+              ref={titleInputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="h-8 text-sm flex-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const trimmed = editTitle.trim();
+                  if (trimmed && trimmed !== item.title) renameWorkItem(workItemId, trimmed);
+                  setIsEditingTitle(false);
+                }
+                if (e.key === "Escape") setIsEditingTitle(false);
+              }}
+            />
+            <Button variant="ghost" size="sm" onClick={() => setIsEditingTitle(false)}>
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="text-sm text-muted-foreground mb-4 truncate cursor-text hover:text-foreground transition-colors"
+            title={`${item.title} (double-click to edit)`}
+            onDoubleClick={() => { setEditTitle(item.title); setIsEditingTitle(true); }}
+          >
+            {item.title}
+          </div>
+        )}
 
         {/* Existing hyperlinks */}
         <div className="space-y-2 max-h-64 overflow-y-auto">

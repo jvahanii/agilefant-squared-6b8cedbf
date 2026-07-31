@@ -696,11 +696,11 @@ function buildSections(): Section[] {
               },
               {
                 action: "Create a label",
-                how: "Go to Settings → Labels, enter a name, pick a color, and click Add.",
+                how: "Go to Settings → Labels and click Add, or right-click any work item → Labels → New label to create one on the fly.",
               },
               {
                 action: "Edit / delete a label",
-                how: "In Settings → Labels, click the pencil icon to rename or recolor a label, or the trash icon to remove it.",
+                how: "In Settings → Labels, click the pencil icon to rename or recolor a label, or the trash icon to remove it. You can also delete a label from the right-click context menu → Labels by clicking the trash icon next to any label.",
               },
               {
                 action: "Assign a label",
