@@ -575,6 +575,8 @@ export function useRealtimeSync() {
 
     return () => {
       destroyed = true;
+      for (const timer of retryTimers) clearTimeout(timer);
+      retryTimers.clear();
       for (const ch of channels) supabase.removeChannel(ch);
     };
     // applyRealtime* actions are stable Zustand references; omitting them is intentional.
