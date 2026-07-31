@@ -468,7 +468,8 @@ export function useRealtimeSync() {
           applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       )
-      .subscribe();
+      );
+    subscribeWithHealth(targetsChannel);
     channels.push(targetsChannel);
 
 
