@@ -72,6 +72,43 @@ export function useRealtimeSync() {
     // regardless of whether they were created synchronously or asynchronously.
     const channels: ReturnType<typeof supabase.channel>[] = [];
     let destroyed = false;
+    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
+
+    /**
+     * Subscribe a channel while observing its status so a dropped socket is
+     * detected, retried with capped backoff, and followed by a catch-up fetch
+     * of anything broadcast while we were disconnected.
+     */
+    function subscribeWithHealth(channel: ReturnType<typeof supabase.channel>) {
+      let attempt = 0;
+      const attach = () => {
+        if (destroyed) return;
+        channel.subscribe((status) => {
+          if (destroyed) return;
+          const recovered = markChannelStatus(status);
+          if (status === 'SUBSCRIBED') {
+            attempt = 0;
+            if (recovered) requestResync('resubscribed');
+            return;
+          }
+          if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+          // Never retry while hidden — avoids battery drain and request storms.
+          if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+          const delay = Math.min(30_000, 1000 * 2 ** attempt);
+          attempt += 1;
+          const timer = setTimeout(() => {
+            retryTimers.delete(timer);
+            if (destroyed) return;
+            ensureSocketConnected();
+            attach();
+          }, delay);
+          retryTimers.add(timer);
+        });
+      };
+      attach();
+      return channel;
+    }
+
 
     /**
      * Attaches `labels` and `label_assignments` Postgres CDC listeners to the
