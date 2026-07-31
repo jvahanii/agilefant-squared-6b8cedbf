@@ -467,7 +467,6 @@ export function useRealtimeSync() {
           if (!accessible.has(treeId)) return;
           applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
-      )
       );
     subscribeWithHealth(targetsChannel);
     channels.push(targetsChannel);
