@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExternalLink, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { isAttachmentUrl, resolveOpenableHref } from "@/lib/attachmentUrl";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { focusForEdit } from "@/lib/focusEdit";
 
 const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
 const safeHref = (url: string) => (isValidUrl(url) ? url : "#");
