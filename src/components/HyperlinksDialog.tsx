@@ -43,6 +43,7 @@ export function HyperlinksDialog({
   const updateHyperlink = useAppStore((s) => s.updateHyperlink);
   const removeHyperlink = useAppStore((s) => s.removeHyperlink);
 
+  const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
   const [newUrl, setNewUrl] = useState("");
   const [newAltText, setNewAltText] = useState("");
@@ -73,6 +74,12 @@ export function HyperlinksDialog({
     }
   }, [editingId]);
 
+  useEffect(() => {
+    if (isEditingTitle) {
+      setTimeout(() => focusForEdit(titleInputRef.current, isMobile), 0);
+    }
+  }, [isEditingTitle, isMobile]);
+
   // Reset form when dialog closes; set initial mode when it opens.
   useEffect(() => {
     if (!open) {
@@ -80,8 +87,10 @@ export function HyperlinksDialog({
       setNewUrl("");
       setNewAltText("");
       setEditingId(null);
+      setIsEditingTitle(false);
       return;
     }
+    setIsEditingTitle(false);
     const hasLinks = hyperlinksRef.current.length > 0;
     setIsAdding(!hasLinks);
     if (hasLinks) {
@@ -91,6 +100,18 @@ export function HyperlinksDialog({
     // Intentionally only runs when `open` changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const commitTitle = () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== item?.title) renameWorkItem(workItemId, trimmed);
+    setIsEditingTitle(false);
+  };
+
+  const startTitleEdit = () => {
+    setEditTitle(item?.title ?? "");
+    setIsEditingTitle(true);
+  };
+
 
   if (!item) return null;
 
