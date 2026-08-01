@@ -163,26 +163,46 @@ export function HyperlinksDialog({
               className="h-8 text-sm flex-1"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  const trimmed = editTitle.trim();
-                  if (trimmed && trimmed !== item.title) renameWorkItem(workItemId, trimmed);
+                  e.preventDefault();
+                  e.stopPropagation();
+                  commitTitle();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsEditingTitle(false);
                 }
-                if (e.key === "Escape") setIsEditingTitle(false);
               }}
             />
-            <Button variant="ghost" size="sm" onClick={() => setIsEditingTitle(false)}>
+            <Button variant="ghost" size="sm" onClick={commitTitle} title="Save">
+              <Check className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setIsEditingTitle(false)} title="Cancel">
               <X className="w-3.5 h-3.5" />
             </Button>
           </div>
         ) : (
-          <div
-            className="text-sm text-muted-foreground mb-4 truncate cursor-text hover:text-foreground transition-colors"
-            title={`${item.title} (double-click to edit)`}
-            onDoubleClick={() => { setEditTitle(item.title); setIsEditingTitle(true); }}
-          >
-            {item.title}
+          <div className="flex items-center gap-1 mb-4">
+            <div
+              className="text-sm text-muted-foreground truncate flex-1 min-w-0 sm:cursor-text sm:hover:text-foreground transition-colors"
+              title={item.title}
+              onDoubleClick={isMobile ? undefined : startTitleEdit}
+            >
+              {item.title}
+            </div>
+            <button
+              type="button"
+              tabIndex={-1}
+              className="w-7 h-7 shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={startTitleEdit}
+              title="Rename item"
+              aria-label="Rename item"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
           </div>
         )}
+
 
         {/* Existing hyperlinks */}
         <div className="space-y-2 max-h-64 overflow-y-auto">
