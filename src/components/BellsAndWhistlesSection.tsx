@@ -68,7 +68,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
 
       <GithubIntegrationsCard />
 
-      <GmailIntegrationsCard />
+      {activeOrg?.organization_slug === "agilefant" && <GmailIntegrationsCard />}
 
       <Card>
         <CardHeader>
