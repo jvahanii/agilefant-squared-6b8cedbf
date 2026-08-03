@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connecting Gmail…</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        color: #3f2a34;
+        background: #fff5f8;
+      }
+      p { font-size: 15px; }
+    </style>
+  </head>
+  <body>
+    <p id="msg">Finishing Gmail connection…</p>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var code = params.get('code');
+        var error = params.get('error') || params.get('error_description');
+        var payload = { source: 'gmail-oauth', code: code, error: error };
+        try {
+          if (window.opener) {
+            window.opener.postMessage(payload, window.location.origin);
+            document.getElementById('msg').textContent = error
+              ? 'Connection failed. You can close this window.'
+              : 'Connected. You can close this window.';
+            setTimeout(function () { window.close(); }, 800);
+          } else {
+            document.getElementById('msg').textContent =
+              'Please return to the app tab to finish connecting.';
+          }
+        } catch (e) {
+          document.getElementById('msg').textContent = 'Could not finish connecting: ' + e.message;
+        }
+      })();
+    </script>
+  </body>
+</html>
