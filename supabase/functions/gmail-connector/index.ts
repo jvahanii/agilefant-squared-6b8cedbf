@@ -39,7 +39,7 @@ async function requireUser(req: Request) {
 async function assertOrgMember(userId: string, orgId: string) {
   const admin = adminClient();
   const { data, error } = await admin
-    .from('organization_members')
+    .from('memberships')
     .select('id')
     .eq('user_id', userId)
     .eq('organization_id', orgId)
