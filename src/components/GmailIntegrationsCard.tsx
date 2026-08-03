@@ -250,7 +250,7 @@ export function GmailIntegrationsCard() {
       setFilterKeyword("");
       setShowImported(false);
       setSelected(
-        Object.fromEntries(sorted.filter((l) => !l.alreadyImported).map((l) => [`${l.messageId}|${l.url}`, true])),
+        Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, true])),
       );
       if (res.links.length === 0) toast({ title: "No links found for that query" });
     } catch (e) {
@@ -472,28 +472,16 @@ export function GmailIntegrationsCard() {
                   </div>
                   <div className="flex items-center justify-between">
                     {(() => {
-                      const newLinks = preview.filter((l) => !l.alreadyImported);
-                      const emailCount = new Set(newLinks.map((l) => l.messageId)).size;
+                      const emailCount = new Set(preview.map((l) => l.messageId)).size;
                       return (
                         <p className="text-xs font-medium text-muted-foreground">
-                          {newLinks.length} new link{newLinks.length === 1 ? "" : "s"} in {emailCount} email{emailCount === 1 ? "" : "s"} — pick what to import
+                          {preview.length} link{preview.length === 1 ? "" : "s"} in {emailCount} email{emailCount === 1 ? "" : "s"} — pick what to import
                         </p>
                       );
                     })()}
-                    {preview.some((l) => l.alreadyImported) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs h-6 px-2"
-                        onClick={() => setShowImported((v) => !v)}
-                      >
-                        {showImported ? "Hide" : "Show"} already imported
-                      </Button>
-                    )}
                   </div>
                   <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                     {preview
-                      .filter((l) => showImported || !l.alreadyImported)
                       .filter((l) => {
                         if (!filterKeyword) return true;
                         const kw = filterKeyword.toLowerCase();
@@ -507,10 +495,9 @@ export function GmailIntegrationsCard() {
                       .map((l) => {
                         const key = `${l.messageId}|${l.url}`;
                         return (
-                          <label key={key} className={`flex items-start gap-2 text-sm${l.alreadyImported ? " opacity-60" : ""}`}>
+                          <label key={key} className="flex items-start gap-2 text-sm">
                             <Checkbox
                               checked={!!selected[key]}
-                              disabled={l.alreadyImported}
                               onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
                               className="mt-0.5"
                             />
@@ -525,11 +512,6 @@ export function GmailIntegrationsCard() {
                                 <span className="block truncate text-xs text-muted-foreground/70">
                                   {new Date(l.date).toLocaleString()}
                                 </span>
-                              )}
-                              {l.alreadyImported && (
-                                <Badge variant="secondary" className="mt-1">
-                                  Already imported
-                                </Badge>
                               )}
                             </span>
                           </label>
