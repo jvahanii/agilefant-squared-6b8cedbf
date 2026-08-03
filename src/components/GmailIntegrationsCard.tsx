@@ -463,12 +463,12 @@ export function GmailIntegrationsCard() {
                             className="mt-0.5"
                           />
                           <span className="min-w-0">
-                            <span className="block truncate font-medium">{l.title}</span>
+                            <span className="block truncate text-xs font-medium">{l.subject}</span>
+                            <span className="block truncate font-medium text-sm">{l.title}</span>
                             <span className="block truncate text-xs text-muted-foreground">
                               <LinkIcon className="w-3 h-3 inline mr-1" />
                               {l.url}
                             </span>
-                            <span className="block truncate text-xs text-muted-foreground">{l.subject}</span>
                             {l.date && (
                               <span className="block truncate text-xs text-muted-foreground/70">
                                 {new Date(l.date).toLocaleString()}
