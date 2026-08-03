@@ -78,6 +78,7 @@ export function GmailIntegrationsCard() {
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
+  const [showImported, setShowImported] = useState(false);
 
   const popupRef = useRef<Window | null>(null);
 
@@ -448,41 +449,55 @@ export function GmailIntegrationsCard() {
 
               {previewFor?.id === q.id && preview.length > 0 && (
                 <div className="border-t pt-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {preview.length} link{preview.length === 1 ? "" : "s"} found — pick what to import
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {preview.filter((l) => !l.alreadyImported).length} new link(s) — pick what to import
+                    </p>
+                    {preview.some((l) => l.alreadyImported) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-6 px-2"
+                        onClick={() => setShowImported((v) => !v)}
+                      >
+                        {showImported ? "Hide" : "Show"} already imported
+                      </Button>
+                    )}
+                  </div>
                   <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                    {preview.map((l) => {
-                      const key = `${l.messageId}|${l.url}`;
-                      return (
-                        <label key={key} className="flex items-start gap-2 text-sm">
-                          <Checkbox
-                            checked={!!selected[key]}
-                            disabled={l.alreadyImported}
-                            onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
-                            className="mt-0.5"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-xs font-medium">{l.subject}</span>
-                            <span className="block truncate font-medium text-sm">{l.title}</span>
-                            <span className="block truncate text-xs text-muted-foreground">
-                              <LinkIcon className="w-3 h-3 inline mr-1" />
-                              {l.url}
-                            </span>
-                            {l.date && (
-                              <span className="block truncate text-xs text-muted-foreground/70">
-                                {new Date(l.date).toLocaleString()}
+                    {preview
+                      .filter((l) => showImported || !l.alreadyImported)
+                      .map((l) => {
+                        const key = `${l.messageId}|${l.url}`;
+                        return (
+                          <label key={key} className={`flex items-start gap-2 text-sm${l.alreadyImported ? " opacity-60" : ""}`}>
+                            <Checkbox
+                              checked={!!selected[key]}
+                              disabled={l.alreadyImported}
+                              onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
+                              className="mt-0.5"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-xs font-medium">{l.subject}</span>
+                              <span className="block truncate font-medium text-sm">{l.title}</span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                <LinkIcon className="w-3 h-3 inline mr-1" />
+                                {l.url}
                               </span>
-                            )}
-                            {l.alreadyImported && (
-                              <Badge variant="secondary" className="mt-1">
-                                Already imported
-                              </Badge>
-                            )}
-                          </span>
-                        </label>
-                      );
-                    })}
+                              {l.date && (
+                                <span className="block truncate text-xs text-muted-foreground/70">
+                                  {new Date(l.date).toLocaleString()}
+                                </span>
+                              )}
+                              {l.alreadyImported && (
+                                <Badge variant="secondary" className="mt-1">
+                                  Already imported
+                                </Badge>
+                              )}
+                            </span>
+                          </label>
+                        );
+                      })}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" onClick={importSelected} disabled={importing}>
