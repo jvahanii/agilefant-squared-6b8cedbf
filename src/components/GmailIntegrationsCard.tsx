@@ -241,9 +241,12 @@ export function GmailIntegrationsCard() {
         query: q.query,
         maxMessages: 25,
       });
-      setPreview(res.links);
+      const sorted = [...res.links].sort(
+        (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+      );
+      setPreview(sorted);
       setSelected(
-        Object.fromEntries(res.links.filter((l) => !l.alreadyImported).map((l) => [`${l.messageId}|${l.url}`, true])),
+        Object.fromEntries(sorted.filter((l) => !l.alreadyImported).map((l) => [`${l.messageId}|${l.url}`, true])),
       );
       if (res.links.length === 0) toast({ title: "No links found for that query" });
     } catch (e) {
