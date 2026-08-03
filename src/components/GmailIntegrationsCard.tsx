@@ -79,6 +79,7 @@ export function GmailIntegrationsCard() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
   const [showImported, setShowImported] = useState(false);
+  const [filterKeyword, setFilterKeyword] = useState("");
 
   const popupRef = useRef<Window | null>(null);
 
@@ -246,6 +247,8 @@ export function GmailIntegrationsCard() {
         (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
       );
       setPreview(sorted);
+      setFilterKeyword("");
+      setShowImported(false);
       setSelected(
         Object.fromEntries(sorted.filter((l) => !l.alreadyImported).map((l) => [`${l.messageId}|${l.url}`, true])),
       );
@@ -449,6 +452,24 @@ export function GmailIntegrationsCard() {
 
               {previewFor?.id === q.id && preview.length > 0 && (
                 <div className="border-t pt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Filter by keyword…"
+                      value={filterKeyword}
+                      onChange={(e) => setFilterKeyword(e.target.value)}
+                      className="h-7 text-xs flex-1"
+                    />
+                    {filterKeyword && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 px-2"
+                        onClick={() => setFilterKeyword("")}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between">
                     {(() => {
                       const newLinks = preview.filter((l) => !l.alreadyImported);
@@ -473,6 +494,16 @@ export function GmailIntegrationsCard() {
                   <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                     {preview
                       .filter((l) => showImported || !l.alreadyImported)
+                      .filter((l) => {
+                        if (!filterKeyword) return true;
+                        const kw = filterKeyword.toLowerCase();
+                        return (
+                          l.subject?.toLowerCase().includes(kw) ||
+                          l.title?.toLowerCase().includes(kw) ||
+                          l.url?.toLowerCase().includes(kw) ||
+                          l.from?.toLowerCase().includes(kw)
+                        );
+                      })
                       .map((l) => {
                         const key = `${l.messageId}|${l.url}`;
                         return (
