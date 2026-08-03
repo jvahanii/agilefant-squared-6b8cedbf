@@ -466,6 +466,11 @@ export function GmailIntegrationsCard() {
                               {l.url}
                             </span>
                             <span className="block truncate text-xs text-muted-foreground">{l.subject}</span>
+                            {l.date && (
+                              <span className="block truncate text-xs text-muted-foreground/70">
+                                {new Date(l.date).toLocaleString()}
+                              </span>
+                            )}
                             {l.alreadyImported && (
                               <Badge variant="secondary" className="mt-1">
                                 Already imported
