@@ -450,9 +450,15 @@ export function GmailIntegrationsCard() {
               {previewFor?.id === q.id && preview.length > 0 && (
                 <div className="border-t pt-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {preview.filter((l) => !l.alreadyImported).length} new link(s) — pick what to import
-                    </p>
+                    {(() => {
+                      const newLinks = preview.filter((l) => !l.alreadyImported);
+                      const emailCount = new Set(newLinks.map((l) => l.messageId)).size;
+                      return (
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {newLinks.length} new link{newLinks.length === 1 ? "" : "s"} in {emailCount} email{emailCount === 1 ? "" : "s"} — pick what to import
+                        </p>
+                      );
+                    })()}
                     {preview.some((l) => l.alreadyImported) && (
                       <Button
                         size="sm"
