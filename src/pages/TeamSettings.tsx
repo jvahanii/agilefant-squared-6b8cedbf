@@ -766,7 +766,9 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
-        <BellsAndWhistlesSection />
+        <div id="bells-whistles">
+          <BellsAndWhistlesSection />
+        </div>
 
         <div>
           <h2 className="text-lg font-semibold mb-1">Labs</h2>
@@ -802,6 +804,8 @@ export default function TeamSettings() {
             </div>
           </CardContent>
         </Card>
+
+        <WhatsappIntegrationsCard />
 
 
         {isSuperuser && (

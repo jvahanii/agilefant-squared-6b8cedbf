@@ -1327,7 +1327,7 @@ function AppLayoutInner() {
           <OrgSwitcher />
           <button
             className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors"
-            onClick={() => navigate("/settings/bells-whistles")}
+            onClick={() => navigate("/settings/team#bells-whistles")}
             title="Bells & Whistles"
           >
             <Settings className="w-3.5 h-3.5 text-primary" />

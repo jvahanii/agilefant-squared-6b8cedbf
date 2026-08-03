@@ -10,7 +10,6 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { TeamManagement } from "@/components/TeamManagement";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
-import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 
@@ -67,8 +66,6 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
       <BackupsCard />
 
       <GithubIntegrationsCard />
-
-      <WhatsappIntegrationsCard />
 
       <Card>
         <CardHeader>
