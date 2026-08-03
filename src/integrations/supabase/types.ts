@@ -272,6 +272,134 @@ export type Database = {
           },
         ]
       }
+      gmail_connections: {
+        Row: {
+          connected_email: string | null
+          connection_key_encrypted: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_email?: string | null
+          connection_key_encrypted: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_email?: string | null
+          connection_key_encrypted?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gmail_import_queries: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          frequency: string
+          id: string
+          last_run_at: string | null
+          last_run_status: string | null
+          name: string | null
+          organization_id: string
+          query: string
+          schedule_enabled: boolean
+          tree_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name?: string | null
+          organization_id: string
+          query: string
+          schedule_enabled?: boolean
+          tree_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name?: string | null
+          organization_id?: string
+          query?: string
+          schedule_enabled?: boolean
+          tree_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_import_queries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_imported_links: {
+        Row: {
+          created_at: string
+          gmail_message_id: string
+          id: string
+          normalized_url: string
+          organization_id: string
+          query_id: string | null
+          work_item_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          gmail_message_id: string
+          id?: string
+          normalized_url: string
+          organization_id: string
+          query_id?: string | null
+          work_item_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          gmail_message_id?: string
+          id?: string
+          normalized_url?: string
+          organization_id?: string
+          query_id?: string | null
+          work_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_imported_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_imported_links_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_import_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       label_assignments: {
         Row: {
           created_at: string
