@@ -1,37 +1,59 @@
-## Short answer
+## Goal
 
-Yes — very likely. The sync work itself is cheap, but the *catch-up resync* it added is not: `requestResync` in `src/lib/realtimeHealth.ts` re-fetches the entire dataset (`loadFromSupabase`) plus ~8 sibling stores (teams, work-item teams, labels, statuses, snoozes, settings, time entries, financials, targets). On a big org that's a burst of large queries followed by wholesale store replacement, which re-renders the long lists and boards.
+Each app user connects their own Gmail account, runs a Gmail search query, and imports **every link found in matching emails** as work items into a chosen backlog — manually, or automatically on a schedule from saved queries.
 
-What confirms it from the code:
+## Setup prerequisite (one-time, done during implementation)
 
-- `markChannelStatus` keeps **one global** healthy flag shared by the own-org channel and every partner-org channel. Any single channel reporting `CLOSED` / `CHANNEL_ERROR` flips it unhealthy, and then the *next* `SUBSCRIBED` of *any* channel reports "recovered" and fires a full resync.
-- `useRealtimeSync`'s effect is keyed on `activeOrgId` + `treeIdsKey`, so whenever the accessible tree set changes the channels are torn down and rebuilt — the teardown/rebuild cycle is exactly the pattern that produces `CLOSED` → `SUBSCRIBED` and therefore a spurious full resync on top of the load that is already running.
-- `useResyncOnWake`'s `focus` handler resyncs whenever `isSocketConnected()` reads false, with no stale-window and no debounce of its own (the 5 s coalescing window in `requestResync` is short relative to how long a full reload takes), so ordinary tab focus can queue extra full reloads.
+The Gmail App User Connector is enabled in the workspace but has **no OAuth client configured yet**. First step of implementation is a connect card where you create/select a Google OAuth web client. You'll need to add this as an authorized redirect URI in Google Cloud:
 
-## The fix
+```text
+https://connector-gateway.lovable.dev/api/v1/app-users/oauth2/callback
+```
 
-### 1. Don't treat teardown as an outage (`src/lib/realtimeHealth.ts`, `src/hooks/useRealtimeSync.ts`)
-- Track health **per channel** (keyed by channel topic) instead of one module-level boolean; "recovered" means *that* channel went unhealthy and came back.
-- Mark a channel as intentionally closed before `removeChannel` in the effect cleanup so its `CLOSED` status never counts as an outage.
-- Suppress "recovered" resyncs for a channel that has never successfully subscribed yet (first join after mount is not a recovery).
+Scopes requested: `userinfo.email`, `userinfo.profile`, `gmail.readonly`.
 
-### 2. Make resync cheap and rare
-- Raise the coalescing window (5 s → ~30 s) and add a hard floor between two resyncs, so bursts of channel churn cannot chain full reloads.
-- Skip a resync entirely when a full app load is already in flight (`appDataLoadInFlight` / the background-refresh promise in `appStore`) — today a resync can pile on top of the initial load.
-- Skip while the tab is hidden; defer to the next visibility change instead.
+## What gets built
 
-### 3. Narrow what a resync actually re-fetches
-- Default resync = work items/backlogs/trees only (`loadFromSupabase`). The satellite stores (labels, statuses, financials, targets, teams, snoozes) change far less often and are the bulk of the extra request volume; refresh those only on a *long* outage (e.g. offline > 2 min or socket down > 2 min), not on every focus.
+### 1. Gmail Integrations card (Bells & Whistles)
 
-### 4. Tighten the wake triggers (`src/hooks/useResyncOnWake.ts`)
-- `focus` should only resync when the tab was actually hidden past the stale window, or when the socket has been observed closed for more than one heartbeat — not on the first `isSocketConnected()` false reading (which is also true briefly during normal reconnect).
-- Keep the 60 s heartbeat, but have it reconnect the socket first and only resync if the socket is still down on the following tick.
+A new `GmailIntegrationsCard`, styled like the existing GitHub/WhatsApp cards:
 
-## Verification
+- **Connect Gmail** button → opens the consent popup; shows connected account email + Disconnect once linked. Connection is per signed-in user (keyed on the Supabase `user.id`), not per organization.
+- **Saved queries list** — each row holds: Gmail search query (e.g. `is:unread from:newsletter@x.com`), target backlog tree + backlog picker, enable/disable toggle, "Run now", and delete.
+- **Run now** → preview dialog listing the links found per email (link URL, anchor/label text, source subject/date), with checkboxes so you pick what to import, then "Import N links".
 
-- Extend `src/test/realtimeHealth.test.ts`: per-channel recovery (channel A closing must not make channel B's `SUBSCRIBED` a recovery), intentional-close suppression, no resync while a load is in flight, and the longer debounce.
-- Manual: with the network tab open, switch org / expand a shared tree and confirm exactly one dataset fetch (no second resync burst); background the tab for 30 s and confirm one catch-up fetch on return.
+### 2. Import semantics (one work item per link)
 
-## Technical notes
+For each matching email, links are extracted from the HTML body (`<a href>`, plus bare URLs in text-only mails), then de-duplicated:
 
-No database or schema changes — the migration from the sync work (publication membership, `REPLICA IDENTITY FULL`) stays as-is; it only affects payload contents, not client cost. All changes are in `realtimeHealth.ts`, `useRealtimeSync.ts`, `useResyncOnWake.ts`, plus a small exported "is a load in flight" accessor on `appStore`.
+- Work item **title** = anchor text if meaningful, otherwise the URL's page title-ish fallback (host + path).
+- Work item **description** = source email subject, sender, date.
+- The link itself is stored as a **hyperlink** on the item (existing `hyperlinks` table / HyperlinksDialog model).
+- Status `not_started`; placed at the end of the target backlog's list rank (and board rank, matching how `addWorkItem` seeds ranks today).
+- Tracking/unsubscribe noise is filtered by a small blocklist (unsubscribe, mailto:, image beacons, google/gmail redirect wrappers are unwrapped to their target).
+
+### 3. Deduplication
+
+A new table records every imported `(gmail_message_id, normalized_url)` per organization, so re-running a query — manually or on schedule — never creates the same work item twice. Preview marks already-imported links as "imported".
+
+### 4. Scheduled import
+
+- Saved queries store `schedule_enabled` and a frequency (hourly / daily).
+- A Supabase edge function runs on a cron schedule, walks enabled saved queries, calls Gmail per owning user through the connector gateway, extracts links, skips duplicates, and inserts work items directly.
+- Because the schedule runs without a browser session, the per-user connection key is stored server-side in a private table readable only by its owner (and by the function via service role).
+
+## Technical details
+
+- **Server-side only Gmail calls.** New edge functions: `gmail-connect` (starts consent / stores connection key), `gmail-search-preview` (query → extracted links, dedupe flags), `gmail-import` (create work items + hyperlinks + dedupe rows), `gmail-scheduled-import` (cron). All Gmail requests go through `https://connector-gateway.lovable.dev/google_mail/gmail/v1/...` with `LOVABLE_API_KEY` + per-user connection key; failures surface the provider status and body.
+- **Gmail endpoints used:** `users/me/messages?q=...` for matching, `users/me/messages/{id}?format=full` for headers + body parts (base64url-decoded), `users/me/profile` for the connected address.
+- **New tables** (all with explicit GRANTs, RLS on, policies scoped to `auth.uid()` / org membership):
+  - `gmail_connections` — user_id, connection key (server-only, no anon/authenticated select of the key), connected email.
+  - `gmail_import_queries` — org_id, user_id, query, tree_id, backlog_id, schedule_enabled, frequency, last_run_at.
+  - `gmail_imported_links` — org_id, query_id, gmail_message_id, normalized_url, work_item_id, unique constraint for dedupe.
+- **Work item creation** reuses existing store/sync paths so realtime sync, ranks, and history triggers behave the same as manual adds; bulk inserts suppress burnup history like the existing bulk paths do.
+- **Feature gating:** the card is always visible in Bells & Whistles; import actions are disabled until Gmail is connected. No org-wide toggle unless you want one.
+
+## Notes
+
+- Import is read-only on Gmail (`gmail.readonly`) — nothing is marked read, archived, or deleted.
+- Gmail's search API caps per-page results; the preview fetches up to a bounded number of messages (default 50, paginated) to keep runs fast.
