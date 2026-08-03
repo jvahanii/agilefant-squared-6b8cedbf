@@ -19,6 +19,7 @@ interface SavedQuery {
   user_id: string;
   name: string | null;
   query: string;
+  exclude_keyword?: string | null;
   tree_id: string;
   backlog_id: string;
   schedule_enabled: boolean;
@@ -78,8 +79,8 @@ export function GmailIntegrationsCard() {
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
-  const [showImported, setShowImported] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
+  const [excludeKeyword, setExcludeKeyword] = useState("");
 
   const popupRef = useRef<Window | null>(null);
 
@@ -191,6 +192,7 @@ export function GmailIntegrationsCard() {
       user_id: session.user.id,
       name: newName.trim() || null,
       query,
+      exclude_keyword: excludeKeyword.trim() || null,
       tree_id: newTree,
       backlog_id: newBacklog,
     });
@@ -200,6 +202,7 @@ export function GmailIntegrationsCard() {
     }
     setNewQuery("");
     setNewName("");
+    setExcludeKeyword("");
     setNewBacklog("");
     loadQueries();
   };
@@ -248,7 +251,6 @@ export function GmailIntegrationsCard() {
       );
       setPreview(sorted);
       setFilterKeyword("");
-      setShowImported(false);
       setSelected(
         Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, true])),
       );
@@ -358,6 +360,15 @@ export function GmailIntegrationsCard() {
               />
             </div>
             <div>
+              <Label htmlFor="gmail-exclude">Exclude keyword</Label>
+              <Input
+                id="gmail-exclude"
+                placeholder="e.g. google play"
+                value={excludeKeyword}
+                onChange={(e) => setExcludeKeyword(e.target.value)}
+              />
+            </div>
+            <div>
               <Label>Backlog tree</Label>
               <Select
                 value={newTree}
@@ -409,6 +420,11 @@ export function GmailIntegrationsCard() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{q.name || q.query}</p>
                   <p className="text-xs font-mono text-muted-foreground break-all">{q.query}</p>
+                  {q.exclude_keyword && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Excluding: "{q.exclude_keyword}"
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     → {treeName(q.tree_id)} / {backlogName(q.backlog_id)}
                   </p>
@@ -483,6 +499,17 @@ export function GmailIntegrationsCard() {
                   <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                     {preview
                       .filter((l) => {
+                        const excludeKw = q.exclude_keyword?.toLowerCase();
+                        if (excludeKw) {
+                          if (
+                            l.subject?.toLowerCase().includes(excludeKw) ||
+                            l.title?.toLowerCase().includes(excludeKw) ||
+                            l.url?.toLowerCase().includes(excludeKw) ||
+                            l.from?.toLowerCase().includes(excludeKw)
+                          ) {
+                            return false;
+                          }
+                        }
                         if (!filterKeyword) return true;
                         const kw = filterKeyword.toLowerCase();
                         return (
