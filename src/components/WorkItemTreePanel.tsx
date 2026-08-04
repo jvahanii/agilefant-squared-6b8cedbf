@@ -275,7 +275,7 @@ function WorkItemNodeContent({
   const backlogs = useAppStore((s) => s.backlogs);
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
-  const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
+  const isMultiSelected = useAppStore((s) => s.selectedWorkItemIds.length > 1);
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
@@ -372,7 +372,7 @@ function WorkItemNodeContent({
 
   const handleQuickSnooze = useCallback(async (until: Date) => {
     if (!activeOrgId) return;
-    const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+    const ids = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
     try {
       await Promise.all(
         ids.map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })),
@@ -380,7 +380,7 @@ function WorkItemNodeContent({
     } catch (err) {
       console.error('Failed to snooze one or more items', err);
     }
-  }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, selectedWorkItemIds]);
+  }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, isMultiSelected]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -471,7 +471,10 @@ function WorkItemNodeContent({
       type: "workitem",
       workItemId,
       treeId,
-      selectedIds: isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId],
+      get selectedIds() {
+        const ids = useAppStore.getState().selectedWorkItemIds;
+        return ids.includes(workItemId) && ids.length > 1 ? ids : [workItemId];
+      },
     },
   });
 
@@ -564,7 +567,8 @@ function WorkItemNodeContent({
   // the previously-selected item is visible after restore (especially on mobile
   // where the panel mounts fresh after a tab switch).
   useEffect(() => {
-    if (selectedWorkItemIds.length > 0 && selectedWorkItemIds[0] === workItemId && nodeRef.current) {
+    const initialSelectedIds = useAppStore.getState().selectedWorkItemIds;
+    if (initialSelectedIds.length > 0 && initialSelectedIds[0] === workItemId && nodeRef.current) {
       nodeRef.current.scrollIntoView({ block: "nearest" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -644,9 +648,10 @@ function WorkItemNodeContent({
   const commitPoints = () => {
     const num = parseInt(editPoints, 10);
     const points = isNaN(num) || num <= 0 ? undefined : num;
-    if (isSelected && selectedWorkItemIds.length > 1) {
+    if (isSelected && isMultiSelected) {
+      const sel = useAppStore.getState().selectedWorkItemIds;
       useAppStore.getState().runBulk(() => {
-        selectedWorkItemIds.forEach((id) => setWorkItemPoints(id, points));
+        sel.forEach((id) => setWorkItemPoints(id, points));
       });
     } else {
       setWorkItemPoints(workItemId, points);
@@ -712,9 +717,10 @@ function WorkItemNodeContent({
             e.stopPropagation();
             if (dragStartedRef.current) return;
             const newStatus: WorkItemStatus = item.status === "done" ? "not_started" : "done";
-            if (isSelected && selectedWorkItemIds.length > 1) {
+            if (isSelected && isMultiSelected) {
+              const sel = useAppStore.getState().selectedWorkItemIds;
               useAppStore.getState().runBulk(() => {
-                selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, newStatus));
+                sel.forEach((id) => setWorkItemStatus(id, newStatus));
               });
             } else {
               setWorkItemStatus(workItemId, newStatus);
@@ -767,9 +773,10 @@ function WorkItemNodeContent({
                   key={s.key}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (isSelected && selectedWorkItemIds.length > 1) {
+                    if (isSelected && isMultiSelected) {
+                      const sel = useAppStore.getState().selectedWorkItemIds;
                       useAppStore.getState().runBulk(() => {
-                        selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
+                        sel.forEach((id) => setWorkItemStatus(id, s.key as WorkItemStatus));
                       });
                     } else {
                       setWorkItemStatus(workItemId, s.key as WorkItemStatus);
@@ -1074,7 +1081,7 @@ function WorkItemNodeContent({
                 <LabelPicker
                   entityType="work_item"
                   entityId={workItemId}
-                  entityIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : undefined}
+                  entityIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : undefined}
                 >
                   <button
                     className="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -1139,9 +1146,10 @@ function WorkItemNodeContent({
               <ContextMenuRadioGroup
                 value={item.status}
                 onValueChange={(val) => {
-                  if (isSelected && selectedWorkItemIds.length > 1) {
+                  if (isSelected && isMultiSelected) {
+                    const sel = useAppStore.getState().selectedWorkItemIds;
                     useAppStore.getState().runBulk(() => {
-                      selectedWorkItemIds.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
+                      sel.forEach((id) => setWorkItemStatus(id, val as WorkItemStatus));
                     });
                   } else {
                     setWorkItemStatus(workItemId, val as WorkItemStatus);
@@ -1241,7 +1249,7 @@ function WorkItemNodeContent({
                       key={blId}
                       className="text-xs"
                       onSelect={() => {
-                        const ids = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+                        const ids = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
                         if (ids.length > 1) {
                           useAppStore.getState().runBulk(() => {
                             ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
@@ -1291,7 +1299,7 @@ function WorkItemNodeContent({
                 {orgLabels
                   .filter((l) => !ctxLabelSearchQuery.trim() || l.name.toLowerCase().includes(ctxLabelSearchQuery.toLowerCase()))
                   .map((label) => {
-                    const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId];
+                    const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
                     const assignedCount = contextIds.filter((id) => (byEntity[`work_item:${id}`] ?? []).includes(label.id)).length;
                     const fullyAssigned = assignedCount === contextIds.length;
                     const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
@@ -1328,10 +1336,10 @@ function WorkItemNodeContent({
                   <div className="px-2 py-1.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       <input type="color" value={ctxNewLabelColor} onChange={(e) => setCtxNewLabelColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent shrink-0" />
-                      <input ref={ctxNewLabelNameRef} className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-1 py-0.5" placeholder="Label name…" value={ctxNewLabelName} onChange={(e) => setCtxNewLabelName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const handleCreate = async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }; handleCreate(); } if (e.key === "Escape") { setCtxNewLabelForm(false); setCtxNewLabelName(""); } e.stopPropagation(); }} />
+                      <input ref={ctxNewLabelNameRef} className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-1 py-0.5" placeholder="Label name…" value={ctxNewLabelName} onChange={(e) => setCtxNewLabelName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const handleCreate = async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }; handleCreate(); } if (e.key === "Escape") { setCtxNewLabelForm(false); setCtxNewLabelName(""); } e.stopPropagation(); }} />
                       <button className="text-muted-foreground hover:text-foreground" onClick={() => { setCtxNewLabelForm(false); setCtxNewLabelName(""); }}><X className="w-3.5 h-3.5" /></button>
                     </div>
-                    <button className="w-full text-xs text-center py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={!ctxNewLabelName.trim()} onClick={async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }}>Create</button>
+                    <button className="w-full text-xs text-center py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={!ctxNewLabelName.trim()} onClick={async () => { if (!activeOrgId || !ctxNewLabelName.trim()) return; const label = await createLabel(activeOrgId, ctxNewLabelName.trim(), ctxNewLabelColor); if (label) { const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]; contextIds.forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId)); } setCtxNewLabelName(""); setCtxNewLabelForm(false); }}>Create</button>
                   </div>
                 ) : (
                   <ContextMenuItem className="text-xs" onSelect={(e) => { e.preventDefault(); setCtxNewLabelForm(true); setCtxLabelSearchQuery(""); }}>
@@ -1633,7 +1641,7 @@ function WorkItemNodeContent({
         />
       )}
       <SnoozeDialog
-        workItemIds={isSelected && selectedWorkItemIds.length > 1 ? selectedWorkItemIds : [workItemId]}
+        workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
         open={showSnoozeDialog}
         onOpenChange={setShowSnoozeDialog}
       />
