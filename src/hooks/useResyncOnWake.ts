@@ -49,25 +49,18 @@ export function useResyncOnWake() {
       }
       const hiddenSince = hiddenSinceRef.current;
       hiddenSinceRef.current = null;
-      if (hiddenSince === null || Date.now() - hiddenSince < STALE_AFTER_MS) {
-        // Short blur — just make sure the socket is still up.
+      if (hiddenSince === null || Date.now() - hiddenSince < HIDDEN_RESYNC_AFTER_MS) {
+        // Routine tab switch — just make sure the socket is still up, never fetch.
         ensureSocketConnected();
         return;
       }
       const hiddenFor = Date.now() - hiddenSince;
-      wake('visible-after-hidden', hiddenFor >= FULL_RESYNC_OUTAGE_MS);
+      wake('visible-after-long-hidden', hiddenFor >= FULL_RESYNC_OUTAGE_MS);
     };
 
     const onFocus = () => {
-      const hiddenSince = hiddenSinceRef.current;
-      if (hiddenSince !== null && Date.now() - hiddenSince >= STALE_AFTER_MS) {
-        const hiddenFor = Date.now() - hiddenSince;
-        hiddenSinceRef.current = null;
-        wake('focus-after-hidden', hiddenFor >= FULL_RESYNC_OUTAGE_MS);
-        return;
-      }
-      // A closed socket on focus is usually a reconnect in progress; let the
-      // heartbeat decide instead of refetching immediately.
+      // Focus never triggers a catch-up fetch; only ensure the socket is alive.
+      // Real outages are handled by the heartbeat and channel-recovery paths.
       if (!isSocketConnected()) ensureSocketConnected();
     };
 
