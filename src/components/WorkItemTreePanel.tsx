@@ -3035,6 +3035,9 @@ export function WorkItemTreePanel() {
                 <EditableBacklogName backlogId={selectedBacklogId!} isScrambled={isScrambled} />
                 <p className="text-xs text-foreground mt-0.5">
                   {`${rootWorkItems.length} item${rootWorkItems.length !== 1 ? "s" : ""}`}
+                  {selectedWorkItemIds.length > 0 && (
+                    <span className="text-primary font-medium"> · {selectedWorkItemIds.length} selected</span>
+                  )}
                 </p>
               </>
             )}
