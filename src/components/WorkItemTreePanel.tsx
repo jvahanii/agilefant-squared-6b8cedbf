@@ -2366,6 +2366,30 @@ export function WorkItemTreePanel() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Search results: items from ALL trees matching the search query, with tree/backlog context.
+  // Returns null when no query is active (normal view mode).
+  type SearchResultItem = {
+    kind: 'workitem' | 'backlog';
+    item: WorkItem;
+    treeId: string;
+    backlogId: string;
+    treeName: string;
+    backlogName: string;
+    backlogPath: string[];
+    workItemAncestors: string[];
+  };
+
+  type SearchResultBacklog = {
+    kind: 'backlog';
+    treeId: string;
+    backlogId: string;
+    treeName: string;
+    backlogName: string;
+    backlogPath: string[];
+  };
+
+  type SearchResult = SearchResultItem | SearchResultBacklog;
+
   const searchResults = useMemo((): SearchResult[] | null => {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 3) return null;
