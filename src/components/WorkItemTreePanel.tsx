@@ -104,6 +104,28 @@ const DRAG_THRESHOLD_PX = 8;
 const DRAG_THRESHOLD_PX_SQUARED = DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX;
 const EMPTY_ARRAY: string[] = [];
 
+type SearchResultItem = {
+  kind: 'workitem';
+  item: WorkItem;
+  treeId: string;
+  backlogId: string;
+  treeName: string;
+  backlogName: string;
+  backlogPath: string[];
+  workItemAncestors: string[];
+};
+
+type SearchResultBacklog = {
+  kind: 'backlog';
+  treeId: string;
+  backlogId: string;
+  treeName: string;
+  backlogName: string;
+  backlogPath: string[];
+};
+
+type SearchResult = SearchResultItem | SearchResultBacklog;
+
 function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
@@ -2344,30 +2366,6 @@ export function WorkItemTreePanel() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Search results: items from ALL trees matching the search query, with tree/backlog context.
-  // Returns null when no query is active (normal view mode).
-  type SearchResultItem = {
-    kind: 'workitem' | 'backlog';
-    item: WorkItem;
-    treeId: string;
-    backlogId: string;
-    treeName: string;
-    backlogName: string;
-    backlogPath: string[];
-    workItemAncestors: string[];
-  };
-
-  type SearchResultBacklog = {
-    kind: 'backlog';
-    treeId: string;
-    backlogId: string;
-    treeName: string;
-    backlogName: string;
-    backlogPath: string[];
-  };
-
-  type SearchResult = SearchResultItem | SearchResultBacklog;
-
   const searchResults = useMemo((): SearchResult[] | null => {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 3) return null;
@@ -2408,6 +2406,7 @@ export function WorkItemTreePanel() {
           }
 
           return {
+            kind: 'workitem' as const,
             item: wi,
             treeId,
             backlogId: backlogId ?? "",
