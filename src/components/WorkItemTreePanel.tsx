@@ -2346,11 +2346,33 @@ export function WorkItemTreePanel() {
 
   // Search results: items from ALL trees matching the search query, with tree/backlog context.
   // Returns null when no query is active (normal view mode).
-  const searchResults = useMemo(() => {
+  type SearchResultItem = {
+    kind: 'workitem' | 'backlog';
+    item: WorkItem;
+    treeId: string;
+    backlogId: string;
+    treeName: string;
+    backlogName: string;
+    backlogPath: string[];
+    workItemAncestors: string[];
+  };
+
+  type SearchResultBacklog = {
+    kind: 'backlog';
+    treeId: string;
+    backlogId: string;
+    treeName: string;
+    backlogName: string;
+    backlogPath: string[];
+  };
+
+  type SearchResult = SearchResultItem | SearchResultBacklog;
+
+  const searchResults = useMemo((): SearchResult[] | null => {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 3) return null;
 
-    return Object.values(workItems)
+    const itemResults: SearchResultItem[] = Object.values(workItems)
       .filter((wi) => wi.title.toLowerCase().includes(q))
       .flatMap((wi) => {
         // Emit one result per backlog tree this item is assigned to,
@@ -2402,6 +2424,36 @@ export function WorkItemTreePanel() {
         if (t !== 0) return t;
         return a.treeName.localeCompare(b.treeName);
       });
+
+    const backlogResults: SearchResultBacklog[] = Object.values(backlogs)
+      .filter((bl) => bl.name.toLowerCase().includes(q))
+      .map((bl) => {
+        const tree = backlogTrees[bl.treeId];
+        const backlogPath: string[] = [];
+        const visitedBacklogIds = new Set<string>();
+        let current = bl;
+        while (current && !visitedBacklogIds.has(current.id)) {
+          visitedBacklogIds.add(current.id);
+          backlogPath.unshift(current.name);
+          current = current.parentId ? backlogs[current.parentId] : null;
+        }
+        return {
+          kind: 'backlog' as const,
+          treeId: bl.treeId,
+          backlogId: bl.id,
+          treeName: tree?.name ?? '',
+          backlogName: bl.name,
+          backlogPath,
+        };
+      })
+      .filter((r) => r.treeId)
+      .sort((a, b) => {
+        const t = a.backlogName.localeCompare(b.backlogName);
+        if (t !== 0) return t;
+        return a.treeName.localeCompare(b.treeName);
+      });
+
+    return [...itemResults, ...backlogResults];
   }, [searchQuery, workItems, backlogTrees, backlogs]);
 
   // Label search results: items from ALL trees that have one of the active filter labels.
@@ -3118,7 +3170,53 @@ export function WorkItemTreePanel() {
                 {(() => {
                   // Compute query string once before mapping to avoid redundant string ops per item.
                   const q = searchQuery.trim().toLowerCase();
-                  return searchResults.map(({ item, treeId, backlogId, treeName, backlogPath, workItemAncestors }, idx) => {
+                  return searchResults.map((result, idx) => {
+                    if (result.kind === 'backlog') {
+                      const { treeId, backlogId, treeName, backlogName, backlogPath } = result;
+                      const nameLower = backlogName.toLowerCase();
+                      const matchIdx = nameLower.indexOf(q);
+                      const titleNode =
+                        matchIdx >= 0 ? (
+                          <>
+                            {backlogName.slice(0, matchIdx)}
+                            <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
+                              {backlogName.slice(matchIdx, matchIdx + q.length)}
+                            </mark>
+                            {backlogName.slice(matchIdx + q.length)}
+                          </>
+                        ) : (
+                          backlogName
+                        );
+                      return (
+                        <div
+                          key={`backlog-${backlogId}`}
+                          className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 cursor-pointer select-none"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectBacklog(backlogId, treeId);
+                            setSearchQuery("");
+                          }}
+                        >
+                          <span
+                            className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none"
+                            aria-hidden="true"
+                          >
+                            {idx + 1}
+                          </span>
+                          <span className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50 bg-muted-foreground/40" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm leading-snug break-words">
+                              {titleNode}
+                              <span className="text-[10px] text-muted-foreground ml-1">(backlog)</span>
+                            </span>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {isScrambled ? "···" : [treeName, ...backlogPath].join(" › ")}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const { item, treeId, backlogId, treeName, backlogPath, workItemAncestors } = result;
                     const titleLower = item.title.toLowerCase();
                     const matchIdx = titleLower.indexOf(q);
                     const titleNode =
