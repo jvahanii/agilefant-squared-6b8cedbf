@@ -2347,7 +2347,7 @@ export function WorkItemTreePanel() {
   // Search results: items from ALL trees matching the search query, with tree/backlog context.
   // Returns null when no query is active (normal view mode).
   type SearchResultItem = {
-    kind: 'workitem' | 'backlog';
+    kind?: 'workitem';
     item: WorkItem;
     treeId: string;
     backlogId: string;

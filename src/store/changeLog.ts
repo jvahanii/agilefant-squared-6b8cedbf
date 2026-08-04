@@ -34,15 +34,22 @@ export async function insertChangeLogEntry(
 }
 
 /**
- * Load change log entries for an organization, newest first, max 5000.
+ * Load recent change log entries for an organization, newest first.
+ * Bounded to a recent window (row cap + time window) so we never pull an
+ * org's entire history — unbounded reads were a major source of disk I/O.
  */
+export const CHANGE_LOG_MAX_ROWS = 500;
+export const CHANGE_LOG_WINDOW_DAYS = 90;
+
 export async function loadChangeLog(organizationId: string): Promise<ChangeLogEntry[]> {
+  const since = new Date(Date.now() - CHANGE_LOG_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await (supabase as any)
     .from('change_log')
     .select('*')
     .eq('organization_id', organizationId)
+    .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(5000);
+    .limit(CHANGE_LOG_MAX_ROWS);
 
   if (error || !data) return [];
 
