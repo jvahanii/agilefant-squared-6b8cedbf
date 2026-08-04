@@ -91,12 +91,7 @@ export function HyperlinksDialog({
       return;
     }
     setIsEditingTitle(false);
-    const hasLinks = hyperlinksRef.current.length > 0;
-    setIsAdding(!hasLinks);
-    if (hasLinks) {
-      // Focus the first hyperlink so Enter opens it and Tab navigates the list.
-      setTimeout(() => firstLinkRef.current?.focus(), 0);
-    }
+    setIsAdding(true);
     // Intentionally only runs when `open` changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
