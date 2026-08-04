@@ -6,8 +6,12 @@ import {
   FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
 
-/** Minimum hidden/offline duration before a wake triggers a catch-up fetch. */
-const STALE_AFTER_MS = 20_000;
+/**
+ * Minimum hidden duration before a wake triggers a catch-up fetch.  Routine tab
+ * switching must never cause a refresh, so this is deliberately long — the
+ * heartbeat / channel-recovery paths cover real outages.
+ */
+const HIDDEN_RESYNC_AFTER_MS = 600_000;
 /** How often (while visible) to verify the realtime socket is still alive. */
 const HEARTBEAT_MS = 60_000;
 
