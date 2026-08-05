@@ -2618,7 +2618,28 @@ export function WorkItemTreePanel() {
     getScrollElement: () => treeScrollRef.current,
     estimateSize: () => 32,
     overscan: 10,
+    measureElement: (el) => el.getBoundingClientRect().height,
   });
+
+  // Titles wrap onto multiple rows, so a row's height depends on the available
+  // width. When the container width changes (mobile pane expand/collapse,
+  // rotation, sidebar toggle) cached measurements go stale and rows can end up
+  // painted on top of each other — force a remeasure on width changes.
+  useEffect(() => {
+    const el = treeScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      if (w !== lastWidth) {
+        lastWidth = w;
+        virtualizer.measure();
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [virtualizer]);
+
 
   // Keep a ref to the latest visible list so the Tab/Shift-Tab handler always
   // operates on the current order without requiring the effect to re-register.
