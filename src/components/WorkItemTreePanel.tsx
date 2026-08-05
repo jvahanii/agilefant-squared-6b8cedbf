@@ -6,6 +6,7 @@ import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, Clipbo
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { createContext, memo, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
@@ -2691,6 +2692,48 @@ export function WorkItemTreePanel() {
     return ids;
   }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet]);
 
+  // Map each visible item ID to its depth in the tree.  Computed from the
+  // flat visibleItemIds list so it stays cheap even with deep nesting.
+  const itemDepthMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const depthStack: { id: string; depth: number }[] = [];
+    for (const id of visibleItemIds) {
+      const item = workItems[id];
+      if (!item) continue;
+      // Pop the stack until we find the actual parent at a shallower depth.
+      while (
+        depthStack.length > 0 &&
+        depthStack[depthStack.length - 1].id !== item.parentId
+      ) {
+        depthStack.pop();
+      }
+      // If the stack is empty we are at root level (depth 0); otherwise depth
+      // = parentDepth + 1.  We still need to check that the parent actually
+      // claims this child in *this* tree (effective parent in multi-backlog
+      // scenarios), otherwise treat it as root.
+      const parentEntry = depthStack[depthStack.length - 1];
+      let depth = 0;
+      if (parentEntry && selectedTreeId) {
+        const effectiveParent = getEffectiveParentId(item, selectedTreeId);
+        if (effectiveParent === parentEntry.id) {
+          depth = parentEntry.depth + 1;
+        }
+      }
+      map.set(id, depth);
+      depthStack.push({ id, depth });
+    }
+    return map;
+  }, [visibleItemIds, workItems, selectedTreeId]);
+
+  // Virtualizer scroll container
+  const treeScrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: visibleItemIds.length,
+    getScrollElement: () => treeScrollRef.current,
+    estimateSize: () => 32,
+    overscan: 10,
+  });
+
   // Keep a ref to the latest visible list so the Tab/Shift-Tab handler always
   // operates on the current order without requiring the effect to re-register.
   const visibleItemIdsRef = useRef<string[]>(visibleItemIds);
@@ -3374,7 +3417,7 @@ export function WorkItemTreePanel() {
           </div>
         ) : (
           <WorkItemRootDropZone treeId={selectedTreeId!} backlogId={selectedBacklogId!}>
-          <div className="flex-1 overflow-y-auto p-0 md:p-0.5">
+          <div className="flex-1 min-h-0 flex flex-col">
             {rootWorkItems.length === 0 && isAdding ? (
               <InlineWorkItemInput
                 depth={0}
@@ -3388,7 +3431,7 @@ export function WorkItemTreePanel() {
                 No work items in this backlog
               </div>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col">
                 {isAdding && (
                   <InlineWorkItemInput
                     depth={0}
@@ -3398,50 +3441,56 @@ export function WorkItemTreePanel() {
                     onCancel={() => setIsAdding(false)}
                   />
                 )}
-                {(() => {
-                  const isMultiBacklog = allBacklogIds.length > 1;
-                  return (
-                    <>
-                      {displayedRootItems.map((item, index) => {
-                        const itemBacklogId = item.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
-                        return (
-                          <div key={item.id}>
-                            <ReorderDropZone
-                              id={`reorder-root-${index}`}
-                              index={index}
-                              treeId={selectedTreeId!}
-                              backlogIds={allBacklogIds}
-                              parentId={null}
-                              depth={0}
-                              targetBacklogId={isMultiBacklog ? itemBacklogId : undefined}
-                            />
-                            <WorkItemNode
-                              workItemId={item.id}
-                              depth={0}
-                              treeId={selectedTreeId!}
-                              backlogId={itemBacklogId}
-                              allBacklogIds={allBacklogIds}
-                              parentBacklogId={selectedBacklogId!}
-                              isScrambled={isScrambled}
-                              selectedBacklogId={selectedBacklogId!}
-                              onSelect={handleSelect}
-                              setViewMode={setViewMode}
-                            />
-                          </div>
-                        );
-                      })}
-                      <ReorderDropZone
-                        id={`reorder-root-${displayedRootItems.length}`}
-                        index={displayedRootItems.length}
-                        treeId={selectedTreeId!}
-                        backlogIds={allBacklogIds}
-                        parentId={null}
-                        depth={0}
-                        targetBacklogId={isMultiBacklog ? (displayedRootItems[displayedRootItems.length - 1]?.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!) : undefined}
-                      />
-                    </>
-                  );
-                })()}
+                <div
+                  ref={treeScrollRef}
+                  className="flex-1 overflow-y-auto p-0 md:p-0.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    className="relative"
+                    style={{ height: `${virtualizer.getTotalSize()}px` }}
+                  >
+                    {virtualizer.getVirtualItems().map((virtualRow) => {
+                      const i = virtualRow.index;
+                      const id = visibleItemIds[i];
+                      const wi = workItems[id];
+                      if (!wi) return null;
+                      const depth = itemDepthMap.get(id) ?? 0;
+                      const itemBacklogId = wi.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
+                      return (
+                        <div
+                          key={id}
+                          data-index={i}
+                          ref={virtualizer.measureElement}
+                          className="absolute top-0 left-0 w-full"
+                          style={{ transform: `translateY(${virtualRow.start}px)` }}
+                        >
+                          <ReorderDropZone
+                            id={`reorder-flat-${i}`}
+                            index={i}
+                            treeId={selectedTreeId!}
+                            backlogIds={allBacklogIds}
+                            parentId={depth === 0 ? null : wi.parentId}
+                            depth={depth}
+                            targetBacklogId={allBacklogIds.length > 1 ? itemBacklogId : undefined}
+                          />
+                          <WorkItemNode
+                            workItemId={id}
+                            depth={depth}
+                            treeId={selectedTreeId!}
+                            backlogId={itemBacklogId}
+                            allBacklogIds={allBacklogIds}
+                            parentBacklogId={selectedBacklogId!}
+                            isScrambled={isScrambled}
+                            selectedBacklogId={selectedBacklogId!}
+                            onSelect={handleSelect}
+                            setViewMode={setViewMode}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>
