@@ -80,7 +80,8 @@ export function HyperlinksDialog({
     }
   }, [isEditingTitle, isMobile]);
 
-  // Reset form when dialog closes; set initial mode when it opens.
+  // Focus the first hyperlink on open when one exists, so pressing Enter
+  // opens it in a new tab.  Falls back to "add new" mode when zero exist.
   useEffect(() => {
     if (!open) {
       setIsAdding(false);
@@ -91,7 +92,13 @@ export function HyperlinksDialog({
       return;
     }
     setIsEditingTitle(false);
-    setIsAdding(true);
+    if (hyperlinksRef.current.length > 0) {
+      setIsAdding(false);
+      // Delay to let the dialog render the link row before we focus it.
+      setTimeout(() => firstLinkRef.current?.focus(), 0);
+    } else {
+      setIsAdding(true);
+    }
     // Intentionally only runs when `open` changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
