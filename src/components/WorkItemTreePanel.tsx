@@ -1210,10 +1210,20 @@ function WorkItemNodeContent({
             <span className="ml-auto text-[10px] text-muted-foreground">⌘D</span>
           </ContextMenuItem>
           {pointsVisible && (
-            <ContextMenuItem className="text-xs" onSelect={startEditingPoints}>
+            <ContextMenuItem
+              className="text-xs"
+              onSelect={() => {
+                // The inline points input only exists on desktop; on mobile the
+                // points field lives in the attributes sheet.
+                if (isMobile) setShowMobileAttributesSheet(true);
+                else startEditingPoints();
+              }}
+            >
               Edit story points
             </ContextMenuItem>
           )}
+
+
           <ContextMenuItem
             className="text-xs"
             onSelect={() => {
