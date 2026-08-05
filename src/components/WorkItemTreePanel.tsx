@@ -1221,6 +1221,8 @@ function WorkItemNodeContent({
             >
               Edit story points
             </ContextMenuItem>
+          )}
+
 
           <ContextMenuItem
             className="text-xs"
