@@ -1542,60 +1542,72 @@ function WorkItemNodeContent({
           onCancel={() => setCtxDeleteLabelId(null)}
         />
       )}
-      <RespawnSettingsDialog
-        workItemId={workItemId}
-        open={showRespawnDialog}
-        onOpenChange={setShowRespawnDialog}
-      />
-      <HyperlinksDialog
-        workItemId={workItemId}
-        open={showHyperlinksDialog}
-        onOpenChange={setShowHyperlinksDialog}
-      />
-      {isSavingsIncomeEnabled(activeOrgId) && (
+      {showRespawnDialog && (
+        <RespawnSettingsDialog
+          workItemId={workItemId}
+          open
+          onOpenChange={(o) => { setShowRespawnDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showHyperlinksDialog && (
+        <HyperlinksDialog
+          workItemId={workItemId}
+          open
+          onOpenChange={(o) => { setShowHyperlinksDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showFinancialsDialog && isSavingsIncomeEnabled(activeOrgId) && (
         <FinancialsDialog
           workItemId={workItemId}
-          open={showFinancialsDialog}
-          onOpenChange={setShowFinancialsDialog}
+          open
+          onOpenChange={(o) => { setShowFinancialsDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
-      {timeLoggingVisible && (
+      {showTimeLogDialog && timeLoggingVisible && (
         <TimeLogDialog
           workItemId={workItemId}
-          open={showTimeLogDialog}
-          onOpenChange={setShowTimeLogDialog}
+          open
+          onOpenChange={(o) => { setShowTimeLogDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
-      <SnoozeDialog
-        workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
-        open={showSnoozeDialog}
-        onOpenChange={setShowSnoozeDialog}
-      />
-      <MobileWorkItemAttributesSheet
-        workItemId={workItemId}
-        open={showMobileAttributesSheet}
-        onOpenChange={setShowMobileAttributesSheet}
-        onOpenTimeLog={() => setShowTimeLogDialog(true)}
-        onOpenRespawn={() => setShowRespawnDialog(true)}
-        onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
-        onOpenSnooze={() => setShowSnoozeDialog(true)}
-        onOpenMove={openMoveToBacklogDialog}
-        onOpenReparent={openMoveToParentDialog}
-        onDuplicate={handleDuplicate}
-      />
-      <MoveToParentDialog
-        workItemIds={moveToParentItemIds}
-        treeId={treeId}
-        open={showMoveToParentDialog}
-        onOpenChange={setShowMoveToParentDialog}
-      />
-      <MoveToBacklogDialog
-        workItemIds={moveToBacklogItemIds}
-        treeId={treeId}
-        currentBacklogId={backlogId}
-        open={showMoveToBacklogDialog}
-        onOpenChange={setShowMoveToBacklogDialog}
-      />
+      {showSnoozeDialog && (
+        <SnoozeDialog
+          workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
+          open
+          onOpenChange={(o) => { setShowSnoozeDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showMobileAttributesSheet && (
+        <MobileWorkItemAttributesSheet
+          workItemId={workItemId}
+          open
+          onOpenChange={(o) => { setShowMobileAttributesSheet(o); if (!o) releaseOverlayLock(); }}
+          onOpenTimeLog={() => setShowTimeLogDialog(true)}
+          onOpenRespawn={() => setShowRespawnDialog(true)}
+          onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
+          onOpenSnooze={() => setShowSnoozeDialog(true)}
+          onOpenMove={openMoveToBacklogDialog}
+          onOpenReparent={openMoveToParentDialog}
+          onDuplicate={handleDuplicate}
+        />
+      )}
+      {showMoveToParentDialog && (
+        <MoveToParentDialog
+          workItemIds={moveToParentItemIds}
+          treeId={treeId}
+          open
+          onOpenChange={(o) => { setShowMoveToParentDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showMoveToBacklogDialog && (
+        <MoveToBacklogDialog
+          workItemIds={moveToBacklogItemIds}
+          treeId={treeId}
+          currentBacklogId={backlogId}
+          open
+          onOpenChange={(o) => { setShowMoveToBacklogDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
     </>
   );
 }
