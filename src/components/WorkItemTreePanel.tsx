@@ -2541,6 +2541,28 @@ export function WorkItemTreePanel() {
     return () => window.removeEventListener("shortcut:add-workitem", handler);
   }, []);
 
+  // Insert key: add child item when an item is selected, otherwise add root item.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Insert") return;
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if (isInput) return;
+      // Don't fire when a modal dialog is open
+      if (document.querySelector('[role="dialog"]')) return;
+
+      e.preventDefault();
+      const sel = useAppStore.getState().selectedWorkItemIds;
+      if (sel.length > 0) {
+        window.dispatchEvent(new CustomEvent("shortcut:add-child-workitem"));
+      } else {
+        setIsAdding(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const backlogIdSet = useMemo(() => {
     if (!selectedBacklogId) return new Set<string>();
     const ids = new Set<string>();
