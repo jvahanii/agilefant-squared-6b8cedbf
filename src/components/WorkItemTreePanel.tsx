@@ -2143,34 +2143,42 @@ function SearchResultItem({
           onCancel={() => setShowDeletePrompt(false)}
         />
       )}
-      <RespawnSettingsDialog
-        workItemId={item.id}
-        open={showRespawnDialog}
-        onOpenChange={setShowRespawnDialog}
-      />
-      <HyperlinksDialog
-        workItemId={item.id}
-        open={showHyperlinksDialog}
-        onOpenChange={setShowHyperlinksDialog}
-      />
-      {timeLoggingVisible && (
-        <TimeLogDialog
+      {showRespawnDialog && (
+        <RespawnSettingsDialog
           workItemId={item.id}
-          open={showTimeLogDialog}
-          onOpenChange={setShowTimeLogDialog}
+          open
+          onOpenChange={(o) => { setShowRespawnDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
-      <SnoozeDialog
-        workItemIds={[item.id]}
-        open={showSnoozeDialog}
-        onOpenChange={setShowSnoozeDialog}
-      />
-      <MoveToParentDialog
-        workItemIds={[item.id]}
-        treeId={treeId}
-        open={showMoveToParentDialog}
-        onOpenChange={setShowMoveToParentDialog}
-      />
+      {showHyperlinksDialog && (
+        <HyperlinksDialog
+          workItemId={item.id}
+          open
+          onOpenChange={(o) => { setShowHyperlinksDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showTimeLogDialog && timeLoggingVisible && (
+        <TimeLogDialog
+          workItemId={item.id}
+          open
+          onOpenChange={(o) => { setShowTimeLogDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showSnoozeDialog && (
+        <SnoozeDialog
+          workItemIds={[item.id]}
+          open
+          onOpenChange={(o) => { setShowSnoozeDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showMoveToParentDialog && (
+        <MoveToParentDialog
+          workItemIds={[item.id]}
+          treeId={treeId}
+          open
+          onOpenChange={(o) => { setShowMoveToParentDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
     </>
   );
 }
