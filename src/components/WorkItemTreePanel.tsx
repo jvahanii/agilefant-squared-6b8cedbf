@@ -23,6 +23,7 @@ import { SnoozeDialog } from "./SnoozeDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
+import { releaseOverlayLock } from "@/lib/overlayLock";
 import {
   DropdownMenu,
   DropdownMenuContent,
