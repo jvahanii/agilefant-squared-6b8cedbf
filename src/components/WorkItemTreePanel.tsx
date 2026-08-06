@@ -665,7 +665,6 @@ function WorkItemNodeContent({
       <div
         ref={combinedRef}
         style={isDragging ? { opacity: 0.4 } : undefined}
-        className="animate-fade-in-up"
       >
         <ContextMenu>
         <ContextMenuTrigger asChild>

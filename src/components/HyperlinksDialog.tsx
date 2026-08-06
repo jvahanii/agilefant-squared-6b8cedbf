@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,7 @@ export function HyperlinksDialog({
 }: HyperlinksDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
-  const hyperlinksRaw = useAppStore((s) => s.hyperlinks[workItemId]);
-  const hyperlinks = useMemo(() => hyperlinksRaw ?? [], [hyperlinksRaw]);
+  const hyperlinks = useAppStore((s) => s.hyperlinks[workItemId] ?? []);
   const addHyperlink = useAppStore((s) => s.addHyperlink);
   const updateHyperlink = useAppStore((s) => s.updateHyperlink);
   const removeHyperlink = useAppStore((s) => s.removeHyperlink);
