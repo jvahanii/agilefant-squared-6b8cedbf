@@ -14,6 +14,8 @@ import { isAttachmentUrl, resolveOpenableHref } from "@/lib/attachmentUrl";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
 
+const EMPTY_LINKS: never[] = [];
+
 const isValidUrl = (url: string) => /^https?:\/\//i.test(url);
 const safeHref = (url: string) => (isValidUrl(url) ? url : "#");
 
@@ -37,7 +39,7 @@ export function HyperlinksDialog({
 }: HyperlinksDialogProps) {
   const item = useAppStore((s) => s.workItems[workItemId]);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
-  const hyperlinks = useAppStore((s) => s.hyperlinks[workItemId] ?? []);
+  const hyperlinks = useAppStore((s) => s.hyperlinks[workItemId] ?? EMPTY_LINKS);
   const addHyperlink = useAppStore((s) => s.addHyperlink);
   const updateHyperlink = useAppStore((s) => s.updateHyperlink);
   const removeHyperlink = useAppStore((s) => s.removeHyperlink);
