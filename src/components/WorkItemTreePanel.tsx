@@ -1435,7 +1435,37 @@ function WorkItemNodeContent({
           </ContextMenuItem>
         </ContextMenuContent>
         </ContextMenu>
+        {isAdding && (
+          <InlineWorkItemInput
+            depth={depth + 1}
+            onSubmit={(title) => {
+              addWorkItem(title, workItemId, backlogId, treeId);
+              setIsAdding(false);
+              if (!isMobile) {
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+                }, 50);
+              }
+            }}
+            onCancel={() => setIsAdding(false)}
+          />
+        )}
       </div>
+      {isAddingSibling && (
+        <InlineWorkItemInput
+          depth={depth}
+          onSubmit={(title) => {
+            addWorkItem(title, item.parentId, backlogId, treeId, (item.ranks[backlogId] ?? 0) + 1);
+            setIsAddingSibling(false);
+            if (!isMobile) {
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
+              }, 50);
+            }
+          }}
+          onCancel={() => setIsAddingSibling(false)}
+        />
+      )}
       {showDeletePrompt && (
         <ActionPrompt
           title={deleteItemIds.length > 1 ? `Delete ${deleteItemIds.length} selected items?` : `"${item.title}" is in ${assignmentCount} backlogs`}
