@@ -422,6 +422,21 @@ function AppLayoutInner() {
           if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(1);
+          } else if (state.selectedWorkItemIds.length === 0 && state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+            // Move selected backlog down among siblings
+            e.preventDefault();
+            const blId = state.selectedBacklogIds[0];
+            const bl = state.backlogs[blId];
+            if (bl) {
+              const parentId = bl.parentId;
+              const siblingIds = parentId ? (state.backlogs[parentId]?.childrenIds ?? []) : state.backlogTrees[state.selectedTreeId]?.rootBacklogIds ?? [];
+              const currentIdx = siblingIds.indexOf(blId);
+              const newIdx = currentIdx + 1;
+              if (newIdx < siblingIds.length) {
+                // Move to one position after current → swap with the next sibling
+                reorderBacklogAmongSiblings(blId, newIdx + 1, parentId, state.selectedTreeId);
+              }
+            }
           }
           break;
         }
@@ -429,6 +444,20 @@ function AppLayoutInner() {
           if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
             e.preventDefault();
             reorderSelectedItem(-1);
+          } else if (state.selectedWorkItemIds.length === 0 && state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
+            // Move selected backlog up among siblings
+            e.preventDefault();
+            const blId = state.selectedBacklogIds[0];
+            const bl = state.backlogs[blId];
+            if (bl) {
+              const parentId = bl.parentId;
+              const siblingIds = parentId ? (state.backlogs[parentId]?.childrenIds ?? []) : state.backlogTrees[state.selectedTreeId]?.rootBacklogIds ?? [];
+              const currentIdx = siblingIds.indexOf(blId);
+              const newIdx = currentIdx - 1;
+              if (newIdx >= 0) {
+                reorderBacklogAmongSiblings(blId, newIdx, parentId, state.selectedTreeId);
+              }
+            }
           }
           break;
         }
