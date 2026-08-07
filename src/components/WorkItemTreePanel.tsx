@@ -1447,21 +1447,29 @@ function WorkItemNodeContent({
               <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {teams.map((team) => {
-                  const isAssigned = workItemTeams.includes(team.id);
+                  const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
+                  const assignedCount = contextIds.filter((id) => {
+                    const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
+                    return ids.includes(team.id);
+                  }).length;
+                  const fullyAssigned = assignedCount === contextIds.length;
+                  const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
                   return (
                     <ContextMenuCheckboxItem
                       key={team.id}
                       className="text-xs"
-                      checked={isAssigned}
+                      checked={fullyAssigned}
+                      data-partially={partiallyAssigned || undefined}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
+                          contextIds.forEach((id) => assignTeam(id, team.id, team.organization_id || activeOrgId!));
                         } else {
-                          unassignTeam(workItemId, team.id);
+                          contextIds.forEach((id) => unassignTeam(id, team.id));
                         }
                       }}
                     >
                       {team.name}
+                      {partiallyAssigned && <span className="ml-1 text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
                     </ContextMenuCheckboxItem>
                   );
                 })}
