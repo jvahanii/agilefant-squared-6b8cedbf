@@ -877,7 +877,7 @@ function WorkItemNodeContent({
                         )}
                       </span>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[120px]">
+                    <DropdownMenuContent align="start" className="min-w-[120px]" onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}>
                       <div className="px-2 pt-1 pb-0.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
                           <Search className="w-3 h-3 text-muted-foreground shrink-0" />
