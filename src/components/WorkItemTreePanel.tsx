@@ -1446,7 +1446,26 @@ function WorkItemNodeContent({
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                {teams.map((team) => {
+                  <div className="px-2 pt-1 pb-0.5">
+                    <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
+                      <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <input
+                        className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
+                        placeholder="Search teams…"
+                        value={ctxTeamSearchQuery}
+                        onChange={(e) => { setCtxTeamSearchQuery(e.target.value); }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                      {ctxTeamSearchQuery && (
+                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setCtxTeamSearchQuery(""); }}>
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {teams
+                    .filter((t) => !ctxTeamSearchQuery.trim() || t.name.toLowerCase().includes(ctxTeamSearchQuery.toLowerCase()))
+                    .map((team) => {
                   const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
                   const assignedCount = contextIds.filter((id) => {
                     const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
