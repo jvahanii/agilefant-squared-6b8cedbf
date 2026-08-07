@@ -15,6 +15,7 @@ import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { MoveTimeDialog } from "./MoveTimeDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
@@ -358,6 +359,8 @@ function WorkItemNodeContent({
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const [showMoveTimeDialog, setShowMoveTimeDialog] = useState(false);
+  const [moveTimeEntryIds, setMoveTimeEntryIds] = useState<string[]>([]);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
@@ -1387,9 +1390,20 @@ function WorkItemNodeContent({
             </ContextMenuSub>
           )}
           {timeLoggingVisible && (
-            <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
-              Log time
-            </ContextMenuItem>
+            <>
+              <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
+                Log time
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onSelect={() => {
+                const ids = Object.values(useTimeEntryStore.getState().timeEntries)
+                  .filter(e => e.workItemId === workItemId)
+                  .map(e => e.id);
+                setMoveTimeEntryIds(ids);
+                setShowMoveTimeDialog(true);
+              }}>
+                Transfer time entries
+              </ContextMenuItem>
+            </>
           )}
           <ContextMenuSub>
             <ContextMenuSubTrigger className="text-xs">
@@ -1569,6 +1583,15 @@ function WorkItemNodeContent({
           workItemId={workItemId}
           open
           onOpenChange={(o) => { setShowTimeLogDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showMoveTimeDialog && timeLoggingVisible && (
+        <MoveTimeDialog
+          entryIds={moveTimeEntryIds}
+          title={`Transfer time entries from "${item.title}"`}
+          open
+          onOpenChange={(o) => { setShowMoveTimeDialog(o); if (!o) releaseOverlayLock(); }}
+          excludeTarget={{ kind: "work_item", id: workItemId }}
         />
       )}
       {showSnoozeDialog && (
