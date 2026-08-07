@@ -164,35 +164,60 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
   },
 
   assignTeamToWorkItem: async (workItemId: string, teamId: string, orgId: string) => {
+    // Optimistic update — apply immediately so the UI reacts before the DB round-trip.
+    const current = get().workItemTeams[workItemId] ?? [];
+    if (!current.includes(teamId)) {
+      set(s => ({
+        workItemTeams: {
+          ...s.workItemTeams,
+          [workItemId]: [...current, teamId],
+        },
+      }));
+    }
     const { error } = await supabase
       .from('work_item_team_assignments' as any)
       .insert({ work_item_id: workItemId, team_id: teamId, organization_id: orgId });
     if (error) {
-      if (error.code === '23505') return; // duplicate
+      if (error.code === '23505') return; // duplicate — optimistic update was correct
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      // Revert optimistic update on failure
+      set(s => ({
+        workItemTeams: {
+          ...s.workItemTeams,
+          [workItemId]: (s.workItemTeams[workItemId] ?? []).filter(id => id !== teamId),
+        },
+      }));
       return;
     }
-    set(s => ({
-      workItemTeams: {
-        ...s.workItemTeams,
-        [workItemId]: [...(s.workItemTeams[workItemId] ?? []), teamId],
-      },
-    }));
   },
 
   unassignTeamFromWorkItem: async (workItemId: string, teamId: string) => {
+    // Optimistic update — apply immediately so the UI reacts before the DB round-trip.
+    const current = get().workItemTeams[workItemId] ?? [];
+    if (current.includes(teamId)) {
+      set(s => ({
+        workItemTeams: {
+          ...s.workItemTeams,
+          [workItemId]: current.filter(id => id !== teamId),
+        },
+      }));
+    }
     const { error } = await supabase
       .from('work_item_team_assignments' as any)
       .delete()
       .eq('work_item_id', workItemId)
       .eq('team_id', teamId);
-    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
-    set(s => ({
-      workItemTeams: {
-        ...s.workItemTeams,
-        [workItemId]: (s.workItemTeams[workItemId] ?? []).filter(id => id !== teamId),
-      },
-    }));
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      // Revert optimistic update on failure
+      set(s => ({
+        workItemTeams: {
+          ...s.workItemTeams,
+          [workItemId]: [...(s.workItemTeams[workItemId] ?? []), teamId],
+        },
+      }));
+      return;
+    }
   },
 
   getTeamsForWorkItem: (workItemId: string) => get().workItemTeams[workItemId] ?? [],
