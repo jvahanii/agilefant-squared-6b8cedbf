@@ -1475,22 +1475,33 @@ function WorkItemNodeContent({
                   const fullyAssigned = assignedCount === contextIds.length;
                   const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
                   return (
-                    <ContextMenuCheckboxItem
+                    <ContextMenuItem
                       key={team.id}
                       className="text-xs"
-                      checked={fullyAssigned}
-                      data-partially={partiallyAssigned || undefined}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          contextIds.forEach((id) => assignTeam(id, team.id, team.organization_id || activeOrgId!));
-                        } else {
+                      onSelect={(e) => e.preventDefault()}
+                      onClick={() => {
+                        if (fullyAssigned) {
                           contextIds.forEach((id) => unassignTeam(id, team.id));
+                        } else {
+                          contextIds.forEach((id) => {
+                            const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
+                            if (!ids.includes(team.id)) {
+                              assignTeam(id, team.id, team.organization_id || activeOrgId!);
+                            }
+                          });
                         }
                       }}
                     >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block"
+                        style={{
+                          backgroundColor: fullyAssigned ? "hsl(var(--primary))" : partiallyAssigned ? "hsl(var(--primary) / 0.4)" : "transparent",
+                          border: fullyAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)",
+                        }}
+                      />
                       {team.name}
                       {partiallyAssigned && <span className="ml-1 text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
-                    </ContextMenuCheckboxItem>
+                    </ContextMenuItem>
                   );
                 })}
               </ContextMenuSubContent>
@@ -2162,20 +2173,27 @@ function SearchResultItem({
                   {teams.map((team) => {
                     const isAssigned = workItemTeams.includes(team.id);
                     return (
-                      <ContextMenuCheckboxItem
+                      <ContextMenuItem
                         key={team.id}
                         className="text-xs"
-                        checked={isAssigned}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            assignTeam(item.id, team.id, team.organization_id || activeOrgId!);
-                          } else {
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={() => {
+                          if (isAssigned) {
                             unassignTeam(item.id, team.id);
+                          } else {
+                            assignTeam(item.id, team.id, team.organization_id || activeOrgId!);
                           }
                         }}
                       >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block"
+                          style={{
+                            backgroundColor: isAssigned ? "hsl(var(--primary))" : "transparent",
+                            border: isAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)",
+                          }}
+                        />
                         {team.name}
-                      </ContextMenuCheckboxItem>
+                      </ContextMenuItem>
                     );
                   })}
                 </ContextMenuSubContent>
