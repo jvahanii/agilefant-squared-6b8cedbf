@@ -847,21 +847,43 @@ function WorkItemNodeContent({
               )}
               {workItemTeams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
-                  {workItemTeams.map((teamId, i) => (
-                    <span key={teamId} className="inline-flex items-center gap-0.5">
-                      {i > 0 && <span>, </span>}
-                      <span className="group/team inline-flex items-center gap-0.5 rounded px-0.5 -ml-0.5 hover:bg-muted cursor-pointer transition-colors"
-                        title={`Click to remove "${teams.find(t => t.id === teamId)?.name ?? teamId}"`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          unassignTeam(workItemId, teamId);
-                        }}
-                      >
-                        {teams.find(t => t.id === teamId)?.name ?? teamId}
-                        <X className="w-2.5 h-2.5 opacity-0 group-hover/team:opacity-100 transition-opacity" />
-                      </span>
-                    </span>
-                  ))}
+                  {teams.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <span className="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors">
+                          {workItemTeams.map((teamId, i) => (
+                            <span key={teamId}>
+                              {i > 0 && <span>, </span>}
+                              {teams.find(t => t.id === teamId)?.name ?? teamId}
+                            </span>
+                          ))}
+                        </span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[120px]">
+                        {teams.map((team) => {
+                          const isAssigned = workItemTeams.includes(team.id);
+                          return (
+                            <DropdownMenuItem
+                              key={team.id}
+                              className="text-xs"
+                              onSelect={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isAssigned) {
+                                  unassignTeam(workItemId, team.id);
+                                } else {
+                                  assignTeam(workItemId, team.id, team.organization_id || activeOrgId!);
+                                }
+                              }}
+                            >
+                              <span className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: isAssigned ? "hsl(var(--primary))" : "transparent", border: isAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)" }} />
+                              {team.name}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </span>
               )}
             </span>
