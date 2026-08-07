@@ -355,6 +355,7 @@ function WorkItemNodeContent({
   const [ctxNewLabelColor, setCtxNewLabelColor] = useState("#6366f1");
   const [ctxLabelSearchQuery, setCtxLabelSearchQuery] = useState("");
   const [ctxTeamSearchQuery, setCtxTeamSearchQuery] = useState("");
+  const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const ctxNewLabelNameRef = useRef<HTMLInputElement>(null);
   const [ctxDeleteLabelId, setCtxDeleteLabelId] = useState<string | null>(null);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
@@ -849,7 +850,7 @@ function WorkItemNodeContent({
               {workItemTeams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
                   {teams.length > 0 && (
-                    <DropdownMenu>
+                    <DropdownMenu open={teamDropdownOpen} onOpenChange={setTeamDropdownOpen}>
                       <DropdownMenuTrigger asChild>
                         <span className="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors">
                           {workItemTeams.map((teamId, i) => (
