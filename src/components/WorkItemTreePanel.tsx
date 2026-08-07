@@ -845,6 +845,24 @@ function WorkItemNodeContent({
                   )}
                 </span>
               )}
+              {workItemTeams.length > 0 && (
+                <span className="ml-1 text-muted-foreground">
+                  {workItemTeams.length === 1 ? (
+                    <span>{teams.find(t => t.id === workItemTeams[0])?.name ?? workItemTeams[0]}</span>
+                  ) : (
+                    <span>
+                      {"["}
+                      {workItemTeams.map((teamId, i) => (
+                        <span key={teamId}>
+                          {i > 0 && ", "}
+                          {teams.find(t => t.id === teamId)?.name ?? teamId}
+                        </span>
+                      ))}
+                      {"]"}
+                    </span>
+                  )}
+                </span>
+              )}
             </span>
           )}
 
