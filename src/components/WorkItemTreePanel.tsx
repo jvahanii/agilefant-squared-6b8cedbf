@@ -846,21 +846,22 @@ function WorkItemNodeContent({
                 </span>
               )}
               {workItemTeams.length > 0 && (
-                <span className="ml-1 text-muted-foreground">
-                  {workItemTeams.length === 1 ? (
-                    <span>{teams.find(t => t.id === workItemTeams[0])?.name ?? workItemTeams[0]}</span>
-                  ) : (
-                    <span>
-                      {"["}
-                      {workItemTeams.map((teamId, i) => (
-                        <span key={teamId}>
-                          {i > 0 && ", "}
-                          {teams.find(t => t.id === teamId)?.name ?? teamId}
-                        </span>
-                      ))}
-                      {"]"}
+                <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
+                  {workItemTeams.map((teamId, i) => (
+                    <span key={teamId} className="inline-flex items-center gap-0.5">
+                      {i > 0 && <span>, </span>}
+                      <span className="group/team inline-flex items-center gap-0.5 rounded px-0.5 -ml-0.5 hover:bg-muted cursor-pointer transition-colors"
+                        title={`Click to remove "${teams.find(t => t.id === teamId)?.name ?? teamId}"`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unassignTeam(workItemId, teamId);
+                        }}
+                      >
+                        {teams.find(t => t.id === teamId)?.name ?? teamId}
+                        <X className="w-2.5 h-2.5 opacity-0 group-hover/team:opacity-100 transition-opacity" />
+                      </span>
                     </span>
-                  )}
+                  ))}
                 </span>
               )}
             </span>
