@@ -2351,6 +2351,7 @@ export function WorkItemTreePanel() {
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
+  const [filterTeamIds, setFilterTeamIds] = useState<Set<string>>(new Set());
   const filterInputRef = useRef<HTMLInputElement>(null);
   const [isFilterBarHovered, setIsFilterBarHovered] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -3143,6 +3144,44 @@ export function WorkItemTreePanel() {
                   className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
                   onClick={() => setFilterLabelIds(new Set())}
                   title="Clear label filter"
+                >
+                  <X className="w-3 h-3" />
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+          {!isSearchMode && teamsStore.length > 0 && (isMobile || isSearchFocused || isFilterBarHovered || filterTeamIds.size > 0) && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {teamsStore.map((team) => (
+                <button
+                  key={team.id}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition-colors ${
+                    filterTeamIds.has(team.id)
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                      : "bg-muted text-muted-foreground hover:bg-muted/60"
+                  }`}
+                  onClick={() =>
+                    setFilterTeamIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(team.id)) next.delete(team.id);
+                      else next.add(team.id);
+                      return next;
+                    })
+                  }
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: "hsl(var(--primary))" }}
+                  />
+                  {team.name}
+                </button>
+              ))}
+              {filterTeamIds.size > 0 && (
+                <button
+                  className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
+                  onClick={() => setFilterTeamIds(new Set())}
+                  title="Clear team filter"
                 >
                   <X className="w-3 h-3" />
                   Clear
