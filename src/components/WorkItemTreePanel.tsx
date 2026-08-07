@@ -356,6 +356,7 @@ function WorkItemNodeContent({
   const [ctxLabelSearchQuery, setCtxLabelSearchQuery] = useState("");
   const [ctxTeamSearchQuery, setCtxTeamSearchQuery] = useState("");
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
+  const suppressTeamDropdownCloseRef = useRef(false);
   const ctxNewLabelNameRef = useRef<HTMLInputElement>(null);
   const [ctxDeleteLabelId, setCtxDeleteLabelId] = useState<string | null>(null);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
@@ -533,6 +534,10 @@ function WorkItemNodeContent({
       if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
       handleDuplicateRef.current();
     };
+    const handleOpenTeamAssign = () => {
+      if (useAppStore.getState().selectedWorkItemIds[0] !== workItemId) return;
+      if (teams.length > 0) setTeamDropdownOpen(true);
+    };
     window.addEventListener("shortcut:add-child-workitem", handleAddChild);
     window.addEventListener("shortcut:add-sibling-workitem", handleAddSibling);
     window.addEventListener("shortcut:delete-selected", handleDelete);
@@ -541,6 +546,7 @@ function WorkItemNodeContent({
     window.addEventListener("shortcut:log-time", handleLogTime);
     window.addEventListener("shortcut:move-to-parent", handleMoveToParent);
     window.addEventListener("shortcut:move-to-backlog", handleMoveToBacklog);
+    window.addEventListener("shortcut:open-team-assign", handleOpenTeamAssign);
     return () => {
       window.removeEventListener("shortcut:add-child-workitem", handleAddChild);
       window.removeEventListener("shortcut:add-sibling-workitem", handleAddSibling);
@@ -550,8 +556,9 @@ function WorkItemNodeContent({
       window.removeEventListener("shortcut:log-time", handleLogTime);
       window.removeEventListener("shortcut:move-to-parent", handleMoveToParent);
       window.removeEventListener("shortcut:move-to-backlog", handleMoveToBacklog);
+      window.removeEventListener("shortcut:open-team-assign", handleOpenTeamAssign);
     };
-  }, [expanded, handleDeleteClick, handleEditHyperlinks, handleLogTime, handleMoveToBacklog, handleMoveToParent, isSelected, toggleExpand, workItemId]);
+  }, [expanded, handleDeleteClick, handleEditHyperlinks, handleLogTime, handleMoveToBacklog, handleMoveToParent, isSelected, teams.length, toggleExpand, workItemId]);
 
   // Keep a stable ref to handleDuplicate so the listener above doesn't need
   // to re-bind every time isSelected changes.
@@ -850,7 +857,13 @@ function WorkItemNodeContent({
               {workItemTeams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
                   {teams.length > 0 && (
-                    <DropdownMenu open={teamDropdownOpen} onOpenChange={setTeamDropdownOpen}>
+                    <DropdownMenu open={teamDropdownOpen} onOpenChange={(open) => {
+                      if (!open && suppressTeamDropdownCloseRef.current) {
+                        suppressTeamDropdownCloseRef.current = false;
+                        return;
+                      }
+                      setTeamDropdownOpen(open);
+                    }}>
                       <DropdownMenuTrigger asChild>
                         <span className="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors">
                           {workItemTeams.map((teamId, i) => (
@@ -896,6 +909,7 @@ function WorkItemNodeContent({
                                 onSelect={(e) => e.preventDefault()}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  suppressTeamDropdownCloseRef.current = true;
                                   if (fullyAssigned) {
                                     contextIds.forEach((id) => unassignTeam(id, team.id));
                                   } else {

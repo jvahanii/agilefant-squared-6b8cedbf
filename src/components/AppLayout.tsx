@@ -461,6 +461,13 @@ function AppLayoutInner() {
           }
           break;
         }
+        case "a": {
+          if (state.selectedWorkItemIds.length > 0) {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent("shortcut:open-team-assign"));
+          }
+          break;
+        }
         case "h": {
           if (state.selectedWorkItemIds.length > 0) {
             e.preventDefault();
