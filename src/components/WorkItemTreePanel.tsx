@@ -854,89 +854,91 @@ function WorkItemNodeContent({
                   )}
                 </span>
               )}
-              {workItemTeams.length > 0 && (
+              {teams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
-                  {teams.length > 0 && (
-                    <DropdownMenu open={teamDropdownOpen} onOpenChange={(open) => {
-                      if (!open && suppressTeamDropdownCloseRef.current) {
-                        suppressTeamDropdownCloseRef.current = false;
-                        return;
-                      }
-                      setTeamDropdownOpen(open);
-                    }}>
-                      <DropdownMenuTrigger asChild>
-                        <span className="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors">
-                          {workItemTeams.map((teamId, i) => (
+                  <DropdownMenu open={teamDropdownOpen} onOpenChange={(open) => {
+                    if (!open && suppressTeamDropdownCloseRef.current) {
+                      suppressTeamDropdownCloseRef.current = false;
+                      return;
+                    }
+                    setTeamDropdownOpen(open);
+                  }}>
+                    <DropdownMenuTrigger asChild>
+                      <span className="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors">
+                        {workItemTeams.length > 0 ? (
+                          workItemTeams.map((teamId, i) => (
                             <span key={teamId}>
                               {i > 0 && <span>, </span>}
                               {teams.find(t => t.id === teamId)?.name ?? teamId}
                             </span>
-                          ))}
-                        </span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="min-w-[120px]">
-                        <div className="px-2 pt-1 pb-0.5" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
-                            <Search className="w-3 h-3 text-muted-foreground shrink-0" />
-                            <input
-                              className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
-                              placeholder="Search teams…"
-                              value={ctxTeamSearchQuery}
-                              onChange={(e) => { setCtxTeamSearchQuery(e.target.value); }}
-                              onKeyDown={(e) => e.stopPropagation()}
-                            />
-                            {ctxTeamSearchQuery && (
-                              <button className="text-muted-foreground hover:text-foreground" onClick={(e2) => { e2.stopPropagation(); setCtxTeamSearchQuery(""); }}>
-                                <X className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground/50">+</span>
+                        )}
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[120px]">
+                      <div className="px-2 pt-1 pb-0.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
+                          <Search className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <input
+                            className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
+                            placeholder="Search teams…"
+                            value={ctxTeamSearchQuery}
+                            onChange={(e) => { setCtxTeamSearchQuery(e.target.value); }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          />
+                          {ctxTeamSearchQuery && (
+                            <button className="text-muted-foreground hover:text-foreground" onClick={(e2) => { e2.stopPropagation(); setCtxTeamSearchQuery(""); }}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
-                        {teams
-                          .filter((t) => !ctxTeamSearchQuery.trim() || t.name.toLowerCase().includes(ctxTeamSearchQuery.toLowerCase()))
-                          .map((team) => {
-                            const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
-                            const assignedCount = contextIds.filter((id) => {
-                              const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
-                              return ids.includes(team.id);
-                            }).length;
-                            const fullyAssigned = assignedCount === contextIds.length;
-                            const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
-                            return (
-                              <DropdownMenuItem
-                                key={team.id}
-                                className="text-xs"
-                                onSelect={(e) => e.preventDefault()}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  suppressTeamDropdownCloseRef.current = true;
-                                  if (fullyAssigned) {
-                                    contextIds.forEach((id) => unassignTeam(id, team.id));
-                                  } else {
-                                    contextIds.forEach((id) => {
-                                      const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
-                                      if (!ids.includes(team.id)) {
-                                        assignTeam(id, team.id, team.organization_id || activeOrgId!);
-                                      }
-                                    });
-                                  }
+                      </div>
+                      {teams
+                        .filter((t) => !ctxTeamSearchQuery.trim() || t.name.toLowerCase().includes(ctxTeamSearchQuery.toLowerCase()))
+                        .map((team) => {
+                          const contextIds = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
+                          const assignedCount = contextIds.filter((id) => {
+                            const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
+                            return ids.includes(team.id);
+                          }).length;
+                          const fullyAssigned = assignedCount === contextIds.length;
+                          const partiallyAssigned = assignedCount > 0 && !fullyAssigned;
+                          return (
+                            <DropdownMenuItem
+                              key={team.id}
+                              className="text-xs"
+                              onSelect={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                suppressTeamDropdownCloseRef.current = true;
+                                if (fullyAssigned) {
+                                  contextIds.forEach((id) => unassignTeam(id, team.id));
+                                } else {
+                                  contextIds.forEach((id) => {
+                                    const ids = useTeamStore.getState().workItemTeams[id] ?? EMPTY_ARRAY;
+                                    if (!ids.includes(team.id)) {
+                                      assignTeam(id, team.id, team.organization_id || activeOrgId!);
+                                    }
+                                  });
+                                }
+                              }}
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block"
+                                style={{
+                                  backgroundColor: fullyAssigned ? "hsl(var(--primary))" : partiallyAssigned ? "hsl(var(--primary) / 0.4)" : "transparent",
+                                  border: fullyAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)",
                                 }}
-                              >
-                                <span
-                                  className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block"
-                                  style={{
-                                    backgroundColor: fullyAssigned ? "hsl(var(--primary))" : partiallyAssigned ? "hsl(var(--primary) / 0.4)" : "transparent",
-                                    border: fullyAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)",
-                                  }}
-                                />
-                                {team.name}
-                                {partiallyAssigned && <span className="ml-1 text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                              />
+                              {team.name}
+                              {partiallyAssigned && <span className="ml-1 text-[10px] text-muted-foreground">({assignedCount}/{contextIds.length})</span>}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </span>
               )}
             </span>
