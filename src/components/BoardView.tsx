@@ -118,7 +118,7 @@ function BoardReorderDropZone({
   const isDragActive = active !== null;
   const { setNodeRef, isOver } = useDroppable({
     id,
-    data: { type: "workitem-reorder", index, treeId, backlogIds, parentId: null, statusKey, prevCardId, nextCardId },
+    data: { type: "workitem-board-reorder", index, treeId, backlogIds, parentId: null, statusKey, prevCardId, nextCardId },
   });
 
   return (
@@ -1373,6 +1373,8 @@ function BoardCard({
     return () => window.removeEventListener("shortcut:edit-title", handler);
   }, [item.id, item.title]);
 
+  const reorderWorkItemInBoard = useAppStore((s) => s.reorderWorkItemInBoard);
+
   const handleMoveToTop = useCallback(() => {
     const state = useAppStore.getState();
     const backlogIds: string[] = [];
@@ -1381,9 +1383,9 @@ function BoardCard({
       state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
     };
     collectBacklogs(backlogId);
-    reorderWorkItemAmongSiblings(item.id, 0, treeId, backlogIds);
+    reorderWorkItemInBoard(item.id, 0, treeId, backlogIds);
     toast({ title: "Moved item to top", description: item.title });
-  }, [item.id, item.title, backlogId, treeId, reorderWorkItemAmongSiblings]);
+  }, [item.id, item.title, backlogId, treeId, reorderWorkItemInBoard]);
 
   const handleSortChildren = useCallback(() => {
     const state = useAppStore.getState();

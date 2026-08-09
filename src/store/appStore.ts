@@ -162,6 +162,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
+  reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
@@ -1680,7 +1681,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           updatedItems[s.id] = {
             ...updatedItems[s.id],
             ranks: { ...updatedItems[s.id].ranks, [blId]: i },
-            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
           };
         }
       });
@@ -1691,15 +1691,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
-        }),
-      );
-      // Also persist board ranks so the board view stays in sync.
-      persistBoardRankUpserts(
-        reordered.flatMap((s) => {
-          const updated = updatedItems[s.id];
-          const blId = updated.backlogAssignments[treeId];
-          if (!blId) return [];
-          return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );
       internalLog({ action: "Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
@@ -1743,7 +1734,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           updatedItems[s.id] = {
             ...updatedItems[s.id],
             ranks: { ...updatedItems[s.id].ranks, [blId]: i },
-            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
           };
         }
       });
@@ -1756,17 +1746,80 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );
-      // Also persist board ranks so the board view stays in sync.
+      const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
+      internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
+
+      set({
+        workItems: updatedItems,
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
+    reorderWorkItemInBoard: (workItemId, targetIndex, treeId, backlogIds) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const mainItem = state.workItems[workItemId];
+      if (!mainItem) return;
+
+      const itemsToMoveIds = state.selectedWorkItemIds.includes(workItemId) ? state.selectedWorkItemIds : [workItemId];
+      const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
+
+      // Collect all items visible in this backlog context (same logic as reorderWorkItemAmongSiblings)
+      const mainEffectiveParentId = getEffectiveParentId(mainItem, treeId);
+      const mainParentInContext =
+        mainEffectiveParentId !== null &&
+        backlogIdSet.has(state.workItems[mainEffectiveParentId]?.backlogAssignments[treeId]);
+
+      const allSiblings = Object.values(state.workItems)
+        .filter((wi) => {
+          if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
+          const wiEffectiveParentId = getEffectiveParentId(wi, treeId);
+          if (mainParentInContext) {
+            return wiEffectiveParentId === mainEffectiveParentId;
+          }
+          const wiParentInContext =
+            wiEffectiveParentId !== null &&
+            backlogIdSet.has(state.workItems[wiEffectiveParentId]?.backlogAssignments[treeId]);
+          return !wiParentInContext;
+        })
+        .sort((a, b) => {
+          // Sort by board rank instead of list rank
+          const rankDiff = (a.boardRanks?.[a.backlogAssignments[treeId]] ?? 0) - (b.boardRanks?.[b.backlogAssignments[treeId]] ?? 0);
+          return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+        });
+
+      const movingSet = new Set(itemsToMoveIds);
+      const remaining = allSiblings.filter((s) => !movingSet.has(s.id));
+      const movingBeforeTarget = allSiblings.filter((s, i) => movingSet.has(s.id) && i < targetIndex).length;
+      const adjustedTarget = targetIndex - movingBeforeTarget;
+      const clampedIdx = Math.max(0, Math.min(adjustedTarget, remaining.length));
+
+      const movingItems = allSiblings.filter((s) => movingSet.has(s.id));
+      const reordered = [...remaining];
+      reordered.splice(clampedIdx, 0, ...movingItems);
+
+      const updatedItems = { ...state.workItems };
+
+      reordered.forEach((s, i) => {
+        const blId = updatedItems[s.id].backlogAssignments[treeId];
+        if (blId) {
+          updatedItems[s.id] = {
+            ...updatedItems[s.id],
+            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
+          };
+        }
+      });
+
       persistBoardRankUpserts(
-        siblings.flatMap((s) => {
+        reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );
-      const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
-      internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
+      internalLog({ action: "Board Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
         workItems: updatedItems,

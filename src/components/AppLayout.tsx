@@ -108,6 +108,7 @@ function AppLayoutInner() {
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
+  const reorderWorkItemInBoard = useAppStore((s) => s.reorderWorkItemInBoard);
   const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
@@ -1035,6 +1036,12 @@ function AppLayoutInner() {
         toast({
           title: draggedIds.length === 1 ? "Moved to root (no parent)" : `Moved ${draggedIds.length} items to root`,
         });
+      } else if (activeData?.type === "workitem" && overData?.type === "workitem-board-reorder") {
+        const treeId = overData.treeId as string;
+        const backlogIds = overData.backlogIds as string[];
+        if (draggedIds.length > 0) {
+          reorderWorkItemInBoard(draggedIds[0], overData.index as number, treeId, backlogIds);
+        }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
         const targetParentId = overData.parentId as string | null;
         const treeId = overData.treeId as string;
