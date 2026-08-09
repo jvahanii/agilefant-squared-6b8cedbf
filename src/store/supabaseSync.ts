@@ -946,7 +946,7 @@ async function upsertWorkItemBacklogRanks(
 export async function upsertWorkItemBacklogRankRows(
   rowsToUpsert: WorkItemBacklogRankUpsert[],
 ): Promise<boolean> {
-  return enqueueWorkItemMutation(async () => upsertWorkItemBacklogRankRowsImmediate(rowsToUpsert));
+  return upsertWorkItemBacklogRankRowsImmediate(rowsToUpsert);
 }
 
 async function upsertWorkItemBacklogRankRowsImmediate(
@@ -1074,8 +1074,7 @@ async function loadWorkItemBoardRanks(
 export async function upsertWorkItemBoardRankRows(
   rowsToUpsert: WorkItemBoardRankUpsert[],
 ): Promise<boolean> {
-  return enqueueWorkItemMutation(async () => {
-    const rows = rowsToUpsert.map((row) => ({
+  const rows = rowsToUpsert.map((row) => ({
       work_item_id: row.workItemId,
       backlog_id: row.backlogId,
       rank: safeRank(row.rank),
@@ -1093,7 +1092,6 @@ export async function upsertWorkItemBoardRankRows(
       return false;
     }
     return true;
-  });
 }
 
 export async function deleteWorkItemBoardRanks(
