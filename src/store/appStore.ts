@@ -618,7 +618,7 @@ const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
 const PENDING_BOARD_RANK_UPSERTS_KEY = "pending_work_item_board_rank_upserts";
 const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
 const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
-const DATA_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes – stale-while-revalidate
+const DATA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes – stale-while-revalidate
 
 let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null;
 let appDataBackgroundRefreshInFlight: { orgId: string; promise: Promise<void> } | null = null;
