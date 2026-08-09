@@ -1869,6 +1869,68 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       }
 
+      // Compact ranks of remaining siblings in each source backlog context
+      // that had items moved out — prevents rank gaps (e.g. 0,1,4,5 → 0,1,2,3).
+      const contextsToCompact = new Map<string, { backlogId: string; treeId: string; parentId: string | null; itemIds: string[] }>();
+      for (const { workItemId, backlogId } of removedRanks) {
+        const wi = updatedItems[workItemId];
+        // wi may no longer exist in updatedItems if it was a descendant whose
+        // new backlog is the same as the target; skip those.
+        if (!wi) continue;
+        // Find the tree that contained this rank entry
+        for (const [tid, blId] of Object.entries(state.workItems[workItemId]?.backlogAssignments ?? {})) {
+          if (blId === backlogId) {
+            // This tree had this backlog; find siblings still in this backlog under same parent
+            const effParent = getEffectiveParentId(state.workItems[workItemId]!, tid);
+            const key = `${tid}::${backlogId}::${effParent ?? 'ROOT'}`;
+            if (!contextsToCompact.has(key)) {
+              contextsToCompact.set(key, { backlogId, treeId: tid, parentId: effParent, itemIds: [] });
+            }
+            break;
+          }
+        }
+      }
+      // Actually collect remaining siblings for each affected context
+      for (const [key, ctx] of contextsToCompact) {
+        const movedItemIds = new Set(removedRanks.filter(r => r.backlogId === ctx.backlogId).map(r => r.workItemId));
+        for (const wi of Object.values(updatedItems)) {
+          const effParent = getEffectiveParentId(wi, ctx.treeId);
+          if (effParent !== ctx.parentId) continue;
+          if (wi.backlogAssignments[ctx.treeId] !== ctx.backlogId) continue;
+          if (!movedItemIds.has(wi.id)) continue;
+          ctx.itemIds.push(wi.id);
+        }
+      }
+      // Actually compact: collect REMAINING siblings, sort by rank, renumber 0..N-1
+      for (const [, ctx] of contextsToCompact) {
+        const movedItemIds = new Set(removedRanks.filter(r => r.backlogId === ctx.backlogId).map(r => r.workItemId));
+        const remaining = Object.values(updatedItems).filter((wi) => {
+          if (movedItemIds.has(wi.id)) return false;
+          if (getEffectiveParentId(wi, ctx.treeId) !== ctx.parentId) return false;
+          return wi.backlogAssignments[ctx.treeId] === ctx.backlogId;
+        }).sort((a, b) => {
+          const rA = a.ranks[ctx.backlogId] ?? 0;
+          const rB = b.ranks[ctx.backlogId] ?? 0;
+          return rA !== rB ? rA - rB : a.id.localeCompare(b.id);
+        });
+        // Now compact the source (remaining siblings) — only update items whose
+        // ranks don't match their sequential position after the moved items are gone
+        for (let i = 0; i < remaining.length; i++) {
+          const wi = remaining[i];
+          if ((wi.ranks[ctx.backlogId] ?? 0) !== i) {
+            const updated = { ...wi, ranks: { ...wi.ranks, [ctx.backlogId]: i } };
+            updatedItems[wi.id] = updated;
+            // Add to changed if not already tracked
+            if (!changed.some((c) => c.id === wi.id)) {
+              changed.push(updated);
+            } else {
+              const idx = changed.findIndex((c) => c.id === wi.id);
+              if (idx >= 0) changed[idx] = updated;
+            }
+          }
+        }
+      }
+
       upsertWorkItems(changed, orgId);
       // Clean up stale rank rows in the DB for backlogs that items were moved out of.
       deleteWorkItemBacklogRanks(removedRanks);
