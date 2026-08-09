@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
 import { getPlanByProductId, PLANS, type PlanKey } from "@/hooks/useSubscription";
+import { getSignInLog, type SignInEntry } from "@/store/signInLogStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import {
   CreditCard,
   ExternalLink,
   Trash2,
+  Clock,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -62,7 +64,6 @@ interface TeamRow {
   created_at: string;
 }
 
-
 export default function ManagerScreen() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -74,6 +75,7 @@ export default function ManagerScreen() {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "user"; id: string; name: string } | null>(null);
+  const [signIns, setSignIns] = useState<SignInEntry[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [orgPlans, setOrgPlans] = useState<Record<string, PlanKey>>({});
   const [plansLoading, setPlansLoading] = useState(false);
@@ -294,6 +296,10 @@ export default function ManagerScreen() {
     }
   };
 
+  const loadSignIns = () => {
+    setSignIns(getSignInLog());
+  };
+
   const handleNavigateToOrg = async (orgId: string) => {
     // Switch active org and navigate to main app
     const org = orgs.find((o) => o.id === orgId);
@@ -367,8 +373,8 @@ export default function ManagerScreen() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="organizations" onValueChange={(v) => { if (v === "billing") loadOrgPlans(orgs.map((o) => o.id)); }}>
-          <TabsList className="grid grid-cols-4 w-full">
+        <Tabs defaultValue="organizations" onValueChange={(v) => { if (v === "billing") loadOrgPlans(orgs.map((o) => o.id)); if (v === "sign-ins") loadSignIns(); }}>
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="organizations">
               <Building2 className="w-4 h-4 mr-1.5" /> Organizations
             </TabsTrigger>
@@ -380,6 +386,9 @@ export default function ManagerScreen() {
             </TabsTrigger>
             <TabsTrigger value="billing">
               <CreditCard className="w-4 h-4 mr-1.5" /> Billing
+            </TabsTrigger>
+            <TabsTrigger value="sign-ins">
+              <Clock className="w-4 h-4 mr-1.5" /> Sign-ins
             </TabsTrigger>
           </TabsList>
 
@@ -598,6 +607,45 @@ export default function ManagerScreen() {
                     })}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Sign-ins */}
+          <TabsContent value="sign-ins">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Recent Sign-ins
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {signIns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No sign-in records yet. Sign-in data will appear here as users sign in across all organizations.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Sign-in Time</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {signIns.map((s, i) => (
+                        <TableRow key={`${s.id}-${s.timestamp}-${i}`}>
+                          <TableCell className="font-medium">
+                            {s.fullName || <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell>{s.email || <span className="text-muted-foreground italic">—</span>}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {new Date(s.timestamp).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

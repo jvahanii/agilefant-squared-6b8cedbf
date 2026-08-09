@@ -6,6 +6,7 @@ import { useOrgStore } from '@/store/orgStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
+import { recordSignIn } from '@/store/signInLogStore';
 
 interface AuthContextType {
   user: User | null;
@@ -83,6 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        // Record sign-in locally for the manager screen
+        if (session?.user?.id) {
+          recordSignIn(
+            session.user.id,
+            session.user.user_metadata?.full_name ?? null,
+            session.user.email ?? null,
+          );
+        }
       })
       .catch(() => {
         // If getSession() rejects (e.g. network error during token refresh),
@@ -134,8 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // (e.g. after a password reset). A SIGNED_IN fired by a background
         // token refresh when the tab regains focus keeps the same user id
         // and must not force the app back to the "Loading..." screen.
-        if (event === 'SIGNED_IN' && newUserId && (prev?.id ?? null) !== newUserId) {
+      if (event === 'SIGNED_IN' && newUserId && (prev?.id ?? null) !== newUserId) {
           useOrgStore.setState({ loading: true });
+          // Record sign-in locally for the manager screen
+          const fullName = newSession?.user?.user_metadata?.full_name ?? null;
+          const email = newSession?.user?.email ?? null;
+          recordSignIn(newUserId, fullName, email);
         }
         if ((prev?.id ?? null) === newUserId) return prev;
         return newSession?.user ?? null;
