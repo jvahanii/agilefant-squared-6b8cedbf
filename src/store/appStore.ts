@@ -1061,6 +1061,37 @@ function healDuplicateRanks(
 
 
 export const useAppStore = create<AppState>()((set, get) => {
+  // Debounce childrenIds re-sort from realtime rank events so batch
+  // reorders don't cause visible jump-then-correct flickering.
+  const pendingRankResorts = new Map<string, { parentId: string; treeId: string }>();
+  let rankResortScheduled = false;
+  const flushRankResorts = () => {
+    rankResortScheduled = false;
+    if (pendingRankResorts.size === 0) return;
+    const toProcess = new Map(pendingRankResorts);
+    pendingRankResorts.clear();
+    set((state) => {
+      const updatedItems = { ...state.workItems };
+      let changed = false;
+      for (const [, { parentId, treeId }] of toProcess) {
+        const parent = updatedItems[parentId];
+        if (!parent) continue;
+        const sortedIds = [...parent.childrenIds].sort((a, b) => {
+          const wiA = updatedItems[a];
+          const wiB = updatedItems[b];
+          const blA = wiA?.backlogAssignments[treeId];
+          const blB = wiB?.backlogAssignments[treeId];
+          const rA = wiA && blA ? (wiA.ranks[blA] ?? 0) : 0;
+          const rB = wiB && blB ? (wiB.ranks[blB] ?? 0) : 0;
+          return rA - rB;
+        });
+        updatedItems[parentId] = { ...parent, childrenIds: sortedIds };
+        changed = true;
+      }
+      return changed ? { workItems: updatedItems } : state;
+    });
+  };
+
   // Register a callback so supabaseSync can notify us when work-item IDs are
   // renamed (stale org prefix repaired).  This keeps local state consistent
   // without requiring each individual store action to be made async.
@@ -3972,22 +4003,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Dedup at load time (sanitizeData) is sufficient to repair any genuine
         // duplicates that escaped to the DB.
 
-        // Re-sort parent's childrenIds if this item has a parent.
-        // Use the updated backlog context instead of the minimum rank across all backlogs.
+        // Debounce the childrenIds re-sort for this parent so that a batch
+        // of N realtime rank events coalesces into a single sort in a
+        // microtask.  Without this, each event re-sorts immediately with
+        // partial rank data, causing the visible "jump then correct" flicker.
         const treeId = state.backlogs[backlogId]?.treeId;
-        if (wi.parentId && updatedWorkItems[wi.parentId] && treeId) {
-          const parent = updatedWorkItems[wi.parentId];
-          const sortWorkItemIds = (ids: string[]) =>
-            [...ids].sort((a, b) => {
-              const wiA = updatedWorkItems[a];
-              const wiB = updatedWorkItems[b];
-              const backlogA = wiA?.backlogAssignments[treeId];
-              const backlogB = wiB?.backlogAssignments[treeId];
-              const rankA = wiA && backlogA ? (wiA.ranks[backlogA] ?? 0) : 0;
-              const rankB = wiB && backlogB ? (wiB.ranks[backlogB] ?? 0) : 0;
-              return rankA - rankB;
-            });
-          updatedWorkItems[wi.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
+        if (wi.parentId && treeId) {
+          const key = `${wi.parentId}::${treeId}`;
+          pendingRankResorts.set(key, { parentId: wi.parentId, treeId });
+          if (!rankResortScheduled) {
+            rankResortScheduled = true;
+            queueMicrotask(flushRankResorts);
+          }
         }
 
         return { workItems: updatedWorkItems };
