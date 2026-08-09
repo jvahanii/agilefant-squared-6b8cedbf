@@ -1820,33 +1820,37 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       moveRecursive(workItemId, true);
 
-      // Fix rank duplicates among children that were previously in different
-      // backlogs and are now all in cleanTargetBl.
-      const movedByParent = new Map<string | null, string[]>();
-      for (const wi of changed) {
-        if (wi.id === workItemId) continue;
+      // Compact ALL siblings in the target context (both moved items AND
+      // pre-existing siblings) so no duplicate or gapped ranks remain after
+      // the move.  Without this, moved descendants could retain ranks that
+      // collide with existing items, causing display/ordering bugs.
+      const targetSiblingsByParent = new Map<string | null, string[]>();
+      for (const wi of Object.values(updatedItems)) {
+        if (wi.backlogAssignments[targetTreeId] !== cleanTargetBl) continue;
         const pid = getEffectiveParentId(wi, targetTreeId) ?? null;
-        if (!movedByParent.has(pid)) movedByParent.set(pid, []);
-        movedByParent.get(pid)!.push(wi.id);
+        if (!targetSiblingsByParent.has(pid)) targetSiblingsByParent.set(pid, []);
+        targetSiblingsByParent.get(pid)!.push(wi.id);
       }
-      for (const ids of movedByParent.values()) {
-        if (ids.length < 2) continue;
-        const sorted = [...ids].sort(
-          (a, b) => (updatedItems[a]?.ranks[cleanTargetBl] ?? 0) - (updatedItems[b]?.ranks[cleanTargetBl] ?? 0),
-        );
-        let prevEffective = -Infinity;
-        for (const id of sorted) {
-          const sibling = updatedItems[id];
-          if (!sibling) continue;
-          const sibRank = sibling.ranks[cleanTargetBl] ?? 0;
-          if (sibRank <= prevEffective) {
-            const newRank = prevEffective + 1;
-            updatedItems[id] = { ...updatedItems[id], ranks: { ...updatedItems[id].ranks, [cleanTargetBl]: newRank } };
-            const idx = changed.findIndex((c) => c.id === id);
-            if (idx >= 0) changed[idx] = updatedItems[id];
-            prevEffective = newRank;
-          } else {
-            prevEffective = sibRank;
+      for (const ids of targetSiblingsByParent.values()) {
+        const sorted = [...ids]
+          .map((id) => updatedItems[id])
+          .filter((wi): wi is WorkItem => !!wi)
+          .sort((a, b) => {
+            const rA = a.ranks[cleanTargetBl] ?? 0;
+            const rB = b.ranks[cleanTargetBl] ?? 0;
+            return rA !== rB ? rA - rB : a.id.localeCompare(b.id);
+          });
+        for (let i = 0; i < sorted.length; i++) {
+          const wi = sorted[i];
+          if ((wi.ranks[cleanTargetBl] ?? 0) !== i) {
+            const updated = { ...wi, ranks: { ...wi.ranks, [cleanTargetBl]: i } };
+            updatedItems[wi.id] = updated;
+            const idx = changed.findIndex((c) => c.id === wi.id);
+            if (idx >= 0) {
+              changed[idx] = updated;
+            } else {
+              changed.push(updated);
+            }
           }
         }
       }
