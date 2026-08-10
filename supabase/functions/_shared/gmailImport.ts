@@ -43,7 +43,29 @@ export async function importLinksAsWorkItems(
   // Drop duplicates inside the batch itself.
   const unique = new Map<string, ExtractedLink>();
   for (const l of links) unique.set(`${l.messageId}|${l.url}`, l);
-  const candidates = [...unique.values()];
+  let candidates = [...unique.values()];
+
+  // Extra safety net: never create a second item for a URL that already exists
+  // as a hyperlink on an item in the target backlog, even if the dedup record
+  // for it is missing (e.g. from historical partial imports).
+  const { data: existingRankRows } = await admin
+    .from('work_item_backlog_ranks')
+    .select('work_item_id')
+    .eq('backlog_id', backlogId);
+  const existingItemIds = (existingRankRows ?? []).map((r) => r.work_item_id as string);
+  if (existingItemIds.length > 0) {
+    const presentUrls = new Set<string>();
+    for (let i = 0; i < existingItemIds.length; i += 200) {
+      const { data: urlRows } = await admin
+        .from('work_item_hyperlinks')
+        .select('url')
+        .in('work_item_id', existingItemIds.slice(i, i + 200));
+      for (const r of urlRows ?? []) presentUrls.add(r.url as string);
+    }
+    candidates = candidates.filter((l) => !presentUrls.has(l.url));
+  }
+  if (candidates.length === 0) return { created: 0, skipped: unique.size, createdIds: [] };
+
 
   // CLAIM FIRST: write the dedup rows before creating anything else, ignoring
   // rows that already exist. Only the rows this run actually inserted are ours
