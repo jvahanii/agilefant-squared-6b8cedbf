@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useAppStore, sanitizeData } from "@/store/appStore";
+import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/appStore";
 import { getEffectiveParentId } from "@/types/models";
 import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
