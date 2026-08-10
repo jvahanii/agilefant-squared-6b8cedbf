@@ -637,6 +637,16 @@ function suppressLocalBoardRankEcho(workItemId: string, backlogId: string): bool
   return ts !== undefined && (Date.now() - ts < RANK_ECHO_SUPPRESS_MS);
 }
 
+/**
+ * Clears the rank-echo suppression windows.  Test-only: the maps above are
+ * module-level (per page-load in the app), so without this reset a locally
+ * written rank in one test suppresses realtime rank events in the next one.
+ */
+export function resetRankEchoSuppression() {
+  recentlyWrittenRanks.clear();
+  recentlyWrittenBoardRanks.clear();
+}
+
 function recordRankWrite(rows: WorkItemBacklogRankUpsert[]) {
   const now = Date.now();
   for (const r of rows) recentlyWrittenRanks.set(`${r.workItemId}::${r.backlogId}`, now);
