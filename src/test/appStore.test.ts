@@ -131,6 +131,75 @@ describe("reorderWorkItemAmongSiblings", () => {
   });
 });
 
+// ─── LIST ↔ BOARD RANK CONNECTION ──────────────────────────────────────
+
+const BL = `${ORG}::bl-1`;
+const BT = `${ORG}::bt-1`;
+
+function seedMixedStatusBacklog() {
+  const mk = (n: number, status: "not_started" | "in_progress", listRank: number, boardRank: number) => ({
+    id: `${ORG}::wi-${n}`, title: `Item ${n}`, status,
+    parentId: null, childrenIds: [] as string[],
+    backlogAssignments: { [BT]: BL },
+    ranks: { [BL]: listRank },
+    boardRanks: { [BL]: boardRank },
+  });
+  useAppStore.setState({
+    organizationId: ORG,
+    backlogTrees: { [BT]: { id: BT, name: "Tree 1", rootBacklogIds: [BL], rank: 0 } },
+    backlogs: { [BL]: { id: BL, name: "BL 1", parentId: null, childrenIds: [], treeId: BT, rank: 0 } },
+    workItems: {
+      [`${ORG}::wi-1`]: mk(1, "not_started", 0, 0),
+      [`${ORG}::wi-2`]: mk(2, "in_progress", 1, 0),
+      [`${ORG}::wi-3`]: mk(3, "not_started", 2, 1),
+    },
+    selectedWorkItemIds: [], undoStack: [], redoStack: [], isLoading: false,
+  });
+}
+
+describe("list ↔ board rank connection", () => {
+  it("a list reorder makes same-status siblings follow in board order", () => {
+    seedMixedStatusBacklog();
+    // Move wi-3 (not_started, list 2) to the top of the list.
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-3`, 0, BT, [BL]);
+
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-3`].ranks[BL]).toBeLessThan(items[`${ORG}::wi-1`].ranks[BL]);
+    // Board: wi-3 must now precede wi-1 in the not_started column too.
+    expect(items[`${ORG}::wi-3`].boardRanks![BL]).toBeLessThan(items[`${ORG}::wi-1`].boardRanks![BL]);
+    // The in_progress card keeps its own board rank untouched.
+    expect(items[`${ORG}::wi-2`].boardRanks![BL]).toBe(0);
+  });
+
+  it("a board reorder permutes only the same-status list slots", () => {
+    seedMixedStatusBacklog();
+    // In the not_started column the order is [wi-1, wi-3]; drop wi-3 at index 0.
+    useAppStore.getState().reorderWorkItemInBoard(`${ORG}::wi-3`, 0, BT, [BL], "not_started");
+
+    const items = useAppStore.getState().workItems;
+    // Board order flipped.
+    expect(items[`${ORG}::wi-3`].boardRanks![BL]).toBeLessThan(items[`${ORG}::wi-1`].boardRanks![BL]);
+    // List order flipped inside the slots {0, 2} the not_started items owned.
+    expect(items[`${ORG}::wi-3`].ranks[BL]).toBe(0);
+    expect(items[`${ORG}::wi-1`].ranks[BL]).toBe(2);
+    // The in_progress item did not move in the list.
+    expect(items[`${ORG}::wi-2`].ranks[BL]).toBe(1);
+  });
+
+  it("a status change places the card by its list position and leaves list ranks alone", () => {
+    seedMixedStatusBacklog();
+    // wi-1 (list 0) becomes in_progress; wi-2 (list 1) is already in that column.
+    useAppStore.getState().setWorkItemStatus(`${ORG}::wi-1`, "in_progress");
+
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-1`].ranks[BL]).toBe(0);
+    expect(items[`${ORG}::wi-2`].ranks[BL]).toBe(1);
+    // Board: wi-1 sits before wi-2 because it is above it in the list.
+    expect(items[`${ORG}::wi-1`].boardRanks![BL]).toBeLessThan(items[`${ORG}::wi-2`].boardRanks![BL]);
+  });
+});
+
+
 // ─── WORK ITEM CRUD ────────────────────────────────────────────────────
 
 describe("addWorkItem", () => {
