@@ -26,6 +26,7 @@ import {
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { getEffectiveStatuses } from "./backlogStatusesStore";
+import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 
 function generateMockData() {
