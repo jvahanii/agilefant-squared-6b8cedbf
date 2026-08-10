@@ -2654,6 +2654,34 @@ export const useAppStore = create<AppState>()((set, get) => {
       const item = state.workItems[workItemId];
       if (!item) return;
       const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
+
+      // The item joins a new board column — place it there according to its
+      // list position relative to the same-context cards already in that
+      // column, so list and board stay consistent for same-status siblings.
+      if (item.status !== status && item.childrenIds.length === 0) {
+        const boardRankRows: WorkItemBoardRankUpsert[] = [];
+        const nextBoardRanks: Record<string, number> = { ...(item.boardRanks ?? {}) };
+        for (const [treeId, blId] of Object.entries(item.backlogAssignments)) {
+          const myListRank = item.ranks[blId];
+          if (typeof myListRank !== "number") continue;
+          const myParent = getEffectiveParentId(item, treeId);
+          const columnCards = Object.values(state.workItems)
+            .filter((wi) => wi.id !== workItemId && wi.status === status && wi.childrenIds.length === 0 && wi.backlogAssignments[treeId] === blId)
+            .map((wi) => ({
+              id: wi.id,
+              boardRank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0,
+              listRank: getEffectiveParentId(wi, treeId) === myParent ? (wi.ranks[blId] ?? null) : null,
+            }))
+            .sort((a, b) => a.boardRank - b.boardRank);
+          const fitted = boardRankFromListPosition(workItemId, myListRank, columnCards);
+          const newBoardRank = fitted ?? (columnCards.length > 0 ? columnCards[columnCards.length - 1].boardRank + 1 : 0);
+          nextBoardRanks[blId] = newBoardRank;
+          boardRankRows.push({ workItemId, backlogId: blId, rank: newBoardRank, organizationId: item.organizationId ?? orgId });
+        }
+        updatedWorkItems[workItemId] = { ...updatedWorkItems[workItemId], boardRanks: nextBoardRanks };
+        if (boardRankRows.length > 0) persistBoardRankUpserts(boardRankRows);
+      }
+
       upsertWorkItem(updatedWorkItems[workItemId], orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
       const isLeavingNotStarted = item.status === "not_started" && status !== "not_started";
