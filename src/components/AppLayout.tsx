@@ -255,7 +255,10 @@ function AppLayoutInner() {
               !backlogIdSet.has(state.workItems[wEffectiveParent].backlogAssignments[treeId])
             );
           })
-          .sort((a, b) => (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0));
+          .sort((a, b) => {
+            const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
+            return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+          });
 
         // Find drop-zone indices of all selected siblings; move the whole group by one
         // neighbour up or down — top selected → zone-1 for up, bottom selected → zone+2 for down.
