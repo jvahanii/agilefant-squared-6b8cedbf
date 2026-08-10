@@ -615,6 +615,44 @@ function assignSequentialRanksForContext(
 }
 
 
+/**
+ * Suppress realtime echoes of locally-written ranks for this many ms so
+ * rapid keyboard reordering doesn't cause bounce-back behavior when the
+ * Supabase replication channel delivers our own writes back to us.
+ */
+const RANK_ECHO_SUPPRESS_MS = 800;
+const recentlyWrittenRanks = new Map<string, number>(); // "wiId::blId" → timestamp
+const recentlyWrittenBoardRanks = new Map<string, number>();
+
+function suppressLocalRankEcho(workItemId: string, backlogId: string): boolean {
+  const key = `${workItemId}::${backlogId}`;
+  const ts = recentlyWrittenRanks.get(key);
+  return ts !== undefined && (Date.now() - ts < RANK_ECHO_SUPPRESS_MS);
+}
+
+function suppressLocalBoardRankEcho(workItemId: string, backlogId: string): boolean {
+  const key = `${workItemId}::${backlogId}`;
+  const ts = recentlyWrittenBoardRanks.get(key);
+  return ts !== undefined && (Date.now() - ts < RANK_ECHO_SUPPRESS_MS);
+}
+
+function recordRankWrite(rows: WorkItemBacklogRankUpsert[]) {
+  const now = Date.now();
+  for (const r of rows) recentlyWrittenRanks.set(`${r.workItemId}::${r.backlogId}`, now);
+  // Lazy cleanup of expired entries
+  for (const [k, ts] of recentlyWrittenRanks) {
+    if (now - ts > RANK_ECHO_SUPPRESS_MS) recentlyWrittenRanks.delete(k);
+  }
+}
+
+function recordBoardRankWrite(rows: WorkItemBoardRankUpsert[]) {
+  const now = Date.now();
+  for (const r of rows) recentlyWrittenBoardRanks.set(`${r.workItemId}::${r.backlogId}`, now);
+  for (const [k, ts] of recentlyWrittenBoardRanks) {
+    if (now - ts > RANK_ECHO_SUPPRESS_MS) recentlyWrittenBoardRanks.delete(k);
+  }
+}
+
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
 const PENDING_BOARD_RANK_UPSERTS_KEY = "pending_work_item_board_rank_upserts";
 const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
@@ -911,6 +949,7 @@ function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
 
 function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   if (rows.length === 0) return;
+  recordRankWrite(rows);
   queueRankUpsertsForRetry(rows);
   upsertWorkItemBacklogRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
@@ -962,6 +1001,7 @@ function readPendingBoardRankUpserts(): WorkItemBoardRankUpsert[] {
 
 function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
   if (rows.length === 0) return;
+  recordBoardRankWrite(rows);
   queueBoardRankUpsertsForRetry(rows);
   upsertWorkItemBoardRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
@@ -4029,9 +4069,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     applyRealtimeWorkItemRank: (eventType, row) => {
+      const workItemId = row.work_item_id as string;
+      const backlogId = row.backlog_id as string;
+      if (eventType !== 'DELETE' && suppressLocalRankEcho(workItemId, backlogId)) return;
+
       set((state) => {
-        const workItemId = row.work_item_id as string;
-        const backlogId = row.backlog_id as string;
         const wi = state.workItems[workItemId];
         if (!wi) return state;
 
@@ -4075,9 +4117,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     applyRealtimeWorkItemBoardRank: (eventType, row) => {
+      const workItemId = row.work_item_id as string;
+      const backlogId = row.backlog_id as string;
+      if (eventType !== 'DELETE' && suppressLocalBoardRankEcho(workItemId, backlogId)) return;
+
       set((state) => {
-        const workItemId = row.work_item_id as string;
-        const backlogId = row.backlog_id as string;
         const wi = state.workItems[workItemId];
         if (!wi) return state;
         const current = wi.boardRanks ?? {};
