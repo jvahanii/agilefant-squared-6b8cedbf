@@ -1725,6 +1725,25 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       });
 
+      // Re-sort the parent's childrenIds to match the new rank order so the
+      // tree panel immediately reflects the reordered positions and
+      // "bounceback-creep" is prevented (the old childrenIds order would
+      // otherwise survive until a realtime event re-sorts it).
+      if (mainParentInContext && mainEffectiveParentId && updatedItems[mainEffectiveParentId]) {
+        const parent = updatedItems[mainEffectiveParentId];
+        const sortedChildren = [...parent.childrenIds].sort((a, b) => {
+          const wiA = updatedItems[a];
+          const wiB = updatedItems[b];
+          if (!wiA || !wiB) return 0;
+          const blA = wiA.backlogAssignments[treeId];
+          const blB = wiB.backlogAssignments[treeId];
+          const rA = blA ? (wiA.ranks[blA] ?? 0) : 0;
+          const rB = blB ? (wiB.ranks[blB] ?? 0) : 0;
+          return rA !== rB ? rA - rB : a.localeCompare(b);
+        });
+        updatedItems[mainEffectiveParentId] = { ...parent, childrenIds: sortedChildren };
+      }
+
       persistRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
@@ -1777,6 +1796,20 @@ export const useAppStore = create<AppState>()((set, get) => {
           };
         }
       });
+
+      // Re-sort the parent's childrenIds to match the alphabetical order.
+      if (parentId && updatedItems[parentId]) {
+        const newOrder = siblings.map((s) => s.id);
+        // Merge any children that weren't in the sorted context (e.g. from
+        // other backlogs) at the end so they don't get dropped.
+        const otherChildren = updatedItems[parentId].childrenIds.filter(
+          (cid) => !newOrder.includes(cid),
+        );
+        updatedItems[parentId] = {
+          ...updatedItems[parentId],
+          childrenIds: [...newOrder, ...otherChildren],
+        };
+      }
 
       persistRankUpserts(
         siblings.flatMap((s) => {
@@ -1850,6 +1883,22 @@ export const useAppStore = create<AppState>()((set, get) => {
           };
         }
       });
+
+      // Re-sort the parent's childrenIds to match the new board rank order.
+      if (mainParentInContext && mainEffectiveParentId && updatedItems[mainEffectiveParentId]) {
+        const parent = updatedItems[mainEffectiveParentId];
+        const sortedChildren = [...parent.childrenIds].sort((a, b) => {
+          const wiA = updatedItems[a];
+          const wiB = updatedItems[b];
+          if (!wiA || !wiB) return 0;
+          const blA = wiA.backlogAssignments[treeId];
+          const blB = wiB.backlogAssignments[treeId];
+          const rA = blA ? (wiA.boardRanks?.[blA] ?? 0) : 0;
+          const rB = blB ? (wiB.boardRanks?.[blB] ?? 0) : 0;
+          return rA !== rB ? rA - rB : a.localeCompare(b);
+        });
+        updatedItems[mainEffectiveParentId] = { ...parent, childrenIds: sortedChildren };
+      }
 
       persistBoardRankUpserts(
         reordered.flatMap((s) => {
@@ -4000,9 +4049,16 @@ export const useAppStore = create<AppState>()((set, get) => {
           [...ids].sort((a, b) => {
             const wiA = updatedWorkItems[a];
             const wiB = updatedWorkItems[b];
-            const rankA = wiA ? Math.min(...Object.values(wiA.ranks), 0) : 0;
-            const rankB = wiB ? Math.min(...Object.values(wiB.ranks), 0) : 0;
-            return rankA - rankB;
+            if (!wiA || !wiB) return 0;
+            // Use the minimum rank across all backlogs, but don't clamp to 0
+            // so actual rank differences are preserved and items stay ordered.
+            const rankA = Object.keys(wiA.ranks).length > 0
+              ? Math.min(...Object.values(wiA.ranks))
+              : 0;
+            const rankB = Object.keys(wiB.ranks).length > 0
+              ? Math.min(...Object.values(wiB.ranks))
+              : 0;
+            return rankA !== rankB ? rankA - rankB : a.localeCompare(b);
           });
 
         const oldItem = state.workItems[id];
