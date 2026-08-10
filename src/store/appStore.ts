@@ -26,6 +26,7 @@ import {
 import { mockData as staticMockData } from "./mockData";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { getEffectiveStatuses } from "./backlogStatusesStore";
+import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 
 function generateMockData() {
@@ -162,7 +163,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
-  reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
+  reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[], statusKey?: string) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
@@ -1744,6 +1745,29 @@ export const useAppStore = create<AppState>()((set, get) => {
         updatedItems[mainEffectiveParentId] = { ...parent, childrenIds: sortedChildren };
       }
 
+      // ---- Keep the board consistent with the new list order ---------------
+      // Same-status siblings in the same backlog must appear in the same
+      // relative order in both views. Redistribute the board-rank slots that
+      // group already holds, following the new list order. Items of other
+      // statuses keep their board positions untouched.
+      const boardMembers = reordered.flatMap((s) => {
+        const wi = updatedItems[s.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return [];
+        return [{ id: wi.id, status: `${blId}::${wi.status}`, rank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0 }];
+      });
+      const syncedBoardRanks = redistributeRanksByStatus(boardMembers, reordered.map((s) => s.id));
+      const syncedBoardRows: WorkItemBoardRankUpsert[] = [];
+      for (const [id, rank] of Object.entries(syncedBoardRanks)) {
+        const wi = updatedItems[id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) continue;
+        updatedItems[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: rank } };
+        syncedBoardRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
+      }
+      if (syncedBoardRows.length > 0) persistBoardRankUpserts(syncedBoardRows);
+
+
       persistRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
@@ -1811,6 +1835,26 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
+      // Keep same-status siblings in the same relative order on the board.
+      const sortedBoardMembers = siblings.flatMap((s) => {
+        const wi = updatedItems[s.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return [];
+        return [{ id: wi.id, status: `${blId}::${wi.status}`, rank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0 }];
+      });
+      const sortedBoardRanks = redistributeRanksByStatus(sortedBoardMembers, siblings.map((s) => s.id));
+      const sortedBoardRows: WorkItemBoardRankUpsert[] = [];
+      for (const [id, rank] of Object.entries(sortedBoardRanks)) {
+        const wi = updatedItems[id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) continue;
+        updatedItems[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: rank } };
+        sortedBoardRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
+      }
+      if (sortedBoardRows.length > 0) persistBoardRankUpserts(sortedBoardRows);
+
+
+
       persistRankUpserts(
         siblings.flatMap((s) => {
           const updated = updatedItems[s.id];
@@ -1829,85 +1873,105 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    reorderWorkItemInBoard: (workItemId, targetIndex, treeId, backlogIds) => {
+    reorderWorkItemInBoard: (workItemId, targetIndex, treeId, backlogIds, statusKey) => {
       const state = get();
       const orgId = state.organizationId!;
       const mainItem = state.workItems[workItemId];
       if (!mainItem) return;
+      const columnStatus = (statusKey ?? mainItem.status) as WorkItemStatus;
 
       const itemsToMoveIds = state.selectedWorkItemIds.includes(workItemId) ? state.selectedWorkItemIds : [workItemId];
+      const movingSet = new Set(itemsToMoveIds);
       const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
 
-      // Collect all items visible in this backlog context (same logic as reorderWorkItemAmongSiblings)
-      const mainEffectiveParentId = getEffectiveParentId(mainItem, treeId);
-      const mainParentInContext =
-        mainEffectiveParentId !== null &&
-        backlogIdSet.has(state.workItems[mainEffectiveParentId]?.backlogAssignments[treeId]);
-
-      const allSiblings = Object.values(state.workItems)
+      // The board column: leaf cards of this backlog subtree carrying this
+      // status (mirrors BoardView's grouping), in current board order.
+      const columnCards = Object.values(state.workItems)
         .filter((wi) => {
-          if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
-          const wiEffectiveParentId = getEffectiveParentId(wi, treeId);
-          if (mainParentInContext) {
-            return wiEffectiveParentId === mainEffectiveParentId;
-          }
-          const wiParentInContext =
-            wiEffectiveParentId !== null &&
-            backlogIdSet.has(state.workItems[wiEffectiveParentId]?.backlogAssignments[treeId]);
-          return !wiParentInContext;
+          const blId = wi.backlogAssignments[treeId];
+          if (!blId || !backlogIdSet.has(blId)) return false;
+          if (wi.childrenIds.length > 0) return false;
+          return wi.status === columnStatus || movingSet.has(wi.id);
         })
         .sort((a, b) => {
-          // Sort by board rank instead of list rank
-          const rankDiff = (a.boardRanks?.[a.backlogAssignments[treeId]] ?? 0) - (b.boardRanks?.[b.backlogAssignments[treeId]] ?? 0);
-          return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+          const ab = a.backlogAssignments[treeId];
+          const bb = b.backlogAssignments[treeId];
+          const diff = (a.boardRanks?.[ab] ?? a.ranks[ab] ?? 0) - (b.boardRanks?.[bb] ?? b.ranks[bb] ?? 0);
+          return diff !== 0 ? diff : a.id.localeCompare(b.id);
         });
 
-      const movingSet = new Set(itemsToMoveIds);
-      const remaining = allSiblings.filter((s) => !movingSet.has(s.id));
-      const movingBeforeTarget = allSiblings.filter((s, i) => movingSet.has(s.id) && i < targetIndex).length;
-      const adjustedTarget = targetIndex - movingBeforeTarget;
-      const clampedIdx = Math.max(0, Math.min(adjustedTarget, remaining.length));
-
-      const movingItems = allSiblings.filter((s) => movingSet.has(s.id));
-      const reordered = [...remaining];
-      reordered.splice(clampedIdx, 0, ...movingItems);
+      const remaining = columnCards.filter((c) => !movingSet.has(c.id));
+      const movingBeforeTarget = columnCards.filter((c, i) => movingSet.has(c.id) && i < targetIndex).length;
+      const clampedIdx = Math.max(0, Math.min(targetIndex - movingBeforeTarget, remaining.length));
+      const movingItems = columnCards.filter((c) => movingSet.has(c.id));
+      const newColumn = [...remaining];
+      newColumn.splice(clampedIdx, 0, ...movingItems);
 
       const updatedItems = { ...state.workItems };
-
-      reordered.forEach((s, i) => {
-        const blId = updatedItems[s.id].backlogAssignments[treeId];
-        if (blId) {
-          updatedItems[s.id] = {
-            ...updatedItems[s.id],
-            boardRanks: { ...(updatedItems[s.id].boardRanks ?? {}), [blId]: i },
-          };
-        }
+      const boardRows: WorkItemBoardRankUpsert[] = [];
+      newColumn.forEach((c, i) => {
+        const wi = updatedItems[c.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return;
+        updatedItems[c.id] = {
+          ...wi,
+          status: movingSet.has(c.id) ? columnStatus : wi.status,
+          boardRanks: { ...(wi.boardRanks ?? {}), [blId]: i },
+        };
+        boardRows.push({ workItemId: c.id, backlogId: blId, rank: i, organizationId: wi.organizationId ?? orgId });
       });
+      if (boardRows.length > 0) persistBoardRankUpserts(boardRows);
 
-      // Re-sort the parent's childrenIds to match the new board rank order.
-      if (mainParentInContext && mainEffectiveParentId && updatedItems[mainEffectiveParentId]) {
-        const parent = updatedItems[mainEffectiveParentId];
+      // Persist status changes for cards dragged in from another column.
+      for (const id of itemsToMoveIds) {
+        if (state.workItems[id] && state.workItems[id].status !== columnStatus && updatedItems[id]) {
+          upsertWorkItem(updatedItems[id], orgId);
+        }
+      }
+
+      // ---- Feed the new column order back into the list ranks --------------
+      // Only cards that share a list context (same backlog + same effective
+      // parent) and the same status can express this order in the list, so the
+      // list-rank slots are redistributed inside each such group. Everything
+      // else in the list stays exactly where it was.
+      const listMembers = newColumn.flatMap((c) => {
+        const wi = updatedItems[c.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return [];
+        const parent = getEffectiveParentId(wi, treeId);
+        return [{ id: wi.id, status: `${blId}::${parent ?? "root"}`, rank: wi.ranks[blId] ?? 0 }];
+      });
+      const syncedListRanks = redistributeRanksByStatus(listMembers, newColumn.map((c) => c.id));
+      const listRows: WorkItemBacklogRankUpsert[] = [];
+      const touchedParents = new Set<string>();
+      for (const [id, rank] of Object.entries(syncedListRanks)) {
+        const wi = updatedItems[id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) continue;
+        updatedItems[id] = { ...wi, ranks: { ...wi.ranks, [blId]: rank } };
+        listRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
+        const parent = getEffectiveParentId(updatedItems[id], treeId);
+        if (parent) touchedParents.add(parent);
+      }
+      if (listRows.length > 0) persistRankUpserts(listRows);
+
+      // Keep parents' childrenIds in sync with the new list ranks.
+      for (const parentId of touchedParents) {
+        const parent = updatedItems[parentId];
+        if (!parent) continue;
         const sortedChildren = [...parent.childrenIds].sort((a, b) => {
           const wiA = updatedItems[a];
           const wiB = updatedItems[b];
           if (!wiA || !wiB) return 0;
           const blA = wiA.backlogAssignments[treeId];
           const blB = wiB.backlogAssignments[treeId];
-          const rA = blA ? (wiA.boardRanks?.[blA] ?? 0) : 0;
-          const rB = blB ? (wiB.boardRanks?.[blB] ?? 0) : 0;
+          const rA = blA ? (wiA.ranks[blA] ?? 0) : 0;
+          const rB = blB ? (wiB.ranks[blB] ?? 0) : 0;
           return rA !== rB ? rA - rB : a.localeCompare(b);
         });
-        updatedItems[mainEffectiveParentId] = { ...parent, childrenIds: sortedChildren };
+        updatedItems[parentId] = { ...parent, childrenIds: sortedChildren };
       }
 
-      persistBoardRankUpserts(
-        reordered.flatMap((s) => {
-          const updated = updatedItems[s.id];
-          const blId = updated.backlogAssignments[treeId];
-          if (!blId) return [];
-          return { workItemId: updated.id, backlogId: blId, rank: updated.boardRanks?.[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
-        }),
-      );
       internalLog({ action: "Board Reorder", entityType: "work_item", entityId: workItemId, entityName: mainItem.title, details: `${itemsToMoveIds.length} items moved` });
 
       set({
@@ -2610,6 +2674,34 @@ export const useAppStore = create<AppState>()((set, get) => {
       const item = state.workItems[workItemId];
       if (!item) return;
       const updatedWorkItems = { ...state.workItems, [workItemId]: { ...item, status } };
+
+      // The item joins a new board column — place it there according to its
+      // list position relative to the same-context cards already in that
+      // column, so list and board stay consistent for same-status siblings.
+      if (item.status !== status && item.childrenIds.length === 0) {
+        const boardRankRows: WorkItemBoardRankUpsert[] = [];
+        const nextBoardRanks: Record<string, number> = { ...(item.boardRanks ?? {}) };
+        for (const [treeId, blId] of Object.entries(item.backlogAssignments)) {
+          const myListRank = item.ranks[blId];
+          if (typeof myListRank !== "number") continue;
+          const myParent = getEffectiveParentId(item, treeId);
+          const columnCards = Object.values(state.workItems)
+            .filter((wi) => wi.id !== workItemId && wi.status === status && wi.childrenIds.length === 0 && wi.backlogAssignments[treeId] === blId)
+            .map((wi) => ({
+              id: wi.id,
+              boardRank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0,
+              listRank: getEffectiveParentId(wi, treeId) === myParent ? (wi.ranks[blId] ?? null) : null,
+            }))
+            .sort((a, b) => a.boardRank - b.boardRank);
+          const fitted = boardRankFromListPosition(workItemId, myListRank, columnCards);
+          const newBoardRank = fitted ?? (columnCards.length > 0 ? columnCards[columnCards.length - 1].boardRank + 1 : 0);
+          nextBoardRanks[blId] = newBoardRank;
+          boardRankRows.push({ workItemId, backlogId: blId, rank: newBoardRank, organizationId: item.organizationId ?? orgId });
+        }
+        updatedWorkItems[workItemId] = { ...updatedWorkItems[workItemId], boardRanks: nextBoardRanks };
+        if (boardRankRows.length > 0) persistBoardRankUpserts(boardRankRows);
+      }
+
       upsertWorkItem(updatedWorkItems[workItemId], orgId);
       internalLog({ action: "Status Change", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `"${item.status}" → "${status}"` });
       const isLeavingNotStarted = item.status === "not_started" && status !== "not_started";
