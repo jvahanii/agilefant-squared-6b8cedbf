@@ -906,81 +906,18 @@ function AppLayoutInner() {
 
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
-        // Dropping on the column empty space places the item at the END of
-        // the column and updates both board and list ranks to keep both views
-        // in sync.
+        // Dropping on empty column space only changes the status; the store
+        // then places the card in the column according to its list position.
+        // List ranks are never touched by a board drop.
         const surfaceStore = useAppStore.getState();
-        const boardRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
-        const listRankRows: Array<{ workItemId: string; backlogId: string; rank: number; organizationId: string }> = [];
-
-        // Find the treeId from the droppable to resolve the backlog context.
-        const treeId = overData.treeId as string | undefined;
-
         draggedIds.forEach((id) => {
           const wi = surfaceStore.workItems[id];
-          if (!wi) return;
-          if (wi.status !== statusKey) {
-            surfaceStore.setWorkItemStatus(id, statusKey);
-          }
-          const targetBlId = Object.values(wi.backlogAssignments)[0];
-          if (!targetBlId) return;
-
-          // Compute board rank at the END of the column: max + 1.
-          let maxBoard = -Infinity;
-          let maxList = -Infinity;
-          // Also compute max list rank among siblings for the list-view position.
-          const effectiveParentId = treeId
-            ? (wi.parentIds?.[treeId] ?? wi.parentId)
-            : wi.parentId;
-          for (const other of Object.values(surfaceStore.workItems)) {
-            if (other.id === id) continue;
-            if (!Object.values(other.backlogAssignments).includes(targetBlId)) continue;
-            // Board rank: same-status items in the target backlog
-            if (other.status === statusKey) {
-              const br = other.boardRanks?.[targetBlId];
-              if (typeof br === 'number' && br > maxBoard) maxBoard = br;
-            }
-            // List rank: same-parent siblings in the target backlog
-            const otherEffectiveParent = treeId
-              ? (other.parentIds?.[treeId] ?? other.parentId)
-              : other.parentId;
-            if (otherEffectiveParent === effectiveParentId) {
-              const lr = other.ranks?.[targetBlId];
-              if (typeof lr === 'number' && lr > maxList) maxList = lr;
-            }
-          }
-          const newBoardRank = Number.isFinite(maxBoard) ? maxBoard + 1 : 0;
-          const newListRank = Number.isFinite(maxList) ? maxList + 1 : 0;
-          // Optimistic local update.
-          useAppStore.setState((s) => {
-            const cur = s.workItems[id];
-            if (!cur) return s;
-            return {
-              workItems: {
-                ...s.workItems,
-                [id]: {
-                  ...cur,
-                  boardRanks: { ...(cur.boardRanks ?? {}), [targetBlId]: newBoardRank },
-                  ranks: { ...cur.ranks, [targetBlId]: newListRank },
-                },
-              },
-            };
-          });
-          boardRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newBoardRank, organizationId: wi.organizationId ?? '' });
-          listRankRows.push({ workItemId: id, backlogId: targetBlId, rank: newListRank, organizationId: wi.organizationId ?? '' });
+          if (!wi || wi.status === statusKey) return;
+          useAppStore.getState().setWorkItemStatus(id, statusKey);
         });
-        if (boardRankRows.length > 0) {
-          import("@/store/supabaseSync").then(({ upsertWorkItemBoardRankRows }) => {
-            upsertWorkItemBoardRankRows(boardRankRows).catch(() => {});
-          });
-        }
-        if (listRankRows.length > 0) {
-          import("@/store/supabaseSync").then(({ upsertWorkItemBacklogRankRows }) => {
-            upsertWorkItemBacklogRankRows(listRankRows).catch(() => {});
-          });
-        }
         return;
       }
+
 
       if (activeData?.type === "workitem" && overData?.type === "backlog") {
         const sourceTreeId = activeData.treeId as string;
