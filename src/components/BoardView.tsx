@@ -873,7 +873,7 @@ function BoardColumn({
   // on the header are treated as "put at the top of this column".
   const columnDroppable = useDroppable({
     id: `board-column:${column.id}`,
-    data: { type: "board-column", statusKey: column.key },
+    data: { type: "board-column", statusKey: column.key, treeId, backlogIds: allBacklogIds },
   });
 
   // HTML5 dragover indicator

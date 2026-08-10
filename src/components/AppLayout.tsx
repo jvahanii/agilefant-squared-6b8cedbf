@@ -906,15 +906,22 @@ function AppLayoutInner() {
 
       if (activeData?.type === "workitem" && overData?.type === "board-column") {
         const statusKey = overData.statusKey as WorkItemStatus;
-        // Dropping on empty column space only changes the status; the store
-        // then places the card in the column according to its list position.
-        // List ranks are never touched by a board drop.
+        const treeId = overData.treeId as string;
+        const backlogIds = (overData.backlogIds as string[]) ?? [];
         const surfaceStore = useAppStore.getState();
         draggedIds.forEach((id) => {
           const wi = surfaceStore.workItems[id];
-          if (!wi || wi.status === statusKey) return;
-          useAppStore.getState().setWorkItemStatus(id, statusKey);
+          if (!wi) return;
+          if (wi.status !== statusKey) {
+            useAppStore.getState().setWorkItemStatus(id, statusKey);
+          }
         });
+        // Rank dragged items at the top of the column so they appear
+        // first after the status change.  Using index 0 places them
+        // before the first card.
+        if (draggedIds.length > 0 && treeId && backlogIds.length > 0) {
+          reorderWorkItemInBoard(draggedIds[0], 0, treeId, backlogIds);
+        }
         return;
       }
 
@@ -1098,6 +1105,7 @@ function AppLayoutInner() {
       removeWorkItemFromTree,
       reparentWorkItem,
       reorderWorkItemAmongSiblings,
+      reorderWorkItemInBoard,
       reorderBacklogAmongSiblings,
       moveBacklog,
       reorderBacklogTree,
