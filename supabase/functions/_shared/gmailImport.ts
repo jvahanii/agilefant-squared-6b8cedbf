@@ -91,7 +91,7 @@ export async function importLinksAsWorkItems(
   if (claimError) throw claimError;
 
   const claimedRows = claimed ?? [];
-  const skipped = candidates.length - claimedRows.length;
+  const skipped = unique.size - claimedRows.length;
   if (claimedRows.length === 0) return { created: 0, skipped, createdIds: [] };
 
   const byKey = new Map(candidates.map((l) => [`${l.messageId}|${l.url}`, l]));
