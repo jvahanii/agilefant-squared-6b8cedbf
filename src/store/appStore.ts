@@ -1744,6 +1744,29 @@ export const useAppStore = create<AppState>()((set, get) => {
         updatedItems[mainEffectiveParentId] = { ...parent, childrenIds: sortedChildren };
       }
 
+      // ---- Keep the board consistent with the new list order ---------------
+      // Same-status siblings in the same backlog must appear in the same
+      // relative order in both views. Redistribute the board-rank slots that
+      // group already holds, following the new list order. Items of other
+      // statuses keep their board positions untouched.
+      const boardMembers = reordered.flatMap((s) => {
+        const wi = updatedItems[s.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return [];
+        return [{ id: wi.id, status: `${blId}::${wi.status}`, rank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0 }];
+      });
+      const syncedBoardRanks = redistributeRanksByStatus(boardMembers, reordered.map((s) => s.id));
+      const syncedBoardRows: WorkItemBoardRankUpsert[] = [];
+      for (const [id, rank] of Object.entries(syncedBoardRanks)) {
+        const wi = updatedItems[id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) continue;
+        updatedItems[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: rank } };
+        syncedBoardRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
+      }
+      if (syncedBoardRows.length > 0) persistBoardRankUpserts(syncedBoardRows);
+
+
       persistRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
