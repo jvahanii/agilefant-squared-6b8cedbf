@@ -82,6 +82,7 @@ function seedStore() {
 }
 
 beforeEach(() => {
+  resetRankEchoSuppression();
   localStorage.clear();
   vi.mocked(loadDataFromSupabase).mockClear();
   vi.mocked(loadDataFromSupabase).mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} });
