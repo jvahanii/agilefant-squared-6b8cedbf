@@ -162,7 +162,7 @@ interface AppState extends DataSnapshot {
   expandBacklogsRecursive: (backlogId: string) => void;
   collapseBacklogsRecursive: (backlogId: string) => void;
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
-  reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
+  reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[], statusKey?: string) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
