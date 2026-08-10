@@ -4045,22 +4045,6 @@ export const useAppStore = create<AppState>()((set, get) => {
 
         const updatedWorkItems = { ...state.workItems, [id]: newItem };
 
-        const sortWorkItemIds = (ids: string[]) =>
-          [...ids].sort((a, b) => {
-            const wiA = updatedWorkItems[a];
-            const wiB = updatedWorkItems[b];
-            if (!wiA || !wiB) return 0;
-            // Use the minimum rank across all backlogs, but don't clamp to 0
-            // so actual rank differences are preserved and items stay ordered.
-            const rankA = Object.keys(wiA.ranks).length > 0
-              ? Math.min(...Object.values(wiA.ranks))
-              : 0;
-            const rankB = Object.keys(wiB.ranks).length > 0
-              ? Math.min(...Object.values(wiB.ranks))
-              : 0;
-            return rankA !== rankB ? rankA - rankB : a.localeCompare(b);
-          });
-
         const oldItem = state.workItems[id];
         const oldParentId = oldItem?.parentId ?? null;
 
@@ -4072,18 +4056,21 @@ export const useAppStore = create<AppState>()((set, get) => {
               childrenIds: updatedWorkItems[oldParentId].childrenIds.filter((cid) => cid !== id),
             };
           }
-          // Add to new parent if not already there
+          // Add to new parent if not already there (DO NOT sort — per-tree
+          // rank order is maintained exclusively by local reorder actions
+          // and applyRealtimeWorkItemRank/flushRankResorts; sorting here
+          // with a non-tree-aware comparator causes bounceback creep).
           if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
             const parent = updatedWorkItems[newItem.parentId];
             if (!parent.childrenIds.includes(id)) {
-              updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds([...parent.childrenIds, id]) };
+              updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: [...parent.childrenIds, id] };
             }
           }
-        } else if (newItem.parentId && updatedWorkItems[newItem.parentId]) {
-          // Same non-null parent: re-sort childrenIds in case rank changed.
-          const parent = updatedWorkItems[newItem.parentId];
-          updatedWorkItems[newItem.parentId] = { ...parent, childrenIds: sortWorkItemIds(parent.childrenIds) };
         }
+        // Same parent: no-op — childrenIds order is maintained by the
+        // local reorder actions and applyRealtimeWorkItemRank/flushRankResorts.
+        // Re-sorting here with min-rank-across-all-backlogs would corrupt
+        // the per-tree ordering for multi-backlog items.
 
         // Sync childrenIds for per-tree override parents.  Remove from any
         // override parent that no longer references this item, and add to any
@@ -4115,7 +4102,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           if (!parent.childrenIds.includes(id)) {
             updatedWorkItems[pid] = {
               ...parent,
-              childrenIds: sortWorkItemIds([...parent.childrenIds, id]),
+              childrenIds: [...parent.childrenIds, id],
             };
           }
         }
