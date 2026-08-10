@@ -1835,6 +1835,26 @@ export const useAppStore = create<AppState>()((set, get) => {
         };
       }
 
+      // Keep same-status siblings in the same relative order on the board.
+      const sortedBoardMembers = siblings.flatMap((s) => {
+        const wi = updatedItems[s.id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) return [];
+        return [{ id: wi.id, status: `${blId}::${wi.status}`, rank: wi.boardRanks?.[blId] ?? wi.ranks[blId] ?? 0 }];
+      });
+      const sortedBoardRanks = redistributeRanksByStatus(sortedBoardMembers, siblings.map((s) => s.id));
+      const sortedBoardRows: WorkItemBoardRankUpsert[] = [];
+      for (const [id, rank] of Object.entries(sortedBoardRanks)) {
+        const wi = updatedItems[id];
+        const blId = wi?.backlogAssignments[treeId];
+        if (!wi || !blId) continue;
+        updatedItems[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: rank } };
+        sortedBoardRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
+      }
+      if (sortedBoardRows.length > 0) persistBoardRankUpserts(sortedBoardRows);
+
+
+
       persistRankUpserts(
         siblings.flatMap((s) => {
           const updated = updatedItems[s.id];
