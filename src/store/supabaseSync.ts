@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { paginateSelect } from '@/integrations/supabase/pagination';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
+import { notifyPersistDebug } from '@/lib/persistDebug';
 
 /** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
 const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
@@ -532,6 +533,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
     return false;
   }
+  notifyPersistDebug('workitem', item.title);
   // Persist per-backlog ranks to the dedicated table
   return upsertWorkItemBacklogRanks(resolvedId, item.ranks, effectiveOrgId);
 }
@@ -688,6 +690,7 @@ async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: strin
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
     return false;
   }
+  notifyPersistDebug('workitem', items.length === 1 ? items[0].title : `${items.length} items`);
   // Persist per-backlog ranks to the dedicated table
   return upsertWorkItemBacklogRanksBatch(items, oldToNew, organizationId);
 }
