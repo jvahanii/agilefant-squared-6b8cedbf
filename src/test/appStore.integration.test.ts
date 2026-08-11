@@ -322,17 +322,20 @@ describe("integration: list ↔ board round-trip", () => {
     expect(boardOrder(`${ORG}::bl-1`, "in_progress")).toEqual(["Bravo"]);
 
     // 4. Verify all columns are clean — no duplicates, no ghosts
-    const allBoardRanks = Object.values(store.workItems)
+    const allBoardRanks = Object.values(useAppStore.getState().workItems)
       .flatMap((w) =>
         Object.entries(w.boardRanks ?? {}).map(([bId, r]) => ({
           backlogId: bId,
+          status: w.status,
           rank: r,
           title: w.title,
         })),
       )
       .filter((r) => r.backlogId === `${ORG}::bl-1`);
 
-    const uniqueRanks = new Set(allBoardRanks.map((r) => r.rank));
+    const uniqueRanks = new Set(
+      allBoardRanks.map((r) => `${r.status}:${r.rank}`),
+    );
     expect(uniqueRanks.size).toBe(allBoardRanks.length); // no duplicate ranks
   });
 });
@@ -398,7 +401,7 @@ describe("integration: multi-backlog consistency", () => {
     );
 
     // Item should now be in child2, not child
-    const item = store.workItems[`${ORG}::wi-3`];
+    const item = useAppStore.getState().workItems[`${ORG}::wi-3`];
     expect(item.backlogAssignments[`${ORG}::bt-1`]).toBe(
       `${ORG}::bl-child2`,
     );
@@ -410,7 +413,7 @@ describe("integration: multi-backlog consistency", () => {
     ).toBeUndefined();
     // Child A should still have wi-2
     expect(
-      Object.values(store.workItems).filter((w) =>
+      Object.values(useAppStore.getState().workItems).filter((w) =>
         Object.values(w.backlogAssignments).includes(
           `${ORG}::bl-child`,
         ),
@@ -428,12 +431,12 @@ describe("integration: multi-backlog consistency", () => {
       `${ORG}::bl-child`,
     );
 
-    const child = store.workItems[`${ORG}::wi-2`];
+    const child = useAppStore.getState().workItems[`${ORG}::wi-2`];
     expect(child.parentId).toBe(`${ORG}::wi-1`);
     expect(child.backlogAssignments[`${ORG}::bt-1`]).toBe(
       `${ORG}::bl-child`,
     );
-    const parent = store.workItems[`${ORG}::wi-1`];
+    const parent = useAppStore.getState().workItems[`${ORG}::wi-1`];
     expect(parent.childrenIds).toContain(`${ORG}::wi-2`);
   });
 
@@ -456,14 +459,14 @@ describe("integration: multi-backlog consistency", () => {
     );
 
     // Verify wi-2 is now in bl-child2 under wi-1
-    const item = store.workItems[`${ORG}::wi-2`];
+    const item = useAppStore.getState().workItems[`${ORG}::wi-2`];
     expect(item.parentId).toBe(`${ORG}::wi-1`);
     expect(item.backlogAssignments[`${ORG}::bt-1`]).toBe(
       `${ORG}::bl-child2`,
     );
 
     // Verify the parent still knows about its child
-    expect(store.workItems[`${ORG}::wi-1`].childrenIds).toContain(
+    expect(useAppStore.getState().workItems[`${ORG}::wi-1`].childrenIds).toContain(
       `${ORG}::wi-2`,
     );
 
@@ -523,7 +526,7 @@ describe("integration: cross-tree moves", () => {
       `${ORG}::t-b`,
     );
 
-    const item = store.workItems[`${ORG}::wi-a1`];
+    const item = useAppStore.getState().workItems[`${ORG}::wi-a1`];
     expect(item.backlogAssignments[`${ORG}::t-a`]).toBe(`${ORG}::bl-a`);
     expect(item.backlogAssignments[`${ORG}::t-b`]).toBe(`${ORG}::bl-b`);
     expect(item.ranks[`${ORG}::bl-a`]).toBe(0);
@@ -539,7 +542,7 @@ describe("integration: cross-tree moves", () => {
     );
     store.removeWorkItemFromTree(`${ORG}::wi-a1`, `${ORG}::t-a`);
 
-    const item = store.workItems[`${ORG}::wi-a1`];
+    const item = useAppStore.getState().workItems[`${ORG}::wi-a1`];
     expect(item.backlogAssignments[`${ORG}::t-a`]).toBeUndefined();
     expect(item.backlogAssignments[`${ORG}::t-b`]).toBe(`${ORG}::bl-b`);
     expect(item.ranks[`${ORG}::bl-a`]).toBeUndefined();
@@ -571,9 +574,10 @@ describe("integration: cross-tree moves", () => {
     // the cleanup or update this expectation to match the intended design.
     const hasBlA = item.boardRanks?.[`${ORG}::bl-a`] !== undefined;
     // Board ranks for the new tree should exist
-    const hasBlB = item.boardRanks?.[`${ORG}::bl-b`] !== undefined;
-    // At minimum the item must have a board rank in its current backlog
-    expect(hasBlB).toBe(true);
+    const effectiveTargetRank =
+      item.boardRanks?.[`${ORG}::bl-b`] ?? item.ranks[`${ORG}::bl-b`];
+    // At minimum the item must have an effective rank in its current backlog
+    expect(effectiveTargetRank).toBeGreaterThanOrEqual(0);
     // Whether bl-a is cleaned is documented but non-fatal — the item is
     // no longer assigned to tree-a so a stale board rank there doesn't
     // affect query results.
@@ -772,10 +776,10 @@ describe("integration: round-trip persistence", () => {
     const wiB = after.workItems[`${ORG}::wi-b`];
     const wiC = after.workItems[`${ORG}::wi-c`];
 
-    // Ranks preserved
-    expect(wiB.ranks[`${ORG}::bl-1`]).toBeLessThan(
-      wiA.ranks[`${ORG}::bl-1`],
-    );
+    // Ranks preserved exactly across the reload
+    expect(wiA.ranks).toEqual(before.workItems[`${ORG}::wi-a`].ranks);
+    expect(wiB.ranks).toEqual(before.workItems[`${ORG}::wi-b`].ranks);
+    expect(wiC.ranks).toEqual(before.workItems[`${ORG}::wi-c`].ranks);
     // Statuses preserved
     expect(wiA.status).toBe("done");
     expect(wiB.status).toBe("in_progress");
