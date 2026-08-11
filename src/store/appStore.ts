@@ -28,6 +28,7 @@ import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./chan
 import { getEffectiveStatuses } from "./backlogStatusesStore";
 import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
+import { notifyPersistDebug } from "@/lib/persistDebug";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -932,6 +933,7 @@ function persistWorkItemUpserts(items: WorkItem[], organizationId: string, board
   if (boardRankRows.length > 0) queueBoardRankUpsertsForRetry(boardRankRows);
   persistReferencedContainersForItems(items, organizationId, fallbackContainers).then(() => upsertWorkItems(items, organizationId)).then(async (ok) => {
     if (!ok) return;
+    notifyPersistDebug('workitem', items.map(i => i.title).join(', '));
     if (boardRankRows.length > 0) {
       const boardOk = await upsertWorkItemBoardRankRows(boardRankRows);
       if (!boardOk) return;
@@ -964,6 +966,7 @@ function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
   queueRankUpsertsForRetry(rows);
   upsertWorkItemBacklogRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
+    notifyPersistDebug('backlogRank', `${rows.length} row(s)`);
     try {
       const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
       const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
@@ -1016,6 +1019,7 @@ function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
   queueBoardRankUpsertsForRetry(rows);
   upsertWorkItemBoardRankRows(rows).then((ok) => {
     if (!ok || typeof localStorage === "undefined") return;
+    notifyPersistDebug('boardRank', `${rows.length} row(s)`);
     removeQueuedBoardRankUpserts(rows);
   });
 }

@@ -33,6 +33,7 @@ import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
 import { BurnupChartDialog } from "@/components/BurnupChartDialog";
+import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   Undo2,
@@ -1469,6 +1470,7 @@ function AppLayoutInner() {
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
 
       <UserGuideDialog open={showUserGuide} onOpenChange={setShowUserGuide} />
+      <PersistDebugOverlay />
     </DndContext>
   );
 }
