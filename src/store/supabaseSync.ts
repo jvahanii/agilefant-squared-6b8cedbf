@@ -580,6 +580,7 @@ export async function deleteWorkItems(ids: string[]) {
     const { error: fallbackErr } = await supabase.from('work_items').delete().in('id', [...allIds]);
     if (fallbackErr) console.error('deleteWorkItems (fallback):', fallbackErr);
   }
+  notifyPersistDebug('workitem', ids.length === 1 ? `Deleted` : `Deleted ${ids.length} items`);
 }
 
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
