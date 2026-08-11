@@ -529,7 +529,7 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
 
   // ---------------------------------------------------------------------------
   // Arrow-key navigation for the board view
-  //   Left/Right → move between columns (select closest-index item)
+  //   Left/Right → move selected items to left/right column (status change)
   //   Up/Down    → move up/down within the current column
   // ---------------------------------------------------------------------------
   // Stable refs so the keyboard handler always sees the latest data without
@@ -596,31 +596,42 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       e.preventDefault();
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        // Move between columns, skipping empty ones.
+        // Move selected items to the adjacent column by changing their status.
         const direction = e.key === "ArrowLeft" ? -1 : 1;
-        const startColIndex = currentColIndex >= 0 ? currentColIndex : cols.findIndex((c) => c.key === fallbackColKey);
-        let targetColIndex = startColIndex + direction;
+        const cols = orderedColumnsRef.current;
+        if (cols.length === 0) return;
 
-        // Walk in the pressed direction until we find a column with cards,
-        // or hit the board boundary.
-        while (targetColIndex >= 0 && targetColIndex < cols.length) {
-          const targetCol = cols[targetColIndex];
-          const targetCards = targetCol ? (cards[targetCol.key] ?? []) : [];
-          if (targetCards.length > 0) {
-            // Found a non-empty column — select the closest-index item.
-            const sourceIdx = currentCardIndex >= 0 ? currentCardIndex : fallbackCardIndex;
-            const clampedIdx = Math.max(0, Math.min(sourceIdx, targetCards.length - 1));
-            const targetItem = targetCards[clampedIdx];
-            if (targetItem) {
-              state.selectWorkItem(targetItem.id, false);
-              setTimeout(() => {
-                const el = document.querySelector(`[data-board-card-id="${targetItem.id}"]`);
-                if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
-              }, 50);
-            }
-            return;
-          }
-          targetColIndex += direction;
+        const currentColIndex = cols.findIndex((c) => c.key === currentColumnKey);
+        let targetColIndex: number;
+        if (currentColIndex >= 0) {
+          targetColIndex = currentColIndex + direction;
+          // Wrap around so navigation never hits a dead end.
+          if (targetColIndex < 0) targetColIndex = cols.length - 1;
+          if (targetColIndex >= cols.length) targetColIndex = 0;
+        } else {
+          targetColIndex = 0;
+        }
+        const targetCol = cols[targetColIndex];
+        if (!targetCol) return;
+
+        e.preventDefault();
+
+        const movedIds = [...ids];
+        state.runBulk(() => {
+          movedIds.forEach((id) => {
+            state.setWorkItemStatus(id, targetCol.key as WorkItemStatus);
+          });
+        });
+
+        // Re-select the first moved item in its new column after React reconciles.
+        if (movedIds.length > 0) {
+          setTimeout(() => {
+            useAppStore.getState().selectWorkItem(movedIds[0], false);
+            setTimeout(() => {
+              const el = document.querySelector(`[data-board-card-id="${CSS.escape(movedIds[0])}"]`);
+              if (el) el.scrollIntoView({ block: "nearest" });
+            }, REACT_RECONCILIATION_DELAY);
+          }, 50);
         }
       } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         // Move up/down within the current column.  With Shift held, extend
