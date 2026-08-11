@@ -497,11 +497,17 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string): Pr
 }
 
 async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): Promise<boolean> {
-  // Repair stale org prefix (if any) before writing.  This renames the DB row
-  // and notifies the store callback so local state stays consistent.
-  const oldToNew = await repairStaleOrgPrefixes([item], organizationId);
-  const resolvedId = oldToNew[item.id] ?? item.id;
   const effectiveOrgId = item.organizationId ?? organizationId;
+
+  // Only run the (potentially expensive) stale-prefix repair RPC when the
+  // item's ID prefix does NOT match its effective org.  Newly-created items
+  // always have the correct prefix, and items that haven't been transferred
+  // between orgs do too — the common case is a no-op that saves a DB RPC.
+  let resolvedId = item.id;
+  if (isStalePrefix(item.id, effectiveOrgId)) {
+    const oldToNew = await repairStaleOrgPrefixes([item], organizationId);
+    resolvedId = oldToNew[item.id] ?? item.id;
+  }
 
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
@@ -639,8 +645,17 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
 async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: string): Promise<boolean> {
   if (items.length === 0) return true;
 
-  // Repair any stale org prefixes before writing.
-  const oldToNew = await repairStaleOrgPrefixes(items, organizationId);
+  // Only call the (potentially expensive) stale-prefix repair RPC when at
+  // least one item actually has a mismatched org prefix.  Newly-created
+  // items always have the correct prefix, making this a no-op in the
+  // common case and saving a DB RPC on every mutation.
+  const anyStale = items.some(item => {
+    const effectiveOrgId = item.organizationId ?? organizationId;
+    return isStalePrefix(item.id, effectiveOrgId);
+  });
+  const oldToNew = anyStale
+    ? await repairStaleOrgPrefixes(items, organizationId)
+    : ({} as Record<string, string>);
 
   const rows: WorkItemUpsertRow[] = items.map(item => {
     const resolvedId = oldToNew[item.id] ?? item.id;
