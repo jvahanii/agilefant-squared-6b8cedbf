@@ -30,6 +30,9 @@ import {
   Download,
   CreditCard,
   ExternalLink,
+  BarChart3,
+  Mail,
+  MoveRight,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -326,9 +329,13 @@ function buildSections(): Section[] {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other</p>
             <ShortcutRow keys={["Ctrl", "Z"]} description="Undo" />
             <ShortcutRow keys={["Ctrl", "Y"]} description="Redo (also Ctrl+Shift+Z)" />
+            <ShortcutRow keys={["Ctrl", "D"]} description="Duplicate selected item(s)" />
+            <ShortcutRow keys={["Ctrl", "A"]} description="Select all visible work items" />
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
             <ShortcutRow keys={["L"]} description="Log spent time" />
+            <ShortcutRow keys={["Alt", "Enter"]} description="Rename first selected item" />
+            <ShortcutRow keys={["F2"]} description="Rename first selected item" />
             <ShortcutRow keys={["/"]} description="Focus search bar" />
             <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
           </div>
@@ -577,6 +584,23 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>Time entries are synced in real time — your teammates will see logged time as soon as it is saved.</Tip>
+          <div className="pt-3 border-t">
+            <p className="text-sm font-medium mb-2">Transfer Time Entries</p>
+            <div className="space-y-2">
+              {[
+                {
+                  action: "Move time to another item",
+                  how: "Right-click a work item with time entries and choose \"Transfer time entries…\" to open the Move Time dialog. Search for a target backlog or work item, select it, and click Transfer. All selected time entries are reassigned to the new target.",
+                },
+                {
+                  action: "When it's useful",
+                  how: "Use this when you've logged time on the wrong item, or when a work item is split into smaller tasks and the time needs to follow the new structure.",
+                },
+              ].map((row) => (
+                <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-44" />
+              ))}
+            </div>
+          </div>
         </div>
       ),
     },
@@ -1104,6 +1128,94 @@ function buildSections(): Section[] {
           <Tip>
             The created work item's title is the first 120 characters of the WhatsApp message. Long messages
             are truncated with an ellipsis. The full message is stored as the item's description/note.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "burnup",
+      icon: <BarChart3 className="w-4 h-4" />,
+      label: "Burnup Charts",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Burnup charts</strong> show cumulative work completed over time
+            as a stacked area chart, grouped by status. Track progress across work item branches, backlogs, or
+            entire backlog trees. Enable from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → Labs → Burnups</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Enable burnups",
+                how: "A superuser opens Settings, scrolls to the Labs card, and toggles Burnups on. The setting is per-organisation.",
+              },
+              {
+                action: "Open a burnup chart",
+                how: "Click the chart icon on any work item row, backlog node, or backlog tree header. A dialog opens showing the cumulative flow diagram scoped to that item and all its descendants.",
+              },
+              {
+                action: "Metric",
+                how: "Switch between Item Count and Story Points (when points are enabled) to see progress measured by count or by estimated effort.",
+              },
+              {
+                action: "What the chart shows",
+                how: "The horizontal axis is time (auto-scaled from the earliest status change to today). The vertical axis is cumulative count. Each status is a colored band stacked from bottom to top. Not Started is at the bottom, Done is at the top. A vertical Today line marks the present — area to its right represents extrapolated burnup based on recent velocity (shown as a dashed area with a projected completion date in the legend).",
+              },
+              {
+                action: "Day count",
+                how: "Use the slider at the top of the dialog to adjust how many days of history the chart shows. By default it shows the last 7 days.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            Open a burnup chart on a backlog tree header to see the big-picture progress across your
+            entire project. The extrapolation line helps you predict when all items might be Done
+            based on current velocity.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "gmail",
+      icon: <Mail className="w-4 h-4" />,
+      label: "Gmail Integration",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Connect <strong className="text-foreground">Gmail</strong> so starred emails automatically become
+            work items in your chosen backlog. Star an email in Gmail and it appears as an "In Progress" item
+            with the email subject as the title and a hyperlink back to the conversation. Configure from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → Gmail</strong>.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                action: "Set up the integration",
+                how: "Click the Google Sign-in button on the Gmail integration card to authenticate with your Google account. A Supabase Edge Function watches your Gmail inbox for newly starred emails.",
+              },
+              {
+                action: "Pick a target",
+                how: "Choose the backlog tree and backlog node where starred emails should create work items.",
+              },
+              {
+                action: "How it works",
+                how: "Star an email in Gmail. Within a few minutes it appears as a new work item in your chosen backlog with status In Progress, a hyperlink to the Gmail conversation, and the email subject as the title.",
+              },
+              {
+                action: "Disconnect",
+                how: "Click the disconnect button on the integration card to stop watching your inbox. Existing work items are not affected.",
+              },
+            ].map((row) => (
+              <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
+            ))}
+          </div>
+          <Tip>
+            The integration uses a scheduled Supabase Edge Function that runs every few minutes. It only
+            accesses starred email metadata — it never reads email content. Only the subject line, sender,
+            and Gmail thread link are stored.
           </Tip>
         </div>
       ),
