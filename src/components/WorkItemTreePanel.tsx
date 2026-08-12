@@ -37,6 +37,7 @@ import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { IconizedTitle } from "@/components/IconizedTitle";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
@@ -834,7 +835,7 @@ function WorkItemNodeContent({
                   startEditingTitle();
                 }}
               >
-                {isScrambled ? scrambleName(item.title) : item.title}
+                {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
               </span>
               {labelsVisible && itemLabels.length > 0 && (
                 <span className="ml-1">

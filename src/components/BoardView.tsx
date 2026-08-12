@@ -10,6 +10,7 @@ import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInpu
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { IconizedTitle } from "@/components/IconizedTitle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
 import { useOrgStore } from "@/store/orgStore";
@@ -1240,7 +1241,7 @@ function BoardCard({
     return ids.map((id) => labelsMap[id]).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   }, [byEntity, labelsMap, item.id]);
   const { scrambleEnabled } = useScramble();
-  const title = scrambleEnabled ? scrambleName(item.title) : item.title;
+  const title = scrambleEnabled ? scrambleName(item.title) : <IconizedTitle title={item.title} />;
 
   // Status color for visual accent
   const statusColor = useMemo(
