@@ -2929,6 +2929,17 @@ export function WorkItemTreePanel() {
     return () => ro.disconnect();
   }, [virtualizer]);
 
+  // Row heights are cached by index, so when the visible set changes (expand /
+  // collapse, add, delete, filter) index N may now hold a completely different
+  // row.  Drop the cached measurements so every row is measured again —
+  // otherwise stale heights leave gaps or paint rows on top of each other.
+  useEffect(() => {
+    virtualizer.measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleItemIds.length]);
+
+
+
 
   // Keep a ref to the latest visible list so the Tab/Shift-Tab handler always
   // operates on the current order without requiring the effect to re-register.
@@ -3693,7 +3704,7 @@ export function WorkItemTreePanel() {
                       const itemBacklogId = wi.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
                       return (
                         <div
-                          key={id}
+                          key={virtualRow.key}
                           data-index={i}
                           ref={virtualizer.measureElement}
                           className="absolute top-0 left-0 w-full"
