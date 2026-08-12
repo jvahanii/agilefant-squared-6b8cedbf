@@ -7,6 +7,9 @@ import {
   ContextMenuItem,
   ContextMenuLabel,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
@@ -33,6 +36,8 @@ import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { IconizedTitle } from "@/components/IconizedTitle";
+import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -474,7 +479,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
               startEditing();
             }}
           >
-            {isScrambled ? scrambleName(backlog.name) : backlog.name}
+            {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
           </span>
         )}
         {labelsVisible && backlogLabels.length > 0 && (
@@ -586,6 +591,46 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
       <ContextMenuContent className="w-44">
         <ContextMenuLabel className="text-xs truncate">{isScrambled ? scrambleName(backlog.name) : backlog.name}</ContextMenuLabel>
         <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
+          <ContextMenuSubContent
+            className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
+            collisionPadding={8}
+          >
+            <div className="grid grid-cols-6 gap-0.5 p-1">
+              {ICON_SHORTCODES.map((sc) => (
+                <button
+                  key={sc}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
+                  title={`:${sc}:`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const shortcode = `:${sc}:`;
+                    if (isEditing && editRef.current) {
+                      const inp = editRef.current;
+                      const start = inp.selectionStart ?? editValue.length;
+                      const end = inp.selectionEnd ?? start;
+                      const before = editValue.slice(0, start);
+                      const after = editValue.slice(end);
+                      const newName = before + shortcode + after;
+                      setEditValue(newName);
+                      requestAnimationFrame(() => {
+                        inp.focus();
+                        const pos = start + shortcode.length;
+                        inp.setSelectionRange(pos, pos);
+                      });
+                    } else {
+                      setEditValue(backlog.name + shortcode);
+                      setIsEditing(true);
+                    }
+                  }}
+                >
+                  {ICON_MAP[sc]}
+                </button>
+              ))}
+            </div>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         <ContextMenuItem
           className="text-xs"
           onSelect={() => setShowMobileAttributesSheet(true)}
