@@ -127,11 +127,15 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   await supabase.auth.getSession();
 
   // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
-  // shares, own trees, and own work items are independent of each other.
-  const [sharesRes, ownTreesRes, ownItemsRes] = await Promise.all([
+  // shares, own trees, own work items, and rank tables are all independent.
+  // Firing ranks here lets them run concurrently with Waves 2 & 3 instead of
+  // blocking at the end, which saves 1-2 network round-trips for large orgs.
+  const [sharesRes, ownTreesRes, ownItemsRes, ranksMapPromise, boardRanksMapPromise] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
     supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
     loadAllRows('work_items', 'organization_id', organizationId),
+    fetchRanksByOrg(organizationId),
+    fetchBoardRanksByOrg(organizationId),
   ]);
 
   const sharedTreeIds = ((sharesRes.data ?? []) as any[]).map((s) => s.tree_id as string);
@@ -275,18 +279,26 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   }
   const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
 
-  // Load per-backlog ranks from the work_item_backlog_ranks table.
-  // Fetch by organization_id to avoid PostgREST URL length limits with .in()
-  // on large work-item ID lists (would silently return empty for big orgs).
-  const workItemIds = cleanItemRows.map(r => r.id);
-  const rankOrgIds = [
-    ...new Set([
-      organizationId,
-      ...cleanItemRows.map(r => (r as any).organization_id).filter(Boolean),
-    ]),
-  ];
-  const ranksMap = await loadWorkItemBacklogRanks(workItemIds, rankOrgIds);
-  const boardRanksMap = await loadWorkItemBoardRanks(workItemIds, rankOrgIds);
+  // Use the rank maps that were already fetched in parallel during Wave 1.
+  // `fetchRanksByOrg` and `fetchBoardRanksByOrg` fetched ALL rows for this
+  // org while Waves 2 & 3 were running; just filter to in-memory to keep
+  // only the items that survived sanitization.
+  const workItemIds = new Set(cleanItemRows.map(r => r.id));
+  const ranksMap = filterRanksToIds(await ranksMapPromise, workItemIds);
+  const boardRanksMap = filterRanksToIds(await boardRanksMapPromise, workItemIds);
+
+  // Fallback: fetch by org+item IDs in case the parallel fetch returned
+  // nothing (e.g. network glitch on first attempt but data available now).
+  if (Object.keys(ranksMap).length === 0 && cleanItemRows.length > 0) {
+    const rankOrgIds = [
+      ...new Set([
+        organizationId,
+        ...cleanItemRows.map(r => (r as any).organization_id).filter(Boolean),
+      ]),
+    ];
+    Object.assign(ranksMap, await loadWorkItemBacklogRanks([...workItemIds], rankOrgIds));
+    Object.assign(boardRanksMap, await loadWorkItemBoardRanks([...workItemIds], rankOrgIds));
+  }
 
   const workItems: Record<string, WorkItem> = {};
   for (const row of cleanItemRows) {
@@ -881,6 +893,70 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     const { error } = await supabase.from('work_item_backlog_ranks' as any).insert(rankRows);
     if (error) throw error;
   }
+}
+
+/** Filter a rank map to only include entries whose key is in `ids`. */
+function filterRanksToIds(map: Record<string, Record<string, number>>, ids: Set<string>): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const [id, ranks] of Object.entries(map)) {
+    if (ids.has(id)) out[id] = ranks;
+  }
+  return out;
+}
+
+// ─── Optimised org-scoped rank fetchers (run in parallel with Wave 1) ────
+
+/** Fetch all backlog ranks for an org — used during load to overlap I/O. */
+async function fetchRanksByOrg(orgId: string): Promise<Record<string, Record<string, number>>> {
+  const wanted = new Set<string>();
+  const result: Record<string, Record<string, number>> = {};
+  const PAGE = 1000;
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from('work_item_backlog_ranks' as any)
+      .select('*')
+      .in('organization_id', [orgId])
+      .order('work_item_id', { ascending: true })
+      .order('backlog_id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) { console.error('fetchRanksByOrg:', error); return {}; }
+    const rows = (data ?? []) as any[];
+    for (const row of rows) {
+      const wiId = row.work_item_id as string;
+      if (!result[wiId]) result[wiId] = {};
+      result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+    }
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  return result;
+}
+
+/** Fetch all board ranks for an org — used during load to overlap I/O. */
+async function fetchBoardRanksByOrg(orgId: string): Promise<Record<string, Record<string, number>>> {
+  const result: Record<string, Record<string, number>> = {};
+  const PAGE = 1000;
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from('work_item_board_ranks' as any)
+      .select('*')
+      .in('organization_id', [orgId])
+      .order('work_item_id', { ascending: true })
+      .order('backlog_id', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) { console.error('fetchBoardRanksByOrg:', error); return {}; }
+    const rows = (data ?? []) as any[];
+    for (const row of rows) {
+      const wiId = row.work_item_id as string;
+      if (!result[wiId]) result[wiId] = {};
+      result[wiId][row.backlog_id as string] = (row.rank as number) ?? 0;
+    }
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  return result;
 }
 
 // ─── Work Item Backlog Ranks CRUD ─────────────────────────────────────────
