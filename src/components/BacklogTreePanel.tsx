@@ -822,7 +822,7 @@ function EditableTreeName({ treeId, name, isScrambled }: { treeId: string; name:
       className="text-xs text-muted-foreground uppercase tracking-wide cursor-text hover:text-foreground transition-colors font-medium"
       onDoubleClick={startEditing}
     >
-      {isScrambled ? scrambleName(name) : name}
+      {isScrambled ? scrambleName(name) : <IconizedTitle title={name} />}
     </span>
   );
 }

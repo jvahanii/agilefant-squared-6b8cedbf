@@ -181,7 +181,7 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
         startEditing();
       }}
     >
-      {isScrambled ? scrambleName(backlog.name) : backlog.name}
+      {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
     </h2>
   );
 }
@@ -1009,7 +1009,7 @@ function WorkItemNodeContent({
               {parentItemChain.map((ancestor, i) => (
                 <span key={ancestor.id} className="flex items-center min-w-0">
                   {i > 0 && <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0" />}
-                  <span className="truncate">{isScrambled ? scrambleName(ancestor.title) : ancestor.title}</span>
+                  <span className="truncate">{isScrambled ? scrambleName(ancestor.title) : <IconizedTitle title={ancestor.title} />}</span>
                 </span>
               ))}
               <ChevronRight className="w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0" />
@@ -3500,14 +3500,14 @@ export function WorkItemTreePanel() {
                       const titleNode =
                         matchIdx >= 0 ? (
                           <>
-                            {backlogName.slice(0, matchIdx)}
+                            <IconizedTitle title={backlogName.slice(0, matchIdx)} />
                             <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
                               {backlogName.slice(matchIdx, matchIdx + q.length)}
                             </mark>
-                            {backlogName.slice(matchIdx + q.length)}
+                            <IconizedTitle title={backlogName.slice(matchIdx + q.length)} />
                           </>
                         ) : (
-                          backlogName
+                          <IconizedTitle title={backlogName} />
                         );
                       return (
                         <div
@@ -3544,14 +3544,14 @@ export function WorkItemTreePanel() {
                     const titleNode =
                       matchIdx >= 0 ? (
                         <>
-                          {item.title.slice(0, matchIdx)}
+                          <IconizedTitle title={item.title.slice(0, matchIdx)} />
                           <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
                             {item.title.slice(matchIdx, matchIdx + q.length)}
                           </mark>
-                          {item.title.slice(matchIdx + q.length)}
+                          <IconizedTitle title={item.title.slice(matchIdx + q.length)} />
                         </>
                       ) : (
-                        item.title
+                        <IconizedTitle title={item.title} />
                       );
                     return (
                       <SearchResultItem
@@ -3620,7 +3620,7 @@ export function WorkItemTreePanel() {
                     treeId={treeId}
                     backlogId={backlogId}
                     idx={idx}
-                    titleNode={item.title}
+                    titleNode={<IconizedTitle title={item.title} />}
                     workItemAncestors={workItemAncestors}
                     treeName={treeName}
                     backlogPath={backlogPath}

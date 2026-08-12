@@ -14,6 +14,7 @@ import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
+import { IconizedTitle } from "@/components/IconizedTitle";
 import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Link2, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,7 @@ export function MobileWorkItemAttributesSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="px-4 pb-8 pt-4 rounded-t-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <SheetHeader className="mb-4">
-          <SheetTitle className="text-base truncate text-left">{item.title}</SheetTitle>
+          <SheetTitle className="text-base truncate text-left"><IconizedTitle title={item.title} /></SheetTitle>
         </SheetHeader>
 
         <div className="space-y-3">

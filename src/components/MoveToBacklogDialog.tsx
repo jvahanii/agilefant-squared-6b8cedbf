@@ -10,6 +10,7 @@ import { useAppStore } from "@/store/appStore";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { ActionPrompt } from "./ActionPrompt";
+import { IconizedTitle } from "@/components/IconizedTitle";
 
 interface MoveToBacklogDialogProps {
   /** The IDs of work items to move. */
@@ -172,7 +173,7 @@ export function MoveToBacklogDialog({
                     className="flex items-center justify-between gap-2 px-4 py-2 text-left text-sm hover:bg-accent/60 transition-colors border-b border-border/20 last:border-b-0"
                     onClick={() => handleSelect(id, targetTreeId, crossTree, name)}
                   >
-                    <span>{isScrambled ? scrambleName(name) : name}</span>
+                    <span>{isScrambled ? scrambleName(name) : <IconizedTitle title={name} />}</span>
                     {crossTree && (
                       <span className="text-xs text-muted-foreground shrink-0">
                         {isScrambled ? scrambleName(treeName) : treeName}
