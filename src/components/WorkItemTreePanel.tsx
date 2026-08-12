@@ -3693,7 +3693,7 @@ export function WorkItemTreePanel() {
                       const itemBacklogId = wi.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
                       return (
                         <div
-                          key={id}
+                          key={virtualRow.key}
                           data-index={i}
                           ref={virtualizer.measureElement}
                           className="absolute top-0 left-0 w-full"
