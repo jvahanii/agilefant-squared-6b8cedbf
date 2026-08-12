@@ -38,6 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { IconizedTitle } from "@/components/IconizedTitle";
+import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
@@ -1302,6 +1303,46 @@ function WorkItemNodeContent({
           >
             Rank to top
           </ContextMenuItem>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
+            <ContextMenuSubContent
+              className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
+              collisionPadding={8}
+            >
+              <div className="grid grid-cols-6 gap-0.5 p-1">
+                {ICON_SHORTCODES.map((sc) => (
+                  <button
+                    key={sc}
+                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
+                    title={`:${sc}:`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const shortcode = `:${sc}:`;
+                      if (isEditingTitle && titleRef.current) {
+                        const ta = titleRef.current;
+                        const start = ta.selectionStart;
+                        const end = ta.selectionEnd;
+                        const before = editTitle.slice(0, start);
+                        const after = editTitle.slice(end);
+                        const newTitle = before + shortcode + after;
+                        setEditTitle(newTitle);
+                        requestAnimationFrame(() => {
+                          ta.focus();
+                          const pos = start + shortcode.length;
+                          ta.setSelectionRange(pos, pos);
+                        });
+                      } else {
+                        setEditTitle(item.title + shortcode);
+                        setIsEditingTitle(true);
+                      }
+                    }}
+                  >
+                    {ICON_MAP[sc]}
+                  </button>
+                ))}
+              </div>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
           <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
             Rename
           </ContextMenuItem>
