@@ -37,6 +37,9 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
   const setSavingsIncomeEnabledSetting = useOrgSettingsStore((s) => s.setSavingsIncomeEnabled);
   const setBurnupsEnabledSetting = useOrgSettingsStore((s) => s.setBurnupsEnabled);
+  const setPersistNotificationsEnabledSetting = useOrgSettingsStore((s) => s.setPersistNotificationsEnabled);
+  const persistNotificationsEnabled =
+    (orgSettings as { persistNotificationsEnabled?: boolean }).persistNotificationsEnabled ?? false;
   const burnupsEnabled = (orgSettings as { burnupsEnabled?: boolean }).burnupsEnabled ?? false;
   const labelsEnabled = orgSettings.labelsEnabled ?? false;
   const loadLabels = useLabelsStore((s) => s.loadLabels);
@@ -247,6 +250,24 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setBurnupsEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Burnups enabled" : "Burnups disabled" });
+                }
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+            <div>
+              <p className="text-sm font-medium">Persist notifications</p>
+              <p className="text-xs text-muted-foreground">
+                Show a small confirmation in the corner whenever a change is saved to the database.
+              </p>
+            </div>
+            <Switch
+              checked={persistNotificationsEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setPersistNotificationsEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Persist notifications enabled" : "Persist notifications disabled" });
                 }
               }}
             />

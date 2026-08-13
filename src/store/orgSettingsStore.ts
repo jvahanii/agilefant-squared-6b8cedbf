@@ -9,6 +9,7 @@ interface OrgSettings {
   savingsIncomeEnabled: boolean;
   boardsEnabled: boolean;
   burnupsEnabled: boolean;
+  persistNotificationsEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -23,6 +24,7 @@ interface OrgSettingsState {
   setSavingsIncomeEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setBoardsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setBurnupsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setPersistNotificationsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -34,6 +36,7 @@ const defaults: OrgSettings = {
   savingsIncomeEnabled: false,
   boardsEnabled: false,
   burnupsEnabled: false,
+  persistNotificationsEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -44,7 +47,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -65,6 +68,8 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
                 (data as { boards_enabled?: boolean }).boards_enabled ?? false,
               burnupsEnabled:
                 (data as { burnups_enabled?: boolean }).burnups_enabled ?? false,
+              persistNotificationsEnabled:
+                (data as { persist_notifications_enabled?: boolean }).persist_notifications_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -184,6 +189,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setPersistNotificationsEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), persistNotificationsEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, persist_notifications_enabled: enabled, updated_at: new Date().toISOString() } as any,
+        { onConflict: 'organization_id' },
+      );
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -198,6 +219,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           savingsIncomeEnabled: row.savings_income_enabled ?? false,
           boardsEnabled: row.boards_enabled ?? false,
           burnupsEnabled: row.burnups_enabled ?? false,
+          persistNotificationsEnabled: row.persist_notifications_enabled ?? false,
         },
       },
     }));
@@ -238,4 +260,9 @@ export function isSavingsIncomeEnabled(orgId: string | null): boolean {
 export function isBoardsEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.boardsEnabled ?? false;
+}
+
+export function isPersistNotificationsEnabled(orgId: string | null): boolean {
+  if (!orgId) return false;
+  return useOrgSettingsStore.getState().settings[orgId]?.persistNotificationsEnabled ?? false;
 }

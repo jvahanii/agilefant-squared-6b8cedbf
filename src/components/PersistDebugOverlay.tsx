@@ -1,18 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import { subscribePersistDebug, type PersistEvent } from "@/lib/persistDebug";
 import { useOrgStore } from "@/store/orgStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
 /**
  * Desktop overlay anchored at the bottom-left of the screen.
  * Shows the 5 most recent persist confirmations as they happen,
  * then fades them out after 3 seconds. Only appears when the
- * active organization has slug "agilefant".
+ * active organization has the Labs "Persist notifications" setting on.
  */
 export function PersistDebugOverlay() {
-  const activeOrg = useOrgStore((s) => {
-    const m = s.getActiveOrg();
-    return m?.organization_slug === "agilefant" ? m : null;
-  });
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const enabled = useOrgSettingsStore((s) =>
+    activeOrgId ? (s.settings[activeOrgId]?.persistNotificationsEnabled ?? false) : false,
+  );
 
   const [entries, setEntries] = useState<PersistEvent[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -20,7 +21,7 @@ export function PersistDebugOverlay() {
   );
 
   useEffect(() => {
-    if (!activeOrg) {
+    if (!enabled) {
       setEntries([]);
       timersRef.current.forEach(clearTimeout);
       timersRef.current.clear();
@@ -42,9 +43,9 @@ export function PersistDebugOverlay() {
       timersRef.current.forEach(clearTimeout);
       timersRef.current.clear();
     };
-  }, [activeOrg]);
+  }, [enabled]);
 
-  if (!activeOrg || entries.length === 0) return null;
+  if (!enabled || entries.length === 0) return null;
 
   const label: Record<string, string> = {
     workitem: "📝 item",
