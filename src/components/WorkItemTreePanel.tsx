@@ -2957,6 +2957,30 @@ export function WorkItemTreePanel() {
     visibleWorkItemIdsRef.current = visibleItemIds;
   }, [visibleItemIds]);
 
+  // Scroll a work item into view even when it isn't currently rendered by the
+  // virtualizer (e.g. navigating from search/label results to an item far
+  // outside the current window). virtualizer.scrollToIndex works from the list
+  // index regardless of whether the target row is mounted yet; the follow-up
+  // scrollIntoView corrects any drift from the dynamic row-height estimates.
+  const scrollToWorkItem = useCallback(
+    (itemId: string) => {
+      const index = visibleItemIdsRef.current.indexOf(itemId);
+      if (index === -1) {
+        scrollWorkItemIntoView(itemId);
+        return;
+      }
+      virtualizer.scrollToIndex(index, { align: "auto" });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document
+            .querySelector(`[data-work-item-id="${CSS.escape(itemId)}"]`)
+            ?.scrollIntoView({ block: "nearest" });
+        });
+      });
+    },
+    [virtualizer],
+  );
+
   // Keyboard shortcuts: Tab = indent (make child of item above),
   // Shift+Tab = outdent (elevate to parent's level).
   useEffect(() => {
@@ -3602,7 +3626,7 @@ export function WorkItemTreePanel() {
                           // before we try to highlight the work item row.
                           setTimeout(() => {
                             selectWorkItem(item.id, false);
-                            scrollWorkItemIntoView(item.id);
+                            scrollToWorkItem(item.id);
                           }, 50);
                         }}
                       />
@@ -3656,7 +3680,7 @@ export function WorkItemTreePanel() {
                       setFilterLabelIds(new Set());
                       setTimeout(() => {
                         selectWorkItem(item.id, false);
-                        scrollWorkItemIntoView(item.id);
+                        scrollToWorkItem(item.id);
                       }, 50);
                     }}
                   />
