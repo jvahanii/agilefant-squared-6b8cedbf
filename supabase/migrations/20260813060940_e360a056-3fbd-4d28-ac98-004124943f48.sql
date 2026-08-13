@@ -1,0 +1,1 @@
+ALTER TABLE public.organization_settings ADD COLUMN IF NOT EXISTS persist_notifications_enabled boolean NOT NULL DEFAULT false;

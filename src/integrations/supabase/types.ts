@@ -595,6 +595,7 @@ export type Database = {
           id: string
           labels_enabled: boolean
           organization_id: string
+          persist_notifications_enabled: boolean
           points_enabled: boolean
           savings_income_enabled: boolean
           time_logging_enabled: boolean
@@ -608,6 +609,7 @@ export type Database = {
           id?: string
           labels_enabled?: boolean
           organization_id: string
+          persist_notifications_enabled?: boolean
           points_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
@@ -621,6 +623,7 @@ export type Database = {
           id?: string
           labels_enabled?: boolean
           organization_id?: string
+          persist_notifications_enabled?: boolean
           points_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
