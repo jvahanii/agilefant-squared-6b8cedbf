@@ -579,13 +579,16 @@ function WorkItemNodeContent({
     return () => window.removeEventListener("shortcut:edit-title", handler);
   }, [workItemId, item?.title]);
 
-  // On mount, if this is the first selected item, scroll it into view so
-  // the previously-selected item is visible after restore (especially on mobile
-  // where the panel mounts fresh after a tab switch).
+  // On mount, if this is the first selected item, scroll it into view so:
+  //  - a freshly created item is visible immediately (addWorkItem selects it), and
+  //  - the previously-selected item is visible after restore (especially on mobile
+  //    where the panel mounts fresh after a tab switch).
+  // Use the deferred scroll helper because the row's position is still estimated
+  // / unstable until the parent virtualizer has finished measuring rows.
   useEffect(() => {
     const initialSelectedIds = useAppStore.getState().selectedWorkItemIds;
-    if (initialSelectedIds.length > 0 && initialSelectedIds[0] === workItemId && nodeRef.current) {
-      nodeRef.current.scrollIntoView({ block: "nearest" });
+    if (initialSelectedIds.length > 0 && initialSelectedIds[0] === workItemId) {
+      scrollWorkItemIntoView(workItemId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1882,10 +1885,15 @@ function WorkItemRootDropZone({
 }
 
 function scrollWorkItemIntoView(itemId: string) {
+  // Wait two animation frames so the parent virtualizer has measured and
+  // positioned the (possibly newly added) row before we scroll to it.
+  // Otherwise scrollIntoView can target the row's stale/estimated position.
   requestAnimationFrame(() => {
-    document
-      .querySelector(`[data-work-item-id="${CSS.escape(itemId)}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-work-item-id="${CSS.escape(itemId)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    });
   });
 }
 
