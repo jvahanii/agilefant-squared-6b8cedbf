@@ -1,8 +1,10 @@
 import { useOrgStore } from "@/store/orgStore";
+import { isPersistNotificationsEnabled } from "@/store/orgSettingsStore";
 
 /**
  * Lightweight event bus for debug persist notifications.
- * Only fires when the active org slug is "agilefant".
+ * Only fires when the active organization has the Labs
+ * "Persist notifications" setting enabled.
  */
 
 export type PersistEventKind = 'workitem' | 'backlogRank' | 'boardRank';
@@ -17,10 +19,9 @@ export type PersistEvent = {
 type Listener = (e: PersistEvent) => void;
 const listeners = new Set<Listener>();
 
-function isAgilefantOrg(): boolean {
+function isEnabled(): boolean {
   try {
-    const m = useOrgStore.getState().getActiveOrg();
-    return m?.organization_slug === 'agilefant';
+    return isPersistNotificationsEnabled(useOrgStore.getState().activeOrgId);
   } catch {
     return false;
   }
@@ -32,7 +33,7 @@ export function subscribePersistDebug(fn: Listener): () => void {
 }
 
 export function notifyPersistDebug(kind: PersistEventKind, title: string) {
-  if (!isAgilefantOrg()) return;
+  if (!isEnabled()) return;
   const event: PersistEvent = {
     id: crypto.randomUUID().slice(0, 8),
     kind,
