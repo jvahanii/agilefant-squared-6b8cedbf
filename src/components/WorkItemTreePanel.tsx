@@ -2916,6 +2916,12 @@ export function WorkItemTreePanel() {
     estimateSize: () => 32,
     overscan: 10,
     measureElement: (el) => el.getBoundingClientRect().height,
+    // Key rows (and their cached measurements) by work-item identity instead of
+    // index. When an item is moved to another list and removed from this one,
+    // every following item shifts to a new index; index-based keys would make
+    // each row adopt the stale multi-line height of the previous occupant and
+    // leave titles squeezed on top of each other on mobile.
+    getItemKey: (index) => visibleItemIds[index] ?? index,
   });
 
   // Titles wrap onto multiple rows, so a row's height depends on the available
@@ -3736,7 +3742,7 @@ export function WorkItemTreePanel() {
                       const itemBacklogId = wi.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
                       return (
                         <div
-                          key={virtualRow.key}
+                          key={id}
                           data-index={i}
                           ref={virtualizer.measureElement}
                           className="absolute top-0 left-0 w-full"
