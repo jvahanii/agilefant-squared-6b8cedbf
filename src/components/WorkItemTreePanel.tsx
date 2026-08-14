@@ -2943,14 +2943,14 @@ export function WorkItemTreePanel() {
     return () => ro.disconnect();
   }, [virtualizer]);
 
-  // Row heights are cached by index, so when the visible set changes (expand /
-  // collapse, add, delete, filter) index N may now hold a completely different
-  // row.  Drop the cached measurements so every row is measured again —
-  // otherwise stale heights leave gaps or paint rows on top of each other.
-  useEffect(() => {
-    virtualizer.measure();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleItemIds.length]);
+  // Row heights are cached by work-item identity (see getItemKey above), so a
+  // change to the visible set (expand / collapse, add, delete, filter, move to
+  // another list) is handled automatically: existing rows keep their measured
+  // heights and new rows measure on mount. Do NOT call virtualizer.measure()
+  // here — clearing the cache would reset every rendered row to the 32px
+  // estimate, and (with item-id keys) React reuses the DOM nodes so the
+  // measureElement ref never re-runs. On mobile that leaves wrapped titles
+  // painted on top of each other.
 
 
 
