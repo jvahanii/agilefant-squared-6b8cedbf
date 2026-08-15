@@ -167,6 +167,10 @@ interface AppState extends DataSnapshot {
   reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[], statusKey?: string) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
+  /** Batched multi-item variant of `moveWorkItemToBacklog` — a single state
+   *  update, a single DB batch and a single undo entry, and it leaves the
+   *  source backlogs' remaining ranks untouched (no re-densification). */
+  moveWorkItemsToBacklog: (workItemIds: string[], targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string, initialStatus?: WorkItemStatus) => void;
   deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
