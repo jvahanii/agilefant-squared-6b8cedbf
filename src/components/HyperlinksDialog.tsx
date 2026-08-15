@@ -185,7 +185,7 @@ export function HyperlinksDialog({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 mb-4">
+          <div className="flex items-center gap-1 mb-4 min-w-0">
             <div
               className="text-sm text-muted-foreground truncate flex-1 min-w-0 sm:cursor-text sm:hover:text-foreground transition-colors"
               title={item.title}
@@ -208,7 +208,7 @@ export function HyperlinksDialog({
 
 
         {/* Existing hyperlinks */}
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden min-w-0">
           {hyperlinks.length === 0 && !isAdding && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No hyperlinks yet. Add one below.
