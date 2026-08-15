@@ -288,7 +288,7 @@ function WorkItemNodeContent({
   const guardedDeleteBulk = useDeleteWithTimeGuard();
   const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
   const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
-  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const moveWorkItemsToBacklog = useAppStore((s) => s.moveWorkItemsToBacklog);
   const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
   const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
@@ -1405,13 +1405,7 @@ function WorkItemNodeContent({
                       className="text-xs"
                       onSelect={() => {
                         const ids = isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
-                        if (ids.length > 1) {
-                          useAppStore.getState().runBulk(() => {
-                            ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
-                          });
-                        } else {
-                          ids.forEach((id) => moveWorkItemToBacklog(id, blId, treeId));
-                        }
+                        moveWorkItemsToBacklog(ids, blId, treeId);
                       }}
                     >
                       {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}

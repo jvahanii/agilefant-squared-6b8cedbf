@@ -167,6 +167,10 @@ interface AppState extends DataSnapshot {
   reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[], statusKey?: string) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
+  /** Batched multi-item variant of `moveWorkItemToBacklog` — a single state
+   *  update, a single DB batch and a single undo entry, and it leaves the
+   *  source backlogs' remaining ranks untouched (no re-densification). */
+  moveWorkItemsToBacklog: (workItemIds: string[], targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string, initialStatus?: WorkItemStatus) => void;
   deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
@@ -1996,118 +2000,155 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     moveWorkItemToBacklog: (workItemId, targetBacklogId, targetTreeId, strategy = "move", sourceTreeId) => {
+      get().moveWorkItemsToBacklog([workItemId], targetBacklogId, targetTreeId, strategy, sourceTreeId);
+    },
+
+    moveWorkItemsToBacklog: (workItemIds, targetBacklogId, targetTreeId, strategy = "move", sourceTreeId) => {
       const state = get();
       const orgId = state.organizationId!;
-      const item = state.workItems[workItemId];
-      if (!item) return;
-
       const cleanTargetBl = ensureCleanId(targetBacklogId, orgId);
 
-      // Compute rank as min-1 among siblings in the NEW backlog to place item at top.
-      // Use effective parent (respecting per-tree overrides) so items with
-      // different global parents but the same tree-specific parent are
-      // correctly grouped as siblings.
-      const itemEffectiveParent = getEffectiveParentId(item, targetTreeId);
-      let minRank = Infinity;
-      Object.values(state.workItems).forEach((wi) => {
-        if (wi.id === workItemId) return;
-        if (getEffectiveParentId(wi, targetTreeId) !== itemEffectiveParent) return;
-        if (wi.backlogAssignments[targetTreeId] === cleanTargetBl) {
-          const wiRank = wi.ranks[cleanTargetBl] ?? 0;
-          if (wiRank < minRank) minRank = wiRank;
+      const requested = new Set(workItemIds.filter((id) => state.workItems[id]));
+      if (requested.size === 0) return;
+
+      // Only move the topmost requested items — descendants follow their root.
+      const roots = [...requested].filter((id) => {
+        let p = getEffectiveParentId(state.workItems[id], targetTreeId);
+        const seen = new Set<string>();
+        while (p && !seen.has(p)) {
+          if (requested.has(p)) return false;
+          seen.add(p);
+          const parent = state.workItems[p];
+          if (!parent) break;
+          p = getEffectiveParentId(parent, targetTreeId);
         }
+        return true;
       });
-      const newRootRank = minRank === Infinity ? 0 : minRank - 1;
+      if (roots.length === 0) return;
+
+      // Preserve the roots' current source-list order in the destination.
+      const sourceRankOf = (wi: WorkItem): number => {
+        const bl = wi.backlogAssignments[targetTreeId] ?? (sourceTreeId ? wi.backlogAssignments[sourceTreeId] : undefined);
+        return bl ? (wi.ranks[bl] ?? 0) : 0;
+      };
+      roots.sort((a, b) => {
+        const diff = sourceRankOf(state.workItems[a]) - sourceRankOf(state.workItems[b]);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      });
+      const rootOrder = new Map(roots.map((id, i) => [id, i]));
 
       const updatedItems = { ...state.workItems };
       const changed: WorkItem[] = [];
+      const changedIndex = new Map<string, number>();
+      const pushChanged = (wi: WorkItem) => {
+        const idx = changedIndex.get(wi.id);
+        if (idx === undefined) {
+          changedIndex.set(wi.id, changed.length);
+          changed.push(wi);
+        } else {
+          changed[idx] = wi;
+        }
+      };
       const removedRanks: Array<{ workItemId: string; backlogId: string }> = [];
+      const movedIds = new Set<string>();
+      /** Previous rank of each moved item, used for stable ordering. */
+      const previousRank = new Map<string, number>();
 
-      // A cross-tree move is when the root item is being added to a tree it
-      // didn't already belong to.  In that case we must also propagate the new
-      // tree assignment to every descendant that exists in the hierarchy
-      // (regardless of whether they already have the target-tree assignment),
-      // so that a subsequent removeWorkItemFromTree call doesn't delete them.
-      const isCrossTreeMove = !item.backlogAssignments[targetTreeId];
+      const destStatuses = getEffectiveStatuses(cleanTargetBl);
+      const destStatusKeys = new Set(destStatuses.map((s) => s.key));
 
-      const moveRecursive = (id: string, isRoot: boolean) => {
+      const moveRecursive = (id: string, isRoot: boolean, isCrossTreeMove: boolean) => {
         const wi = updatedItems[id];
         if (!wi) return;
         const oldBlId = wi.backlogAssignments[targetTreeId];
-        // Only reassign descendants that actually live in this tree. Otherwise
-        // we would silently add a stray tree assignment to items that belong
-        // to a different tree, creating the same class of orphan sibling that
-        // caused items to appear in the wrong backlog after a move.
-        // Exception: for cross-tree moves the root is NEW to targetTreeId, so
-        // its descendants (which also won't have targetTreeId yet) must be
-        // included so they gain the new tree context.
+        // Only reassign descendants that actually live in this tree — otherwise
+        // we'd add a stray tree assignment to items belonging elsewhere.
+        // Exception: on a cross-tree move the root (and its descendants) are new
+        // to targetTreeId, so they must be included to gain the tree context.
         if (!isRoot && !oldBlId && !isCrossTreeMove) return;
+
         const newRanks = { ...wi.ranks };
-        // Remove rank for old backlog, add rank for new backlog
+        const newBoardRanks = { ...(wi.boardRanks ?? {}) };
+        previousRank.set(id, oldBlId ? (wi.ranks[oldBlId] ?? 0) : (wi.ranks[cleanTargetBl] ?? 0));
         if (oldBlId && oldBlId !== cleanTargetBl) {
           delete newRanks[oldBlId];
+          delete newBoardRanks[oldBlId];
           removedRanks.push({ workItemId: id, backlogId: oldBlId });
         }
-        if (isRoot) {
-          newRanks[cleanTargetBl] = newRootRank;
-        } else {
-          // Preserve existing rank value or default to current
-          newRanks[cleanTargetBl] = newRanks[cleanTargetBl] ?? (wi.ranks[oldBlId] ?? 0);
-        }
-        // Remap status if the destination backlog's effective status set
-        // doesn't include the current status (falls back to 'not_started').
-        const destStatuses = getEffectiveStatuses(cleanTargetBl);
-        const destStatusKeys = new Set(destStatuses.map((s) => s.key));
+        // Placeholder — final rank is assigned in the placement pass below.
+        newRanks[cleanTargetBl] = newRanks[cleanTargetBl] ?? 0;
+
         const remappedStatus = destStatusKeys.has(wi.status) ? wi.status : ('not_started' as WorkItemStatus);
         updatedItems[id] = {
           ...wi,
           status: remappedStatus,
           backlogAssignments: { ...wi.backlogAssignments, [targetTreeId]: cleanTargetBl },
           ranks: newRanks,
+          boardRanks: newBoardRanks,
         };
-        changed.push(updatedItems[id]);
-        wi.childrenIds.forEach((childId) => moveRecursive(childId, false));
+        movedIds.add(id);
+        pushChanged(updatedItems[id]);
+        wi.childrenIds.forEach((childId) => moveRecursive(childId, false, isCrossTreeMove));
       };
 
-      moveRecursive(workItemId, true);
+      const firstRoot = state.workItems[roots[0]];
+      for (const rootId of roots) {
+        const rootItem = updatedItems[rootId];
+        if (!rootItem) continue;
+        moveRecursive(rootId, true, !rootItem.backlogAssignments[targetTreeId]);
+      }
 
-      // Compact ALL siblings in the target context (both moved items AND
-      // pre-existing siblings) so no duplicate or gapped ranks remain after
-      // the move.  Without this, moved descendants could retain ranks that
-      // collide with existing items, causing display/ordering bugs.
-      const targetSiblingsByParent = new Map<string | null, string[]>();
+      // Placement: give the moved items fractional ranks *below* the existing
+      // minimum of their destination sibling group.  Pre-existing destination
+      // items keep their exact ranks, so nothing else shifts.
+      const boardRows: WorkItemBoardRankUpsert[] = [];
+      const movedByParent = new Map<string | null, string[]>();
+      for (const id of movedIds) {
+        const pid = getEffectiveParentId(updatedItems[id], targetTreeId) ?? null;
+        if (!movedByParent.has(pid)) movedByParent.set(pid, []);
+        movedByParent.get(pid)!.push(id);
+      }
+      const destMinByParent = new Map<string | null, number>();
       for (const wi of Object.values(updatedItems)) {
+        if (movedIds.has(wi.id)) continue;
         if (wi.backlogAssignments[targetTreeId] !== cleanTargetBl) continue;
         const pid = getEffectiveParentId(wi, targetTreeId) ?? null;
-        if (!targetSiblingsByParent.has(pid)) targetSiblingsByParent.set(pid, []);
-        targetSiblingsByParent.get(pid)!.push(wi.id);
+        const r = wi.ranks[cleanTargetBl];
+        if (typeof r !== "number") continue;
+        const current = destMinByParent.get(pid);
+        if (current === undefined || r < current) destMinByParent.set(pid, r);
       }
-      for (const ids of targetSiblingsByParent.values()) {
-        const sorted = [...ids]
-          .map((id) => updatedItems[id])
-          .filter((wi): wi is WorkItem => !!wi)
-          .sort((a, b) => {
-            const rA = a.ranks[cleanTargetBl] ?? 0;
-            const rB = b.ranks[cleanTargetBl] ?? 0;
-            return rA !== rB ? rA - rB : a.id.localeCompare(b.id);
+      for (const [pid, ids] of movedByParent) {
+        const ordered = [...ids].sort((a, b) => {
+          const oA = rootOrder.get(a);
+          const oB = rootOrder.get(b);
+          if (oA !== undefined && oB !== undefined) return oA - oB;
+          const diff = (previousRank.get(a) ?? 0) - (previousRank.get(b) ?? 0);
+          return diff !== 0 ? diff : a.localeCompare(b);
+        });
+        const destMin = destMinByParent.get(pid);
+        const base = destMin === undefined ? 0 : destMin - ordered.length;
+        ordered.forEach((id, i) => {
+          const wi = updatedItems[id];
+          if (!wi) return;
+          const rank = base + i;
+          updatedItems[id] = {
+            ...wi,
+            ranks: { ...wi.ranks, [cleanTargetBl]: rank },
+            boardRanks: { ...(wi.boardRanks ?? {}), [cleanTargetBl]: rank },
+          };
+          pushChanged(updatedItems[id]);
+          boardRows.push({
+            workItemId: id,
+            backlogId: cleanTargetBl,
+            rank,
+            organizationId: wi.organizationId ?? orgId,
           });
-        for (let i = 0; i < sorted.length; i++) {
-          const wi = sorted[i];
-          if ((wi.ranks[cleanTargetBl] ?? 0) !== i) {
-            const updated = { ...wi, ranks: { ...wi.ranks, [cleanTargetBl]: i } };
-            updatedItems[wi.id] = updated;
-            const idx = changed.findIndex((c) => c.id === wi.id);
-            if (idx >= 0) {
-              changed[idx] = updated;
-            } else {
-              changed.push(updated);
-            }
-          }
-        }
+        });
       }
 
       // For cross-tree "move" (not mirror): remove the source tree assignment from
-      // all moved items so the item no longer appears in the source tree.
+      // all moved items so they no longer appear in the source tree.
       if (strategy === "move" && sourceTreeId && sourceTreeId !== targetTreeId) {
         for (const wi of [...changed]) {
           const sourceBl = wi.backlogAssignments[sourceTreeId];
@@ -2116,72 +2157,33 @@ export const useAppStore = create<AppState>()((set, get) => {
           delete newAssignments[sourceTreeId];
           const newRanks = { ...wi.ranks };
           delete newRanks[sourceBl];
+          const newBoardRanks = { ...(wi.boardRanks ?? {}) };
+          delete newBoardRanks[sourceBl];
           removedRanks.push({ workItemId: wi.id, backlogId: sourceBl });
-          const updated = { ...wi, backlogAssignments: newAssignments, ranks: newRanks };
+          const updated = { ...wi, backlogAssignments: newAssignments, ranks: newRanks, boardRanks: newBoardRanks };
           updatedItems[wi.id] = updated;
-          const idx = changed.findIndex((c) => c.id === wi.id);
-          if (idx >= 0) changed[idx] = updated;
-        }
-      }
-
-      // Compact ALL siblings in every source backlog context that had items
-      // moved out, so no gaps remain (e.g. ranks 0,1,4,5 → 0,1,2,3).  Same
-      // full densification as the target-side compaction above.
-      const sourcedByContext = new Map<string, string[]>();
-      for (const { backlogId } of removedRanks) {
-        for (const wi of Object.values(updatedItems)) {
-          for (const [tid, blId] of Object.entries(wi.backlogAssignments)) {
-            if (blId !== backlogId) continue;
-            const pid = getEffectiveParentId(wi, tid) ?? null;
-            const key = `${tid}::${backlogId}::${pid ?? 'ROOT'}`;
-            if (!sourcedByContext.has(key)) sourcedByContext.set(key, []);
-            const arr = sourcedByContext.get(key)!;
-            if (!arr.includes(wi.id)) arr.push(wi.id);
-          }
-        }
-      }
-      for (const ids of sourcedByContext.values()) {
-        const firstWi = updatedItems[ids[0]];
-        if (!firstWi) continue;
-        // Determine the backlog for this group
-        let blId: string | null = null;
-        for (const [, bId] of Object.entries(firstWi.backlogAssignments)) {
-          blId = bId;
-          break;
-        }
-        if (!blId) continue;
-        const sorted = [...ids]
-          .map((id) => updatedItems[id])
-          .filter((wi): wi is WorkItem => !!wi)
-          .sort((a, b) => {
-            const rA = a.ranks[blId!] ?? 0;
-            const rB = b.ranks[blId!] ?? 0;
-            return rA !== rB ? rA - rB : a.id.localeCompare(b.id);
-          });
-        for (let i = 0; i < sorted.length; i++) {
-          const wi = sorted[i];
-          if ((wi.ranks[blId] ?? 0) !== i) {
-            const updated = { ...wi, ranks: { ...wi.ranks, [blId]: i } };
-            updatedItems[wi.id] = updated;
-            const idx = changed.findIndex((c) => c.id === wi.id);
-            if (idx >= 0) {
-              changed[idx] = updated;
-            } else {
-              changed.push(updated);
-            }
-          }
+          pushChanged(updated);
         }
       }
 
       upsertWorkItems(changed, orgId);
+      if (boardRows.length > 0) persistBoardRankUpserts(boardRows);
       // Clean up stale rank rows in the DB for backlogs that items were moved out of.
       deleteWorkItemBacklogRanks(removedRanks);
-      const oldBacklogId = item.backlogAssignments[targetTreeId];
+
+      const oldBacklogId = firstRoot?.backlogAssignments[targetTreeId];
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
       const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
-      internalLog({ action: "Move to Backlog", entityType: "work_item", entityId: workItemId, entityName: item.title, details: `backlog: "${oldBacklogName}" → "${newBacklogName}"` });
-      set({ workItems: updatedItems, undoStack: pushUndoEntry(state) });
+      internalLog({
+        action: "Move to Backlog",
+        entityType: "work_item",
+        entityId: roots[0],
+        entityName: roots.length === 1 ? (firstRoot?.title ?? roots[0]) : `${roots.length} items`,
+        details: `backlog: "${oldBacklogName}" → "${newBacklogName}"`,
+      });
+      set({ workItems: updatedItems, undoStack: pushUndoEntry(state), redoStack: [] });
     },
+
 
     addWorkItem: (title, parentId, backlogId, treeId, requestedRank, initialStatus, requestedBoardRank) => {
       const state = get();

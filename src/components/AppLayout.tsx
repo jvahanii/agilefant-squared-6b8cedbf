@@ -104,6 +104,7 @@ function BurnupDialogHost() {
 function AppLayoutInner() {
   const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const moveWorkItemsToBacklog = useAppStore((s) => s.moveWorkItemsToBacklog);
   const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
   const moveBacklog = useAppStore((s) => s.moveBacklog);
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
@@ -639,7 +640,7 @@ function AppLayoutInner() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [undo, redo, moveWorkItemToBacklog, reorderWorkItemAmongSiblings]);
+  }, [undo, redo, moveWorkItemToBacklog, moveWorkItemsToBacklog, reorderWorkItemAmongSiblings]);
 
   // Mobile swipe gesture handlers
   useEffect(() => {
@@ -960,7 +961,7 @@ function AppLayoutInner() {
             targetTreeName: targetTree?.name ?? targetTreeId,
           });
         } else {
-          draggedIds.forEach((id) => moveWorkItemToBacklog(id, overData.backlogId, overData.treeId));
+          moveWorkItemsToBacklog(draggedIds, overData.backlogId, overData.treeId);
         }
       } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
         const targetId = overData.workItemId;
@@ -1018,14 +1019,13 @@ function AppLayoutInner() {
         // reassign the item to that sub-backlog).
         if (targetBacklogId) {
           const preMoveStore = useAppStore.getState();
-          draggedIds.forEach((id) => {
+          const idsToMove = draggedIds.filter((id) => {
             const wi = preMoveStore.workItems[id];
-            if (!wi) return;
+            if (!wi) return false;
             const currentBacklogId = wi.backlogAssignments[treeId];
-            if (currentBacklogId && currentBacklogId !== targetBacklogId) {
-              moveWorkItemToBacklog(id, targetBacklogId, treeId);
-            }
+            return !!currentBacklogId && currentBacklogId !== targetBacklogId;
           });
+          if (idsToMove.length > 0) moveWorkItemsToBacklog(idsToMove, targetBacklogId, treeId);
         }
 
         // Re-read store after potential backlog moves so reparent/reorder see latest state.
@@ -1103,6 +1103,7 @@ function AppLayoutInner() {
     },
     [
       moveWorkItemToBacklog,
+      moveWorkItemsToBacklog,
       removeWorkItemFromTree,
       reparentWorkItem,
       reorderWorkItemAmongSiblings,
@@ -1120,18 +1121,14 @@ function AppLayoutInner() {
       const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
 
       useAppStore.getState().runBulk(() => {
-        workItemIds.forEach((id) => {
-          if (value === "move") {
-            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-            removeWorkItemFromTree(id, sourceTreeId);
-          } else if (value === "add") {
-            moveWorkItemToBacklog(id, targetBacklogId, targetTreeId);
-          }
-        });
+        moveWorkItemsToBacklog(workItemIds, targetBacklogId, targetTreeId);
+        if (value === "move") {
+          workItemIds.forEach((id) => removeWorkItemFromTree(id, sourceTreeId));
+        }
       });
       setPendingCrossTree(null);
     },
-    [pendingCrossTree, moveWorkItemToBacklog, removeWorkItemFromTree],
+    [pendingCrossTree, moveWorkItemsToBacklog, removeWorkItemFromTree],
   );
 
   // Extract handler functions for reuse in mobile menu
