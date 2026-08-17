@@ -27,8 +27,10 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
+import type { WorkItem } from "@/types/models";
 
 export interface BurnupScope {
   kind: ChartScopeKind;
@@ -49,6 +51,81 @@ interface HistoryRow {
   status: string | null;
   points: number | null;
   snapshot_at: string;
+}
+
+/** Effective points of a (sub)branch: max(own points, sum of in-scope children). */
+function effectivePointsInScope(
+  workItems: Record<string, WorkItem>,
+  id: string,
+  scopeSet: Set<string>,
+  memo: Map<string, number>,
+): number {
+  const cached = memo.get(id);
+  if (cached !== undefined) return cached;
+  const wi = workItems[id];
+  if (!wi) {
+    memo.set(id, 0);
+    return 0;
+  }
+  const own = wi.points ?? 0;
+  let childSum = 0;
+  for (const cid of wi.childrenIds) {
+    if (!scopeSet.has(cid)) continue;
+    childSum += effectivePointsInScope(workItems, cid, scopeSet, memo);
+  }
+  const total = Math.max(own, childSum);
+  memo.set(id, total);
+  return total;
+}
+
+/**
+ * Distributes a branch's effective points across status buckets for a single
+ * day. A rolled-up parent (its own points >= children sum) contributes the
+ * leftover to its own status; when the parent is "done", the whole branch is
+ * credited as done. This mirrors the list-view effective/completed points so
+ * parent points never double-count their children.
+ */
+function statusBreakdown(
+  workItems: Record<string, WorkItem>,
+  id: string,
+  scopeSet: Set<string>,
+  dayState: Map<string, { status: string; points: number }>,
+  statusKeys: string[],
+  seen: Set<string>,
+): Record<string, number> {
+  if (seen.has(id)) return {};
+  seen.add(id);
+  const wi = workItems[id];
+  if (!wi) return {};
+
+  const live = dayState.get(id);
+  let status = live?.status ?? wi.status;
+  if (!statusKeys.includes(status)) status = "not_started";
+  const ownPoints = live ? (live.points ?? 0) : (wi.points ?? 0);
+
+  if (wi.childrenIds.length === 0) {
+    return { [status]: ownPoints };
+  }
+
+  const childBreak: Record<string, number> = {};
+  for (const cid of wi.childrenIds) {
+    if (!scopeSet.has(cid)) continue;
+    const sub = statusBreakdown(workItems, cid, scopeSet, dayState, statusKeys, seen);
+    for (const [k, v] of Object.entries(sub)) {
+      childBreak[k] = (childBreak[k] ?? 0) + v;
+    }
+  }
+  const childSum = Object.values(childBreak).reduce((a, b) => a + b, 0);
+
+  if (status === "done") {
+    return { done: Math.max(ownPoints, childSum) };
+  }
+
+  const leftover = Math.max(0, ownPoints - childSum);
+  if (leftover > 0) {
+    childBreak[status] = (childBreak[status] ?? 0) + leftover;
+  }
+  return childBreak;
 }
 
 /** Collect all descendant work item ids that belong to the given scope. */
@@ -155,6 +232,30 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     return DEFAULT_STATUSES;
   }, [scope, itemIds, workItems]);
 
+  const statusKeys = useMemo(() => statusPalette.map((s) => s.key), [statusPalette]);
+
+  const scopeSet = useMemo(() => new Set(itemIds), [itemIds]);
+
+  // Top-level items within the scope: used to sum up the branch's total.
+  const scopeRoots = useMemo(
+    () =>
+      itemIds.filter((id) => {
+        const wi = workItems[id];
+        return !wi || wi.parentId == null || !scopeSet.has(wi.parentId);
+      }),
+    [itemIds, scopeSet, workItems],
+  );
+
+  // The vertical scale target: branch total for points, item count for count.
+  const total = useMemo(() => {
+    if (metric === "count") return itemIds.length;
+    const memo = new Map<string, number>();
+    return scopeRoots.reduce(
+      (sum, id) => sum + effectivePointsInScope(workItems, id, scopeSet, memo),
+      0,
+    );
+  }, [metric, itemIds, scopeRoots, scopeSet, workItems]);
+
   useEffect(() => {
     if (!open || !scope || itemIds.length === 0) {
       setRows([]);
@@ -199,33 +300,130 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     const end = new Date();
     const days = eachDay(start, end);
 
-    const statusKeys = statusPalette.map((s) => s.key);
+    const keys = statusPalette.map((s) => s.key);
 
     const data = days.map((day) => {
       const dayEnd = new Date(day + "T23:59:59.999Z").getTime();
-      const bucket: Record<string, number> = { date: 0 as unknown as number };
       const out: Record<string, number | string> = { date: day };
-      for (const key of statusKeys) out[key] = 0;
+      for (const key of keys) out[key] = 0;
 
-      for (const [_id, events] of perItem) {
-        // Find latest event <= dayEnd
-        let latest: HistoryRow | undefined;
-        for (const e of events) {
-          if (new Date(e.snapshot_at).getTime() <= dayEnd) latest = e;
-          else break;
+      if (metric === "points") {
+        // Resolve each item's status/points as of this day, then decompose the
+        // branch so rolled-up parents do not double-count their children.
+        const dayState = new Map<string, { status: string; points: number }>();
+        for (const id of itemIds) {
+          const events = perItem.get(id);
+          if (events) {
+            let latest: HistoryRow | undefined;
+            for (const e of events) {
+              if (new Date(e.snapshot_at).getTime() <= dayEnd) latest = e;
+              else break;
+            }
+            if (!latest || !latest.existed) continue;
+            dayState.set(id, { status: latest.status ?? "not_started", points: latest.points ?? 0 });
+          } else {
+            // No history yet — fall back to the item's current state.
+            const wi = workItems[id];
+            if (wi) dayState.set(id, { status: wi.status, points: wi.points ?? 0 });
+          }
         }
-        if (!latest || !latest.existed) continue;
-        const statusKey = latest.status ?? "not_started";
-        if (!statusKeys.includes(statusKey)) continue;
-        const contribution =
-          metric === "points" ? (latest.points ?? 1) : 1;
-        out[statusKey] = ((out[statusKey] as number) ?? 0) + contribution;
+
+        for (const rootId of scopeRoots) {
+          const breakdown = statusBreakdown(
+            workItems,
+            rootId,
+            scopeSet,
+            dayState,
+            keys,
+            new Set<string>(),
+          );
+          for (const [k, v] of Object.entries(breakdown)) {
+            out[k] = ((out[k] as number) ?? 0) + v;
+          }
+        }
+      } else {
+        // Count metric: one unit per in-scope item, in its status.
+        for (const id of itemIds) {
+          const events = perItem.get(id);
+          let latest: HistoryRow | undefined;
+          if (events) {
+            for (const e of events) {
+              if (new Date(e.snapshot_at).getTime() <= dayEnd) latest = e;
+              else break;
+            }
+            if (!latest || !latest.existed) continue;
+          } else {
+            const wi = workItems[id];
+            if (!wi) continue;
+            latest = { work_item_id: id, event: "", existed: true, status: wi.status, points: wi.points ?? 0, snapshot_at: day } as HistoryRow;
+          }
+          const statusKey = latest.status ?? "not_started";
+          if (!keys.includes(statusKey)) continue;
+          out[statusKey] = ((out[statusKey] as number) ?? 0) + 1;
+        }
       }
       return out;
     });
 
-    return { data, keys: statusKeys };
-  }, [rows, statusPalette, metric]);
+    return { data, keys };
+  }, [rows, statusPalette, metric, itemIds, scopeRoots, scopeSet, workItems]);
+
+  // Projected completion: a dashed red line from today's completed amount to
+  // the target, extrapolating the completion rate observed so far.
+  const projection = useMemo(() => {
+    const data = chartData.data;
+    if (!data || data.length === 0 || total <= 0) return null;
+    const last = data[data.length - 1];
+    const doneNow = (last.done as number) ?? 0;
+    if (doneNow <= 0 || doneNow >= total) return null;
+
+    let firstDoneIdx = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (((data[i].done as number) ?? 0) > 0) {
+        firstDoneIdx = i;
+        break;
+      }
+    }
+    if (firstDoneIdx < 0) return null;
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const firstDate = new Date((data[firstDoneIdx].date as string) + "T00:00:00Z");
+    const daysElapsed = Math.max(1, Math.round((today.getTime() - firstDate.getTime()) / 86400000));
+    const rate = doneNow / daysElapsed;
+    if (!(rate > 0)) return null;
+
+    const remaining = total - doneNow;
+    const daysToGo = Math.max(1, Math.ceil(remaining / rate));
+    const endDate = new Date(today.getTime() + daysToGo * 86400000);
+
+    return {
+      start: { x: today.toISOString().slice(0, 10), y: doneNow },
+      end: { x: endDate.toISOString().slice(0, 10), y: total },
+      endStr: endDate.toISOString().slice(0, 10),
+    };
+  }, [chartData, total]);
+
+  // Extend the series out to the projection end date so the dashed line's
+  // endpoint lands on a real x-axis category.
+  const chartRows = useMemo(() => {
+    if (!projection || chartData.data.length === 0) return chartData.data;
+    const last = chartData.data[chartData.data.length - 1];
+    const lastTime = new Date((last.date as string) + "T00:00:00Z").getTime();
+    const endTime = new Date(projection.endStr + "T00:00:00Z").getTime();
+    if (endTime <= lastTime) return chartData.data;
+    const out = [...chartData.data];
+    const cursor = new Date(lastTime);
+    while (true) {
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+      if (cursor.getTime() > endTime) break;
+      out.push({ ...last, date: cursor.toISOString().slice(0, 10) });
+    }
+    return out;
+  }, [projection, chartData]);
+
+  const yDomain: [number | string, number | string] =
+    total > 0 ? [0, total] : [0, "auto"];
 
   const handleMetricChange = async (m: ChartMetric) => {
     if (!scope || !user || !activeOrgId) return;
@@ -271,12 +469,36 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData.data as any[]} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+              <AreaChart data={chartRows as any[]} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} domain={yDomain} />
                 <RechartsTooltip />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
+                {total > 0 && (
+                  <ReferenceLine
+                    y={total}
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `Target ${total}`,
+                      position: "insideTopRight",
+                      fill: "#ef4444",
+                      fontSize: 10,
+                    }}
+                  />
+                )}
+                {projection && (
+                  <ReferenceLine
+                    segment={[
+                      { x: projection.start.x, y: projection.start.y },
+                      { x: projection.end.x, y: projection.end.y },
+                    ]}
+                    stroke="#ef4444"
+                    strokeDasharray="6 4"
+                    strokeWidth={1.5}
+                  />
+                )}
                 {chartData.keys.map((key) => {
                   const s = statusPalette.find((x) => x.key === key);
                   return (
