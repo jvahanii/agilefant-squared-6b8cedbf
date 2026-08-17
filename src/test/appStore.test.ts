@@ -3369,3 +3369,74 @@ describe("duplicateWorkItems", () => {
 
 
 
+
+describe("moveWorkItemsToBacklog (batched)", () => {
+  const ORG_ID = ORG;
+  function seed() {
+    const items: Record<string, any> = {};
+    for (let i = 0; i < 5; i++) {
+      items[`${ORG_ID}::wi-${i}`] = {
+        id: `${ORG_ID}::wi-${i}`, title: `Item ${i}`, status: "not_started" as const,
+        parentId: null, childrenIds: [],
+        backlogAssignments: { [`${ORG_ID}::bt-1`]: `${ORG_ID}::bl-1` },
+        ranks: { [`${ORG_ID}::bl-1`]: i * 10 },
+      };
+    }
+    items[`${ORG_ID}::wi-dest`] = {
+      id: `${ORG_ID}::wi-dest`, title: "Dest", status: "not_started" as const,
+      parentId: null, childrenIds: [],
+      backlogAssignments: { [`${ORG_ID}::bt-1`]: `${ORG_ID}::bl-2` },
+      ranks: { [`${ORG_ID}::bl-2`]: 0 },
+    };
+    useAppStore.setState({
+      organizationId: ORG_ID,
+      backlogTrees: {
+        [`${ORG_ID}::bt-1`]: { id: `${ORG_ID}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG_ID}::bl-1`, `${ORG_ID}::bl-2`], rank: 0 },
+      },
+      backlogs: {
+        [`${ORG_ID}::bl-1`]: { id: `${ORG_ID}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 0 },
+        [`${ORG_ID}::bl-2`]: { id: `${ORG_ID}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 1 },
+      },
+      workItems: items,
+      undoStack: [],
+      redoStack: [],
+      isLoading: false,
+    });
+  }
+
+  it("leaves the remaining source items' ranks untouched", () => {
+    seed();
+    useAppStore.getState().moveWorkItemsToBacklog(
+      [`${ORG}::wi-0`, `${ORG}::wi-2`, `${ORG}::wi-4`], `${ORG}::bl-2`, `${ORG}::bt-1`,
+    );
+    const items = useAppStore.getState().workItems;
+    expect(items[`${ORG}::wi-1`].ranks[`${ORG}::bl-1`]).toBe(10);
+    expect(items[`${ORG}::wi-3`].ranks[`${ORG}::bl-1`]).toBe(30);
+    expect(items[`${ORG}::wi-0`].ranks[`${ORG}::bl-1`]).toBeUndefined();
+  });
+
+  it("keeps the moved items' relative order at the top of the destination", () => {
+    seed();
+    useAppStore.getState().moveWorkItemsToBacklog(
+      [`${ORG}::wi-4`, `${ORG}::wi-0`, `${ORG}::wi-2`], `${ORG}::bl-2`, `${ORG}::bt-1`,
+    );
+    const items = useAppStore.getState().workItems;
+    const r = (id: string) => items[id].ranks[`${ORG}::bl-2`];
+    expect(r(`${ORG}::wi-0`)).toBeLessThan(r(`${ORG}::wi-2`));
+    expect(r(`${ORG}::wi-2`)).toBeLessThan(r(`${ORG}::wi-4`));
+    expect(r(`${ORG}::wi-4`)).toBeLessThan(items[`${ORG}::wi-dest`].ranks[`${ORG}::bl-2`]);
+  });
+
+  it("creates a single undo entry for the whole batch", () => {
+    seed();
+    useAppStore.getState().moveWorkItemsToBacklog(
+      [`${ORG}::wi-0`, `${ORG}::wi-1`, `${ORG}::wi-2`], `${ORG}::bl-2`, `${ORG}::bt-1`,
+    );
+    expect(useAppStore.getState().undoStack.length).toBe(1);
+    useAppStore.getState().undo();
+    const items = useAppStore.getState().workItems;
+    for (const id of [`${ORG}::wi-0`, `${ORG}::wi-1`, `${ORG}::wi-2`]) {
+      expect(items[id].backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
+    }
+  });
+});

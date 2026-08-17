@@ -150,7 +150,7 @@ export function HyperlinksDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-md"
+        className="sm:max-w-md max-w-[calc(100vw-2rem)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -185,7 +185,7 @@ export function HyperlinksDialog({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1 mb-4">
+          <div className="flex items-center gap-1 mb-4 min-w-0">
             <div
               className="text-sm text-muted-foreground truncate flex-1 min-w-0 sm:cursor-text sm:hover:text-foreground transition-colors"
               title={item.title}
@@ -208,7 +208,7 @@ export function HyperlinksDialog({
 
 
         {/* Existing hyperlinks */}
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden min-w-0">
           {hyperlinks.length === 0 && !isAdding && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No hyperlinks yet. Add one below.
@@ -256,10 +256,10 @@ export function HyperlinksDialog({
             ) : (
               <div
                 key={link.id}
-                className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/30 transition-colors group"
+                className="flex items-center gap-2 p-2 rounded-md border hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden"
               >
                 <ExternalLink className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <a
                     ref={index === 0 ? firstLinkRef : undefined}
                     href={safeHref(link.url)}

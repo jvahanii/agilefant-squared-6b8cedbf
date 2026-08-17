@@ -33,7 +33,7 @@ export function MoveToBacklogDialog({
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const workItems = useAppStore((s) => s.workItems);
-  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
+  const moveWorkItemsToBacklog = useAppStore((s) => s.moveWorkItemsToBacklog);
   const { scrambleEnabled: isScrambled } = useScramble();
 
   const [query, setQuery] = useState("");
@@ -109,11 +109,13 @@ export function MoveToBacklogDialog({
   }, [backlogs, sortedTrees, assignedBacklogIds, query, currentTreeId]);
 
   const applySelection = (backlogId: string, targetTreeId: string, strategy: "move" | "mirror") => {
-    useAppStore.getState().runBulk(() => {
-      workItemIds.forEach((id) =>
-        moveWorkItemToBacklog(id, backlogId, targetTreeId, strategy, strategy === "move" ? currentTreeId : undefined),
-      );
-    });
+    moveWorkItemsToBacklog(
+      workItemIds,
+      backlogId,
+      targetTreeId,
+      strategy,
+      strategy === "move" ? currentTreeId : undefined,
+    );
     onOpenChange(false);
   };
 
