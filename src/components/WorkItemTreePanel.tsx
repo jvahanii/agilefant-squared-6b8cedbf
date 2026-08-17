@@ -2454,6 +2454,7 @@ export function WorkItemTreePanel() {
   // Label filter state
   const labelsMap = useLabelsStore((s) => s.labels);
   const byEntity = useLabelsStore((s) => s.byEntity);
+  const workItemTeamsMap = useTeamStore((s) => s.workItemTeams);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterTeamIds, setFilterTeamIds] = useState<Set<string>>(new Set());
   const filterInputRef = useRef<HTMLInputElement>(null);
@@ -2478,28 +2479,47 @@ export function WorkItemTreePanel() {
     setSearchQuery("");
   }, [selectedBacklogId, setSearchQuery]);
 
-  // Clear filter when switching backlogs
+  // Clear filters when switching backlogs
   useEffect(() => {
     setFilterLabelIds(new Set());
+    setFilterTeamIds(new Set());
   }, [selectedBacklogId]);
 
-  // Compute the set of item IDs that should remain visible when a filter is active.
-  // Includes all items that directly have a filter label, plus all their ancestors
-  // (so the path to a matching item is preserved in the tree).
-  const visibleFilterSet = useMemo<Set<string> | null>(() => {
-    if (filterLabelIds.size === 0) return null;
+  // Compute the set of work item IDs that directly match the active label and/or
+  // team filters (OR within each filter type, OR across the two types). Null when
+  // neither filter is active.
+  const filterMatch = useMemo<Set<string> | null>(() => {
+    if (filterLabelIds.size === 0 && filterTeamIds.size === 0) return null;
 
     const matching = new Set<string>();
-    for (const [key, labelIds] of Object.entries(byEntity)) {
-      if (!key.startsWith("work_item:")) continue;
-      if (labelIds.some((id) => filterLabelIds.has(id))) {
-        matching.add(key.slice("work_item:".length));
+
+    if (filterLabelIds.size > 0) {
+      for (const [key, labelIds] of Object.entries(byEntity)) {
+        if (!key.startsWith("work_item:")) continue;
+        if (labelIds.some((id) => filterLabelIds.has(id))) {
+          matching.add(key.slice("work_item:".length));
+        }
       }
     }
 
-    // Add ancestors up to the root so the tree path remains navigable
-    const visible = new Set(matching);
-    for (const itemId of matching) {
+    if (filterTeamIds.size > 0) {
+      for (const [workItemId, teamIds] of Object.entries(workItemTeamsMap)) {
+        if (teamIds.some((tid) => filterTeamIds.has(tid))) {
+          matching.add(workItemId);
+        }
+      }
+    }
+
+    return matching;
+  }, [filterLabelIds, filterTeamIds, byEntity, workItemTeamsMap]);
+
+  // The visible set adds ancestors to a matching item so its path remains
+  // navigable in the tree (used by the tree view and auto-expand logic).
+  const visibleFilterSet = useMemo<Set<string> | null>(() => {
+    if (!filterMatch) return null;
+
+    const visible = new Set(filterMatch);
+    for (const itemId of filterMatch) {
       let curr = workItems[itemId];
       while (curr?.parentId) {
         visible.add(curr.parentId);
@@ -2507,7 +2527,7 @@ export function WorkItemTreePanel() {
       }
     }
     return visible;
-  }, [filterLabelIds, byEntity, workItems]);
+  }, [filterMatch, workItems]);
 
   // Auto-expand ancestors of matching items when the filter changes
   useEffect(() => {
@@ -2649,20 +2669,12 @@ export function WorkItemTreePanel() {
     return [...itemResults, ...backlogResults];
   }, [searchQuery, workItems, backlogTrees, backlogs]);
 
-  // Label search results: items from ALL trees that have one of the active filter labels.
-  // Returns null when no label filter is active (normal view mode).
+  // Filter results: items from ALL trees that match the active label and/or
+  // team filters, shown as a flat list. Returns null when no filter is active.
   const labelSearchResults = useMemo(() => {
-    if (filterLabelIds.size === 0) return null;
+    if (!filterMatch) return null;
 
-    const matchingItemIds = new Set<string>();
-    for (const [key, labelIds] of Object.entries(byEntity)) {
-      if (!key.startsWith("work_item:")) continue;
-      if (labelIds.some((id) => filterLabelIds.has(id))) {
-        matchingItemIds.add(key.slice("work_item:".length));
-      }
-    }
-
-    return Array.from(matchingItemIds)
+    return Array.from(filterMatch)
       .flatMap((itemId) => {
         const wi = workItems[itemId];
         if (!wi) return [];
@@ -2712,7 +2724,7 @@ export function WorkItemTreePanel() {
         if (t !== 0) return t;
         return a.treeName.localeCompare(b.treeName);
       });
-  }, [filterLabelIds, byEntity, workItems, backlogTrees, backlogs]);
+  }, [filterMatch, workItems, backlogTrees, backlogs]);
 
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
@@ -3170,6 +3182,14 @@ export function WorkItemTreePanel() {
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const isSearchMode = searchQuery.trim().length >= 3;
   const isLabelFilterMode = filterLabelIds.size > 0;
+  const isTeamFilterMode = filterTeamIds.size > 0;
+  const isFilterMode = isLabelFilterMode || isTeamFilterMode;
+  const filterResultsTitle =
+    isLabelFilterMode && isTeamFilterMode
+      ? "Filter results"
+      : isTeamFilterMode
+        ? "Team filter results"
+        : "Label filter results";
 
   // Shared data computed once per panel render — avoids per-row store subscriptions.
   const savingsIncomeVisible2 = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
@@ -3210,8 +3230,8 @@ export function WorkItemTreePanel() {
     // so pass null (no tree-level filtering) to avoid hiding nodes in the hidden tree.
     // Null already means "no filter active" per the LabelFilterContext contract (line 57).
     <SharedDataContext.Provider value={sharedData}>
-    <LabelFilterContext.Provider value={isSearchMode || isLabelFilterMode ? null : visibleFilterSet}>
-    <RunningNumberContext.Provider value={isSearchMode || isLabelFilterMode ? null : runningNumbers}>
+    <LabelFilterContext.Provider value={isSearchMode || isFilterMode ? null : visibleFilterSet}>
+    <RunningNumberContext.Provider value={isSearchMode || isFilterMode ? null : runningNumbers}>
       <div
         className="h-full flex flex-col overflow-hidden"
         onClick={() => {
@@ -3241,6 +3261,7 @@ export function WorkItemTreePanel() {
                 if (e.key === "Escape") {
                   setSearchQuery("");
                   setFilterLabelIds(new Set());
+                  setFilterTeamIds(new Set());
                   (e.target as HTMLInputElement).blur();
                 } else if (e.key === "Enter") {
                   (e.target as HTMLInputElement).blur();
@@ -3248,10 +3269,10 @@ export function WorkItemTreePanel() {
                 e.stopPropagation();
               }}
             />
-            {(searchQuery || filterLabelIds.size > 0) && (
+            {(searchQuery || filterLabelIds.size > 0 || filterTeamIds.size > 0) && (
               <button
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => { setSearchQuery(""); setFilterLabelIds(new Set()); }}
+                onClick={() => { setSearchQuery(""); setFilterLabelIds(new Set()); setFilterTeamIds(new Set()); }}
                 title="Clear all filters"
               >
                 <X className="w-3.5 h-3.5" />
@@ -3336,7 +3357,7 @@ export function WorkItemTreePanel() {
           )}
         </div>
 
-        {!isSearchMode && !isLabelFilterMode && (!selectedBacklogId || !selectedTreeId) ? (
+        {!isSearchMode && !isFilterMode && (!selectedBacklogId || !selectedTreeId) ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
@@ -3345,7 +3366,7 @@ export function WorkItemTreePanel() {
           </div>
         ) : (
         <>
-        {!isSearchMode && !isLabelFilterMode && selectedBacklogId ? (
+        {!isSearchMode && !isFilterMode && selectedBacklogId ? (
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 border-b flex items-start justify-between shrink-0">
@@ -3357,9 +3378,9 @@ export function WorkItemTreePanel() {
                   {searchResults?.length ?? 0} item{searchResults?.length !== 1 ? "s" : ""} found
                 </p>
               </>
-            ) : isLabelFilterMode ? (
+            ) : isFilterMode ? (
               <>
-                <h2 className="text-base font-semibold">Label filter results</h2>
+                <h2 className="text-base font-semibold">{filterResultsTitle}</h2>
                 <p className="text-xs text-foreground mt-0.5">
                   {labelSearchResults?.length ?? 0} item{labelSearchResults?.length !== 1 ? "s" : ""} found
                 </p>
@@ -3377,7 +3398,7 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {!isSearchMode && !isLabelFilterMode && selectedBacklogId && boardsVisible && (
+            {!isSearchMode && !isFilterMode && selectedBacklogId && boardsVisible && (
               <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
                 <button
                   className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
@@ -3397,7 +3418,7 @@ export function WorkItemTreePanel() {
                 </button>
               </div>
             )}
-            {!isSearchMode && !isLabelFilterMode && snoozedInBacklog.length > 0 && (
+            {!isSearchMode && !isFilterMode && snoozedInBacklog.length > 0 && (
               <button
                 className="flex items-center gap-1 w-auto h-7 px-2 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
                 onClick={(e) => {
@@ -3410,7 +3431,7 @@ export function WorkItemTreePanel() {
                 <span className="text-xs font-medium tabular-nums">Snoozed: {snoozedInBacklog.length}</span>
               </button>
             )}
-            {!isSearchMode && !isLabelFilterMode && (
+            {!isSearchMode && !isFilterMode && (
               <button
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -3422,7 +3443,7 @@ export function WorkItemTreePanel() {
                 <ClipboardPaste className="w-4 h-4" />
               </button>
             )}
-            {!isSearchMode && !isLabelFilterMode && rootWorkItems.length > 1 && (
+            {!isSearchMode && !isFilterMode && rootWorkItems.length > 1 && (
               <button
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -3435,7 +3456,7 @@ export function WorkItemTreePanel() {
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
             )}
-            {!isSearchMode && !isLabelFilterMode && timeLoggingVisible && (
+            {!isSearchMode && !isFilterMode && timeLoggingVisible && (
               <button
                 className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
                 onClick={(e) => {
@@ -3451,7 +3472,7 @@ export function WorkItemTreePanel() {
                 )}
               </button>
             )}
-            {!isSearchMode && !isLabelFilterMode && (
+            {!isSearchMode && !isFilterMode && (
               <button
                 className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
@@ -3511,7 +3532,7 @@ export function WorkItemTreePanel() {
                 </>
               ) : (
                 <>
-                  <h2 className="text-base font-semibold">Label filter results</h2>
+                  <h2 className="text-base font-semibold">{filterResultsTitle}</h2>
                   <p className="text-xs text-foreground mt-0.5">
                     {labelSearchResults?.length ?? 0} item{labelSearchResults?.length !== 1 ? "s" : ""} found
                   </p>
@@ -3520,7 +3541,7 @@ export function WorkItemTreePanel() {
             </div>
           </div>
         )}
-        {!isSearchMode && !isLabelFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
+        {!isSearchMode && !isFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
           <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} setViewMode={setViewMode} />
         ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */
@@ -3646,8 +3667,8 @@ export function WorkItemTreePanel() {
               </div>
             )}
           </div>
-        ) : isLabelFilterMode ? (
-          /* Label filter results list: flat list of items with matching labels across all backlogs */
+        ) : isFilterMode ? (
+          /* Filter results list: flat list of items matching the active label/team filters across all backlogs */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {labelSearchResults && labelSearchResults.length > 0 ? (
               <div className="flex flex-col">
@@ -3684,6 +3705,7 @@ export function WorkItemTreePanel() {
                       });
                       selectBacklog(backlogId, treeId);
                       setFilterLabelIds(new Set());
+                      setFilterTeamIds(new Set());
                       setTimeout(() => {
                         selectWorkItem(item.id, false);
                         scrollToWorkItem(item.id);
@@ -3694,7 +3716,7 @@ export function WorkItemTreePanel() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                No items match the selected label{filterLabelIds.size !== 1 ? "s" : ""}
+                No items match the selected filter{filterLabelIds.size + filterTeamIds.size !== 1 ? "s" : ""}
               </div>
             )}
           </div>
