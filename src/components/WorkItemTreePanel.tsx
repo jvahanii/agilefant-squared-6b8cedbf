@@ -2914,6 +2914,39 @@ export function WorkItemTreePanel() {
     return map;
   }, [visibleItemIds, workItems, selectedTreeId]);
 
+  // For each visible row, compute its sibling-context parent and the drop-zone
+  // index *within that sibling group*. The virtualizer's flat index cannot be
+  // used directly as a reorder target: in a mixed-depth tree the flat index is
+  // larger than the sibling-relative index that reorderWorkItemAmongSiblings
+  // expects, so drops would clamp to the bottom (or land in the wrong place).
+  // This mirrors the sibling grouping used by the store: a row is a child of
+  // its effective parent when that parent is inside the backlog context, and
+  // "root-visible" otherwise (parent null or outside the context).
+  const reorderDropMeta = useMemo(() => {
+    const meta = new Map<number, { index: number; parentId: string | null }>();
+    const counts = new Map<string, number>();
+    visibleItemIds.forEach((id, i) => {
+      const item = workItems[id];
+      if (!item) return;
+      const effectiveParent = selectedTreeId
+        ? getEffectiveParentId(item, selectedTreeId)
+        : item.parentId;
+      const parentInContext =
+        effectiveParent !== null &&
+        backlogIdSet.has(
+          workItems[effectiveParent]?.backlogAssignments[selectedTreeId ?? ""],
+        );
+      const contextKey = parentInContext ? `child:${effectiveParent}` : "root";
+      const dropIndex = counts.get(contextKey) ?? 0;
+      counts.set(contextKey, dropIndex + 1);
+      meta.set(i, {
+        index: dropIndex,
+        parentId: parentInContext ? effectiveParent : null,
+      });
+    });
+    return meta;
+  }, [visibleItemIds, workItems, selectedTreeId, backlogIdSet]);
+
   // Virtualizer scroll container
   const treeScrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -3755,6 +3788,7 @@ export function WorkItemTreePanel() {
                       const wi = workItems[id];
                       if (!wi) return null;
                       const depth = itemDepthMap.get(id) ?? 0;
+                      const dropMeta = reorderDropMeta.get(i);
                       const itemBacklogId = wi.backlogAssignments[selectedTreeId!] ?? selectedBacklogId!;
                       return (
                         <div
@@ -3766,10 +3800,10 @@ export function WorkItemTreePanel() {
                         >
                           <ReorderDropZone
                             id={`reorder-flat-${i}`}
-                            index={i}
+                            index={dropMeta?.index ?? 0}
                             treeId={selectedTreeId!}
                             backlogIds={allBacklogIds}
-                            parentId={depth === 0 ? null : wi.parentId}
+                            parentId={dropMeta?.parentId ?? null}
                             depth={depth}
                             targetBacklogId={allBacklogIds.length > 1 ? itemBacklogId : undefined}
                           />
