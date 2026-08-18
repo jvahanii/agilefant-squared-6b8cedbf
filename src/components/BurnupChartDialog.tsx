@@ -234,6 +234,18 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
 
   const statusKeys = useMemo(() => statusPalette.map((s) => s.key), [statusPalette]);
 
+  // Stacking order (bottom → top) for the cumulative chart: "done" sits at the
+  // bottom, "not_started" at the top, and every other status stacks in the same
+  // order its board column appears left-to-right. Recharts stacks in render
+  // order (first <Area> = bottom), so this list drives the render order.
+  const stackKeys = useMemo(() => {
+    const board = statusPalette.map((s) => s.key);
+    const done = board.filter((k) => k === "done");
+    const middle = board.filter((k) => k !== "done" && k !== "not_started");
+    const notStarted = board.filter((k) => k === "not_started");
+    return [...done, ...middle, ...notStarted];
+  }, [statusPalette]);
+
   const scopeSet = useMemo(() => new Set(itemIds), [itemIds]);
 
   // Top-level items within the scope: used to sum up the branch's total.
@@ -499,7 +511,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
                     strokeWidth={1.5}
                   />
                 )}
-                {chartData.keys.map((key) => {
+                {stackKeys.map((key) => {
                   const s = statusPalette.find((x) => x.key === key);
                   return (
                     <Area
