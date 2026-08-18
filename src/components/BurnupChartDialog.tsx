@@ -199,7 +199,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
   const { user } = useAuth();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const workItems = useAppStore((s) => s.workItems);
-  const getMetric = useChartPrefsStore((s) => s.getMetric);
+  const chartPrefs = useChartPrefsStore((s) => s.prefs);
   const setMetric = useChartPrefsStore((s) => s.setMetric);
 
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
@@ -213,7 +213,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     [itemIds, workItems],
   );
 
-  const storedMetric = scope ? getMetric(scope.kind, scope.id) : undefined;
+  const storedMetric = scope ? chartPrefs[`${scope.kind}:${scope.id}`] : undefined;
   const metric: ChartMetric = storedMetric ?? (anyHasPoints ? "points" : "count");
 
   // Determine status palette from the first item's backlog (fallback = defaults).
