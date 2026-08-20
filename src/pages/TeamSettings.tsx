@@ -27,6 +27,7 @@ import {
   Youtube,
   Wrench,
   LayoutGrid,
+  Shield,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
@@ -942,6 +943,15 @@ export default function TeamSettings() {
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate("/superuser/youtube")}>
                   <Youtube className="w-3.5 h-3.5 mr-1 text-red-500" /> YouTube
+                </Button>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t">
+                <div>
+                  <p className="text-sm font-medium">Manager Screen</p>
+                  <p className="text-xs text-muted-foreground">Browse all organizations, users, teams, and recent sign-ins.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/manager")}>
+                  <Shield className="w-3.5 h-3.5 mr-1" /> Open
                 </Button>
               </div>
             </CardContent>
