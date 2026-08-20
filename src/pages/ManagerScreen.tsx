@@ -296,8 +296,9 @@ export default function ManagerScreen() {
     }
   };
 
+  const EXCLUDED_SIGN_IN_EMAIL = "jvahanii@gmail.com";
   const loadSignIns = () => {
-    setSignIns(getSignInLog());
+    setSignIns(getSignInLog().filter((s) => (s.email ?? "").toLowerCase() !== EXCLUDED_SIGN_IN_EMAIL));
   };
 
   const handleNavigateToOrg = async (orgId: string) => {
@@ -616,7 +617,7 @@ export default function ManagerScreen() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> Recent Sign-ins
+                  <Clock className="w-4 h-4" /> Recent sign-ins by other users than jvahanii@gmail.com
                 </CardTitle>
               </CardHeader>
               <CardContent>
