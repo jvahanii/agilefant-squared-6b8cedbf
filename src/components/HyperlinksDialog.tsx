@@ -13,6 +13,7 @@ import { ExternalLink, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { isAttachmentUrl, resolveOpenableHref } from "@/lib/attachmentUrl";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
+import { toast } from "@/hooks/use-toast";
 
 const EMPTY_LINKS: never[] = [];
 
@@ -121,7 +122,10 @@ export function HyperlinksDialog({
   const handleAdd = () => {
     const trimmedUrl = newUrl.trim();
     if (!trimmedUrl) return;
-    if (!isValidUrl(trimmedUrl)) return;
+    if (!isValidUrl(trimmedUrl)) {
+      toast({ title: "Please provide a valid hyperlink", description: "Hyperlinks must start with http:// or https://." });
+      return;
+    }
     addHyperlink(workItemId, trimmedUrl, newAltText.trim());
     setNewUrl("");
     setNewAltText("");
