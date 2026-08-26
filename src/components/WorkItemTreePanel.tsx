@@ -3755,6 +3755,7 @@ export function WorkItemTreePanel() {
                 depth={0}
                 onSubmit={(title) => {
                   addWorkItem(title, null, selectedBacklogId!, selectedTreeId!, 0);
+                  if (isMobile) setIsAdding(false);
                 }}
                 onCancel={() => setIsAdding(false)}
               />
@@ -3769,6 +3770,7 @@ export function WorkItemTreePanel() {
                     depth={0}
                     onSubmit={(title) => {
                       addWorkItem(title, null, selectedBacklogId!, selectedTreeId!);
+                      if (isMobile) setIsAdding(false);
                     }}
                     onCancel={() => setIsAdding(false)}
                   />
