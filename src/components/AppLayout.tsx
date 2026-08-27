@@ -10,7 +10,7 @@ import {
   pointerWithin,
   rectIntersection,
 } from "@dnd-kit/core";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
@@ -32,7 +32,6 @@ import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
-import { BurnupChartDialog } from "@/components/BurnupChartDialog";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
@@ -69,6 +68,12 @@ import {
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
 import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 
+// Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
+// initial cold-start payload; it's only fetched when a burnup chart is opened.
+const BurnupChartDialog = lazy(() =>
+  import("@/components/BurnupChartDialog").then((m) => ({ default: m.BurnupChartDialog })),
+);
+
 interface PendingCrossTreeDrop {
   workItemIds: string[];
   totalCount: number;
@@ -93,11 +98,13 @@ export default function AppLayout() {
 function BurnupDialogHost() {
   const { scope, open, close } = useBurnupDialogStore();
   return (
-    <BurnupChartDialog
-      open={open}
-      onOpenChange={(v) => { if (!v) close(); }}
-      scope={scope}
-    />
+    <Suspense fallback={null}>
+      <BurnupChartDialog
+        open={open}
+        onOpenChange={(v) => { if (!v) close(); }}
+        scope={scope}
+      />
+    </Suspense>
   );
 }
 

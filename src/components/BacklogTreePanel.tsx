@@ -15,7 +15,7 @@ import {
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,13 +42,18 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
-import { CumulativeFlowChart } from "./CumulativeFlowChart";
 import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
 import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
+
+// Lazy-loaded so recharts (via CumulativeFlowChart) is not part of the initial
+// cold-start payload; it's only fetched when a tree's financial chart mounts.
+const CumulativeFlowChart = lazy(() =>
+  import("./CumulativeFlowChart").then((m) => ({ default: m.CumulativeFlowChart })),
+);
 
 const INDENT_PER_LEVEL = 12;
 const BASE_INDENT = 8;
@@ -1248,7 +1253,9 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
                   />
                 )}
                 {savingsIncomeVisible && (selectedTreeId === tree.id || selectedWorkItemTreeIds.has(tree.id)) && (
-                  <CumulativeFlowChart treeId={tree.id} />
+                  <Suspense fallback={null}>
+                    <CumulativeFlowChart treeId={tree.id} />
+                  </Suspense>
                 )}
               </div>
             );
