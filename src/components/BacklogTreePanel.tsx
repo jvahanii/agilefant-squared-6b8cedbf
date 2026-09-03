@@ -216,6 +216,36 @@ function BacklogReorderDropZone({
   );
 }
 
+/** Drop target shown for a backlog tree that has no root backlogs yet.
+ *  Lets a dragged backlog be dropped onto the empty tree body, moving it to
+ *  that tree as a new root backlog. Reuses the "backlog-reorder" drop type
+ *  with a root parent so the existing AppLayout onDragEnd handler processes it. */
+function BacklogTreeRootDropZone({ treeId }: { treeId: string }) {
+  const { active } = useDndContext();
+  const isDraggingBacklog = active?.data?.current?.type === "backlog-node";
+  const { setNodeRef, isOver } = useDroppable({
+    id: `backlog-tree-root-${treeId}`,
+    data: { type: "backlog-reorder", index: 0, parentId: null, treeId },
+  });
+  const isActive = isOver && isDraggingBacklog;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        mx-2 my-1 rounded-md border border-dashed px-3 py-3 text-center text-xs select-none transition-colors
+        ${isActive
+          ? "border-primary bg-primary/10 text-primary"
+          : isDraggingBacklog
+            ? "border-muted-foreground/50 text-muted-foreground"
+            : "border-border/60 text-muted-foreground/50"}
+      `}
+    >
+      {isActive ? "Release to add backlog" : isDraggingBacklog ? "Drop backlog here" : "No backlogs yet"}
+    </div>
+  );
+}
+
 /** Compute total logged minutes for a backlog subtree (direct backlog entries +
  *  descendant backlog entries + all work-item entries in those backlogs). */
 function useBacklogTotalMinutes(backlogId: string, treeId: string) {
@@ -1235,13 +1265,17 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
                     <BacklogNode backlogId={backlogId} depth={0} index={i} parentId={null} treeId={tree.id} isScrambled={treeIsScrambled} />
                   </div>
                 ))}
-                <BacklogReorderDropZone
-                  id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
-                  index={tree.rootBacklogIds.length}
-                  parentId={null}
-                  treeId={tree.id}
-                  depth={0}
-                />
+                {tree.rootBacklogIds.length === 0 ? (
+                  <BacklogTreeRootDropZone treeId={tree.id} />
+                ) : (
+                  <BacklogReorderDropZone
+                    id={`backlog-reorder-root-${tree.id}-${tree.rootBacklogIds.length}`}
+                    index={tree.rootBacklogIds.length}
+                    parentId={null}
+                    treeId={tree.id}
+                    depth={0}
+                  />
+                )}
                 {addingToTree === tree.id && (
                   <InlineInput
                     depth={0}
