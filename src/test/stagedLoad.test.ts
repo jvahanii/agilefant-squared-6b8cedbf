@@ -32,29 +32,45 @@ vi.mock("@/store/supabaseSync", () => ({
   registerWorkItemRenameCallback: vi.fn(),
 }));
 
-const ORG = "staged-org";
-const TREE = `${ORG}::tree-1`;
-const BACKLOG = `${ORG}::backlog-1`;
+// A fresh org per test: the cache is persistent now, so reusing one would let
+// an earlier test's snapshot send a later one down the cached path.
+let orgCounter = 0;
+function freshOrg() {
+  const org = `staged-org-${++orgCounter}`;
+  return { org, tree: `${org}::tree-1`, backlog: `${org}::backlog-1` };
+}
 
-const structure = () => ({
-  backlogTrees: {
-    [TREE]: { id: TREE, name: "Tree", rootBacklogIds: [BACKLOG], rank: 0, pointsEnabled: null },
-  },
-  backlogs: {
-    [BACKLOG]: {
-      id: BACKLOG, name: "Backlog", parentId: null, childrenIds: [], treeId: TREE,
-      rank: 0, boardHiddenStatusKeys: [], viewMode: "list" as const,
+function structureFor(tree: string, backlog: string) {
+  return {
+    backlogTrees: {
+      [tree]: { id: tree, name: "Tree", rootBacklogIds: [backlog], rank: 0, pointsEnabled: null },
     },
-  },
-});
+    backlogs: {
+      [backlog]: {
+        id: backlog, name: "Backlog", parentId: null, childrenIds: [], treeId: tree,
+        rank: 0, boardHiddenStatusKeys: [], viewMode: "list" as const,
+      },
+    },
+  };
+}
 
-const workItem = () => ({
-  [`${ORG}::item-1`]: {
-    id: `${ORG}::item-1`, title: "Item", status: "not_started" as const,
-    parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BACKLOG },
-    ranks: { [BACKLOG]: 0 }, boardRanks: {}, organizationId: ORG,
-  },
-});
+function workItemFor(org: string, tree: string, backlog: string) {
+  return {
+    [`${org}::item-1`]: {
+      id: `${org}::item-1`, title: "Item", status: "not_started" as const,
+      parentId: null, childrenIds: [], backlogAssignments: { [tree]: backlog },
+      ranks: { [backlog]: 0 }, boardRanks: {}, organizationId: org,
+    },
+  };
+}
+
+async function waitFor(predicate: () => boolean, label: string) {
+  for (let i = 0; i < 200; i++) {
+    if (predicate()) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  throw new Error(`timed out waiting for: ${label}`);
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -71,28 +87,29 @@ beforeEach(() => {
 
 describe("staged cold load", () => {
   it("commits backlogs and trees before work items finish downloading", async () => {
+    const { org, tree, backlog } = freshOrg();
     let releaseWorkItems!: () => void;
     const workItemsGate = new Promise<void>((resolve) => { releaseWorkItems = resolve; });
 
     vi.mocked(loadDataFromSupabase).mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (async (_orgId: string, onStructureReady?: (s: any) => void) => {
-        onStructureReady?.(structure());
+        onStructureReady?.(structureFor(tree, backlog));
         await workItemsGate;
-        return { ...structure(), workItems: workItem() };
+        return { ...structureFor(tree, backlog), workItems: workItemFor(org, tree, backlog) };
       }) as never,
     );
 
-    useAppStore.getState().setOrganizationId(ORG);
+    useAppStore.getState().setOrganizationId(org);
     const loadPromise = useAppStore.getState().loadFromSupabase();
 
-    // Let the structure callback flush without releasing the work items.
-    await Promise.resolve();
-    await Promise.resolve();
+    await waitFor(
+      () => Object.keys(useAppStore.getState().backlogTrees).length > 0,
+      "structure committed to the store",
+    );
 
     const painted = useAppStore.getState();
-    expect(Object.keys(painted.backlogTrees)).toEqual([TREE]);
-    expect(Object.keys(painted.backlogs)).toEqual([BACKLOG]);
+    expect(Object.keys(painted.backlogs)).toEqual([backlog]);
     // The shell is renderable...
     expect(painted.isLoading).toBe(false);
     // ...but panels must not claim the backlog is empty yet.
@@ -103,55 +120,60 @@ describe("staged cold load", () => {
     await loadPromise;
 
     const settled = useAppStore.getState();
-    expect(Object.keys(settled.workItems)).toEqual([`${ORG}::item-1`]);
+    expect(Object.keys(settled.workItems)).toEqual([`${org}::item-1`]);
     expect(settled.workItemsLoading).toBe(false);
     expect(settled.isLoading).toBe(false);
     expect(settled.loadingProgress).toBe(100);
   });
 
   it("leaves the structure untouched when the work items arrive", async () => {
+    const { org, tree, backlog } = freshOrg();
     vi.mocked(loadDataFromSupabase).mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (async (_orgId: string, onStructureReady?: (s: any) => void) => {
-        onStructureReady?.(structure());
-        return { ...structure(), workItems: workItem() };
+        onStructureReady?.(structureFor(tree, backlog));
+        return { ...structureFor(tree, backlog), workItems: workItemFor(org, tree, backlog) };
       }) as never,
     );
 
-    useAppStore.getState().setOrganizationId(ORG);
+    useAppStore.getState().setOrganizationId(org);
     await useAppStore.getState().loadFromSupabase();
 
     // What was painted early must equal what the final commit installs,
     // otherwise the user sees the tree shift under them mid-load.
     const settled = useAppStore.getState();
-    expect(settled.backlogTrees[TREE].rootBacklogIds).toEqual([BACKLOG]);
-    expect(settled.backlogs[BACKLOG].treeId).toBe(TREE);
+    expect(settled.backlogTrees[tree].rootBacklogIds).toEqual([backlog]);
+    expect(settled.backlogs[backlog].treeId).toBe(tree);
   });
 
   it("restores the previously selected backlog during the early paint", async () => {
-    localStorage.setItem(`selection_${ORG}_backlogIds`, JSON.stringify([BACKLOG]));
-    localStorage.setItem(`selection_${ORG}_treeId`, TREE);
+    const { org, tree, backlog } = freshOrg();
+    localStorage.setItem(`selection_${org}_backlogIds`, JSON.stringify([backlog]));
+    localStorage.setItem(`selection_${org}_treeId`, tree);
 
     let releaseWorkItems!: () => void;
     const workItemsGate = new Promise<void>((resolve) => { releaseWorkItems = resolve; });
     vi.mocked(loadDataFromSupabase).mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (async (_orgId: string, onStructureReady?: (s: any) => void) => {
-        onStructureReady?.(structure());
+        onStructureReady?.(structureFor(tree, backlog));
         await workItemsGate;
-        return { ...structure(), workItems: workItem() };
+        return { ...structureFor(tree, backlog), workItems: workItemFor(org, tree, backlog) };
       }) as never,
     );
 
-    useAppStore.getState().setOrganizationId(ORG);
+    useAppStore.getState().setOrganizationId(org);
     const loadPromise = useAppStore.getState().loadFromSupabase();
-    await Promise.resolve();
-    await Promise.resolve();
+    await waitFor(
+      () => useAppStore.getState().selectedTreeId !== null,
+      "selection restored at first paint",
+    );
 
     // Selection is restored at first paint, so the user is not looking at an
     // unselected tree while the items stream in.
-    expect(useAppStore.getState().selectedTreeId).toBe(TREE);
-    expect(useAppStore.getState().selectedBacklogIds).toEqual([BACKLOG]);
+    expect(useAppStore.getState().selectedTreeId).toBe(tree);
+    expect(useAppStore.getState().selectedBacklogIds).toEqual([backlog]);
+    expect(useAppStore.getState().workItemsLoading).toBe(true);
 
     releaseWorkItems();
     await loadPromise;

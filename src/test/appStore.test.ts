@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/appStore";
+import { readCachedAppData, writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
 import { getEffectiveParentId } from "@/types/models";
 import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
@@ -283,11 +284,10 @@ describe("addWorkItem", () => {
     expect(ordered.map((wi) => wi.ranks[`${ORG}::bl-1`])).toEqual([0, 1, 2]);
   });
 
-  it("patches the local data cache when adding so refresh does not show stale data", () => {
+  it("patches the local data cache when adding so refresh does not show stale data", async () => {
     seedStore();
     const before = useAppStore.getState();
-    localStorage.setItem(`cached_app_data_${ORG}`, JSON.stringify({
-      orgId: ORG,
+    writeCachedAppData(ORG, {
       workItems: before.workItems,
       backlogs: before.backlogs,
       backlogTrees: before.backlogTrees,
@@ -296,15 +296,16 @@ describe("addWorkItem", () => {
       selectedBacklogIds: [`${ORG}::bl-1`],
       selectedTreeId: `${ORG}::bt-1`,
       selectedWorkItemIds: [],
-      timestamp: Date.now(),
-    }));
+    });
+    await flushCachedWrites(ORG);
 
     useAppStore.getState().addWorkItem("Cached Item", null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+    await flushCachedWrites(ORG);
 
-    const cached = JSON.parse(localStorage.getItem(`cached_app_data_${ORG}`)!);
-    const cachedItems = Object.values(cached.workItems) as Array<{ title: string }>;
+    const cached = await readCachedAppData(ORG);
+    const cachedItems = Object.values(cached!.workItems) as Array<{ title: string }>;
     expect(cachedItems.some((item) => item.title === "Cached Item")).toBe(true);
-    expect(cached.selectedWorkItemIds).toHaveLength(1);
+    expect(cached!.selectedWorkItemIds).toHaveLength(1);
   });
 
   it("queues the full work item for retry before async persistence completes", () => {
@@ -513,9 +514,11 @@ describe("end-to-end: create work items and refresh", () => {
       isLoading: false, organizationId: ORG,
     });
 
-    // Allow the pending flush during load to succeed so the queue clears cleanly.
-    vi.mocked(upsertWorkItems).mockResolvedValue(true);
-
+    // Persistence stays broken for the duration of the load: the invariant
+    // under test is that items the server does not know about yet survive a
+    // refresh, so they have to still be in the pending queue when the load
+    // snapshots it. Letting the upserts succeed here would mean the server
+    // *had* caught up, which the mocked response above then contradicts.
     await useAppStore.getState().loadFromSupabase();
 
     const afterRefresh = useAppStore.getState();

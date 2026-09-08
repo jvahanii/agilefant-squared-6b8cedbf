@@ -24,6 +24,12 @@ import {
   type WorkItemBoardRankUpsert,
 } from "./supabaseSync";
 import { mockData as staticMockData } from "./mockData";
+import {
+  readCachedAppData,
+  writeCachedAppData,
+  patchCachedWorkItems,
+  type CachedAppData,
+} from "./appDataCache";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { getEffectiveStatuses } from "./backlogStatusesStore";
 import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
@@ -676,8 +682,6 @@ function recordBoardRankWrite(rows: WorkItemBoardRankUpsert[]) {
 const PENDING_RANK_UPSERTS_KEY = "pending_work_item_rank_upserts";
 const PENDING_BOARD_RANK_UPSERTS_KEY = "pending_work_item_board_rank_upserts";
 const PENDING_WORK_ITEM_UPSERTS_KEY = "pending_work_item_upserts";
-const DATA_CACHE_KEY_PREFIX = "cached_app_data_";
-const DATA_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes – stale-while-revalidate
 
 let appDataLoadInFlight: { orgId: string; promise: Promise<void> } | null = null;
 let appDataBackgroundRefreshInFlight: { orgId: string; promise: Promise<void> } | null = null;
@@ -703,44 +707,6 @@ type ContainerSnapshot = {
   backlogTrees: Record<string, BacklogTree>;
 };
 
-interface CachedAppData {
-  orgId: string;
-  workItems: Record<string, WorkItem>;
-  backlogs: Record<string, Backlog>;
-  backlogTrees: Record<string, BacklogTree>;
-  hyperlinks: Record<string, Hyperlink[]>;
-  changeLog: ChangeLogEntry[];
-  selectedBacklogIds: string[];
-  selectedTreeId: string | null;
-  selectedWorkItemIds: string[];
-  timestamp: number;
-}
-
-function readCachedAppData(orgId: string): CachedAppData | null {
-  try {
-    const raw = localStorage.getItem(DATA_CACHE_KEY_PREFIX + orgId);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    if (!cached?.orgId || cached.orgId !== orgId || !cached?.workItems || !cached?.timestamp) return null;
-    if (Date.now() - cached.timestamp > DATA_CACHE_TTL_MS) return null;
-    // Convert expandedSets arrays back to Set objects
-    return cached;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedAppData(orgId: string, data: Omit<CachedAppData, 'orgId' | 'timestamp'>): void {
-  try {
-    // Only cache if there's actual data to show.
-    if (Object.keys(data.workItems).length === 0 && Object.keys(data.backlogs).length === 0) return;
-    const cached: CachedAppData = { orgId, ...data, timestamp: Date.now() };
-    localStorage.setItem(DATA_CACHE_KEY_PREFIX + orgId, JSON.stringify(cached));
-  } catch {
-    // Storage full or unavailable — not critical.
-  }
-}
-
 function sameStringArray(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((value, index) => value === b[index]);
@@ -764,17 +730,6 @@ function buildCachedSnapshotKey(
     selectedTreeId ?? '',
     selectedWorkItemIds.join(','),
   ].join('|');
-}
-
-function patchCachedWorkItems(orgId: string, workItemsPatch: Record<string, WorkItem>, selectedWorkItemIds?: string[]): void {
-  const cached = readCachedAppData(orgId);
-  if (!cached) return;
-  const { orgId: _cachedOrgId, timestamp: _cachedTimestamp, ...cachedData } = cached;
-  writeCachedAppData(orgId, {
-    ...cachedData,
-    workItems: { ...cachedData.workItems, ...workItemsPatch },
-    selectedWorkItemIds: selectedWorkItemIds ?? cachedData.selectedWorkItemIds,
-  });
 }
 
 function readPendingWorkItemUpserts(orgId: string): PendingWorkItemUpsert[] {
@@ -1220,10 +1175,10 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       const runLoad = async () => {
 
-      // Restore from localStorage cache immediately so repeat visits show
-      // the previous state without any loading spinner.  Fresh data from
-      // Supabase replaces the cache asynchronously afterwards.
-      const cached = readCachedAppData(orgId);
+      // Restore from the cached snapshot so repeat visits show the previous
+      // state without any loading spinner.  Fresh data from Supabase replaces
+      // the cache asynchronously afterwards.
+      const cached = await readCachedAppData(orgId);
       if (cached && Object.keys(cached.workItems).length > 0) {
         const cachedDataWithPending = mergePendingWorkItems({
           workItems: cached.workItems,
