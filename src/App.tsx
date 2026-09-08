@@ -8,7 +8,6 @@ import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 
 // Pre-load appStore data as soon as the active org is known, before any page
@@ -26,6 +25,27 @@ useOrgStore.subscribe((state, prevState) => {
   }
 });
 
+// Lazy so the entry chunk stays small: this chunk downloads in parallel with
+// the auth + membership round-trips instead of blocking them on mobile.
+const importIndex = () => import("./pages/Index");
+const Index = lazy(importIndex);
+
+// A returning signed-in user needs this chunk the moment auth resolves, so
+// start fetching it alongside the auth round-trip instead of after it. Skipped
+// when no session is stored so the sign-in screen doesn't drag the whole app
+// down with it.
+const hasStoredSession = () => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("sb-") && key.endsWith("-auth-token")) return true;
+    }
+  } catch {
+    // localStorage can throw in private/sandboxed contexts.
+  }
+  return false;
+};
+if (hasStoredSession()) void importIndex();
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const TeamSettings = lazy(() => import("./pages/TeamSettings"));

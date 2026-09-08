@@ -21,17 +21,19 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
+        // Only list packages the entry chunk itself needs. Naming a package
+        // here forces it into the entry graph and gets it modulepreloaded on
+        // every cold start — that is why recharts (charts, lazy) and dnd-kit
+        // (app shell, lazy) are deliberately absent: they ride along with the
+        // lazy chunks that actually use them instead.
         manualChunks: {
           "vendor": [
             "react",
             "react-dom",
             "react-router-dom",
             "@tanstack/react-query",
-            "@dnd-kit/core",
-            "@dnd-kit/utilities",
           ],
           "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-recharts": ["recharts"],
         },
       },
     },
