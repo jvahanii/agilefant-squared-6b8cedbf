@@ -142,6 +142,10 @@ interface AppState extends DataSnapshot {
   undoStack: DataSnapshot[];
   redoStack: DataSnapshot[];
   isLoading: boolean;
+  // True while the shell is already painted from trees + backlogs but the
+  // work items are still in flight. Lets panels show a loading state instead
+  // of an "empty backlog" message they would otherwise render.
+  workItemsLoading: boolean;
   loadingProgress: number;
   organizationId: string | null;
   userId: string | null;
@@ -1188,6 +1192,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     undoStack: [],
     redoStack: [],
     isLoading: true,
+    workItemsLoading: false,
     loadingProgress: 0,
     organizationId: null,
     userId: null,
@@ -1407,9 +1412,12 @@ export const useAppStore = create<AppState>()((set, get) => {
       // stuck in a loading spinner. Instead, flip isLoading to false
       // BUT set loadingProgress to -1 as a sentinel so App.tsx can
       // detect the failed load and retry.
+      // Covers both phases: the shell may already have painted while the work
+      // items are still in flight, so a hang after the early paint must also
+      // raise the -1 sentinel for App.tsx's retry to pick up.
       const timeoutId = setTimeout(() => {
-        if (get().organizationId === orgId && get().isLoading) {
-          set({ isLoading: false, loadingProgress: -1 });
+        if (get().organizationId === orgId && (get().isLoading || get().workItemsLoading)) {
+          set({ isLoading: false, workItemsLoading: false, loadingProgress: -1 });
         }
       }, 15000);
 
@@ -1436,8 +1444,46 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Load change log lazily on demand (when the user opens the history
         // panel) instead of eagerly on every page load.  This saves one
         // network round-trip on mobile for the common case.
+        const parseStoredIds = (key: string): string[] => {
+          try {
+            const raw = localStorage.getItem(key);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        };
+
         const [rawData, allHyperlinks] = await Promise.all([
-          loadFromSupabase(orgId).then((r) => {
+          loadFromSupabase(orgId, (structure) => {
+            // Paint the shell from trees + backlogs while the work items are
+            // still downloading. sanitizeData runs here too, so this structure
+            // is identical to the one the final commit installs below and
+            // nothing the user sees now shifts when the items land.
+            if (get().organizationId !== orgId) return;
+            const structureOnly = sanitizeData({ ...structure, workItems: {} }, orgId);
+            const validBacklogIds = parseStoredIds(`selection_${orgId}_backlogIds`)
+              .filter((id) => structureOnly.backlogs[id]);
+            const storedTreeId = localStorage.getItem(`selection_${orgId}_treeId`);
+            const expandedBacklogs = new Set<string>();
+            for (const id of validBacklogIds) {
+              let current = structureOnly.backlogs[id];
+              while (current?.parentId) {
+                expandedBacklogs.add(current.parentId);
+                current = structureOnly.backlogs[current.parentId];
+              }
+            }
+            set({
+              backlogs: structureOnly.backlogs,
+              backlogTrees: structureOnly.backlogTrees,
+              selectedBacklogIds: validBacklogIds,
+              selectedTreeId: storedTreeId && structureOnly.backlogTrees[storedTreeId] ? storedTreeId : null,
+              expandedBacklogs,
+              isLoading: false,
+              workItemsLoading: true,
+              loadingProgress: 40,
+            });
+          }).then((r) => {
             if (get().organizationId === orgId) set({ loadingProgress: 50 });
             return r;
           }),
@@ -1463,15 +1509,6 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
         set({ loadingProgress: 90 });
 
-        const parseStoredIds = (key: string): string[] => {
-          try {
-            const raw = localStorage.getItem(key);
-            const parsed = raw ? JSON.parse(raw) : [];
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        };
         const storedBacklogIds = parseStoredIds(`selection_${orgId}_backlogIds`);
         const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
         const storedWorkItemIds = parseStoredIds(`selection_${orgId}_workItemIds`);
@@ -1534,6 +1571,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           // changeLog loaded lazily via loadChangeLog action.
           changeLog: [],
           isLoading: false,
+          workItemsLoading: false,
           loadingProgress: 100,
           undoStack: [],
           redoStack: [],
@@ -1546,7 +1584,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
       } catch (err) {
         clearTimeout(timeoutId);
-        if (get().organizationId === orgId) set({ isLoading: false, loadingProgress: 0 });
+        if (get().organizationId === orgId) set({ isLoading: false, workItemsLoading: false, loadingProgress: 0 });
       }
       };
 

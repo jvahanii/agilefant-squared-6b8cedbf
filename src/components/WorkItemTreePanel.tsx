@@ -2396,6 +2396,7 @@ export function WorkItemTreePanel() {
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
   const workItems = useAppStore((s) => s.workItems);
+  const workItemsLoading = useAppStore((s) => s.workItemsLoading);
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
@@ -3760,8 +3761,8 @@ export function WorkItemTreePanel() {
                 onCancel={() => setIsAdding(false)}
               />
             ) : rootWorkItems.length === 0 && !isAdding ? (
-              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                No work items in this backlog
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground" role="status" aria-live="polite">
+                {workItemsLoading ? "Loading work items…" : "No work items in this backlog"}
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex flex-col">

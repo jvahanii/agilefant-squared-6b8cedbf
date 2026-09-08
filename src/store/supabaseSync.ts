@@ -120,7 +120,17 @@ async function loadAllRowsIn(table: string, column: string, values: string[]): P
 
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
-export async function loadFromSupabase(organizationId: string): Promise<{
+export async function loadFromSupabase(
+  organizationId: string,
+  // Called once trees + backlogs are known, before the far larger work-item
+  // and rank payloads land, so the caller can paint the shell early. What is
+  // handed over here is final: sanitizeData derives backlogs and trees without
+  // consulting work items, so nothing painted now shifts when the items arrive.
+  onStructureReady?: (structure: {
+    backlogs: Record<string, Backlog>;
+    backlogTrees: Record<string, BacklogTree>;
+  }) => void,
+): Promise<{
   workItems: Record<string, WorkItem>;
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
@@ -134,19 +144,20 @@ export async function loadFromSupabase(organizationId: string): Promise<{
 
   // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
   // shares, own trees, own work items, and rank tables are all independent.
-  // Firing ranks here lets them run concurrently with Waves 2 & 3 instead of
-  // blocking at the end, which saves 1-2 network round-trips for large orgs.
-  const [sharesRes, ownTreesRes, ownItemsRes, ranksMapPromise, boardRanksMapPromise] = await Promise.all([
+  // Only the two small structure queries are awaited here — work items and the
+  // rank tables are by far the largest payloads, so they stay in flight while
+  // the structure is assembled and are awaited once the caller has painted.
+  const ownItemsPromise = loadAllRows('work_items', 'organization_id', organizationId);
+  const ranksMapPromise = fetchRanksByOrg(organizationId);
+  const boardRanksMapPromise = fetchBoardRanksByOrg(organizationId);
+
+  const [sharesRes, ownTreesRes] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
     supabase.from('backlog_trees').select('*').eq('organization_id', organizationId),
-    loadAllRows('work_items', 'organization_id', organizationId),
-    fetchRanksByOrg(organizationId),
-    fetchBoardRanksByOrg(organizationId),
   ]);
 
   const sharedTreeIds = ((sharesRes.data ?? []) as any[]).map((s) => s.tree_id as string);
   if (ownTreesRes.error) throw ownTreesRes.error;
-  if (ownItemsRes.error) throw ownItemsRes.error;
 
   const ownTreeIds = (ownTreesRes.data ?? []).map((t: any) => t.id as string);
 
@@ -200,37 +211,8 @@ export async function loadFromSupabase(organizationId: string): Promise<{
     ? loadAllRowsIn('work_items', 'organization_id', outgoingPartnerOrgIds)
     : Promise.resolve({ data: [], error: null });
 
-  const [backlogsRes, incomingItemsRes, outgoingItemsRes] = await Promise.all([
-    backlogsPromise,
-    incomingItemsPromise,
-    outgoingItemsPromise,
-  ]);
+  const backlogsRes = await backlogsPromise;
   if (backlogsRes.error) throw backlogsRes.error;
-
-  let sharedWorkItems: any[] = [];
-  if (incomingPartnerOrgIds.length > 0) {
-    const sharedTreeIdSet = new Set(sharedTreeIds);
-    sharedWorkItems = [
-      ...sharedWorkItems,
-      ...((incomingItemsRes.data ?? []) as any[]).filter((item) => {
-        const assignments = item.backlog_assignments as Record<string, string>;
-        return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
-      }),
-    ];
-  }
-  if (outgoingPartnerOrgIds.length > 0) {
-    const ownTreeIdSet = new Set(ownTreeIds);
-    sharedWorkItems = [
-      ...sharedWorkItems,
-      ...((outgoingItemsRes.data ?? []) as any[]).filter((item) => {
-        const assignments = item.backlog_assignments as Record<string, string>;
-        return Object.keys(assignments).some(treeId => ownTreeIdSet.has(treeId));
-      }),
-    ];
-  }
-
-  const itemsRes = ownItemsRes;
-
 
   // Auto-cleanup malformed (double-prefixed) tree IDs
   const malformedTreeIds = allTreeRows.filter(r => r.id.split('::').length > 2).map(r => r.id);
@@ -273,6 +255,41 @@ export async function loadFromSupabase(organizationId: string): Promise<{
   for (const tree of Object.values(backlogTrees)) {
     tree.rootBacklogIds.sort((a, b) => (backlogs[a]?.rank ?? 0) - (backlogs[b]?.rank ?? 0));
   }
+
+  // The shell can render from here; everything below only fills in work items.
+  onStructureReady?.({ backlogs, backlogTrees });
+
+  // ── Wave 4: the heavy payloads, awaited only after the caller has painted ─
+  const [ownItemsRes, incomingItemsRes, outgoingItemsRes] = await Promise.all([
+    ownItemsPromise,
+    incomingItemsPromise,
+    outgoingItemsPromise,
+  ]);
+  if (ownItemsRes.error) throw ownItemsRes.error;
+
+  let sharedWorkItems: any[] = [];
+  if (incomingPartnerOrgIds.length > 0) {
+    const sharedTreeIdSet = new Set(sharedTreeIds);
+    sharedWorkItems = [
+      ...sharedWorkItems,
+      ...((incomingItemsRes.data ?? []) as any[]).filter((item) => {
+        const assignments = item.backlog_assignments as Record<string, string>;
+        return Object.keys(assignments).some(treeId => sharedTreeIdSet.has(treeId));
+      }),
+    ];
+  }
+  if (outgoingPartnerOrgIds.length > 0) {
+    const ownTreeIdSet = new Set(ownTreeIds);
+    sharedWorkItems = [
+      ...sharedWorkItems,
+      ...((outgoingItemsRes.data ?? []) as any[]).filter((item) => {
+        const assignments = item.backlog_assignments as Record<string, string>;
+        return Object.keys(assignments).some(treeId => ownTreeIdSet.has(treeId));
+      }),
+    ];
+  }
+
+  const itemsRes = ownItemsRes;
 
   const allItemRows = [...(itemsRes.data ?? []), ...sharedWorkItems];
 
