@@ -73,6 +73,12 @@ function isStalePrefix(id: string, effectiveOrgId: string): boolean {
 
 type SupabaseReadResult<T = any> = { data: T[] | null; error: any };
 
+// The rank tables also carry id/organization_id/created_at, none of which are
+// read here. Selecting the whole row roughly doubles the cold-start payload
+// for these two tables, which are the largest by row count.
+const RANK_COLUMNS = 'work_item_id,backlog_id,rank';
+const HYPERLINK_COLUMNS = 'id,work_item_id,url,alt_text,rank';
+
 async function loadAllRows(table: string, column: string, value: string): Promise<SupabaseReadResult> {
   const PAGE = 1000;
   const rows: any[] = [];
@@ -915,7 +921,7 @@ async function fetchRanksByOrg(orgId: string): Promise<Record<string, Record<str
   for (;;) {
     const { data, error } = await supabase
       .from('work_item_backlog_ranks' as any)
-      .select('*')
+      .select(RANK_COLUMNS)
       .in('organization_id', [orgId])
       .order('work_item_id', { ascending: true })
       .order('backlog_id', { ascending: true })
@@ -941,7 +947,7 @@ async function fetchBoardRanksByOrg(orgId: string): Promise<Record<string, Recor
   for (;;) {
     const { data, error } = await supabase
       .from('work_item_board_ranks' as any)
-      .select('*')
+      .select(RANK_COLUMNS)
       .in('organization_id', [orgId])
       .order('work_item_id', { ascending: true })
       .order('backlog_id', { ascending: true })
@@ -994,7 +1000,7 @@ async function loadWorkItemBacklogRanks(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from('work_item_backlog_ranks' as any)
-        .select('*')
+        .select(RANK_COLUMNS)
         .in('organization_id', organizationIds)
         .order('work_item_id', { ascending: true })
         .order('backlog_id', { ascending: true })
@@ -1016,7 +1022,7 @@ async function loadWorkItemBacklogRanks(
     // Paginate inside the chunk: a hot work item could still exceed 1k ranks.
     const { data, error } = await paginateSelect<any>((from, to) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from('work_item_backlog_ranks' as any).select('*') as any)
+      (supabase.from('work_item_backlog_ranks' as any).select(RANK_COLUMNS) as any)
         .in('work_item_id', chunk)
         .order('id', { ascending: true })
         .range(from, to),
@@ -1135,7 +1141,7 @@ async function loadWorkItemBoardRanks(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from('work_item_board_ranks' as any)
-        .select('*')
+        .select(RANK_COLUMNS)
         .in('organization_id', organizationIds)
         .order('work_item_id', { ascending: true })
         .order('backlog_id', { ascending: true })
@@ -1154,7 +1160,7 @@ async function loadWorkItemBoardRanks(
     const chunk = workItemIds.slice(i, i + CHUNK);
     const { data, error } = await paginateSelect<any>((from, to) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from('work_item_board_ranks' as any).select('*') as any)
+      (supabase.from('work_item_board_ranks' as any).select(RANK_COLUMNS) as any)
         .in('work_item_id', chunk)
         .order('id', { ascending: true })
         .range(from, to),
@@ -1228,7 +1234,7 @@ export async function loadHyperlinksForWorkItems(
     // Paginate: an org with many links can easily exceed the 1000-row cap.
     const res = await paginateSelect<Record<string, unknown>>((from, to) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from('work_item_hyperlinks' as any).select('*') as any)
+      (supabase.from('work_item_hyperlinks' as any).select(HYPERLINK_COLUMNS) as any)
         .eq('organization_id', organizationId)
         .order('rank', { ascending: true })
         .order('id', { ascending: true })
@@ -1250,7 +1256,7 @@ export async function loadHyperlinksForWorkItems(
       const slice = workItemIds.slice(i, i + CHUNK);
       const res = await paginateSelect<any>((from, to) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from('work_item_hyperlinks' as any).select('*') as any)
+        (supabase.from('work_item_hyperlinks' as any).select(HYPERLINK_COLUMNS) as any)
           .in('work_item_id', slice)
           .order('rank', { ascending: true })
           .order('id', { ascending: true })
