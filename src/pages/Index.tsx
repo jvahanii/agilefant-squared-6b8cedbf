@@ -18,6 +18,7 @@ import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
+  const workItemsLoading = useAppStore(s => s.workItemsLoading);
   const loadingProgress = useAppStore(s => s.loadingProgress);
   const setOrganizationId = useAppStore(s => s.setOrganizationId);
   const setUser = useAppStore(s => s.setUser);
@@ -51,9 +52,12 @@ const Index = () => {
 
   useEffect(() => {
     // Defer the supporting stores until the core snapshot has loaded so these
-    // requests don't compete with loadFromSupabase for mobile bandwidth. The
-    // app shell becomes interactive first, then the supporting data streams in.
-    if (activeOrgId && !isLoading) {
+    // requests don't compete with loadFromSupabase for bandwidth. The app shell
+    // becomes interactive first, then the supporting data streams in.
+    // workItemsLoading matters as much as isLoading: the shell now paints as
+    // soon as the trees arrive, so gating on isLoading alone would fire these
+    // while the far larger work-item and rank payloads are still downloading.
+    if (activeOrgId && !isLoading && !workItemsLoading) {
       // Note: setOrganizationId + loadData() are already triggered by the
       // useOrgStore.subscribe block in App.tsx before this effect runs, so we
       // intentionally don't call them here — doing so would double-fetch the
@@ -66,7 +70,7 @@ const Index = () => {
         }
       });
     }
-  }, [activeOrgId, isLoading]);
+  }, [activeOrgId, isLoading, workItemsLoading]);
 
   // Reload data whenever share membership changes so both the tree owner and
   // the newly-shared org see each other's trees and contents immediately.
@@ -97,7 +101,7 @@ const Index = () => {
   // Load labels for active org + any partner orgs whose trees are accessible.
   const treeIdsKey = Object.keys(backlogTrees).sort().join(',');
   useEffect(() => {
-    if (!activeOrgId || isLoading) return;
+    if (!activeOrgId || isLoading || workItemsLoading) return;
     const orgIds = new Set<string>([activeOrgId]);
     for (const treeId of Object.keys(backlogTrees)) {
       const sep = treeId.indexOf('::');
@@ -119,7 +123,7 @@ const Index = () => {
     // Load per-backlog status definitions for the active + partner orgs.
     loadStatusesForOrgs([...orgIds]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId, treeIdsKey, isLoading]);
+  }, [activeOrgId, treeIdsKey, isLoading, workItemsLoading]);
 
   // Keep a stable ref so the visibility handler always reads the latest
   // isLoading value without needing it as an effect dependency (which would
