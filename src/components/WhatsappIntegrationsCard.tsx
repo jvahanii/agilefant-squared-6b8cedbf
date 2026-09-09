@@ -146,9 +146,16 @@ export function WhatsappIntegrationsCard() {
         <p className="text-sm text-muted-foreground">
           The simplest source is an Android phone running a notification-forwarding app such as{" "}
           <em>MacroDroid</em> or <em>Tasker</em>: trigger on a WhatsApp notification, restrict it to the chat you want,
-          and POST to the URL below with <code>Content-Type: text/plain</code>, the message text as the raw body, and the
-          sender or group name in an <code>X-From-Name</code> header. Sending the text raw rather than as JSON matters —
-          an unescaped quote or line break in JSON would make the request unparseable and the message would be dropped.
+          and POST to the URL below with <code>Content-Type: text/plain</code> and the message text as the raw body.
+          Sending the text raw rather than as JSON matters — an unescaped quote or line break in JSON would make the
+          request unparseable and the message would be dropped.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Two details are worth getting right. Send the notification's <em>text lines</em> rather than its summary text:
+          the summary concatenates unread messages, so the same message keeps arriving glued to different neighbours,
+          while text lines gives one message per line and each becomes its own item. And pass the sender or group name
+          as a <code>?from=</code> query parameter, not a header — headers are ASCII-only, and Android refuses to send
+          the request at all if the name contains an accented character, which group titles routinely do.
         </p>
         <p className="text-sm text-muted-foreground">
           A hosted bridge (whapi.cloud and similar) also works and can post JSON instead; note those are paid, and the
