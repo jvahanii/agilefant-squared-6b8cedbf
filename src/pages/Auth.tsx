@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { PLANS, type PlanKey } from "@/hooks/useSubscription";
@@ -51,7 +51,18 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <TermsOfServiceDialog open={tosOpen} onAccept={handleTosAccept} onCancel={handleTosCancel} />
       <PlanChoosingDialog open={planDialogOpen} onPlanChosen={handlePlanChosen} onCancel={handlePlanCancel} />
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4">
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>
+            We&apos;re moving to Clerk authentication, and strongly suggest you don&apos;t create new
+            accounts until this notification disappears.
+          </p>
+        </div>
+      <Card className="w-full">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">
             Agilefant<sup className="text-primary">2</sup>
@@ -113,6 +124,7 @@ export default function Auth() {
           </p>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
