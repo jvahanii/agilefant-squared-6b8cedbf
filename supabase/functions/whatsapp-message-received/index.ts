@@ -1,7 +1,14 @@
-// WhatsApp webhook receiver (whapi.cloud-compatible).
-// Accepts POST {messages: [...]} with `?token=<webhook_secret>` query param.
-// For each text message (optionally filtered by integration.chat_id), creates
-// an "in_progress" work item at the top of the configured backlog.
+// WhatsApp webhook receiver.
+//
+// Authenticated with the integration's webhook_secret, sent as an
+// X-Webhook-Token header (or a ?token= query param, for URLs already deployed
+// before the header existed).
+//
+// Takes either a plain-text body — the shape a phone forwarding notifications
+// can produce, with the sender in X-From-Name — or the JSON a hosted bridge
+// posts. Each non-empty line becomes its own "in_progress" work item at the top
+// of the configured backlog, skipping lines already on the list, since
+// notification forwarders resend recent messages repeatedly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -102,6 +109,33 @@ Deno.serve(async (req) => {
     }
 
     const created: string[] = [];
+    let skipped = 0;
+
+    // A phone forwarding notifications re-sends the same recent lines every
+    // time the notification is updated — Android's grouped-message
+    // notifications carry the last several messages, not just the newest — so
+    // the same text arrives over and over. Skip a line when the backlog
+    // already holds an open item with that exact text.
+    //
+    // Matching on open items rather than a time window means completing or
+    // deleting an item lets it be added again, which is what someone asking a
+    // second time would expect. The cap keeps this to one bounded query; new
+    // items take the lowest ranks, so ordering by rank looks at the newest.
+    const seenTitles = new Set<string>();
+    {
+      const { data: existing, error: existingErr } = await supabase
+        .from('work_items')
+        .select('title, status')
+        .filter('backlog_assignments', 'cs', JSON.stringify({ [integ.tree_id]: integ.backlog_id }))
+        .neq('status', 'done')
+        .order('rank', { ascending: true })
+        .limit(300);
+      if (existingErr) console.error('dedupe lookup failed', existingErr);
+      for (const row of existing ?? []) {
+        const t = (row as { title?: string }).title;
+        if (t) seenTitles.add(t.trim().toLowerCase());
+      }
+    }
 
     for (const m of messages) {
       if (integ.chat_id && m.chat_id && m.chat_id !== integ.chat_id) continue;
@@ -109,11 +143,20 @@ Deno.serve(async (req) => {
 
       // People post lists into the group, so every non-empty line becomes its
       // own work item rather than one item holding the whole message.
-      const lines = (m.text?.body ?? m.body ?? '')
+      const allLines = (m.text?.body ?? m.body ?? '')
         .toString()
         .split(/\r?\n/)
         .map((line: string) => line.trim())
         .filter((line: string) => line.length > 0);
+      // Drop anything already on the list, and anything repeated within this
+      // request — the same line can appear twice in one forwarded batch.
+      const lines = allLines.filter((line: string) => {
+        const key = line.slice(0, 300).toLowerCase();
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
+      });
+      skipped += allLines.length - lines.length;
       if (lines.length === 0) continue;
       const description = m.from_name ? `From ${m.from_name} via WhatsApp` : 'via WhatsApp';
 
@@ -171,7 +214,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, created: created.length }), {
+    return new Response(JSON.stringify({ ok: true, created: created.length, skipped }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
