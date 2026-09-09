@@ -148,8 +148,7 @@ export async function loadFromSupabase(
   // rank tables are by far the largest payloads, so they stay in flight while
   // the structure is assembled and are awaited once the caller has painted.
   const ownItemsPromise = loadAllRows('work_items', 'organization_id', organizationId);
-  const ranksMapPromise = fetchRanksByOrg(organizationId);
-  const boardRanksMapPromise = fetchBoardRanksByOrg(organizationId);
+  const ranksPromise = fetchAllRanksForOrg(organizationId);
 
   const [sharesRes, ownTreesRes] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
@@ -303,12 +302,12 @@ export async function loadFromSupabase(
   const cleanItemRows = allItemRows.filter(r => r.id.split('::').length <= 2);
 
   // Use the rank maps that were already fetched in parallel during Wave 1.
-  // `fetchRanksByOrg` and `fetchBoardRanksByOrg` fetched ALL rows for this
-  // org while Waves 2 & 3 were running; just filter to in-memory to keep
-  // only the items that survived sanitization.
+  // The rank fetch ran for this whole org while Waves 2 & 3 were in flight;
+  // just filter it in memory to the items that survived sanitization.
   const workItemIds = new Set(cleanItemRows.map(r => r.id));
-  const ranksMap = filterRanksToIds(await ranksMapPromise, workItemIds);
-  const boardRanksMap = filterRanksToIds(await boardRanksMapPromise, workItemIds);
+  const allRanks = await ranksPromise;
+  const ranksMap = filterRanksToIds(allRanks.backlog, workItemIds);
+  const boardRanksMap = filterRanksToIds(allRanks.board, workItemIds);
 
   // Fallback: fetch by org+item IDs in case the parallel fetch returned
   // nothing (e.g. network glitch on first attempt but data available now).
@@ -928,6 +927,63 @@ function filterRanksToIds(map: Record<string, Record<string, number>>, ids: Set<
 }
 
 // ─── Optimised org-scoped rank fetchers (run in parallel with Wave 1) ────
+
+type RankMaps = {
+  backlog: Record<string, Record<string, number>>;
+  board: Record<string, Record<string, number>>;
+};
+
+/**
+ * Fetch both rank maps in a single request.
+ *
+ * The rank tables are the largest thing read on cold start by row count, and
+ * almost all of it was repetition: ~10 400 rows referencing only ~54 distinct
+ * backlogs, each row restating an org-prefixed work_item_id and backlog_id.
+ * `get_work_item_ranks` groups them by work item and interns the backlog ids,
+ * which is the same data at roughly a third of the bytes.
+ *
+ * Returns null if the RPC is unavailable — an older deployment, or the
+ * migration not yet applied — so the caller can fall back to reading the
+ * tables directly.
+ */
+async function fetchRanksGrouped(orgIds: string[]): Promise<RankMaps | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('get_work_item_ranks', { _org_ids: orgIds });
+  if (error || !data) {
+    if (error) console.warn('get_work_item_ranks unavailable, falling back to row reads:', error);
+    return null;
+  }
+  const payload = data as {
+    backlogIds?: string[];
+    backlog?: Record<string, Record<string, number>>;
+    board?: Record<string, Record<string, number>>;
+  };
+  const backlogIds = payload.backlogIds ?? [];
+  const expand = (grouped?: Record<string, Record<string, number>>) => {
+    const out: Record<string, Record<string, number>> = {};
+    for (const [workItemId, byIndex] of Object.entries(grouped ?? {})) {
+      const ranks: Record<string, number> = {};
+      for (const [index, rank] of Object.entries(byIndex)) {
+        const backlogId = backlogIds[Number(index)];
+        if (backlogId !== undefined) ranks[backlogId] = rank ?? 0;
+      }
+      out[workItemId] = ranks;
+    }
+    return out;
+  };
+  return { backlog: expand(payload.backlog), board: expand(payload.board) };
+}
+
+/** Both rank maps for an org, grouped in one request where possible. */
+async function fetchAllRanksForOrg(orgId: string): Promise<RankMaps> {
+  const grouped = await fetchRanksGrouped([orgId]);
+  if (grouped) return grouped;
+  const [backlog, board] = await Promise.all([
+    fetchRanksByOrg(orgId),
+    fetchBoardRanksByOrg(orgId),
+  ]);
+  return { backlog, board };
+}
 
 /** Fetch all backlog ranks for an org — used during load to overlap I/O. */
 async function fetchRanksByOrg(orgId: string): Promise<Record<string, Record<string, number>>> {

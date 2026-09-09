@@ -30,6 +30,9 @@ function builderFor(table: string) {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => builderFor(table),
+    // Ranks come from get_work_item_ranks; this suite only cares about the
+    // structure/work-item ordering, so hand back an empty result.
+    rpc: async () => ({ data: { backlogIds: [], backlog: {}, board: {} }, error: null }),
     auth: { getSession: async () => ({ data: { session: null }, error: null }) },
   },
 }));
