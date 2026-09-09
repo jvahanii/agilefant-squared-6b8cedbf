@@ -82,11 +82,18 @@ Deno.serve(async (req) => {
     if (rawBody.trim()) {
       try { parsed = JSON.parse(rawBody); } catch { /* not JSON — handled below */ }
     }
+    // The sender may also arrive as a ?from= query param. HTTP headers are
+    // ASCII-only, and Android's client throws rather than sending when a value
+    // breaks that — a Finnish group title like "Kauppalista (7 viestiä)" was
+    // enough to stop the request ever leaving the phone. Query params are
+    // percent-encoded, so they carry non-ASCII names safely.
     const payload: Record<string, unknown> = (parsed && typeof parsed === 'object')
       ? parsed as Record<string, unknown>
       : {
           body: typeof parsed === 'string' ? parsed : rawBody,
-          from_name: req.headers.get('x-from-name') ?? undefined,
+          from_name: req.headers.get('x-from-name')
+            ?? new URL(req.url).searchParams.get('from')
+            ?? undefined,
         };
     // Avoid logging full payload (contains private message content / PII).
 
