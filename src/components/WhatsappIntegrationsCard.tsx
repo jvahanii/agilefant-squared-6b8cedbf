@@ -139,12 +139,22 @@ export function WhatsappIntegrationsCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Connect a WhatsApp chat (group or individual) via a bridge such as <em>whapi.cloud</em>. Every text message becomes an
-          "In Progress" work item at the top of the chosen backlog. In your bridge, set the webhook URL below for the
-          <em> messages.post</em> (or equivalent) event and add the <code>X-Webhook-Token</code> request header so the bridge can
-          authenticate. Leave Chat ID blank to accept messages from any chat, or enter a specific chat ID to restrict to one
-          conversation (e.g. <code>1203630412345678@g.us</code> for a group or <code>15551234567@s.whatsapp.net</code> for a
-          1-to-1 chat).
+          Forward a WhatsApp chat into a backlog. Every message becomes an "In Progress" work item at the top of the
+          chosen backlog, and <strong>each line of a message becomes its own item</strong>, so a list posted in one go
+          arrives as separate tasks in the order written.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          The simplest source is an Android phone running a notification-forwarding app such as{" "}
+          <em>MacroDroid</em> or <em>Tasker</em>: trigger on a WhatsApp notification, restrict it to the chat you want,
+          and POST to the URL below with <code>Content-Type: text/plain</code>, the message text as the raw body, and the
+          sender or group name in an <code>X-From-Name</code> header. Sending the text raw rather than as JSON matters —
+          an unescaped quote or line break in JSON would make the request unparseable and the message would be dropped.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          A hosted bridge (whapi.cloud and similar) also works and can post JSON instead; note those are paid, and the
+          official WhatsApp Business API cannot read group chats at all. Whichever you use, add the{" "}
+          <code>X-Webhook-Token</code> header below so it can authenticate. Chat ID only filters JSON senders that
+          include one — leave it blank for the notification route, where the phone decides which chat to forward.
         </p>
 
         <div className="border rounded-md p-3 space-y-2">
