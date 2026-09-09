@@ -6,8 +6,19 @@
  * measured time reflects pure JS computation: structure traversal, rank
  * shifting, state cloning, sorting, and Zustand state updates.
  *
- * Thresholds are generous (2-5× typical wall-clock) to avoid flaky CI
- * failures while still catching O(n²) or worse algorithmic regressions.
+ * Thresholds are deliberately loose — roughly 5-10× the time these operations
+ * actually take — because they are a backstop against catastrophic regressions,
+ * not a benchmark. The operations here are O(n) or O(n log n) over hundreds of
+ * items; a genuine regression to O(n²) shows up as orders of magnitude, not as
+ * a few milliseconds. Tight budgets bought no extra protection and instead
+ * failed on nothing more than a GC pause or a slower runner.
+ *
+ * The precise guard against complexity regressions is the "algorithmic scaling"
+ * block at the bottom, which compares timings at different input sizes and so
+ * does not care how fast the machine is.
+ *
+ * These budgets also assume the run has the CPU to itself; vitest.config.ts
+ * sets fileParallelism: false for that reason.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
@@ -342,14 +353,14 @@ describe("performance: large dataset operations", () => {
       }
     });
     const perItem = elapsed / 500;
-    expect(perItem).toBeLessThan(3); // ms per item
+    expect(perItem).toBeLessThan(8); // ms per item; ~1.3 ms observed
     // Verify all items created
     expect(Object.keys(useAppStore.getState().workItems)).toHaveLength(500);
   });
 
   // ── Large reorder ───────────────────────────────────────────────────
 
-  it("reorders an item from top to bottom in 1 000-item backlog within 50 ms", () => {
+  it("reorders an item from top to bottom in 1 000-item backlog within 100 ms", () => {
     seedFlatItems(1000);
     const elapsed = measure(() => {
       useAppStore
@@ -361,10 +372,10 @@ describe("performance: large dataset operations", () => {
           [`${ORG}::bl-1`],
         );
     });
-    expect(elapsed).toBeLessThan(50);
+    expect(elapsed).toBeLessThan(100); // ~16 ms observed
   });
 
-  it("reorders last item to first in 1 000-item backlog within 30 ms", () => {
+  it("reorders last item to first in 1 000-item backlog within 60 ms", () => {
     seedFlatItems(1000);
     const elapsed = measure(() => {
       useAppStore
@@ -376,19 +387,19 @@ describe("performance: large dataset operations", () => {
           [`${ORG}::bl-1`],
         );
     });
-    expect(elapsed).toBeLessThan(30);
+    expect(elapsed).toBeLessThan(60); // ~8 ms observed
   });
 
   // ── Status change with auto-promotion ───────────────────────────────
 
-  it("promotes a 200-level deep chain within 20 ms", () => {
+  it("promotes a 200-level deep chain within 40 ms", () => {
     seedDeepChain(200);
     const elapsed = measure(() => {
       useAppStore
         .getState()
         .setWorkItemStatus(`${ORG}::wi-199`, "in_progress");
     });
-    expect(elapsed).toBeLessThan(20);
+    expect(elapsed).toBeLessThan(40); // ~4.5 ms observed
     // Verify the root was promoted
     expect(
       useAppStore.getState().workItems[`${ORG}::wi-0`].status,
@@ -583,7 +594,7 @@ describe("performance: large dataset operations", () => {
       }
     });
 
-    expect(elapsed).toBeLessThan(2500);
+    expect(elapsed).toBeLessThan(4000); // ~620 ms observed
 
     // All ranks should be consecutive integers 0..499
     const ranks = Object.values(useAppStore.getState().workItems)
