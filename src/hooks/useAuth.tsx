@@ -7,6 +7,7 @@ import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { recordSignIn } from '@/store/signInLogStore';
+import { setCurrentUser } from "@/lib/currentUser";
 
 interface AuthContextType {
   user: User | null;
@@ -165,6 +166,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
   };
+  // Mirror the signed-in user into the auth-agnostic helper the stores read.
+  // Kept as one effect rather than added to each setUser call site so it
+  // cannot drift out of sync with the React state it is meant to reflect.
+  useEffect(() => {
+    setCurrentUser(
+      user
+        ? {
+            id: user.id,
+            email: user.email ?? null,
+            fullName:
+              (user.user_metadata?.full_name as string | undefined) ??
+              (user.user_metadata?.name as string | undefined) ??
+              null,
+            avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+          }
+        : null,
+    );
+  }, [user]);
+
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>
