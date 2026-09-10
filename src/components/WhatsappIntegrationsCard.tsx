@@ -85,7 +85,15 @@ export function WhatsappIntegrationsCard() {
       .select("*")
       .eq("organization_id", activeOrgId)
       .order("created_at");
-    setItems((data ?? []) as Integration[]);
+    setItems(
+      ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+        ...(row as unknown as Integration),
+        split_on_newline: (row.split_on_newline as boolean) ?? true,
+        split_on_space: (row.split_on_space as boolean) ?? false,
+        split_delimiters: (row.split_delimiters as string) ?? "",
+        min_fragment_length: (row.min_fragment_length as number) ?? 1,
+      })),
+    );
     setLoading(false);
   };
 
