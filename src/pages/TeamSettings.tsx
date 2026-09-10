@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth } from "@/integrations/supabase/authClient";
 import { paginateSelect } from "@/integrations/supabase/pagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -507,7 +508,7 @@ export default function TeamSettings() {
         }
 
         if (currentUserWillBeOrphaned) {
-          await supabase.auth.signOut();
+          await supabaseAuth.auth.signOut();
           navigate("/auth");
           return;
         }
@@ -1038,7 +1039,7 @@ function ChangePasswordForm() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {

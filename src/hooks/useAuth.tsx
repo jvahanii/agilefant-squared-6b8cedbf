@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth } from "@/integrations/supabase/authClient";
 import type { User, Session } from '@supabase/supabase-js';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // It waits for the Supabase client's internal initialize() to complete
     // (including any token refresh) before resolving, so the user object and
     // the PostgREST session are always in sync when data fetching begins.
-    supabase.auth.getSession()
+    supabaseAuth.auth.getSession()
       .then(({ data: { session } }) => {
         clearTimeout(loadingTimeout);
         setSession(session);
@@ -106,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // because getSession() above already covers it; processing it here too
     // would set a potentially different user-object reference, triggering an
     // extra loadMemberships() call and a data-loading race on startup.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, newSession) => {
       if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
         clearTimeout(loadingTimeout);
         window.location.replace('/reset-password' + (window.location.hash || ''));
@@ -164,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await supabaseAuth.auth.signOut();
   };
   // Mirror the signed-in user into the auth-agnostic helper the stores read.
   // Kept as one effect rather than added to each setUser call site so it

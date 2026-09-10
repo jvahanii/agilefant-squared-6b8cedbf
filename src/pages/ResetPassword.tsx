@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth } from "@/integrations/supabase/authClient";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,14 +30,14 @@ export default function ResetPassword() {
     // Primary path: if Supabase already established a session (recovery link
     // consumed the hash before we mounted), or the URL still carries recovery
     // markers, show the form immediately.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabaseAuth.auth.getSession().then(({ data: { session } }) => {
       if (session || hasRecoveryMarker) {
         safeSetStatus('ready');
       }
     }).catch(() => {});
 
     // Backup: handle PASSWORD_RECOVERY if it arrives after mount.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         safeSetStatus('ready');
       }
@@ -45,7 +46,7 @@ export default function ResetPassword() {
     // Only declare the link invalid after a grace period with neither
     // a session nor recovery markers present.
     const timeout = setTimeout(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseAuth.auth.getSession();
       if (!session && !hasRecoveryMarker) {
         safeSetStatus('invalid');
       } else {
@@ -71,7 +72,7 @@ export default function ResetPassword() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabaseAuth.auth.updateUser({ password });
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       setLoading(false);
@@ -81,7 +82,7 @@ export default function ResetPassword() {
     // Sign out the temporary recovery session so the user explicitly signs
     // in again. Use a real navigation (not SPA navigate) so all in-memory
     // recovery/org/app store state is discarded before the next sign-in.
-    await supabase.auth.signOut();
+    await supabaseAuth.auth.signOut();
     window.location.replace('/auth');
   };
 
@@ -105,7 +106,7 @@ export default function ResetPassword() {
             <Button
               className="w-full"
               onClick={async () => {
-                await supabase.auth.signOut().catch(() => {});
+                await supabaseAuth.auth.signOut().catch(() => {});
                 window.location.assign('/auth');
               }}
             >

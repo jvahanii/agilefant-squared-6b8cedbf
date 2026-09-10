@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth } from "@/integrations/supabase/authClient";
 import { paginateSelect } from '@/integrations/supabase/pagination';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
@@ -140,7 +141,7 @@ export async function loadFromSupabase(
   // onAuthStateChange can fire INITIAL_SESSION while initialize() is still
   // running; the access token in currentSession may be stale, causing RLS to
   // evaluate auth.uid() as null and return empty rows for every table.
-  await supabase.auth.getSession();
+  await supabaseAuth.auth.getSession();
 
   // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
   // shares, own trees, own work items, and rank tables are all independent.
@@ -521,7 +522,7 @@ async function withSessionRetry(
     (message && (message.includes('JWT') || message.includes('not authenticated')));
   if (!isAuthError) return result;
 
-  const { error: refreshError } = await supabase.auth.refreshSession();
+  const { error: refreshError } = await supabaseAuth.auth.refreshSession();
   if (refreshError) return result; // Refresh itself failed – surface the original error.
 
   return operation();

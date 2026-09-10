@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseAuth } from "@/integrations/supabase/authClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,7 +107,7 @@ export default function Auth() {
               disabled={loading}
               onClick={async () => {
                 setLoading(true);
-                const { error } = await supabase.auth.signInWithOAuth({
+                const { error } = await supabaseAuth.auth.signInWithOAuth({
                   provider: "google",
                   options: { redirectTo: window.location.origin },
                 });
@@ -145,7 +146,7 @@ function LoginForm({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseAuth.auth.signInWithPassword({ email, password });
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     setLoading(false);
   };
@@ -182,7 +183,7 @@ function LoginForm({
             return;
           }
           setLoading(true);
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, {
             redirectTo: `${window.location.origin}/reset-password`,
           });
           if (error) {
@@ -219,7 +220,7 @@ function SignupForm({
     e.preventDefault();
     const doSignup = async () => {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
+      const { error } = await supabaseAuth.auth.signUp({
         email,
         password,
         options: {
