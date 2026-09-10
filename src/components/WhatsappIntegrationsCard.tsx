@@ -66,6 +66,7 @@ export function WhatsappIntegrationsCard() {
   const [items, setItems] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [samples, setSamples] = useState<Record<string, string>>({});
 
   // New integration draft
   const [draftLabel, setDraftLabel] = useState("Kauppalista");
