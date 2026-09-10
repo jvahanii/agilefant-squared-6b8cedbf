@@ -27,14 +27,11 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
         {/* Was a warning against creating accounts, which is now the opposite of
             what a returning user has to do: signing in here is what carries an
             existing account across. Hence an informational tone, not a caution. */}
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-md border bg-muted/60 px-4 py-3 text-sm"
-        >
+        <div role="status" className="flex items-start gap-3 rounded-md border bg-muted/60 px-4 py-3 text-sm">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <p>
-            Agilefant has a new sign-in. Used it before? Sign in with the same email address as
-            always — through Google, or by creating a password here — and your account, teams and
+            Agilefant has a new enterprise grade sign-in with SSO readiness for those who needed it. Sign in with the
+            same email address as always — through Google, or by creating a password here — and your account, teams and
             work items come with you automatically.
           </p>
         </div>
