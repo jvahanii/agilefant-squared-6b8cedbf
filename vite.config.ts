@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => ({
             "@tanstack/react-query",
           ],
           "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-clerk": ["@clerk/clerk-react"],
         },
       },
     },

@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/appStore";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Auth from "./pages/Auth";
+import { clerkEnabled } from "@/lib/clerkBridge";
 
 // Pre-load appStore data as soon as the active org is known, before any page
 // component mounts. Zustand's subscribe fires synchronously inside
@@ -43,9 +44,19 @@ const hasStoredSession = () => {
   } catch {
     // localStorage can throw in private/sandboxed contexts.
   }
+  // Clerk keeps its session in a cookie rather than localStorage, so without
+  // this a Clerk user loses the head-start entirely and waits for the chunk
+  // after auth resolves instead of alongside it.
+  try {
+    if (document.cookie.includes("__session")) return true;
+  } catch {
+    // Cookie access can throw in sandboxed contexts too.
+  }
   return false;
 };
 if (hasStoredSession()) void importIndex();
+const AuthLegacy = lazy(() => import("./pages/AuthLegacy"));
+const ClerkAccountNotLinked = lazy(() => import("./pages/ClerkAccountNotLinked"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const TeamSettings = lazy(() => import("./pages/TeamSettings"));
@@ -58,7 +69,7 @@ const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, unlinkedClerk, signOut } = useAuth();
   const { memberships, activeOrgId, loading: orgLoading, loadMemberships } = useOrgStore();
   const location = useLocation();
   const isResetPasswordRoute = location.pathname === "/reset-password";
@@ -159,13 +170,24 @@ function AppRoutes() {
   );
 
   if (!user) {
+    // A Clerk session that maps to no profile authenticates fine but reaches
+    // no data, so say that instead of offering a sign-in form to somebody who
+    // is already signed in. /auth/legacy stays open either way: a Supabase
+    // session is not shadowed by an unlinked Clerk one, so it is still a way in.
+    const notLinked = unlinkedClerk ? (
+      <ClerkAccountNotLinked account={unlinkedClerk} onSignOut={signOut} />
+    ) : null;
     return (
       <Suspense fallback={pageFallback}>
         <Routes>
-          <Route path="/auth" element={<Auth />} />
+          {/* The Clerk SignIn component throws outside ClerkProvider, and the
+              provider is only mounted when a key is configured — so a build
+              without one gets the Supabase form at /auth, not a blank screen. */}
+          <Route path="/auth" element={notLinked ?? (clerkEnabled ? <Auth /> : <AuthLegacy />)} />
+          <Route path="/auth/legacy" element={<AuthLegacy />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/user-guide" element={<UserGuide />} />
-          <Route path="*" element={<Navigate to="/auth" replace />} />
+          <Route path="*" element={notLinked ?? <Navigate to="/auth" replace />} />
         </Routes>
       </Suspense>
     );

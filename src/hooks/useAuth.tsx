@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, ReactNode } from 'react';
 import { supabaseAuth } from "@/integrations/supabase/authClient";
 import type { User, Session } from '@supabase/supabase-js';
 import { useAppStore } from '@/store/appStore';
@@ -9,12 +8,41 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { recordSignIn } from '@/store/signInLogStore';
 import { setCurrentUser } from "@/lib/currentUser";
+import { clerkSignOut, fetchAppUserId, getClerkState, subscribeToClerk } from "@/lib/clerkBridge";
+
+/**
+ * The subset of a Supabase `User` this app actually reads, so a Clerk session
+ * can fill the same shape. A Supabase `User` still satisfies it, which is what
+ * keeps the legacy sign-in working through the identical context.
+ */
+export interface AuthUser {
+  /** profiles.id — never a Clerk user id. See lib/currentUser.ts. */
+  id: string;
+  email?: string | null;
+  /** Named fields are the ones this app reads; both auth systems supply them. */
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    avatar_url?: string;
+    [key: string]: unknown;
+  };
+}
+
+/** Clerk has a session, but no profiles row claims it. */
+export interface UnlinkedClerkAccount {
+  clerkUserId: string;
+  email: string | null;
+  /** Set when the lookup itself failed rather than coming back empty. */
+  error: string | null;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
+  /** The Supabase session; null while Clerk is the one signed in. */
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  unlinkedClerk: UnlinkedClerkAccount | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,6 +50,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   signOut: async () => {},
+  unlinkedClerk: null,
 });
 
 function resetClientStoresAfterSignOut() {
@@ -50,10 +79,22 @@ function resetClientStoresAfterSignOut() {
   useSnoozeStore.setState({ snoozes: {}, isLoading: false });
 }
 
+/** A resolved (or failed) Clerk-subject to profiles.id lookup. */
+interface ClerkMapping {
+  clerkUserId: string;
+  appUserId: string | null;
+  error: string | null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [supabaseLoading, setSupabaseLoading] = useState(true);
+
+  const clerk = useSyncExternalStore(subscribeToClerk, getClerkState);
+  const clerkUserId = clerk.status === 'signed-in' ? clerk.identity.clerkUserId : null;
+  const [mapping, setMapping] = useState<ClerkMapping | null>(null);
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
   useEffect(() => {
     // If the email-recovery link lands anywhere other than /reset-password
@@ -74,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Safety timeout: if Supabase auth doesn't respond within 8 seconds,
     // clear the loading state so the app can redirect to the login page
     // instead of hanging on the loading screen indefinitely.
-    const loadingTimeout = setTimeout(() => setLoading(false), 8000);
+    const loadingTimeout = setTimeout(() => setSupabaseLoading(false), 8000);
 
     // Use getSession() as the authoritative source for the initial auth state.
     // It waits for the Supabase client's internal initialize() to complete
@@ -84,8 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { session } }) => {
         clearTimeout(loadingTimeout);
         setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        setSupabaseUser(session?.user ?? null);
+        setSupabaseLoading(false);
         // Record sign-in locally for the manager screen
         if (session?.user?.id) {
           recordSignIn(
@@ -99,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // If getSession() rejects (e.g. network error during token refresh),
         // clear the loading state so the app can fall through to the login page.
         clearTimeout(loadingTimeout);
-        setLoading(false);
+        setSupabaseLoading(false);
       });
 
     // onAuthStateChange handles all *subsequent* auth events (SIGNED_IN,
@@ -127,8 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT') {
         resetClientStoresAfterSignOut();
         setSession(null);
-        setUser(null);
-        setLoading(false);
+        setSupabaseUser(null);
+        setSupabaseLoading(false);
         return;
       }
       // Avoid duplicate state updates when the user identity hasn't changed.
@@ -140,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if ((prev?.user?.id ?? null) === newUserId && prev?.access_token === newSession?.access_token) return prev;
         return newSession;
       });
-      setUser((prev) => {
+      setSupabaseUser((prev) => {
         // Only flip org-store to loading when a *different* user signs in
         // (e.g. after a password reset). A SIGNED_IN fired by a background
         // token refresh when the tab regains focus keeps the same user id
@@ -155,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if ((prev?.id ?? null) === newUserId) return prev;
         return newSession?.user ?? null;
       });
-      setLoading(false);
+      setSupabaseLoading(false);
     });
 
     return () => {
@@ -164,9 +205,122 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Same 8 s reasoning as above, for the case where Clerk's script never
+  // finishes loading: without this the app would sit on "Loading..." forever
+  // instead of falling through to the sign-in page — or to a Supabase session
+  // that is already perfectly usable.
+  useEffect(() => {
+    if (clerk.status !== 'unknown') return;
+    const timeout = setTimeout(() => setClerkTimedOut(true), 8000);
+    return () => clearTimeout(timeout);
+  }, [clerk.status]);
+
+  // Translate the Clerk subject into this app's profiles.id. Runs once per
+  // Clerk user, and never for a signed-out Clerk, so the legacy path pays
+  // nothing for it.
+  useEffect(() => {
+    if (!clerkUserId) {
+      setMapping(null);
+      return;
+    }
+    let cancelled = false;
+    // Without this the app would spin on "Loading..." indefinitely if the
+    // lookup never comes back. Reporting it as a failed link at least leaves
+    // the sign-out button and the legacy route reachable.
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setMapping({ clerkUserId, appUserId: null, error: 'the profile lookup timed out' });
+      }
+    }, 8000);
+    fetchAppUserId()
+      .then((appUserId) => {
+        clearTimeout(timeout);
+        if (!cancelled) setMapping({ clerkUserId, appUserId, error: null });
+      })
+      .catch((err: unknown) => {
+        clearTimeout(timeout);
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('Could not map the Clerk session onto a profile:', message);
+        setMapping({ clerkUserId, appUserId: null, error: message });
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [clerkUserId]);
+
+  // Only a mapping belonging to the Clerk user currently signed in counts; a
+  // stale one would hand the previous user's data to the next one.
+  const currentMapping = mapping && mapping.clerkUserId === clerkUserId ? mapping : null;
+  const clerkIdentity = clerk.status === 'signed-in' ? clerk.identity : null;
+  const appUserId = currentMapping?.appUserId ?? null;
+
+  const clerkUser = useMemo<AuthUser | null>(() => {
+    if (!clerkIdentity || !appUserId) return null;
+    return {
+      id: appUserId,
+      email: clerkIdentity.email,
+      user_metadata: {
+        full_name: clerkIdentity.fullName ?? undefined,
+        avatar_url: clerkIdentity.avatarUrl ?? undefined,
+      },
+    };
+    // Keyed on the values rather than the identity object, so a Clerk
+    // re-render doesn't hand every consumer a new user and re-run their effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appUserId, clerkIdentity?.email, clerkIdentity?.fullName, clerkIdentity?.avatarUrl]);
+
+  const unlinkedClerk = useMemo<UnlinkedClerkAccount | null>(() => {
+    if (!clerkIdentity || !currentMapping || currentMapping.appUserId) return null;
+    return {
+      clerkUserId: currentMapping.clerkUserId,
+      email: clerkIdentity.email,
+      error: currentMapping.error,
+    };
+    // Same reasoning: the identity object itself is deliberately not a
+    // dependency, only the email it carries.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clerkIdentity?.email, currentMapping]);
+
+  // Clerk wins when it has a session: it is the system being migrated to, and
+  // a leftover Supabase session must not shadow it.
+  const user: AuthUser | null = clerkUser ?? supabaseUser;
+
+  // Two things have to settle before the app may conclude "nobody is signed
+  // in" and redirect: Clerk deciding whether it has a session, and the profile
+  // lookup for that session. Both are derived rather than stored, so there is
+  // no render in between where loading briefly reads false.
+  const clerkDeciding = clerk.status === 'unknown' && !clerkTimedOut;
+  const clerkMappingPending = clerkUserId !== null && currentMapping === null;
+  const loading = supabaseLoading || clerkDeciding || clerkMappingPending;
+
+  useEffect(() => {
+    if (!clerkUser) return;
+    // Record sign-in locally for the manager screen, as the Supabase paths do.
+    recordSignIn(
+      clerkUser.id,
+      clerkUser.user_metadata?.full_name ?? null,
+      clerkUser.email ?? null,
+    );
+  }, [clerkUser]);
+
   const signOut = async () => {
-    await supabaseAuth.auth.signOut();
+    // Sign out of both, whichever is holding the session. An unlinked Clerk
+    // account in particular has to be able to get back to the sign-in page,
+    // and that is the one state where no app user exists at all.
+    await clerkSignOut();
+    setMapping(null);
+    try {
+      await supabaseAuth.auth.signOut();
+    } catch {
+      // Already signed out, or offline; the Clerk sign-out above still stands.
+    }
+    // Clerk fires no Supabase SIGNED_OUT event, so the stores are cleared here
+    // instead of relying on the onAuthStateChange handler above.
+    resetClientStoresAfterSignOut();
   };
+
   // Mirror the signed-in user into the auth-agnostic helper the stores read.
   // Kept as one effect rather than added to each setUser call site so it
   // cannot drift out of sync with the React state it is meant to reflect.
@@ -177,10 +331,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: user.id,
             email: user.email ?? null,
             fullName:
-              (user.user_metadata?.full_name as string | undefined) ??
-              (user.user_metadata?.name as string | undefined) ??
-              null,
-            avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+              user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+            avatarUrl: user.user_metadata?.avatar_url ?? null,
           }
         : null,
     );
@@ -188,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut, unlinkedClerk }}>
       {children}
     </AuthContext.Provider>
   );

@@ -14,7 +14,7 @@
  * `profiles.clerk_id`. Handing a Clerk id to any of that would silently match
  * nothing.
  */
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseAuth } from '@/integrations/supabase/authClient';
 
 export interface CurrentUser {
   /** profiles.id — the uuid identity used everywhere in this app. */
@@ -42,12 +42,11 @@ export function peekCurrentUser(): CurrentUser | null {
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (cached) return cached;
 
-  // Fallback for as long as Supabase Auth is the source of truth. Once the
-  // client is configured with `accessToken`, supabase.auth throws rather than
-  // returning, so this branch is removed at that point and the provider becomes
-  // solely responsible for publishing the user.
+  // Fallback for as long as Supabase Auth is still a way in. It has to ask
+  // supabaseAuth rather than the main client: the main client is configured
+  // with `accessToken`, so its `.auth` throws on every access.
   try {
-    const { data } = await supabase.auth.getUser();
+    const { data } = await supabaseAuth.auth.getUser();
     if (!data.user) return null;
     const meta = data.user.user_metadata ?? {};
     return {
