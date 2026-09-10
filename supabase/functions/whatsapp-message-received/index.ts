@@ -11,6 +11,7 @@
 // notification forwarders resend recent messages repeatedly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { splitMessage } from './split.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
 
     const { data: integ, error: intErr } = await supabase
       .from('whatsapp_integrations')
-      .select('id, organization_id, tree_id, backlog_id, chat_id, enabled')
+      .select('id, organization_id, tree_id, backlog_id, chat_id, enabled, split_on_newline, split_on_space, split_delimiters, min_fragment_length')
       .eq('webhook_secret', token)
       .maybeSingle();
 
@@ -148,13 +149,15 @@ Deno.serve(async (req) => {
       if (integ.chat_id && m.chat_id && m.chat_id !== integ.chat_id) continue;
       if (m.type && m.type !== 'text') continue;
 
-      // People post lists into the group, so every non-empty line becomes its
-      // own work item rather than one item holding the whole message.
-      const allLines = (m.text?.body ?? m.body ?? '')
-        .toString()
-        .split(/\r?\n/)
-        .map((line: string) => line.trim())
-        .filter((line: string) => line.length > 0);
+      // People post lists into the group, so a message can become several work
+      // items. Which characters start a new item is configured per integration
+      // (line breaks only, by default).
+      const allLines = splitMessage((m.text?.body ?? m.body ?? '').toString(), {
+        splitOnNewline: (integ as { split_on_newline?: boolean }).split_on_newline ?? true,
+        splitOnSpace: (integ as { split_on_space?: boolean }).split_on_space ?? false,
+        delimiters: (integ as { split_delimiters?: string }).split_delimiters ?? '',
+        minFragmentLength: (integ as { min_fragment_length?: number }).min_fragment_length ?? 1,
+      });
       // Drop anything already on the list, and anything repeated within this
       // request — the same line can appear twice in one forwarded batch.
       const lines = allLines.filter((line: string) => {
