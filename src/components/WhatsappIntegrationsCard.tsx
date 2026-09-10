@@ -242,36 +242,40 @@ export function WhatsappIntegrationsCard() {
                   </div>
                 </div>
 
-                <div className="grid gap-2 text-sm">
+                <div className="grid gap-3 text-sm">
                   <div className="text-muted-foreground text-xs">
                     Target: <span className="text-foreground">{treeName} / {backlogName}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-24 shrink-0 text-xs">Webhook URL</span>
-                    <code className="flex-1 truncate bg-muted px-2 py-1 rounded text-xs">{fullUrl}</code>
-                    <Button size="sm" variant="ghost" onClick={() => copy(fullUrl, "URL")}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="text-muted-foreground shrink-0 text-xs sm:w-24">Webhook URL</span>
+                    <code className="min-w-0 flex-1 break-all rounded bg-muted px-2 py-1 text-xs">{fullUrl}</code>
+                    <div className="flex justify-end sm:block">
+                      <Button size="sm" variant="ghost" onClick={() => copy(fullUrl, "URL")}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-24 shrink-0 text-xs">Auth header</span>
-                    <code className="flex-1 truncate bg-muted px-2 py-1 rounded text-xs">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="text-muted-foreground shrink-0 text-xs sm:w-24">Auth header</span>
+                    <code className="min-w-0 flex-1 break-all rounded bg-muted px-2 py-1 text-xs">
                       {isRevealed ? fullHeader : `X-Webhook-Token: ${"•".repeat(16)}`}
                     </code>
-                    <Button size="sm" variant="ghost" onClick={() => setRevealed((r) => ({ ...r, [i.id]: !isRevealed }))}>
-                      {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => copy(i.webhook_secret, "Token")}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => rotateSecret(i.id)} title="Rotate secret">
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex flex-wrap justify-end gap-1 sm:flex-nowrap sm:gap-0">
+                      <Button size="sm" variant="ghost" onClick={() => setRevealed((r) => ({ ...r, [i.id]: !isRevealed }))}>
+                        {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => copy(i.webhook_secret, "Token")}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => rotateSecret(i.id)} title="Rotate secret">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-24 shrink-0 text-xs">Chat ID filter</span>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <span className="text-muted-foreground shrink-0 text-xs sm:w-24">Chat ID filter</span>
                     <Input
-                      className="h-8 text-xs"
+                      className="h-8 min-w-0 text-xs"
                       placeholder="(any chat)"
                       defaultValue={i.chat_id ?? ""}
                       onBlur={(e) => {
