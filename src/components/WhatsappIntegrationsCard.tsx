@@ -184,8 +184,9 @@ export function WhatsappIntegrationsCard() {
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
           Forward a WhatsApp chat into a backlog. Every message becomes an "In Progress" work item at the top of the
-          chosen backlog, and <strong>each line of a message becomes its own item</strong>, so a list posted in one go
-          arrives as separate tasks in the order written.
+          chosen backlog, and <strong>you choose how a message is split into items</strong> — by line breaks (the
+          default), commas, spaces or characters of your own — so a list posted in one go arrives as separate tasks in
+          the order written.
         </p>
         <p className="text-sm text-muted-foreground">
           The simplest source is an Android phone running a notification-forwarding app such as{" "}
