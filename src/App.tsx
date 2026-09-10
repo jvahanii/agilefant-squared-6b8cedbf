@@ -63,7 +63,6 @@ const TeamSettings = lazy(() => import("./pages/TeamSettings"));
 const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
-const SuperuserYoutube = lazy(() => import("./pages/SuperuserYoutube"));
 const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
 
 const queryClient = new QueryClient();
@@ -221,7 +220,6 @@ function AppRoutes() {
         <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/settings/bells-whistles" element={<BellsAndWhistles />} />
         <Route path="/manager" element={<ManagerScreen />} />
-        <Route path="/superuser/youtube" element={<SuperuserYoutube />} />
         <Route path="/user-guide" element={<UserGuide />} />
         {/* Every sign-in route, not just /auth: reaching /auth/legacy or
             /auth/sign-up while already signed in used to fall through to the

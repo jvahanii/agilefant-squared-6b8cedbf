@@ -58,12 +58,7 @@ function publish(next: ClerkState) {
  * made every profile lookup fail with "reading 'rest'" of undefined.
  */
 let signOutFromClerk: (() => Promise<unknown>) | null = null;
-let clerkUserRef: {
-  updatePassword?: (params: {
-    newPassword: string;
-    currentPassword?: string;
-  }) => Promise<unknown>;
-} | null = null;
+let clerkRef: { openUserProfile: () => void } | null = null;
 
 export async function clerkSignOut(): Promise<void> {
   await signOutFromClerk?.();
@@ -75,21 +70,18 @@ export function clerkHasSession(): boolean {
 }
 
 /**
- * Change the signed-in Clerk user's password. Clerk asks for the current one
- * when the account has a password already, which is why the form has always
- * collected it even though Supabase never used it.
+ * Open Clerk's own account screen, where password management lives.
+ *
+ * Changing a password through `user.updatePassword()` from a hand-built form
+ * fails with "additional verification required": Clerk treats it as a
+ * sensitive operation and wants a recent authentication factor first. Driving
+ * that reverification flow ourselves would mean rebuilding a chunk of Clerk,
+ * so this hands over to the component that already does it -- and which also
+ * covers the cases the old form never did, like an account with no password
+ * at all because it signed up through Google.
  */
-export async function clerkChangePassword(
-  currentPassword: string,
-  newPassword: string,
-): Promise<void> {
-  if (!clerkUserRef?.updatePassword) {
-    throw new Error('No Clerk session is available to change a password for.');
-  }
-  await clerkUserRef.updatePassword({
-    newPassword,
-    currentPassword: currentPassword || undefined,
-  });
+export function openClerkUserProfile(): void {
+  clerkRef?.openUserProfile();
 }
 
 /**
@@ -143,8 +135,10 @@ export function ClerkBridge() {
 
   useEffect(() => {
     signOutFromClerk = () => clerk.signOut();
+    clerkRef = clerk;
     return () => {
       signOutFromClerk = null;
+      clerkRef = null;
     };
   }, [clerk]);
 
@@ -153,7 +147,6 @@ export function ClerkBridge() {
       publish({ status: 'unknown' });
       return;
     }
-    clerkUserRef = user ?? null;
     if (!user) {
       publish({ status: 'signed-out' });
       return;

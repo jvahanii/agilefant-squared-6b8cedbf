@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseAuth } from "@/integrations/supabase/authClient";
-import { clerkChangePassword, clerkHasSession } from "@/lib/clerkBridge";
+import { clerkHasSession, openClerkUserProfile } from "@/lib/clerkBridge";
 import { paginateSelect } from "@/integrations/supabase/pagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -26,7 +26,6 @@ import {
   Clock,
   Settings2,
   FlaskConical,
-  Youtube,
   Wrench,
   LayoutGrid,
   Shield,
@@ -940,15 +939,6 @@ export default function TeamSettings() {
               </div>
               <div className="flex items-center justify-between pt-3 border-t">
                 <div>
-                  <p className="text-sm font-medium">YouTube Channels</p>
-                  <p className="text-xs text-muted-foreground">Manage YouTube channel integrations.</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/superuser/youtube")}>
-                  <Youtube className="w-3.5 h-3.5 mr-1 text-red-500" /> YouTube
-                </Button>
-              </div>
-              <div className="flex items-center justify-between pt-3 border-t">
-                <div>
                   <p className="text-sm font-medium">Manager Screen</p>
                   <p className="text-xs text-muted-foreground">Browse all organizations, users, teams, and recent sign-ins.</p>
                 </div>
@@ -1024,7 +1014,6 @@ export default function TeamSettings() {
 }
 
 function ChangePasswordForm() {
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1040,29 +1029,33 @@ function ChangePasswordForm() {
       return;
     }
     setLoading(true);
-    try {
-      // Whichever system holds the session owns the password. Sending a Clerk
-      // user to supabaseAuth would fail: it has no session for them.
-      if (clerkHasSession()) {
-        await clerkChangePassword(currentPassword, newPassword);
-      } else {
-        const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
-        if (error) throw new Error(error.message);
-      }
+    const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : ((err as { errors?: { message?: string }[] })?.errors?.[0]?.message ??
-            "Could not change the password.");
-      toast({ title: "Error", description: message, variant: "destructive" });
     }
     setLoading(false);
   };
+
+  // Clerk owns the password once it holds the session, and it will not change
+  // one without reverifying the user first -- which its own account screen
+  // knows how to do and this form does not.
+  if (clerkHasSession()) {
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Your password is managed by Clerk, which will ask you to confirm your identity before
+          changing it.
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={() => openClerkUserProfile()}>
+          Manage password
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleChangePassword} className="space-y-3">
