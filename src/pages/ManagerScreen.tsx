@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
 import { getPlanByProductId, PLANS, type PlanKey } from "@/hooks/useSubscription";
-import { getSignInLog, type SignInEntry } from "@/store/signInLogStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +53,12 @@ interface UserRow {
   full_name: string | null;
   is_superuser: boolean;
   created_at: string;
+  /** Whether a Clerk account has claimed this profile yet. */
+  clerk_linked: boolean;
+  organizations: number;
+  time_entries: number;
+  /** Most recent time entry — the closest thing to "last used the app". */
+  last_activity: string | null;
 }
 
 interface TeamRow {
@@ -75,7 +80,6 @@ export default function ManagerScreen() {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ type: "org" | "user"; id: string; name: string } | null>(null);
-  const [signIns, setSignIns] = useState<SignInEntry[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [orgPlans, setOrgPlans] = useState<Record<string, PlanKey>>({});
   const [plansLoading, setPlansLoading] = useState(false);
@@ -115,7 +119,9 @@ export default function ManagerScreen() {
     try {
       const [orgsRes, usersRes, teamsRes, membershipsRes] = await Promise.all([
         supabase.from("organizations").select("id, name, slug, created_at").order("created_at"),
-        supabase.from("profiles").select("id, email, full_name, is_superuser, created_at").order("created_at"),
+        // Aggregated server-side: counting time entries in the browser would
+        // mean fetching every row just to take its length.
+        supabase.rpc("superuser_user_overview"),
         supabase.from("teams").select("id, name, organization_id, created_at").order("name"),
         supabase.from("memberships").select("organization_id"),
       ]);
@@ -296,11 +302,6 @@ export default function ManagerScreen() {
     }
   };
 
-  const EXCLUDED_SIGN_IN_EMAIL = "jvahanii@gmail.com";
-  const loadSignIns = () => {
-    setSignIns(getSignInLog().filter((s) => (s.email ?? "").toLowerCase() !== EXCLUDED_SIGN_IN_EMAIL));
-  };
-
   const handleNavigateToOrg = async (orgId: string) => {
     // Switch active org and navigate to main app
     const org = orgs.find((o) => o.id === orgId);
@@ -374,8 +375,8 @@ export default function ManagerScreen() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="organizations" onValueChange={(v) => { if (v === "billing") loadOrgPlans(orgs.map((o) => o.id)); if (v === "sign-ins") loadSignIns(); }}>
-          <TabsList className="grid grid-cols-5 w-full">
+        <Tabs defaultValue="organizations" onValueChange={(v) => { if (v === "billing") loadOrgPlans(orgs.map((o) => o.id)); }}>
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="organizations">
               <Building2 className="w-4 h-4 mr-1.5" /> Organizations
             </TabsTrigger>
@@ -387,9 +388,6 @@ export default function ManagerScreen() {
             </TabsTrigger>
             <TabsTrigger value="billing">
               <CreditCard className="w-4 h-4 mr-1.5" /> Billing
-            </TabsTrigger>
-            <TabsTrigger value="sign-ins">
-              <Clock className="w-4 h-4 mr-1.5" /> Sign-ins
             </TabsTrigger>
           </TabsList>
 
@@ -473,6 +471,10 @@ export default function ManagerScreen() {
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Joined</TableHead>
+                        <TableHead className="text-right">Orgs</TableHead>
+                        <TableHead className="text-right">Time entries</TableHead>
+                        <TableHead>Last activity</TableHead>
+                        <TableHead>Clerk</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -492,6 +494,22 @@ export default function ManagerScreen() {
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {new Date(u.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{u.organizations}</TableCell>
+                          <TableCell className="text-right tabular-nums">{u.time_entries}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {u.last_activity ? (
+                              new Date(u.last_activity).toLocaleDateString()
+                            ) : (
+                              <span className="italic">never</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {u.clerk_linked ? (
+                              <Badge variant="outline">Linked</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm italic">not yet</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {!u.is_superuser && u.id !== user?.id && (
@@ -612,44 +630,6 @@ export default function ManagerScreen() {
             </Card>
           </TabsContent>
 
-          {/* Sign-ins */}
-          <TabsContent value="sign-ins">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> Recent sign-ins by other users than jvahanii@gmail.com
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {signIns.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No sign-in records yet. Sign-in data will appear here as users sign in across all organizations.</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Sign-in Time</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {signIns.map((s, i) => (
-                        <TableRow key={`${s.id}-${s.timestamp}-${i}`}>
-                          <TableCell className="font-medium">
-                            {s.fullName || <span className="text-muted-foreground italic">—</span>}
-                          </TableCell>
-                          <TableCell>{s.email || <span className="text-muted-foreground italic">—</span>}</TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {new Date(s.timestamp).toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
 

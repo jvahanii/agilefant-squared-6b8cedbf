@@ -4,7 +4,6 @@ import { useOrgStore } from '@/store/orgStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
-import { recordSignIn } from '@/store/signInLogStore';
 import { setCurrentUser } from "@/lib/currentUser";
 import {
   clerkSignOut,
@@ -179,11 +178,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clerkMappingPending = clerkUserId !== null && currentMapping === null;
   const loading = clerkDeciding || clerkMappingPending;
 
-  useEffect(() => {
-    if (!user) return;
-    // Record sign-in locally for the manager screen.
-    recordSignIn(user.id, user.user_metadata?.full_name ?? null, user.email ?? null);
-  }, [user]);
 
   const signOut = async () => {
     await clerkSignOut();

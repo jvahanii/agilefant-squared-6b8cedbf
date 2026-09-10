@@ -1404,6 +1404,20 @@ export type Database = {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
       }
+      superuser_user_overview: {
+        Args: never
+        Returns: {
+          clerk_linked: boolean
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          is_superuser: boolean
+          last_activity: string
+          organizations: number
+          time_entries: number
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "member"
