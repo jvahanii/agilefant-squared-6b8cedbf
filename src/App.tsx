@@ -223,7 +223,10 @@ function AppRoutes() {
         <Route path="/manager" element={<ManagerScreen />} />
         <Route path="/superuser/youtube" element={<SuperuserYoutube />} />
         <Route path="/user-guide" element={<UserGuide />} />
-        <Route path="/auth" element={<Navigate to="/" replace />} />
+        {/* Every sign-in route, not just /auth: reaching /auth/legacy or
+            /auth/sign-up while already signed in used to fall through to the
+            catch-all and show a 404. The splat also matches bare /auth. */}
+        <Route path="/auth/*" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
