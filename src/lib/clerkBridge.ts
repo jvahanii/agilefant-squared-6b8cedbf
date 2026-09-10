@@ -74,11 +74,31 @@ export async function clerkSignOut(): Promise<void> {
  * It casts the client rather than the method: rpc() reads `this` internally, so
  * pulling it off the client into a local breaks the call.
  */
+type UuidRpcClient = {
+  rpc: (fn: string) => Promise<{ data: string | null; error: { message: string } | null }>;
+};
+
+const rpcClient = () => supabase as unknown as UuidRpcClient;
+
 export async function fetchAppUserId(): Promise<string | null> {
-  const client = supabase as unknown as {
-    rpc: (fn: string) => Promise<{ data: string | null; error: { message: string } | null }>;
-  };
-  const { data, error } = await client.rpc('current_user_id');
+  const { data, error } = await rpcClient().rpc('current_user_id');
+  if (error) throw new Error(error.message);
+  return data ?? null;
+}
+
+/**
+ * Claim a profile for the current Clerk session: link an existing one by
+ * verified email, or create a new one.
+ *
+ * Kept separate from fetchAppUserId because this one writes. It runs only
+ * when the read came back empty, so a returning user never touches it.
+ *
+ * Throws rather than returning null when the session carries no verified
+ * email — that is a state the user has to be told about, not one to paper
+ * over by silently creating an unreachable account.
+ */
+export async function linkClerkIdentity(): Promise<string | null> {
+  const { data, error } = await rpcClient().rpc('link_clerk_identity');
   if (error) throw new Error(error.message);
   return data ?? null;
 }

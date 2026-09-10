@@ -8,7 +8,13 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { recordSignIn } from '@/store/signInLogStore';
 import { setCurrentUser } from "@/lib/currentUser";
-import { clerkSignOut, fetchAppUserId, getClerkState, subscribeToClerk } from "@/lib/clerkBridge";
+import {
+  clerkSignOut,
+  fetchAppUserId,
+  getClerkState,
+  linkClerkIdentity,
+  subscribeToClerk,
+} from "@/lib/clerkBridge";
 
 /**
  * The subset of a Supabase `User` this app actually reads, so a Clerk session
@@ -232,7 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMapping({ clerkUserId, appUserId: null, error: 'the profile lookup timed out' });
       }
     }, 8000);
+    // A first-time Clerk account has no profile yet, so the read comes back
+    // empty and link_clerk_identity() is what creates or claims one. Only
+    // after that has been tried is an empty result really "not linked".
     fetchAppUserId()
+      .then((appUserId) => appUserId ?? linkClerkIdentity())
       .then((appUserId) => {
         clearTimeout(timeout);
         if (!cancelled) setMapping({ clerkUserId, appUserId, error: null });
