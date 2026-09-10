@@ -21,6 +21,27 @@ interface Integration {
   chat_id: string | null;
   webhook_secret: string;
   enabled: boolean;
+  split_on_newline: boolean;
+  split_on_space: boolean;
+  split_delimiters: string;
+  min_fragment_length: number;
+}
+
+/** Mirrors the splitting logic used by the whatsapp-message-received function. */
+function splitPreview(body: string, i: Integration): string[] {
+  const chars = new Set<string>();
+  if (i.split_on_newline) { chars.add("\n"); chars.add("\r"); }
+  if (i.split_on_space) { chars.add(" "); chars.add("\t"); }
+  for (const ch of i.split_delimiters ?? "") {
+    if (!ch.trim()) continue;
+    chars.add(ch);
+  }
+  const min = Math.max(1, Number(i.min_fragment_length) || 1);
+  const escape = (ch: string) => ch.replace(/[\\\]^-]/g, (m) => `\\${m}`);
+  const raw = chars.size === 0
+    ? [body]
+    : body.split(new RegExp(`[${[...chars].map(escape).join("")}]`));
+  return raw.map((s) => s.trim()).filter((s) => s.length >= min);
 }
 
 const BASE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-message-received`;
