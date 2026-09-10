@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseAuth } from "@/integrations/supabase/authClient";
+import { clerkChangePassword, clerkHasSession } from "@/lib/clerkBridge";
 import { paginateSelect } from "@/integrations/supabase/pagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -1039,14 +1040,26 @@ function ChangePasswordForm() {
       return;
     }
     setLoading(true);
-    const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      // Whichever system holds the session owns the password. Sending a Clerk
+      // user to supabaseAuth would fail: it has no session for them.
+      if (clerkHasSession()) {
+        await clerkChangePassword(currentPassword, newPassword);
+      } else {
+        const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
+        if (error) throw new Error(error.message);
+      }
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : ((err as { errors?: { message?: string }[] })?.errors?.[0]?.message ??
+            "Could not change the password.");
+      toast({ title: "Error", description: message, variant: "destructive" });
     }
     setLoading(false);
   };

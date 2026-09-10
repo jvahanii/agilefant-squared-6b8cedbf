@@ -4,6 +4,7 @@
 //   2) Authorization: Bearer <user JWT> where the user is a superuser.
 // Without one of those, the function returns 401 and never iterates orgs.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireAppUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,23 +33,27 @@ Deno.serve(async (req) => {
   // Allow service-role calls (pg_cron / internal) without further checks.
   let authorized = token === serviceKey;
 
-  // Otherwise, only allow superusers.
+  // Otherwise, only allow superusers. Resolved through current_user_id():
+  // auth.getUser() rejects a Clerk token outright, which locked the superuser
+  // out of triggering a backup by hand.
   if (!authorized) {
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
-    if (userErr || !userData?.user) {
+    let callerId: string;
+    try {
+      callerId = (await requireAppUser(req)).id;
+    } catch {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false },
+    });
     const { data: profile } = await userClient
       .from("profiles")
       .select("is_superuser")
-      .eq("id", userData.user.id)
+      .eq("id", callerId)
       .maybeSingle();
     authorized = profile?.is_superuser === true;
   }

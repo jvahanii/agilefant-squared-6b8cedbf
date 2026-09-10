@@ -2,6 +2,7 @@
 // Uses the server-side YOUTUBE_API_KEY secret. Requires an authenticated caller.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0';
+import { requireAppUser } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,16 +56,19 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_ANON_KEY')!,
     { global: { headers: { Authorization: authHeader } } },
   );
-  const token = authHeader.replace('Bearer ', '');
-  const { data: claims, error: authErr } = await supabase.auth.getClaims(token);
-  if (authErr || !claims?.claims) {
+
+  // The token itself validated fine here before, but the subject was then
+  // used directly as a uuid -- which a Clerk id (`user_…`) is not, so the
+  // membership check below matched nothing for every Clerk session.
+  let userId: string;
+  try {
+    userId = (await requireAppUser(req)).id;
+  } catch {
     return json({ error: 'Unauthorized' }, 401);
   }
 
   // Require the caller to belong to at least one organization to prevent
   // unaffiliated accounts from consuming the shared YOUTUBE_API_KEY quota.
-  const userId = claims.claims.sub as string | undefined;
-  if (!userId) return json({ error: 'Unauthorized' }, 401);
   const { data: membership, error: memErr } = await supabase
     .from('memberships')
     .select('id')

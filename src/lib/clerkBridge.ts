@@ -51,11 +51,45 @@ function publish(next: ClerkState) {
   for (const listener of listeners) listener(next);
 }
 
-/** Captured from inside the provider so sign-out doesn't depend on a global. */
+/**
+ * Captured from inside the provider so sign-out and password changes do not
+ * depend on a global. The user object is held whole rather than as a plucked
+ * method: its methods read `this`, and detaching one is exactly the bug that
+ * made every profile lookup fail with "reading 'rest'" of undefined.
+ */
 let signOutFromClerk: (() => Promise<unknown>) | null = null;
+let clerkUserRef: {
+  updatePassword?: (params: {
+    newPassword: string;
+    currentPassword?: string;
+  }) => Promise<unknown>;
+} | null = null;
 
 export async function clerkSignOut(): Promise<void> {
   await signOutFromClerk?.();
+}
+
+/** Whether Clerk is the system currently holding the session. */
+export function clerkHasSession(): boolean {
+  return state.status === 'signed-in';
+}
+
+/**
+ * Change the signed-in Clerk user's password. Clerk asks for the current one
+ * when the account has a password already, which is why the form has always
+ * collected it even though Supabase never used it.
+ */
+export async function clerkChangePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  if (!clerkUserRef?.updatePassword) {
+    throw new Error('No Clerk session is available to change a password for.');
+  }
+  await clerkUserRef.updatePassword({
+    newPassword,
+    currentPassword: currentPassword || undefined,
+  });
 }
 
 /**
@@ -119,6 +153,7 @@ export function ClerkBridge() {
       publish({ status: 'unknown' });
       return;
     }
+    clerkUserRef = user ?? null;
     if (!user) {
       publish({ status: 'signed-out' });
       return;

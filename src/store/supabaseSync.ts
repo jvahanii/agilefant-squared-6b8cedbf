@@ -508,8 +508,13 @@ async function repairStaleOrgPrefixes(
 
 // ─── Sync helpers ──────────────────────────────────────────────────────────
 
-/** Refresh the Supabase auth session and retry a DB operation once on auth errors. */
-async function withSessionRetry(
+/**
+ * Refresh the Supabase auth session and retry a DB operation once on auth errors.
+ *
+ * Exported for the test that pins the retry to happening even when the refresh
+ * fails, which is always the case for a Clerk session.
+ */
+export async function withSessionRetry(
   operation: () => PromiseLike<{ error: { message?: string; code?: string } | null }>
 ): Promise<{ error: { message?: string; code?: string } | null }> {
   const result = await operation();
@@ -522,8 +527,13 @@ async function withSessionRetry(
     (message && (message.includes('JWT') || message.includes('not authenticated')));
   if (!isAuthError) return result;
 
-  const { error: refreshError } = await supabaseAuth.auth.refreshSession();
-  if (refreshError) return result; // Refresh itself failed – surface the original error.
+  // A Clerk session has no Supabase session to refresh, so refreshSession()
+  // always fails for it — which used to skip the retry entirely and surface an
+  // error that would have healed itself. The data client mints a fresh token
+  // per request through its accessToken callback, so simply re-attempting is
+  // the right recovery. Refreshing still helps a legacy Supabase session, so it
+  // is attempted first, but its failure no longer blocks the retry.
+  await supabaseAuth.auth.refreshSession();
 
   return operation();
 }

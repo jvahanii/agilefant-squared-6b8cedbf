@@ -8,7 +8,6 @@
 //   preview     → runs a Gmail search and returns extracted links (no writes)
 //   import      → creates one work item per selected link
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   adminClient,
   corsHeaders,
@@ -23,18 +22,10 @@ import {
   ExtractedLink,
 } from '../_shared/gmail.ts';
 import { importLinksAsWorkItems } from '../_shared/gmailImport.ts';
+import { requireAppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
 
-async function requireUser(req: Request) {
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const anon = createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data, error } = await anon.auth.getUser();
-  if (error || !data.user) throw new Error('unauthorized');
-  return data.user;
-}
 
 async function assertOrgMember(userId: string, orgId: string) {
   const admin = adminClient();
@@ -52,7 +43,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const user = await requireUser(req);
+    // Was auth.getUser(), which resolves against auth.users and so rejected
+    // every Clerk session. requireAppUser goes via current_user_id() instead.
+    const user = await requireAppUser(req);
     const admin = adminClient();
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const action = String(body.action ?? 'status');
