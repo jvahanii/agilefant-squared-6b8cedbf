@@ -15,8 +15,8 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // !! lives in ./authClient so a regeneration only costs this one line.
 //
 // Supplying `accessToken` also disables this client's own auth — supabase-js
-// replaces `.auth` with a proxy that throws — which is why Supabase sign-in,
-// recovery and sign-out all go through supabaseAuth in ./authClient instead.
+// replaces `.auth` with a proxy that throws. Nothing needs it: Clerk handles
+// sign-in, sign-out and password changes, and this client only carries tokens.
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   accessToken: getSupabaseAccessToken,
 });

@@ -1,21 +1,18 @@
 /**
  * withSessionRetry recovers from an expired-JWT or RLS error by retrying the
  * operation once. It used to gate that retry behind a successful
- * `supabaseAuth.auth.refreshSession()` — which is fine for a Supabase session
- * and useless for a Clerk one, because there is no Supabase session to refresh.
- * The refresh always failed, so the retry never ran and an error that would have
- * healed itself was surfaced to the user instead.
+ * `supabaseAuth.auth.refreshSession()`, which always failed for a Clerk session
+ * because there was no Supabase session to refresh — so the retry never ran and
+ * an error that would have healed itself reached the user instead.
  *
- * These tests pin the behaviour that matters: the retry happens even when the
- * refresh fails, and non-auth errors are still returned untouched rather than
- * being retried blindly.
+ * Retrying is now the whole recovery: the data client asks Clerk for a token on
+ * every request, so a second attempt carries a fresh one. These tests pin that,
+ * and that non-auth errors are still returned untouched rather than retried
+ * blindly.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
-const refreshSession = vi.fn(async () => ({ error: { message: "Auth session missing!" } }));
+import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/integrations/supabase/authClient", () => ({
-  supabaseAuth: { auth: { refreshSession: () => refreshSession() } },
   getSupabaseAccessToken: async () => null,
 }));
 
@@ -39,15 +36,11 @@ import { withSessionRetry } from "@/store/supabaseSync";
 
 type OpResult = { error: { message?: string; code?: string } | null };
 
-beforeEach(() => {
-  refreshSession.mockClear();
-});
 
 describe("withSessionRetry", () => {
-  it("retries once after an auth error even though the refresh failed", async () => {
-    // The Clerk case: refreshSession rejects because there is no Supabase
-    // session, but the data client mints a fresh token per request, so the
-    // second attempt is the one that succeeds.
+  it("retries once after an auth error", async () => {
+    // The data client asks Clerk for a token per request, so the second
+    // attempt is the one that carries a valid one.
     const results: OpResult[] = [{ error: { code: "PGRST301", message: "JWT expired" } }, { error: null }];
     const operation = vi.fn(async () => results.shift()!);
 
@@ -67,13 +60,12 @@ describe("withSessionRetry", () => {
     expect(result.error).toBeNull();
   });
 
-  it("returns a successful operation without refreshing anything", async () => {
+  it("does not retry a successful operation", async () => {
     const operation = vi.fn(async (): Promise<OpResult> => ({ error: null }));
 
     const result = await withSessionRetry(operation);
 
     expect(operation).toHaveBeenCalledTimes(1);
-    expect(refreshSession).not.toHaveBeenCalled();
     expect(result.error).toBeNull();
   });
 
@@ -85,7 +77,6 @@ describe("withSessionRetry", () => {
     const result = await withSessionRetry(operation);
 
     expect(operation).toHaveBeenCalledTimes(1);
-    expect(refreshSession).not.toHaveBeenCalled();
     expect(result.error?.code).toBe("23505");
   });
 

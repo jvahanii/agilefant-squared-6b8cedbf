@@ -14,7 +14,6 @@
  * `profiles.clerk_id`. Handing a Clerk id to any of that would silently match
  * nothing.
  */
-import { supabaseAuth } from '@/integrations/supabase/authClient';
 
 export interface CurrentUser {
   /** profiles.id — the uuid identity used everywhere in this app. */
@@ -40,24 +39,10 @@ export function peekCurrentUser(): CurrentUser | null {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  if (cached) return cached;
-
-  // Fallback for as long as Supabase Auth is still a way in. It has to ask
-  // supabaseAuth rather than the main client: the main client is configured
-  // with `accessToken`, so its `.auth` throws on every access.
-  try {
-    const { data } = await supabaseAuth.auth.getUser();
-    if (!data.user) return null;
-    const meta = data.user.user_metadata ?? {};
-    return {
-      id: data.user.id,
-      email: data.user.email ?? null,
-      fullName: (meta.full_name as string | undefined) ?? (meta.name as string | undefined) ?? null,
-      avatarUrl: (meta.avatar_url as string | undefined) ?? null,
-    };
-  } catch {
-    return null;
-  }
+  // Async only because callers await it, and because it once had a Supabase
+  // Auth fallback for whoever asked before the provider had published. Clerk
+  // is the only source now, so the cache is the whole answer.
+  return cached;
 }
 
 export async function getCurrentUserId(): Promise<string | null> {

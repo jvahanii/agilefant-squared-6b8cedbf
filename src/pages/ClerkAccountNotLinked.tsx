@@ -49,16 +49,10 @@ export default function ClerkAccountNotLinked({ account, onSignOut }: Props) {
           problem, and reloading is worth a try.
         </p>
 
-        <div className="flex items-center justify-between gap-3 pt-2">
+        <div className="pt-2">
           <Button variant="outline" size="sm" onClick={() => void onSignOut()}>
             Sign out
           </Button>
-          <Link
-            to="/auth/legacy"
-            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
-          >
-            Use the previous sign-in
-          </Link>
         </div>
       </div>
     </div>

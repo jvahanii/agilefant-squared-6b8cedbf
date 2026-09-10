@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { supabaseAuth } from "@/integrations/supabase/authClient";
-import { clerkHasSession, openClerkUserProfile } from "@/lib/clerkBridge";
+import { clerkSignOut, openClerkUserProfile } from "@/lib/clerkBridge";
 import { paginateSelect } from "@/integrations/supabase/pagination";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -508,7 +507,7 @@ export default function TeamSettings() {
         }
 
         if (currentUserWillBeOrphaned) {
-          await supabaseAuth.auth.signOut();
+          await clerkSignOut();
           navigate("/auth");
           return;
         }
@@ -1014,74 +1013,19 @@ export default function TeamSettings() {
 }
 
 function ChangePasswordForm() {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Error", description: "New passwords do not match.", variant: "destructive" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabaseAuth.auth.updateUser({ password: newPassword });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Password updated", description: "Your password has been changed successfully." });
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setLoading(false);
-  };
-
-  // Clerk owns the password once it holds the session, and it will not change
-  // one without reverifying the user first -- which its own account screen
-  // knows how to do and this form does not.
-  if (clerkHasSession()) {
-    return (
-      <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Your password is managed by Clerk, which will ask you to confirm your identity before
-          changing it.
-        </p>
-        <Button type="button" variant="outline" size="sm" onClick={() => openClerkUserProfile()}>
-          Manage password
-        </Button>
-      </div>
-    );
-  }
-
+  // Clerk owns the password, and will not change one without reverifying the
+  // user first — which its own account screen knows how to do and a form here
+  // does not. It also covers what a password form never could: an account with
+  // no password at all, because it signed up through Google.
   return (
-    <form onSubmit={handleChangePassword} className="space-y-3">
-      <div className="space-y-1">
-        <Label>New Password</Label>
-        <Input
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-          minLength={6}
-        />
-      </div>
-      <div className="space-y-1">
-        <Label>Confirm New Password</Label>
-        <Input
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          minLength={6}
-        />
-      </div>
-      <Button type="submit" disabled={loading} size="sm">
-        {loading ? "Updating..." : "Change Password"}
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Your password is managed by Clerk, which will ask you to confirm your identity before
+        changing it.
+      </p>
+      <Button type="button" variant="outline" size="sm" onClick={() => openClerkUserProfile()}>
+        Manage password
       </Button>
-    </form>
+    </div>
   );
 }

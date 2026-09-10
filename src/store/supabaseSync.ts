@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { supabaseAuth } from "@/integrations/supabase/authClient";
 import { paginateSelect } from '@/integrations/supabase/pagination';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
@@ -136,12 +135,10 @@ export async function loadFromSupabase(
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
 }> {
-  // Ensure the Supabase auth client has finished initialising (including any
-  // pending token refresh) before issuing PostgREST queries.  Without this,
-  // onAuthStateChange can fire INITIAL_SESSION while initialize() is still
-  // running; the access token in currentSession may be stale, causing RLS to
-  // evaluate auth.uid() as null and return empty rows for every table.
-  await supabaseAuth.auth.getSession();
+  // There used to be a barrier here waiting for the Supabase auth client to
+  // finish initialising, so queries could not run against a stale token. Clerk
+  // needs no equivalent: the data client asks for a token per request and
+  // Clerk hands back a fresh one, so there is nothing to wait for.
 
   // ── Wave 1: fire all org-scoped queries in parallel ─────────────────────
   // shares, own trees, own work items, and rank tables are all independent.
@@ -527,14 +524,9 @@ export async function withSessionRetry(
     (message && (message.includes('JWT') || message.includes('not authenticated')));
   if (!isAuthError) return result;
 
-  // A Clerk session has no Supabase session to refresh, so refreshSession()
-  // always fails for it — which used to skip the retry entirely and surface an
-  // error that would have healed itself. The data client mints a fresh token
-  // per request through its accessToken callback, so simply re-attempting is
-  // the right recovery. Refreshing still helps a legacy Supabase session, so it
-  // is attempted first, but its failure no longer blocks the retry.
-  await supabaseAuth.auth.refreshSession();
-
+  // Retrying is the whole recovery: the data client asks for a token on every
+  // request and Clerk hands back a fresh one, so a second attempt carries a
+  // valid token even when the first did not.
   return operation();
 }
 

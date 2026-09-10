@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
+import { clerkEnabled } from "@/lib/clerkBridge";
 import { Info } from "lucide-react";
 
 /**
@@ -13,13 +14,30 @@ import { Info } from "lucide-react";
  * renders: duplicating the banner and the footer links into a second page would
  * mean two places to keep in step for the length of the migration.
  *
- * The previous Supabase sign-in stays reachable at /auth/legacy. Production
- * Clerk keys are bound to agilefant.org and cannot be exercised locally, so
- * this page is only ever seen for the first time on the deployed site; the old
- * route is the way back in if it misbehaves.
+ * Production Clerk keys are bound to agilefant.org and cannot be exercised
+ * locally, so this page is only ever seen for the first time on the deployed
+ * site.
  */
 export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
   const appearance = { elements: { rootBox: "w-full", card: "w-full shadow-none border" } };
+
+  // Clerk is the only way in now, and its components throw outside
+  // ClerkProvider — which main.tsx only mounts when a publishable key is
+  // configured. Say so plainly rather than crashing the page: a build without
+  // the key is misconfigured, not a build with a different sign-in.
+  if (!clerkEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md rounded-md border px-4 py-3 text-sm" role="alert">
+          <p className="font-medium">Sign-in is not configured</p>
+          <p className="mt-1 text-muted-foreground">
+            This build has no Clerk publishable key, so there is no way to sign in. Set
+            VITE_CLERK_PUBLISHABLE_KEY wherever the site is built.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -44,13 +62,11 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground space-x-3">
+        <p className="text-center text-xs text-muted-foreground">
           <Link to="/user-guide" className="hover:text-foreground underline underline-offset-4 transition-colors">
             View User Guide
           </Link>
-          <Link to="/auth/legacy" className="hover:text-foreground underline underline-offset-4 transition-colors">
-            Use the previous sign-in
-          </Link>
+
         </p>
       </div>
     </div>
