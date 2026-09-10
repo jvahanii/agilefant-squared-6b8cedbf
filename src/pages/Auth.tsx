@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
-import { AlertTriangle } from "lucide-react";
+import { Info } from "lucide-react";
 
 /**
  * Sign-in and sign-up via Clerk.
@@ -24,14 +24,18 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
+        {/* Was a warning against creating accounts, which is now the opposite of
+            what a returning user has to do: signing in here is what carries an
+            existing account across. Hence an informational tone, not a caution. */}
         <div
           role="status"
-          className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+          className="flex items-start gap-3 rounded-md border bg-muted/60 px-4 py-3 text-sm"
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <p>
-            We&apos;re moving to Clerk authentication, and strongly suggest you don&apos;t create new
-            accounts until this notification disappears.
+            Agilefant has a new sign-in. Used it before? Sign in with the same email address as
+            always — through Google, or by creating a password here — and your account, teams and
+            work items come with you automatically.
           </p>
         </div>
 
