@@ -18,44 +18,26 @@ jobs:
         with:
           version: latest
 
-      - name: Validate required secret
+      # SUPABASE_DB_URL must be the *pooler* connection string, because
+      # db.<project>.supabase.co resolves to IPv6 only and GitHub runners have no
+      # IPv6 route. This job used to convert one to the other at runtime by
+      # reading supabase/.temp/pooler-url, which cannot work: that path is
+      # gitignored as CLI-managed local state, so it is never present in a
+      # checkout. It had been failing on every migration since that file stopped
+      # being tracked. The converted value was also never used -- the push step
+      # passed the raw secret regardless.
+      - name: Validate SUPABASE_DB_URL
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          if [[ -z "${{ secrets.SUPABASE_DB_URL }}" ]]; then
+          if [[ -z "$DB_URL" ]]; then
             echo "::error::SUPABASE_DB_URL secret is not set. Add it under Settings > Secrets and variables > Actions."
             exit 1
           fi
-
-      - name: Resolve IPv4-compatible DB URL
-        id: db_url
-        run: |
-          db_url="${{ secrets.SUPABASE_DB_URL }}"
-          echo "::add-mask::$db_url"
-
-          if [[ "$db_url" =~ @db\.[a-z0-9-]+\.supabase\.co([:/]|$) ]]; then
-            if [[ ! -f "supabase/.temp/pooler-url" ]]; then
-              echo "::error::SUPABASE_DB_URL points to db.<project>.supabase.co (IPv6 direct host), but supabase/.temp/pooler-url is missing."
-              exit 1
-            fi
-
-            pooler_url="$(cat supabase/.temp/pooler-url)"
-            echo "::add-mask::$pooler_url"
-            if [[ ! "$pooler_url" =~ ^postgres(ql)?://[^@]+@[^/]*pooler\.supabase\.com:[0-9]+(/|$) ]]; then
-              echo "::error::supabase/.temp/pooler-url does not contain a valid Supabase transaction pooler URL."
-              exit 1
-            fi
-
-            pooler_host_port="${pooler_url#*@}"
-            pooler_host_port="${pooler_host_port%%/*}"
-            credentials="${db_url%@*}"
-            host_and_path="${db_url#*@}"
-            path_and_query="${host_and_path#*/}"
-            db_url="${credentials}@${pooler_host_port}/${path_and_query}"
-
-            echo "::notice::Converted SUPABASE_DB_URL to use transaction pooler for IPv4 compatibility."
+          if [[ "$DB_URL" =~ @db\.[a-z0-9-]+\.supabase\.co([:/]|$) ]]; then
+            echo "::error::SUPABASE_DB_URL points at db.<project>.supabase.co, which is IPv6-only and unreachable from GitHub runners. Use the pooler connection string instead: Dashboard > Project Settings > Database > Connection string > Session pooler (port 5432)."
+            exit 1
           fi
-
-          echo "::add-mask::$db_url"
-          echo "value=$db_url" >> "$GITHUB_OUTPUT"
 
       - name: Deploy migrations to remote
         run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"

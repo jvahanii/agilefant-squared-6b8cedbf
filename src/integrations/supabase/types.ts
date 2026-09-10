@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       backlog_statuses: {
@@ -297,7 +322,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gmail_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gmail_import_queries: {
         Row: {
@@ -351,6 +384,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gmail_import_queries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -507,6 +547,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       organization_backups: {
@@ -658,6 +705,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          clerk_id: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -666,6 +714,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          clerk_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -674,6 +723,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          clerk_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -707,6 +757,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -846,7 +903,11 @@ export type Database = {
           enabled: boolean
           id: string
           label: string
+          min_fragment_length: number
           organization_id: string
+          split_delimiters: string
+          split_on_newline: boolean
+          split_on_space: boolean
           tree_id: string
           updated_at: string
           webhook_secret: string
@@ -858,7 +919,11 @@ export type Database = {
           enabled?: boolean
           id?: string
           label?: string
+          min_fragment_length?: number
           organization_id: string
+          split_delimiters?: string
+          split_on_newline?: boolean
+          split_on_space?: boolean
           tree_id: string
           updated_at?: string
           webhook_secret: string
@@ -870,7 +935,11 @@ export type Database = {
           enabled?: boolean
           id?: string
           label?: string
+          min_fragment_length?: number
           organization_id?: string
+          split_delimiters?: string
+          split_on_newline?: boolean
+          split_on_space?: boolean
           tree_id?: string
           updated_at?: string
           webhook_secret?: string
@@ -962,7 +1031,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_chart_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_financials: {
         Row: {
@@ -1215,132 +1292,6 @@ export type Database = {
           },
         ]
       }
-      youtube_channels: {
-        Row: {
-          created_at: string
-          enabled: boolean
-          id: string
-          name: string
-          organization_id: string
-          rank: number
-          updated_at: string
-          url: string
-        }
-        Insert: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          name: string
-          organization_id: string
-          rank?: number
-          updated_at?: string
-          url: string
-        }
-        Update: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          name?: string
-          organization_id?: string
-          rank?: number
-          updated_at?: string
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "youtube_channels_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      youtube_search_channels: {
-        Row: {
-          created_at: string
-          enabled: boolean
-          id: string
-          keywords: string
-          name: string
-          organization_id: string
-          rank: number
-          search_order: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          keywords: string
-          name: string
-          organization_id: string
-          rank?: number
-          search_order?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          keywords?: string
-          name?: string
-          organization_id?: string
-          rank?: number
-          search_order?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "youtube_search_channels_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      youtube_video_links: {
-        Row: {
-          created_at: string
-          enabled: boolean
-          id: string
-          name: string
-          organization_id: string
-          rank: number
-          updated_at: string
-          url: string
-        }
-        Insert: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          name: string
-          organization_id: string
-          rank?: number
-          updated_at?: string
-          url: string
-        }
-        Update: {
-          created_at?: string
-          enabled?: boolean
-          id?: string
-          name?: string
-          organization_id?: string
-          rank?: number
-          updated_at?: string
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "youtube_video_links_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -1364,6 +1315,7 @@ export type Database = {
         Args: { _name: string; _slug: string; _user_id: string }
         Returns: string
       }
+      current_user_id: { Args: never; Returns: string }
       get_tree_sharing_info: {
         Args: { _exclude_org_id: string; _tree_id: string }
         Returns: {
@@ -1427,6 +1379,7 @@ export type Database = {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
       }
+      link_clerk_identity: { Args: never; Returns: string }
       lookup_org_by_slug: {
         Args: { _slug: string }
         Returns: {
@@ -1579,6 +1532,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["owner", "admin", "member"],

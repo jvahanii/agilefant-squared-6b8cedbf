@@ -94,20 +94,9 @@ export function openClerkUserProfile(): void {
  * Returns null when no profile claims this Clerk subject, which is a state the
  * caller has to show rather than hide: the account exists but reaches no data.
  *
- * The cast is because current_user_id() is absent from the generated
- * Database types, and types.ts is regenerated from outside this repo — an entry
- * added there would be silently dropped, so the typing lives here instead.
- * It casts the client rather than the method: rpc() reads `this` internally, so
- * pulling it off the client into a local breaks the call.
  */
-type UuidRpcClient = {
-  rpc: (fn: string) => Promise<{ data: string | null; error: { message: string } | null }>;
-};
-
-const rpcClient = () => supabase as unknown as UuidRpcClient;
-
 export async function fetchAppUserId(): Promise<string | null> {
-  const { data, error } = await rpcClient().rpc('current_user_id');
+  const { data, error } = await supabase.rpc('current_user_id');
   if (error) throw new Error(error.message);
   return data ?? null;
 }
@@ -124,7 +113,7 @@ export async function fetchAppUserId(): Promise<string | null> {
  * over by silently creating an unreachable account.
  */
 export async function linkClerkIdentity(): Promise<string | null> {
-  const { data, error } = await rpcClient().rpc('link_clerk_identity');
+  const { data, error } = await supabase.rpc('link_clerk_identity');
   if (error) throw new Error(error.message);
   return data ?? null;
 }

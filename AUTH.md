@@ -46,16 +46,28 @@ Configure under Sessions → Customize session token.
   edit it — but it carries the `accessToken` line that hands over Clerk's token.
   If Lovable regenerates it, **auth breaks**. Check this file after any
   Lovable-side work.
-- **Cast the client, never the method.** `supabase.rpc` reads `this`; pulling it
-  into a local produced `Cannot read properties of undefined (reading 'rest')`,
-  which surfaced as a *failed profile link* rather than as an obvious bug.
-- **`current_user_id()` is absent from the generated `types.ts`**, so the RPC
-  calls are typed by hand in `clerkBridge.ts`. Adding them to `types.ts` would be
-  silently dropped the next time Lovable regenerates it.
+- **Never detach a supabase-js method from its client.** `supabase.rpc` reads
+  `this`; assigning it to a local produced `Cannot read properties of undefined
+  (reading 'rest')`, which surfaced as a *failed profile link* rather than as an
+  obvious bug.
+- **Regenerate `types.ts` after a schema change**:
+  `supabase gen types typescript --project-id hwwjwkdbautfkhpxuord`. It is
+  generated from the live database, so `current_user_id()`,
+  `link_clerk_identity()` and `profiles.clerk_id` appear in it automatically —
+  they were once cast by hand in `clerkBridge.ts` only because the file was
+  stale.
 - **Applying SQL through the Management API does not record it** in
   `supabase_migrations.schema_migrations`, so the `Deploy Supabase Migrations`
   workflow will try to run it again and fail on the second attempt. Either let CI
   apply migrations, or insert the version row by hand afterwards.
+- **`SUPABASE_DB_URL` must be the pooler connection string.**
+  `db.<project>.supabase.co` is IPv6-only and GitHub runners have no IPv6
+  route. The workflow used to convert one to the other by reading
+  `supabase/.temp/pooler-url`, which is gitignored as CLI-managed local state —
+  so it was never present in a checkout, and every migration deploy failed for
+  two days without anyone noticing. (That file holds no password: the CLI writes
+  only `postgresql://postgres.<ref>@…pooler.supabase.com:5432/postgres` and
+  supplies credentials separately.)
 - **A production Clerk instance must have its own Google credentials.** Only
   development instances can borrow Clerk's. With none configured, Google answers
   `Missing required parameter: client_id` and the redirect carries a bare
