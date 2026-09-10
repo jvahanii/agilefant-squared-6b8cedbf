@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+  # Lets the job be run against a changed secret or a fixed config without
+  # having to invent a migration commit to trigger it.
+  workflow_dispatch:
 
 jobs:
   deploy:
