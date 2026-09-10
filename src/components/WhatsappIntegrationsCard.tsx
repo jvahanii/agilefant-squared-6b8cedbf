@@ -150,6 +150,20 @@ export function WhatsappIntegrationsCard() {
     load();
   };
 
+  // Splitting rules save straight away; the local copy updates first so the
+  // preview reacts immediately.
+  const updateSplit = async (id: string, patch: Partial<Integration>) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    const { error } = await supabase
+      .from("whatsapp_integrations")
+      .update(patch as never)
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Failed to save rules", description: error.message, variant: "destructive" });
+      load();
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this WhatsApp integration?")) return;
     await supabase.from("whatsapp_integrations").delete().eq("id", id);
