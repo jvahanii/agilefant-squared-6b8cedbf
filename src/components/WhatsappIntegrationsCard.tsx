@@ -21,6 +21,27 @@ interface Integration {
   chat_id: string | null;
   webhook_secret: string;
   enabled: boolean;
+  split_on_newline: boolean;
+  split_on_space: boolean;
+  split_delimiters: string;
+  min_fragment_length: number;
+}
+
+/** Mirrors the splitting logic used by the whatsapp-message-received function. */
+function splitPreview(body: string, i: Integration): string[] {
+  const chars = new Set<string>();
+  if (i.split_on_newline) { chars.add("\n"); chars.add("\r"); }
+  if (i.split_on_space) { chars.add(" "); chars.add("\t"); }
+  for (const ch of i.split_delimiters ?? "") {
+    if (!ch.trim()) continue;
+    chars.add(ch);
+  }
+  const min = Math.max(1, Number(i.min_fragment_length) || 1);
+  const escape = (ch: string) => ch.replace(/[\\\]^-]/g, (m) => `\\${m}`);
+  const raw = chars.size === 0
+    ? [body]
+    : body.split(new RegExp(`[${[...chars].map(escape).join("")}]`));
+  return raw.map((s) => s.trim()).filter((s) => s.length >= min);
 }
 
 const BASE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-message-received`;
@@ -45,6 +66,7 @@ export function WhatsappIntegrationsCard() {
   const [items, setItems] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [samples, setSamples] = useState<Record<string, string>>({});
 
   // New integration draft
   const [draftLabel, setDraftLabel] = useState("Kauppalista");
@@ -64,7 +86,15 @@ export function WhatsappIntegrationsCard() {
       .select("*")
       .eq("organization_id", activeOrgId)
       .order("created_at");
-    setItems((data ?? []) as Integration[]);
+    setItems(
+      ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+        ...(row as unknown as Integration),
+        split_on_newline: (row.split_on_newline as boolean) ?? true,
+        split_on_space: (row.split_on_space as boolean) ?? false,
+        split_delimiters: (row.split_delimiters as string) ?? "",
+        min_fragment_length: (row.min_fragment_length as number) ?? 1,
+      })),
+    );
     setLoading(false);
   };
 
@@ -121,6 +151,20 @@ export function WhatsappIntegrationsCard() {
     load();
   };
 
+  // Splitting rules save straight away; the local copy updates first so the
+  // preview reacts immediately.
+  const updateSplit = async (id: string, patch: Partial<Integration>) => {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    const { error } = await supabase
+      .from("whatsapp_integrations")
+      .update(patch as never)
+      .eq("id", id);
+    if (error) {
+      toast({ title: "Failed to save rules", description: error.message, variant: "destructive" });
+      load();
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this WhatsApp integration?")) return;
     await supabase.from("whatsapp_integrations").delete().eq("id", id);
@@ -140,8 +184,9 @@ export function WhatsappIntegrationsCard() {
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
           Forward a WhatsApp chat into a backlog. Every message becomes an "In Progress" work item at the top of the
-          chosen backlog, and <strong>each line of a message becomes its own item</strong>, so a list posted in one go
-          arrives as separate tasks in the order written.
+          chosen backlog, and <strong>you choose how a message is split into items</strong> — by line breaks (the
+          default), commas, spaces or characters of your own — so a list posted in one go arrives as separate tasks in
+          the order written.
         </p>
         <p className="text-sm text-muted-foreground">
           The simplest source is an Android phone running a notification-forwarding app such as{" "}
@@ -282,6 +327,102 @@ export function WhatsappIntegrationsCard() {
                         if ((e.target.value.trim() || null) !== i.chat_id) updateChat(i.id, e.target.value);
                       }}
                     />
+                  </div>
+
+                  <div className="rounded-md border p-3 space-y-3">
+                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Split messages into items
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="flex items-center justify-between gap-2 text-xs">
+                        <span>New lines</span>
+                        <Switch
+                          checked={i.split_on_newline}
+                          onCheckedChange={(v) => updateSplit(i.id, { split_on_newline: v })}
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 text-xs">
+                        <span>Spaces (each word its own item)</span>
+                        <Switch
+                          checked={i.split_on_space}
+                          onCheckedChange={(v) => updateSplit(i.id, { split_on_space: v })}
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 text-xs">
+                        <span>Commas</span>
+                        <Switch
+                          checked={i.split_delimiters.includes(",")}
+                          onCheckedChange={(v) =>
+                            updateSplit(i.id, {
+                              split_delimiters: v
+                                ? `${i.split_delimiters},`
+                                : i.split_delimiters.split(",").join(""),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 text-xs">
+                        <span>Semicolons</span>
+                        <Switch
+                          checked={i.split_delimiters.includes(";")}
+                          onCheckedChange={(v) =>
+                            updateSplit(i.id, {
+                              split_delimiters: v
+                                ? `${i.split_delimiters};`
+                                : i.split_delimiters.split(";").join(""),
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>
+                        <Label className="text-xs">Other characters</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="e.g. / | -"
+                          defaultValue={i.split_delimiters}
+                          key={`delims-${i.id}-${i.split_delimiters}`}
+                          onBlur={(e) => {
+                            if (e.target.value !== i.split_delimiters)
+                              updateSplit(i.id, { split_delimiters: e.target.value });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Minimum item length</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          type="number"
+                          min={1}
+                          defaultValue={i.min_fragment_length}
+                          onBlur={(e) => {
+                            const n = Math.max(1, parseInt(e.target.value, 10) || 1);
+                            if (n !== i.min_fragment_length)
+                              updateSplit(i.id, { min_fragment_length: n });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Try a sample message</Label>
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="milk, bread, eggs"
+                        value={samples[i.id] ?? ""}
+                        onChange={(e) => setSamples((s) => ({ ...s, [i.id]: e.target.value }))}
+                      />
+                      {(samples[i.id] ?? "").trim() && (
+                        <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                          {splitPreview(samples[i.id] ?? "", i).map((frag, idx) => (
+                            <li key={idx}>{frag}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      With every rule off, the whole message becomes a single item.
+                    </p>
                   </div>
                 </div>
               </div>
