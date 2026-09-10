@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { withSupabaseRetry } from '@/lib/supabaseRetry';
+import { getCurrentUser } from "@/lib/currentUser";
 import { resetOrgData } from './supabaseSync';
 import { mockData as staticMockData } from './mockData';
 
@@ -50,19 +51,16 @@ async function ensureProfileExists(userId: string): Promise<void> {
   if (profileError) throw profileError;
   if (existingProfile) return;
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-
-  const authUser = authData.user;
+  const authUser = await getCurrentUser();
   if (!authUser || authUser.id !== userId) {
     throw new Error('Could not initialize your account profile. Please sign in again and retry.');
   }
 
   const { error: insertError } = await supabase.from('profiles').insert({
     id: authUser.id,
-    email: authUser.email ?? null,
-    full_name: authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null,
-    avatar_url: authUser.user_metadata?.avatar_url ?? null,
+    email: authUser.email,
+    full_name: authUser.fullName,
+    avatar_url: authUser.avatarUrl,
   });
 
   if (insertError && insertError.code !== '23505') {

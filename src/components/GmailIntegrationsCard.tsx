@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/lib/currentUser";
 import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
@@ -183,11 +184,11 @@ export function GmailIntegrationsCard() {
       toast({ title: "Pick a backlog tree and backlog", variant: "destructive" });
       return;
     }
-    const { data: session } = await supabase.auth.getUser();
-    if (!session.user) return;
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return;
     const { error } = await supabase.from("gmail_import_queries").insert({
       organization_id: activeOrgId,
-      user_id: session.user.id,
+      user_id: currentUser.id,
       name: newName.trim() || null,
       query,
       tree_id: newTree,

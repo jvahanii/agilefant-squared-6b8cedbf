@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUserId } from '@/lib/currentUser';
 import { useAppStore } from '@/store/appStore';
 import { useOrgStore } from '@/store/orgStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
@@ -527,8 +528,7 @@ export function useRealtimeSync() {
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
     (async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
+      const userId = await getCurrentUserId();
       if (!userId || destroyed) return;
       const snoozeChannel = supabase
         .channel(`work-item-snoozes-${userId}`)

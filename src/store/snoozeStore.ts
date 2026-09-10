@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { paginateSelect } from '@/integrations/supabase/pagination';
+import { getCurrentUserId } from '@/lib/currentUser';
 
 export interface WorkItemSnooze {
   id: string;
@@ -134,8 +135,7 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
 
   loadSnoozes: async () => {
     set({ isLoading: true });
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    const userId = await getCurrentUserId();
     if (!userId) {
       set({ isLoading: false });
       return;
@@ -165,8 +165,7 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
   },
 
   snoozeWorkItem: async ({ workItemId, organizationId, snoozedUntil, note }) => {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    const userId = await getCurrentUserId();
     if (!userId) {
       console.error('Cannot snooze: no authenticated user');
       return;
@@ -198,8 +197,7 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
   },
 
   unsnoozeWorkItem: async (workItemId) => {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    const userId = await getCurrentUserId();
     if (!userId) return;
 
     // Optimistic remove
@@ -220,8 +218,7 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
 
   unsnoozeAll: async (workItemIds) => {
     if (workItemIds.length === 0) return;
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    const userId = await getCurrentUserId();
     if (!userId) return;
 
     // Optimistic remove
