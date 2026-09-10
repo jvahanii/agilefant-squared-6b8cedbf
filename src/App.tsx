@@ -184,6 +184,13 @@ function AppRoutes() {
               provider is only mounted when a key is configured — so a build
               without one gets the Supabase form at /auth, not a blank screen. */}
           <Route path="/auth" element={notLinked ?? (clerkEnabled ? <Auth /> : <AuthLegacy />)} />
+          {/* Clerk starts with no users at all, so during the migration every
+              account — including the one being moved over — has to be created
+              here first and then linked to its existing profile. */}
+          <Route
+            path="/auth/sign-up"
+            element={notLinked ?? (clerkEnabled ? <Auth mode="sign-up" /> : <Navigate to="/auth/legacy" replace />)}
+          />
           <Route path="/auth/legacy" element={<AuthLegacy />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/user-guide" element={<UserGuide />} />

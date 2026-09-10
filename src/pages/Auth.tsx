@@ -1,20 +1,26 @@
 import { Link } from "react-router-dom";
-import { SignIn } from "@clerk/clerk-react";
+import { SignIn, SignUp } from "@clerk/clerk-react";
 import { AlertTriangle } from "lucide-react";
 
 /**
- * Sign-in via Clerk.
+ * Sign-in and sign-up via Clerk.
  *
- * Clerk's own component is used rather than hand-built forms so that email,
+ * Clerk own components are used rather than hand-built forms so that email,
  * password and Google all follow whatever the Clerk instance is configured for
  * — including the custom Google credentials — without this page needing to know.
+ *
+ * Both modes share this file because they differ only in which Clerk component
+ * renders: duplicating the banner and the footer links into a second page would
+ * mean two places to keep in step for the length of the migration.
  *
  * The previous Supabase sign-in stays reachable at /auth/legacy. Production
  * Clerk keys are bound to agilefant.org and cannot be exercised locally, so
  * this page is only ever seen for the first time on the deployed site; the old
  * route is the way back in if it misbehaves.
  */
-export default function Auth() {
+export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
+  const appearance = { elements: { rootBox: "w-full", card: "w-full shadow-none border" } };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
@@ -30,11 +36,11 @@ export default function Auth() {
         </div>
 
         <div className="flex justify-center">
-          <SignIn
-            routing="hash"
-            signUpUrl="/auth"
-            appearance={{ elements: { rootBox: "w-full", card: "w-full shadow-none border" } }}
-          />
+          {mode === "sign-up" ? (
+            <SignUp routing="hash" signInUrl="/auth" appearance={appearance} />
+          ) : (
+            <SignIn routing="hash" signUpUrl="/auth/sign-up" appearance={appearance} />
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground space-x-3">
