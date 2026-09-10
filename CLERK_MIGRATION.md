@@ -35,6 +35,10 @@ a Clerk token actually appears.
 | `bcd2d2d` | All 124 policies and 11 functions now call `current_user_id()` (migration `20260910123000`) |
 | `94ed7e6` | `@clerk/clerk-react` added, both lockfiles synced |
 | `7fda138` | Login-page banner warning against new sign-ups |
+| `af722fd` | Supabase client takes an `accessToken` callback; `supabaseAuth` split out |
+| `8bebae9` | `src/lib/currentUser.ts` — auth-agnostic view of who is signed in |
+| `3251ef3` | `ClerkProvider`, mounted only when a publishable key is configured |
+| `e302157` | Clerk sign-in at `/auth`, Supabase form at `/auth/legacy`, `useAuth` bridged |
 
 Verified against the live database, not just assumed:
 
@@ -63,24 +67,40 @@ Verified against the live database, not just assumed:
   localhost testing: changes must be deployed to be verified. Acceptable because
   jvahanii is the only user, but it means favouring conservative, reversible steps.
 
+## How the frontend is wired now
+
+- `src/lib/clerkBridge.ts` — `ClerkBridge` sits inside `ClerkProvider` and
+  publishes the Clerk session to a plain subscribable store. `useAuth` reads
+  that store instead of Clerk's hooks, which throw outside the provider and so
+  cannot be called from a component that also has to work in a keyless build.
+- `useAuth` resolves the Clerk subject to `profiles.id` through
+  `current_user_id()` and exposes it as `user.id`, unchanged for consumers. It
+  also exposes `unlinkedClerk` for the Clerk-authenticated-but-unlinked state.
+- Clerk wins when both have a session, **except** when Clerk is unlinked — then
+  a Supabase session still gets in. That is what makes `/auth/legacy` a real
+  escape hatch rather than a decoration.
+- Three separate 8 s timeouts (Supabase session, Clerk load, profile lookup)
+  keep any one of them from stranding the app on "Loading...".
+
 ## Remaining work
 
-1. **Supabase → Authentication → Third-party Auth → add Clerk**, domain
-   `clerk.agilefant.org`. Not done. Until this exists Supabase rejects Clerk
-   tokens and `current_user_id()` never sees a `sub` to match.
-2. Wrap the app in `ClerkProvider`.
-3. Give the Supabase client an `accessToken` callback returning Clerk's session
-   token — this is what connects the frontend to `current_user_id()`.
-4. Re-back `useAuth` with Clerk, **keeping its current interface**
-   (`user`, `session`, `loading`, `signOut`) so the nine files calling it don't
-   all need rewriting.
-5. Move sign-in/sign-up and the Google button in `src/pages/Auth.tsx` to Clerk;
-   `src/pages/ResetPassword.tsx` too.
-6. After the first Clerk sign-in, set `profiles.clerk_id` for jvahanii to the
-   Clerk user id. **That single row is what reconnects the account to all 2097
-   work items.**
-7. Verify, then drop the `auth.uid()` fallback from `current_user_id()`.
-8. Remove the login-page banner (one `<div role="status">` block in `Auth.tsx`).
+1. **After the first Clerk sign-in, set `profiles.clerk_id` for jvahanii** to
+   the Clerk user id — the not-linked screen prints it. **That single row is
+   what reconnects the account to all 2097 work items.**
+   `UPDATE public.profiles SET clerk_id = 'user_…' WHERE id =
+   '8036890f-71a3-4aa4-a173-88680c6bb040';`
+2. Move `src/pages/ResetPassword.tsx` to Clerk (still Supabase-only; harmless
+   until Supabase passwords stop being used).
+3. Once Clerk is trusted: drop the `auth.uid()` fallback from
+   `current_user_id()`, drop the `supabaseAuth` fallback in
+   `getSupabaseAccessToken`, delete `/auth/legacy` and `src/pages/AuthLegacy.tsx`.
+4. Remove the sign-up banner (one `<div role="status">` block, now in both
+   `Auth.tsx` and `AuthLegacy.tsx`) and delete this file.
+
+Done since this list was written: Supabase third-party auth for
+`clerk.agilefant.org`, the `accessToken` callback, `ClerkProvider`, the `useAuth`
+bridge, and the Clerk sign-in page — all deployed, with Supabase sign-in and
+data loading confirmed working afterwards.
 
 ## Traps
 
@@ -98,6 +118,13 @@ Verified against the live database, not just assumed:
 - **`appStore.performance.test.ts` asserts wall-clock budgets**, which is why
   `vitest.config.ts` sets `fileParallelism: false`. If those fail, suspect
   machine load before suspecting the code.
+- **`vite dev` can fail to start with `EPERM` renaming `node_modules/.vite/`**
+  — Norton holding the dep-optimiser directory. Every request then 504s with
+  "Outdated Optimize Dep". `vite preview` on a production build has no
+  optimiser and works, so verify that way.
+- **`current_user_id()` is absent from the generated `types.ts`**, so the RPC
+  call is typed by hand in `clerkBridge.ts`. Adding it to `types.ts` would be
+  silently dropped the next time Lovable regenerates that file.
 
 ## Access
 
