@@ -71,12 +71,14 @@ export async function clerkSignOut(): Promise<void> {
  * The cast is because current_user_id() is absent from the generated
  * Database types, and types.ts is regenerated from outside this repo — an entry
  * added there would be silently dropped, so the typing lives here instead.
+ * It casts the client rather than the method: rpc() reads `this` internally, so
+ * pulling it off the client into a local breaks the call.
  */
 export async function fetchAppUserId(): Promise<string | null> {
-  const rpc = supabase.rpc as unknown as (
-    fn: string,
-  ) => Promise<{ data: string | null; error: { message: string } | null }>;
-  const { data, error } = await rpc('current_user_id');
+  const client = supabase as unknown as {
+    rpc: (fn: string) => Promise<{ data: string | null; error: { message: string } | null }>;
+  };
+  const { data, error } = await client.rpc('current_user_id');
   if (error) throw new Error(error.message);
   return data ?? null;
 }
