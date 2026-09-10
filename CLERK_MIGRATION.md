@@ -39,6 +39,11 @@ a Clerk token actually appears.
 | `8bebae9` | `src/lib/currentUser.ts` — auth-agnostic view of who is signed in |
 | `3251ef3` | `ClerkProvider`, mounted only when a publishable key is configured |
 | `e302157` | Clerk sign-in at `/auth`, Supabase form at `/auth/legacy`, `useAuth` bridged |
+| `336281e` | Clerk sign-up route at `/auth/sign-up` |
+| `eb4c9d1` | Call `rpc()` on the client instead of detaching it (lost `this`) |
+| `b38ce59` | `/auth/*` redirects home when signed in, not just `/auth` |
+| `aa73b9b` | `profiles` becomes the identity table; `link_clerk_identity()` |
+| `495e872` | Parse `email_verified` without a cast that can raise |
 
 Verified against the live database, not just assumed:
 
@@ -56,6 +61,14 @@ Verified against the live database, not just assumed:
   integration (all records `DNS only` — proxying them breaks certificate issuance).
 - **Google** using the pre-existing `Agilefant` OAuth client, with
   `https://clerk.agilefant.org/v1/oauth_callback` added to its redirect URIs.
+  A production instance **must** have custom credentials — only development
+  instances can borrow Clerk’s shared ones. When the client id is missing or
+  saved against the wrong instance, Google answers `Missing required
+  parameter: client_id` and the redirect carries a bare valueless `&client_id`.
+- **Session token claims.** The token template adds `email`, `email_verified`,
+  `name` and `picture` alongside the Supabase integration’s managed `role`.
+  Clerk’s default token has no email at all, and `link_clerk_identity()`
+  refuses to link without a verified one.
 - **Organizations: off.** The app has its own multi-tenancy (`organizations`,
   `memberships`, `organization_titles`, `organization_invites`) enforced by those
   124 policies. Clerk Organizations would be a competing source of truth. It can
@@ -74,33 +87,58 @@ Verified against the live database, not just assumed:
   that store instead of Clerk's hooks, which throw outside the provider and so
   cannot be called from a component that also has to work in a keyless build.
 - `useAuth` resolves the Clerk subject to `profiles.id` through
-  `current_user_id()` and exposes it as `user.id`, unchanged for consumers. It
-  also exposes `unlinkedClerk` for the Clerk-authenticated-but-unlinked state.
+  `current_user_id()` and exposes it as `user.id`, unchanged for consumers. When
+  that comes back empty it calls `link_clerk_identity()`, which claims a profile
+  by verified email or creates one; only if *that* fails does `unlinkedClerk`
+  surface the failure screen.
+- **`profiles` is the identity table.** Six tables used to key their user
+  columns to `auth.users(id)`, which made a Clerk-native user unrepresentable.
+  They now reference `profiles(id)`, and `profiles.id` has no foreign key at
+  all: existing rows keep their old uuid, Clerk-native ones get a fresh one.
 - Clerk wins when both have a session, **except** when Clerk is unlinked — then
   a Supabase session still gets in. That is what makes `/auth/legacy` a real
   escape hatch rather than a decoration.
 - Three separate 8 s timeouts (Supabase session, Clerk load, profile lookup)
   keep any one of them from stranding the app on "Loading...".
 
+## Verified working in production
+
+- jvahanii signs in through Clerk **and** through `/auth/legacy`, both reaching
+  the same data.
+- **Sign-up, email/password**: new profile on a fresh uuid with no `auth.users`
+  row behind it, org auto-created by `Onboarding`, role `owner`.
+- **Sign-up, Google**: same, with `full_name` and `avatar_url` filled from the
+  token claims.
+- **Claiming an existing profile**: a brand-new Clerk account signing in with
+  Google against an unlinked profile’s address re-claimed that exact profile,
+  keeping both its organizations, and created nothing new. **This is the whole
+  migration path for the remaining 34 users — there is nothing to import.** The
+  24 Google users click "Continue with Google"; the 14 password users sign up in
+  Clerk with the same address and their profile claims itself.
+- Rejections hold: an already-linked profile cannot be claimed by a second
+  account (it gets an empty profile with no memberships), and an unverified
+  address is refused outright.
+
 ## Remaining work
 
-1. **After the first Clerk sign-in, set `profiles.clerk_id` for jvahanii** to
-   the Clerk user id — the not-linked screen prints it. **That single row is
-   what reconnects the account to all 2097 work items.**
-   `UPDATE public.profiles SET clerk_id = 'user_…' WHERE id =
-   '8036890f-71a3-4aa4-a173-88680c6bb040';`
-2. Move `src/pages/ResetPassword.tsx` to Clerk (still Supabase-only; harmless
-   until Supabase passwords stop being used).
+1. **The five edge functions.** `gmail-connector`, `check-subscription`,
+   `create-checkout`, `customer-portal` and `youtube-proxy` authenticate the
+   caller against Supabase Auth — `auth.getUser()` rejects a Clerk RS256 token
+   outright, and `youtube-proxy` reads `claims.sub` as a uuid, which a Clerk id
+   is not. **Every one of them fails for every Clerk user.** The fix mirrors the
+   database: validate via JWKS, then map the subject to `profiles.id`.
+2. **Realtime after an idle period** is still untested. Clerk session tokens are
+   short-lived and seven channels authenticate with them; if refresh does not
+   reach the socket it fails silently, minutes later.
 3. Once Clerk is trusted: drop the `auth.uid()` fallback from
    `current_user_id()`, drop the `supabaseAuth` fallback in
-   `getSupabaseAccessToken`, delete `/auth/legacy` and `src/pages/AuthLegacy.tsx`.
-4. Remove the sign-up banner (one `<div role="status">` block, now in both
+   `getSupabaseAccessToken`, and delete `/auth/legacy`,
+   `src/pages/AuthLegacy.tsx`, `src/pages/ResetPassword.tsx` and its route.
+   `ResetPassword` is **not** ported to Clerk — it exists only to complete
+   Supabase’s recovery flow, and Clerk does password reset inside its own
+   `<SignIn>` widget.
+4. Remove the sign-up banner (one `<div role="status">` block, now in
    `Auth.tsx` and `AuthLegacy.tsx`) and delete this file.
-
-Done since this list was written: Supabase third-party auth for
-`clerk.agilefant.org`, the `accessToken` callback, `ClerkProvider`, the `useAuth`
-bridge, and the Clerk sign-in page — all deployed, with Supabase sign-in and
-data loading confirmed working afterwards.
 
 ## Traps
 
@@ -125,6 +163,13 @@ data loading confirmed working afterwards.
 - **`current_user_id()` is absent from the generated `types.ts`**, so the RPC
   call is typed by hand in `clerkBridge.ts`. Adding it to `types.ts` would be
   silently dropped the next time Lovable regenerates that file.
+- **Cast the client, never the method.** `supabase.rpc` reads `this`; pulling it
+  into a local produced `Cannot read properties of undefined (reading 'rest')`,
+  which surfaced as a *failed profile link* rather than as an obvious bug.
+- **Clerk locks an account after repeated failed passwords** and tells the user
+  to wait an hour. Unlock it in Dashboard → Users; the policy lives under
+  Configure → Attack protection. While both systems run, the same address has
+  two different passwords, which is what triggers this.
 
 ## Access
 
