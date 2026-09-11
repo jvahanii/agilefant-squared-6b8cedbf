@@ -41,6 +41,7 @@ import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
+import { buildVisibleRows, effectiveAncestors, effectiveChildren } from "@/lib/workItemRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -593,25 +594,23 @@ function WorkItemNodeContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The children this row expands into: those under it in *this* tree and in
+  // a backlog in view. childrenIds spans every tree, so it can't be used as is.
+  const visibleBacklogSet = new Set(allBacklogIds);
+  const shownChildCount = effectiveChildren(workItemId, workItems, treeId, visibleBacklogSet).length;
+
   // Auto-expand a collapsed branch when a drag is held over it for a short time.
   useEffect(() => {
-    if (!isOver || isDragging || !item || item.childrenIds.length === 0 || expanded) return;
+    if (!isOver || isDragging || !item || shownChildCount === 0 || expanded) return;
     const timer = setTimeout(() => {
       toggleExpand(workItemId);
     }, 600);
     return () => clearTimeout(timer);
-  }, [isOver, isDragging, item, expanded, toggleExpand, workItemId]);
+  }, [isOver, isDragging, item, shownChildCount, expanded, toggleExpand, workItemId]);
 
   if (!item) return null;
 
-  const visibleBacklogSet = new Set(allBacklogIds);
-  const hasChildren = item.childrenIds.some((id) => {
-    const child = workItems[id];
-    if (!child) return false;
-    if (getEffectiveParentId(child, treeId) !== workItemId) return false;
-    const childBl = child.backlogAssignments[treeId];
-    return !!childBl && visibleBacklogSet.has(childBl);
-  });
+  const hasChildren = shownChildCount > 0;
 
   const getBacklogPath = (backlogId: string): { id: string; name: string }[] => {
     const path: { id: string; name: string }[] = [];
@@ -628,16 +627,10 @@ function WorkItemNodeContent({
     .map(([tid, blId]) => ({ treeId: tid, path: getBacklogPath(blId) }))
     .filter(({ path }) => path.length > 0);
 
-  const parentItemChain: { id: string; title: string }[] = [];
-  if (depth === 0 && item.parentId) {
-    const visited = new Set<string>();
-    let cur = workItems[item.parentId];
-    while (cur && !visited.has(cur.id)) {
-      visited.add(cur.id);
-      parentItemChain.unshift({ id: cur.id, title: cur.title });
-      cur = cur.parentId ? workItems[cur.parentId] : undefined;
-    }
-  }
+  // A top-level row whose parent is outside the backlog in view shows where it
+  // sits — by its parents in this tree, not its global ones.
+  const parentItemChain: { id: string; title: string }[] =
+    depth === 0 ? effectiveAncestors(workItemId, workItems, treeId).map((a) => ({ id: a.id, title: a.title })) : [];
 
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
@@ -1230,7 +1223,7 @@ function WorkItemNodeContent({
             </div>
             {hasChildren && (
               <span className="text-xs text-muted-foreground tabular-nums min-w-[12px] text-right">
-                {item.childrenIds.length}
+                {shownChildCount}
               </span>
             )}
           </div>
@@ -2859,61 +2852,19 @@ export function WorkItemTreePanel() {
     return items.filter((wi) => !snoozedItemIds.has(wi.id));
   }, [rootWorkItems, visibleFilterSet, snoozedItemIds]);
 
-  const visibleItemIds = useMemo(() => {
-    const ids: string[] = [];
-    const traverse = (workItemId: string) => {
-      ids.push(workItemId);
-      if (expandedWorkItems.has(workItemId)) {
-        const item = workItems[workItemId];
-        if (item && selectedTreeId) {
-          [...item.childrenIds]
-            .map((cid) => workItems[cid])
-            .filter((child): child is WorkItem => {
-              if (!child) return false;
-              const childBl = child.backlogAssignments[selectedTreeId];
-              return !!childBl && backlogIdSet.has(childBl);
-            })
-            .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0))
-            .forEach((child) => traverse(child.id));
-        }
-      }
-    };
-    displayedRootItems.forEach((root) => traverse(root.id));
-    return ids;
-  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet]);
-
-  // Map each visible item ID to its depth in the tree.  Computed from the
-  // flat visibleItemIds list so it stays cheap even with deep nesting.
-  const itemDepthMap = useMemo(() => {
-    const map = new Map<string, number>();
-    const depthStack: { id: string; depth: number }[] = [];
-    for (const id of visibleItemIds) {
-      const item = workItems[id];
-      if (!item) continue;
-      // Pop the stack until we find the actual parent at a shallower depth.
-      while (
-        depthStack.length > 0 &&
-        depthStack[depthStack.length - 1].id !== item.parentId
-      ) {
-        depthStack.pop();
-      }
-      // If the stack is empty we are at root level (depth 0); otherwise depth
-      // = parentDepth + 1.  We still need to check that the parent actually
-      // claims this child in *this* tree (effective parent in multi-backlog
-      // scenarios), otherwise treat it as root.
-      const parentEntry = depthStack[depthStack.length - 1];
-      let depth = 0;
-      if (parentEntry && selectedTreeId) {
-        const effectiveParent = getEffectiveParentId(item, selectedTreeId);
-        if (effectiveParent === parentEntry.id) {
-          depth = parentEntry.depth + 1;
-        }
-      }
-      map.set(id, depth);
-      depthStack.push({ id, depth });
-    }
-    return map;
-  }, [visibleItemIds, workItems, selectedTreeId]);
+  // The rows top to bottom and their indentation, from one walk that follows
+  // each item's parent in this tree (lib/workItemRows). Depth used to be
+  // reconstructed afterwards from global parents, which put every row after a
+  // re-parented multi-tree item at the top level.
+  const visibleRows = useMemo(
+    () =>
+      selectedTreeId
+        ? buildVisibleRows(displayedRootItems.map((r) => r.id), expandedWorkItems, workItems, selectedTreeId, backlogIdSet)
+        : { ids: displayedRootItems.map((r) => r.id), depths: new Map<string, number>() },
+    [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet],
+  );
+  const visibleItemIds = visibleRows.ids;
+  const itemDepthMap = visibleRows.depths;
 
   // For each visible row, compute its sibling-context parent and the drop-zone
   // index *within that sibling group*. The virtualizer's flat index cannot be
@@ -3168,23 +3119,20 @@ export function WorkItemTreePanel() {
   const runningNumbers = useMemo(() => {
     const map = new Map<string, number>();
     let counter = 1;
+    // The same children, in the same order, as the rows (buildVisibleRows).
     const traverse = (workItemId: string) => {
       const item = workItems[workItemId];
-      if (!item) return;
+      if (!item || map.has(workItemId)) return;
       if (snoozedItemIds.has(workItemId)) return;
       if (visibleFilterSet !== null && !visibleFilterSet.has(workItemId)) return;
       map.set(workItemId, counter++);
       if (expandedWorkItems.has(workItemId) && selectedTreeId) {
-        [...item.childrenIds]
-          .map((cid) => workItems[cid])
-          .filter(Boolean)
-          .sort((a, b) => (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0))
-          .forEach((child) => traverse(child.id));
+        effectiveChildren(workItemId, workItems, selectedTreeId, backlogIdSet).forEach((child) => traverse(child.id));
       }
     };
     displayedRootItems.forEach((root) => traverse(root.id));
     return map;
-  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, snoozedItemIds, visibleFilterSet]);
+  }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet, snoozedItemIds, visibleFilterSet]);
 
   const handleSelect = useCallback(
     (id: string, multi: boolean, shift: boolean) => {
