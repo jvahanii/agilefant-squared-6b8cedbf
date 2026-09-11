@@ -49,14 +49,26 @@ without signing in, so the whole of it is kept narrow:
 - **The route sits above `AppRoutes`** in `src/App.tsx`, so a visitor never waits
   on Clerk or triggers membership and data loading.
 - **Anonymous visitors can call exactly one thing**: `get_published_backlog(token)`.
-  It returns titles, descriptions, statuses, points, structure, teams, labels,
-  hyperlinks and logged-time totals. What it never returns: the individual
+  It returns titles and structure, plus whichever of descriptions, statuses,
+  points, teams, labels, hyperlinks and logged-time totals the link shows. What it never returns: the individual
   members of a team (people are always shown as teams), anything from profiles
   such as names or emails, individual time entries or their notes, and financial
   targets. Labels and time are sent only when the owning organization has those
   features on — not sent and hidden, because the payload is readable by whoever
   holds the link. That list lives in that function and nowhere else; no RLS
   policy was widened for this.
+- **Each link can hide item attributes**: statuses, descriptions, points,
+  teams, labels, links and logged time. Titles and structure always show. The
+  choice lives in `published_link_settings`, keyed by target rather than by
+  link, so it can be made before publishing and survives unpublishing. It
+  stores what is *hidden*, so everything shows by default, including any
+  attribute added later. Hiding is enforced by `get_published_backlog()`, which
+  leaves a hidden attribute out of the payload altogether: hiding it only in the
+  page would keep nothing private. The dialog offers points, labels and time
+  only when the owning organization has them on (`get_published_link_options()`,
+  which also covers trees shared in from partners, whose settings the client
+  doesn't hold). As with publishing, anyone who can see the tree can change the
+  choice.
 - **Hyperlinks are only clickable if they are http(s) or mailto.** They come
   straight from the database, so the public page runs each through
   `safeLinkHref()` and shows anything else — a `javascript:` or `data:` URL,

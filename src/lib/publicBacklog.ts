@@ -46,7 +46,8 @@ export interface PublishedItem {
   title: string;
   description: string | null;
   points: number | null;
-  status: string;
+  /** Null when the link hides statuses. */
+  status: string | null;
   /** Effective parent within the published tree (per-tree override applied). */
   parentId: string | null;
   backlogId: string;
@@ -67,9 +68,15 @@ export interface PublishedPayload {
   tree: { id: string; name: string };
   /** The published backlog, or null when the whole tree is published. */
   rootBacklogId: string | null;
+  // Whether each attribute is shown. The server leaves a hidden attribute out
+  // of the payload altogether; these say not to render its empty remains.
   pointsVisible: boolean;
   timeVisible: boolean;
   labelsVisible: boolean;
+  descriptionVisible: boolean;
+  statusVisible: boolean;
+  teamsVisible: boolean;
+  linksVisible: boolean;
   backlogs: PublishedBacklog[];
   /** Time logged against the tree itself; only a whole-tree link has any. */
   treeMinutes: number;
@@ -188,8 +195,23 @@ export function statusFor(
   if (fallback) return { label: fallback.label, color: fallback.color };
   // A custom key whose status set has since changed: show the key rather than
   // nothing, in a neutral colour.
-  return { label: item.status, color: "#94a3b8" };
+  return { label: item.status ?? "", color: "#94a3b8" };
 }
+
+/** The item attributes a public link can hide, in the order the link dialog
+ *  offers them. Titles and structure are always shown. Keep in step with
+ *  published_link_settings' CHECK constraint. */
+export const PUBLISHABLE_ATTRIBUTES = [
+  { key: "status", label: "Statuses" },
+  { key: "description", label: "Descriptions" },
+  { key: "points", label: "Points" },
+  { key: "teams", label: "Teams" },
+  { key: "labels", label: "Labels" },
+  { key: "links", label: "Links" },
+  { key: "time", label: "Logged time" },
+] as const;
+
+export type PublishableAttribute = (typeof PUBLISHABLE_ATTRIBUTES)[number]["key"];
 
 /** Sum of points over an item forest, for backlog totals. */
 export function totalPoints(nodes: ItemNode[]): number {

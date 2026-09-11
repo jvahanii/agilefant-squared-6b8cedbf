@@ -336,13 +336,15 @@ function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; look
           <span className="w-5 shrink-0" aria-hidden="true" />
         )}
 
-        <span
-          className="mt-1 inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4"
-          title={status.label}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden="true" />
-          {status.label}
-        </span>
+        {p.statusVisible && item.status != null && (
+          <span
+            className="mt-1 inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4"
+            title={status.label}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden="true" />
+            {status.label}
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">

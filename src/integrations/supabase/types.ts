@@ -732,6 +732,55 @@ export type Database = {
         }
         Relationships: []
       }
+      published_link_settings: {
+        Row: {
+          backlog_id: string | null
+          hidden_attributes: string[]
+          id: string
+          tree_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          backlog_id?: string | null
+          hidden_attributes?: string[]
+          id?: string
+          tree_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          backlog_id?: string | null
+          hidden_attributes?: string[]
+          id?: string
+          tree_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_link_settings_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_link_settings_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_link_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       published_links: {
         Row: {
           backlog_id: string | null
@@ -1373,6 +1422,10 @@ export type Database = {
       }
       current_user_id: { Args: never; Returns: string }
       get_published_backlog: { Args: { _token: string }; Returns: Json }
+      get_published_link_options: {
+        Args: { _backlog_id: string; _tree_id: string }
+        Returns: Json
+      }
       get_tree_sharing_info: {
         Args: { _exclude_org_id: string; _tree_id: string }
         Returns: {
@@ -1464,6 +1517,10 @@ export type Database = {
       restore_organization_backup: {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
+      }
+      set_published_link_hidden_attributes: {
+        Args: { _backlog_id: string; _hidden: string[]; _tree_id: string }
+        Returns: string[]
       }
       superuser_user_overview: {
         Args: never

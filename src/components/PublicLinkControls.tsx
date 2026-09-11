@@ -1,35 +1,60 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Copy, ExternalLink, Globe, Link2Off } from "lucide-react";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
+import { PUBLISHABLE_ATTRIBUTES, type PublishableAttribute } from "@/lib/publicBacklog";
+
+interface LinkOptions {
+  /** What this target's link hides. Empty — the default — shows everything. */
+  hidden: PublishableAttribute[];
+  /** What the tree has at all: points, labels and time only when the owning
+   *  organization has them on. Nothing else is offered. */
+  available: PublishableAttribute[];
+}
 
 /**
  * Create, copy and revoke the public read-only link for a tree (backlogId
- * null) or a backlog. Publishing and unpublishing go through RPCs because the
- * table has no write policies: the permission check — anyone who can see the
- * tree — lives in the database, not here.
+ * null) or a backlog, and choose which item attributes it shows. Everything
+ * goes through RPCs because the tables have no write policies: the permission
+ * check — anyone who can see the tree — lives in the database, not here. So
+ * does hiding: get_published_backlog() leaves a hidden attribute out of what
+ * it sends.
+ *
+ * The choice belongs to the target rather than the link, so it can be made
+ * before publishing and survives unpublishing.
  */
 export function PublicLinkControls({ treeId, backlogId }: { treeId: string; backlogId: string | null }) {
   const [token, setToken] = useState<string | null>(null);
+  const [options, setOptions] = useState<LinkOptions | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     let query = supabase.from("published_links").select("token").eq("tree_id", treeId);
     query = backlogId ? query.eq("backlog_id", backlogId) : query.is("backlog_id", null);
-    const { data, error } = await query.maybeSingle();
-    if (error) {
-      console.error("Could not load the public link:", error.message);
+    const [link, opts] = await Promise.all([
+      query.maybeSingle(),
+      supabase.rpc("get_published_link_options", { _tree_id: treeId, _backlog_id: backlogId }),
+    ]);
+    if (link.error) {
+      console.error("Could not load the public link:", link.error.message);
     } else {
       // Keep the sidebar markers honest with what the database says.
-      usePublishedLinksStore.getState().setPublished(treeId, backlogId, !!data?.token);
+      usePublishedLinksStore.getState().setPublished(treeId, backlogId, !!link.data?.token);
     }
-    setToken(data?.token ?? null);
+    if (opts.error) {
+      console.error("Could not load what the public link shows:", opts.error.message);
+    } else {
+      setOptions(opts.data as unknown as LinkOptions);
+    }
+    setToken(link.data?.token ?? null);
     setLoaded(true);
   }, [treeId, backlogId]);
 
@@ -65,6 +90,25 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
     toast({ title: "Unpublished", description: "The link no longer works." });
   };
 
+  const toggleAttribute = async (key: PublishableAttribute, shown: boolean) => {
+    if (!options) return;
+    const previous = options;
+    const hidden = shown ? options.hidden.filter((h) => h !== key) : [...options.hidden, key];
+    // Optimistic: the checkbox follows the click, and rolls back on failure.
+    setOptions({ ...options, hidden });
+    const { data, error } = await supabase.rpc("set_published_link_hidden_attributes", {
+      _tree_id: treeId,
+      _backlog_id: backlogId,
+      _hidden: hidden,
+    });
+    if (error) {
+      setOptions(previous);
+      toast({ title: "Could not save", description: error.message, variant: "destructive" });
+      return;
+    }
+    setOptions((o) => (o ? { ...o, hidden: (data ?? hidden) as PublishableAttribute[] } : o));
+  };
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -78,13 +122,35 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
 
   if (!loaded) return <p className="text-xs text-muted-foreground">Loading…</p>;
 
+  const offered = options ? PUBLISHABLE_ATTRIBUTES.filter((a) => options.available.includes(a.key)) : [];
+
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Anyone with the link can view {what} without signing in: titles, descriptions, statuses,
-        points, teams, labels, links and logged time totals. Individual time entries and their notes
-        stay private.
+        Anyone with the link can view {what} without signing in. Titles are always shown; choose what
+        else is.
+        {options?.available.includes("time") && " Individual time entries and their notes stay private."}
       </p>
+      {offered.length > 0 && (
+        <fieldset className="grid grid-cols-2 gap-x-4 gap-y-1.5 py-1">
+          <legend className="sr-only">Shown on the public page</legend>
+          {offered.map(({ key, label }) => {
+            const id = `publish-attr-${key}`;
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={id}
+                  checked={!options!.hidden.includes(key)}
+                  onCheckedChange={(v) => void toggleAttribute(key, v === true)}
+                />
+                <Label htmlFor={id} className="text-xs font-normal">
+                  {label}
+                </Label>
+              </div>
+            );
+          })}
+        </fieldset>
+      )}
       {token ? (
         <>
           <div className="flex gap-2">

@@ -27,6 +27,10 @@ function fixture(over: Record<string, unknown> = {}) {
     pointsVisible: true,
     timeVisible: true,
     labelsVisible: true,
+    descriptionVisible: true,
+    statusVisible: true,
+    teamsVisible: true,
+    linksVisible: true,
     treeMinutes: 45,
     backlogs: [
       { id: "b-root", name: "Roadmap backlog", parentId: null, rank: 0, labelIds: ["l-roadmap"], minutes: 15 },
@@ -182,6 +186,20 @@ describe("public backlog page", () => {
     expect(screen.queryByText("2h")).toBeNull();
     expect(screen.queryByText("3h")).toBeNull();
     // Teams are not gated by any setting.
+    expect(screen.getByText("Jarno")).toBeTruthy();
+  });
+
+  it("shows no status pill when the link hides statuses", async () => {
+    // The server sends a hidden status as null; the page must not fall back to
+    // a label for it.
+    const data = fixture({ statusVisible: false, statusesByBacklog: {} });
+    for (const item of data.items as { status: string | null }[]) item.status = null;
+    rpc.mockResolvedValue({ data, error: null });
+    renderPage();
+
+    await screen.findByText("Parent item");
+    expect(screen.queryByText("In Progress")).toBeNull();
+    expect(screen.queryByText("Done")).toBeNull();
     expect(screen.getByText("Jarno")).toBeTruthy();
   });
 
