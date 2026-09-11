@@ -70,6 +70,28 @@ describe("public link attribute choices", () => {
     expect(screen.getByLabelText("Logged time").getAttribute("data-state")).toBe("unchecked");
   });
 
+  it("focuses Create public link once loaded, so Enter publishes", async () => {
+    rpc.mockImplementation(options([], ["status", "description", "teams", "links"]));
+    render(<PublicLinkControls treeId="t" backlogId="b" autoFocusCreate />);
+
+    const create = await screen.findByRole("button", { name: /Create public link/ });
+    await waitFor(() => expect(document.activeElement).toBe(create));
+  });
+
+  it("leaves focus alone without autoFocusCreate, or once published", async () => {
+    rpc.mockImplementation(options([], ["status", "description", "teams", "links"]));
+    const { unmount } = render(<PublicLinkControls treeId="t" backlogId={null} />);
+    const create = await screen.findByRole("button", { name: /Create public link/ });
+    expect(document.activeElement).not.toBe(create);
+    unmount();
+
+    maybeSingle.mockResolvedValue({ data: { token: "tok-000000000000000000000" }, error: null });
+    render(<PublicLinkControls treeId="t" backlogId="b" autoFocusCreate />);
+    await screen.findByRole("button", { name: /Stop publishing/ });
+    expect(screen.queryByRole("button", { name: /Create public link/ })).toBeNull();
+    expect(document.activeElement?.tagName).not.toBe("BUTTON");
+  });
+
   it("rolls the checkbox back when saving fails", async () => {
     rpc.mockImplementation((name: string) =>
       name === "set_published_link_hidden_attributes"

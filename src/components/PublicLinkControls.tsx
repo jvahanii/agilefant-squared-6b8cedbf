@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,11 +30,22 @@ interface LinkOptions {
  * The choice belongs to the target rather than the link, so it can be made
  * before publishing and survives unpublishing.
  */
-export function PublicLinkControls({ treeId, backlogId }: { treeId: string; backlogId: string | null }) {
+export function PublicLinkControls({
+  treeId,
+  backlogId,
+  autoFocusCreate = false,
+}: {
+  treeId: string;
+  backlogId: string | null;
+  /** Focus "Create public link" once loaded, so Enter publishes. For a dialog
+   *  whose main purpose is the link; not where other controls come first. */
+  autoFocusCreate?: boolean;
+}) {
   const [token, setToken] = useState<string | null>(null);
   const [options, setOptions] = useState<LinkOptions | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const createRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     let query = supabase.from("published_links").select("token").eq("tree_id", treeId);
@@ -61,6 +72,12 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The dialog opens before the button exists (it waits on the load), so its
+  // own initial focus lands elsewhere; move it here once there is a button.
+  useEffect(() => {
+    if (autoFocusCreate && loaded && !token) createRef.current?.focus();
+  }, [autoFocusCreate, loaded, token]);
 
   const url = token ? `${window.location.origin}/p/${token}` : "";
   const target = backlogId ? { _tree_id: treeId, _backlog_id: backlogId } : { _tree_id: treeId };
@@ -187,7 +204,7 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
           </div>
         </>
       ) : (
-        <Button type="button" size="sm" className="h-8" disabled={busy} onClick={publish}>
+        <Button ref={createRef} type="button" size="sm" className="h-8" disabled={busy} onClick={publish}>
           <Globe className="w-3.5 h-3.5 mr-1" /> Create public link
         </Button>
       )}
@@ -218,7 +235,7 @@ export function PublishBacklogDialog({
             Public link: <IconizedTitle title={backlogName} />
           </DialogTitle>
         </DialogHeader>
-        <PublicLinkControls treeId={treeId} backlogId={backlogId} />
+        <PublicLinkControls treeId={treeId} backlogId={backlogId} autoFocusCreate />
       </DialogContent>
     </Dialog>
   );
