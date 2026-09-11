@@ -58,6 +58,7 @@ function fixture(over: Record<string, unknown> = {}) {
           { url: "www.example.org/x", altText: null },
         ],
         minutes: 90,
+        totalMinutes: 120,
       },
       {
         id: "child",
@@ -72,6 +73,7 @@ function fixture(over: Record<string, unknown> = {}) {
         labelIds: [],
         links: [],
         minutes: 30,
+        totalMinutes: 30,
       },
       {
         id: "loose",
@@ -86,6 +88,7 @@ function fixture(over: Record<string, unknown> = {}) {
         labelIds: [],
         links: [],
         minutes: 0,
+        totalMinutes: 0,
       },
     ],
     ...over,
@@ -122,7 +125,7 @@ describe("public backlog page", () => {
     expect(screen.getByText("In Progress")).toBeTruthy();
     expect(screen.getByText("Jarno")).toBeTruthy();
     expect(screen.getByText("Urgent")).toBeTruthy();
-    // The parent's own 90m plus its child's 30m, rolled up as in the app.
+    // The server's total for the parent: its own 90m plus its child's 30m.
     expect(screen.getByText("2h")).toBeTruthy();
     // Backlog header: 15m on the backlog itself plus 120m on its items.
     expect(screen.getByText("2h 15m")).toBeTruthy();
@@ -180,6 +183,19 @@ describe("public backlog page", () => {
     expect(screen.queryByText("3h")).toBeNull();
     // Teams are not gated by any setting.
     expect(screen.getByText("Jarno")).toBeTruthy();
+  });
+
+  it("shows the server's item total even when children are not on the page", async () => {
+    // The app counts every child, including ones in backlogs this link does
+    // not show. Those arrive only as part of the total, never as items, so the
+    // page must display the total as sent rather than re-add what it can see.
+    const data = fixture();
+    (data.items as { id: string; totalMinutes: number }[]).find((i) => i.id === "parent")!.totalMinutes = 200;
+    rpc.mockResolvedValue({ data, error: null });
+    renderPage();
+
+    await screen.findByText("Parent item");
+    expect(screen.getByText("3h 20m")).toBeTruthy();
   });
 
   it("says the link is unavailable when the token matches nothing", async () => {

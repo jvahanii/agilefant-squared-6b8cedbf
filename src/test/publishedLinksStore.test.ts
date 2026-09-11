@@ -2,21 +2,27 @@
  * The sidebar's "published" markers read this store. A tree link and a backlog
  * link are different targets, so they must land in different sets — a whole
  * tree being published is not the same as one backlog in it being published.
+ * Realtime change events reload it through a debounce, so a burst — deleting a
+ * tree cascades to every link in it — costs one query, not one per event.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const select = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => ({ select: (...args: unknown[]) => select(...args) }) },
 }));
 
-import { usePublishedLinksStore } from "@/store/publishedLinksStore";
+import { PUBLISHED_RELOAD_DEBOUNCE_MS, usePublishedLinksStore } from "@/store/publishedLinksStore";
 
 const state = () => usePublishedLinksStore.getState();
 
 beforeEach(() => {
   usePublishedLinksStore.setState({ trees: new Set(), backlogs: new Set() });
   select.mockReset();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("publishedLinksStore", () => {
@@ -59,5 +65,18 @@ describe("publishedLinksStore", () => {
     const before = state().trees;
     state().setPublished("t1", null, true);
     expect(state().trees).toBe(before);
+  });
+
+  it("coalesces a burst of change events into a single reload", async () => {
+    vi.useFakeTimers();
+    select.mockResolvedValue({ data: [{ tree_id: "t9", backlog_id: null }], error: null });
+
+    // Deleting a tree with several published backlogs: one event per link.
+    for (let i = 0; i < 5; i++) state().scheduleLoad();
+    expect(select).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(PUBLISHED_RELOAD_DEBOUNCE_MS);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(state().trees.has("t9")).toBe(true);
   });
 });

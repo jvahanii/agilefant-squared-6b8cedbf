@@ -20,6 +20,7 @@ import {
   requestResync,
   FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
+import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -505,6 +506,21 @@ export function useRealtimeSync() {
       );
     subscribeWithHealth(statusChannel);
     channels.push(statusChannel);
+
+    // Public links: any change reloads which trees and backlogs are published.
+    // The event's contents are deliberately ignored -- on a table with RLS a
+    // DELETE carries only the primary key, which here is the token, so it
+    // could not say which marker to drop. The reload asks the database instead,
+    // through RLS, and is debounced so a cascade of deletions costs one query.
+    const publishedLinksChannel = supabase
+      .channel(`published-links-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'published_links' },
+        () => usePublishedLinksStore.getState().scheduleLoad(),
+      );
+    subscribeWithHealth(publishedLinksChannel);
+    channels.push(publishedLinksChannel);
 
     // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
     const targetsChannel = supabase

@@ -11,11 +11,11 @@
  *   set; otherwise it nests under its parent.
  * - Siblings are ordered by rank within their backlog, missing ranks as 0, with
  *   the id as a tie-break.
- * - Time rolls up as in lib/timeTotals: an item's total includes everything
- *   beneath it, and a backlog's total is time logged on the backlog itself plus
- *   each of its items' own time, through every backlog beneath it. One
- *   deliberate difference: only what the link shows is counted, so a public
- *   total never includes work the page does not display.
+ * - Time totals are identical to the app's (lib/timeTotalsCore). An item's
+ *   total arrives precomputed as `totalMinutes`, because the app counts every
+ *   child — including children a link does not show, whose time must count
+ *   without the children themselves ever being sent. Backlog and tree totals
+ *   are sums of what the payload does carry, by the same rules.
  */
 import { DEFAULT_STATUSES } from "@/store/backlogStatusesStore";
 
@@ -54,8 +54,12 @@ export interface PublishedItem {
   teamIds: string[];
   labelIds: string[];
   links: PublishedLink[];
-  /** The item's own logged time, excluding children. */
+  /** The item's own logged time, excluding children — what backlog and tree
+   *  totals are summed from. */
   minutes: number;
+  /** The item's total including everything beneath it, exactly as the app
+   *  shows it on the item's row. */
+  totalMinutes: number;
 }
 
 export interface PublishedPayload {
@@ -198,26 +202,21 @@ export function totalPoints(nodes: ItemNode[]): number {
   return sum;
 }
 
-/** Each shown item's total logged time: its own plus everything beneath it.
- *  Computed once per forest so rows don't each re-walk their subtree. */
-export function subtreeMinutes(nodes: ItemNode[]): Map<string, number> {
-  const totals = new Map<string, number>();
-  const walk = (n: ItemNode): number => {
-    let sum = n.item.minutes;
-    for (const c of n.children) sum += walk(c);
-    totals.set(n.item.id, sum);
-    return sum;
-  };
-  nodes.forEach(walk);
-  return totals;
-}
-
 /** Logged time for a backlog scope: time on the backlogs themselves plus each
- *  of their items' own time. Mirrors the backlog totals in lib/timeTotals. */
+ *  of their items' own time — the app's backlog total (lib/timeTotalsCore). */
 export function scopeMinutes(payload: PublishedPayload, scope: Set<string>): number {
   let sum = 0;
   for (const b of payload.backlogs) if (scope.has(b.id)) sum += b.minutes;
   for (const i of payload.items) if (scope.has(i.backlogId)) sum += i.minutes;
+  return sum;
+}
+
+/** Logged time for the whole tree: every item's own time, time on its
+ *  backlogs, and time on the tree itself — the app's tree total. */
+export function treeMinutes(payload: PublishedPayload): number {
+  let sum = payload.treeMinutes;
+  for (const b of payload.backlogs) sum += b.minutes;
+  for (const i of payload.items) sum += i.minutes;
   return sum;
 }
 

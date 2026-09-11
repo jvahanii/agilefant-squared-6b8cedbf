@@ -11,8 +11,8 @@ import {
   safeLinkHref,
   scopeMinutes,
   statusFor,
-  subtreeMinutes,
   totalPoints,
+  treeMinutes,
   type BacklogNode,
   type ItemNode,
   type PublishedLink,
@@ -31,7 +31,6 @@ type LabelInfo = { id: string; name: string; color: string };
 interface Lookups {
   teams: Map<string, string>;
   labels: Map<string, LabelInfo>;
-  minutes: Map<string, number>;
   payload: PublishedPayload;
 }
 
@@ -83,10 +82,9 @@ export default function PublicBacklog() {
     return {
       teams: new Map(payload.teams.map((t) => [t.id, t.name])),
       labels: new Map(payload.labels.map((l) => [l.id, l])),
-      minutes: subtreeMinutes(items),
       payload,
     };
-  }, [payload, items]);
+  }, [payload]);
 
   const heading = payload?.kind === "backlog" ? rootName(payload) : payload?.tree.name ?? "";
 
@@ -127,11 +125,8 @@ export default function PublicBacklog() {
   const lk = lookups!;
   const showNav = p.kind === "tree" || backlogTree[0]?.children.length > 0;
 
-  // The whole-tree total adds time logged against the tree itself.
-  const treeTotal =
-    p.kind === "tree"
-      ? p.backlogs.reduce((s, b) => s + b.minutes, 0) + p.items.reduce((s, i) => s + i.minutes, 0) + p.treeMinutes
-      : null;
+  // Only a whole-tree link has a tree total to show.
+  const treeTotal = p.kind === "tree" ? treeMinutes(p) : null;
   const selectedMinutes = scopeMinutes(p, scope);
 
   return (
@@ -319,7 +314,9 @@ function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; look
   const hasDescription = !!item.description?.trim();
   const hasLinks = item.links.length > 0;
   const hasDetails = hasDescription || hasLinks;
-  const minutes = lookups.minutes.get(item.id) ?? 0;
+  // Precomputed by the server, exactly as the app shows it — including time on
+  // children this link does not show.
+  const minutes = item.totalMinutes;
   const teamNames = item.teamIds.map((id) => lookups.teams.get(id)).filter((n): n is string => !!n);
 
   return (

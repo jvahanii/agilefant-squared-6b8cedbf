@@ -18,8 +18,8 @@ import {
   safeLinkHref,
   scopeMinutes,
   statusFor,
-  subtreeMinutes,
   totalPoints,
+  treeMinutes,
   type PublishedBacklog,
   type PublishedItem,
   type PublishedPayload,
@@ -54,6 +54,7 @@ const item = (
   labelIds: [],
   links: [],
   minutes: 0,
+  totalMinutes: 0,
   ...extra,
 });
 
@@ -169,33 +170,6 @@ describe("totalPoints", () => {
   });
 });
 
-describe("subtreeMinutes", () => {
-  it("rolls each item's time up through its children, as the app does", () => {
-    const tree = buildItemTree(
-      [
-        item("p", "a", null, null, { minutes: 30 }),
-        item("c", "a", "p", null, { minutes: 15 }),
-        item("g", "a", "c", null, { minutes: 5 }),
-      ],
-      new Set(["a"]),
-    );
-    const totals = subtreeMinutes(tree);
-    expect(totals.get("p")).toBe(50);
-    expect(totals.get("c")).toBe(20);
-    expect(totals.get("g")).toBe(5);
-  });
-
-  it("does not count children the link does not show", () => {
-    // The child sits in a backlog outside the scope, so it is not displayed
-    // and must not inflate its parent's public total.
-    const tree = buildItemTree(
-      [item("p", "a", null, null, { minutes: 30 }), item("hidden", "b", "p", null, { minutes: 60 })],
-      new Set(["a"]),
-    );
-    expect(subtreeMinutes(tree).get("p")).toBe(30);
-  });
-});
-
 describe("scopeMinutes", () => {
   it("adds time on the backlogs themselves to their items' own time", () => {
     const p = payload({
@@ -207,6 +181,17 @@ describe("scopeMinutes", () => {
       ],
     });
     expect(scopeMinutes(p, backlogScope("a", p.backlogs))).toBe(42);
+  });
+});
+
+describe("treeMinutes", () => {
+  it("adds time on the tree itself to its backlogs' and items' own time", () => {
+    const p = payload({
+      treeMinutes: 45,
+      backlogs: [bl("a", null, 0, { minutes: 15 }), bl("b", "a", 0, { minutes: 5 })],
+      items: [item("i1", "a", null, null, { minutes: 90 }), item("i2", "b", "i1", null, { minutes: 30 })],
+    });
+    expect(treeMinutes(p)).toBe(185);
   });
 });
 

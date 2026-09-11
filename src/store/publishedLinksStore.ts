@@ -18,11 +18,20 @@ interface PublishedLinksState {
   /** Reload from the database. RLS returns links for every tree the user can
    *  see, including trees shared from other organizations. */
   load: () => Promise<void>;
+  /** Reload soon, coalescing a burst of calls into one. Realtime change events
+   *  come through here: deleting a tree cascades to every link in it, and each
+   *  of those deletions is its own event. */
+  scheduleLoad: () => void;
   /** Reflect a publish or unpublish done in this tab without a round trip. */
   setPublished: (treeId: string, backlogId: string | null, published: boolean) => void;
 }
 
-export const usePublishedLinksStore = create<PublishedLinksState>((set) => ({
+/** How long to wait for a burst of change events to finish before reloading. */
+export const PUBLISHED_RELOAD_DEBOUNCE_MS = 250;
+
+let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const usePublishedLinksStore = create<PublishedLinksState>((set, get) => ({
   trees: new Set(),
   backlogs: new Set(),
 
@@ -39,6 +48,14 @@ export const usePublishedLinksStore = create<PublishedLinksState>((set) => ({
       else trees.add(row.tree_id);
     }
     set({ trees, backlogs });
+  },
+
+  scheduleLoad: () => {
+    if (reloadTimer) clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      reloadTimer = null;
+      void get().load();
+    }, PUBLISHED_RELOAD_DEBOUNCE_MS);
   },
 
   setPublished: (treeId, backlogId, published) =>

@@ -79,6 +79,26 @@ without signing in, so the whole of it is kept narrow:
   never their tokens — a token in client state for every published target would
   be one more place a working public link could leak from. The link dialog
   fetches the one token it shows.
+- **The markers update live.** `published_links` is in the realtime
+  publication, and any change event just triggers a debounced reload of the
+  targets. The events' contents are ignored on purpose: on a table with RLS a
+  DELETE carries only the primary key — the token — so it could not say which
+  marker to drop. That token reaches subscribers, but the row is already gone
+  and the token is dead.
+- **Time totals on a published page equal the app's, exactly.** They follow
+  `lib/timeTotalsCore` — the app's rules, extracted so they can be checked —
+  applied to the owning organization's view: its own time entries and work items
+  plus those of every partner it shares trees with, in either direction, as the
+  app loads them. An item's total counts every child in `childrenIds`, which is
+  the union of global and per-tree-override parents, so an item under two
+  parents counts under both — including children the link does not show. Only
+  overrides keyed to trees the owning org loads count, because `sanitizeData`
+  discards the rest. No data exercises that today, so a parity check can't
+  catch it if it breaks — keep the two in step by reading them side by side.
+  `get_published_backlog()` computes item totals in SQL so hidden children never
+  leave the server. **If the app's loading or totalling rules change, this
+  function must change with them**; the parity check that proved them equal
+  rebuilds the owning org's in-memory data and runs `computeTimeTotals()` on it.
 - **Publishing a shared tree publishes all of it** — including items that partner
   organizations created in it, because that is what the tree shows. And since
   those partners can now publish it themselves, sharing a tree with another
