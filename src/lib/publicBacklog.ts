@@ -1,17 +1,21 @@
 /**
  * The read-only view behind a public link to a backlog tree or a backlog.
  *
- * The payload comes from get_published_backlog(), which returns only what a
- * public page may show — no people, time, labels, links or money. Everything
- * here is pure so the hierarchy rules can be tested without a database, and so
- * they visibly match the ones the app itself uses in WorkItemTreePanel:
+ * The payload comes from get_published_backlog(), which decides what a public
+ * page may show. Everything here is pure so the rules can be tested without a
+ * database, and so they visibly match the ones the app itself uses:
  *
  * - Selecting a backlog shows its items *and* those of every backlog beneath it
- *   (the app's `backlogIdSet`).
+ *   (WorkItemTreePanel's `backlogIdSet`).
  * - An item is a root when its effective parent is null or lies outside that
  *   set; otherwise it nests under its parent.
  * - Siblings are ordered by rank within their backlog, missing ranks as 0, with
  *   the id as a tie-break.
+ * - Time rolls up as in lib/timeTotals: an item's total includes everything
+ *   beneath it, and a backlog's total is time logged on the backlog itself plus
+ *   each of its items' own time, through every backlog beneath it. One
+ *   deliberate difference: only what the link shows is counted, so a public
+ *   total never includes work the page does not display.
  */
 import { DEFAULT_STATUSES } from "@/store/backlogStatusesStore";
 
@@ -27,6 +31,14 @@ export interface PublishedBacklog {
   name: string;
   parentId: string | null;
   rank: number;
+  labelIds: string[];
+  /** Time logged against the backlog itself, not an item in it. */
+  minutes: number;
+}
+
+export interface PublishedLink {
+  url: string;
+  altText: string | null;
 }
 
 export interface PublishedItem {
@@ -39,6 +51,11 @@ export interface PublishedItem {
   parentId: string | null;
   backlogId: string;
   rank: number | null;
+  teamIds: string[];
+  labelIds: string[];
+  links: PublishedLink[];
+  /** The item's own logged time, excluding children. */
+  minutes: number;
 }
 
 export interface PublishedPayload {
@@ -47,10 +64,16 @@ export interface PublishedPayload {
   /** The published backlog, or null when the whole tree is published. */
   rootBacklogId: string | null;
   pointsVisible: boolean;
+  timeVisible: boolean;
+  labelsVisible: boolean;
   backlogs: PublishedBacklog[];
+  /** Time logged against the tree itself; only a whole-tree link has any. */
+  treeMinutes: number;
   /** Effective statuses per in-scope backlog, already resolved up the parent
    *  chain server-side. A missing entry means the defaults apply. */
   statusesByBacklog: Record<string, PublishedStatus[]>;
+  teams: { id: string; name: string }[];
+  labels: { id: string; name: string; color: string }[];
   items: PublishedItem[];
 }
 
@@ -173,4 +196,54 @@ export function totalPoints(nodes: ItemNode[]): number {
   };
   nodes.forEach(walk);
   return sum;
+}
+
+/** Each shown item's total logged time: its own plus everything beneath it.
+ *  Computed once per forest so rows don't each re-walk their subtree. */
+export function subtreeMinutes(nodes: ItemNode[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  const walk = (n: ItemNode): number => {
+    let sum = n.item.minutes;
+    for (const c of n.children) sum += walk(c);
+    totals.set(n.item.id, sum);
+    return sum;
+  };
+  nodes.forEach(walk);
+  return totals;
+}
+
+/** Logged time for a backlog scope: time on the backlogs themselves plus each
+ *  of their items' own time. Mirrors the backlog totals in lib/timeTotals. */
+export function scopeMinutes(payload: PublishedPayload, scope: Set<string>): number {
+  let sum = 0;
+  for (const b of payload.backlogs) if (scope.has(b.id)) sum += b.minutes;
+  for (const i of payload.items) if (scope.has(i.backlogId)) sum += i.minutes;
+  return sum;
+}
+
+/**
+ * An href that is safe to put on a page anyone can open, or null.
+ *
+ * Hyperlinks come straight from the database, so a stored `javascript:` or
+ * `data:` URL would run in a visitor's browser the moment they clicked it. Only
+ * http(s) and mailto survive; a bare "www.example.com" — which people do type —
+ * is treated as https. Anything else is shown as text rather than as a link.
+ */
+export function safeLinkHref(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+    // A scheme-less value that doesn't parse as a real host ("not a url") is
+    // not a link; require at least one dot in the hostname.
+    return parsed.hostname.includes(".") ? parsed.href : null;
+  }
+  if (parsed.protocol === "mailto:") return parsed.href;
+  return null;
 }

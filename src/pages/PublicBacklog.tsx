@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, FileText, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, FileText, Link2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
+import { formatDuration } from "@/lib/formatDuration";
 import {
   backlogScope,
   buildBacklogTree,
   buildItemTree,
+  safeLinkHref,
+  scopeMinutes,
   statusFor,
+  subtreeMinutes,
   totalPoints,
   type BacklogNode,
   type ItemNode,
+  type PublishedLink,
   type PublishedPayload,
-  type PublishedStatus,
 } from "@/lib/publicBacklog";
 
 type LoadState =
@@ -20,6 +24,16 @@ type LoadState =
   | { status: "missing" }
   | { status: "error"; message: string }
   | { status: "ready"; payload: PublishedPayload };
+
+type LabelInfo = { id: string; name: string; color: string };
+
+/** Lookups every row needs, built once per payload. */
+interface Lookups {
+  teams: Map<string, string>;
+  labels: Map<string, LabelInfo>;
+  minutes: Map<string, number>;
+  payload: PublishedPayload;
+}
 
 /**
  * The page behind a public link. It renders outside every auth branch — a
@@ -58,12 +72,23 @@ export default function PublicBacklog() {
   const effectiveSelected = selectedId ?? payload?.rootBacklogId ?? backlogTree[0]?.backlog.id ?? null;
   const selected = payload?.backlogs.find((b) => b.id === effectiveSelected) ?? null;
 
-  const items = useMemo(() => {
-    if (!payload || !effectiveSelected) return [];
-    return buildItemTree(payload.items, backlogScope(effectiveSelected, payload.backlogs));
-  }, [payload, effectiveSelected]);
+  const scope = useMemo(
+    () => (payload && effectiveSelected ? backlogScope(effectiveSelected, payload.backlogs) : new Set<string>()),
+    [payload, effectiveSelected],
+  );
+  const items = useMemo(() => (payload ? buildItemTree(payload.items, scope) : []), [payload, scope]);
 
-  const heading = payload?.kind === "backlog" ? selectedOrRootName(payload) : payload?.tree.name ?? "";
+  const lookups = useMemo<Lookups | null>(() => {
+    if (!payload) return null;
+    return {
+      teams: new Map(payload.teams.map((t) => [t.id, t.name])),
+      labels: new Map(payload.labels.map((l) => [l.id, l])),
+      minutes: subtreeMinutes(items),
+      payload,
+    };
+  }, [payload, items]);
+
+  const heading = payload?.kind === "backlog" ? rootName(payload) : payload?.tree.name ?? "";
 
   useEffect(() => {
     if (heading) document.title = `${heading} – Agilefant²`;
@@ -99,7 +124,15 @@ export default function PublicBacklog() {
   }
 
   const p = state.payload;
+  const lk = lookups!;
   const showNav = p.kind === "tree" || backlogTree[0]?.children.length > 0;
+
+  // The whole-tree total adds time logged against the tree itself.
+  const treeTotal =
+    p.kind === "tree"
+      ? p.backlogs.reduce((s, b) => s + b.minutes, 0) + p.items.reduce((s, i) => s + i.minutes, 0) + p.treeMinutes
+      : null;
+  const selectedMinutes = scopeMinutes(p, scope);
 
   return (
     <Shell
@@ -121,9 +154,14 @@ export default function PublicBacklog() {
             <IconizedTitle title={p.tree.name} />
           </p>
         )}
-        <h1 className="text-xl font-semibold">
-          <IconizedTitle title={heading} />
-        </h1>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-semibold">
+            <IconizedTitle title={heading} />
+          </h1>
+          {p.timeVisible && treeTotal !== null && treeTotal > 0 && (
+            <TimeBadge minutes={treeTotal} label="logged in this tree" />
+          )}
+        </div>
       </header>
 
       {p.backlogs.length === 0 ? (
@@ -148,15 +186,17 @@ export default function PublicBacklog() {
 
           <section className="min-w-0 flex-1" aria-labelledby="backlog-heading">
             {selected && (
-              <div className="mb-3 flex items-baseline justify-between gap-3 border-b pb-2">
-                <h2 id="backlog-heading" className="font-medium">
-                  <IconizedTitle title={selected.name} />
-                </h2>
-                {p.pointsVisible && (
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {totalPoints(items)} pts
-                  </span>
-                )}
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-2">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                  <h2 id="backlog-heading" className="font-medium">
+                    <IconizedTitle title={selected.name} />
+                  </h2>
+                  {p.labelsVisible && <LabelList ids={selected.labelIds} labels={lk.labels} />}
+                </div>
+                <div className="flex shrink-0 items-baseline gap-3 text-xs tabular-nums text-muted-foreground">
+                  {p.timeVisible && selectedMinutes > 0 && <TimeBadge minutes={selectedMinutes} label="logged" />}
+                  {p.pointsVisible && <span>{totalPoints(items)} pts</span>}
+                </div>
               </div>
             )}
             {items.length === 0 ? (
@@ -164,13 +204,7 @@ export default function PublicBacklog() {
             ) : (
               <ul className="space-y-px">
                 {items.map((node) => (
-                  <ItemRow
-                    key={node.item.id}
-                    node={node}
-                    depth={0}
-                    pointsVisible={p.pointsVisible}
-                    statusesByBacklog={p.statusesByBacklog}
-                  />
+                  <ItemRow key={node.item.id} node={node} depth={0} lookups={lk} />
                 ))}
               </ul>
             )}
@@ -181,7 +215,7 @@ export default function PublicBacklog() {
   );
 }
 
-function selectedOrRootName(p: PublishedPayload): string {
+function rootName(p: PublishedPayload): string {
   return p.backlogs.find((b) => b.id === p.rootBacklogId)?.name ?? p.tree.name;
 }
 
@@ -201,6 +235,41 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
         {children}
       </div>
     </div>
+  );
+}
+
+function TimeBadge({ minutes, label }: { minutes: number; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground" title={`${formatDuration(minutes)} ${label}`}>
+      <Clock className="h-3 w-3" aria-hidden="true" />
+      {formatDuration(minutes)}
+    </span>
+  );
+}
+
+/** Labels the way the app's item row shows them: one as its coloured name,
+ *  several as a bracketed, comma-separated list. */
+function LabelList({ ids, labels }: { ids: string[]; labels: Map<string, LabelInfo> }) {
+  const shown = ids.map((id) => labels.get(id)).filter((l): l is LabelInfo => !!l);
+  if (shown.length === 0) return null;
+  if (shown.length === 1) {
+    return (
+      <span className="text-xs" style={{ color: shown[0].color }}>
+        {shown[0].name}
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs">
+      {"["}
+      {shown.map((l, i) => (
+        <span key={l.id}>
+          {i > 0 && ", "}
+          <span style={{ color: l.color }}>{l.name}</span>
+        </span>
+      ))}
+      {"]"}
+    </span>
   );
 }
 
@@ -240,23 +309,18 @@ function BacklogNavItem({
   );
 }
 
-function ItemRow({
-  node,
-  depth,
-  pointsVisible,
-  statusesByBacklog,
-}: {
-  node: ItemNode;
-  depth: number;
-  pointsVisible: boolean;
-  statusesByBacklog: Record<string, PublishedStatus[]>;
-}) {
+function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; lookups: Lookups }) {
   const [expanded, setExpanded] = useState(false);
-  const [showDescription, setShowDescription] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const { item, children } = node;
-  const status = statusFor(item, statusesByBacklog);
+  const { payload: p } = lookups;
+  const status = statusFor(item, p.statusesByBacklog);
   const hasChildren = children.length > 0;
   const hasDescription = !!item.description?.trim();
+  const hasLinks = item.links.length > 0;
+  const hasDetails = hasDescription || hasLinks;
+  const minutes = lookups.minutes.get(item.id) ?? 0;
+  const teamNames = item.teamIds.map((id) => lookups.teams.get(id)).filter((n): n is string => !!n);
 
   return (
     <li>
@@ -284,31 +348,57 @@ function ItemRow({
         </span>
 
         <div className="min-w-0 flex-1">
-          {hasDescription ? (
-            <button
-              type="button"
-              onClick={() => setShowDescription((v) => !v)}
-              aria-expanded={showDescription}
-              className="inline-flex max-w-full items-start gap-1 text-left text-sm hover:underline underline-offset-4"
-            >
-              <span className="min-w-0 break-words">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            {hasDetails ? (
+              <button
+                type="button"
+                onClick={() => setShowDetails((v) => !v)}
+                aria-expanded={showDetails}
+                className="inline-flex max-w-full items-start gap-1 text-left text-sm hover:underline underline-offset-4"
+              >
+                <span className="min-w-0 break-words">
+                  <IconizedTitle title={item.title} />
+                </span>
+                {hasDescription && (
+                  <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has a description" />
+                )}
+                {hasLinks && <Link2 className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has links" />}
+              </button>
+            ) : (
+              <span className="text-sm break-words">
                 <IconizedTitle title={item.title} />
               </span>
-              <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has a description" />
-            </button>
-          ) : (
-            <span className="text-sm break-words">
-              <IconizedTitle title={item.title} />
-            </span>
-          )}
-          {showDescription && hasDescription && (
-            // Plain text on purpose: React escapes it, so nothing in a
-            // description can inject markup into a page anyone can open.
-            <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{item.description}</p>
+            )}
+            {p.labelsVisible && <LabelList ids={item.labelIds} labels={lookups.labels} />}
+            {teamNames.length > 0 && <span className="text-xs text-muted-foreground">{teamNames.join(", ")}</span>}
+          </div>
+
+          {showDetails && hasDetails && (
+            <div className="mt-1 space-y-1.5">
+              {hasDescription && (
+                // Plain text on purpose: React escapes it, so nothing in a
+                // description can inject markup into a page anyone can open.
+                <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{item.description}</p>
+              )}
+              {hasLinks && (
+                <ul className="space-y-0.5">
+                  {item.links.map((link, i) => (
+                    <li key={i}>
+                      <LinkLine link={link} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
 
-        {pointsVisible && item.points != null && (
+        {p.timeVisible && minutes > 0 && (
+          <span className="mt-0.5 shrink-0">
+            <TimeBadge minutes={minutes} label="logged" />
+          </span>
+        )}
+        {p.pointsVisible && item.points != null && (
           <span className="mt-0.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
             {item.points}
           </span>
@@ -318,16 +408,32 @@ function ItemRow({
       {hasChildren && expanded && (
         <ul className="space-y-px">
           {children.map((child) => (
-            <ItemRow
-              key={child.item.id}
-              node={child}
-              depth={depth + 1}
-              pointsVisible={pointsVisible}
-              statusesByBacklog={statusesByBacklog}
-            />
+            <ItemRow key={child.item.id} node={child} depth={depth + 1} lookups={lookups} />
           ))}
         </ul>
       )}
     </li>
+  );
+}
+
+/** A stored hyperlink, clickable only if safeLinkHref() accepts it. Anything
+ *  else — a javascript: or data: URL, or plain prose — is shown as text. */
+function LinkLine({ link }: { link: PublishedLink }) {
+  const href = safeLinkHref(link.url);
+  const text = link.altText?.trim() || link.url;
+  if (!href) {
+    return <span className="break-all text-xs text-muted-foreground">{text}</span>;
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      // nofollow/ugc: these are user-supplied links on a public page, and
+      // should not lend it any search ranking.
+      rel="noopener noreferrer nofollow ugc"
+      className="break-all text-xs text-primary underline underline-offset-4 hover:opacity-80"
+    >
+      {text}
+    </a>
   );
 }

@@ -49,6 +49,7 @@ import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/t
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { getEffectiveParentId } from "@/types/models";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
+import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 
 // Lazy-loaded so recharts (via CumulativeFlowChart) is not part of the initial
 // cold-start payload; it's only fetched when a tree's financial chart mounts.
@@ -356,6 +357,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId));
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
@@ -518,6 +520,20 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           >
             {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
           </span>
+        )}
+        {isPublished && (
+          <button
+            type="button"
+            className="shrink-0 text-primary/80 hover:text-primary transition-colors"
+            title="Published: anyone with the link can view this backlog"
+            aria-label="Published with a public link"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPublishDialog(true);
+            }}
+          >
+            <Globe className="w-3 h-3" />
+          </button>
         )}
         {labelsVisible && backlogLabels.length > 0 && (
           <div className="flex items-center gap-0.5 shrink-0 flex-wrap">
@@ -958,6 +974,24 @@ function DraggableTreeHeader({
   const treeTotalCached = useTreeTotalMinutesCached(tree.id);
   const treeTotalMinutes = timeLoggingVisible ? treeTotalCached : 0;
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
+  const isPublished = usePublishedLinksStore((s) => s.trees.has(tree.id));
+  // Backlogs published on their own inside this tree. Counted here because
+  // a collapsed tree hides their own markers.
+  const publishedBacklogIds = usePublishedLinksStore((s) => s.backlogs);
+  const backlogsById = useAppStore((s) => s.backlogs);
+  const publishedInside = useMemo(() => {
+    let n = 0;
+    for (const id of publishedBacklogIds) if (backlogsById[id]?.treeId === tree.id) n++;
+    return n;
+  }, [publishedBacklogIds, backlogsById, tree.id]);
+  const publishedTitle = [
+    isPublished ? "This tree is published" : null,
+    publishedInside > 0
+      ? `${publishedInside} backlog${publishedInside === 1 ? " in it is" : "s in it are"} published`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
   const {
     attributes,
     listeners,
@@ -999,6 +1033,25 @@ function DraggableTreeHeader({
             <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
           </div>
           <EditableTreeName treeId={tree.id} name={tree.name} isScrambled={isScrambled} />
+          {(isPublished || publishedInside > 0) && (
+            // Opens the tree's link when the tree itself is published; when only
+            // backlogs inside it are, it is an indicator with a tooltip.
+            <button
+              type="button"
+              className={`inline-flex items-center gap-0.5 shrink-0 transition-colors ${
+                isPublished ? "text-primary/80 hover:text-primary" : "text-muted-foreground cursor-default"
+              }`}
+              title={publishedTitle}
+              aria-label={publishedTitle}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isPublished) onShareTree();
+              }}
+            >
+              <Globe className="w-3 h-3" />
+              {publishedInside > 0 && <span className="text-[10px] font-medium tabular-nums">{publishedInside}</span>}
+            </button>
+          )}
           {shares.length > 0 && (
             <TooltipProvider delayDuration={200}>
               <Tooltip>

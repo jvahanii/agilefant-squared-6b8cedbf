@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/hooks/use-toast";
 import { Copy, ExternalLink, Globe, Link2Off } from "lucide-react";
 import { IconizedTitle } from "@/components/IconizedTitle";
+import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 
 /**
  * Create, copy and revoke the public read-only link for a tree (backlogId
  * null) or a backlog. Publishing and unpublishing go through RPCs because the
- * table has no write policies: the permission check — owners and admins of the
- * owning organization — lives in the database, not here.
+ * table has no write policies: the permission check — anyone who can see the
+ * tree — lives in the database, not here.
  */
 export function PublicLinkControls({ treeId, backlogId }: { treeId: string; backlogId: string | null }) {
   const [token, setToken] = useState<string | null>(null);
@@ -22,7 +23,12 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
     let query = supabase.from("published_links").select("token").eq("tree_id", treeId);
     query = backlogId ? query.eq("backlog_id", backlogId) : query.is("backlog_id", null);
     const { data, error } = await query.maybeSingle();
-    if (error) console.error("Could not load the public link:", error.message);
+    if (error) {
+      console.error("Could not load the public link:", error.message);
+    } else {
+      // Keep the sidebar markers honest with what the database says.
+      usePublishedLinksStore.getState().setPublished(treeId, backlogId, !!data?.token);
+    }
     setToken(data?.token ?? null);
     setLoaded(true);
   }, [treeId, backlogId]);
@@ -43,6 +49,7 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
       return;
     }
     setToken(data);
+    usePublishedLinksStore.getState().setPublished(treeId, backlogId, true);
   };
 
   const unpublish = async () => {
@@ -54,6 +61,7 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
       return;
     }
     setToken(null);
+    usePublishedLinksStore.getState().setPublished(treeId, backlogId, false);
     toast({ title: "Unpublished", description: "The link no longer works." });
   };
 
@@ -73,8 +81,9 @@ export function PublicLinkControls({ treeId, backlogId }: { treeId: string; back
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Anyone with the link can view {what} without signing in: titles, descriptions, statuses and
-        points. People, time, labels and links stay private.
+        Anyone with the link can view {what} without signing in: titles, descriptions, statuses,
+        points, teams, labels, links and logged time totals. Individual time entries and their notes
+        stay private.
       </p>
       {token ? (
         <>

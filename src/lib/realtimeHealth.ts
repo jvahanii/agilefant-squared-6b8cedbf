@@ -25,6 +25,7 @@ import { useLabelsStore } from '@/store/labelsStore';
 import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
+import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 
 export type ChannelStatus = string;
 
@@ -160,6 +161,7 @@ async function runResync(full: boolean): Promise<void> {
     useTeamStore.getState().loadTeams(orgId),
     useTeamStore.getState().loadWorkItemTeams(orgId),
     useLabelsStore.getState().loadLabels(orgIdList),
+    usePublishedLinksStore.getState().load(),
     useBacklogStatusesStore.getState().loadStatusesForOrgs(orgIdList),
     useSnoozeStore.getState().loadSnoozes(),
     useOrgSettingsStore.getState().loadSettings(orgId).then(() => {

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Clock, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDuration } from "@/lib/formatDuration";
 
 interface TimeLogDialogProps {
   workItemId?: string;
@@ -25,13 +26,7 @@ interface TimeLogDialogProps {
 }
 
 
-export function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
+export { formatDuration };
 
 export function parseDuration(input: string): number | null {
   // Normalise comma decimal separator (e.g. "1,5" → "1.5")

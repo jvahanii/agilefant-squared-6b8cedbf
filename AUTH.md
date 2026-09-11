@@ -49,19 +49,40 @@ without signing in, so the whole of it is kept narrow:
 - **The route sits above `AppRoutes`** in `src/App.tsx`, so a visitor never waits
   on Clerk or triggers membership and data loading.
 - **Anonymous visitors can call exactly one thing**: `get_published_backlog(token)`.
-  It returns titles, descriptions, statuses, points and structure — never
-  people, time entries, labels, hyperlinks or financial targets. That list lives
-  in that function and nowhere else; no RLS policy was widened for this.
+  It returns titles, descriptions, statuses, points, structure, teams, labels,
+  hyperlinks and logged-time totals. What it never returns: the individual
+  members of a team (people are always shown as teams), anything from profiles
+  such as names or emails, individual time entries or their notes, and financial
+  targets. Labels and time are sent only when the owning organization has those
+  features on — not sent and hidden, because the payload is readable by whoever
+  holds the link. That list lives in that function and nowhere else; no RLS
+  policy was widened for this.
+- **Hyperlinks are only clickable if they are http(s) or mailto.** They come
+  straight from the database, so the public page runs each through
+  `safeLinkHref()` and shows anything else — a `javascript:` or `data:` URL,
+  or plain prose — as text.
 - **`published_links` has no write policies.** `publish_backlog_link()` and
   `unpublish_backlog_link()` are the only way to create or revoke a link, and
-  they require owner or admin of the tree's owning organization — the same check
-  as sharing a tree with another organization.
+  they allow anyone who can see the tree — `is_tree_accessible()`, the same check
+  as reading it: every member of the owning organization whatever their role,
+  members of organizations the tree is shared with, and superusers. Unpublishing
+  follows the same rule, so nobody can publish a link that only an admin could
+  take down.
 - **Tokens are 192 random bits**, so links can't be guessed, and anonymous reads
   of `published_links` return nothing, so they can't be listed. Unpublishing
   deletes the token: publishing again mints a new one and an old link that has
   spread stays dead.
+- **A globe in the sidebar marks what is published**: next to a published
+  backlog, and on a tree header when the tree or any backlog inside it is
+  published (with a count, since a collapsed tree hides its backlogs' own
+  markers). `publishedLinksStore` loads only *which* targets are published,
+  never their tokens — a token in client state for every published target would
+  be one more place a working public link could leak from. The link dialog
+  fetches the one token it shows.
 - **Publishing a shared tree publishes all of it** — including items that partner
-  organizations created in it, because that is what the tree shows.
+  organizations created in it, because that is what the tree shows. And since
+  those partners can now publish it themselves, sharing a tree with another
+  organization means trusting them to decide whether it goes public.
 
 **Every function in `public` is executable by `anon` by default** — Supabase's
 default privileges grant it on creation. A `SECURITY DEFINER` function's own

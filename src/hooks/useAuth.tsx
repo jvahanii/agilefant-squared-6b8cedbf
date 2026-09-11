@@ -12,6 +12,7 @@ import {
   linkClerkIdentity,
   subscribeToClerk,
 } from "@/lib/clerkBridge";
+import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 
 /**
  * The shape consumers read. It kept `user_metadata` when Clerk replaced Supabase
@@ -77,6 +78,7 @@ function resetClientStoresAfterSignOut() {
   useTeamStore.setState({ teams: [], teamMembers: [], workItemTeams: {}, loading: false });
   useTimeEntryStore.setState({ timeEntries: {}, isLoading: false });
   useSnoozeStore.setState({ snoozes: {}, isLoading: false });
+  usePublishedLinksStore.setState({ trees: new Set(), backlogs: new Set() });
 }
 
 /** A resolved (or failed) Clerk-subject to profiles.id lookup. */
