@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Trash2, Plus } from 'lucide-react';
+import { PublicLinkControls } from './PublicLinkControls';
 
 interface Share {
   id: string;
@@ -156,6 +157,11 @@ export function ShareTreeDialog({
         {shares.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">Not shared with any organizations yet.</p>
         )}
+
+        <div className="mt-2 space-y-2 border-t pt-4">
+          <Label className="text-xs">Public link</Label>
+          <PublicLinkControls treeId={treeId} backlogId={null} />
+        </div>
       </DialogContent>
     </Dialog>
   );

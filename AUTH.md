@@ -40,6 +40,36 @@ alongside the Supabase integration's managed `role` claim. Clerk's default token
 has **no email at all**, and without it `link_clerk_identity()` refuses to link.
 Configure under Sessions → Customize session token.
 
+## Public links
+
+A backlog tree, or a backlog and everything under it, can be published at
+`/p/<token>` — read-only, no account needed. It is the one way to see data
+without signing in, so the whole of it is kept narrow:
+
+- **The route sits above `AppRoutes`** in `src/App.tsx`, so a visitor never waits
+  on Clerk or triggers membership and data loading.
+- **Anonymous visitors can call exactly one thing**: `get_published_backlog(token)`.
+  It returns titles, descriptions, statuses, points and structure — never
+  people, time entries, labels, hyperlinks or financial targets. That list lives
+  in that function and nowhere else; no RLS policy was widened for this.
+- **`published_links` has no write policies.** `publish_backlog_link()` and
+  `unpublish_backlog_link()` are the only way to create or revoke a link, and
+  they require owner or admin of the tree's owning organization — the same check
+  as sharing a tree with another organization.
+- **Tokens are 192 random bits**, so links can't be guessed, and anonymous reads
+  of `published_links` return nothing, so they can't be listed. Unpublishing
+  deletes the token: publishing again mints a new one and an old link that has
+  spread stays dead.
+- **Publishing a shared tree publishes all of it** — including items that partner
+  organizations created in it, because that is what the tree shows.
+
+**Every function in `public` is executable by `anon` by default** — Supabase's
+default privileges grant it on creation. A `SECURITY DEFINER` function's own
+guard is therefore the only thing protecting it: `superuser_user_overview()` is
+anon-callable and safe only because it refuses a NULL user. On anything that
+should need a session, `REVOKE EXECUTE … FROM PUBLIC, anon` explicitly, as the
+publish functions do.
+
 ## Traps
 
 - **`src/integrations/supabase/client.ts` is Lovable-generated** and says not to

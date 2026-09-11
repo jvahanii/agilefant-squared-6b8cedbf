@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ShareTreeDialog } from "./ShareTreeDialog";
+import { PublishBacklogDialog } from "./PublicLinkControls";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -354,6 +355,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
@@ -691,6 +693,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             View burnup…
           </ContextMenuItem>
         )}
+        <ContextMenuItem className="text-xs" onSelect={() => setShowPublishDialog(true)}>
+          <Globe className="w-3 h-3 mr-2" />
+          Public link…
+        </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
@@ -783,6 +789,15 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           backlogName={backlog.name}
           open={showStatusesDialog}
           onOpenChange={setShowStatusesDialog}
+        />
+      )}
+      {showPublishDialog && (
+        <PublishBacklogDialog
+          treeId={backlog.treeId}
+          backlogId={backlogId}
+          backlogName={backlog.name}
+          open={showPublishDialog}
+          onOpenChange={setShowPublishDialog}
         />
       )}
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
@@ -1071,7 +1086,7 @@ function DraggableTreeHeader({
               e.stopPropagation();
               onShareTree();
             }}
-            title="Share tree with another organization"
+            title="Share tree or publish a public link"
           >
             <Share2 className="w-3.5 h-3.5" />
           </button>

@@ -54,6 +54,7 @@ const TeamSettings = lazy(() => import("./pages/TeamSettings"));
 const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
 const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
+const PublicBacklog = lazy(() => import("./pages/PublicBacklog"));
 
 const queryClient = new QueryClient();
 
@@ -213,7 +214,20 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppRoutes />
+            <Routes>
+              {/* Public links sit above AppRoutes rather than inside it, so a
+                  visitor never waits on Clerk or triggers the membership and
+                  data loading that every signed-in route depends on. */}
+              <Route
+                path="/p/:token"
+                element={
+                  <Suspense fallback={null}>
+                    <PublicBacklog />
+                  </Suspense>
+                }
+              />
+              <Route path="*" element={<AppRoutes />} />
+            </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

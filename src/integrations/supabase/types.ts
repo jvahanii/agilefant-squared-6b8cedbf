@@ -732,6 +732,62 @@ export type Database = {
         }
         Relationships: []
       }
+      published_links: {
+        Row: {
+          backlog_id: string | null
+          created_at: string
+          created_by: string | null
+          organization_id: string
+          token: string
+          tree_id: string
+        }
+        Insert: {
+          backlog_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          organization_id: string
+          token: string
+          tree_id: string
+        }
+        Update: {
+          backlog_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          organization_id?: string
+          token?: string
+          tree_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_links_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_links_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
@@ -1316,6 +1372,7 @@ export type Database = {
         Returns: string
       }
       current_user_id: { Args: never; Returns: string }
+      get_published_backlog: { Args: { _token: string }; Returns: Json }
       get_tree_sharing_info: {
         Args: { _exclude_org_id: string; _tree_id: string }
         Returns: {
@@ -1391,6 +1448,10 @@ export type Database = {
         Args: { _entry_ids: string[]; _target_id: string; _target_kind: string }
         Returns: number
       }
+      publish_backlog_link: {
+        Args: { _backlog_id?: string; _tree_id: string }
+        Returns: string
+      }
       redeem_invite: { Args: { _token: string }; Returns: Json }
       remove_tree_share_with_copy: {
         Args: { _share_id: string }
@@ -1417,6 +1478,10 @@ export type Database = {
           organizations: number
           time_entries: number
         }[]
+      }
+      unpublish_backlog_link: {
+        Args: { _backlog_id?: string; _tree_id: string }
+        Returns: undefined
       }
     }
     Enums: {
