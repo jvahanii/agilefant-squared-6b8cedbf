@@ -645,17 +645,40 @@ function WorkItemNodeContent({
 
   const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
 
+  /** The rows a scramble action applies to: the selection when this row is part
+   *  of it, otherwise this row alone — as the other bulk actions here work. */
+  const scrambleTargets = (): string[] =>
+    isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
+
   const runScramble = async (pin: string): Promise<ScramblePinResult> => {
-    // The scrambled title is built here so the words match the app's own
-    // scramble; the database keeps the original where nobody can read it.
-    const { error } = await supabase.rpc("scramble_work_item", {
-      _work_item_id: workItemId,
-      _scrambled_title: scrambleName(item.title),
-      _pin: pin || null,
-    });
-    if (error) return { error: error.message };
-    useScrambledItemsStore.getState().setScrambled(workItemId, peekCurrentUser()?.id ?? null);
-    toast({ title: "Name scrambled", description: "Only you can read it, with your PIN." });
+    const scrambled = useScrambledItemsStore.getState().byItem;
+    const items = useAppStore.getState().workItems;
+    const ids = scrambleTargets().filter((id) => items[id] && !scrambled.has(id));
+    const me = peekCurrentUser()?.id ?? null;
+    let done = 0;
+    // One at a time: the first call may be the one that sets the PIN, and two
+    // at once would collide on it.
+    for (const id of ids) {
+      // The scrambled title is built here so the words match the app's own
+      // scramble; the database keeps the original where nobody can read it.
+      const { error } = await supabase.rpc("scramble_work_item", {
+        _work_item_id: id,
+        _scrambled_title: scrambleName(items[id].title),
+        _pin: pin || null,
+      });
+      if (error) {
+        if (done > 0) toast({ title: `${done} scrambled, then it stopped`, description: error.message, variant: "destructive" });
+        return { error: error.message };
+      }
+      useScrambledItemsStore.getState().setScrambled(id, me);
+      done += 1;
+    }
+    if (done > 0) {
+      toast({
+        title: done === 1 ? "Name scrambled" : `${done} names scrambled`,
+        description: done === 1 ? "Only you can read it, with your PIN." : "Only you can read them, with your PIN.",
+      });
+    }
     return {};
   };
 
@@ -682,10 +705,22 @@ function WorkItemNodeContent({
   };
 
   const runUnscramble = async (pin: string): Promise<ScramblePinResult> => {
-    const { error } = await supabase.rpc("unscramble_work_item", { _work_item_id: workItemId, _pin: pin });
-    if (error) return { error: error.message };
-    useScrambledItemsStore.getState().setScrambled(workItemId, undefined);
-    toast({ title: "Name restored" });
+    const scrambled = useScrambledItemsStore.getState().byItem;
+    const me = peekCurrentUser()?.id ?? null;
+    // Only the ones this person scrambled: the database refuses the rest, and
+    // there is no point asking it.
+    const ids = scrambleTargets().filter((id) => scrambled.has(id) && scrambled.get(id) === me);
+    let done = 0;
+    for (const id of ids) {
+      const { error } = await supabase.rpc("unscramble_work_item", { _work_item_id: id, _pin: pin });
+      if (error) {
+        if (done > 0) toast({ title: `${done} restored, then it stopped`, description: error.message, variant: "destructive" });
+        return { error: error.message };
+      }
+      useScrambledItemsStore.getState().setScrambled(id, undefined);
+      done += 1;
+    }
+    if (done > 0) toast({ title: done === 1 ? "Name restored" : `${done} names restored` });
     return {};
   };
 
@@ -1413,15 +1448,17 @@ function WorkItemNodeContent({
           )}
           {!isNameScrambled ? (
             <ContextMenuItem className="text-xs" onSelect={() => void startScramble()}>
-              Scramble name…
+              Scramble {isSelected && isMultiSelected ? "names" : "name"}…
             </ContextMenuItem>
           ) : scrambledByMe ? (
             <>
+              {/* Revealing is always about this one row; a dialog cannot show
+                  several names at once, and each is worth asking for. */}
               <ContextMenuItem className="text-xs" onSelect={() => setScramblePrompt({ kind: "reveal", mode: "enter" })}>
                 Show real name…
               </ContextMenuItem>
               <ContextMenuItem className="text-xs" onSelect={() => setScramblePrompt({ kind: "unscramble", mode: "enter" })}>
-                Unscramble name…
+                Unscramble {isSelected && isMultiSelected ? "names" : "name"}…
               </ContextMenuItem>
             </>
           ) : (
