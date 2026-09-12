@@ -42,6 +42,7 @@ import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { buildVisibleRows, effectiveAncestors, effectiveChildren } from "@/lib/workItemRows";
+import { remeasureRenderedRows } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -2918,7 +2919,13 @@ export function WorkItemTreePanel() {
   // Titles wrap onto multiple rows, so a row's height depends on the available
   // width. When the container width changes (mobile pane expand/collapse,
   // rotation, sidebar toggle) cached measurements go stale and rows can end up
-  // painted on top of each other — force a remeasure on width changes.
+  // painted on top of each other — read the rendered rows again.
+  //
+  // Not virtualizer.measure(): that clears every cached height back to the
+  // 32px estimate, and rows keyed by item id keep their DOM nodes, so the
+  // measureElement refs never re-run and the real heights never come back.
+  // That left a wrapped title in a one-line slot with the next row on top of
+  // it (lib/virtualRows).
   useEffect(() => {
     const el = treeScrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -2927,21 +2934,17 @@ export function WorkItemTreePanel() {
       const w = el.clientWidth;
       if (w !== lastWidth) {
         lastWidth = w;
-        virtualizer.measure();
+        remeasureRenderedRows(el, virtualizer.measureElement);
       }
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, [virtualizer]);
 
-  // Row heights are cached by work-item identity (see getItemKey above), so a
-  // change to the visible set (expand / collapse, add, delete, filter, move to
-  // another list) is handled automatically: existing rows keep their measured
-  // heights and new rows measure on mount. Do NOT call virtualizer.measure()
-  // here — clearing the cache would reset every rendered row to the 32px
-  // estimate, and (with item-id keys) React reuses the DOM nodes so the
-  // measureElement ref never re-runs. On mobile that leaves wrapped titles
-  // painted on top of each other.
+  // A change to the visible set (expand / collapse, add, delete, filter, move
+  // to another list) needs nothing here: heights are cached by work-item
+  // identity (see getItemKey above), so existing rows keep theirs and new rows
+  // measure on mount.
 
 
 
