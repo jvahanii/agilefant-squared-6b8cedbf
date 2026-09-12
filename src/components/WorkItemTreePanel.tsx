@@ -42,7 +42,7 @@ import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
 import { buildVisibleRows, effectiveAncestors, effectiveChildren } from "@/lib/workItemRows";
-import { remeasureRenderedRows } from "@/lib/virtualRows";
+import { observeWidthForRemeasure } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -2925,21 +2925,11 @@ export function WorkItemTreePanel() {
   // 32px estimate, and rows keyed by item id keep their DOM nodes, so the
   // measureElement refs never re-run and the real heights never come back.
   // That left a wrapped title in a one-line slot with the next row on top of
-  // it (lib/virtualRows).
-  useEffect(() => {
-    const el = treeScrollRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    let lastWidth = el.clientWidth;
-    const ro = new ResizeObserver(() => {
-      const w = el.clientWidth;
-      if (w !== lastWidth) {
-        lastWidth = w;
-        remeasureRenderedRows(el, virtualizer.measureElement);
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [virtualizer]);
+  // it. Watching the width is delicate in its own right — re-measuring can
+  // toggle the scrollbar, which changes the width again — so lib/virtualRows
+  // watches offsetWidth, measures on the next frame, and gives up if the width
+  // will not settle. Measuring on clientWidth here froze the live app.
+  useEffect(() => observeWidthForRemeasure(treeScrollRef.current, virtualizer.measureElement), [virtualizer]);
 
   // A change to the visible set (expand / collapse, add, delete, filter, move
   // to another list) needs nothing here: heights are cached by work-item
