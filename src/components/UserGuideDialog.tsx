@@ -33,6 +33,7 @@ import {
   BarChart3,
   Mail,
   MoveRight,
+  Lock,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -200,7 +201,15 @@ function buildSections(): Section[] {
                 how: "Select a parent item and press Shift+Enter, or click the + icon on the item row.",
               },
               { action: "Select an item", how: "Click anywhere on the item row to select it." },
-              { action: "Rename an item", how: "Double-click the item title to edit it directly in-place." },
+              { action: "Rename an item", how: "Double-click the item title to edit it directly in-place. A scrambled name cannot be renamed until it is unscrambled." },
+              {
+                action: "Scramble a name",
+                how: "Right-click an item and choose Scramble name (on mobile, open the attributes sheet and tap Scramble on the Name row). The name is replaced by Moomin words for everyone in the organisation, and a padlock marks the row. Select several items first to scramble them together.",
+              },
+              {
+                action: "Read a scrambled name",
+                how: "Only the person who scrambled it can. Choose Show real name and enter your PIN: the name is shown to you and stays scrambled for everyone. Unscramble name puts it back for good.",
+              },
               {
                 action: "Toggle done",
                 how: "Double-click (desktop) or double-tap (mobile) the empty space on an item row — anywhere that is not the title text — to toggle its status to Done.",
@@ -275,6 +284,18 @@ function buildSections(): Section[] {
             Select multiple items then press a status key (<KbdKey>D</KbdKey>, <KbdKey>I</KbdKey>, …) to bulk-update
             their status in one keystroke.
           </Tip>
+          <div className="flex gap-3 p-3 rounded-lg border bg-card text-sm">
+            <Lock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">The scramble PIN</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You choose a four-digit PIN the first time you scramble something in an organisation. After that,
+                scrambling more names does not ask for it — only reading one back does. When you unscramble your last
+                item the PIN is forgotten, and the next scramble asks for a new one. It cannot be recovered, and nobody
+                else can read your scrambled names, not even an owner.
+              </p>
+            </div>
+          </div>
         </div>
       ),
     },
@@ -529,6 +550,22 @@ function buildSections(): Section[] {
                 how: "When drag-dropping across trees, choose Mirror to keep the item visible in both views.",
               },
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
+              {
+                action: "Publish a public link",
+                how: "Right-click a backlog and choose Public link… (on mobile, open its attributes sheet and tap Public link). For a whole tree, open the tree's Share dialog — the public link sits below organisation sharing. Anyone with the link can view it without signing in, and with nothing published yet, Enter creates the link.",
+              },
+              {
+                action: "Choose what a link shows",
+                how: "Tick or untick statuses, descriptions, points, teams, labels, links and logged time in the link dialog. Everything is shown by default; points, labels and time are offered only when the organisation has those features on. Titles and the structure are always shown.",
+              },
+              {
+                action: "See what is published",
+                how: "A globe marks a published backlog in the left panel, and a tree header carries one with a count when anything inside it is published. The markers update as soon as anyone publishes or stops.",
+              },
+              {
+                action: "Stop publishing",
+                how: "Stop publishing in the same dialog. The link stops working immediately, and publishing again mints a new one — so an old link that has spread stays dead.",
+              },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
             ))}
@@ -995,17 +1032,17 @@ function buildSections(): Section[] {
               {
                 icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
                 title: "Data Integrity",
-                body: 'Use the "Check Data" button in the header to run automated integrity checks on your data. The report is copied to your clipboard.',
+                body: 'Team Settings → Data Integrity. "Check Data" runs automated integrity checks and copies the report to your clipboard.',
               },
               {
                 icon: <Settings className="w-4 h-4 text-primary" />,
                 title: "Cleanse Data",
-                body: 'The "Cleanse Data" header button removes orphaned records that no longer belong to any tree or backlog.',
+                body: 'Beside it, "Cleanse Data" removes orphaned records that no longer belong to any tree or backlog.',
               },
               {
                 icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
                 title: "Run Tests",
-                body: 'The "Run Tests" header button runs structured pass/fail data integrity tests and copies the full report to your clipboard.',
+                body: 'And "Run Tests" runs structured pass/fail integrity tests, copying the full report to your clipboard.',
               },
               {
                 icon: <Eye className="w-4 h-4 text-primary" />,
