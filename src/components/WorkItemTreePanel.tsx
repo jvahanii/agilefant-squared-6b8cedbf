@@ -39,6 +39,7 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
+import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
@@ -1934,6 +1935,9 @@ function WorkItemNodeContent({
           onOpenRespawn={() => setShowRespawnDialog(true)}
           onOpenHyperlinks={() => setShowHyperlinksDialog(true)}
           onOpenSnooze={() => setShowSnoozeDialog(true)}
+          onScrambleName={() => void startScramble()}
+          onRevealName={() => setScramblePrompt({ kind: "reveal", mode: "enter" })}
+          onUnscrambleName={() => setScramblePrompt({ kind: "unscramble", mode: "enter" })}
           onOpenMove={openMoveToBacklogDialog}
           onOpenReparent={openMoveToParentDialog}
           onDuplicate={handleDuplicate}
@@ -2572,6 +2576,9 @@ export function WorkItemTreePanel() {
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
   const [showSortRootPrompt, setShowSortRootPrompt] = useState(false);
   const [showBacklogAttributesSheet, setShowBacklogAttributesSheet] = useState(false);
+  // The selected backlog's public link, reachable on a phone through its
+  // attributes sheet; the desktop has it in the sidebar's context menu.
+  const [showBacklogPublishDialog, setShowBacklogPublishDialog] = useState(false);
   const [showBacklogStatusesDialog, setShowBacklogStatusesDialog] = useState(false);
   const [showBacklogDeleteConfirm, setShowBacklogDeleteConfirm] = useState(false);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
@@ -3974,6 +3981,16 @@ export function WorkItemTreePanel() {
             open={showBacklogAttributesSheet}
             onOpenChange={setShowBacklogAttributesSheet}
             onOpenTimeLog={() => setShowBacklogTimeLogDialog(true)}
+            onOpenPublicLink={() => setShowBacklogPublishDialog(true)}
+          />
+        )}
+        {showBacklogPublishDialog && selectedBacklogId && selectedTreeId && (
+          <PublishBacklogDialog
+            treeId={selectedTreeId}
+            backlogId={selectedBacklogId}
+            backlogName={backlogs[selectedBacklogId]?.name ?? ""}
+            open
+            onOpenChange={setShowBacklogPublishDialog}
           />
         )}
         {showBacklogStatusesDialog && selectedBacklogId && (

@@ -798,6 +798,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         open={showMobileAttributesSheet}
         onOpenChange={setShowMobileAttributesSheet}
         onOpenTimeLog={() => setShowTimeLogDialog(true)}
+        onOpenPublicLink={() => setShowPublishDialog(true)}
       />
       {showStatusesDialog && (
         <BacklogStatusesDialog

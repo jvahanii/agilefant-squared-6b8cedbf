@@ -15,9 +15,12 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
 import { IconizedTitle } from "@/components/IconizedTitle";
-import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Link2, RotateCcw, Tag } from "lucide-react";
+import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { usePublishedLinksStore } from "@/store/publishedLinksStore";
+import { peekCurrentUser } from "@/lib/currentUser";
 
 const DEFAULT_MOBILE_ORG_SETTINGS = {
   pointsEnabled: false,
@@ -38,6 +41,11 @@ interface MobileWorkItemAttributesSheetProps {
   onOpenMove: () => void;
   onOpenReparent: () => void;
   onDuplicate: () => void;
+  /** Scrambling this item's name — the same actions the desktop row offers in
+   *  its context menu, which a phone has no way to reach. */
+  onScrambleName: () => void;
+  onRevealName: () => void;
+  onUnscrambleName: () => void;
 }
 
 export function MobileWorkItemAttributesSheet({
@@ -51,7 +59,13 @@ export function MobileWorkItemAttributesSheet({
   onOpenMove,
   onOpenReparent,
   onDuplicate,
+  onScrambleName,
+  onRevealName,
+  onUnscrambleName,
 }: MobileWorkItemAttributesSheetProps) {
+  const scrambledBy = useScrambledItemsStore((s) => s.byItem.get(workItemId));
+  const isNameScrambled = useScrambledItemsStore((s) => s.byItem.has(workItemId));
+  const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
@@ -231,6 +245,46 @@ export function MobileWorkItemAttributesSheet({
           </div>
 
           <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Name</span>
+            {!isNameScrambled ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-sm text-muted-foreground"
+                onClick={() => { onOpenChange(false); onScrambleName(); }}
+              >
+                <Lock className="w-3.5 h-3.5 mr-1" />
+                Scramble
+              </Button>
+            ) : scrambledByMe ? (
+              <span className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-sm text-muted-foreground"
+                  onClick={() => { onOpenChange(false); onRevealName(); }}
+                >
+                  Show
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-sm text-muted-foreground"
+                  onClick={() => { onOpenChange(false); onUnscrambleName(); }}
+                >
+                  <Lock className="w-3.5 h-3.5 mr-1" />
+                  Unscramble
+                </Button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 px-2 text-sm text-muted-foreground">
+                <Lock className="w-3.5 h-3.5" />
+                Scrambled by someone else
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Duplicate</span>
             <Button
               variant="ghost"
@@ -307,6 +361,8 @@ interface MobileBacklogAttributesSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenTimeLog: () => void;
+  /** The backlog's public link, which the desktop offers in its context menu. */
+  onOpenPublicLink: () => void;
 }
 
 export function MobileBacklogAttributesSheet({
@@ -315,7 +371,9 @@ export function MobileBacklogAttributesSheet({
   open,
   onOpenChange,
   onOpenTimeLog,
+  onOpenPublicLink,
 }: MobileBacklogAttributesSheetProps) {
+  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId));
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
@@ -398,6 +456,19 @@ export function MobileBacklogAttributesSheet({
               </Button>
             </div>
           )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Public link</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-sm text-muted-foreground"
+              onClick={() => { onOpenChange(false); onOpenPublicLink(); }}
+            >
+              <Globe className="w-3.5 h-3.5 mr-1" />
+              {isPublished ? "Published" : "Create"}
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
