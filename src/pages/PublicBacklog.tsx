@@ -144,7 +144,10 @@ export default function PublicBacklog() {
       }
     >
       <header className="mb-6 space-y-1">
-        {p.kind === "backlog" && (
+        {/* Which tree a published backlog belongs to — unless that is the
+            backlog's own name, as it is for a tree's root backlog, where it
+            would just repeat the heading below it. */}
+        {p.kind === "backlog" && !sameName(p.tree.name, heading) && (
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             <IconizedTitle title={p.tree.name} />
           </p>
@@ -212,6 +215,11 @@ export default function PublicBacklog() {
 
 function rootName(p: PublishedPayload): string {
   return p.backlogs.find((b) => b.id === p.rootBacklogId)?.name ?? p.tree.name;
+}
+
+/** Two names that read as the same thing to a visitor. */
+function sameName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 function Shell({ children, actions }: { children: React.ReactNode; actions?: React.ReactNode }) {

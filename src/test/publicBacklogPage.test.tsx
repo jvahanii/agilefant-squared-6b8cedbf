@@ -216,6 +216,28 @@ describe("public backlog page", () => {
     expect(screen.getByText("3h 20m")).toBeTruthy();
   });
 
+  it("names the tree above a published backlog, but not when it repeats the backlog's name", async () => {
+    // The small line above the heading, naming the tree.
+    const kicker = () => document.querySelector("header p");
+
+    rpc.mockResolvedValue({ data: fixture({ kind: "backlog", rootBacklogId: "b-root" }), error: null });
+    const { unmount } = renderPage();
+    // Different names: the tree is worth naming above the heading. The backlog's
+    // own name is on the page three times over — heading, nav and section — so
+    // this waits on all of them rather than a single match.
+    await screen.findAllByText("Roadmap backlog");
+    expect(kicker()?.textContent).toBe("Product tree");
+    unmount();
+
+    // A tree's root backlog usually carries the tree's own name, and naming the
+    // tree above the heading then just repeats it.
+    const repeated = fixture({ kind: "backlog", rootBacklogId: "b-root", tree: { id: "t", name: "Roadmap backlog" } });
+    rpc.mockResolvedValue({ data: repeated, error: null });
+    renderPage();
+    await screen.findAllByText("Roadmap backlog");
+    expect(kicker()).toBeNull();
+  });
+
   it("says the link is unavailable when the token matches nothing", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     renderPage();
