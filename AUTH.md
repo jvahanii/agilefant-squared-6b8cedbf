@@ -129,9 +129,10 @@ disguise.
   however it is asked. `reveal_scrambled_title()` is the only way out, and it
   serves only the person who scrambled it, against their PIN. Revealing does not
   unscramble: the name stays hidden until they choose to restore it.
-- **The PIN is per user per organization**, set when they scramble their first
-  item and stored as a bcrypt hash (`extensions.crypt`) that never leaves the
-  database. Unscrambling their last item deletes it, so the next first scramble
+- **The PIN is four digits, per user per organization**, set when they scramble
+  their first item and stored as a bcrypt hash (`extensions.crypt`) that never
+  leaves the database. The length is enforced in
+  `check_or_set_scramble_pin()`, not only in the field. Unscrambling their last item deletes it, so the next first scramble
   sets a fresh one. Nobody can recover it — there is no reset.
 - **Scrambling needs no PIN once one exists**; only reading a name back does.
   Hiding something is safe, revealing it is the part worth protecting.
