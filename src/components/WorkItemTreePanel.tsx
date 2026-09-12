@@ -736,6 +736,18 @@ function WorkItemNodeContent({
   };
 
   const startEditingTitle = () => {
+    // Double-click, F2 and the menu all come through here. The database keeps
+    // the scrambled title whatever is sent, so say so rather than letting
+    // someone type into a field whose result is quietly dropped.
+    if (isNameScrambled) {
+      toast({
+        title: "This name is scrambled",
+        description: scrambledByMe
+          ? "Unscramble it before renaming it."
+          : "Only the person who scrambled it can change it.",
+      });
+      return;
+    }
     setEditTitle(item.title);
     setIsEditingTitle(true);
   };
@@ -3047,6 +3059,15 @@ export function WorkItemTreePanel() {
 
   // Virtualizer scroll container
   const treeScrollRef = useRef<HTMLDivElement>(null);
+  // Also as state, because the scroll container is only rendered when the
+  // backlog has items: switching from an empty one mounts a *new* element, and
+  // an effect keyed on the virtualizer alone would still be watching the old
+  // one — or nothing at all.
+  const [treeScrollEl, setTreeScrollEl] = useState<HTMLDivElement | null>(null);
+  const attachTreeScroll = useCallback((node: HTMLDivElement | null) => {
+    treeScrollRef.current = node;
+    setTreeScrollEl(node);
+  }, []);
   const virtualizer = useVirtualizer({
     count: visibleItemIds.length,
     getScrollElement: () => treeScrollRef.current,
@@ -3074,7 +3095,7 @@ export function WorkItemTreePanel() {
   // toggle the scrollbar, which changes the width again — so lib/virtualRows
   // watches offsetWidth, measures on the next frame, and gives up if the width
   // will not settle. Measuring on clientWidth here froze the live app.
-  useEffect(() => observeWidthForRemeasure(treeScrollRef.current, virtualizer.measureElement), [virtualizer]);
+  useEffect(() => observeWidthForRemeasure(treeScrollEl, virtualizer.measureElement), [treeScrollEl, virtualizer]);
 
   // A change to the visible set (expand / collapse, add, delete, filter, move
   // to another list) needs nothing here: heights are cached by work-item
@@ -3863,7 +3884,7 @@ export function WorkItemTreePanel() {
                   />
                 )}
                 <div
-                  ref={treeScrollRef}
+                  ref={attachTreeScroll}
                   className="flex-1 overflow-y-auto p-0 md:p-0.5"
                   onClick={(e) => e.stopPropagation()}
                 >

@@ -136,11 +136,16 @@ disguise.
   sets a fresh one. Nobody can recover it — there is no reset.
 - **Scrambling needs no PIN once one exists**; only reading a name back does.
   Hiding something is safe, revealing it is the part worth protecting.
-- **A scrambled item cannot be renamed**, by anyone. A trigger refuses it unless
-  the change comes from the scramble functions themselves, which set
-  `app.scrambling` for their own updates. Otherwise a rename would be silently
-  undone when the original came back, and someone could overwrite a name they
-  cannot read.
+- **A scrambled item's title cannot be changed**, by anyone. A trigger puts the
+  stored title back unless the change comes from the scramble functions
+  themselves, which set `app.scrambling` for their own updates. It *keeps* the
+  title rather than raising, because plenty of writes carry a title along
+  without meaning to change it — `restore_organization_backup()` upserts every
+  item in a snapshot, the app upserts whole rows when moving items between
+  backlogs, and undo replays a snapshot taken before the scramble. Raising made
+  one scrambled item abort all of those. The app hides Rename on a scrambled
+  item and says so, rather than letting someone type into a field whose result
+  is dropped.
 - **The name is scrubbed from where it would otherwise stay legible**:
   `work_item_history.title`, written by trigger on every change, and
   `change_log.entity_name`. Both get the scrambled title, and the restored one
