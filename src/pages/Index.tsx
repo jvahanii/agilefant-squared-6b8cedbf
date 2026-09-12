@@ -16,6 +16,7 @@ import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
+import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -111,6 +112,8 @@ const Index = () => {
     loadLabels([...orgIds]);
     // Which trees and backlogs have public links, for the sidebar markers.
     usePublishedLinksStore.getState().load();
+    // Which item names are scrambled, and by whom.
+    useScrambledItemsStore.getState().load();
     // Load savings/income financials for the active + partner orgs.
     import('@/store/financialsStore').then(({ useFinancialsStore }) =>
       useFinancialsStore.getState().load([...orgIds]),

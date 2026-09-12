@@ -116,6 +116,40 @@ without signing in, so the whole of it is kept narrow:
   those partners can now publish it themselves, sharing a tree with another
   organization means trusting them to decide whether it goes public.
 
+## Scrambled item names
+
+A work item's name can be scrambled from its context menu, for privacy. The
+stored title is replaced by its Moomin scramble (`lib/scramble`, the same words
+the display-wide toggle uses), so *everyone* sees that — this is not a per-viewer
+disguise.
+
+- **The original is kept where nobody can read it.** It lives in
+  `work_item_scrambles.original_title`, and that column is granted to no client
+  role: `GRANT SELECT (…)` names the other columns, so any request for it fails
+  however it is asked. `reveal_scrambled_title()` is the only way out, and it
+  serves only the person who scrambled it, against their PIN. Revealing does not
+  unscramble: the name stays hidden until they choose to restore it.
+- **The PIN is per user per organization**, set when they scramble their first
+  item and stored as a bcrypt hash (`extensions.crypt`) that never leaves the
+  database. Unscrambling their last item deletes it, so the next first scramble
+  sets a fresh one. Nobody can recover it — there is no reset.
+- **Scrambling needs no PIN once one exists**; only reading a name back does.
+  Hiding something is safe, revealing it is the part worth protecting.
+- **A scrambled item cannot be renamed**, by anyone. A trigger refuses it unless
+  the change comes from the scramble functions themselves, which set
+  `app.scrambling` for their own updates. Otherwise a rename would be silently
+  undone when the original came back, and someone could overwrite a name they
+  cannot read.
+- **The name is scrubbed from where it would otherwise stay legible**:
+  `work_item_history.title`, written by trigger on every change, and
+  `change_log.entity_name`. Both get the scrambled title, and the restored one
+  when it comes back — so a name an item used to have is not left behind, at the
+  cost of older titles in history becoming the current one. **Organization
+  backups taken before a scramble still contain the original**; restoring one
+  brings it back.
+- **If the scrambler's profile is deleted**, `scrambled_by` becomes NULL and the
+  item stays scrambled for good. That is the right way for this to fail.
+
 **Every function in `public` is executable by `anon` by default** — Supabase's
 default privileges grant it on creation. A `SECURITY DEFINER` function's own
 guard is therefore the only thing protecting it: `superuser_user_overview()` is

@@ -837,6 +837,42 @@ export type Database = {
           },
         ]
       }
+      scramble_pins: {
+        Row: {
+          created_at: string
+          organization_id: string
+          pin_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          organization_id: string
+          pin_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          organization_id?: string
+          pin_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scramble_pins_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scramble_pins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           created_at: string
@@ -1263,6 +1299,52 @@ export type Database = {
         }
         Relationships: []
       }
+      work_item_scrambles: {
+        Row: {
+          created_at: string
+          organization_id: string
+          original_title: string
+          scrambled_by: string | null
+          work_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          organization_id: string
+          original_title: string
+          scrambled_by?: string | null
+          work_item_id: string
+        }
+        Update: {
+          created_at?: string
+          organization_id?: string
+          original_title?: string
+          scrambled_by?: string | null
+          work_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_item_scrambles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_scrambles_scrambled_by_fkey"
+            columns: ["scrambled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_scrambles_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: true
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_item_snoozes: {
         Row: {
           created_at: string
@@ -1408,6 +1490,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      check_or_set_scramble_pin: {
+        Args: { _organization_id: string; _pin: string; _user_id: string }
+        Returns: undefined
+      }
       cleanup_orphaned_users: {
         Args: { p_user_ids: string[] }
         Returns: undefined
@@ -1456,6 +1542,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_scramble_pin: { Args: { _organization_id: string }; Returns: boolean }
       has_shared_tree_with_org: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -1518,6 +1605,14 @@ export type Database = {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
       }
+      reveal_scrambled_title: {
+        Args: { _pin: string; _work_item_id: string }
+        Returns: string
+      }
+      scramble_work_item: {
+        Args: { _pin?: string; _scrambled_title: string; _work_item_id: string }
+        Returns: undefined
+      }
       set_published_link_hidden_attributes: {
         Args: { _backlog_id: string; _hidden: string[]; _tree_id: string }
         Returns: string[]
@@ -1539,6 +1634,10 @@ export type Database = {
       unpublish_backlog_link: {
         Args: { _backlog_id?: string; _tree_id: string }
         Returns: undefined
+      }
+      unscramble_work_item: {
+        Args: { _pin: string; _work_item_id: string }
+        Returns: string
       }
     }
     Enums: {

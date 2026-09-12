@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -37,6 +37,9 @@ import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
+import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
@@ -372,6 +375,13 @@ function WorkItemNodeContent({
   const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
+  // Scrambling replaces the stored title with its Moomin scramble for everyone;
+  // only whoever scrambled it can read it back, with their PIN.
+  const scrambledBy = useScrambledItemsStore((s) => s.byItem.get(workItemId));
+  const isNameScrambled = useScrambledItemsStore((s) => s.byItem.has(workItemId));
+  const [scramblePrompt, setScramblePrompt] = useState<
+    null | { kind: "scramble" | "reveal" | "unscramble"; mode: "set" | "enter" }
+  >(null);
   const [moveToParentItemIds, setMoveToParentItemIds] = useState<string[]>([]);
   const [showMoveToBacklogDialog, setShowMoveToBacklogDialog] = useState(false);
   const [moveToBacklogItemIds, setMoveToBacklogItemIds] = useState<string[]>([]);
@@ -633,6 +643,53 @@ function WorkItemNodeContent({
   const parentItemChain: { id: string; title: string }[] =
     depth === 0 ? effectiveAncestors(workItemId, workItems, treeId).map((a) => ({ id: a.id, title: a.title })) : [];
 
+  const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
+
+  const runScramble = async (pin: string): Promise<ScramblePinResult> => {
+    // The scrambled title is built here so the words match the app's own
+    // scramble; the database keeps the original where nobody can read it.
+    const { error } = await supabase.rpc("scramble_work_item", {
+      _work_item_id: workItemId,
+      _scrambled_title: scrambleName(item.title),
+      _pin: pin || null,
+    });
+    if (error) return { error: error.message };
+    useScrambledItemsStore.getState().setScrambled(workItemId, peekCurrentUser()?.id ?? null);
+    toast({ title: "Name scrambled", description: "Only you can read it, with your PIN." });
+    return {};
+  };
+
+  const startScramble = async () => {
+    const { data, error } = await supabase.rpc("has_scramble_pin", { _organization_id: activeOrgId });
+    if (error) {
+      toast({ title: "Could not scramble", description: error.message, variant: "destructive" });
+      return;
+    }
+    // The first scramble in an organization sets the PIN. Later ones do not
+    // ask: hiding a name needs no permission, reading one does.
+    if (!data) {
+      setScramblePrompt({ kind: "scramble", mode: "set" });
+      return;
+    }
+    const result = await runScramble("");
+    if (result.error) toast({ title: "Could not scramble", description: result.error, variant: "destructive" });
+  };
+
+  const runReveal = async (pin: string): Promise<ScramblePinResult> => {
+    const { data, error } = await supabase.rpc("reveal_scrambled_title", { _work_item_id: workItemId, _pin: pin });
+    if (error) return { error: error.message };
+    return { revealed: data ?? "" };
+  };
+
+  const runUnscramble = async (pin: string): Promise<ScramblePinResult> => {
+    const { error } = await supabase.rpc("unscramble_work_item", { _work_item_id: workItemId, _pin: pin });
+    if (error) return { error: error.message };
+    useScrambledItemsStore.getState().setScrambled(workItemId, undefined);
+    toast({ title: "Name restored" });
+    return {};
+  };
+
+
   const handleDeleteChoice = (value: string) => {
     setShowDeletePrompt(false);
     if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk(deleteItemIds.map((id) => ({ workItemId: id, treeId })));
@@ -833,6 +890,12 @@ function WorkItemNodeContent({
                   startEditingTitle();
                 }}
               >
+                {isNameScrambled && (
+                  <Lock
+                    className="mr-1 inline-block h-3 w-3 align-[-1px] text-muted-foreground"
+                    aria-label="This name is scrambled"
+                  />
+                )}
                 {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
               </span>
               {labelsVisible && itemLabels.length > 0 && (
@@ -1340,9 +1403,32 @@ function WorkItemNodeContent({
               </div>
             </ContextMenuSubContent>
           </ContextMenuSub>
-          <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
-            Rename
-          </ContextMenuItem>
+          {/* A scrambled name cannot be edited — the database refuses it, since
+              a rename would be lost when the original is put back, and would
+              let anyone replace a name they cannot read. */}
+          {!isNameScrambled && (
+            <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
+              Rename
+            </ContextMenuItem>
+          )}
+          {!isNameScrambled ? (
+            <ContextMenuItem className="text-xs" onSelect={() => void startScramble()}>
+              Scramble name…
+            </ContextMenuItem>
+          ) : scrambledByMe ? (
+            <>
+              <ContextMenuItem className="text-xs" onSelect={() => setScramblePrompt({ kind: "reveal", mode: "enter" })}>
+                Show real name…
+              </ContextMenuItem>
+              <ContextMenuItem className="text-xs" onSelect={() => setScramblePrompt({ kind: "unscramble", mode: "enter" })}>
+                Unscramble name…
+              </ContextMenuItem>
+            </>
+          ) : (
+            <ContextMenuItem className="text-xs" disabled>
+              Scrambled by someone else
+            </ContextMenuItem>
+          )}
           <ContextMenuItem className="text-xs" onSelect={handleDuplicate}>
             Duplicate
             <span className="ml-auto text-[10px] text-muted-foreground">⌘D</span>
@@ -1729,6 +1815,28 @@ function WorkItemNodeContent({
           workItemId={workItemId}
           open
           onOpenChange={(o) => { setShowRespawnDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {scramblePrompt && (
+        <ScramblePinDialog
+          open
+          onOpenChange={(o) => { if (!o) { setScramblePrompt(null); releaseOverlayLock(); } }}
+          mode={scramblePrompt.mode}
+          action={
+            scramblePrompt.kind === "scramble"
+              ? "Scramble"
+              : scramblePrompt.kind === "reveal"
+                ? "Show name"
+                : "Unscramble"
+          }
+          itemTitle={item.title}
+          onConfirm={
+            scramblePrompt.kind === "scramble"
+              ? runScramble
+              : scramblePrompt.kind === "reveal"
+                ? runReveal
+                : runUnscramble
+          }
         />
       )}
       {showHyperlinksDialog && (

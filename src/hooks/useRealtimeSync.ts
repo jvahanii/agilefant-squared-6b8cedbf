@@ -21,6 +21,7 @@ import {
   FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
+import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -521,6 +522,19 @@ export function useRealtimeSync() {
       );
     subscribeWithHealth(publishedLinksChannel);
     channels.push(publishedLinksChannel);
+
+    // Scrambled item names: same shape, and for the same reason — a DELETE on
+    // an RLS table carries only the work item id, and the row it refers to is
+    // already gone, so the reload asks the database who may still act on what.
+    const scrambledItemsChannel = supabase
+      .channel(`work-item-scrambles-${activeOrgId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'work_item_scrambles' },
+        () => useScrambledItemsStore.getState().scheduleLoad(),
+      );
+    subscribeWithHealth(scrambledItemsChannel);
+    channels.push(scrambledItemsChannel);
 
     // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
     const targetsChannel = supabase
