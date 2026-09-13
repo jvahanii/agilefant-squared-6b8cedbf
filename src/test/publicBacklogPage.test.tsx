@@ -238,6 +238,37 @@ describe("public backlog page", () => {
     expect(kicker()).toBeNull();
   });
 
+  it("numbers the rows on screen, contiguously, as branches open", async () => {
+    rpc.mockResolvedValue({ data: fixture(), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+
+    const numbers = () =>
+      [...document.querySelectorAll("[data-row-number]")].map((el) => el.textContent?.trim());
+    // Collapsed: the child does not take a number, and none is skipped.
+    expect(numbers()).toEqual(["1", "2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    // The child takes 2, and the row after it shifts to 3.
+    expect(numbers()).toEqual(["1", "2", "3"]);
+    const rows = [...document.querySelectorAll("li")].filter((li) => li.querySelector("[data-row-number]"));
+    expect(rows[1].textContent).toContain("Child item");
+    expect(rows[2].textContent).toContain("Loose task");
+  });
+
+  it("does not repeat the page heading as the section heading", async () => {
+    // A link to a single backlog names it in the page heading; naming it again
+    // just below was the same title twice.
+    rpc.mockResolvedValue({ data: fixture({ kind: "backlog", rootBacklogId: "b-root" }), error: null });
+    renderPage();
+    await screen.findAllByText("Roadmap backlog");
+
+    const h2 = document.querySelector("h2");
+    expect(h2?.textContent).toBe("Roadmap backlog");
+    // Kept for screen readers, out of sight.
+    expect(h2?.className).toContain("sr-only");
+  });
+
   it("says the link is unavailable when the token matches nothing", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     renderPage();

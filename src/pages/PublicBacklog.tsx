@@ -77,6 +77,32 @@ export default function PublicBacklog() {
   );
   const items = useMemo(() => (payload ? buildItemTree(payload.items, scope) : []), [payload, scope]);
 
+  // Which rows are open, held here rather than in each row, so the numbering
+  // below can count exactly what is on screen.
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const toggleItem = useCallback((id: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }, []);
+
+  // 1-based running numbers down the visible rows, as the app numbers its list:
+  // contiguous, so a collapsed branch leaves no gap.
+  const itemNumbers = useMemo(() => {
+    const numbers = new Map<string, number>();
+    let next = 1;
+    const walk = (nodes: ItemNode[]) => {
+      for (const node of nodes) {
+        numbers.set(node.item.id, next++);
+        if (expandedItems.has(node.item.id)) walk(node.children);
+      }
+    };
+    walk(items);
+    return numbers;
+  }, [items, expandedItems]);
+
   const lookups = useMemo<Lookups | null>(() => {
     if (!payload) return null;
     return {
@@ -186,7 +212,15 @@ export default function PublicBacklog() {
             {selected && (
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-2">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                  <h2 id="backlog-heading" className="font-medium">
+                  {/* The backlog in view is usually the one already named in the
+                      page heading — a link to a single backlog always is. Name
+                      it again only when it is a different one, reached through
+                      the nav, but keep the heading for screen readers either
+                      way so the section stays labelled. */}
+                  <h2
+                    id="backlog-heading"
+                    className={sameName(selected.name, heading) ? "sr-only" : "font-medium"}
+                  >
                     <IconizedTitle title={selected.name} />
                   </h2>
                   {p.labelsVisible && <LabelList ids={selected.labelIds} labels={lk.labels} />}
@@ -202,7 +236,15 @@ export default function PublicBacklog() {
             ) : (
               <ul className="space-y-px">
                 {items.map((node) => (
-                  <ItemRow key={node.item.id} node={node} depth={0} lookups={lk} />
+                  <ItemRow
+                    key={node.item.id}
+                    node={node}
+                    depth={0}
+                    lookups={lk}
+                    numbers={itemNumbers}
+                    expandedIds={expandedItems}
+                    onToggle={toggleItem}
+                  />
                 ))}
               </ul>
             )}
@@ -312,9 +354,24 @@ function BacklogNavItem({
   );
 }
 
-function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; lookups: Lookups }) {
-  const [expanded, setExpanded] = useState(false);
+function ItemRow({
+  node,
+  depth,
+  lookups,
+  numbers,
+  expandedIds,
+  onToggle,
+}: {
+  node: ItemNode;
+  depth: number;
+  lookups: Lookups;
+  /** Running number per visible row, from the page. */
+  numbers: Map<string, number>;
+  expandedIds: Set<string>;
+  onToggle: (id: string) => void;
+}) {
   const [showDetails, setShowDetails] = useState(false);
+  const expanded = expandedIds.has(node.item.id);
   const { item, children } = node;
   const { payload: p } = lookups;
   const status = statusFor(item, p.statusesByBacklog);
@@ -333,7 +390,7 @@ function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; look
         {hasChildren ? (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => onToggle(item.id)}
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse" : "Expand"}
             className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -343,6 +400,14 @@ function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; look
         ) : (
           <span className="w-5 shrink-0" aria-hidden="true" />
         )}
+
+        <span
+          className="mt-0.5 w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground/70"
+          data-row-number={numbers.get(item.id)}
+          aria-hidden="true"
+        >
+          {numbers.get(item.id)}
+        </span>
 
         {p.statusVisible && item.status != null && (
           <span
@@ -415,7 +480,15 @@ function ItemRow({ node, depth, lookups }: { node: ItemNode; depth: number; look
       {hasChildren && expanded && (
         <ul className="space-y-px">
           {children.map((child) => (
-            <ItemRow key={child.item.id} node={child} depth={depth + 1} lookups={lookups} />
+            <ItemRow
+              key={child.item.id}
+              node={child}
+              depth={depth + 1}
+              lookups={lookups}
+              numbers={numbers}
+              expandedIds={expandedIds}
+              onToggle={onToggle}
+            />
           ))}
         </ul>
       )}
