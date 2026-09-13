@@ -15,6 +15,7 @@ import {
   backlogScope,
   buildBacklogTree,
   buildItemTree,
+  linkifySegments,
   safeLinkHref,
   scopeMinutes,
   statusFor,
@@ -196,6 +197,32 @@ describe("treeMinutes", () => {
       items: [item("i1", "a", null, null, { minutes: 90 }), item("i2", "b", "i1", null, { minutes: 30 })],
     });
     expect(treeMinutes(p)).toBe(185);
+  });
+});
+
+describe("linkifySegments", () => {
+  it("splits an address out of the words around it", () => {
+    const segments = linkifySegments("See https://example.com/a/b for details");
+    expect(segments.map((s) => s.text)).toEqual(["See ", "https://example.com/a/b", " for details"]);
+    expect(segments[1].href).toBe("https://example.com/a/b");
+    expect(segments[0].href).toBeNull();
+    expect(segments[2].href).toBeNull();
+  });
+
+  it("takes a bare www address, and leaves trailing punctuation out of it", () => {
+    const segments = linkifySegments("Try www.example.com/x, then stop.");
+    expect(segments[1].text).toBe("www.example.com/x");
+    expect(segments[1].href).toBe("https://www.example.com/x");
+  });
+
+  it("never turns a javascript: or data: URL into a link", () => {
+    const segments = linkifySegments("javascript:alert(1) and data:text/html,x");
+    expect(segments.every((s) => s.href === null)).toBe(true);
+  });
+
+  it("returns plain text as one segment", () => {
+    expect(linkifySegments("nothing to see")).toEqual([{ text: "nothing to see", href: null }]);
+    expect(linkifySegments("")).toEqual([]);
   });
 });
 

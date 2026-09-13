@@ -242,6 +242,39 @@ export function treeMinutes(payload: PublishedPayload): number {
   return sum;
 }
 
+/** A run of description text: either plain, or an address worth linking. */
+export interface TextSegment {
+  text: string;
+  /** Null for plain text, and for anything safeLinkHref() rejects. */
+  href: string | null;
+}
+
+/**
+ * Split text into plain runs and the addresses inside it.
+ *
+ * Descriptions are written by the integrations — a merged PR, a pushed commit,
+ * an imported email — and are mostly a URL with a line of context. Nobody can
+ * type one in the app, so this is about making what the robots wrote useful.
+ *
+ * Only http(s) and bare www. addresses are recognised, and each still goes
+ * through safeLinkHref(), so nothing here can turn into a javascript: link.
+ */
+export function linkifySegments(text: string): TextSegment[] {
+  // Trailing punctuation is left out of the address: sentences end in periods,
+  // and a URL in parentheses should not swallow the closing one.
+  const pattern = /(?:https?:\/\/|www\.)[^\s<>()[\]]*[^\s<>()[\].,;:!?'"]/gi;
+  const segments: TextSegment[] = [];
+  let at = 0;
+  for (const match of text.matchAll(pattern)) {
+    const start = match.index ?? 0;
+    if (start > at) segments.push({ text: text.slice(at, start), href: null });
+    segments.push({ text: match[0], href: safeLinkHref(match[0]) });
+    at = start + match[0].length;
+  }
+  if (at < text.length) segments.push({ text: text.slice(at), href: null });
+  return segments;
+}
+
 /**
  * An href that is safe to put on a page anyone can open, or null.
  *

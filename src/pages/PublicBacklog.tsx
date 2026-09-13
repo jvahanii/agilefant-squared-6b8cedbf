@@ -8,6 +8,7 @@ import {
   backlogScope,
   buildBacklogTree,
   buildItemTree,
+  linkifySegments,
   safeLinkHref,
   scopeMinutes,
   statusFor,
@@ -446,11 +447,16 @@ function ItemRow({
   const { payload: p } = lookups;
   const status = statusFor(item, p.statusesByBacklog);
   const hasChildren = children.length > 0;
-  const hasDescription = !!item.description?.trim();
   const hasLinks = item.links.length > 0;
-  // Only a description hides behind the title now: hyperlinks are the point of
-  // most rows, so they sit on the row itself, ready to click.
-  const hasDetails = hasDescription;
+  // Descriptions come from the integrations and are mostly a URL with a line of
+  // context, so the first line sits on the row and only the rest hides behind
+  // the title.
+  const descriptionLines = (item.description ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const [firstLine, ...restOfDescription] = descriptionLines;
+  const hasDetails = restOfDescription.length > 0;
   // Precomputed by the server, exactly as the app shows it — including time on
   // children this link does not show.
   const minutes = item.totalMinutes;
@@ -513,9 +519,7 @@ function ItemRow({
                 <span className="min-w-0 break-words">
                   <IconizedTitle title={item.title} />
                 </span>
-                {hasDescription && (
-                  <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has a description" />
-                )}
+                <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has more to read" />
               </button>
             ) : (
               <span className="text-sm break-words">
@@ -527,14 +531,19 @@ function ItemRow({
             {teamNames.length > 0 && <span className="text-xs text-muted-foreground">{teamNames.join(", ")}</span>}
           </div>
 
+          {/* The description's first line, with its addresses clickable. For an
+              item the GitHub or Gmail integration wrote, that line is the whole
+              point of the row, so it does not hide behind a click. */}
+          {firstLine && (
+            <p className="truncate text-xs text-muted-foreground">
+              <Linkified text={firstLine} />
+            </p>
+          )}
+
           {showDetails && hasDetails && (
-            <div className="mt-1 space-y-1.5">
-              {hasDescription && (
-                // Plain text on purpose: React escapes it, so nothing in a
-                // description can inject markup into a page anyone can open.
-                <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{item.description}</p>
-              )}
-            </div>
+            <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+              <Linkified text={restOfDescription.join("\n")} />
+            </p>
           )}
         </div>
 
@@ -597,6 +606,35 @@ function ItemLink({ link }: { link: PublishedLink }) {
       <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
       <span className="truncate">{label}</span>
     </a>
+  );
+}
+
+/**
+ * Description text with its addresses as links, everything else as text.
+ *
+ * The text is rendered as text — React escapes it — so nothing written into
+ * a description can inject markup into a page anyone can open, and an address
+ * becomes a link only if safeLinkHref() accepts it.
+ */
+function Linkified({ text }: { text: string }) {
+  return (
+    <>
+      {linkifySegments(text).map((segment, i) =>
+        segment.href ? (
+          <a
+            key={i}
+            href={segment.href}
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {segment.text}
+          </a>
+        ) : (
+          <span key={i}>{segment.text}</span>
+        ),
+      )}
+    </>
   );
 }
 

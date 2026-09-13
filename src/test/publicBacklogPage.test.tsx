@@ -172,10 +172,11 @@ describe("public backlog page", () => {
     const bare = screen.getByText("example.org/x").closest("a");
     expect(bare?.getAttribute("href")).toBe("https://www.example.org/x");
 
-    // A description still hides behind the title.
-    expect(screen.queryByText(/Line one/)).toBeNull();
-    fireEvent.click(screen.getByText("Parent item"));
+    // The description's first line is on the row; the rest waits behind the title.
     expect(screen.getByText(/Line one/)).toBeTruthy();
+    expect(screen.queryByText(/Line two/)).toBeNull();
+    fireEvent.click(screen.getByText("Parent item"));
+    expect(screen.getByText(/Line two/)).toBeTruthy();
   });
 
   it("shows no labels or time when the organization has those features off", async () => {
@@ -271,6 +272,25 @@ describe("public backlog page", () => {
     expect(h2?.textContent).toBe("Roadmap backlog");
     // Kept for screen readers, out of sight.
     expect(h2?.className).toContain("sr-only");
+  });
+
+  it("shows a description's first line on the row, with its address as a link", async () => {
+    // What the GitHub integration writes: a line of context and a URL. Nobody
+    // can type a description in the app, so this is the shape that matters.
+    const data = fixture();
+    (data.items as { id: string; description: string | null }[]).find((i) => i.id === "loose")!.description =
+      "Pushed to owner/repo@d05ac30 by jvahanii https://github.com/owner/repo/commit/d05ac30";
+    rpc.mockResolvedValue({ data, error: null });
+    renderPage();
+    await screen.findByText("Loose task");
+
+    // No click needed, and the address is a real link.
+    const link = screen.getByText("https://github.com/owner/repo/commit/d05ac30").closest("a");
+    expect(link?.getAttribute("href")).toBe("https://github.com/owner/repo/commit/d05ac30");
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toContain("noopener");
+    // The words around it stay words.
+    expect(screen.getByText(/Pushed to owner\/repo@d05ac30/)).toBeTruthy();
   });
 
   it("selects a row on click, and opens its first link on Enter", async () => {
