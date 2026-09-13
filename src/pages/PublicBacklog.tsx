@@ -107,16 +107,49 @@ export default function PublicBacklog() {
     return { itemNumbers: numbers, visibleOrder: order };
   }, [items, expandedItems]);
 
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  // The selection is a set: a visitor can pick several rows and open every
+  // link they hold at once. `cursor` is the row arrows move from and the
+  // anchor a shift-click ranges to.
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [cursor, setCursor] = useState<string | null>(null);
   const itemsById = useMemo(
     () => new Map((payload?.items ?? []).map((i) => [i.id, i])),
     [payload],
   );
 
-  // Keep the selection on something that is still on screen.
+  const selectItem = useCallback(
+    (id: string, modifiers: { multi: boolean; range: boolean }) => {
+      setSelectedItemIds((current) => {
+        if (modifiers.range && cursor) {
+          const from = visibleOrder.indexOf(cursor);
+          const to = visibleOrder.indexOf(id);
+          if (from !== -1 && to !== -1) {
+            return new Set(visibleOrder.slice(Math.min(from, to), Math.max(from, to) + 1));
+          }
+        }
+        if (modifiers.multi) {
+          const next = new Set(current);
+          if (!next.delete(id)) next.add(id);
+          return next;
+        }
+        return new Set([id]);
+      });
+      // A range keeps its anchor, so dragging the shift-click further grows
+      // from the same place.
+      if (!modifiers.range) setCursor(id);
+    },
+    [cursor, visibleOrder],
+  );
+
+  // Keep the selection on rows that are still on screen.
   useEffect(() => {
-    if (selectedItemId && !visibleOrder.includes(selectedItemId)) setSelectedItemId(null);
-  }, [visibleOrder, selectedItemId]);
+    setSelectedItemIds((current) => {
+      const onScreen = new Set(visibleOrder);
+      if ([...current].every((id) => onScreen.has(id))) return current;
+      return new Set([...current].filter((id) => onScreen.has(id)));
+    });
+    setCursor((current) => (current && visibleOrder.includes(current) ? current : null));
+  }, [visibleOrder]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -129,43 +162,49 @@ export default function PublicBacklog() {
         return;
       }
       if (event.key === "Escape") {
-        setSelectedItemId(null);
+        setSelectedItemIds(new Set());
+        setCursor(null);
         return;
       }
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         if (visibleOrder.length === 0) return;
         event.preventDefault();
         const step = event.key === "ArrowDown" ? 1 : -1;
-        setSelectedItemId((current) => {
-          const at = current ? visibleOrder.indexOf(current) : -1;
-          if (at === -1) return visibleOrder[step === 1 ? 0 : visibleOrder.length - 1];
-          const next = Math.min(visibleOrder.length - 1, Math.max(0, at + step));
-          return visibleOrder[next];
-        });
+        const at = cursor ? visibleOrder.indexOf(cursor) : -1;
+        const next =
+          at === -1
+            ? visibleOrder[step === 1 ? 0 : visibleOrder.length - 1]
+            : visibleOrder[Math.min(visibleOrder.length - 1, Math.max(0, at + step))];
+        if (!next) return;
+        // Shift extends the selection; on its own an arrow moves to one row.
+        setSelectedItemIds((current) => (event.shiftKey ? new Set([...current, next]) : new Set([next])));
+        setCursor(next);
         return;
       }
-      if (event.key === "Enter" && selectedItemId) {
-        // The item's first address that is safe to open at all.
-        const href = itemsById
-          .get(selectedItemId)
-          ?.links.map((link) => safeLinkHref(link.url))
-          .find((candidate): candidate is string => !!candidate);
-        if (!href) return;
+      if (event.key === "Enter" && selectedItemIds.size > 0) {
+        // Every address the selected rows hold, in the order they are shown,
+        // and only those safe to open at all.
+        const hrefs = visibleOrder
+          .filter((id) => selectedItemIds.has(id))
+          .flatMap((id) => itemsById.get(id)?.links ?? [])
+          .map((link) => safeLinkHref(link.url))
+          .filter((href): href is string => !!href);
+        if (hrefs.length === 0) return;
         event.preventDefault();
-        window.open(href, "_blank", "noopener,noreferrer");
+        for (const href of hrefs) window.open(href, "_blank", "noopener,noreferrer");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visibleOrder, selectedItemId, itemsById]);
+  }, [visibleOrder, selectedItemIds, cursor, itemsById]);
 
-  // Follow the selection when the arrow keys walk it off screen.
+  // Follow the cursor when the arrow keys walk it off screen.
   useEffect(() => {
-    if (!selectedItemId) return;
-    const row = document.querySelector(`[data-item-id="${CSS.escape(selectedItemId)}"]`);
+    if (!cursor) return;
+    const row = document.querySelector(`[data-item-id="${CSS.escape(cursor)}"]`);
     // Optional call: jsdom has no scrollIntoView, and this is a nicety.
     (row as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
-  }, [selectedItemId]);
+  }, [cursor]);
 
   const lookups = useMemo<Lookups | null>(() => {
     if (!payload) return null;
@@ -308,8 +347,8 @@ export default function PublicBacklog() {
                     numbers={itemNumbers}
                     expandedIds={expandedItems}
                     onToggle={toggleItem}
-                    selectedId={selectedItemId}
-                    onSelect={setSelectedItemId}
+                    selectedIds={selectedItemIds}
+                    onSelect={selectItem}
                   />
                 ))}
               </ul>
@@ -427,7 +466,7 @@ function ItemRow({
   numbers,
   expandedIds,
   onToggle,
-  selectedId,
+  selectedIds,
   onSelect,
 }: {
   node: ItemNode;
@@ -437,12 +476,12 @@ function ItemRow({
   numbers: Map<string, number>;
   expandedIds: Set<string>;
   onToggle: (id: string) => void;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds: Set<string>;
+  onSelect: (id: string, modifiers: { multi: boolean; range: boolean }) => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
   const expanded = expandedIds.has(node.item.id);
-  const selected = selectedId === node.item.id;
+  const selected = selectedIds.has(node.item.id);
   const { item, children } = node;
   const { payload: p } = lookups;
   const status = statusFor(item, p.statusesByBacklog);
@@ -469,7 +508,7 @@ function ItemRow({
       <div
         data-item-id={item.id}
         aria-selected={selected}
-        onClick={() => onSelect(item.id)}
+        onClick={(e) => onSelect(item.id, { multi: e.ctrlKey || e.metaKey, range: e.shiftKey })}
         className={`flex items-start gap-1.5 rounded-md py-1.5 pr-2 ${
           selected ? "bg-accent ring-1 ring-primary/30" : "hover:bg-accent/40"
         }`}
@@ -570,7 +609,7 @@ function ItemRow({
               numbers={numbers}
               expandedIds={expandedIds}
               onToggle={onToggle}
-              selectedId={selectedId}
+              selectedIds={selectedIds}
               onSelect={onSelect}
             />
           ))}

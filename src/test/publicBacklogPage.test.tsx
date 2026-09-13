@@ -304,9 +304,57 @@ describe("public backlog page", () => {
     expect(row.getAttribute("aria-selected")).toBe("true");
 
     fireEvent.keyDown(window, { key: "Enter" });
-    // The first *safe* address: the javascript: one is never opened.
-    expect(open).toHaveBeenCalledWith("https://example.com/spec", "_blank", "noopener,noreferrer");
+    // Every safe address on the row — the javascript: one is never opened.
+    expect(open.mock.calls.map(([href]) => href)).toEqual([
+      "https://example.com/spec",
+      "https://www.example.org/x",
+    ]);
+    expect(open).toHaveBeenCalledWith(expect.any(String), "_blank", "noopener,noreferrer");
     open.mockRestore();
+  });
+
+  it("opens the links of several selected rows at once", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const data = fixture();
+    (data.items as { id: string; links: { url: string; altText: string | null }[] }[]).find(
+      (i) => i.id === "loose",
+    )!.links = [{ url: "https://example.net/loose", altText: "Loose link" }];
+    rpc.mockResolvedValue({ data, error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+
+    fireEvent.click(document.querySelector('[data-item-id="parent"]')!);
+    // Ctrl-click adds a row rather than replacing the selection.
+    fireEvent.click(document.querySelector('[data-item-id="loose"]')!, { ctrlKey: true });
+    expect(document.querySelectorAll('[aria-selected="true"]').length).toBe(2);
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(open.mock.calls.map(([href]) => href)).toEqual([
+      "https://example.com/spec",
+      "https://www.example.org/x",
+      "https://example.net/loose",
+    ]);
+
+    // Ctrl-clicking again takes that row back out.
+    fireEvent.click(document.querySelector('[data-item-id="loose"]')!, { ctrlKey: true });
+    expect(document.querySelectorAll('[aria-selected="true"]').length).toBe(1);
+    open.mockRestore();
+  });
+
+  it("selects a range with shift-click", async () => {
+    rpc.mockResolvedValue({ data: fixture(), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+
+    // Open the branch so there are three rows on screen.
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    fireEvent.click(document.querySelector('[data-item-id="parent"]')!);
+    fireEvent.click(document.querySelector('[data-item-id="loose"]')!, { shiftKey: true });
+
+    const selected = [...document.querySelectorAll('[aria-selected="true"]')].map((el) =>
+      el.getAttribute("data-item-id"),
+    );
+    expect(selected).toEqual(["parent", "child", "loose"]);
   });
 
   it("walks the selection with the arrow keys, and Enter is quiet without a link", async () => {
