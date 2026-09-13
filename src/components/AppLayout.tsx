@@ -172,6 +172,16 @@ function AppLayoutInner() {
   }, []);
 
   useEffect(() => {
+    // Radix closes a dialog on Escape, and React flushes that unmount
+    // synchronously within the same keydown — so by the time the handler below
+    // runs, the dialog is already gone and a live DOM check sees nothing. That
+    // let Escape close the hyperlinks dialog *and* clear the item's selection.
+    // Capture the answer first, in the capture phase, before anything reacts.
+    let dialogWasOpen = false;
+    const noteDialogOpen = () => {
+      dialogWasOpen = !!document.querySelector('[role="dialog"]');
+    };
+
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
@@ -190,7 +200,7 @@ function AppLayoutInner() {
 
       // Ctrl+A / Cmd+A selects all visible work items (skip when a dialog is open)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
-        if (document.querySelector('[role="dialog"]')) return;
+        if (dialogWasOpen || document.querySelector('[role="dialog"]')) return;
         const ids = visibleWorkItemIdsRef.current;
         if (ids.length > 0) {
           e.preventDefault();
@@ -222,7 +232,7 @@ function AppLayoutInner() {
       if (isInput) return;
 
       // Don't fire global shortcuts when a modal dialog is open (e.g. reparent dialog).
-      if (document.querySelector('[role="dialog"]')) return;
+      if (dialogWasOpen || document.querySelector('[role="dialog"]')) return;
 
       const state = useAppStore.getState();
 
@@ -645,8 +655,12 @@ function AppLayoutInner() {
         }
       }
     };
+    window.addEventListener("keydown", noteDialogOpen, true);
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", noteDialogOpen, true);
+      window.removeEventListener("keydown", handler);
+    };
   }, [undo, redo, moveWorkItemToBacklog, moveWorkItemsToBacklog, reorderWorkItemAmongSiblings]);
 
   // Mobile swipe gesture handlers
