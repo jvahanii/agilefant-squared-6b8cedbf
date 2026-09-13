@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, Clock, FileText, Link2, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { formatDuration } from "@/lib/formatDuration";
@@ -378,7 +378,9 @@ function ItemRow({
   const hasChildren = children.length > 0;
   const hasDescription = !!item.description?.trim();
   const hasLinks = item.links.length > 0;
-  const hasDetails = hasDescription || hasLinks;
+  // Only a description hides behind the title now: hyperlinks are the point of
+  // most rows, so they sit on the row itself, ready to click.
+  const hasDetails = hasDescription;
   // Precomputed by the server, exactly as the app shows it — including time on
   // children this link does not show.
   const minutes = item.totalMinutes;
@@ -434,13 +436,13 @@ function ItemRow({
                 {hasDescription && (
                   <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has a description" />
                 )}
-                {hasLinks && <Link2 className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has links" />}
               </button>
             ) : (
               <span className="text-sm break-words">
                 <IconizedTitle title={item.title} />
               </span>
             )}
+            {hasLinks && item.links.map((link, i) => <ItemLink key={i} link={link} />)}
             {p.labelsVisible && <LabelList ids={item.labelIds} labels={lookups.labels} />}
             {teamNames.length > 0 && <span className="text-xs text-muted-foreground">{teamNames.join(", ")}</span>}
           </div>
@@ -451,15 +453,6 @@ function ItemRow({
                 // Plain text on purpose: React escapes it, so nothing in a
                 // description can inject markup into a page anyone can open.
                 <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{item.description}</p>
-              )}
-              {hasLinks && (
-                <ul className="space-y-0.5">
-                  {item.links.map((link, i) => (
-                    <li key={i}>
-                      <LinkLine link={link} />
-                    </li>
-                  ))}
-                </ul>
               )}
             </div>
           )}
@@ -496,13 +489,18 @@ function ItemRow({
   );
 }
 
-/** A stored hyperlink, clickable only if safeLinkHref() accepts it. Anything
- *  else — a javascript: or data: URL, or plain prose — is shown as text. */
-function LinkLine({ link }: { link: PublishedLink }) {
+/**
+ * A stored hyperlink, sitting on the item's row and opening in a new tab.
+ *
+ * Clickable only if safeLinkHref() accepts it: anything else — a javascript: or
+ * data: URL, or plain prose — is shown as text, since these come straight from
+ * the database onto a page anyone can open.
+ */
+function ItemLink({ link }: { link: PublishedLink }) {
   const href = safeLinkHref(link.url);
-  const text = link.altText?.trim() || link.url;
+  const label = link.altText?.trim() || shortLinkLabel(href, link.url);
   if (!href) {
-    return <span className="break-all text-xs text-muted-foreground">{text}</span>;
+    return <span className="break-all text-xs text-muted-foreground">{label}</span>;
   }
   return (
     <a
@@ -511,9 +509,23 @@ function LinkLine({ link }: { link: PublishedLink }) {
       // nofollow/ugc: these are user-supplied links on a public page, and
       // should not lend it any search ranking.
       rel="noopener noreferrer nofollow ugc"
-      className="break-all text-xs text-primary underline underline-offset-4 hover:opacity-80"
+      title={link.url}
+      className="inline-flex max-w-[14rem] items-center gap-0.5 text-xs text-primary underline-offset-4 hover:underline"
     >
-      {text}
+      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+      <span className="truncate">{label}</span>
     </a>
   );
+}
+
+/** What to call a link with no text of its own: its host, or its address. */
+function shortLinkLabel(href: string | null, raw: string): string {
+  if (!href) return raw;
+  try {
+    const url = new URL(href);
+    if (url.protocol === "mailto:") return href.slice("mailto:".length);
+    return url.hostname.replace(/^www\./, "") + (url.pathname !== "/" ? url.pathname : "");
+  } catch {
+    return raw;
+  }
 }

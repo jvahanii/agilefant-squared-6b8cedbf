@@ -152,26 +152,30 @@ describe("public backlog page", () => {
     expect(screen.getByText("30m")).toBeTruthy();
   });
 
-  it("only makes http(s) and mailto links clickable", async () => {
+  it("puts hyperlinks on the row, clickable, opening in a new tab", async () => {
     rpc.mockResolvedValue({ data: fixture(), error: null });
     renderPage();
+    await screen.findByText("Parent item");
 
-    fireEvent.click(await screen.findByText("Parent item"));
-
-    const spec = screen.getByText("Spec");
-    expect(spec.closest("a")?.getAttribute("href")).toBe("https://example.com/spec");
-    expect(spec.closest("a")?.getAttribute("rel")).toContain("noopener");
+    // No click needed: the links are on the row itself.
+    const spec = screen.getByText("Spec").closest("a");
+    expect(spec?.getAttribute("href")).toBe("https://example.com/spec");
+    expect(spec?.getAttribute("target")).toBe("_blank");
+    expect(spec?.getAttribute("rel")).toContain("noopener");
 
     // The javascript: URL is shown, but as text — never as a link.
-    const evil = screen.getByText("Evil");
-    expect(evil.closest("a")).toBeNull();
-
-    // A bare domain, as people type them, becomes an https link.
-    const bare = screen.getByText("www.example.org/x");
-    expect(bare.closest("a")?.getAttribute("href")).toBe("https://www.example.org/x");
-
-    expect(screen.getByText(/Line one/)).toBeTruthy();
+    expect(screen.getByText("Evil").closest("a")).toBeNull();
     expect(document.querySelectorAll('a[href^="javascript:"]').length).toBe(0);
+
+    // A bare domain, as people type them, becomes an https link, labelled
+    // by host and path since it carries no text of its own.
+    const bare = screen.getByText("example.org/x").closest("a");
+    expect(bare?.getAttribute("href")).toBe("https://www.example.org/x");
+
+    // A description still hides behind the title.
+    expect(screen.queryByText(/Line one/)).toBeNull();
+    fireEvent.click(screen.getByText("Parent item"));
+    expect(screen.getByText(/Line one/)).toBeTruthy();
   });
 
   it("shows no labels or time when the organization has those features off", async () => {
