@@ -1208,11 +1208,23 @@ export const useAppStore = create<AppState>()((set, get) => {
           validWorkItemIds,
         );
         const currentState = get();
-        const canSkipCachedApply =
-          lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
+        // The cache exists to fill an empty screen on a cold start. Applying it
+        // over data already on screen is what made a wake-up resync repaint the
+        // hierarchy as it stood before the last edits — the cache is only
+        // written after a fetch, so it lags every edit made since — and then
+        // put it back a moment later when the fetch below returned. Worse, this
+        // apply clears the undo and redo stacks and collapses every branch, so
+        // a wake threw those away for good.
+        const hasLiveData =
           currentState.organizationId === orgId &&
-          Object.keys(currentState.backlogTrees).length > 0 &&
+          Object.keys(currentState.workItems).length > 0 &&
           !currentState.isLoading;
+        const canSkipCachedApply =
+          hasLiveData ||
+          (lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
+            currentState.organizationId === orgId &&
+            Object.keys(currentState.backlogTrees).length > 0 &&
+            !currentState.isLoading);
         if (!canSkipCachedApply) {
           lastAppliedCachedSnapshotKey = cachedSnapshotKey;
           set((state) => {
