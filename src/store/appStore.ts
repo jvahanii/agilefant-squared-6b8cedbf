@@ -85,6 +85,22 @@ function computeNextWorkItemSelection(deletedIds: Set<string>, direction: 'up' |
 // (old comment block)
 
 /**
+ * The backlogs the work item panel is showing: each selected backlog and
+ * every backlog beneath it, since selecting a backlog shows its whole
+ * subtree. Used to tell whether a move takes an item off screen.
+ */
+function shownBacklogIds(backlogs: Record<string, Backlog>, selectedBacklogIds: string[]): Set<string> {
+  const shown = new Set<string>();
+  const collect = (id: string) => {
+    if (shown.has(id)) return;
+    shown.add(id);
+    (backlogs[id]?.childrenIds ?? []).forEach(collect);
+  };
+  selectedBacklogIds.forEach(collect);
+  return shown;
+}
+
+/**
  * Same as computeNextWorkItemSelection but for backlog nodes.
  */
 function computeNextBacklogSelection(deletedIds: Set<string>, direction: 'up' | 'down' = 'up'): string | null {
@@ -2186,7 +2202,27 @@ export const useAppStore = create<AppState>()((set, get) => {
         entityName: roots.length === 1 ? (firstRoot?.title ?? roots[0]) : `${roots.length} items`,
         details: `backlog: "${oldBacklogName}" → "${newBacklogName}"`,
       });
-      set({ workItems: updatedItems, undoStack: pushUndoEntry(state), redoStack: [] });
+      // A move that takes the selected item off screen leaves the selection
+      // where the eye already is: the row below it, or the one above when it
+      // was last. A mirror leaves the item in place, so it keeps its selection,
+      // and so does a move within the backlogs on screen.
+      const selectionAfterMove = (() => {
+        if (strategy === "mirror") return null;
+        if (!state.selectedWorkItemIds.some((id) => movedIds.has(id))) return null;
+        const staysOnScreen =
+          targetTreeId === state.selectedTreeId &&
+          shownBacklogIds(state.backlogs, state.selectedBacklogIds).has(cleanTargetBl);
+        if (staysOnScreen) return null;
+        const next = computeNextWorkItemSelection(movedIds, "down");
+        return next ? [next] : [];
+      })();
+
+      set({
+        workItems: updatedItems,
+        ...(selectionAfterMove ? { selectedWorkItemIds: selectionAfterMove } : {}),
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
     },
 
 
@@ -2895,6 +2931,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updatedItems = { ...state.workItems };
       const toUpsert: WorkItem[] = [];
       const allIdsToDelete: string[] = [];
+      // Ids that leave the tree on screen, so the selection can follow them
+      // the way it follows a move or a delete.
+      const leftTheShownTree = new Set<string>();
 
       for (const { workItemId, treeId } of items) {
         if (!state.workItems[workItemId]) continue;
@@ -2902,6 +2941,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         const processItem = (id: string) => {
           const wi = updatedItems[id];
           if (!wi) return;
+          if (treeId === state.selectedTreeId) leftTheShownTree.add(id);
           const newAssignments = { ...wi.backlogAssignments };
           const removedBlId = newAssignments[treeId];
           delete newAssignments[treeId];
@@ -2944,8 +2984,16 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
 
       internalLog({ action: "Remove from Tree", entityType: "work_item", entityId: items[0].workItemId, entityName: `${items.length} items` });
+
+      // As with a move: the selection lands on the row below what left, or
+      // the one above when it was last.
+      const nextSelected = state.selectedWorkItemIds.some((id) => leftTheShownTree.has(id))
+        ? computeNextWorkItemSelection(leftTheShownTree, "down")
+        : undefined;
+
       set({
         workItems: updatedItems,
+        ...(nextSelected === undefined ? {} : { selectedWorkItemIds: nextSelected ? [nextSelected] : [] }),
         undoStack: pushUndoEntry(state),
         redoStack: [],
       });
