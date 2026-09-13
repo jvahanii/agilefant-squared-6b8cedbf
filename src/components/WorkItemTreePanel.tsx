@@ -3065,6 +3065,7 @@ export function WorkItemTreePanel() {
   }, [visibleItemIds, workItems, selectedTreeId, backlogIdSet]);
 
   // Virtualizer scroll container
+  const panelRef = useRef<HTMLDivElement>(null);
   const treeScrollRef = useRef<HTMLDivElement>(null);
   // Also as state, because the scroll container is only rendered when the
   // backlog has items: switching from an empty one mounts a *new* element, and
@@ -3375,8 +3376,14 @@ export function WorkItemTreePanel() {
     <LabelFilterContext.Provider value={isSearchMode || isFilterMode ? null : visibleFilterSet}>
     <RunningNumberContext.Provider value={isSearchMode || isFilterMode ? null : runningNumbers}>
       <div
+        ref={panelRef}
         className="h-full flex flex-col overflow-hidden"
-        onClick={() => {
+        onClick={(e) => {
+          // React bubbles events through portals, so a click inside a dialog,
+          // sheet or menu rendered elsewhere in the DOM still arrives here —
+          // which deselected the item whose hyperlink had just been clicked.
+          // Only a click on the panel's own empty space should clear it.
+          if (!panelRef.current?.contains(e.target as Node)) return;
           clearWorkItemSelection();
           lastSelectedId.current = null;
         }}
