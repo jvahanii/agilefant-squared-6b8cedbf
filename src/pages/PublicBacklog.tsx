@@ -89,19 +89,82 @@ export default function PublicBacklog() {
   }, []);
 
   // 1-based running numbers down the visible rows, as the app numbers its list:
-  // contiguous, so a collapsed branch leaves no gap.
-  const itemNumbers = useMemo(() => {
+  // contiguous, so a collapsed branch leaves no gap. The same walk yields the
+  // order the arrow keys move through.
+  const { itemNumbers, visibleOrder } = useMemo(() => {
     const numbers = new Map<string, number>();
+    const order: string[] = [];
     let next = 1;
     const walk = (nodes: ItemNode[]) => {
       for (const node of nodes) {
         numbers.set(node.item.id, next++);
+        order.push(node.item.id);
         if (expandedItems.has(node.item.id)) walk(node.children);
       }
     };
     walk(items);
-    return numbers;
+    return { itemNumbers: numbers, visibleOrder: order };
   }, [items, expandedItems]);
+
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const itemsById = useMemo(
+    () => new Map((payload?.items ?? []).map((i) => [i.id, i])),
+    [payload],
+  );
+
+  // Keep the selection on something that is still on screen.
+  useEffect(() => {
+    if (selectedItemId && !visibleOrder.includes(selectedItemId)) setSelectedItemId(null);
+  }, [visibleOrder, selectedItemId]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      // Let a focused link or button handle its own Enter, and never steal keys
+      // from a field.
+      if (target && (target.tagName === "A" || target.tagName === "BUTTON" ||
+                     target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (event.key === "Escape") {
+        setSelectedItemId(null);
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        if (visibleOrder.length === 0) return;
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        setSelectedItemId((current) => {
+          const at = current ? visibleOrder.indexOf(current) : -1;
+          if (at === -1) return visibleOrder[step === 1 ? 0 : visibleOrder.length - 1];
+          const next = Math.min(visibleOrder.length - 1, Math.max(0, at + step));
+          return visibleOrder[next];
+        });
+        return;
+      }
+      if (event.key === "Enter" && selectedItemId) {
+        // The item's first address that is safe to open at all.
+        const href = itemsById
+          .get(selectedItemId)
+          ?.links.map((link) => safeLinkHref(link.url))
+          .find((candidate): candidate is string => !!candidate);
+        if (!href) return;
+        event.preventDefault();
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visibleOrder, selectedItemId, itemsById]);
+
+  // Follow the selection when the arrow keys walk it off screen.
+  useEffect(() => {
+    if (!selectedItemId) return;
+    const row = document.querySelector(`[data-item-id="${CSS.escape(selectedItemId)}"]`);
+    // Optional call: jsdom has no scrollIntoView, and this is a nicety.
+    (row as HTMLElement | null)?.scrollIntoView?.({ block: "nearest" });
+  }, [selectedItemId]);
 
   const lookups = useMemo<Lookups | null>(() => {
     if (!payload) return null;
@@ -244,6 +307,8 @@ export default function PublicBacklog() {
                     numbers={itemNumbers}
                     expandedIds={expandedItems}
                     onToggle={toggleItem}
+                    selectedId={selectedItemId}
+                    onSelect={setSelectedItemId}
                   />
                 ))}
               </ul>
@@ -361,6 +426,8 @@ function ItemRow({
   numbers,
   expandedIds,
   onToggle,
+  selectedId,
+  onSelect,
 }: {
   node: ItemNode;
   depth: number;
@@ -369,9 +436,12 @@ function ItemRow({
   numbers: Map<string, number>;
   expandedIds: Set<string>;
   onToggle: (id: string) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const [showDetails, setShowDetails] = useState(false);
   const expanded = expandedIds.has(node.item.id);
+  const selected = selectedId === node.item.id;
   const { item, children } = node;
   const { payload: p } = lookups;
   const status = statusFor(item, p.statusesByBacklog);
@@ -388,7 +458,17 @@ function ItemRow({
 
   return (
     <li>
-      <div className="flex items-start gap-1.5 rounded-md py-1.5 pr-2 hover:bg-accent/40" style={{ paddingLeft: `${depth * 1.25}rem` }}>
+      {/* Selecting a row is what makes Enter meaningful: it opens the item's
+          first link in a new tab. */}
+      <div
+        data-item-id={item.id}
+        aria-selected={selected}
+        onClick={() => onSelect(item.id)}
+        className={`flex items-start gap-1.5 rounded-md py-1.5 pr-2 ${
+          selected ? "bg-accent ring-1 ring-primary/30" : "hover:bg-accent/40"
+        }`}
+        style={{ paddingLeft: `${depth * 1.25}rem` }}
+      >
         {hasChildren ? (
           <button
             type="button"
@@ -481,6 +561,8 @@ function ItemRow({
               numbers={numbers}
               expandedIds={expandedIds}
               onToggle={onToggle}
+              selectedId={selectedId}
+              onSelect={onSelect}
             />
           ))}
         </ul>

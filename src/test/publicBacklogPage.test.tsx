@@ -273,6 +273,43 @@ describe("public backlog page", () => {
     expect(h2?.className).toContain("sr-only");
   });
 
+  it("selects a row on click, and opens its first link on Enter", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    rpc.mockResolvedValue({ data: fixture(), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+
+    const row = document.querySelector('[data-item-id="parent"]')!;
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    // The first *safe* address: the javascript: one is never opened.
+    expect(open).toHaveBeenCalledWith("https://example.com/spec", "_blank", "noopener,noreferrer");
+    open.mockRestore();
+  });
+
+  it("walks the selection with the arrow keys, and Enter is quiet without a link", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    rpc.mockResolvedValue({ data: fixture(), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+
+    const selected = () => document.querySelector('[aria-selected="true"]')?.getAttribute("data-item-id") ?? null;
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    expect(selected()).toBe("parent");
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    // "Child item" is collapsed, so the next row is the loose one.
+    expect(selected()).toBe("loose");
+
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(open).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(selected()).toBeNull();
+    open.mockRestore();
+  });
+
   it("says the link is unavailable when the token matches nothing", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     renderPage();
