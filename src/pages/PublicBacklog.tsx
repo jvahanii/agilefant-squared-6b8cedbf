@@ -475,7 +475,7 @@ function ItemRow({
             onClick={() => onToggle(item.id)}
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse" : "Expand"}
-            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
@@ -484,7 +484,7 @@ function ItemRow({
         )}
 
         <span
-          className="mt-0.5 w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground/70"
+          className="w-6 shrink-0 text-right text-xs leading-5 tabular-nums text-muted-foreground/70"
           data-row-number={numbers.get(item.id)}
           aria-hidden="true"
         >
@@ -493,7 +493,7 @@ function ItemRow({
 
         {p.statusVisible && item.status != null && (
           <span
-            className="mt-1 inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-[10px] font-medium leading-4"
+            className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium leading-4"
             title={status.label}
           >
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden="true" />
@@ -539,12 +539,12 @@ function ItemRow({
         </div>
 
         {p.timeVisible && minutes > 0 && (
-          <span className="mt-0.5 shrink-0">
+          <span className="shrink-0 leading-5">
             <TimeBadge minutes={minutes} label="logged" />
           </span>
         )}
         {p.pointsVisible && item.points != null && (
-          <span className="mt-0.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+          <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] leading-4 tabular-nums text-muted-foreground">
             {item.points}
           </span>
         )}
