@@ -10,7 +10,7 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { TeamManagement } from "@/components/TeamManagement";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
-import { GmailIntegrationsCard } from "@/components/GmailIntegrationsCard";
+import { GmailIntegrationsCard, JobAdImportCard } from "@/components/GmailIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 
@@ -71,7 +71,12 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
 
       <GithubIntegrationsCard />
 
-      {activeOrg?.organization_slug === "agilefant" && <GmailIntegrationsCard />}
+      {activeOrg?.organization_slug === "agilefant" && (
+        <>
+          <GmailIntegrationsCard />
+          <JobAdImportCard />
+        </>
+      )}
 
       <Card>
         <CardHeader>

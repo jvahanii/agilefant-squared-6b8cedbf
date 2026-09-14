@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
       let skipped = 0;
       try {
         const { key } = await getConnection(admin, q.user_id);
-        const links = await searchLinks(key, q.query, MAX_MESSAGES);
+        const mode = q.import_mode === 'jobs' ? 'jobs' : 'links';
+        const links = await searchLinks(key, q.query, MAX_MESSAGES, mode);
         const result = await importLinksAsWorkItems(
           admin,
           {

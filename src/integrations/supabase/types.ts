@@ -338,6 +338,7 @@ export type Database = {
           created_at: string
           frequency: string
           id: string
+          import_mode: string
           last_run_at: string | null
           last_run_status: string | null
           name: string | null
@@ -353,6 +354,7 @@ export type Database = {
           created_at?: string
           frequency?: string
           id?: string
+          import_mode?: string
           last_run_at?: string | null
           last_run_status?: string | null
           name?: string | null
@@ -368,6 +370,7 @@ export type Database = {
           created_at?: string
           frequency?: string
           id?: string
+          import_mode?: string
           last_run_at?: string | null
           last_run_status?: string | null
           name?: string | null

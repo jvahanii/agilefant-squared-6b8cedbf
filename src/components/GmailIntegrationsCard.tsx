@@ -14,6 +14,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
 
+/**
+ * Which extractor a saved query runs under. Job-ad import is a separate
+ * feature with its own card and its own saved queries; the two never share a
+ * list, so turning on one cannot change what the other imports.
+ */
+export type ImportMode = "links" | "jobs";
+
+const COPY: Record<ImportMode, { title: string; blurb: string; queryLabel: string; empty: string }> = {
+  links: {
+    title: "Gmail link import",
+    blurb:
+      "Connect your own Gmail account, save searches, and turn every link found in matching emails into a work item (one item per link, with the link attached as a hyperlink). Already-imported links are never duplicated.",
+    queryLabel: "Gmail search query",
+    empty: "No saved Gmail searches yet.",
+  },
+  jobs: {
+    title: "Job ad import",
+    blurb:
+      "Turn job alert emails into backlog items — one item per posting. Site navigation, editorial links and previously-seen roles in a digest are left out, and the same posting arriving from several alerts is imported once.",
+    queryLabel: "Gmail search query for job alerts",
+    empty: "No saved job alert searches yet.",
+  },
+};
+
 interface SavedQuery {
   id: string;
   organization_id: string;
@@ -26,6 +50,7 @@ interface SavedQuery {
   frequency: "hourly" | "daily";
   last_run_at: string | null;
   last_run_status: string | null;
+  import_mode: ImportMode;
 }
 
 interface PreviewLink {
@@ -58,7 +83,8 @@ async function callGmail<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-export function GmailIntegrationsCard() {
+export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode }) {
+  const copy = COPY[mode];
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
@@ -103,13 +129,14 @@ export function GmailIntegrationsCard() {
       .from("gmail_import_queries")
       .select("*")
       .eq("organization_id", activeOrgId)
+      .eq("import_mode", mode)
       .order("created_at");
     if (error) {
       console.error("failed to load gmail queries", error.message);
       return;
     }
     setQueries((data ?? []) as SavedQuery[]);
-  }, [activeOrgId]);
+  }, [activeOrgId, mode]);
 
   useEffect(() => {
     loadStatus();
@@ -193,6 +220,7 @@ export function GmailIntegrationsCard() {
       query,
       tree_id: newTree,
       backlog_id: newBacklog,
+      import_mode: mode,
     });
     if (error) {
       toast({ title: "Failed to save query", description: error.message, variant: "destructive" });
@@ -242,6 +270,7 @@ export function GmailIntegrationsCard() {
         organizationId: activeOrgId,
         query: q.query,
         maxMessages: 25,
+        mode,
       });
       const sorted = [...res.links].sort(
         (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
@@ -303,14 +332,11 @@ export function GmailIntegrationsCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="w-4 h-4" /> Gmail link import
+          <Mail className="w-4 h-4" /> {copy.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Connect your own Gmail account, save searches, and turn every link found in matching emails into a work item
-          (one item per link, with the link attached as a hyperlink). Already-imported links are never duplicated.
-        </p>
+        <p className="text-sm text-muted-foreground">{copy.blurb}</p>
 
         <div className="flex items-center justify-between gap-3 border rounded-md p-4">
           <div className="min-w-0">
@@ -348,7 +374,7 @@ export function GmailIntegrationsCard() {
               />
             </div>
             <div>
-              <Label htmlFor="gmail-query">Gmail search query</Label>
+              <Label htmlFor="gmail-query">{copy.queryLabel}</Label>
               <Input
                 id="gmail-query"
                 placeholder="from:newsletter@example.com is:unread newer_than:7d"
@@ -400,7 +426,7 @@ export function GmailIntegrationsCard() {
 
         <div className="space-y-3">
           {queries.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">No saved Gmail searches yet.</p>
+            <p className="text-sm text-muted-foreground italic">{copy.empty}</p>
           )}
           {queries.map((q) => (
             <div key={q.id} className="border rounded-md p-4 space-y-3">
@@ -534,4 +560,9 @@ export function GmailIntegrationsCard() {
       </CardContent>
     </Card>
   );
+}
+
+/** Job ad import: the same machinery, its own saved queries and its own card. */
+export function JobAdImportCard() {
+  return <GmailIntegrationsCard mode="jobs" />;
 }

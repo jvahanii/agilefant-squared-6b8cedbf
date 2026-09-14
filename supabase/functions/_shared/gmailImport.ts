@@ -2,6 +2,8 @@
 // (organization, gmail message id, normalized url).
 
 import { adminClient, ExtractedLink } from './gmail.ts';
+import { normalizeUrl } from './urls.ts';
+import { canonicalizeByHost } from './jobSources.ts';
 
 type Admin = ReturnType<typeof adminClient>;
 
@@ -60,7 +62,18 @@ export async function importLinksAsWorkItems(
         .from('work_item_hyperlinks')
         .select('url')
         .in('work_item_id', existingItemIds.slice(i, i + 200));
-      for (const r of urlRows ?? []) presentUrls.add(r.url as string);
+      for (const r of urlRows ?? []) {
+        const raw = r.url as string;
+        presentUrls.add(raw);
+        // Items imported before canonicalisation hold trackers; unwrap them
+        // so they still match what the pipeline produces today.
+        const normalized = normalizeUrl(raw);
+        if (normalized) {
+          presentUrls.add(normalized);
+          const canonical = canonicalizeByHost(normalized);
+          if (canonical) presentUrls.add(canonical);
+        }
+      }
     }
     candidates = candidates.filter((l) => !presentUrls.has(l.url));
   }

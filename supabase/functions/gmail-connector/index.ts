@@ -6,6 +6,7 @@
 //   exchange    → exchanges the OAuth code for a connection key and stores it
 //   disconnect  → forgets the stored connection
 //   preview     → runs a Gmail search and returns extracted links (no writes)
+//                 mode 'jobs' narrows the result to job postings
 //   import      → creates one work item per selected link
 
 import {
@@ -20,6 +21,7 @@ import {
   searchLinks,
   startAuthorize,
   ExtractedLink,
+  LinkMode,
 } from '../_shared/gmail.ts';
 import { importLinksAsWorkItems } from '../_shared/gmailImport.ts';
 import { requireAppUser } from '../_shared/auth.ts';
@@ -106,7 +108,8 @@ Deno.serve(async (req) => {
 
       const { key } = await getConnection(admin, user.id);
       const max = Math.min(Number(body.maxMessages ?? 25) || 25, MAX_MESSAGES);
-      const links = await searchLinks(key, query, max);
+      const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
+      const links = await searchLinks(key, query, max, mode);
 
       const messageIds = [...new Set(links.map((l) => l.messageId))];
       const { data: existing, error } = await admin
