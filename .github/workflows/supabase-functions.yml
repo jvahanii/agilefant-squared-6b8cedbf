@@ -1,0 +1,49 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+  # Lets the job be re-run against a changed secret, or to re-sync the remote
+  # after a manual deploy, without having to invent a commit.
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    # Mirrors the migrations workflow: Lovable pushes its own build, and letting
+    # it trigger a deploy would fight with whatever it has already done.
+    if: ${{ !contains(github.actor, 'lovable') && !contains(github.event.head_commit.author.name, 'lovable') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate secrets
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [[ -z "$TOKEN" ]]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set. Create a personal access token at https://supabase.com/dashboard/account/tokens and add it under Settings > Secrets and variables > Actions. It must belong to an account with access to this project -- a token scoped to a different organisation returns 403."
+            exit 1
+          fi
+          if [[ -z "$PROJECT_REF" ]]; then
+            echo "::error::SUPABASE_PROJECT_REF is not set. It is the project ref from supabase/config.toml."
+            exit 1
+          fi
+
+      # Deploys every function in the repo, not only the changed ones: they share
+      # supabase/functions/_shared, so a change there must reach all of them. The
+      # repo is the source of truth for what is running.
+      #
+      # Per-function settings (verify_jwt) come from supabase/config.toml.
+      - name: Deploy functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
