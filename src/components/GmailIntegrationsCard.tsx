@@ -321,6 +321,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
     try {
       const res = await callGmail<{ created: number; skipped: number }>({
         action: "import",
+        mode,
         organizationId: activeOrgId,
         treeId: previewFor.tree_id,
         backlogId: previewFor.backlog_id,

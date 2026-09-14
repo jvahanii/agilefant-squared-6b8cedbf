@@ -111,6 +111,11 @@ Deno.serve(async (req) => {
       const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
       const links = await searchLinks(key, query, max, mode);
 
+      if (mode === 'jobs') {
+        // Nothing is remembered for job ads, so never mark a row as seen.
+        return json({ links: links.map((l) => ({ ...l, alreadyImported: false })) });
+      }
+
       const messageIds = [...new Set(links.map((l) => l.messageId))];
       const { data: existing, error } = await admin
         .from('gmail_imported_links')
@@ -138,7 +143,14 @@ Deno.serve(async (req) => {
 
       const result = await importLinksAsWorkItems(
         admin,
-        { organizationId, treeId, backlogId, queryId: body.queryId ?? null },
+        {
+          organizationId,
+          treeId,
+          backlogId,
+          queryId: body.queryId ?? null,
+          // Job ad import keeps no memory of what it has imported.
+          allowDuplicates: body.mode === 'jobs',
+        },
         links.map((l) => ({
           url: String(l.url ?? ''),
           title: String(l.title ?? ''),

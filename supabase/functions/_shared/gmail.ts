@@ -165,6 +165,7 @@ export async function searchLinks(
   connectionKey: string,
   query: string,
   maxMessages: number,
+  mode: LinkMode = 'links',
 ): Promise<ExtractedLink[]> {
   const ids: string[] = [];
   let pageToken: string | undefined;
