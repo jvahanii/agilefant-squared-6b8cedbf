@@ -5,7 +5,9 @@ import {
   canonicalizeByHost,
   defaultJobQuery,
   withLookback,
-  DEFAULT_LOOKBACK_DAYS,
+  withUnreadOnly,
+  isUnreadOnly,
+  DEFAULT_LOOKBACK,
   LOOKBACK_OPTIONS,
   JOB_SOURCES,
 } from '../../supabase/functions/_shared/jobSources';
@@ -212,29 +214,77 @@ describe('Teamtailor', () => {
 });
 
 describe('lookback window', () => {
-  it('builds the default query for a given number of days', () => {
-    expect(defaultJobQuery(7)).toContain('newer_than:7d');
-    expect(defaultJobQuery()).toContain(`newer_than:${DEFAULT_LOOKBACK_DAYS}d`);
+  it('builds the default query for a given window', () => {
+    expect(defaultJobQuery('7d')).toContain('newer_than:7d');
+    expect(defaultJobQuery()).toContain(`newer_than:${DEFAULT_LOOKBACK}`);
   });
 
-  it('retargets an existing query without disturbing the rest of it', () => {
-    expect(withLookback('label:Foo is:unread newer_than:30d', 3)).toBe('label:Foo is:unread newer_than:3d');
+  it('offers a 12 hour window', () => {
+    // Gmail's newer_than takes hours as well as days: against a live mailbox
+    // newer_than:1h and newer_than:1d return different counts, so a sub-day
+    // window needs no epoch arithmetic and stays valid in a saved query.
+    expect(LOOKBACK_OPTIONS.map((o) => o.value)).toContain('12h');
+    expect(defaultJobQuery('12h')).toMatch(/newer_than:12h$/);
+  });
+
+  it('retargets between hours and days in both directions', () => {
+    expect(withLookback('label:Foo newer_than:30d', '12h')).toBe('label:Foo newer_than:12h');
+    expect(withLookback('label:Foo newer_than:12h', '7d')).toBe('label:Foo newer_than:7d');
   });
 
   it('appends the clause when the query has none', () => {
-    expect(withLookback('label:Foo', 14)).toBe('label:Foo newer_than:14d');
+    expect(withLookback('label:Foo', '14d')).toBe('label:Foo newer_than:14d');
   });
 
   it('handles an empty query', () => {
-    expect(withLookback('   ', 30)).toBe('newer_than:30d');
+    expect(withLookback('   ', '30d')).toBe('newer_than:30d');
   });
 
   it('replaces every occurrence, so no stale window survives', () => {
-    expect(withLookback('newer_than:1d OR newer_than:90d', 7)).toBe('newer_than:7d OR newer_than:7d');
+    expect(withLookback('newer_than:1d OR newer_than:90d', '12h')).toBe(
+      'newer_than:12h OR newer_than:12h',
+    );
   });
 
-  it('offers only positive windows', () => {
-    expect(LOOKBACK_OPTIONS.every((d) => Number.isInteger(d) && d > 0)).toBe(true);
-    expect(LOOKBACK_OPTIONS).toContain(DEFAULT_LOOKBACK_DAYS);
+  it('every option is a window Gmail understands', () => {
+    for (const o of LOOKBACK_OPTIONS) expect(o.value).toMatch(/^\d+[hdmy]$/);
+    expect(LOOKBACK_OPTIONS.map((o) => o.value)).toContain(DEFAULT_LOOKBACK);
+  });
+});
+
+describe('only unread', () => {
+  it('adds and removes the restriction without touching the rest', () => {
+    const q = 'from:(a OR b) newer_than:12h';
+    const on = withUnreadOnly(q, true);
+    expect(on).toBe('from:(a OR b) newer_than:12h is:unread');
+    expect(withUnreadOnly(on, false)).toBe(q);
+  });
+
+  it('does not add it twice', () => {
+    const once = withUnreadOnly('label:Foo', true);
+    expect(withUnreadOnly(once, true)).toBe(once);
+  });
+
+  it('removes it wherever it sits, leaving no double spaces', () => {
+    expect(withUnreadOnly('label:Foo is:unread newer_than:7d', false)).toBe(
+      'label:Foo newer_than:7d',
+    );
+  });
+
+  it('handles a query that is only the restriction', () => {
+    expect(withUnreadOnly('', true)).toBe('is:unread');
+    expect(withUnreadOnly('is:unread', false)).toBe('');
+  });
+
+  it('detects the restriction so the switch can follow a hand-edited query', () => {
+    expect(isUnreadOnly('label:Foo is:unread')).toBe(true);
+    expect(isUnreadOnly('label:Foo')).toBe(false);
+  });
+
+  it('composes with the lookback window', () => {
+    const q = withUnreadOnly(withLookback(defaultJobQuery(), '12h'), true);
+    expect(q).toContain('newer_than:12h');
+    expect(q).toContain('is:unread');
+    expect(withLookback(q, '7d')).toContain('is:unread');
   });
 });

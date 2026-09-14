@@ -284,22 +284,55 @@ export function canonicalizeByHost(rawUrl: string): string | null {
  * A label clause is usually a better filter once you have one -- narrower, and
  * it survives a board changing its From address.
  */
-export const DEFAULT_LOOKBACK_DAYS = 30;
+/**
+ * Search windows offered by the job ad card. Gmail's newer_than accepts hours
+ * as well as days -- verified against a live mailbox, where newer_than:1h and
+ * newer_than:1d return different counts -- so sub-day windows need no date
+ * arithmetic.
+ */
+export const LOOKBACK_OPTIONS = [
+  { value: '12h', label: 'Last 12 hours' },
+  { value: '1d', label: 'Last 24 hours' },
+  { value: '3d', label: 'Last 3 days' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '14d', label: 'Last 14 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
+  { value: '365d', label: 'Last year' },
+] as const;
 
-export function defaultJobQuery(days: number = DEFAULT_LOOKBACK_DAYS): string {
+export type LookbackWindow = (typeof LOOKBACK_OPTIONS)[number]['value'];
+
+export const DEFAULT_LOOKBACK: LookbackWindow = '30d';
+
+export function defaultJobQuery(window: string = DEFAULT_LOOKBACK): string {
   const from = JOB_SOURCES.flatMap((s) => s.alertSenders).join(' OR ');
-  return `from:(${from}) newer_than:${days}d`;
+  return `from:(${from}) newer_than:${window}`;
 }
 
 /**
- * Retarget a query at a different window, preserving whatever else the user
- * has typed. Appends the clause when the query has none.
+ * Retarget a query at a different window, preserving whatever else the user has
+ * typed. Appends the clause when the query has none.
  */
-export function withLookback(query: string, days: number): string {
-  const clause = `newer_than:${days}d`;
-  if (/\bnewer_than:\d+d\b/i.test(query)) return query.replace(/\bnewer_than:\d+d\b/gi, clause);
+export function withLookback(query: string, window: string): string {
+  const clause = `newer_than:${window}`;
+  if (/\bnewer_than:\d+[hdmy]\b/i.test(query)) {
+    return query.replace(/\bnewer_than:\d+[hdmy]\b/gi, clause);
+  }
   return query.trim() ? `${query.trim()} ${clause}` : clause;
 }
 
-/** Offered in the job ad card. */
-export const LOOKBACK_OPTIONS = [1, 3, 7, 14, 30, 90, 180, 365] as const;
+/** Add or remove the is:unread restriction, leaving the rest of the query alone. */
+export function withUnreadOnly(query: string, only: boolean): string {
+  const without = query
+    .replace(/\bis:unread\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (!only) return without;
+  return without ? `${without} is:unread` : 'is:unread';
+}
+
+/** Whether a query already restricts to unread mail. */
+export function isUnreadOnly(query: string): boolean {
+  return /\bis:unread\b/i.test(query);
+}

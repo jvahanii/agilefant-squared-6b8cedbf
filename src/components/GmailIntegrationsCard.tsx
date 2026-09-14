@@ -16,7 +16,9 @@ import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-reac
 import {
   defaultJobQuery,
   withLookback,
-  DEFAULT_LOOKBACK_DAYS,
+  withUnreadOnly,
+  isUnreadOnly,
+  DEFAULT_LOOKBACK,
   LOOKBACK_OPTIONS,
 } from "../../supabase/functions/_shared/jobSources";
 
@@ -111,7 +113,8 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   // Seeded rather than blank so the job-ad card is usable without knowing
   // Gmail search syntax; still fully editable.
   const [newQuery, setNewQuery] = useState(COPY[mode].startingQuery);
-  const [lookbackDays, setLookbackDays] = useState(DEFAULT_LOOKBACK_DAYS);
+  const [lookback, setLookback] = useState<string>(DEFAULT_LOOKBACK);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [newName, setNewName] = useState("");
   const [newTree, setNewTree] = useState("");
   const [newBacklog, setNewBacklog] = useState("");
@@ -242,7 +245,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       toast({ title: "Failed to save query", description: error.message, variant: "destructive" });
       return;
     }
-    setNewQuery(withLookback(copy.startingQuery, lookbackDays));
+    setNewQuery(withUnreadOnly(withLookback(copy.startingQuery, lookback), unreadOnly));
     setNewName("");
     setNewBacklog("");
     loadQueries();
@@ -401,28 +404,30 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                 id="gmail-query"
                 placeholder={copy.placeholder}
                 value={newQuery}
-                onChange={(e) => setNewQuery(e.target.value)}
+                onChange={(e) => {
+                  setNewQuery(e.target.value);
+                  setUnreadOnly(isUnreadOnly(e.target.value));
+                }}
               />
             </div>
             {mode === "jobs" && (
               <div>
                 <Label htmlFor="gmail-lookback">How far back to look</Label>
                 <Select
-                  value={String(lookbackDays)}
+                  value={lookback}
                   onValueChange={(v) => {
-                    const days = Number(v);
-                    setLookbackDays(days);
+                    setLookback(v);
                     // Rewrites only the newer_than clause, so edits survive.
-                    setNewQuery((q) => withLookback(q, days));
+                    setNewQuery((q) => withLookback(q, v));
                   }}
                 >
                   <SelectTrigger id="gmail-lookback">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {LOOKBACK_OPTIONS.map((d) => (
-                      <SelectItem key={d} value={String(d)}>
-                        {d === 1 ? "Last 24 hours" : d === 365 ? "Last year" : `Last ${d} days`}
+                    {LOOKBACK_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -431,6 +436,23 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                   Sets <code>newer_than</code> in the query above. A saved query keeps whatever
                   window it was saved with.
                 </p>
+                <div className="flex items-center justify-between gap-3 mt-3">
+                  <div>
+                    <Label htmlFor="gmail-unread">Only unread</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Adds <code>is:unread</code>. Reading an alert in Gmail then takes it out of
+                      range, which makes this a rough substitute for "not seen yet".
+                    </p>
+                  </div>
+                  <Switch
+                    id="gmail-unread"
+                    checked={unreadOnly}
+                    onCheckedChange={(v) => {
+                      setUnreadOnly(v);
+                      setNewQuery((q) => withUnreadOnly(q, v));
+                    }}
+                  />
+                </div>
               </div>
             )}
             <div>
