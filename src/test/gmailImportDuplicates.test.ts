@@ -74,12 +74,12 @@ function makeAdmin(state: StubState = {}) {
   return { admin: { from } as never, inserted, upserted };
 }
 
-const link = (messageId: string, url: string, title: string) => ({
+const link = (messageId: string, url: string, title: string, sender = 'duunivahti@duunitori.fi') => ({
   url,
   title,
   messageId,
   subject: 's',
-  from: 'duunivahti@duunitori.fi',
+  from: sender,
   date: '2026-09-13T00:00:00.000Z',
 });
 
@@ -87,6 +87,9 @@ const A = 'https://duunitori.fi/tyopaikat/tyo/ai-engineer-scsom-20567347';
 const B = 'https://duunitori.fi/tyopaikat/tyo/specialist-paid-social-scsom-20567401';
 
 const target = { organizationId: 'org', treeId: 'tree', backlogId: 'bl', allowDuplicates: true };
+/** A sender with no job-source profile, so the de-duplicating path applies. */
+const plain = (messageId: string, url: string, title: string) =>
+  link(messageId, url, title, 'colleague@example.com');
 
 describe('job ad import: no memory between runs', () => {
   it('creates one item per posting even when several alerts carried it', () => {
@@ -134,7 +137,7 @@ describe('generic link import still de-duplicates', () => {
   const dedupTarget = { organizationId: 'org', treeId: 'tree', backlogId: 'bl' };
 
   it('claims each link and skips one already attached in the backlog', async () => {
-    const links = [link('m1', A, 'AI Engineer'), link('m2', B, 'Specialist, Paid Social')];
+    const links = [plain('m1', A, 'AI Engineer'), plain('m2', B, 'Specialist, Paid Social')];
     const { admin, upserted } = makeAdmin({ existingItemIds: ['wi-old'], existingUrls: [A] });
     const r = await importLinksAsWorkItems(admin, dedupTarget, links);
     expect(r.created).toBe(1); // A was already present
@@ -143,10 +146,61 @@ describe('generic link import still de-duplicates', () => {
   });
 
   it('treats the same posting from two messages as two claims', async () => {
-    const links = [link('m1', A, 'AI Engineer'), link('m2', A, 'AI Engineer')];
+    const links = [plain('m1', A, 'AI Engineer'), plain('m2', A, 'AI Engineer')];
     const { admin } = makeAdmin();
     const r = await importLinksAsWorkItems(admin, dedupTarget, links);
     // The dedup key is message + url, which is the pre-existing behaviour.
     expect(r.created).toBe(2);
+  });
+});
+
+describe('job ad import always imports, whatever the caller says', () => {
+  const noFlag = { organizationId: 'org', treeId: 'tree', backlogId: 'bl' };
+
+  it('imports job-source links even when the request sets no flag at all', async () => {
+    // Guards the case that kept reporting "already imported": an older client,
+    // or a saved query created before import_mode existed and still marked
+    // 'links'. The senders decide, not the request.
+    const links = [link('m1', A, 'AI Engineer'), link('m2', B, 'Specialist, Paid Social')];
+    const { admin, upserted } = makeAdmin({ existingItemIds: ['wi-old'], existingUrls: [A, B] });
+    const r = await importLinksAsWorkItems(admin, noFlag, links);
+    expect(r.created).toBe(2);
+    expect(r.skipped).toBe(0);
+    expect(upserted).toHaveLength(0);
+  });
+
+  it('never reports job postings as already imported', async () => {
+    const links = [link('m1', A, 'AI Engineer')];
+    const first = await importLinksAsWorkItems(makeAdmin().admin, noFlag, links);
+    const second = await importLinksAsWorkItems(
+      makeAdmin({ existingItemIds: first.createdIds, existingUrls: [A] }).admin,
+      noFlag,
+      links,
+    );
+    expect(second.skipped).toBe(0);
+    expect(second.created).toBe(1);
+  });
+
+  it('reports within-run duplicates as merged, not as already imported', async () => {
+    // Three alerts carrying one role, plus one other -- a single LinkedIn day.
+    const links = [
+      link('m1', A, 'AI Engineer'),
+      link('m2', A, 'AI Engineer'),
+      link('m3', A, 'AI Engineer'),
+      link('m4', B, 'Specialist, Paid Social'),
+    ];
+    const r = await importLinksAsWorkItems(makeAdmin().admin, noFlag, links);
+    expect(r.created).toBe(2);
+    expect(r.collapsed).toBe(2);
+    expect(r.skipped).toBe(0);
+  });
+
+  it('applies to every job source, not just one', async () => {
+    const links = [
+      link('m1', 'https://www.linkedin.com/jobs/view/4401728681', 'Role', 'jobalerts-noreply@linkedin.com'),
+    ];
+    const { admin } = makeAdmin({ existingItemIds: ['wi-old'], existingUrls: ['https://www.linkedin.com/jobs/view/4401728681'] });
+    const r = await importLinksAsWorkItems(admin, noFlag, links);
+    expect(r.created).toBe(1);
   });
 });

@@ -9,7 +9,7 @@
 import type { adminClient } from './gmail.ts';
 import type { ExtractedLink } from './extract.ts';
 import { normalizeUrl } from './urls.ts';
-import { canonicalizeByHost } from './jobSources.ts';
+import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
 
 type Admin = ReturnType<typeof adminClient>;
 
@@ -30,6 +30,8 @@ export interface ImportResult {
   created: number;
   skipped: number;
   createdIds: string[];
+  /** Postings that appeared more than once in this same import and were merged. */
+  collapsed: number;
 }
 
 function newWorkItemId(orgId: string): string {
@@ -52,7 +54,12 @@ export async function importLinksAsWorkItems(
   links: ExtractedLink[],
 ): Promise<ImportResult> {
   const { organizationId, treeId, backlogId, queryId } = target;
-  if (links.length === 0) return { created: 0, skipped: 0, createdIds: [] };
+  if (links.length === 0) return { created: 0, skipped: 0, collapsed: 0, createdIds: [] };
+
+  // Job ad import always imports. Decided from the links themselves rather than
+  // from a flag on the request, so it holds even when the caller is an older
+  // build, or a saved query predates import_mode and is still marked 'links'.
+  const allowDuplicates = target.allowDuplicates === true || links.some((l) => jobSourceFor(l.from));
 
   // Collapse duplicates inside this run.
   //
@@ -61,16 +68,17 @@ export async function importLinksAsWorkItems(
   // to five times a day, each its own message), and a single import should
   // still produce a single item. Repetition is wanted *between* runs, not
   // within one.
-  const batchKey = (l: ExtractedLink) => (target.allowDuplicates ? l.url : `${l.messageId}|${l.url}`);
+  const batchKey = (l: ExtractedLink) => (allowDuplicates ? l.url : `${l.messageId}|${l.url}`);
   const unique = new Map<string, ExtractedLink>();
   for (const l of links) if (!unique.has(batchKey(l))) unique.set(batchKey(l), l);
   let candidates = [...unique.values()];
+  const collapsed = links.length - unique.size;
 
   // Safety net for the de-duplicating path: never create a second item for a
   // URL already present as a hyperlink in the target backlog, even if its dedup
   // record is missing (historical partial imports). Skipped when duplicates are
   // allowed -- that is the whole point.
-  if (!target.allowDuplicates) {
+  if (!allowDuplicates) {
     const { data: existingRankRows } = await admin
       .from('work_item_backlog_ranks')
       .select('work_item_id')
@@ -99,16 +107,18 @@ export async function importLinksAsWorkItems(
       candidates = candidates.filter((l) => !presentUrls.has(l.url));
     }
   }
-  if (candidates.length === 0) return { created: 0, skipped: unique.size, createdIds: [] };
+  if (candidates.length === 0) return { created: 0, skipped: unique.size, collapsed, createdIds: [] };
 
   let items: Array<{ id: string; claimId: string | null; link: ExtractedLink }>;
   let skipped: number;
 
-  if (target.allowDuplicates) {
+  if (allowDuplicates) {
     // Nothing is written to gmail_imported_links and nothing is read from it,
     // so re-running a query imports the same postings again.
     items = candidates.map((link) => ({ id: newWorkItemId(organizationId), claimId: null, link }));
-    skipped = unique.size - items.length;
+    // Nothing was skipped for having been imported before -- nothing is
+    // remembered. Anything missing here was the same posting twice in one run.
+    skipped = 0;
   } else {
     // CLAIM FIRST: write the dedup rows before creating anything else, ignoring
     // rows that already exist. Only the rows this run actually inserted are ours
@@ -135,7 +145,7 @@ export async function importLinksAsWorkItems(
 
     const claimedRows = claimed ?? [];
     skipped = unique.size - claimedRows.length;
-    if (claimedRows.length === 0) return { created: 0, skipped, createdIds: [] };
+    if (claimedRows.length === 0) return { created: 0, skipped, collapsed, createdIds: [] };
 
     const byKey = new Map(candidates.map((l) => [`${l.messageId}|${l.url}`, l]));
     items = claimedRows
@@ -149,7 +159,7 @@ export async function importLinksAsWorkItems(
       );
   }
 
-  if (items.length === 0) return { created: 0, skipped, createdIds: [] };
+  if (items.length === 0) return { created: 0, skipped, collapsed, createdIds: [] };
 
   // Append at the end of the backlog's list order.
   const { data: rankRows, error: rankError } = await admin
@@ -164,7 +174,7 @@ export async function importLinksAsWorkItems(
 
   // If anything below fails, release the claims so the links can be retried.
   const releaseClaims = async () => {
-    if (target.allowDuplicates) return;
+    if (allowDuplicates) return;
     await admin
       .from('gmail_imported_links')
       .delete()
@@ -224,6 +234,6 @@ export async function importLinksAsWorkItems(
     throw err;
   }
 
-  return { created: ranked.length, skipped, createdIds: ranked.map((i) => i.id) };
+  return { created: ranked.length, skipped, collapsed, createdIds: ranked.map((i) => i.id) };
 }
 

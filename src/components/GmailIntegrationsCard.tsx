@@ -319,7 +319,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
     }
     setImporting(true);
     try {
-      const res = await callGmail<{ created: number; skipped: number }>({
+      const res = await callGmail<{ created: number; skipped: number; collapsed: number }>({
         action: "import",
         mode,
         organizationId: activeOrgId,
@@ -330,7 +330,12 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       });
       toast({
         title: `Imported ${res.created} work item${res.created === 1 ? "" : "s"}`,
-        description: res.skipped ? `${res.skipped} already imported` : undefined,
+        description:
+          res.skipped
+            ? `${res.skipped} already imported`
+            : res.collapsed
+              ? `${res.collapsed} duplicate${res.collapsed === 1 ? "" : "s"} in this import merged`
+              : undefined,
       });
       setPreviewFor(null);
       setPreview([]);
