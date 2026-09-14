@@ -23,7 +23,7 @@ import {
   ExtractedLink,
   LinkMode,
 } from '../_shared/gmail.ts';
-import { importLinksAsWorkItems } from '../_shared/gmailImport.ts';
+import { importLinksAsWorkItems, urlsInBacklog } from '../_shared/gmailImport.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
@@ -112,8 +112,14 @@ Deno.serve(async (req) => {
       const links = await searchLinks(key, query, max, mode);
 
       if (mode === 'jobs') {
-        // Nothing is remembered for job ads, so never mark a row as seen.
-        return json({ links: links.map((l) => ({ ...l, alreadyImported: false })) });
+        // Job ad import keeps no ledger, so "already imported" is answered from
+        // the target backlog itself: is this posting's URL already attached to
+        // an item in it. Informational only -- the import never refuses.
+        const backlogId = String(body.backlogId ?? '');
+        const present = backlogId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
+        return json({
+          links: links.map((l) => ({ ...l, alreadyImported: present.has(l.url) })),
+        });
       }
 
       const messageIds = [...new Set(links.map((l) => l.messageId))];

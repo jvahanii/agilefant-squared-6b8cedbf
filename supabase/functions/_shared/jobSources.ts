@@ -8,7 +8,10 @@
 //
 // A sender with no profile here is unaffected and keeps the generic behaviour.
 //
-// Dependency-free on purpose: shared by the Deno edge functions and vitest.
+// Dependency-free apart from the URL helpers: shared by the Deno edge functions
+// and vitest.
+
+import { decodeEntities } from './urls.ts';
 
 /** One appearance of a URL in a message: its anchor text, and the markup after it. */
 export interface LinkOccurrence {
@@ -43,10 +46,16 @@ export interface JobSource {
   /** Is this URL an actual posting, as opposed to navigation or editorial? */
   isJobUrl(u: URL): boolean;
   /**
-   * Employer for a posting. Falls back to the text right after the title
-   * anchor, which is where most digests put it.
+   * Employer for a posting, when the markup around the link cannot give it.
+   * Overrides the default extraction.
    */
   company?(ctx: CompanyContext): string | undefined;
+  /**
+   * Last resort, used only when the markup yielded nothing. Kept separate from
+   * `company` because a subject line names one posting, and a digest carries
+   * several.
+   */
+  companyFallback?(ctx: CompanyContext): string | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
 }
@@ -57,9 +66,10 @@ export const JOB_SOURCES: JobSource[] = [
     // views and course promos, which carry no /jobs/view/ link and so yield
     // nothing here -- which is the intended outcome.
     id: 'linkedin',
-    // LinkedIn puts the employer in the subject, in one of several shapes,
-    // and nowhere predictable in the body markup.
-    company: ({ subject }) => {
+    // Only when the markup gives nothing. LinkedIn's saved-jobs digest lists
+    // several postings from different employers under a subject that names just
+    // the first -- reading the subject first labelled every row "emagine".
+    companyFallback: ({ subject }) => {
       const s = subject.replace(/[\u2018\u2019\u201c\u201d']/g, "'").trim();
       const patterns = [
         /^You may be a fit for (.+?)'s .+ role$/i,
@@ -175,10 +185,7 @@ export function canonicalJobUrl(source: JobSource, rawUrl: string): string | nul
 }
 
 function stripTags(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
+  return decodeEntities(html.replace(/<[^>]*>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -203,20 +210,23 @@ function resolveCompany(
 ): string | undefined {
   const labels = occ.map((o) => o.label).filter((l) => l.length > 0);
   const afters = occ.map((o) => o.after);
-  const own = source.company?.({ labels, afters, url, subject, from });
-  if (own) return own.trim();
+  const override = source.company?.({ labels, afters, url, subject, from });
+  if (override) return override.trim();
 
   // Default: the markup following the anchor that supplied the title. Using the
   // first anchor instead would read a logo link, whose following markup is the
   // title itself -- which would name every item after its own job title.
   const titleIndex = occ.findIndex((o) => o.label.length > 2 && !/^https?:\/\//i.test(o.label));
   const after = afters[titleIndex >= 0 ? titleIndex : 0];
-  if (!after) return undefined;
+  if (!after) return source.companyFallback?.({ labels, afters, url, subject, from })?.trim();
   // Stop at the next link. The employer always sits between the title anchor
   // and whatever is linked next; reading past it picks up the following job
   // title or a call-to-action instead.
   const beforeNextLink = after.split(/<a\b/i)[0] ?? '';
-  return firstSegment(stripTags(beforeNextLink));
+  const fromMarkup = firstSegment(stripTags(beforeNextLink));
+  if (fromMarkup) return fromMarkup;
+
+  return source.companyFallback?.({ labels, afters, url, subject, from })?.trim();
 }
 
 /** "Company — Title", unless the title already names the company. */

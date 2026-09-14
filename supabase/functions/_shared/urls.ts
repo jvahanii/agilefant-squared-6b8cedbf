@@ -4,13 +4,24 @@
 // vitest (src/test) without a Deno shim.
 
 export function decodeEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>');
+  return (
+    text
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      // Separators between an employer and its location. LinkedIn writes the
+      // middle dot as an entity, and leaving it encoded hides the boundary the
+      // employer is parsed on.
+      .replace(/&middot;/gi, '\u00b7')
+      .replace(/&bull;/gi, '\u2022')
+      .replace(/&ndash;/gi, '\u2013')
+      .replace(/&mdash;/gi, '\u2014')
+      .replace(/&#(\d+);/g, (_m, code) => String.fromCodePoint(Number(code)))
+      .replace(/&#x([0-9a-f]+);/gi, (_m, code) => String.fromCodePoint(parseInt(code, 16)))
+  );
 }
 
 /**

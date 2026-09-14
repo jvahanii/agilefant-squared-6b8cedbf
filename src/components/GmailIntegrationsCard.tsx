@@ -303,14 +303,17 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
         query: q.query,
         maxMessages: 25,
         mode,
+        backlogId: q.backlog_id,
       });
       const sorted = [...res.links].sort(
         (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
       );
       setPreview(sorted);
       setFilterKeyword("");
+      // Anything already in the target backlog starts unchecked: re-importing
+      // stays possible, it just is not the default.
       setSelected(
-        Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, true])),
+        Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, !l.alreadyImported])),
       );
       if (res.links.length === 0) toast({ title: "No links found for that query" });
     } catch (e) {
@@ -595,6 +598,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                     {visibleGroups.map((group) => {
                       const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
                       const allChecked = keys.every((k) => selected[k]);
+                      const seen = group.links.filter((l) => l.alreadyImported).length;
                       return (
                         <div key={group.messageId} className="border rounded-md">
                           {/* The source email, above the jobs it produced.
@@ -632,6 +636,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                               <p className="text-xs text-muted-foreground">
                                 {group.date && `${new Date(group.date).toLocaleString()} · `}
                                 {group.links.length} job{group.links.length === 1 ? "" : "s"}
+                                {seen > 0 && ` · ${seen} already in this backlog`}
                               </p>
                             </div>
                             <a
@@ -656,7 +661,14 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                     className="mt-0.5"
                                   />
                                   <span className="min-w-0">
-                                    <span className="block truncate font-medium text-sm">{l.title}</span>
+                                    <span className="block truncate font-medium text-sm">
+                                      {l.title}
+                                      {l.alreadyImported && (
+                                        <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
+                                          in this backlog
+                                        </span>
+                                      )}
+                                    </span>
                                     <span className="block truncate text-xs text-muted-foreground">
                                       <LinkIcon className="w-3 h-3 inline mr-1" />
                                       {l.url}

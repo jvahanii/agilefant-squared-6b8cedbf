@@ -107,7 +107,7 @@ describe('work item naming: company then title', () => {
     expect(link.title).toBe('Academic Work — Junior Data & Software Specialist, Espoo');
   });
 
-  it('takes the employer from the subject on LinkedIn', () => {
+  it('falls back to the subject when a single-role alert has no company markup', () => {
     const url = 'https://www.linkedin.com/comm/jobs/view/4401728681/?trackingId=x';
     const html = `<a href="${url}">Electronics Engineering Manager, Radar Payload Team</a>`;
     const [link] = extractLinks(
@@ -152,5 +152,68 @@ describe('work item naming: company then title', () => {
     const [link] = extractLinks(message('noreply@jobly.fi', html));
     expect(link.company).toBeUndefined();
     expect(link.title).toBe('OPS Specialist, Tuusula/Helsinki');
+  });
+});
+
+describe('LinkedIn digests name each employer, not the subject line', () => {
+  /**
+   * Shape of a real jobs-noreply "saved jobs" mail: several postings from
+   * different employers, under a subject naming only the first. Reading the
+   * subject labelled every row "emagine".
+   *
+   * Note the separator is the entity &middot;, not a literal character -- if it
+   * is not decoded, the employer is parsed at the following comma instead and
+   * comes out as "If Insurance &middot; Espoo".
+   */
+  const posting = (id: string, title: string, company: string, location: string) => `
+    <a href="https://www.linkedin.com/comm/jobs/view/${id}?trackingId=x&amp;refId=y"> ${title} </a>
+    </td></tr><tr><td><p class="text-system-gray-100"> ${company} &middot; ${location} </p></td></tr>`;
+
+  const SUBJECT = "Jarno , apply now to 'Execution Leader/Scrum Master for Embedded Banking at emagine'";
+
+  const DIGEST =
+    posting('4463502292', 'Execution Leader/Scrum Master for Embedded Banking', 'emagine', 'Helsinki, Uusimaa, Finland') +
+    posting('4464157644', 'Agile Coach', 'If Insurance', 'Espoo, Uusimaa, Finland') +
+    posting('4411588306', 'Data-arkkitehti asiakkaiden tekoälymuutokseen', 'Gofore', 'Helsinki sub-region, Uusimaa, Finland') +
+    posting('4444116317', 'Lead People Partner', 'Aiven', 'Helsinki, Uusimaa, Finland') +
+    posting('4460375465', 'AI & Data Development Manager', 'Valio', 'Helsinki, Uusimaa, Finland');
+
+  it('gives every posting its own employer', () => {
+    const links = extractLinks(message('jobs-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    expect(links.map((l) => l.company)).toEqual([
+      'emagine',
+      'If Insurance',
+      'Gofore',
+      'Aiven',
+      'Valio',
+    ]);
+  });
+
+  it('does not label every row after the subject', () => {
+    const links = extractLinks(message('jobs-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    expect(links.filter((l) => l.company === 'emagine')).toHaveLength(1);
+  });
+
+  it('decodes the middle dot so the employer is not run together with the city', () => {
+    const links = extractLinks(message('jobs-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    for (const l of links) {
+      expect(l.company).not.toContain('&middot;');
+      expect(l.company).not.toContain('Uusimaa');
+    }
+  });
+
+  it('titles each row with its own employer', () => {
+    const links = extractLinks(message('jobs-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    expect(links[1].title).toBe('If Insurance — Agile Coach');
+  });
+
+  it('still falls back to the subject when the markup carries no employer', () => {
+    // Single-role alerts state the company only in the subject.
+    const html = '<a href="https://www.linkedin.com/comm/jobs/view/4401728681">Electronics Engineering Manager</a>';
+    const [link] = extractLinks(
+      message('jobalerts-noreply@linkedin.com', html, "You may be a fit for ICEYE's Electronics Engineering Manager role"),
+      'jobs',
+    );
+    expect(link.company).toBe('ICEYE');
   });
 });

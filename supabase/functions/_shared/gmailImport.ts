@@ -48,6 +48,44 @@ function describe(link: ExtractedLink): string {
   return parts.join('\n');
 }
 
+/**
+ * Every URL already attached to an item in this backlog, in each form it might
+ * be compared against: as stored, normalised, and canonicalised. Items imported
+ * before canonicalisation hold raw trackers, so without unwrapping them a
+ * posting would look new when it is not.
+ *
+ * Used to suppress duplicates on the de-duplicating path, and to mark rows the
+ * picker offers -- job ad import never blocks, it only says what is already
+ * there.
+ */
+export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Set<string>> {
+  const present = new Set<string>();
+  const { data: rankRows } = await admin
+    .from('work_item_backlog_ranks')
+    .select('work_item_id')
+    .eq('backlog_id', backlogId);
+  const itemIds = (rankRows ?? []).map((r) => r.work_item_id as string);
+  if (itemIds.length === 0) return present;
+
+  for (let i = 0; i < itemIds.length; i += 200) {
+    const { data: urlRows } = await admin
+      .from('work_item_hyperlinks')
+      .select('url')
+      .in('work_item_id', itemIds.slice(i, i + 200));
+    for (const r of urlRows ?? []) {
+      const raw = r.url as string;
+      present.add(raw);
+      const normalized = normalizeUrl(raw);
+      if (normalized) {
+        present.add(normalized);
+        const canonical = canonicalizeByHost(normalized);
+        if (canonical) present.add(canonical);
+      }
+    }
+  }
+  return present;
+}
+
 export async function importLinksAsWorkItems(
   admin: Admin,
   target: ImportTarget,
@@ -79,33 +117,8 @@ export async function importLinksAsWorkItems(
   // record is missing (historical partial imports). Skipped when duplicates are
   // allowed -- that is the whole point.
   if (!allowDuplicates) {
-    const { data: existingRankRows } = await admin
-      .from('work_item_backlog_ranks')
-      .select('work_item_id')
-      .eq('backlog_id', backlogId);
-    const existingItemIds = (existingRankRows ?? []).map((r) => r.work_item_id as string);
-    if (existingItemIds.length > 0) {
-      const presentUrls = new Set<string>();
-      for (let i = 0; i < existingItemIds.length; i += 200) {
-        const { data: urlRows } = await admin
-          .from('work_item_hyperlinks')
-          .select('url')
-          .in('work_item_id', existingItemIds.slice(i, i + 200));
-        for (const r of urlRows ?? []) {
-          const raw = r.url as string;
-          presentUrls.add(raw);
-          // Items imported before canonicalisation hold trackers; unwrap them
-          // so they still match what the pipeline produces today.
-          const normalized = normalizeUrl(raw);
-          if (normalized) {
-            presentUrls.add(normalized);
-            const canonical = canonicalizeByHost(normalized);
-            if (canonical) presentUrls.add(canonical);
-          }
-        }
-      }
-      candidates = candidates.filter((l) => !presentUrls.has(l.url));
-    }
+    const presentUrls = await urlsInBacklog(admin, backlogId);
+    candidates = candidates.filter((l) => !presentUrls.has(l.url));
   }
   if (candidates.length === 0) return { created: 0, skipped: unique.size, collapsed, createdIds: [] };
 

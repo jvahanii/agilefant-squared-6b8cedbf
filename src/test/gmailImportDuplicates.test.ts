@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { importLinksAsWorkItems } from '../../supabase/functions/_shared/gmailImport';
+import {
+  importLinksAsWorkItems,
+  urlsInBacklog,
+} from '../../supabase/functions/_shared/gmailImport';
 
 /**
  * Job ad import keeps no memory of what it has imported, so running a query
@@ -202,5 +205,37 @@ describe('job ad import always imports, whatever the caller says', () => {
     const { admin } = makeAdmin({ existingItemIds: ['wi-old'], existingUrls: ['https://www.linkedin.com/jobs/view/4401728681'] });
     const r = await importLinksAsWorkItems(admin, noFlag, links);
     expect(r.created).toBe(1);
+  });
+});
+
+describe('urlsInBacklog', () => {
+  const JOBLY_TRACKER =
+    'https://mandrillapp.com/track/click/30900652/www.jobly.fi?p=eyJzIjoiaW4xWUhaUUVwY093d1ZXNW1KMnJueEVQNERVIiwidiI6MiwicCI6IntcInVcIjozMDkwMDY1MixcInZcIjoyLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL3d3dy5qb2JseS5maVxcXC90eW9wYWlra2FcXFwvb3BzLXNwZWNpYWxpc3QtdHV1c3VsYS1oZWxzaW5raS0yNzM0NzM0XCJ9In0';
+  const JOBLY_CANONICAL = 'https://www.jobly.fi/tyopaikka/ops-specialist-tuusula-helsinki-2734734';
+
+  it('is empty for a backlog with no items', async () => {
+    const { admin } = makeAdmin();
+    expect((await urlsInBacklog(admin, 'bl')).size).toBe(0);
+  });
+
+  it('reports a stored URL in every form it might be compared against', async () => {
+    // An item imported before canonicalisation holds the raw tracker. The
+    // picker compares canonical URLs, so without unwrapping it the posting
+    // would look new when it is already in the backlog.
+    const { admin } = makeAdmin({ existingItemIds: ['wi-1'], existingUrls: [JOBLY_TRACKER] });
+    const present = await urlsInBacklog(admin, 'bl');
+    expect(present.has(JOBLY_TRACKER)).toBe(true);
+    expect(present.has(JOBLY_CANONICAL)).toBe(true);
+  });
+
+  it('matches a canonical URL stored as-is', async () => {
+    const { admin } = makeAdmin({ existingItemIds: ['wi-1'], existingUrls: [JOBLY_CANONICAL] });
+    expect((await urlsInBacklog(admin, 'bl')).has(JOBLY_CANONICAL)).toBe(true);
+  });
+
+  it('leaves a posting that is not in the backlog unmatched', async () => {
+    const { admin } = makeAdmin({ existingItemIds: ['wi-1'], existingUrls: [JOBLY_CANONICAL] });
+    const present = await urlsInBacklog(admin, 'bl');
+    expect(present.has('https://duunitori.fi/tyopaikat/tyo/ai-engineer-scsom-20567347')).toBe(false);
   });
 });
