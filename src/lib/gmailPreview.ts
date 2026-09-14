@@ -52,3 +52,25 @@ export function groupBySourceEmail(links: PreviewLink[]): SourceEmailGroup[] {
   }
   return [...byMessage.values()];
 }
+
+/**
+ * The line above the picker. Built as a string rather than inline JSX: the
+ * pluralisation and the spacing between interpolations are easy to get wrong
+ * in markup and impossible to test there.
+ */
+export function previewSummary(opts: {
+  /** Rows currently listed. */
+  shown: number;
+  /** Source emails those rows came from. */
+  emails: number;
+  mode: "links" | "jobs";
+  /** Rows before the keyword filter, when one is active. */
+  total?: number;
+}): string {
+  const noun = opts.mode === "jobs" ? "job" : "link";
+  const items = `${opts.shown} ${noun}${opts.shown === 1 ? "" : "s"}`;
+  const emails = `${opts.emails} email${opts.emails === 1 ? "" : "s"}`;
+  const filtered =
+    opts.total !== undefined && opts.total !== opts.shown ? ` (filtered from ${opts.total})` : "";
+  return `${items} found in ${emails}${filtered} — pick what to import`;
+}

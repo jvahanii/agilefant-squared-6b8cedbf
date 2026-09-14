@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser } from "@/lib/currentUser";
 import { useOrgStore } from "@/store/orgStore";
@@ -16,6 +16,7 @@ import {
   groupBySourceEmail,
   senderName,
   gmailMessageUrl,
+  previewSummary,
   type PreviewLink,
 } from "@/lib/gmailPreview";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
@@ -121,6 +122,21 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
+
+  // Derived once: the header count and the list must not disagree when a
+  // keyword filter is on.
+  const visiblePreview = useMemo(() => {
+    if (!filterKeyword) return preview;
+    const kw = filterKeyword.toLowerCase();
+    return preview.filter(
+      (l) =>
+        l.subject?.toLowerCase().includes(kw) ||
+        l.title?.toLowerCase().includes(kw) ||
+        l.url?.toLowerCase().includes(kw) ||
+        l.from?.toLowerCase().includes(kw),
+    );
+  }, [preview, filterKeyword]);
+  const visibleGroups = useMemo(() => groupBySourceEmail(visiblePreview), [visiblePreview]);
 
   const popupRef = useRef<Window | null>(null);
 
@@ -565,28 +581,17 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    {(() => {
-                      const emailCount = new Set(preview.map((l) => l.messageId)).size;
-                      return (
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {preview.length} link{preview.length === 1 ? "" : "s"} in {emailCount} email{emailCount === 1 ? "" : "s"} — pick what to import
-                        </p>
-                      );
-                    })()}
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {previewSummary({
+                        shown: visiblePreview.length,
+                        emails: visibleGroups.length,
+                        mode,
+                        total: filterKeyword ? preview.length : undefined,
+                      })}
+                    </p>
                   </div>
                   <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
-                    {groupBySourceEmail(
-                      preview.filter((l) => {
-                        if (!filterKeyword) return true;
-                        const kw = filterKeyword.toLowerCase();
-                        return (
-                          l.subject?.toLowerCase().includes(kw) ||
-                          l.title?.toLowerCase().includes(kw) ||
-                          l.url?.toLowerCase().includes(kw) ||
-                          l.from?.toLowerCase().includes(kw)
-                        );
-                      }),
-                    ).map((group) => {
+                    {visibleGroups.map((group) => {
                       const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
                       const allChecked = keys.every((k) => selected[k]);
                       return (

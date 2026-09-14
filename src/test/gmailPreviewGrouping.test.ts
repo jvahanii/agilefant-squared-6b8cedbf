@@ -3,6 +3,7 @@ import {
   senderName,
   gmailMessageUrl,
   groupBySourceEmail,
+  previewSummary,
 } from '@/lib/gmailPreview';
 
 /**
@@ -83,5 +84,39 @@ describe('groupBySourceEmail', () => {
 
   it('handles an empty preview', () => {
     expect(groupBySourceEmail([])).toEqual([]);
+  });
+});
+
+describe('previewSummary', () => {
+  it('counts jobs and the emails they came from', () => {
+    expect(previewSummary({ shown: 12, emails: 3, mode: 'jobs' })).toBe(
+      '12 jobs found in 3 emails — pick what to import',
+    );
+  });
+
+  it('uses singulars where they belong', () => {
+    expect(previewSummary({ shown: 1, emails: 1, mode: 'jobs' })).toBe(
+      '1 job found in 1 email — pick what to import',
+    );
+  });
+
+  it('says links for the generic import', () => {
+    expect(previewSummary({ shown: 7, emails: 2, mode: 'links' })).toContain('7 links found in 2 emails');
+  });
+
+  it('shows what the keyword filter hid', () => {
+    expect(previewSummary({ shown: 3, emails: 1, mode: 'jobs', total: 12 })).toBe(
+      '3 jobs found in 1 email (filtered from 12) — pick what to import',
+    );
+  });
+
+  it('stays quiet when the filter hid nothing', () => {
+    expect(previewSummary({ shown: 12, emails: 3, mode: 'jobs', total: 12 })).not.toContain('filtered');
+  });
+
+  it('handles an empty result', () => {
+    expect(previewSummary({ shown: 0, emails: 0, mode: 'jobs' })).toBe(
+      '0 jobs found in 0 emails — pick what to import',
+    );
   });
 });
