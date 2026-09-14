@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
+import { defaultJobQuery } from "../../supabase/functions/_shared/jobSources";
 
 /**
  * Which extractor a saved query runs under. Job-ad import is a separate
@@ -21,12 +22,17 @@ import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-reac
  */
 export type ImportMode = "links" | "jobs";
 
-const COPY: Record<ImportMode, { title: string; blurb: string; queryLabel: string; empty: string }> = {
+const COPY: Record<
+  ImportMode,
+  { title: string; blurb: string; queryLabel: string; placeholder: string; startingQuery: string; empty: string }
+> = {
   links: {
     title: "Gmail link import",
     blurb:
       "Connect your own Gmail account, save searches, and turn every link found in matching emails into a work item (one item per link, with the link attached as a hyperlink). Already-imported links are never duplicated.",
     queryLabel: "Gmail search query",
+    placeholder: "from:newsletter@example.com is:unread newer_than:7d",
+    startingQuery: "",
     empty: "No saved Gmail searches yet.",
   },
   jobs: {
@@ -34,6 +40,8 @@ const COPY: Record<ImportMode, { title: string; blurb: string; queryLabel: strin
     blurb:
       "Turn job alert emails into backlog items — one item per posting. Site navigation, editorial links and previously-seen roles in a digest are left out, and the same posting arriving from several alerts is imported once.",
     queryLabel: "Gmail search query for job alerts",
+    placeholder: "label:Job\u00a0ads newer_than:30d",
+    startingQuery: defaultJobQuery(),
     empty: "No saved job alert searches yet.",
   },
 };
@@ -95,7 +103,9 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const [connecting, setConnecting] = useState(false);
 
   const [queries, setQueries] = useState<SavedQuery[]>([]);
-  const [newQuery, setNewQuery] = useState("");
+  // Seeded rather than blank so the job-ad card is usable without knowing
+  // Gmail search syntax; still fully editable.
+  const [newQuery, setNewQuery] = useState(COPY[mode].startingQuery);
   const [newName, setNewName] = useState("");
   const [newTree, setNewTree] = useState("");
   const [newBacklog, setNewBacklog] = useState("");
@@ -226,7 +236,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       toast({ title: "Failed to save query", description: error.message, variant: "destructive" });
       return;
     }
-    setNewQuery("");
+    setNewQuery(copy.startingQuery);
     setNewName("");
     setNewBacklog("");
     loadQueries();
@@ -377,7 +387,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
               <Label htmlFor="gmail-query">{copy.queryLabel}</Label>
               <Input
                 id="gmail-query"
-                placeholder="from:newsletter@example.com is:unread newer_than:7d"
+                placeholder={copy.placeholder}
                 value={newQuery}
                 onChange={(e) => setNewQuery(e.target.value)}
               />

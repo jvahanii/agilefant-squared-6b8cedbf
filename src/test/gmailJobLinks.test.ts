@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeUrl } from '../../supabase/functions/_shared/urls';
-import { filterJobLinks, canonicalizeByHost } from '../../supabase/functions/_shared/jobSources';
+import {
+  filterJobLinks,
+  canonicalizeByHost,
+  defaultJobQuery,
+  JOB_SOURCES,
+} from '../../supabase/functions/_shared/jobSources';
 
 // Every URL below is taken verbatim from real job-alert mail, so these tests
 // fail if a board changes its link shape rather than only if the code changes.
@@ -125,5 +130,24 @@ describe('already-imported items still deduplicate', () => {
 
   it('returns null for a URL that is not a posting', () => {
     expect(canonicalizeByHost('https://example.com/whatever')).toBeNull();
+  });
+});
+
+describe('default job query', () => {
+  it('searches every sender the module can actually read', () => {
+    const q = defaultJobQuery();
+    for (const sender of JOB_SOURCES.flatMap((s) => s.alertSenders)) {
+      expect(q).toContain(sender);
+    }
+  });
+
+  it('leaves out the LinkedIn sender that only carries engagement mail', () => {
+    // messages-noreply matches the linkedin profile but never carries a
+    // posting, so searching it would only cost quota.
+    expect(defaultJobQuery()).not.toContain('messages-noreply');
+  });
+
+  it('is a valid single Gmail from: clause', () => {
+    expect(defaultJobQuery()).toMatch(/^from:\(\S[^)]*\) newer_than:30d$/);
   });
 });
