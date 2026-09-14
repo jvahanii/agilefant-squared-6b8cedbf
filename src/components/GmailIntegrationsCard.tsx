@@ -13,7 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
-import { defaultJobQuery } from "../../supabase/functions/_shared/jobSources";
+import {
+  defaultJobQuery,
+  withLookback,
+  DEFAULT_LOOKBACK_DAYS,
+  LOOKBACK_OPTIONS,
+} from "../../supabase/functions/_shared/jobSources";
 
 /**
  * Which extractor a saved query runs under. Job-ad import is a separate
@@ -106,6 +111,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   // Seeded rather than blank so the job-ad card is usable without knowing
   // Gmail search syntax; still fully editable.
   const [newQuery, setNewQuery] = useState(COPY[mode].startingQuery);
+  const [lookbackDays, setLookbackDays] = useState(DEFAULT_LOOKBACK_DAYS);
   const [newName, setNewName] = useState("");
   const [newTree, setNewTree] = useState("");
   const [newBacklog, setNewBacklog] = useState("");
@@ -236,7 +242,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       toast({ title: "Failed to save query", description: error.message, variant: "destructive" });
       return;
     }
-    setNewQuery(copy.startingQuery);
+    setNewQuery(withLookback(copy.startingQuery, lookbackDays));
     setNewName("");
     setNewBacklog("");
     loadQueries();
@@ -392,6 +398,35 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                 onChange={(e) => setNewQuery(e.target.value)}
               />
             </div>
+            {mode === "jobs" && (
+              <div>
+                <Label htmlFor="gmail-lookback">How far back to look</Label>
+                <Select
+                  value={String(lookbackDays)}
+                  onValueChange={(v) => {
+                    const days = Number(v);
+                    setLookbackDays(days);
+                    // Rewrites only the newer_than clause, so edits survive.
+                    setNewQuery((q) => withLookback(q, days));
+                  }}
+                >
+                  <SelectTrigger id="gmail-lookback">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOOKBACK_OPTIONS.map((d) => (
+                      <SelectItem key={d} value={String(d)}>
+                        {d === 1 ? "Last 24 hours" : d === 365 ? "Last year" : `Last ${d} days`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sets <code>newer_than</code> in the query above. A saved query keeps whatever
+                  window it was saved with.
+                </p>
+              </div>
+            )}
             <div>
               <Label>Backlog tree</Label>
               <Select

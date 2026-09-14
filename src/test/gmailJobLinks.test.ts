@@ -4,6 +4,9 @@ import {
   filterJobLinks,
   canonicalizeByHost,
   defaultJobQuery,
+  withLookback,
+  DEFAULT_LOOKBACK_DAYS,
+  LOOKBACK_OPTIONS,
   JOB_SOURCES,
 } from '../../supabase/functions/_shared/jobSources';
 
@@ -205,5 +208,33 @@ describe('Teamtailor', () => {
     expect(out).toEqual([
       'https://sofigategroupoy.teamtailor.com/jobs/8356594-interim-it-leader-senior-it-program-manager',
     ]);
+  });
+});
+
+describe('lookback window', () => {
+  it('builds the default query for a given number of days', () => {
+    expect(defaultJobQuery(7)).toContain('newer_than:7d');
+    expect(defaultJobQuery()).toContain(`newer_than:${DEFAULT_LOOKBACK_DAYS}d`);
+  });
+
+  it('retargets an existing query without disturbing the rest of it', () => {
+    expect(withLookback('label:Foo is:unread newer_than:30d', 3)).toBe('label:Foo is:unread newer_than:3d');
+  });
+
+  it('appends the clause when the query has none', () => {
+    expect(withLookback('label:Foo', 14)).toBe('label:Foo newer_than:14d');
+  });
+
+  it('handles an empty query', () => {
+    expect(withLookback('   ', 30)).toBe('newer_than:30d');
+  });
+
+  it('replaces every occurrence, so no stale window survives', () => {
+    expect(withLookback('newer_than:1d OR newer_than:90d', 7)).toBe('newer_than:7d OR newer_than:7d');
+  });
+
+  it('offers only positive windows', () => {
+    expect(LOOKBACK_OPTIONS.every((d) => Number.isInteger(d) && d > 0)).toBe(true);
+    expect(LOOKBACK_OPTIONS).toContain(DEFAULT_LOOKBACK_DAYS);
   });
 });

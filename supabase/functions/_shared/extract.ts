@@ -5,7 +5,7 @@
 // here touches the network or Deno APIs.
 
 import { decodeEntities, normalizeUrl } from './urls.ts';
-import { filterJobLinks } from './jobSources.ts';
+import { filterJobLinks, type LinkOccurrence } from './jobSources.ts';
 
 /**
  * Which extractor a query runs under.
@@ -78,6 +78,8 @@ export interface ExtractedLink {
   subject: string;
   from: string;
   date: string;
+  /** Employer, when the digest markup exposed one. Job sources only. */
+  company?: string;
 }
 
 function looksLikeNoise(url: string, label: string): boolean {
@@ -114,15 +116,20 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
     ? new Date(Number(msg.internalDate)).toISOString()
     : header(msg, 'Date');
 
-  const byUrl = new Map<string, ExtractedLink>();
+  // Every occurrence of a URL is kept, not just the first. A job digest links
+  // the same posting two or three times -- logo, card wrapper, title -- and
+  // only one of those anchors carries usable text. Keeping the first would
+  // title the item from an empty logo anchor.
+  const occurrences = new Map<string, LinkOccurrence[]>();
 
-  const push = (rawUrl: string, rawLabel: string) => {
+  const push = (rawUrl: string, rawLabel: string, after = '') => {
     const url = normalizeUrl(decodeEntities(rawUrl));
     if (!url) return;
-    const label = decodeEntities(rawLabel).replace(/\s+/g, ' ').trim();
+    const label = decodeEntities(rawLabel).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (looksLikeNoise(url, label)) return;
-    const title = (label && label.length > 2 && !/^https?:\/\//i.test(label) ? label : fallbackTitle(url)).slice(0, 300);
-    if (!byUrl.has(url)) byUrl.set(url, { url, title, messageId: msg.id, subject, from, date });
+    const existing = occurrences.get(url);
+    if (existing) existing.push({ label, after });
+    else occurrences.set(url, [{ label, after }]);
   };
 
   for (const html of bodies.html) {
@@ -130,19 +137,37 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
     let m: RegExpExecArray | null;
     while ((m = anchor.exec(html)) !== null) {
       const href = m[2] ?? m[3] ?? m[4] ?? '';
-      const label = (m[5] ?? '').replace(/<[^>]*>/g, ' ');
-      push(href, label);
+      // The markup that follows a posting's title anchor is where these
+      // digests put the employer, so carry a slice of it along.
+      const after = html.slice(anchor.lastIndex, anchor.lastIndex + 400);
+      push(href, m[5] ?? '', after);
     }
   }
 
-  if (byUrl.size === 0) {
+  if (occurrences.size === 0) {
     for (const text of bodies.text) {
       const bare = /https?:\/\/[^\s<>()"']+/gi;
       let m: RegExpExecArray | null;
-      while ((m = bare.exec(text)) !== null) push(m[0].replace(/[.,;:]+$/, ''), '');
+      while ((m = bare.exec(text)) !== null) {
+        const url = m[0].replace(/[.,;:]+$/, '');
+        push(url, '', text.slice(bare.lastIndex, bare.lastIndex + 400));
+      }
     }
   }
 
-  const all = [...byUrl.values()];
-  return mode === 'jobs' ? filterJobLinks(from, all) : all;
+  const isUsable = (label: string) => label.length > 2 && !/^https?:\/\//i.test(label);
+  const all: ExtractedLink[] = [];
+  for (const [url, occ] of occurrences) {
+    const best = occ.find((o) => isUsable(o.label));
+    all.push({
+      url,
+      title: (best?.label ?? fallbackTitle(url)).slice(0, 300),
+      messageId: msg.id,
+      subject,
+      from,
+      date,
+    });
+  }
+
+  return mode === 'jobs' ? filterJobLinks(from, all, occurrences) : all;
 }

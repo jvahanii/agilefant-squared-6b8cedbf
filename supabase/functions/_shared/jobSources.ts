@@ -10,6 +10,23 @@
 //
 // Dependency-free on purpose: shared by the Deno edge functions and vitest.
 
+/** One appearance of a URL in a message: its anchor text, and the markup after it. */
+export interface LinkOccurrence {
+  label: string;
+  after: string;
+}
+
+/** What a source gets to work from when naming the employer. */
+export interface CompanyContext {
+  /** Anchor texts for this posting, in document order. */
+  labels: string[];
+  /** Markup following each anchor, in the same order. */
+  afters: string[];
+  url: URL;
+  subject: string;
+  from: string;
+}
+
 export interface JobSource {
   id: string;
   /** Tested against the raw From header. */
@@ -25,6 +42,11 @@ export interface JobSource {
   alertSenders: string[];
   /** Is this URL an actual posting, as opposed to navigation or editorial? */
   isJobUrl(u: URL): boolean;
+  /**
+   * Employer for a posting. Falls back to the text right after the title
+   * anchor, which is where most digests put it.
+   */
+  company?(ctx: CompanyContext): string | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
 }
@@ -35,6 +57,23 @@ export const JOB_SOURCES: JobSource[] = [
     // views and course promos, which carry no /jobs/view/ link and so yield
     // nothing here -- which is the intended outcome.
     id: 'linkedin',
+    // LinkedIn puts the employer in the subject, in one of several shapes,
+    // and nowhere predictable in the body markup.
+    company: ({ subject }) => {
+      const s = subject.replace(/[\u2018\u2019\u201c\u201d']/g, "'").trim();
+      const patterns = [
+        /^You may be a fit for (.+?)'s .+ role$/i,
+        /^(.+?) is hiring (?:a |an )?.+$/i,
+        /^New jobs similar to .+ at (.+?)$/i,
+        /^[^:]*:\s*(.+?)\s+-\s+.+posted on/i,
+        /\bat ([^,]+?)'?$/i,
+      ];
+      for (const re of patterns) {
+        const hit = s.match(re)?.[1]?.trim();
+        if (hit && hit.length > 1 && hit.length < 80) return hit;
+      }
+      return undefined;
+    },
     alertSenders: ['jobalerts-noreply@linkedin.com', 'jobs-noreply@linkedin.com'],
     senders: /@linkedin\.com/i,
     isJobUrl: (u) =>
@@ -59,6 +98,9 @@ export const JOB_SOURCES: JobSource[] = [
   {
     // Postings are /jobs/<hex id>; the browse link is a bare /jobs/ plus query.
     id: 'thehub',
+    // The Hub links the same posting once per field: title, company,
+    // location, contract type. The second is the employer.
+    company: ({ labels }) => labels[1],
     alertSenders: ['noreply@thehub.io'],
     senders: /@thehub\.io/i,
     isJobUrl: (u) => /(^|\.)thehub\.io$/i.test(u.hostname) && /^\/jobs\/[0-9a-z]{6,}/i.test(u.pathname),
@@ -80,6 +122,11 @@ export const JOB_SOURCES: JobSource[] = [
     // profile covers every company mailing through it (Nordea, Wärtsilä,
     // Outokumpu so far). The host differs per employer, hence a path-only test.
     id: 'jobs2web',
+    // Career sites are careers.<employer>.<tld>; the employer is the host.
+    company: ({ url }) => {
+      const label = url.hostname.replace(/^careers?\./i, '').split('.')[0];
+      return label ? label.charAt(0).toUpperCase() + label.slice(1) : undefined;
+    },
     senders: /@[\w.-]*jobs2web\.com/i,
     alertSenders: ['jobs2web.com'],
     isJobUrl: (u) => /^\/job\/[^/]+\/\d+/i.test(u.pathname),
@@ -87,6 +134,14 @@ export const JOB_SOURCES: JobSource[] = [
   {
     // Teamtailor, likewise multi-tenant: <company>.teamtailor.com.
     id: 'teamtailor',
+    // <company>.teamtailor.com is a slug ("sofigategroupoy"), so prefer the
+    // display name on the From header, which is the real company name.
+    company: ({ from, url }) => {
+      const display = from.split('<')[0].replace(/["']/g, '').trim();
+      if (display && !display.includes('@')) return display;
+      const label = url.hostname.split('.')[0];
+      return label ? label.charAt(0).toUpperCase() + label.slice(1) : undefined;
+    },
     senders: /@[\w.-]*teamtailor-mail\.com/i,
     // Left out of the default query on purpose: individual recruiters mail
     // from <name>@<company>.teamtailor-mail.com too, and Gmail cannot express
@@ -119,15 +174,84 @@ export function canonicalJobUrl(source: JobSource, rawUrl: string): string | nul
   return `${u.origin}${path}`;
 }
 
-/** Reduce a message's links to its job postings. Non-job senders pass through. */
-export function filterJobLinks<T extends { url: string }>(from: string, links: T[]): T[] {
+function stripTags(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * The employer is the run of text before the first separator these digests put
+ * between it and the location/date: "Academic Work | Tuusula, Helsinki | 12.9."
+ * or "Academic Work, Espoo - Hakuaika 11.9." or "Lokki Oy - Useita sijainteja".
+ */
+function firstSegment(text: string): string | undefined {
+  const cut = text.split(/\s[|\u2022\u00b7]\s|,\s|\s[-\u2013\u2014]\s/)[0]?.trim();
+  if (!cut || cut.length < 2 || cut.length > 80) return undefined;
+  return cut;
+}
+
+function resolveCompany(
+  source: JobSource,
+  occ: LinkOccurrence[],
+  url: URL,
+  subject: string,
+  from: string,
+): string | undefined {
+  const labels = occ.map((o) => o.label).filter((l) => l.length > 0);
+  const afters = occ.map((o) => o.after);
+  const own = source.company?.({ labels, afters, url, subject, from });
+  if (own) return own.trim();
+
+  // Default: the markup following the anchor that supplied the title. Using the
+  // first anchor instead would read a logo link, whose following markup is the
+  // title itself -- which would name every item after its own job title.
+  const titleIndex = occ.findIndex((o) => o.label.length > 2 && !/^https?:\/\//i.test(o.label));
+  const after = afters[titleIndex >= 0 ? titleIndex : 0];
+  if (!after) return undefined;
+  // Stop at the next link. The employer always sits between the title anchor
+  // and whatever is linked next; reading past it picks up the following job
+  // title or a call-to-action instead.
+  const beforeNextLink = after.split(/<a\b/i)[0] ?? '';
+  return firstSegment(stripTags(beforeNextLink));
+}
+
+/** "Company — Title", unless the title already names the company. */
+function composeTitle(company: string, title: string): string {
+  if (!title) return company;
+  if (title.toLowerCase().startsWith(company.toLowerCase())) return title;
+  return `${company} \u2014 ${title}`.slice(0, 300);
+}
+
+/**
+ * Reduce a message's links to its job postings, and name each one after its
+ * employer. Non-job senders pass through untouched.
+ */
+export function filterJobLinks<
+  T extends { url: string; title?: string; subject?: string; company?: string },
+>(from: string, links: T[], occurrences?: Map<string, LinkOccurrence[]>): T[] {
   const source = jobSourceFor(from);
   if (!source) return links;
   const out = new Map<string, T>();
   for (const l of links) {
     const canonical = canonicalJobUrl(source, l.url);
-    if (!canonical) continue;
-    if (!out.has(canonical)) out.set(canonical, { ...l, url: canonical });
+    if (!canonical || out.has(canonical)) continue;
+    let next = { ...l, url: canonical } as T;
+    const occ = occurrences?.get(l.url);
+    if (occ) {
+      let parsed: URL | null = null;
+      try {
+        parsed = new URL(l.url);
+      } catch {
+        parsed = null;
+      }
+      const company = parsed ? resolveCompany(source, occ, parsed, l.subject ?? '', from) : undefined;
+      if (company) next = { ...next, company, title: composeTitle(company, l.title ?? '') };
+    }
+    out.set(canonical, next);
   }
   return [...out.values()];
 }
@@ -160,7 +284,22 @@ export function canonicalizeByHost(rawUrl: string): string | null {
  * A label clause is usually a better filter once you have one -- narrower, and
  * it survives a board changing its From address.
  */
-export function defaultJobQuery(): string {
+export const DEFAULT_LOOKBACK_DAYS = 30;
+
+export function defaultJobQuery(days: number = DEFAULT_LOOKBACK_DAYS): string {
   const from = JOB_SOURCES.flatMap((s) => s.alertSenders).join(' OR ');
-  return `from:(${from}) newer_than:30d`;
+  return `from:(${from}) newer_than:${days}d`;
 }
+
+/**
+ * Retarget a query at a different window, preserving whatever else the user
+ * has typed. Appends the clause when the query has none.
+ */
+export function withLookback(query: string, days: number): string {
+  const clause = `newer_than:${days}d`;
+  if (/\bnewer_than:\d+d\b/i.test(query)) return query.replace(/\bnewer_than:\d+d\b/gi, clause);
+  return query.trim() ? `${query.trim()} ${clause}` : clause;
+}
+
+/** Offered in the job ad card. */
+export const LOOKBACK_OPTIONS = [1, 3, 7, 14, 30, 90, 180, 365] as const;
