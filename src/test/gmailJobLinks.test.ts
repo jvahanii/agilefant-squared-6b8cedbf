@@ -151,3 +151,59 @@ describe('default job query', () => {
     expect(defaultJobQuery()).toMatch(/^from:\(\S[^)]*\) newer_than:30d$/);
   });
 });
+
+describe('Työmarkkinatori', () => {
+  const JOB =
+    'https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/3917070e-67dd-4452-b9ec-5bc7e7b5ef1e/fi';
+
+  it('keeps postings and strips the locale segment', () => {
+    // The uuid is the identity; /fi, /sv and /en are the same posting.
+    const out = pipeline('noreply@tyomarkkinatori.fi', [JOB, JOB.replace(/\/fi$/, '/en')]);
+    expect(out).toEqual([
+      'https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/3917070e-67dd-4452-b9ec-5bc7e7b5ef1e',
+    ]);
+  });
+
+  it('drops the unsubscribe links, which carry the recipient address', () => {
+    const out = pipeline('noreply@tyomarkkinatori.fi', [
+      JOB,
+      'https://tyomarkkinatori.fi/tyopaikkavahti/peruuta?type=jobwatch&token=abc&email=Jvahanii%40gmail.com',
+      'https://tyomarkkinatori.fi/tyopaikkavahti/peruuta-kaikki?type=jobwatch&token=abc&email=Jvahanii%40gmail.com',
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).not.toContain('email');
+  });
+});
+
+describe('jobs2web / SuccessFactors career sites', () => {
+  it('keeps the posting and discards the alert-management chrome', () => {
+    // One profile serves every employer on jobs2web; the host varies, the path
+    // shape does not.
+    const out = pipeline('nordeabank-jobnotification@noreply12.jobs2web.com', [
+      'http://careers.nordea.com/job/Helsinki-AI-Platform-Engineer-00500/1382818133/?from=email&utm_source=J2WEmail&source=2&locale=en_US',
+      'https://career5.successfactors.eu/careers?site=&company=nordeabank&clientId=jobs2web',
+      'https://careers.nordea.com/unsubscribe/?from=email&source=2',
+      'https://www.nordea.com/en/careers/open-jobs',
+    ]);
+    expect(out).toEqual(['http://careers.nordea.com/job/Helsinki-AI-Platform-Engineer-00500/1382818133']);
+  });
+
+  it('covers a different employer on the same platform', () => {
+    const out = pipeline('wrtsiloyj-jobnotification@noreply12.jobs2web.com', [
+      'https://careers.wartsila.com/job/Helsinki-Some-Role-00100/1234567/?from=email',
+    ]);
+    expect(out).toEqual(['https://careers.wartsila.com/job/Helsinki-Some-Role-00100/1234567']);
+  });
+});
+
+describe('Teamtailor', () => {
+  it('keeps the posting from a per-company Teamtailor site', () => {
+    const out = pipeline('no-reply@sofigategroupoy.teamtailor-mail.com', [
+      'https://sofigategroupoy.teamtailor.com/jobs/8356594-interim-it-leader-senior-it-program-manager',
+      'https://sofigategroupoy.teamtailor.com/',
+    ]);
+    expect(out).toEqual([
+      'https://sofigategroupoy.teamtailor.com/jobs/8356594-interim-it-leader-senior-it-program-manager',
+    ]);
+  });
+});

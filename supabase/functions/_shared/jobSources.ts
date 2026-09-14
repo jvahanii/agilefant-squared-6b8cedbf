@@ -15,7 +15,9 @@ export interface JobSource {
   /** Tested against the raw From header. */
   senders: RegExp;
   /**
-   * Addresses that actually send job alerts, for building a Gmail query.
+   * Addresses -- or bare domains, where the local part varies per employer --
+   * that actually send job alerts, for building a Gmail query. May be empty
+   * when a domain also carries unrelated mail.
    * Narrower than `senders` on purpose: LinkedIn's messages-noreply matches
    * the profile but only ever sends profile views and course promos, so it
    * is not worth searching.
@@ -60,6 +62,39 @@ export const JOB_SOURCES: JobSource[] = [
     alertSenders: ['noreply@thehub.io'],
     senders: /@thehub\.io/i,
     isJobUrl: (u) => /(^|\.)thehub\.io$/i.test(u.hostname) && /^\/jobs\/[0-9a-z]{6,}/i.test(u.pathname),
+  },
+  {
+    // Finnish public employment service. Clean links: no wrapper, no tracking.
+    id: 'tyomarkkinatori',
+    senders: /@tyomarkkinatori\.fi/i,
+    alertSenders: ['noreply@tyomarkkinatori.fi'],
+    isJobUrl: (u) =>
+      /(^|\.)tyomarkkinatori\.fi$/i.test(u.hostname) &&
+      /^\/henkiloasiakkaat\/avoimet-tyopaikat\/[0-9a-f-]{36}/i.test(u.pathname),
+    // The trailing segment is a locale (fi|sv|en) and the uuid is the identity,
+    // so drop it -- otherwise one posting differs per language.
+    canonicalPath: (u) => u.pathname.replace(/\/(fi|sv|en)\/?$/i, '').replace(/\/+$/, ''),
+  },
+  {
+    // jobs2web / SuccessFactors powers per-employer career sites, so one
+    // profile covers every company mailing through it (Nordea, Wärtsilä,
+    // Outokumpu so far). The host differs per employer, hence a path-only test.
+    id: 'jobs2web',
+    senders: /@[\w.-]*jobs2web\.com/i,
+    alertSenders: ['jobs2web.com'],
+    isJobUrl: (u) => /^\/job\/[^/]+\/\d+/i.test(u.pathname),
+  },
+  {
+    // Teamtailor, likewise multi-tenant: <company>.teamtailor.com.
+    id: 'teamtailor',
+    senders: /@[\w.-]*teamtailor-mail\.com/i,
+    // Left out of the default query on purpose: individual recruiters mail
+    // from <name>@<company>.teamtailor-mail.com too, and Gmail cannot express
+    // "no-reply@ on any subdomain" in one from: term. Extraction still works
+    // if such a message is imported; it just is not searched for by default.
+    alertSenders: [],
+    isJobUrl: (u) =>
+      /(^|\.)teamtailor\.com$/i.test(u.hostname) && /^\/jobs\/\d+/i.test(u.pathname),
   },
 ];
 
