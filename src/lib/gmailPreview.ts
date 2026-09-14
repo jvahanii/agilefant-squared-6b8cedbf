@@ -26,6 +26,18 @@ export function senderName(from: string): string {
   return from.replace(/^.*<|>.*$/g, "").trim() || from;
 }
 
+/**
+ * The address out of "Name <a@b.c>". Empty when the header carries no display
+ * name, because senderName() already returns the address in that case and the
+ * picker would otherwise print it twice.
+ */
+export function senderAddress(from: string): string {
+  const match = from.match(/<([^>]+)>/);
+  if (!match) return "";
+  const display = from.split("<")[0].replace(/["']/g, "").trim();
+  return display && !display.includes("@") ? match[1].trim() : "";
+}
+
 /** Opens the source message in Gmail. The API message id works as the fragment. */
 export function gmailMessageUrl(messageId: string): string {
   return `https://mail.google.com/mail/u/0/#all/${messageId}`;

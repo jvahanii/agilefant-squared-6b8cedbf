@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   senderName,
+  senderAddress,
   gmailMessageUrl,
   groupBySourceEmail,
   previewSummary,
@@ -118,5 +119,27 @@ describe('previewSummary', () => {
     expect(previewSummary({ shown: 0, emails: 0, mode: 'jobs' })).toBe(
       '0 jobs found in 0 emails — pick what to import',
     );
+  });
+});
+
+describe('senderAddress', () => {
+  it('returns the address when a display name is present', () => {
+    expect(senderAddress('Duunitori <duunivahti@duunitori.fi>')).toBe('duunivahti@duunitori.fi');
+  });
+
+  it('is empty for a bare address, which senderName already shows', () => {
+    // Otherwise the picker prints "noreply@jobly.fi <noreply@jobly.fi>".
+    expect(senderAddress('noreply@jobly.fi')).toBe('');
+    expect(senderAddress('<noreply@thehub.io>')).toBe('');
+  });
+
+  it('handles a quoted display name containing a comma', () => {
+    expect(senderAddress('"Jobly, Oy" <noreply@jobly.fi>')).toBe('noreply@jobly.fi');
+  });
+
+  it('pairs with senderName without repeating the address', () => {
+    const from = 'Duunitori <duunivahti@duunitori.fi>';
+    expect(senderName(from)).toBe('Duunitori');
+    expect(senderAddress(from)).not.toBe(senderName(from));
   });
 });

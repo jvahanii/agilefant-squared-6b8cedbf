@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   groupBySourceEmail,
   senderName,
+  senderAddress,
   gmailMessageUrl,
   previewSummary,
   type PreviewLink,
@@ -596,9 +597,9 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                       const allChecked = keys.every((k) => selected[k]);
                       return (
                         <div key={group.messageId} className="border rounded-md">
-                          {/* Which email these came from. Without it a digest's
-                              dozen postings look like they appeared from nowhere. */}
-                          <div className="flex items-start gap-2 bg-muted/50 px-2 py-1.5 rounded-t-md">
+                          {/* Select-all and the count; the email itself is
+                              credited under the jobs it produced. */}
+                          <div className="flex items-center gap-2 bg-muted/50 px-2 py-1.5 rounded-t-md">
                             <Checkbox
                               checked={allChecked}
                               onCheckedChange={(c) =>
@@ -608,17 +609,11 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                   return next;
                                 })
                               }
-                              className="mt-0.5"
-                              aria-label={`Select all from ${group.subject}`}
+                              aria-label={`Select all ${group.links.length} from ${group.subject}`}
                             />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium truncate">{group.subject}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {senderName(group.from)}
-                                {group.date && ` · ${new Date(group.date).toLocaleString()}`}
-                                {` · ${group.links.length} job${group.links.length === 1 ? "" : "s"}`}
-                              </p>
-                            </div>
+                            <span className="text-xs font-medium flex-1">
+                              {group.links.length} job{group.links.length === 1 ? "" : "s"} from this email
+                            </span>
                             <a
                               href={gmailMessageUrl(group.messageId)}
                               target="_blank"
@@ -626,9 +621,10 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                               className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
                               title="Open this email in Gmail"
                             >
-                              Open
+                              Open in Gmail
                             </a>
                           </div>
+
                           <div className="px-2 py-1.5 space-y-1.5">
                             {group.links.map((l) => {
                               const key = `${l.messageId}|${l.url}`;
@@ -649,6 +645,31 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                 </label>
                               );
                             })}
+                          </div>
+
+                          {/* The source, under the jobs it produced. Wraps rather
+                              than truncates -- a truncated subject is the thing
+                              that made the origin unclear in the first place. */}
+                          <div className="border-t bg-muted/30 px-2 py-1.5 rounded-b-md space-y-0.5">
+                            <p className="text-xs">
+                              <span className="text-muted-foreground">From: </span>
+                              <span className="font-medium break-words">{senderName(group.from)}</span>
+                              {senderAddress(group.from) && (
+                                <span className="text-muted-foreground break-all">
+                                  {" "}
+                                  &lt;{senderAddress(group.from)}&gt;
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs">
+                              <span className="text-muted-foreground">Subject: </span>
+                              <span className="font-medium break-words">{group.subject}</span>
+                            </p>
+                            {group.date && (
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(group.date).toLocaleString()}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
