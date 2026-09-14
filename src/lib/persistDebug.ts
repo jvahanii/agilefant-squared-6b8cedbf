@@ -18,6 +18,12 @@ export type PersistEvent = {
 
 type Listener = (e: PersistEvent) => void;
 const listeners = new Set<Listener>();
+const MAX_PERSIST_TOAST_TITLE_LENGTH = 120;
+
+function truncatePersistTitle(title: string): string {
+  if (title.length <= MAX_PERSIST_TOAST_TITLE_LENGTH) return title;
+  return `${title.slice(0, MAX_PERSIST_TOAST_TITLE_LENGTH - 1)}…`;
+}
 
 function isEnabled(): boolean {
   try {
@@ -37,7 +43,7 @@ export function notifyPersistDebug(kind: PersistEventKind, title: string) {
   const event: PersistEvent = {
     id: crypto.randomUUID().slice(0, 8),
     kind,
-    title,
+    title: truncatePersistTitle(title),
     timestamp: Date.now(),
   };
   for (const fn of listeners) fn(event);
