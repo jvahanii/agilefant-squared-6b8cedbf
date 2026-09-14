@@ -10,6 +10,8 @@ import type { adminClient } from './gmail.ts';
 import type { ExtractedLink } from './extract.ts';
 import { normalizeUrl } from './urls.ts';
 import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
+import { deadlinePrefix } from './deadlines.ts';
+import { fillDeadlines } from './fetchDeadline.ts';
 
 type Admin = ReturnType<typeof adminClient>;
 
@@ -24,6 +26,12 @@ export interface ImportTarget {
    * remembered between runs and re-running a query yields the items again.
    */
   allowDuplicates?: boolean;
+  /**
+   * Fetch each posting to find a deadline the mail did not state. Done here
+   * rather than during preview: a preview offers dozens of postings, an import
+   * takes the handful that were picked, so the requests land where they are few.
+   */
+  fetchDeadlines?: boolean;
 }
 
 export interface ImportResult {
@@ -38,8 +46,23 @@ function newWorkItemId(orgId: string): string {
   return `${orgId}::wi-${crypto.randomUUID()}`;
 }
 
+/**
+ * "0920 Academic Work — AI Engineer" when a deadline is known, so a backlog
+ * sorted by name groups by closing date. Without one the title is unchanged.
+ */
+function workItemTitle(link: ExtractedLink): string {
+  const prefix = deadlinePrefix(link.deadline);
+  const base = link.title || link.url;
+  return prefix ? `${prefix} ${base}` : base;
+}
+
 function describe(link: ExtractedLink): string {
   const parts = [
+    link.deadline
+      ? `Applications close: ${link.deadline}`
+      : link.deadlineOpen
+        ? 'Applications open until further notice'
+        : '',
     link.subject ? `From email: ${link.subject}` : '',
     link.from ? `Sender: ${link.from}` : '',
     link.date ? `Received: ${link.date}` : '',
@@ -122,6 +145,11 @@ export async function importLinksAsWorkItems(
   }
   if (candidates.length === 0) return { created: 0, skipped: unique.size, collapsed, createdIds: [] };
 
+  if (target.fetchDeadlines) {
+    // Best-effort and capped; a posting that will not load simply keeps no date.
+    candidates = await fillDeadlines(candidates);
+  }
+
   let items: Array<{ id: string; claimId: string | null; link: ExtractedLink }>;
   let skipped: number;
 
@@ -201,7 +229,7 @@ export async function importLinksAsWorkItems(
     const { error: itemsError } = await admin.from('work_items').insert(
       ranked.map(({ id, link, rank }) => ({
         id,
-        title: link.title || link.url,
+        title: workItemTitle(link),
         description: describe(link),
         status: 'not_started',
         parent_id: null,

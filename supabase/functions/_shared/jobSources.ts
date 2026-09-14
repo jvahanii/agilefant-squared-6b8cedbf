@@ -12,6 +12,7 @@
 // and vitest.
 
 import { decodeEntities } from './urls.ts';
+import { parseDeadline, parseOpenEnded } from './deadlines.ts';
 
 /** One appearance of a URL in a message: its anchor text, and the markup after it. */
 export interface LinkOccurrence {
@@ -201,9 +202,26 @@ function firstSegment(text: string): string | undefined {
   return cut;
 }
 
+/**
+ * The text a digest puts beside a posting: whatever follows the anchor that
+ * supplied the title, up to the next link.
+ *
+ * Bounded at the next link deliberately. Reading past it picks up the following
+ * posting's title, which would name every item after its neighbour. Anchored on
+ * the *title* anchor rather than the first, because a logo link is followed by
+ * the title itself.
+ */
+function markupBesidePosting(occ: LinkOccurrence[]): string {
+  const titleIndex = occ.findIndex((o) => o.label.length > 2 && !/^https?:\/\//i.test(o.label));
+  const after = occ[titleIndex >= 0 ? titleIndex : 0]?.after;
+  if (!after) return '';
+  return stripTags(after.split(/<a\b/i)[0] ?? '');
+}
+
 function resolveCompany(
   source: JobSource,
   occ: LinkOccurrence[],
+  beside: string,
   url: URL,
   subject: string,
   from: string,
@@ -213,17 +231,7 @@ function resolveCompany(
   const override = source.company?.({ labels, afters, url, subject, from });
   if (override) return override.trim();
 
-  // Default: the markup following the anchor that supplied the title. Using the
-  // first anchor instead would read a logo link, whose following markup is the
-  // title itself -- which would name every item after its own job title.
-  const titleIndex = occ.findIndex((o) => o.label.length > 2 && !/^https?:\/\//i.test(o.label));
-  const after = afters[titleIndex >= 0 ? titleIndex : 0];
-  if (!after) return source.companyFallback?.({ labels, afters, url, subject, from })?.trim();
-  // Stop at the next link. The employer always sits between the title anchor
-  // and whatever is linked next; reading past it picks up the following job
-  // title or a call-to-action instead.
-  const beforeNextLink = after.split(/<a\b/i)[0] ?? '';
-  const fromMarkup = firstSegment(stripTags(beforeNextLink));
+  const fromMarkup = firstSegment(beside);
   if (fromMarkup) return fromMarkup;
 
   return source.companyFallback?.({ labels, afters, url, subject, from })?.trim();
@@ -241,7 +249,15 @@ function composeTitle(company: string, title: string): string {
  * employer. Non-job senders pass through untouched.
  */
 export function filterJobLinks<
-  T extends { url: string; title?: string; subject?: string; company?: string },
+  T extends {
+    url: string;
+    title?: string;
+    subject?: string;
+    company?: string;
+    deadline?: string;
+    deadlineOpen?: boolean;
+    date?: string;
+  },
 >(from: string, links: T[], occurrences?: Map<string, LinkOccurrence[]>): T[] {
   const source = jobSourceFor(from);
   if (!source) return links;
@@ -258,8 +274,18 @@ export function filterJobLinks<
       } catch {
         parsed = null;
       }
-      const company = parsed ? resolveCompany(source, occ, parsed, l.subject ?? '', from) : undefined;
+      const beside = markupBesidePosting(occ);
+      const company = parsed
+        ? resolveCompany(source, occ, beside, parsed, l.subject ?? '', from)
+        : undefined;
       if (company) next = { ...next, company, title: composeTitle(company, l.title ?? '') };
+
+      // Only the Finnish boards state a deadline in the mail. Elsewhere it is
+      // left absent rather than guessed at, and filled in at import time by
+      // fetching the posting.
+      const deadline = parseDeadline(beside, l.date ?? Date.now());
+      if (deadline) next = { ...next, deadline };
+      else if (parseOpenEnded(beside)) next = { ...next, deadlineOpen: true };
     }
     out.set(canonical, next);
   }

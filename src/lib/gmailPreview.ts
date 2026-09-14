@@ -9,6 +9,10 @@ export interface PreviewLink {
   from: string;
   date: string;
   alreadyImported: boolean;
+  /** yyyy-mm-dd, when the mail stated an application deadline. */
+  deadline?: string;
+  /** The mail said applications stay open, as opposed to saying nothing. */
+  deadlineOpen?: boolean;
 }
 
 export interface SourceEmailGroup {
@@ -85,4 +89,21 @@ export function previewSummary(opts: {
   const filtered =
     opts.total !== undefined && opts.total !== opts.shown ? ` (filtered from ${opts.total})` : "";
   return `${items} found in ${emails}${filtered} — pick what to import`;
+}
+
+/**
+ * What the picker shows about a posting's closing date.
+ *
+ * Three states, deliberately distinct: a date, explicitly open-ended, and not
+ * known. Most sources state nothing in the mail, and those are filled in at
+ * import by fetching the posting -- so "unknown" here means "not yet", not
+ * "none".
+ */
+export function deadlineLabel(link: { deadline?: string; deadlineOpen?: boolean }): string {
+  if (link.deadline) {
+    const d = new Date(link.deadline);
+    return Number.isNaN(d.getTime()) ? link.deadline : `closes ${d.toLocaleDateString()}`;
+  }
+  if (link.deadlineOpen) return "open until further notice";
+  return "deadline unknown";
 }

@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
             backlogId: q.backlog_id,
             queryId: q.id,
             allowDuplicates: mode === 'jobs',
+            fetchDeadlines: mode === 'jobs',
           },
           links,
         );

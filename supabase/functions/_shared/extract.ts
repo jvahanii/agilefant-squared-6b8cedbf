@@ -80,6 +80,13 @@ export interface ExtractedLink {
   date: string;
   /** Employer, when the digest markup exposed one. Job sources only. */
   company?: string;
+  /** Application deadline as yyyy-mm-dd, when one is known. */
+  deadline?: string;
+  /**
+   * The posting says applications stay open, which is different from no
+   * deadline having been found.
+   */
+  deadlineOpen?: boolean;
 }
 
 function looksLikeNoise(url: string, label: string): boolean {

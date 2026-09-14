@@ -18,6 +18,7 @@ import {
   senderAddress,
   gmailMessageUrl,
   previewSummary,
+  deadlineLabel,
   type PreviewLink,
 } from "@/lib/gmailPreview";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
@@ -663,6 +664,13 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                   <span className="min-w-0">
                                     <span className="block truncate font-medium text-sm">
                                       {l.title}
+                                      <span
+                                        className={`ml-2 align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
+                                          l.deadline ? "" : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {deadlineLabel(l)}
+                                      </span>
                                       {l.alreadyImported && (
                                         <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
                                           in this backlog

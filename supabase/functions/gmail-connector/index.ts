@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
           queryId: body.queryId ?? null,
           // Job ad import keeps no memory of what it has imported.
           allowDuplicates: body.mode === 'jobs',
+          fetchDeadlines: body.mode === 'jobs',
         },
         links.map((l) => ({
           url: String(l.url ?? ''),
