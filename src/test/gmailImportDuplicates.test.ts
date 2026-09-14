@@ -19,6 +19,8 @@ interface StubState {
   existingUrls?: string[];
   /** Ranked into the backlog but no longer present in work_items. */
   orphanedItemIds?: string[];
+  /** Ranked into the backlog but assigned to a different one. */
+  movedItemIds?: string[];
 }
 
 function makeAdmin(state: StubState = {}) {
@@ -66,15 +68,25 @@ function makeAdmin(state: StubState = {}) {
       if (table === 'work_item_backlog_ranks') {
         if (ctx.cols === 'rank') return { data: [{ rank: 7 }], error: null };
         return {
-          data: [...(state.existingItemIds ?? []), ...(state.orphanedItemIds ?? [])].map((id) => ({
+          data: [
+            ...(state.existingItemIds ?? []),
+            ...(state.orphanedItemIds ?? []),
+            ...(state.movedItemIds ?? []),
+          ].map((id) => ({
             work_item_id: id,
           })),
           error: null,
         };
       }
       if (table === 'work_items') {
-        // Only the ids that still exist come back; orphaned ranks do not.
-        return { data: (state.existingItemIds ?? []).map((id) => ({ id })), error: null };
+        // Deleted ids never come back. Moved ones do, but assigned elsewhere.
+        return {
+          data: [
+            ...(state.existingItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl' } })),
+            ...(state.movedItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl-other' } })),
+          ],
+          error: null,
+        };
       }
       if (table === 'work_item_hyperlinks') {
         return { data: (state.existingUrls ?? []).map((url) => ({ url })), error: null };
@@ -291,5 +303,22 @@ describe('deleted items do not count as present', () => {
       links,
     );
     expect(r.created).toBe(1);
+  });
+});
+
+describe('an item moved to another backlog is not in this one', () => {
+  const A3 = 'https://www.linkedin.com/jobs/view/4444116317';
+
+  it('ignores a rank row left behind by a move', () => {
+    // An item carries one assignment per tree; moving it leaves the old
+    // backlog's rank row in place. 505 live items were in that state, and
+    // checking only that the item exists counted every one of them.
+    const { admin } = makeAdmin({ movedItemIds: ['wi-moved'], existingUrls: [A3] });
+    return urlsInBacklog(admin, 'bl').then((present) => expect(present.size).toBe(0));
+  });
+
+  it('still counts an item actually assigned here', async () => {
+    const { admin } = makeAdmin({ existingItemIds: ['wi-live'], existingUrls: [A3] });
+    expect((await urlsInBacklog(admin, 'bl')).has(A3)).toBe(true);
   });
 });

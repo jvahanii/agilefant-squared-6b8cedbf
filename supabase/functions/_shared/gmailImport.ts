@@ -90,17 +90,26 @@ export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Se
   const rankedIds = (rankRows ?? []).map((r) => r.work_item_id as string);
   if (rankedIds.length === 0) return present;
 
-  // Deleting a work item leaves its rank and hyperlink rows behind, so a rank
-  // row is not evidence that the item is still there. Without this check an
-  // emptied backlog still reported its old postings, and the picker marked them
-  // "in this backlog" when the backlog held nothing at all.
+  // A rank row is not evidence that the item is in this backlog. Two ways it
+  // lies, both present in real data:
+  //
+  //   - the item was deleted. bulk_delete_work_items removes the work_items row
+  //     and nothing else, so the rank and hyperlink rows survive it.
+  //   - the item moved. An item carries one assignment per tree, and moving it
+  //     leaves the old backlog's rank row behind.
+  //
+  // So require the item to exist *and* still name this backlog among its
+  // assignments. Checking only existence let a moved item count as present.
   const itemIds: string[] = [];
   for (let i = 0; i < rankedIds.length; i += 200) {
     const { data: liveRows } = await admin
       .from('work_items')
-      .select('id')
+      .select('id, backlog_assignments')
       .in('id', rankedIds.slice(i, i + 200));
-    for (const r of liveRows ?? []) itemIds.push(r.id as string);
+    for (const r of liveRows ?? []) {
+      const assignments = (r.backlog_assignments ?? {}) as Record<string, string>;
+      if (Object.values(assignments).includes(backlogId)) itemIds.push(r.id as string);
+    }
   }
   if (itemIds.length === 0) return present;
 
