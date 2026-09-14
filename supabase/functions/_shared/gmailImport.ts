@@ -87,7 +87,21 @@ export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Se
     .from('work_item_backlog_ranks')
     .select('work_item_id')
     .eq('backlog_id', backlogId);
-  const itemIds = (rankRows ?? []).map((r) => r.work_item_id as string);
+  const rankedIds = (rankRows ?? []).map((r) => r.work_item_id as string);
+  if (rankedIds.length === 0) return present;
+
+  // Deleting a work item leaves its rank and hyperlink rows behind, so a rank
+  // row is not evidence that the item is still there. Without this check an
+  // emptied backlog still reported its old postings, and the picker marked them
+  // "in this backlog" when the backlog held nothing at all.
+  const itemIds: string[] = [];
+  for (let i = 0; i < rankedIds.length; i += 200) {
+    const { data: liveRows } = await admin
+      .from('work_items')
+      .select('id')
+      .in('id', rankedIds.slice(i, i + 200));
+    for (const r of liveRows ?? []) itemIds.push(r.id as string);
+  }
   if (itemIds.length === 0) return present;
 
   for (let i = 0; i < itemIds.length; i += 200) {

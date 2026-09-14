@@ -17,6 +17,8 @@ interface StubState {
   existingItemIds?: string[];
   /** urls already attached as hyperlinks to those items. */
   existingUrls?: string[];
+  /** Ranked into the backlog but no longer present in work_items. */
+  orphanedItemIds?: string[];
 }
 
 function makeAdmin(state: StubState = {}) {
@@ -63,7 +65,16 @@ function makeAdmin(state: StubState = {}) {
       }
       if (table === 'work_item_backlog_ranks') {
         if (ctx.cols === 'rank') return { data: [{ rank: 7 }], error: null };
-        return { data: (state.existingItemIds ?? []).map((id) => ({ work_item_id: id })), error: null };
+        return {
+          data: [...(state.existingItemIds ?? []), ...(state.orphanedItemIds ?? [])].map((id) => ({
+            work_item_id: id,
+          })),
+          error: null,
+        };
+      }
+      if (table === 'work_items') {
+        // Only the ids that still exist come back; orphaned ranks do not.
+        return { data: (state.existingItemIds ?? []).map((id) => ({ id })), error: null };
       }
       if (table === 'work_item_hyperlinks') {
         return { data: (state.existingUrls ?? []).map((url) => ({ url })), error: null };
@@ -237,5 +248,48 @@ describe('urlsInBacklog', () => {
     const { admin } = makeAdmin({ existingItemIds: ['wi-1'], existingUrls: [JOBLY_CANONICAL] });
     const present = await urlsInBacklog(admin, 'bl');
     expect(present.has('https://duunitori.fi/tyopaikat/tyo/ai-engineer-scsom-20567347')).toBe(false);
+  });
+});
+
+describe('deleted items do not count as present', () => {
+  const A2 = 'https://www.linkedin.com/jobs/view/4444116317';
+
+  it('ignores hyperlinks left behind by a deleted item', () => {
+    // Deleting a work item leaves its rank and hyperlink rows behind. A backlog
+    // emptied by hand still had 21 rank rows and 0 items, and the picker marked
+    // its postings "in this backlog" with nothing in it.
+    const { admin } = makeAdmin({ orphanedItemIds: ['wi-deleted'], existingUrls: [A2] });
+    return urlsInBacklog(admin, 'bl').then((present) => {
+      expect(present.size).toBe(0);
+    });
+  });
+
+  it('still reports hyperlinks on items that do exist', async () => {
+    const { admin } = makeAdmin({ existingItemIds: ['wi-live'], existingUrls: [A2] });
+    expect((await urlsInBacklog(admin, 'bl')).has(A2)).toBe(true);
+  });
+
+  it('reports the live ones and not the dead ones together', async () => {
+    const { admin } = makeAdmin({
+      existingItemIds: ['wi-live'],
+      orphanedItemIds: ['wi-deleted'],
+      existingUrls: [A2],
+    });
+    // The stub returns the same hyperlink set for whichever ids are queried, so
+    // what matters is that a live item is required for any of it to count.
+    expect((await urlsInBacklog(admin, 'bl')).has(A2)).toBe(true);
+  });
+
+  it('re-offers a posting after its item is deleted', async () => {
+    // The point of the whole thing: clearing a backlog must make its postings
+    // importable again, not leave them permanently marked.
+    const links = [link('m1', A2, 'Aiven — Lead People Partner')];
+    const { admin } = makeAdmin({ orphanedItemIds: ['wi-deleted'], existingUrls: [A2] });
+    const r = await importLinksAsWorkItems(
+      admin,
+      { organizationId: 'org', treeId: 'tree', backlogId: 'bl' },
+      links,
+    );
+    expect(r.created).toBe(1);
   });
 });
