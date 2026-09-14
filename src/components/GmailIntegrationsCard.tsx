@@ -12,6 +12,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import {
+  groupBySourceEmail,
+  senderName,
+  gmailMessageUrl,
+  type PreviewLink,
+} from "@/lib/gmailPreview";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
 import {
   defaultJobQuery,
@@ -66,16 +72,6 @@ interface SavedQuery {
   last_run_at: string | null;
   last_run_status: string | null;
   import_mode: ImportMode;
-}
-
-interface PreviewLink {
-  url: string;
-  title: string;
-  messageId: string;
-  subject: string;
-  from: string;
-  date: string;
-  alreadyImported: boolean;
 }
 
 async function callGmail<T>(body: Record<string, unknown>): Promise<T> {
@@ -578,9 +574,9 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                       );
                     })()}
                   </div>
-                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                    {preview
-                      .filter((l) => {
+                  <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
+                    {groupBySourceEmail(
+                      preview.filter((l) => {
                         if (!filterKeyword) return true;
                         const kw = filterKeyword.toLowerCase();
                         return (
@@ -589,32 +585,69 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                           l.url?.toLowerCase().includes(kw) ||
                           l.from?.toLowerCase().includes(kw)
                         );
-                      })
-                      .map((l) => {
-                        const key = `${l.messageId}|${l.url}`;
-                        return (
-                          <label key={key} className="flex items-start gap-2 text-sm">
+                      }),
+                    ).map((group) => {
+                      const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
+                      const allChecked = keys.every((k) => selected[k]);
+                      return (
+                        <div key={group.messageId} className="border rounded-md">
+                          {/* Which email these came from. Without it a digest's
+                              dozen postings look like they appeared from nowhere. */}
+                          <div className="flex items-start gap-2 bg-muted/50 px-2 py-1.5 rounded-t-md">
                             <Checkbox
-                              checked={!!selected[key]}
-                              onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
+                              checked={allChecked}
+                              onCheckedChange={(c) =>
+                                setSelected((prev) => {
+                                  const next = { ...prev };
+                                  for (const k of keys) next[k] = !!c;
+                                  return next;
+                                })
+                              }
                               className="mt-0.5"
+                              aria-label={`Select all from ${group.subject}`}
                             />
-                            <span className="min-w-0">
-                              <span className="block truncate text-xs font-medium">{l.subject}</span>
-                              <span className="block truncate font-medium text-sm">{l.title}</span>
-                              <span className="block truncate text-xs text-muted-foreground">
-                                <LinkIcon className="w-3 h-3 inline mr-1" />
-                                {l.url}
-                              </span>
-                              {l.date && (
-                                <span className="block truncate text-xs text-muted-foreground/70">
-                                  {new Date(l.date).toLocaleString()}
-                                </span>
-                              )}
-                            </span>
-                          </label>
-                        );
-                      })}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium truncate">{group.subject}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {senderName(group.from)}
+                                {group.date && ` · ${new Date(group.date).toLocaleString()}`}
+                                {` · ${group.links.length} job${group.links.length === 1 ? "" : "s"}`}
+                              </p>
+                            </div>
+                            <a
+                              href={gmailMessageUrl(group.messageId)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
+                              title="Open this email in Gmail"
+                            >
+                              Open
+                            </a>
+                          </div>
+                          <div className="px-2 py-1.5 space-y-1.5">
+                            {group.links.map((l) => {
+                              const key = `${l.messageId}|${l.url}`;
+                              return (
+                                <label key={key} className="flex items-start gap-2 text-sm">
+                                  <Checkbox
+                                    checked={!!selected[key]}
+                                    onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
+                                    className="mt-0.5"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate font-medium text-sm">{l.title}</span>
+                                    <span className="block truncate text-xs text-muted-foreground">
+                                      <LinkIcon className="w-3 h-3 inline mr-1" />
+                                      {l.url}
+                                    </span>
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" onClick={importSelected} disabled={importing}>
