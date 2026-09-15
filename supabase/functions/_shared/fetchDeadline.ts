@@ -28,6 +28,20 @@ const UA =
  * the "…more" button is CSS truncation, not withheld content. Following the
  * Apply button instead would hit a sign-up wall.
  */
+/**
+ * Does this response status mean the ad itself is gone?
+ *
+ * A withdrawn posting often answers with a status code rather than a sentence:
+ * the address that held it now says "Page not found -- Unable to find job".
+ * Only "gone" counts. A 403 or a 429 is the board refusing *us* -- a datacentre
+ * address, a burst of requests -- which says nothing about the posting, and
+ * treating it as closed would mark a whole backlog shut the moment a board
+ * started rate-limiting.
+ */
+export function closedByStatus(status: number): boolean {
+  return status === 404 || status === 410;
+}
+
 /** Did postingTextUrl send us to LinkedIn's guest endpoint? */
 export function isLinkedInGuest(target: string): boolean {
   return target.startsWith('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/');
@@ -111,7 +125,7 @@ async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts
       signal: controller.signal,
       redirect: 'follow',
     });
-    if (!res.ok) return {};
+    if (!res.ok) return closedByStatus(res.status) ? { closed: true } : {};
     const type = res.headers.get('content-type') ?? '';
     if (!type.includes('html') && !type.includes('text')) return {};
     // One fetch answers every question, so a closed posting costs no extra

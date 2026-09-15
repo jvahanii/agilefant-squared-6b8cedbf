@@ -212,6 +212,15 @@ const CLOSED = [
   /not\s+currently\s+accepting\s+applications/i,
   /applications?\s+(?:are\s+)?closed/i,
   /haku\s*(?:aika)?\s*on\s*(?:jo\s*)?päättynyt/i,
+  // "Tämä työpaikkailmoitus ei ole enää voimassa." The Finnish boards withdraw
+  // an ad this way rather than by saying anything about applications. Anchored
+  // on the noun, so it cannot match a sentence about some other thing that has
+  // expired -- an old agreement, a certificate -- inside a live posting.
+  /(?:työpaikka|ilmoitus|paikka)[^.\n]{0,40}ei\s+ole\s+enää\s+(?:voimassa|haettavissa|avoinna)/i,
+  // Some boards keep the address but serve a "gone" page under a 200: "Page not
+  // found -- Unable to find job". A 404 is handled by status code instead.
+  /unable\s+to\s+find\s+(?:this\s+)?job/i,
+  /(?:job|position|vacancy|posting)[^.\n]{0,20}\bno\s+longer\s+available/i,
 ];
 
 /** True when the posting says it is not taking applications any more. */

@@ -7,6 +7,7 @@ import {
   parseApplicationsClosed,
 } from '../../supabase/functions/_shared/deadlines';
 import {
+  closedByStatus,
   isLinkedInGuest,
   linkedInApplyWithdrawn,
   postingTextUrl,
@@ -32,10 +33,45 @@ describe('parseApplicationsClosed', () => {
     expect(parseApplicationsClosed('Hakuaika on päättynyt')).toBe(true);
   });
 
+  it('reads a Finnish board withdrawing the ad', () => {
+    // Quoted from the banner. It says nothing about applications, only that the
+    // posting itself has lapsed.
+    expect(parseApplicationsClosed('Tämä työpaikkailmoitus ei ole enää voimassa. Etsi muita työpaikkoja.')).toBe(true);
+    expect(parseApplicationsClosed('Tämä paikka ei ole enää haettavissa')).toBe(true);
+  });
+
+  it('reads a "gone" page served under a 200', () => {
+    expect(parseApplicationsClosed('Page not found. Unable to find job. Back to home')).toBe(true);
+    expect(parseApplicationsClosed('This position is no longer available')).toBe(true);
+  });
+
   it('says nothing about a posting that is still open', () => {
     expect(parseApplicationsClosed('Apply by 30.9. — we are accepting applications')).toBe(false);
     expect(parseApplicationsClosed('Over 100 people clicked apply')).toBe(false);
     expect(parseApplicationsClosed('')).toBe(false);
+  });
+
+  it('does not read some other lapsed thing as the ad lapsing', () => {
+    // The Finnish rule needs the posting named, and cannot reach across a full
+    // stop to borrow the noun from a neighbouring sentence.
+    expect(parseApplicationsClosed('Edellytämme, että ajokortti ei ole enää voimassa olevia rajoituksia')).toBe(false);
+    expect(parseApplicationsClosed('Työpaikka on Helsingissä. Vanha tarjous ei ole enää voimassa.')).toBe(false);
+  });
+});
+
+describe('closedByStatus', () => {
+  it('treats a removed posting as closed', () => {
+    expect(closedByStatus(404)).toBe(true);
+    expect(closedByStatus(410)).toBe(true);
+  });
+
+  it('treats a board refusing us as nothing known', () => {
+    // Rate limiting and bot blocking say nothing about the ad. Reading them as
+    // closed would shut a whole backlog the moment a board pushed back.
+    expect(closedByStatus(403)).toBe(false);
+    expect(closedByStatus(429)).toBe(false);
+    expect(closedByStatus(500)).toBe(false);
+    expect(closedByStatus(200)).toBe(false);
   });
 });
 
