@@ -56,11 +56,16 @@ export function postingTextUrl(rawUrl: string): string | null {
   }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
 
-  const linkedInJob = u.hostname.match(/(^|\.)linkedin\.com$/i)
-    ? u.pathname.match(/^\/(?:comm\/)?jobs\/view\/(\d+)/i)
-    : null;
-  if (linkedInJob) {
-    return `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${linkedInJob[1]}`;
+  if (u.hostname.match(/(^|\.)linkedin\.com$/i)) {
+    const fromPath = u.pathname.match(/^\/(?:comm\/)?jobs\/view\/(\d+)/i)?.[1];
+    // A link copied out of the jobs feed names the posting in a query parameter
+    // instead of the path: /jobs/collections/recommended/?currentJobId=… and
+    // /jobs/search-results/?currentJobId=…. Without this, the fetch lands on the
+    // feed itself — half a megabyte that says nothing about the posting, so the
+    // ad was reported as neither open nor closed however plainly it had ended.
+    const fromQuery = u.searchParams.get('currentJobId');
+    const id = fromPath ?? (fromQuery && /^\d+$/.test(fromQuery) ? fromQuery : null);
+    if (id) return `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`;
   }
   return u.toString();
 }

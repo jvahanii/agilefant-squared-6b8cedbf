@@ -53,7 +53,9 @@ const NUMERIC_PATTERNS: RegExp[] = [
   // matching a bare "ends", which would read a contract's end date -- "the
   // contract ends 31.12." -- as an application deadline. They also keep the
   // published date, which sits immediately before, out of the match.
-  new RegExp(String.raw`\(\s*(?:ends|closes|päättyy|umpeutuu)\s*:?\s*${DAY_MONTH}\s*\)`, "i"),
+  // "Päättynyt" as well as "päättyy": once the date has gone by Duunitori
+  // rewrites the header in the past tense, and that date is still the deadline.
+  new RegExp(String.raw`\(\s*(?:ends|ended|closes|closed|päättyy|päättynyt|umpeutuu)\s*:?\s*${DAY_MONTH}\s*\)`, "i"),
   // "Hakuaika 11.9 - 11.3." -- a range, so the deadline is the second date.
   new RegExp(String.raw`hakuaika\s*\d{1,2}\.\d{1,2}\.?\s*[-–—]\s*${DAY_MONTH}`, "i"),
   // "apply by 30.9.2026", "submit your application by 30.9.2026"
@@ -211,7 +213,14 @@ const CLOSED = [
   /no\s+longer\s+accepting\s+applications/i,
   /not\s+currently\s+accepting\s+applications/i,
   /applications?\s+(?:are\s+)?closed/i,
-  /haku\s*(?:aika)?\s*on\s*(?:jo\s*)?päättynyt/i,
+  // "Hakuaika on päättynyt", and Duunitori's own banner over an expired ad:
+  // "Pahoittelut, haku tähän avoimeen työpaikkaan on päättynyt". The object of
+  // the sentence sits between the two halves, which is why requiring them
+  // adjacent missed every Duunitori closure. Bounded by the sentence.
+  /haku[a-zäöå]*\b[^.\n]{0,40}?\bon\s+(?:jo\s+)?päättynyt/i,
+  // An applicant tracking system refusing the form: "Job is not open for
+  // applying."
+  /not\s+open\s+for\s+(?:apply(?:ing)?|applications?)/i,
   // "Tämä työpaikkailmoitus ei ole enää voimassa." The Finnish boards withdraw
   // an ad this way rather than by saying anything about applications. Anchored
   // on the noun, so it cannot match a sentence about some other thing that has
@@ -220,7 +229,9 @@ const CLOSED = [
   // Some boards keep the address but serve a "gone" page under a 200: "Page not
   // found -- Unable to find job". A 404 is handled by status code instead.
   /unable\s+to\s+find\s+(?:this\s+)?job/i,
-  /(?:job|position|vacancy|posting)[^.\n]{0,20}\bno\s+longer\s+available/i,
+  // "This job is no longer available." The noun is required: "no longer
+  // available" on its own could be about an office, a benefit, a shift pattern.
+  /(?:job|position|vacancy|posting|listing|role|opening|advert(?:isement)?)[^.\n]{0,20}\bno\s+longer\s+available/i,
 ];
 
 /** True when the posting says it is not taking applications any more. */

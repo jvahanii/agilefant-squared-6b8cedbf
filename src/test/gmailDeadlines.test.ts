@@ -33,6 +33,23 @@ describe('parseApplicationsClosed', () => {
     expect(parseApplicationsClosed('Hakuaika on päättynyt')).toBe(true);
   });
 
+  it('reads Duunitori refusing an expired application', () => {
+    // Quoted from the banner. The object of the sentence sits between "haku"
+    // and "on päättynyt", which is why requiring them adjacent saw none of
+    // these.
+    expect(parseApplicationsClosed('Pahoittelut, haku tähän avoimeen työpaikkaan on päättynyt')).toBe(true);
+    expect(parseApplicationsClosed('Hakuaika on päättynyt')).toBe(true);
+  });
+
+  it('does not join two sentences into a closure', () => {
+    expect(parseApplicationsClosed('Hakuprosessi on sujuva. Edellinen projekti on päättynyt.')).toBe(false);
+  });
+
+  it('reads an applicant tracking system refusing the form', () => {
+    expect(parseApplicationsClosed('Not available. Job is not open for applying.')).toBe(true);
+    expect(parseApplicationsClosed('This role is not open for applications')).toBe(true);
+  });
+
   it('reads a Finnish board withdrawing the ad', () => {
     // Quoted from the banner. It says nothing about applications, only that the
     // posting itself has lapsed.
@@ -43,6 +60,15 @@ describe('parseApplicationsClosed', () => {
   it('reads a "gone" page served under a 200', () => {
     expect(parseApplicationsClosed('Page not found. Unable to find job. Back to home')).toBe(true);
     expect(parseApplicationsClosed('This position is no longer available')).toBe(true);
+    // Quoted from an applicant tracking system's own gone-page.
+    expect(parseApplicationsClosed('This job is no longer available. You may also VIEW ALL JOBS')).toBe(true);
+    expect(parseApplicationsClosed('This role is no longer available')).toBe(true);
+  });
+
+  it('needs to know what is no longer available', () => {
+    // On its own the phrase could be about anything a posting mentions.
+    expect(parseApplicationsClosed('No longer available')).toBe(false);
+    expect(parseApplicationsClosed('The Tampere office is no longer available for this team')).toBe(false);
   });
 
   it('says nothing about a posting that is still open', () => {
@@ -93,6 +119,13 @@ describe('parseDeadline', () => {
       .toBe('2026-09-30');
     expect(parseDeadline('Julkaistu 10.9. (Päättyy 30.9.)', SEPT)).toBe('2026-09-30');
     expect(deadlinePrefix(parseDeadline('Published 10.9. (Ends 30.9.)', SEPT))).toBe('0930');
+  });
+
+  it('reads the header once it has turned past-tense', () => {
+    // Duunitori rewrites "(Päättyy 26.7.)" as "(Päättynyt 26.7.)" after the day
+    // passes. The date still is the deadline, and one already gone by is worth
+    // knowing.
+    expect(parseDeadline('Julkaistu 13.7. ( Päättynyt 26.7. )', '2026-07-13T00:00:00.000Z')).toBe('2026-07-26');
   });
 
   it('does not read a contract\'s end date as a deadline', () => {
@@ -260,6 +293,23 @@ describe('postingTextUrl', () => {
     expect(postingTextUrl('https://www.linkedin.com/comm/jobs/view/4464157644/?trackingId=x')).toBe(
       'https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4464157644',
     );
+  });
+
+  it('follows a link copied out of the jobs feed', () => {
+    // These name the posting in a query parameter rather than the path. Left
+    // alone, the fetch lands on the feed — half a megabyte saying nothing about
+    // the posting — so an ad that had plainly ended came back unknown.
+    expect(postingTextUrl('https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4434436969&discover=recommended'))
+      .toBe('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4434436969');
+    expect(postingTextUrl('https://www.linkedin.com/jobs/search-results/?currentJobId=4433813111&eBP=NOT_ELIGIBLE'))
+      .toBe('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4433813111');
+  });
+
+  it('ignores a currentJobId that is not one', () => {
+    // Only digits become a guest-endpoint id; anything else is left as the URL
+    // it already was, rather than pasted into a path.
+    expect(postingTextUrl('https://www.linkedin.com/jobs/collections/recommended/?currentJobId=../etc'))
+      .toBe('https://www.linkedin.com/jobs/collections/recommended/?currentJobId=../etc');
   });
 
   it('leaves other boards at their own URL', () => {
