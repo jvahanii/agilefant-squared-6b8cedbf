@@ -18,6 +18,7 @@ import {
   markChannelIntentionalClose,
   markChannelStatus,
   requestResync,
+  subscribeRetryDelayMs,
   FULL_RESYNC_OUTAGE_MS,
 } from '@/lib/realtimeHealth';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
@@ -125,7 +126,7 @@ export function useRealtimeSync() {
           if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
           // Never retry while hidden — avoids battery drain and request storms.
           if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-          const delay = Math.min(30_000, 1000 * 2 ** attempt);
+          const delay = subscribeRetryDelayMs(attempt);
           attempt += 1;
           const timer = setTimeout(() => {
             retryTimers.delete(timer);

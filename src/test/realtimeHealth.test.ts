@@ -43,6 +43,7 @@ vi.mock('@/store/targetsStore', () => ({
 }));
 
 import {
+  subscribeRetryDelayMs,
   requestResync,
   markChannelStatus,
   markChannelIntentionalClose,
@@ -134,5 +135,39 @@ describe('realtimeHealth', () => {
     markChannelStatus('chan-d', 'CHANNEL_ERROR');
     expect(isRealtimeHealthy()).toBe(true);
     expect(markChannelStatus('chan-d', 'SUBSCRIBED')).toBe(false);
+  });
+});
+
+describe('subscribeRetryDelayMs', () => {
+  // No jitter, so the shape of the curve is visible.
+  const steady = () => 0.5;
+
+  it('doubles per attempt from one second', () => {
+    expect(subscribeRetryDelayMs(0, steady)).toBe(1_000);
+    expect(subscribeRetryDelayMs(1, steady)).toBe(2_000);
+    expect(subscribeRetryDelayMs(2, steady)).toBe(4_000);
+    expect(subscribeRetryDelayMs(5, steady)).toBe(32_000);
+  });
+
+  it('stops at five minutes, however many attempts have failed', () => {
+    // The old ceiling was 30s: every channel of every tab hitting a database
+    // too busy to answer, twice a minute, keeping it down.
+    expect(subscribeRetryDelayMs(20, steady)).toBe(300_000);
+    expect(subscribeRetryDelayMs(1000, steady)).toBe(300_000);
+  });
+
+  it('spreads retries with a quarter of jitter either way', () => {
+    expect(subscribeRetryDelayMs(3, () => 0)).toBe(6_000);
+    expect(subscribeRetryDelayMs(3, () => 1)).toBe(10_000);
+    // Whatever the random value, the delay stays inside that band.
+    for (const r of [0, 0.13, 0.5, 0.87, 0.999]) {
+      const delay = subscribeRetryDelayMs(4, () => r);
+      expect(delay).toBeGreaterThanOrEqual(12_000);
+      expect(delay).toBeLessThanOrEqual(20_000);
+    }
+  });
+
+  it('treats a negative attempt as the first one', () => {
+    expect(subscribeRetryDelayMs(-5, steady)).toBe(1_000);
   });
 });

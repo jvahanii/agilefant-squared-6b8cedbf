@@ -35,6 +35,25 @@ export const RESYNC_MIN_INTERVAL_MS = 30_000;
 /** Outage length after which the slow-moving satellite stores are refreshed too. */
 export const FULL_RESYNC_OUTAGE_MS = 120_000;
 
+/** First retry delay for a channel that failed to subscribe, and its ceiling. */
+export const SUBSCRIBE_RETRY_BASE_MS = 1_000;
+export const SUBSCRIBE_RETRY_MAX_MS = 300_000;
+
+/**
+ * How long to wait before re-subscribing a channel that failed.
+ *
+ * Doubles per attempt up to five minutes, with a quarter of jitter either way.
+ * The ceiling used to be 30 seconds: a database too busy to answer was then hit
+ * by every channel of every open tab twice a minute, and since each subscribe
+ * costs Realtime a publication re-check, a struggling instance was kept down by
+ * its own clients. The jitter stops channels and tabs retrying in lockstep.
+ */
+export function subscribeRetryDelayMs(attempt: number, random: () => number = Math.random): number {
+  const exponent = Math.max(0, Math.min(attempt, 30));
+  const capped = Math.min(SUBSCRIBE_RETRY_MAX_MS, SUBSCRIBE_RETRY_BASE_MS * 2 ** exponent);
+  return Math.round(capped * (0.75 + random() * 0.5));
+}
+
 type ChannelHealth = {
   /** Has this channel ever successfully subscribed? */
   everSubscribed: boolean;
