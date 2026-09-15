@@ -6,14 +6,24 @@
 
 // Type-only, so this module can be unit-tested: gmail.ts pulls the Supabase
 // client from a URL, which the test runner cannot resolve. Erased at runtime.
-import type { adminClient } from './gmail.ts';
+
 import type { ExtractedLink } from './extract.ts';
 import { normalizeUrl } from './urls.ts';
 import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
 import { deadlinePrefix } from './deadlines.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
 
-type Admin = ReturnType<typeof adminClient>;
+/**
+ * The service-role client, structurally.
+ *
+ * This used to be `ReturnType<typeof adminClient>` from ./gmail.ts — a
+ * type-only import, but enough to drag that file into the app's typecheck,
+ * because tsconfig.app.json includes src and the tests here import this
+ * module. gmail.ts is Deno: it imports from esm.sh and reads Deno.env, so
+ * `tsc -p tsconfig.app.json` failed on code it was never meant to check.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Admin = any;
 
 export interface ImportTarget {
   organizationId: string;
