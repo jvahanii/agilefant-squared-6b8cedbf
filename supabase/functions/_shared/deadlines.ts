@@ -219,3 +219,27 @@ export function parseApplicationsClosed(text: string): boolean {
   if (!text) return false;
   return CLOSED.some((re) => re.test(text));
 }
+
+/**
+ * Is a parsed deadline already in the past?
+ *
+ * A posting whose own closing date has gone by is shut whether or not it says
+ * so, and boards routinely leave those up. This is the one closed-signal that
+ * needs no cooperation from the page beyond the date it already stated.
+ *
+ * The day itself still counts as open: a deadline of "16:00 today" is not over
+ * at breakfast, and the date alone cannot say when it ends. Note also that a
+ * deadline parsed without a year can never land here, because `resolve` picks
+ * the year that puts it in the future -- so this fires only on a date the
+ * posting spelled out in full.
+ */
+export function deadlinePassed(
+  isoDate: string | undefined,
+  now: Date | string | number = Date.now(),
+): boolean {
+  if (!isoDate) return false;
+  const at = new Date(`${isoDate}T00:00:00.000Z`).getTime();
+  const today = new Date(now);
+  if (Number.isNaN(at) || Number.isNaN(today.getTime())) return false;
+  return at < startOfDay(today);
+}

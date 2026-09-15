@@ -8,7 +8,7 @@
 // than an error. A missing date is a small loss, a wrong one ends up in a work
 // item's name.
 
-import { parseApplicationsClosed, parseDeadline } from './deadlines.ts';
+import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadlines.ts';
 
 /** Per request. Long enough for a slow board, short enough not to stall a preview. */
 const TIMEOUT_MS = 6_000;
@@ -28,6 +28,11 @@ const UA =
  * the "…more" button is CSS truncation, not withheld content. Following the
  * Apply button instead would hit a sign-up wall.
  */
+/** Did postingTextUrl send us to LinkedIn's guest endpoint? */
+export function isLinkedInGuest(target: string): boolean {
+  return target.startsWith('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/');
+}
+
 export function postingTextUrl(rawUrl: string): string | null {
   let u: URL;
   try {
@@ -59,10 +64,38 @@ export function textFromHtml(html: string): string {
     .trim();
 }
 
+/**
+ * Has LinkedIn withdrawn the apply button?
+ *
+ * LinkedIn shows "Not currently accepting applications" to a *signed-in* reader
+ * only. Neither the guest endpoint nor the 227 KB public page carries that
+ * sentence, or any job status, or a schema.org validThrough — checked against a
+ * posting known to be closed. So there is no phrase to match, and the earlier
+ * phrase list could never have caught these however it was worded.
+ *
+ * What the guest markup does show is the top card's call-to-action area: an
+ * open posting renders apply buttons into it, a closed one renders the same
+ * container empty. Verified across six postings, three open and three closed,
+ * splitting exactly that way.
+ *
+ * This is markup rather than prose, so it is read conservatively: unless the
+ * container itself is recognised, the answer is "nothing known" rather than
+ * "closed". If LinkedIn renames these classes the container check fails first,
+ * and the whole rule falls silent instead of marking every posting shut.
+ */
+export function linkedInApplyWithdrawn(html: string): boolean {
+  if (!/top-card-layout__cta-container/.test(html)) return false;
+  // The container's own class starts "top-card-layout__cta-", so a button is
+  // distinguished by what follows the name: whitespace, or the quote closing
+  // the attribute.
+  return !/top-card-layout__cta["'\s]/.test(html) && !/apply-button/.test(html);
+}
+
 /** What one fetch of a posting can tell us. Both fields are best-effort. */
 export interface PostingFacts {
   deadline?: string;
-  /** The posting says it is no longer taking applications. */
+  /** The posting is not taking applications: it says so, its apply button is
+   *  gone, or the deadline it states has already passed. */
   closed?: boolean;
 }
 
@@ -81,9 +114,19 @@ async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts
     if (!res.ok) return {};
     const type = res.headers.get('content-type') ?? '';
     if (!type.includes('html') && !type.includes('text')) return {};
-    // One fetch answers both questions, so closed postings cost no extra request.
-    const text = textFromHtml(await res.text());
-    return { deadline: parseDeadline(text, reference), closed: parseApplicationsClosed(text) };
+    // One fetch answers every question, so a closed posting costs no extra
+    // request. The markup is kept as well as the text: what LinkedIn will not
+    // say in words, it says by leaving the apply button out.
+    const html = await res.text();
+    const text = textFromHtml(html);
+    const deadline = parseDeadline(text, reference);
+    const closed =
+      parseApplicationsClosed(text) ||
+      // Against now, not `reference`: the question is whether it is too late
+      // today, while the reference only decides which year a bare "9.9." meant.
+      deadlinePassed(deadline) ||
+      (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
+    return { deadline, closed };
   } catch {
     // Timeout, DNS, TLS, a board blocking datacentre IPs: all just "nothing known".
     return {};

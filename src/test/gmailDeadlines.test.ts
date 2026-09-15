@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   parseDeadline,
   deadlinePrefix,
+  deadlinePassed,
   parseOpenEnded,
   parseApplicationsClosed,
 } from '../../supabase/functions/_shared/deadlines';
 import {
+  isLinkedInGuest,
+  linkedInApplyWithdrawn,
   postingTextUrl,
   textFromHtml,
 } from '../../supabase/functions/_shared/fetchDeadline';
@@ -231,6 +234,68 @@ describe('postingTextUrl', () => {
   it('refuses anything that is not http', () => {
     expect(postingTextUrl('javascript:alert(1)')).toBeNull();
     expect(postingTextUrl('not a url')).toBeNull();
+  });
+});
+
+describe('deadlinePassed', () => {
+  const NOW = '2026-09-15T09:00:00.000Z';
+
+  it('is true for a date before today', () => {
+    expect(deadlinePassed('2026-09-09', NOW)).toBe(true);
+  });
+
+  it('leaves the deadline day itself open', () => {
+    // A posting closing at 16:00 is not shut at breakfast, and a date alone
+    // cannot say when in the day it ends.
+    expect(deadlinePassed('2026-09-15', NOW)).toBe(false);
+  });
+
+  it('is false for a date still to come, and for no date at all', () => {
+    expect(deadlinePassed('2026-09-30', NOW)).toBe(false);
+    expect(deadlinePassed(undefined, NOW)).toBe(false);
+  });
+
+  it('cannot fire on a deadline parsed without a year', () => {
+    // parseDeadline resolves a bare "9.9." to the next occurrence, so a
+    // year-less date is never in the past by construction.
+    const parsed = parseDeadline('haku päättyy 9.9.', NOW);
+    expect(parsed).toBe('2027-09-09');
+    expect(deadlinePassed(parsed, NOW)).toBe(false);
+  });
+});
+
+/**
+ * Taken from the guest endpoint's real markup, open and closed. LinkedIn tells
+ * a signed-out reader nothing in words about a posting it has stopped taking
+ * applications for — no sentence, no status, no schema.org validThrough — but
+ * it does stop rendering apply buttons into the top card's call-to-action
+ * container. Both sides are quoted rather than tidied: the class names are the
+ * whole signal.
+ */
+describe('linkedInApplyWithdrawn', () => {
+  const container =
+    '<div class="top-card-layout__cta-container flex flex-wrap mt-0.5 papabear:mt-0 ml-[-12px]">';
+  const applyButton =
+    '<button class="sign-up-modal__outlet top-card-layout__cta mt-2 ml-1.5 h-auto babybear:flex-auto ' +
+    'top-card-layout__cta--primary btn-md btn-primary" data-modal="job-details-topcard-apply-modal"> Apply </button>';
+
+  it('reads an empty call-to-action container as closed', () => {
+    expect(linkedInApplyWithdrawn(`${container} <!----> <!----> </div>`)).toBe(true);
+  });
+
+  it('reads a posting that still offers Apply as open', () => {
+    expect(linkedInApplyWithdrawn(`${container} ${applyButton} </div>`)).toBe(false);
+  });
+
+  it('says nothing when the top card is not there at all', () => {
+    // A redirect, a sign-in wall, a rename of these classes: the rule falls
+    // silent rather than calling every posting shut.
+    expect(linkedInApplyWithdrawn('<html><body>Sign in to continue</body></html>')).toBe(false);
+  });
+
+  it('is asked only of the guest endpoint', () => {
+    expect(isLinkedInGuest('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4458065583')).toBe(true);
+    expect(isLinkedInGuest('https://duunitori.fi/tyopaikat/tyo/ai-engineer-20567347')).toBe(false);
   });
 });
 
