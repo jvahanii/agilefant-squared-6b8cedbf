@@ -24,6 +24,7 @@ import {
   LinkMode,
 } from '../_shared/gmail.ts';
 import { importLinksAsWorkItems, urlsInBacklog } from '../_shared/gmailImport.ts';
+import { fillDeadlines } from '../_shared/fetchDeadline.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
