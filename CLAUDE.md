@@ -85,9 +85,18 @@ machine regardless of the code (`vitest.config.ts` explains why it runs with
 `fileParallelism: false`). Before blaming a change for its failures, stash and
 re-run — it fails at HEAD too when the machine is busy.
 
-Edge functions are **not typechecked**: `tsconfig.app.json` reaches them only
-incidentally, through one type-only import in `gmailImport.ts`. A reference error
-in `searchLinks` reached production this way. Deno is not installed here.
+Edge functions **are** typechecked, as of 2026-09-15: `bun run typecheck:functions`
+(`tsconfig.functions.json` + `supabase/functions/_types/deno.d.ts`, which declares the
+Deno globals and maps each remote import). `tsconfig.app.json` still excludes them, so
+this is the only check they get — before it existed, an undefined name reached
+production twice. Deno is not installed here; tsc stands in for it.
+
+Fixtures for the mail extractor must carry the real markup, attributes and all.
+A LinkedIn digest test written in tidied HTML passed while production mislabelled
+every posting: the employer sits 486 characters after the title anchor, and the
+extractor was keeping 400. Tidy markup tests a shape no sender ever produces.
+Real mail is reachable via the Gmail MCP; an oversized result is saved to a file
+you can run the extractor against.
 
 ## This machine
 
