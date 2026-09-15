@@ -20,10 +20,16 @@ const DAY_MONTH = String.raw`(\d{1,2})\.(\d{1,2})\.?(?:\s*(\d{4}))?`;
 /** Numeric patterns. Capture order is day, month, optional year. */
 const NUMERIC_PATTERNS: RegExp[] = [
   // "haku päättyy 20.9." / "Haku päättyy 27.09.2026 19.00"
-  new RegExp(String.raw`haku\s*päättyy\s*${DAY_MONTH}`, "i"),
+  new RegExp(String.raw`haku(?:aika)?\s*päättyy\s*${DAY_MONTH}`, "i"),
   // "jätä hakemus viimeistään 28.9.2026".
   // Spelled out rather than \w*, which does not match "ä" in JavaScript.
   new RegExp(String.raw`viimeist[a-zäöå]*\s*${DAY_MONTH}`, "i"),
+  // Duunitori's listing header: "Published 10.9. (Ends 30.9.)", and the Finnish
+  // "Julkaistu 10.9. (Päättyy 30.9.)". The parentheses are required rather than
+  // matching a bare "ends", which would read a contract's end date -- "the
+  // contract ends 31.12." -- as an application deadline. They also keep the
+  // published date, which sits immediately before, out of the match.
+  new RegExp(String.raw`\(\s*(?:ends|closes|päättyy|umpeutuu)\s*:?\s*${DAY_MONTH}\s*\)`, "i"),
   // "Hakuaika 11.9 - 11.3." -- a range, so the deadline is the second date.
   new RegExp(String.raw`hakuaika\s*\d{1,2}\.\d{1,2}\.?\s*[-–—]\s*${DAY_MONTH}`, "i"),
   // "apply by 30.9.2026"

@@ -28,6 +28,25 @@ describe('parseDeadline', () => {
     expect(parseDeadline('Academic Work, Espoo - Hakuaika 11.9 - 11.3.', SEPT)).toBe('2027-03-11');
   });
 
+  it('reads the closing date from a Duunitori listing header', () => {
+    // "Published 10.9. (Ends 30.9.)" — the published date sits immediately
+    // before the one that matters, so the parentheses do the choosing.
+    expect(parseDeadline('Project Manager, Aalto-yliopisto. Published 10.9. (Ends 30.9.)', SEPT))
+      .toBe('2026-09-30');
+    expect(parseDeadline('Julkaistu 10.9. (Päättyy 30.9.)', SEPT)).toBe('2026-09-30');
+    expect(deadlinePrefix(parseDeadline('Published 10.9. (Ends 30.9.)', SEPT))).toBe('0930');
+  });
+
+  it('does not read a contract\'s end date as a deadline', () => {
+    // Only the parenthesised form counts: prose about when a job ends is not
+    // a statement about when to apply, and a wrong date lands in the item name.
+    expect(parseDeadline('A fixed-term role; the contract ends 31.12.', SEPT)).toBeUndefined();
+  });
+
+  it('reads "hakuaika päättyy", with the words either side of "aika"', () => {
+    expect(parseDeadline('Hakuaika päättyy 30.9.', SEPT)).toBe('2026-09-30');
+  });
+
   it('reads Työmarkkinatori, which states the year', () => {
     expect(parseDeadline('Lokki Oy - Haku päättyy 27.09.2026 19.00', SEPT)).toBe('2026-09-27');
   });
