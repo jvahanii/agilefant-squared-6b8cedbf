@@ -24,6 +24,12 @@ const NUMERIC_PATTERNS: RegExp[] = [
   // "jätä hakemus viimeistään 28.9.2026".
   // Spelled out rather than \w*, which does not match "ä" in JavaScript.
   new RegExp(String.raw`viimeist[a-zäöå]*\s*${DAY_MONTH}`, "i"),
+  // "jätä hakemuksesi rekrytointijärjestelmämme kautta 30.9.2026 klo 16 mennessä".
+  // Public-sector postings often phrase it with no deadline word at all, only the
+  // postposition. "Mennessä" means "by", and the date it governs stands directly
+  // before it, so anchoring on the postposition is both safer and simpler than
+  // guessing at lead-ins. A clock time is what usually comes between the two.
+  new RegExp(String.raw`${DAY_MONTH}(?:\s*klo\s*\d{1,2}(?:[.:]\d{2})?)?\s*menness[aä]`, "i"),
   // Duunitori's listing header: "Published 10.9. (Ends 30.9.)", and the Finnish
   // "Julkaistu 10.9. (Päättyy 30.9.)". The parentheses are required rather than
   // matching a bare "ends", which would read a contract's end date -- "the

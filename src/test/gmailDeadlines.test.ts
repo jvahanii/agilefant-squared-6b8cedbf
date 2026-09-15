@@ -102,6 +102,31 @@ describe('parseDeadline', () => {
   it('reads an English phrasing, should a board switch locale', () => {
     expect(parseDeadline('Apply by 20.9.2026', SEPT)).toBe('2026-09-20');
   });
+
+  /**
+   * Helsingin kaupunki, on LinkedIn: no deadline word anywhere, just a date and
+   * the postposition that governs it. The sentence is quoted from the posting.
+   */
+  it('reads a date governed by "mennessä"', () => {
+    const text =
+      'Jos tunnistat osaamisesi ja kokemuksesi tehtävän ydinsisällöistä, jätä hakemuksesi ' +
+      'rekrytointijärjestelmämme kautta 30.9.2026 klo 16 mennessä.';
+    expect(parseDeadline(text, SEPT)).toBe('2026-09-30');
+    expect(deadlinePrefix(parseDeadline(text, SEPT))).toBe('0930');
+  });
+
+  it('reads "mennessä" without a clock time, and with minutes', () => {
+    expect(parseDeadline('Hakemukset 30.9.2026 mennessä.', SEPT)).toBe('2026-09-30');
+    expect(parseDeadline('Hae 30.9. klo 16.00 mennessä', SEPT)).toBe('2026-09-30');
+    expect(parseDeadline('Hae 30.9.2026 klo 16:00 mennessä', SEPT)).toBe('2026-09-30');
+  });
+
+  it('does not attach "mennessä" to a date it does not follow', () => {
+    // The postposition governs the date immediately before it. A date elsewhere
+    // in the sentence is somebody else's -- here, when the work starts.
+    expect(parseDeadline('Työ alkaa 1.11.2026, ilmoita osallistumisesi hyvissä ajoin mennessä.', SEPT))
+      .toBeUndefined();
+  });
 });
 
 describe('deadlinePrefix', () => {
