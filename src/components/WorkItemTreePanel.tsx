@@ -3671,12 +3671,19 @@ export function WorkItemTreePanel() {
                 title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this published backlog and mark the ads that have closed. Nothing is saved.`}
               >
                 <Ban className={`w-4 h-4 ${closedChecking ? "animate-pulse" : ""}`} />
-                <span className="text-xs font-medium tabular-nums">
+                {/* A count is worth the width on any screen; the invitation to
+                    press is not, so it steps aside on a phone the way the
+                    list/board labels do. */}
+                <span
+                  className={`text-xs font-medium tabular-nums ${
+                    closedChecking || closedCount > 0 ? "" : "hidden sm:inline"
+                  }`}
+                >
                   {closedChecking
                     ? `Checking ${closedProgress?.done ?? 0}/${closedProgress?.total ?? 0}`
                     : closedCount > 0
                       ? `Closed: ${closedCount}`
-                      : "Check ads"}
+                      : "Check for closed ads"}
                 </span>
               </button>
             )}
