@@ -13,6 +13,8 @@ export interface PreviewLink {
   deadline?: string;
   /** The mail said applications stay open, as opposed to saying nothing. */
   deadlineOpen?: boolean;
+  /** The posting has stopped taking applications. Shown, but not pre-selected. */
+  applicationsClosed?: boolean;
 }
 
 export interface SourceEmailGroup {
@@ -99,7 +101,14 @@ export function previewSummary(opts: {
  * import by fetching the posting -- so "unknown" here means "not yet", not
  * "none".
  */
-export function deadlineLabel(link: { deadline?: string; deadlineOpen?: boolean }): string {
+export function deadlineLabel(link: {
+  deadline?: string;
+  deadlineOpen?: boolean;
+  applicationsClosed?: boolean;
+}): string {
+  // A closed posting outranks whatever date it carried: the date is moot once
+  // nobody can apply.
+  if (link.applicationsClosed) return "no longer accepting applications";
   if (link.deadline) {
     const d = new Date(link.deadline);
     return Number.isNaN(d.getTime()) ? link.deadline : `closes ${d.toLocaleDateString()}`;

@@ -87,6 +87,11 @@ export interface ExtractedLink {
    * deadline having been found.
    */
   deadlineOpen?: boolean;
+  /**
+   * The posting has stopped taking applications — LinkedIn leaves those up, so
+   * a digest still links to them. Imported only if deliberately chosen.
+   */
+  applicationsClosed?: boolean;
 }
 
 function looksLikeNoise(url: string, label: string): boolean {

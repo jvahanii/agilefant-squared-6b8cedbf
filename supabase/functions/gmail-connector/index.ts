@@ -117,8 +117,13 @@ Deno.serve(async (req) => {
         // an item in it. Informational only -- the import never refuses.
         const backlogId = String(body.backlogId ?? '');
         const present = backlogId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
+        // The same fetch the import does, so the picker can show a deadline and
+        // say when a posting has stopped taking applications -- LinkedIn leaves
+        // those up, and importing one as work is a waste of a row. Capped inside
+        // fillDeadlines; a posting that will not load simply tells us nothing.
+        const detailed = await fillDeadlines(links);
         return json({
-          links: links.map((l) => ({ ...l, alreadyImported: present.has(l.url) })),
+          links: detailed.map((l) => ({ ...l, alreadyImported: present.has(l.url) })),
         });
       }
 

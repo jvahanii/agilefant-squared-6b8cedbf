@@ -3,6 +3,7 @@ import {
   parseDeadline,
   deadlinePrefix,
   parseOpenEnded,
+  parseApplicationsClosed,
 } from '../../supabase/functions/_shared/deadlines';
 import {
   postingTextUrl,
@@ -16,6 +17,24 @@ import {
  */
 
 const SEPT = '2026-09-11T00:00:00.000Z';
+
+describe('parseApplicationsClosed', () => {
+  it('reads LinkedIn, which leaves closed postings up', () => {
+    expect(parseApplicationsClosed('Director, AI Transformation. No longer accepting applications')).toBe(true);
+    expect(parseApplicationsClosed('Not currently accepting applications')).toBe(true);
+  });
+
+  it('reads the phrasings other boards use', () => {
+    expect(parseApplicationsClosed('Applications are closed')).toBe(true);
+    expect(parseApplicationsClosed('Hakuaika on päättynyt')).toBe(true);
+  });
+
+  it('says nothing about a posting that is still open', () => {
+    expect(parseApplicationsClosed('Apply by 30.9. — we are accepting applications')).toBe(false);
+    expect(parseApplicationsClosed('Over 100 people clicked apply')).toBe(false);
+    expect(parseApplicationsClosed('')).toBe(false);
+  });
+});
 
 describe('parseDeadline', () => {
   it('reads Duunitori "haku päättyy"', () => {

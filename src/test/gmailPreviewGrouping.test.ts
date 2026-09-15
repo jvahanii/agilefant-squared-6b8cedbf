@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  deadlineLabel,
   senderName,
   senderAddress,
   gmailMessageUrl,
@@ -141,5 +142,20 @@ describe('senderAddress', () => {
     const from = 'Duunitori <duunivahti@duunitori.fi>';
     expect(senderName(from)).toBe('Duunitori');
     expect(senderAddress(from)).not.toBe(senderName(from));
+  });
+});
+
+describe('deadlineLabel', () => {
+  it('says a closed posting is closed, whatever date it carried', () => {
+    expect(deadlineLabel({ applicationsClosed: true })).toBe('no longer accepting applications');
+    // The date is moot once nobody can apply, so it does not win here.
+    expect(deadlineLabel({ deadline: '2026-09-30', applicationsClosed: true }))
+      .toBe('no longer accepting applications');
+  });
+
+  it('still reports a deadline, an open posting, and an unknown one', () => {
+    expect(deadlineLabel({ deadline: '2026-09-30' })).toContain('closes');
+    expect(deadlineLabel({ deadlineOpen: true })).toBe('open until further notice');
+    expect(deadlineLabel({})).toBe('deadline unknown');
   });
 });

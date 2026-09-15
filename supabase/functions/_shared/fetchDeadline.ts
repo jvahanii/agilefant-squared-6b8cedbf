@@ -8,7 +8,7 @@
 // than an error. A missing date is a small loss, a wrong one ends up in a work
 // item's name.
 
-import { parseDeadline } from './deadlines.ts';
+import { parseApplicationsClosed, parseDeadline } from './deadlines.ts';
 
 /** Per request. Long enough for a slow board, short enough not to stall a preview. */
 const TIMEOUT_MS = 6_000;
@@ -59,9 +59,16 @@ export function textFromHtml(html: string): string {
     .trim();
 }
 
-async function deadlineFor(rawUrl: string, reference: string): Promise<string | undefined> {
+/** What one fetch of a posting can tell us. Both fields are best-effort. */
+export interface PostingFacts {
+  deadline?: string;
+  /** The posting says it is no longer taking applications. */
+  closed?: boolean;
+}
+
+async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts> {
   const target = postingTextUrl(rawUrl);
-  if (!target) return undefined;
+  if (!target) return {};
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -71,13 +78,15 @@ async function deadlineFor(rawUrl: string, reference: string): Promise<string | 
       signal: controller.signal,
       redirect: 'follow',
     });
-    if (!res.ok) return undefined;
+    if (!res.ok) return {};
     const type = res.headers.get('content-type') ?? '';
-    if (!type.includes('html') && !type.includes('text')) return undefined;
-    return parseDeadline(textFromHtml(await res.text()), reference);
+    if (!type.includes('html') && !type.includes('text')) return {};
+    // One fetch answers both questions, so closed postings cost no extra request.
+    const text = textFromHtml(await res.text());
+    return { deadline: parseDeadline(text, reference), closed: parseApplicationsClosed(text) };
   } catch {
-    // Timeout, DNS, TLS, a board blocking datacentre IPs: all just "no deadline".
-    return undefined;
+    // Timeout, DNS, TLS, a board blocking datacentre IPs: all just "nothing known".
+    return {};
   } finally {
     clearTimeout(timer);
   }
@@ -88,9 +97,9 @@ async function deadlineFor(rawUrl: string, reference: string): Promise<string | 
  * input array. Capped in three ways -- how many, how fast, how long each -- so a
  * broad query cannot turn a preview into a crawl.
  */
-export async function fillDeadlines<T extends { url: string; date?: string; deadline?: string }>(
-  links: T[],
-): Promise<T[]> {
+export async function fillDeadlines<
+  T extends { url: string; date?: string; deadline?: string; applicationsClosed?: boolean },
+>(links: T[]): Promise<T[]> {
   const targets: number[] = [];
   for (let i = 0; i < links.length && targets.length < MAX_FETCHES; i++) {
     if (!links[i].deadline) targets.push(i);
@@ -104,8 +113,14 @@ export async function fillDeadlines<T extends { url: string; date?: string; dead
       const slot = next++;
       if (slot >= targets.length) return;
       const i = targets[slot];
-      const found = await deadlineFor(out[i].url, out[i].date ?? new Date().toISOString());
-      if (found) out[i] = { ...out[i], deadline: found };
+      const facts = await factsFor(out[i].url, out[i].date ?? new Date().toISOString());
+      if (facts.deadline || facts.closed) {
+        out[i] = {
+          ...out[i],
+          ...(facts.deadline ? { deadline: facts.deadline } : {}),
+          ...(facts.closed ? { applicationsClosed: true } : {}),
+        };
+      }
     }
   });
   await Promise.all(workers);

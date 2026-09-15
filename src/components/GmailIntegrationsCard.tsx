@@ -311,10 +311,16 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       );
       setPreview(sorted);
       setFilterKeyword("");
-      // Anything already in the target backlog starts unchecked: re-importing
-      // stays possible, it just is not the default.
+      // Anything already in the target backlog starts unchecked, and so does a
+      // posting that has stopped taking applications: both stay importable on
+      // purpose, neither is the default.
       setSelected(
-        Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, !l.alreadyImported])),
+        Object.fromEntries(
+          sorted.map((l) => [
+            `${l.messageId}|${l.url}`,
+            !l.alreadyImported && !l.applicationsClosed,
+          ]),
+        ),
       );
       if (res.links.length === 0) toast({ title: "No links found for that query" });
     } catch (e) {
@@ -666,7 +672,11 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                       {l.title}
                                       <span
                                         className={`ml-2 align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
-                                          l.deadline ? "" : "text-muted-foreground"
+                                          l.applicationsClosed
+                                            ? "border-destructive/40 text-destructive"
+                                            : l.deadline
+                                              ? ""
+                                              : "text-muted-foreground"
                                         }`}
                                       >
                                         {deadlineLabel(l)}

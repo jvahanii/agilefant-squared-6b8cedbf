@@ -158,3 +158,24 @@ export function parseOpenEnded(text: string): boolean {
   if (!text) return false;
   return OPEN_ENDED.some((re) => re.test(text));
 }
+
+/**
+ * Phrases meaning the posting has stopped taking applications.
+ *
+ * LinkedIn says both "No longer accepting applications" and "Not currently
+ * accepting applications", and keeps the posting up either way — so a digest
+ * mail happily links to something nobody can apply to. Worth knowing before
+ * importing it as work.
+ */
+const CLOSED = [
+  /no\s+longer\s+accepting\s+applications/i,
+  /not\s+currently\s+accepting\s+applications/i,
+  /applications?\s+(?:are\s+)?closed/i,
+  /haku\s*(?:aika)?\s*on\s*(?:jo\s*)?päättynyt/i,
+];
+
+/** True when the posting says it is not taking applications any more. */
+export function parseApplicationsClosed(text: string): boolean {
+  if (!text) return false;
+  return CLOSED.some((re) => re.test(text));
+}
