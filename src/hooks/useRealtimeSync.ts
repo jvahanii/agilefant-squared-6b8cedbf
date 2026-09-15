@@ -60,9 +60,22 @@ export function useRealtimeSync() {
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
 
-  // Stable serialized key so the effect re-runs only when the set of accessible
-  // tree IDs actually changes (i.e. sharing membership changes).
-  const treeIdsKey = Object.keys(backlogTrees).sort().join(',');
+  // Re-subscribing tears down every channel and builds it again, and each
+  // subscribe costs Realtime a publication re-check. Only the *partner*
+  // organizations matter to what is subscribed: a tree added, renamed or
+  // removed inside the active org changes nothing about the channels, so
+  // keying on the partner set alone keeps a working session from churning.
+  const partnerOrgsKey = (() => {
+    const partners = new Set<string>();
+    for (const treeId of Object.keys(backlogTrees)) {
+      const sep = treeId.indexOf('::');
+      if (sep > 0) {
+        const owner = treeId.slice(0, sep);
+        if (owner !== activeOrgId) partners.add(owner);
+      }
+    }
+    return [...partners].sort().join(',');
+  })();
 
   useEffect(() => {
     if (!activeOrgId) return;
@@ -487,12 +500,14 @@ export function useRealtimeSync() {
           applyRealtimeSettings(payload as any);
         },
       );
-    subscribeWithHealth(addLabelHandlers(ownChannel, activeOrgId));
-    channels.push(ownChannel);
-
-    // Backlog statuses: a single channel; RLS restricts to accessible backlogs.
-    const statusChannel = supabase
-      .channel(`backlog-statuses-${activeOrgId}`)
+    // Four more tables ride on this same channel rather than opening their own.
+    // A channel takes any number of bindings, and each extra channel costs
+    // Realtime a subscription row plus a publication re-check every time it
+    // subscribes — 100k of those checks were the biggest single consumer of
+    // database time. None of these four needs a filter: RLS already limits
+    // what the subscriber may see.
+    ownChannel
+      // Backlog statuses: RLS restricts to accessible backlogs.
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'backlog_statuses' },
@@ -504,41 +519,24 @@ export function useRealtimeSync() {
           if (!accessible[backlogId]) return;
           applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
-      );
-    subscribeWithHealth(statusChannel);
-    channels.push(statusChannel);
-
-    // Public links: any change reloads which trees and backlogs are published.
-    // The event's contents are deliberately ignored -- on a table with RLS a
-    // DELETE carries only the primary key, which here is the token, so it
-    // could not say which marker to drop. The reload asks the database instead,
-    // through RLS, and is debounced so a cascade of deletions costs one query.
-    const publishedLinksChannel = supabase
-      .channel(`published-links-${activeOrgId}`)
+      )
+      // Public links: any change reloads which trees and backlogs are
+      // published. The event's contents are deliberately ignored -- on a table
+      // with RLS a DELETE carries only the primary key, which here is the
+      // token, so it could not say which marker to drop. The reload asks the
+      // database instead, debounced so a cascade costs one query.
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'published_links' },
         () => usePublishedLinksStore.getState().scheduleLoad(),
-      );
-    subscribeWithHealth(publishedLinksChannel);
-    channels.push(publishedLinksChannel);
-
-    // Scrambled item names: same shape, and for the same reason — a DELETE on
-    // an RLS table carries only the work item id, and the row it refers to is
-    // already gone, so the reload asks the database who may still act on what.
-    const scrambledItemsChannel = supabase
-      .channel(`work-item-scrambles-${activeOrgId}`)
+      )
+      // Scrambled item names: same shape, same reason.
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'work_item_scrambles' },
         () => useScrambledItemsStore.getState().scheduleLoad(),
-      );
-    subscribeWithHealth(scrambledItemsChannel);
-    channels.push(scrambledItemsChannel);
-
-    // Per-tree yearly financial targets: single channel; filter to accessible trees client-side.
-    const targetsChannel = supabase
-      .channel(`tree-financial-targets-${activeOrgId}`)
+      )
+      // Per-tree yearly financial targets, filtered to accessible trees here.
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tree_financial_targets' },
@@ -551,9 +549,9 @@ export function useRealtimeSync() {
           applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
         },
       );
-    subscribeWithHealth(targetsChannel);
-    channels.push(targetsChannel);
 
+    subscribeWithHealth(addLabelHandlers(ownChannel, activeOrgId));
+    channels.push(ownChannel);
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
@@ -626,8 +624,10 @@ export function useRealtimeSync() {
       }
     };
     // applyRealtime* actions are stable Zustand references; omitting them is intentional.
-    // treeIdsKey captures changes to accessible tree IDs so the effect re-subscribes
-    // whenever sharing membership changes.
+    // partnerOrgsKey re-subscribes when an organization starts or stops sharing
+    // trees with this one — the only change that alters which channels exist.
+    // A tree shared *out* after this ran is picked up by the next resync rather
+    // than by rebuilding every channel on each tree edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId, treeIdsKey]);
+  }, [activeOrgId, partnerOrgsKey]);
 }
