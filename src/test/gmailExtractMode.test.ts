@@ -217,3 +217,45 @@ describe('LinkedIn digests name each employer, not the subject line', () => {
     expect(link.company).toBe('ICEYE');
   });
 });
+
+describe('LinkedIn job alert digest names each employer', () => {
+  /**
+   * The jobalerts-noreply template, taken from a real mail: six postings from
+   * six employers under a subject naming only the first. Reading the subject
+   * labelled every row 'Basware'. The card shape matches the saved-jobs mail —
+   * title anchor, then a paragraph of 'Company &middot; Location' — which is
+   * what makes reading the markup first work for both.
+   */
+  const card = (id, title, company, location) => `
+    <td> <a href="https://www.linkedin.com/comm/jobs/view/${id}/?trackingId=x&amp;refId=y"> ${title} </a> </td>
+    </tr> <tr> <td> <p> ${company} &middot; ${location} </p> </td> </tr>`;
+
+  const SUBJECT = 'You may be a fit for Basware’s Portfolio Architect role';
+
+  const DIGEST =
+    card('4429327744', 'Portfolio Architect', 'Basware', 'Tampere') +
+    card('4408493605', 'Data Center IT Manager-Helsinki, Finland', 'Alibaba Cloud', 'Helsinki') +
+    card('4419098406', 'Business Relationship Manager Associate Director - Nordic Business Unit', 'EY', 'Helsinki') +
+    card('4466717361', 'Advanced Software Engineer', 'Agilent Technologies', 'Finland') +
+    card('4430464643', 'Sourcing manager, Software', 'Tieto', 'Espoo') +
+    card('4409262940', 'Lead Planner', 'John Sisk & Son Ltd', 'Helsinki Metropolitan Area');
+
+  it('gives each posting the employer from its own card', () => {
+    const links = extractLinks(message('jobalerts-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    expect(links.map((l) => l.company)).toEqual([
+      'Basware',
+      'Alibaba Cloud',
+      'EY',
+      'Agilent Technologies',
+      'Tieto',
+      'John Sisk & Son Ltd',
+    ]);
+  });
+
+  it('does not spread the subject’s employer across the digest', () => {
+    const links = extractLinks(message('jobalerts-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
+    // One of six really is Basware; the other five were mislabelled.
+    expect(links.filter((l) => l.company === 'Basware')).toHaveLength(1);
+    expect(links[1].title).toBe('Alibaba Cloud — Data Center IT Manager-Helsinki, Finland');
+  });
+});
