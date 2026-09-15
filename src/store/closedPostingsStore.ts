@@ -16,6 +16,15 @@ interface ClosedPostingsState {
   /** Work item ids the last run actually reached, so "none closed" is
    *  distinguishable from "never checked". */
   checked: Set<string>;
+  /**
+   * Work item ids whose postings could not be read at all -- every link on them
+   * refused us or timed out.
+   *
+   * Kept apart from the rest because the alternative is a lie. A job board that
+   * answers a datacentre address with 999 would otherwise leave its postings
+   * looking as open as one that actually said so.
+   */
+  unknown: Set<string>;
   checking: boolean;
   /** How far through the current run, for the button's own label. */
   progress: { done: number; total: number } | null;
@@ -23,24 +32,31 @@ interface ClosedPostingsState {
    * Check every item given. Results land as each batch returns, so a long run
    * marks rows while it is still going rather than all at the end.
    */
-  check: (items: { id: string; urls: string[] }[]) => Promise<{ closed: number; checked: number; error?: string }>;
+  check: (
+    items: { id: string; urls: string[] }[],
+  ) => Promise<{ closed: number; checked: number; unknown: number; error?: string }>;
   clear: () => void;
 }
 
 /**
  * URLs per request. The endpoint refuses more, and a request that carried a
  * whole backlog could sit long enough on slow postings to time out wholesale.
+ *
+ * Twenty rather than forty since the server started fetching three at a time
+ * and retrying once: the worst case a batch can reach is what matters, and it
+ * has to stay well inside the function's own deadline.
  */
-export const POSTING_BATCH = 40;
+export const POSTING_BATCH = 20;
 
 export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => ({
   closed: new Set(),
   checked: new Set(),
+  unknown: new Set(),
   checking: false,
   progress: null,
 
   check: async (items) => {
-    if (get().checking) return { closed: 0, checked: 0 };
+    if (get().checking) return { closed: 0, checked: 0, unknown: 0 };
 
     // One request per URL, but an item may hold several: the item is closed if
     // any of its postings says so, so the mapping back has to be many-to-one.
@@ -53,9 +69,18 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
       }
     }
     const urls = [...itemsByUrl.keys()];
-    if (urls.length === 0) return { closed: 0, checked: 0 };
+    if (urls.length === 0) return { closed: 0, checked: 0, unknown: 0 };
 
-    set({ checking: true, progress: { done: 0, total: urls.length }, closed: new Set(), checked: new Set() });
+    set({
+      checking: true,
+      progress: { done: 0, total: urls.length },
+      closed: new Set(),
+      checked: new Set(),
+      unknown: new Set(),
+    });
+    // An item counts as unreadable only when *none* of its links could be read:
+    // one link that answered is enough to know something about the item.
+    const reached = new Set<string>();
 
     let error: string | undefined;
     try {
@@ -67,17 +92,28 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
         if (callError) throw callError;
         if (data?.error) throw new Error(data.error);
 
-        const results: { url: string; closed: boolean }[] = data?.results ?? [];
+        const results: { url: string; closed: boolean; unreachable?: number | null }[] = data?.results ?? [];
         set((s) => {
           const closed = new Set(s.closed);
           const checked = new Set(s.checked);
+          const unknown = new Set(s.unknown);
           for (const result of results) {
             for (const id of itemsByUrl.get(result.url) ?? []) {
               checked.add(id);
               if (result.closed) closed.add(id);
+              if (result.unreachable === null || result.unreachable === undefined) reached.add(id);
+              else unknown.add(id);
             }
           }
-          return { closed, checked, progress: { done: Math.min(at + batch.length, urls.length), total: urls.length } };
+          // One readable link settles the item, so drop anything that has since
+          // been reached through another of its links.
+          for (const id of reached) unknown.delete(id);
+          return {
+            closed,
+            checked,
+            unknown,
+            progress: { done: Math.min(at + batch.length, urls.length), total: urls.length },
+          };
         });
       }
     } catch (e) {
@@ -87,9 +123,9 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
     }
 
     set({ checking: false, progress: null });
-    const { closed, checked } = get();
-    return { closed: closed.size, checked: checked.size, error };
+    const { closed, checked, unknown } = get();
+    return { closed: closed.size, checked: checked.size, unknown: unknown.size, error };
   },
 
-  clear: () => set({ closed: new Set(), checked: new Set(), progress: null }),
+  clear: () => set({ closed: new Set(), checked: new Set(), unknown: new Set(), progress: null }),
 }));

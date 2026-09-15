@@ -408,6 +408,7 @@ function WorkItemNodeContent({
   }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, isMultiSelected]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
   const postingClosed = useClosedPostingsStore((s) => s.closed.has(workItemId));
+  const postingUnknown = useClosedPostingsStore((s) => s.unknown.has(workItemId));
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
@@ -1128,6 +1129,23 @@ function WorkItemNodeContent({
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
                   This ad is no longer accepting applications
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* The check reached nothing here, which is not the same as the ad
+              being live — say so rather than leave the row looking checked. */}
+          {postingUnknown && !postingClosed && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="shrink-0 mt-0.5 rounded px-1 text-[10px] font-medium bg-muted text-muted-foreground">
+                    ?
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  The board would not answer, so this one is unchecked
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -3042,7 +3060,7 @@ export function WorkItemTreePanel() {
   }, [selectedBacklogId, clearClosedPostings]);
 
   const runClosedCheck = useCallback(async () => {
-    const { closed, checked, error } = await checkClosedPostings(linkedItemsInBacklog);
+    const { closed, checked, unknown, error } = await checkClosedPostings(linkedItemsInBacklog);
     if (error) {
       toast({
         title: checked > 0 ? `Stopped after ${checked} item${checked !== 1 ? "s" : ""}` : "Could not check the ads",
@@ -3051,12 +3069,16 @@ export function WorkItemTreePanel() {
       });
       return;
     }
+    // The three outcomes are reported separately on purpose. A board that turns
+    // the check away is not a board saying its postings are live, and rolling
+    // the two together would quietly overstate how healthy the list is.
+    const open = checked - closed - unknown;
+    const parts = [`${open} still open`];
+    if (unknown > 0) parts.push(`${unknown} could not be reached`);
     toast({
-      title: closed === 0 ? "No closed ads" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
-      description:
-        closed === 0
-          ? `All ${checked} checked still take applications.`
-          : `Marked in the list, of ${checked} checked. Nothing was changed.`,
+      title: closed === 0 ? "No closed ads found" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
+      description: `${parts.join(", ")}. Of ${checked} checked; nothing was changed.`,
+      variant: unknown > checked / 2 ? "destructive" : undefined,
     });
   }, [checkClosedPostings, linkedItemsInBacklog]);
 

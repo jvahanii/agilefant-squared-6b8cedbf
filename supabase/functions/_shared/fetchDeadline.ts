@@ -14,11 +14,36 @@ import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadli
 const TIMEOUT_MS = 6_000;
 /** Postings fetched concurrently. */
 const CONCURRENCY = 6;
+/**
+ * Gentler, for checking a whole backlog at once.
+ *
+ * A preview asks about a handful of postings; a backlog check asks about
+ * dozens, from a datacentre address, and a job board reads a burst like that as
+ * a scraper. Fewer at a time is the one lever that costs nothing but seconds.
+ */
+const SWEEP_CONCURRENCY = 3;
 /** Ceiling per preview, so a wide query cannot turn into hundreds of requests. */
 const MAX_FETCHES = 40;
 
+/**
+ * Statuses that mean "not now" rather than anything about the posting. 999 is
+ * LinkedIn's own: it is what the site returns to an address it has decided is a
+ * robot, and it is the likeliest thing to meet when checking a backlog.
+ */
+const THROTTLED = new Set([429, 503, 999]);
+/** One pause and one retry. Longer would cost more than the answer is worth. */
+const RETRY_PAUSE_MS = 1_200;
+
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+
+/** Headers a browser would send. A bare user-agent is itself a tell. */
+const BROWSER_HEADERS: Record<string, string> = {
+  'user-agent': UA,
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'accept-language': 'en-GB,en;q=0.9,fi;q=0.8',
+  'cache-control': 'no-cache',
+};
 
 /**
  * Where to fetch a posting's text from.
@@ -110,29 +135,65 @@ export function linkedInApplyWithdrawn(html: string): boolean {
   return !/top-card-layout__cta["'\s]/.test(html) && !/apply-button/.test(html);
 }
 
-/** What one fetch of a posting can tell us. Both fields are best-effort. */
+/** What one fetch of a posting can tell us. Every field is best-effort. */
 export interface PostingFacts {
   deadline?: string;
   /** The posting is not taking applications: it says so, its apply button is
    *  gone, or the deadline it states has already passed. */
   closed?: boolean;
+  /**
+   * The page never arrived, so nothing at all is known about this posting --
+   * as opposed to it being open.
+   *
+   * Worth its own field rather than an absent `closed`, because the two look
+   * identical to a caller and mean opposite things. A board that answers 999 to
+   * a datacentre address would otherwise report a backlog of expired ads as
+   * perfectly healthy. The number is the HTTP status, or 0 for a timeout or a
+   * connection that never got that far.
+   */
+  unreachable?: number;
+}
+
+/** Fetch once, and once more after a pause if the board is waving us off. */
+async function fetchPosting(target: string): Promise<Response | { error: number }> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(target, {
+        headers: BROWSER_HEADERS,
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+      if (attempt === 0 && THROTTLED.has(res.status)) continue;
+      return res;
+    } catch {
+      // Timeout, DNS, TLS. Worth one more go: these are often transient, and
+      // the whole point of the sweep is that nobody is watching it happen.
+      if (attempt === 0) continue;
+      return { error: 0 };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  // Unreachable: the second attempt always returns one or the other.
+  return { error: 0 };
 }
 
 async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts> {
   const target = postingTextUrl(rawUrl);
-  if (!target) return {};
+  if (!target) return { unreachable: 0 };
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const res = await fetchPosting(target);
+  if ('error' in res) return { unreachable: res.error };
+  if (!res.ok) {
+    return closedByStatus(res.status) ? { closed: true } : { unreachable: res.status };
+  }
+  const type = res.headers.get('content-type') ?? '';
+  if (!type.includes('html') && !type.includes('text')) return { unreachable: res.status };
+
   try {
-    const res = await fetch(target, {
-      headers: { 'user-agent': UA, accept: 'text/html,*/*' },
-      signal: controller.signal,
-      redirect: 'follow',
-    });
-    if (!res.ok) return closedByStatus(res.status) ? { closed: true } : {};
-    const type = res.headers.get('content-type') ?? '';
-    if (!type.includes('html') && !type.includes('text')) return {};
     // One fetch answers every question, so a closed posting costs no extra
     // request. The markup is kept as well as the text: what LinkedIn will not
     // say in words, it says by leaving the apply button out.
@@ -147,18 +208,15 @@ async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts
       (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
     return { deadline, closed };
   } catch {
-    // Timeout, DNS, TLS, a board blocking datacentre IPs: all just "nothing known".
-    return {};
-  } finally {
-    clearTimeout(timer);
+    return { unreachable: 0 };
   }
 }
 
-/** Run `job` over every item, at most CONCURRENCY of them in flight at once. */
-async function pool<T>(items: T[], job: (item: T) => Promise<void>): Promise<void> {
+/** Run `job` over every item, a few at a time. */
+async function pool<T>(items: T[], job: (item: T) => Promise<void>, width = CONCURRENCY): Promise<void> {
   let next = 0;
   await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
+    Array.from({ length: Math.min(width, items.length) }, async () => {
       for (;;) {
         const i = next++;
         if (i >= items.length) return;
@@ -209,8 +267,12 @@ export async function factsForUrls(
 ): Promise<Record<string, PostingFacts>> {
   const unique = [...new Set(urls)];
   const out: Record<string, PostingFacts> = {};
-  await pool(unique, async (url) => {
-    out[url] = await factsFor(url, reference);
-  });
+  await pool(
+    unique,
+    async (url) => {
+      out[url] = await factsFor(url, reference);
+    },
+    SWEEP_CONCURRENCY,
+  );
   return out;
 }

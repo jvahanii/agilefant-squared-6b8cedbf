@@ -22,8 +22,20 @@ const answer = (closedUrls: string[]) => (_name: string, opts: { body: { urls: s
   error: null,
 });
 
+/** Answer as a board that refuses us does: reachable, but nothing learnt. */
+const refuse = (status: number) => (_name: string, opts: { body: { urls: string[] } }) => ({
+  data: { results: opts.body.urls.map((url) => ({ url, closed: false, unreachable: status })) },
+  error: null,
+});
+
 beforeEach(() => {
-  useClosedPostingsStore.setState({ closed: new Set(), checked: new Set(), checking: false, progress: null });
+  useClosedPostingsStore.setState({
+    closed: new Set(),
+    checked: new Set(),
+    unknown: new Set(),
+    checking: false,
+    progress: null,
+  });
   invoke.mockReset();
 });
 
@@ -39,7 +51,7 @@ describe("closedPostingsStore", () => {
 
     expect([...state().closed]).toEqual(["i2"]);
     expect([...state().checked].sort()).toEqual(["i1", "i2", "i3"]);
-    expect(result).toEqual({ closed: 1, checked: 3, error: undefined });
+    expect(result).toEqual({ closed: 1, checked: 3, unknown: 0, error: undefined });
   });
 
   it("closes an item when any one of its links has closed", async () => {
@@ -107,7 +119,7 @@ describe("closedPostingsStore", () => {
     const result = await state().check([{ id: "i1", urls: [] }]);
 
     expect(invoke).not.toHaveBeenCalled();
-    expect(result).toEqual({ closed: 0, checked: 0 });
+    expect(result).toEqual({ closed: 0, checked: 0, unknown: 0 });
   });
 
   it("drops a previous run's marks when a new one starts", async () => {
@@ -117,6 +129,43 @@ describe("closedPostingsStore", () => {
     await state().check([{ id: "i1", urls: ["https://b.example/1"] }]);
 
     expect([...state().closed]).toEqual([]);
+    expect([...state().checked]).toEqual(["i1"]);
+  });
+
+  /**
+   * The distinction the whole feature rests on. LinkedIn answers 999 to an
+   * address it takes for a robot, and a backlog checked from a datacentre meets
+   * that often. Counting those as open would report a list of dead ads as a
+   * healthy one — which is exactly what it did, until it said so.
+   */
+  it("does not count a posting it could not read as open", async () => {
+    invoke.mockImplementation(refuse(999));
+
+    const result = await state().check([
+      { id: "i1", urls: ["https://b.example/1"] },
+      { id: "i2", urls: ["https://b.example/2"] },
+    ]);
+
+    expect([...state().unknown].sort()).toEqual(["i1", "i2"]);
+    expect(state().closed.size).toBe(0);
+    expect(result).toEqual({ closed: 0, checked: 2, unknown: 2, error: undefined });
+  });
+
+  it("settles an item from whichever of its links did answer", async () => {
+    invoke.mockImplementation((_name: string, opts: { body: { urls: string[] } }) => ({
+      data: {
+        results: opts.body.urls.map((url) => ({
+          url,
+          closed: false,
+          unreachable: url.endsWith('blocked') ? 999 : null,
+        })),
+      },
+      error: null,
+    }));
+
+    await state().check([{ id: "i1", urls: ["https://b.example/blocked", "https://b.example/fine"] }]);
+
+    expect([...state().unknown]).toEqual([]);
     expect([...state().checked]).toEqual(["i1"]);
   });
 

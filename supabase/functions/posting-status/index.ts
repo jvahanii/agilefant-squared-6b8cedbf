@@ -46,15 +46,30 @@ Deno.serve(async (req) => {
 
     const facts = await factsForUrls(urls);
 
-    // A URL that could not be fetched reports neither closed nor open, which is
-    // the honest answer: nothing was learnt about it.
-    return json({
-      results: urls.map((url: string) => ({
-        url,
-        closed: facts[url]?.closed ?? false,
-        deadline: facts[url]?.deadline ?? null,
-      })),
-    });
+    const results = urls.map((url: string) => ({
+      url,
+      closed: facts[url]?.closed ?? false,
+      deadline: facts[url]?.deadline ?? null,
+      // Says nothing was learnt, as against the posting being open. The caller
+      // must be able to tell those apart, or a board that turns us away reports
+      // a backlog of dead ads as a healthy one.
+      unreachable: facts[url]?.unreachable ?? null,
+    }));
+
+    // A line per call saying how the fetches went: closed, open, and what the
+    // boards answered when they would not talk. Without it, a sweep that a
+    // board quietly refused looks exactly like a sweep that found nothing.
+    const refusals: Record<string, number> = {};
+    for (const r of results) {
+      if (r.unreachable !== null) refusals[r.unreachable] = (refusals[r.unreachable] ?? 0) + 1;
+    }
+    console.log(
+      `posting-status: ${results.length} urls, ${results.filter((r) => r.closed).length} closed, ` +
+        `${results.filter((r) => !r.closed && r.unreachable === null).length} open, ` +
+        `unreachable ${JSON.stringify(refusals)}`,
+    );
+
+    return json({ results });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('posting-status error:', message);
