@@ -3,6 +3,7 @@ import {
   parseDeadline,
   deadlinePrefix,
   deadlinePassed,
+  titleDeadline,
   parseOpenEnded,
   parseApplicationsClosed,
 } from '../../supabase/functions/_shared/deadlines';
@@ -320,6 +321,46 @@ describe('postingTextUrl', () => {
   it('refuses anything that is not http', () => {
     expect(postingTextUrl('javascript:alert(1)')).toBeNull();
     expect(postingTextUrl('not a url')).toBeNull();
+  });
+});
+
+/**
+ * The import writes the closing date into the item's name, so reading it back
+ * closes a great many items without asking a board anything — which is the only
+ * thing that works when the board is refusing to answer. The prefix carries no
+ * year, and that is the whole difficulty.
+ */
+describe('titleDeadline', () => {
+  const SEPT15 = '2026-09-15T09:00:00.000Z';
+
+  it('reads the prefix the import writes', () => {
+    expect(titleDeadline('0920 Fennia — Product owner', SEPT15)).toBe('2026-09-20');
+    expect(titleDeadline('0816 OP Senior Product Owner', SEPT15)).toBe('2026-08-16');
+  });
+
+  it('takes the nearest occurrence, not the most recent', () => {
+    // "0920" in September means this month. Reaching for the last date that has
+    // already passed would call a live ad closed by a year.
+    expect(titleDeadline('0920 Something', SEPT15)).toBe('2026-09-20');
+    expect(deadlinePassed(titleDeadline('0920 Something', SEPT15), SEPT15)).toBe(false);
+  });
+
+  it('crosses the new year the short way', () => {
+    // Read in December, "0110" is three weeks off, not eleven months back.
+    expect(titleDeadline('0110 Something', '2026-12-15T09:00:00.000Z')).toBe('2027-01-10');
+    expect(titleDeadline('1220 Something', '2027-01-05T09:00:00.000Z')).toBe('2026-12-20');
+  });
+
+  it('ignores a name that merely starts with digits', () => {
+    expect(titleDeadline('2026 budget planning', SEPT15)).toBeUndefined();
+    expect(titleDeadline('1350 impossible month', SEPT15)).toBeUndefined();
+    expect(titleDeadline('Product owner Fennia', SEPT15)).toBeUndefined();
+    expect(titleDeadline('', SEPT15)).toBeUndefined();
+  });
+
+  it('agrees with the prefix the import would write', () => {
+    const iso = '2026-09-20';
+    expect(titleDeadline(`${deadlinePrefix(iso)} Something`, SEPT15)).toBe(iso);
   });
 });
 

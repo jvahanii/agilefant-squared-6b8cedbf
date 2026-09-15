@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { deadlinePassed, titleDeadline } from '../../supabase/functions/_shared/deadlines';
 
 /**
  * Which work items link to a job ad that has stopped taking applications.
@@ -33,8 +34,8 @@ interface ClosedPostingsState {
    * marks rows while it is still going rather than all at the end.
    */
   check: (
-    items: { id: string; urls: string[] }[],
-  ) => Promise<{ closed: number; checked: number; unknown: number; error?: string }>;
+    items: { id: string; title: string; urls: string[] }[],
+  ) => Promise<{ closed: number; checked: number; unknown: number; fromTitle: number; error?: string }>;
   clear: () => void;
 }
 
@@ -56,12 +57,22 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
   progress: null,
 
   check: async (items) => {
-    if (get().checking) return { closed: 0, checked: 0, unknown: 0 };
+    if (get().checking) return { closed: 0, checked: 0, unknown: 0, fromTitle: 0 };
+
+    // Settle whatever the item already knows about itself first. The import
+    // writes the closing date into the title, so an item whose date has gone by
+    // needs no request at all -- which is the only reliable way past a board
+    // that will not answer one.
+    const settled = new Set<string>();
+    for (const item of items) {
+      if (deadlinePassed(titleDeadline(item.title))) settled.add(item.id);
+    }
 
     // One request per URL, but an item may hold several: the item is closed if
     // any of its postings says so, so the mapping back has to be many-to-one.
     const itemsByUrl = new Map<string, string[]>();
     for (const item of items) {
+      if (settled.has(item.id)) continue;
       for (const url of item.urls) {
         const ids = itemsByUrl.get(url);
         if (ids) ids.push(item.id);
@@ -69,13 +80,16 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
       }
     }
     const urls = [...itemsByUrl.keys()];
-    if (urls.length === 0) return { closed: 0, checked: 0, unknown: 0 };
+    if (urls.length === 0) {
+      set({ closed: new Set(settled), checked: new Set(settled), unknown: new Set() });
+      return { closed: settled.size, checked: settled.size, unknown: 0, fromTitle: settled.size };
+    }
 
     set({
       checking: true,
       progress: { done: 0, total: urls.length },
-      closed: new Set(),
-      checked: new Set(),
+      closed: new Set(settled),
+      checked: new Set(settled),
       unknown: new Set(),
     });
     // An item counts as unreadable only when *none* of its links could be read:
@@ -124,7 +138,13 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
 
     set({ checking: false, progress: null });
     const { closed, checked, unknown } = get();
-    return { closed: closed.size, checked: checked.size, unknown: unknown.size, error };
+    return {
+      closed: closed.size,
+      checked: checked.size,
+      unknown: unknown.size,
+      fromTitle: settled.size,
+      error,
+    };
   },
 
   clear: () => set({ closed: new Set(), checked: new Set(), unknown: new Set(), progress: null }),

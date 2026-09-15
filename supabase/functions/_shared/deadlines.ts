@@ -241,6 +241,45 @@ export function parseApplicationsClosed(text: string): boolean {
 }
 
 /**
+ * The deadline an imported item already carries in its own name.
+ *
+ * The import writes one there -- "0920 Fennia — Product owner" -- so a backlog
+ * sorted by name groups by closing date. That prefix is a fact already
+ * established, and reading it back answers "has this closed?" for a great many
+ * items without asking the board anything at all, which matters when the board
+ * is refusing to answer.
+ *
+ * The prefix has no year, so the nearest occurrence wins: "0920" seen in
+ * September means this month, not a year ago, and "0110" seen in December means
+ * next month rather than eleven months back. Ties cannot arise -- one of the
+ * three candidates is always strictly nearer.
+ */
+export function titleDeadline(title: string, now: Date | string | number = Date.now()): string | undefined {
+  const m = title.match(/^\s*(\d{2})(\d{2})(?!\d)/);
+  if (!m) return undefined;
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  if (!month || month > 12 || !day || day > 31) return undefined;
+
+  const today = new Date(now);
+  if (Number.isNaN(today.getTime())) return undefined;
+  const year = today.getUTCFullYear();
+
+  let best: string | undefined;
+  let bestGap = Infinity;
+  for (const candidateYear of [year - 1, year, year + 1]) {
+    const candidate = iso(candidateYear, month, day);
+    if (!candidate) continue;
+    const gap = Math.abs(new Date(candidate).getTime() - startOfDay(today));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+/**
  * Is a parsed deadline already in the past?
  *
  * A posting whose own closing date has gone by is shut whether or not it says

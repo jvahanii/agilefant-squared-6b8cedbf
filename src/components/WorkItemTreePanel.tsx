@@ -3043,7 +3043,7 @@ export function WorkItemTreePanel() {
     if (!backlogIsPublished || !isSuperuser || backlogIdSet.size === 0 || !selectedTreeId) return [];
     return Object.values(workItems)
       .filter((wi) => backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
-      .map((wi) => ({ id: wi.id, urls: (hyperlinks[wi.id] ?? []).map((h) => h.url) }))
+      .map((wi) => ({ id: wi.id, title: wi.title, urls: (hyperlinks[wi.id] ?? []).map((h) => h.url) }))
       .filter((item) => item.urls.length > 0);
   }, [backlogIsPublished, isSuperuser, workItems, hyperlinks, backlogIdSet, selectedTreeId]);
 
@@ -3060,7 +3060,7 @@ export function WorkItemTreePanel() {
   }, [selectedBacklogId, clearClosedPostings]);
 
   const runClosedCheck = useCallback(async () => {
-    const { closed, checked, unknown, error } = await checkClosedPostings(linkedItemsInBacklog);
+    const { closed, checked, unknown, fromTitle, error } = await checkClosedPostings(linkedItemsInBacklog);
     if (error) {
       toast({
         title: checked > 0 ? `Stopped after ${checked} item${checked !== 1 ? "s" : ""}` : "Could not check the ads",
@@ -3075,6 +3075,7 @@ export function WorkItemTreePanel() {
     const open = checked - closed - unknown;
     const parts = [`${open} still open`];
     if (unknown > 0) parts.push(`${unknown} could not be reached`);
+    if (fromTitle > 0) parts.push(`${fromTitle} from a closing date already on the item`);
     toast({
       title: closed === 0 ? "No closed ads found" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
       description: `${parts.join(", ")}. Of ${checked} checked; nothing was changed.`,
