@@ -1,0 +1,20 @@
+{
+  "//": "Typechecks the Deno edge functions, which tsconfig.app.json deliberately excludes. Catches the errors that matter here — an undefined name, a misspelled import — rather than enforcing strictness on code written against Deno. See supabase/functions/_types/deno.d.ts.",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "target": "ES2022",
+    "types": []
+  },
+  "include": ["supabase/functions"]
+}
