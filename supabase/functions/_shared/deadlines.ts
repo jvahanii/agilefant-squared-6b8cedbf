@@ -17,6 +17,24 @@
 /** Day-first, as every Finnish source writes it: 20.9. or 27.09.2026 */
 const DAY_MONTH = String.raw`(\d{1,2})\.(\d{1,2})\.?(?:\s*(\d{4}))?`;
 
+/**
+ * A submission word, then the preposition that governs the date: "please submit
+ * your application with your updated CV and cover letter via Careers site by
+ * September 25th 2026".
+ *
+ * Both halves are required, and neither would do alone. "By September 25th" on
+ * its own is as likely to be a start date as a deadline. A submission word on
+ * its own can sit a whole clause away from a date it has nothing to do with --
+ * which is why the earlier patterns kept the two within 40 characters, and why
+ * this sentence, with 58 characters of CV and careers site in between, was read
+ * as having no deadline at all. Anchoring the far end on the preposition is what
+ * makes the longer gap safe.
+ *
+ * The gap excludes full stops, so the match cannot cross out of its sentence and
+ * pick up the start date in the next one.
+ */
+const SUBMIT_BY = String.raw`(?:deadline|appl(?:y|ies|ication|ications)|submit|send)[^.\n]{0,120}?\b(?:by|before|until|no later than)\s+`;
+
 /** Numeric patterns. Capture order is day, month, optional year. */
 const NUMERIC_PATTERNS: RegExp[] = [
   // "haku päättyy 20.9." / "Haku päättyy 27.09.2026 19.00"
@@ -38,8 +56,8 @@ const NUMERIC_PATTERNS: RegExp[] = [
   new RegExp(String.raw`\(\s*(?:ends|closes|päättyy|umpeutuu)\s*:?\s*${DAY_MONTH}\s*\)`, "i"),
   // "Hakuaika 11.9 - 11.3." -- a range, so the deadline is the second date.
   new RegExp(String.raw`hakuaika\s*\d{1,2}\.\d{1,2}\.?\s*[-–—]\s*${DAY_MONTH}`, "i"),
-  // "apply by 30.9.2026"
-  new RegExp(String.raw`(?:apply|applications?)\s+(?:by|before|until)\s*${DAY_MONTH}`, "i"),
+  // "apply by 30.9.2026", "submit your application by 30.9.2026"
+  new RegExp(SUBMIT_BY + DAY_MONTH, "i"),
 ];
 
 const MONTHS: Record<string, number> = {
@@ -70,6 +88,22 @@ const NAMED_PATTERNS: Array<{ re: RegExp; monthFirst: boolean }> = [
     // "deadline: 30 September 2026"
     re: new RegExp(
       String.raw`(?:deadline|apply|applications?)[^.\n]{0,40}?\b(\d{1,2})(?:st|nd|rd|th)?\s+(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
+      "i",
+    ),
+    monthFirst: false,
+  },
+  {
+    // "submit your application ... by September 25th 2026"
+    re: new RegExp(
+      SUBMIT_BY + String.raw`(${MONTH_NAMES})\.?\s+(\d{1,2})(?!\d)(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?`,
+      "i",
+    ),
+    monthFirst: true,
+  },
+  {
+    // "submit your application ... by 25 September 2026"
+    re: new RegExp(
+      SUBMIT_BY + String.raw`(\d{1,2})(?:st|nd|rd|th)?\s+(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
       "i",
     ),
     monthFirst: false,

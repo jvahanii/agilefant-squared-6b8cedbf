@@ -121,6 +121,36 @@ describe('parseDeadline', () => {
     expect(parseDeadline('Hae 30.9.2026 klo 16:00 mennessä', SEPT)).toBe('2026-09-30');
   });
 
+  /**
+   * Quoted from a posting. The word "application" is 58 characters from the
+   * date, which the older patterns did not reach across -- only the preposition
+   * is adjacent to it.
+   */
+  it('reads a month name governed by "by", however far the lead-in', () => {
+    const text =
+      'If you see that you have the experience and qualities to be successful in this role, ' +
+      'please submit your application with your updated CV and cover letter via Careers site ' +
+      'by September 25th 2026.';
+    expect(parseDeadline(text, SEPT)).toBe('2026-09-25');
+    expect(deadlinePrefix(parseDeadline(text, SEPT))).toBe('0925');
+  });
+
+  it('reads the same phrasing day-first, and numerically', () => {
+    expect(parseDeadline('Please submit your CV by 25 September 2026', SEPT)).toBe('2026-09-25');
+    expect(parseDeadline('Send your application via the portal by 25.9.2026', SEPT)).toBe('2026-09-25');
+    expect(parseDeadline('Applications no later than September 25th, 2026', SEPT)).toBe('2026-09-25');
+  });
+
+  it('does not read a start date as a deadline', () => {
+    // No submission word at all: "by" alone governs plenty of dates that are
+    // nobody's deadline.
+    expect(parseDeadline('We would like you to start by September 1st 2026.', SEPT)).toBeUndefined();
+    // And a submission word in the previous sentence does not reach into this
+    // one, which is what the full stop in the gap is there to prevent.
+    expect(parseDeadline('Please submit your application. The role starts by September 1st 2026.', SEPT))
+      .toBeUndefined();
+  });
+
   it('does not attach "mennessä" to a date it does not follow', () => {
     // The postposition governs the date immediately before it. A date elsewhere
     // in the sentence is somebody else's -- here, when the work starts.
