@@ -226,9 +226,18 @@ describe('LinkedIn job alert digest names each employer', () => {
    * title anchor, then a paragraph of 'Company &middot; Location' — which is
    * what makes reading the markup first work for both.
    */
+  // The attributes below are copied from the mail, and they are the point of
+  // this fixture: 486 characters of cell, row and paragraph chrome separate a
+  // title anchor from its employer. The first version of this test tidied them
+  // away, so it passed against an extractor that kept only 400 characters after
+  // an anchor -- which is exactly why every posting still arrived as Basware.
+  const chrome =
+    '</td> </tr> <tr> <td class="pb-0" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding-bottom: 0px;"> ' +
+    '<p class="text-system-gray-100 text-xs leading-regular mt-0.5 line-clamp-1 text-ellipsis" style="margin: 0; font-weight: 400; margin-top: 4px; text-overflow: ellipsis; font-size: 12px; line-height: 1.25; color: #1f1f1f; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1;">';
+
   const card = (id, title, company, location) => `
-    <td> <a href="https://www.linkedin.com/comm/jobs/view/${id}/?trackingId=x&amp;refId=y"> ${title} </a> </td>
-    </tr> <tr> <td> <p> ${company} &middot; ${location} </p> </td> </tr>`;
+    <td> <a href="https://www.linkedin.com/comm/jobs/view/${id}/?trackingId=x&amp;refId=y"> ${title} </a>
+    ${chrome} ${company} &middot; ${location} </p> </td> </tr>`;
 
   const SUBJECT = 'You may be a fit for Basware’s Portfolio Architect role';
 

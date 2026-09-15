@@ -117,6 +117,18 @@ function fallbackTitle(url: string): string {
   }
 }
 
+/**
+ * How much markup after an anchor is carried along as that posting's context.
+ *
+ * It was 400, which is not enough for LinkedIn: between a title anchor and the
+ * employer sit a closing cell, a new row, and a <p> carrying a long class and
+ * style attribute -- some 420 characters in all. The window closed mid-tag, the
+ * employer was never found, and so every posting in a digest fell back to the
+ * one named in the subject line. Consumers cut this at the next anchor anyway,
+ * so a generous window costs only the slice.
+ */
+const AFTER_WINDOW = 2000;
+
 /** Extract de-duplicated links from a Gmail message. */
 export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): ExtractedLink[] {
   const bodies = { html: [] as string[], text: [] as string[] };
@@ -151,7 +163,7 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
       const href = m[2] ?? m[3] ?? m[4] ?? '';
       // The markup that follows a posting's title anchor is where these
       // digests put the employer, so carry a slice of it along.
-      const after = html.slice(anchor.lastIndex, anchor.lastIndex + 400);
+      const after = html.slice(anchor.lastIndex, anchor.lastIndex + AFTER_WINDOW);
       push(href, m[5] ?? '', after);
     }
   }
@@ -162,7 +174,7 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
       let m: RegExpExecArray | null;
       while ((m = bare.exec(text)) !== null) {
         const url = m[0].replace(/[.,;:]+$/, '');
-        push(url, '', text.slice(bare.lastIndex, bare.lastIndex + 400));
+        push(url, '', text.slice(bare.lastIndex, bare.lastIndex + AFTER_WINDOW));
       }
     }
   }
