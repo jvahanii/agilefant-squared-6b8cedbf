@@ -11,3 +11,10 @@ verify_jwt = false
 
 [functions.gmail-scheduled-import]
 verify_jwt = false
+
+# Not unauthenticated: the gateway's own check only understands Supabase Auth
+# tokens, and every session here is a Clerk one. requireAppUser validates the
+# token through PostgREST instead, which is the same path the rest of the app
+# uses, and this function then refuses anyone who is not a superuser.
+[functions.posting-status]
+verify_jwt = false

@@ -92,6 +92,20 @@ async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts
   }
 }
 
+/** Run `job` over every item, at most CONCURRENCY of them in flight at once. */
+async function pool<T>(items: T[], job: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= items.length) return;
+        await job(items[i]);
+      }
+    }),
+  );
+}
+
 /**
  * Fill in deadlines for links that do not already have one, in place of the
  * input array. Capped in three ways -- how many, how fast, how long each -- so a
@@ -107,22 +121,34 @@ export async function fillDeadlines<
   if (targets.length === 0) return links;
 
   const out = [...links];
-  let next = 0;
-  const workers = Array.from({ length: Math.min(CONCURRENCY, targets.length) }, async () => {
-    for (;;) {
-      const slot = next++;
-      if (slot >= targets.length) return;
-      const i = targets[slot];
-      const facts = await factsFor(out[i].url, out[i].date ?? new Date().toISOString());
-      if (facts.deadline || facts.closed) {
-        out[i] = {
-          ...out[i],
-          ...(facts.deadline ? { deadline: facts.deadline } : {}),
-          ...(facts.closed ? { applicationsClosed: true } : {}),
-        };
-      }
+  await pool(targets, async (i) => {
+    const facts = await factsFor(out[i].url, out[i].date ?? new Date().toISOString());
+    if (facts.deadline || facts.closed) {
+      out[i] = {
+        ...out[i],
+        ...(facts.deadline ? { deadline: facts.deadline } : {}),
+        ...(facts.closed ? { applicationsClosed: true } : {}),
+      };
     }
   });
-  await Promise.all(workers);
+  return out;
+}
+
+/**
+ * The same question asked of bare URLs, for callers that hold no links: what
+ * does each of these postings say about itself?
+ *
+ * Every URL is fetched, with no `deadline` already known to skip on, so the
+ * caller is responsible for the size of the batch. Duplicates are fetched once.
+ */
+export async function factsForUrls(
+  urls: string[],
+  reference: string = new Date().toISOString(),
+): Promise<Record<string, PostingFacts>> {
+  const unique = [...new Set(urls)];
+  const out: Record<string, PostingFacts> = {};
+  await pool(unique, async (url) => {
+    out[url] = await factsFor(url, reference);
+  });
   return out;
 }

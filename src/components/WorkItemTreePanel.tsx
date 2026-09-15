@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -40,6 +40,8 @@ import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
+import { usePublishedLinksStore } from "@/store/publishedLinksStore";
+import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
@@ -405,6 +407,7 @@ function WorkItemNodeContent({
     }
   }, [workItemId, activeOrgId, snoozeWorkItem, isSelected, isMultiSelected]);
   const hyperlinkCount = useAppStore((s) => (s.hyperlinks[workItemId] ?? []).length);
+  const postingClosed = useClosedPostingsStore((s) => s.closed.has(workItemId));
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isEditingPoints, setIsEditingPoints] = useState(false);
@@ -1107,6 +1110,24 @@ function WorkItemNodeContent({
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
                   {hyperlinkCount} hyperlink{hyperlinkCount !== 1 ? "s" : ""}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Set by the header's ad check, and only until the page reloads:
+              the posting said it is no longer taking applications. */}
+          {postingClosed && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="shrink-0 mt-0.5 flex items-center gap-0.5 rounded px-1 text-[10px] font-medium bg-destructive/10 text-destructive">
+                    <Ban className="w-2.5 h-2.5" />
+                    Closed
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  This ad is no longer accepting applications
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -2881,7 +2902,7 @@ export function WorkItemTreePanel() {
 
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
-  const { scrambleEnabled } = useScramble();
+  const { scrambleEnabled, isSuperuser } = useScramble();
   const [selectedTreeIsShared, setSelectedTreeIsShared] = useState(false);
 
   useEffect(() => {
@@ -2983,6 +3004,61 @@ export function WorkItemTreePanel() {
       .filter((wi) => snoozedItemIds.has(wi.id) && backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
       .map((wi) => wi.id);
   }, [workItems, snoozedItemIds, backlogIdSet, selectedTreeId]);
+
+  // A job ad goes stale where nothing in the app can see it: applications close
+  // on the board, and the item sits on the list as though it were live. Finding
+  // out means fetching each posting, which only the server can do -- a job board
+  // sends no CORS headers -- so the check is a button rather than something that
+  // happens by itself, offered on a published backlog, where a stale row is on
+  // show to other people, and only to a superuser, whose call it is to spend a
+  // burst of server requests.
+  const publishedBacklogs = usePublishedLinksStore((s) => s.backlogs);
+  const publishedTrees = usePublishedLinksStore((s) => s.trees);
+  const backlogIsPublished =
+    (!!selectedBacklogId && publishedBacklogs.has(selectedBacklogId)) ||
+    (!!selectedTreeId && publishedTrees.has(selectedTreeId));
+
+  const hyperlinks = useAppStore((s) => s.hyperlinks);
+  // Every item in the backlog and its children that has a link to check, which
+  // is what a published link shows.
+  const linkedItemsInBacklog = useMemo(() => {
+    if (!backlogIsPublished || !isSuperuser || backlogIdSet.size === 0 || !selectedTreeId) return [];
+    return Object.values(workItems)
+      .filter((wi) => backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
+      .map((wi) => ({ id: wi.id, urls: (hyperlinks[wi.id] ?? []).map((h) => h.url) }))
+      .filter((item) => item.urls.length > 0);
+  }, [backlogIsPublished, isSuperuser, workItems, hyperlinks, backlogIdSet, selectedTreeId]);
+
+  const closedChecking = useClosedPostingsStore((s) => s.checking);
+  const closedProgress = useClosedPostingsStore((s) => s.progress);
+  const closedCount = useClosedPostingsStore((s) => s.closed.size);
+  const checkClosedPostings = useClosedPostingsStore((s) => s.check);
+  const clearClosedPostings = useClosedPostingsStore((s) => s.clear);
+
+  // A result belongs to the backlog it was run on. Moving to another one clears
+  // it rather than leaving marks that were never about these items.
+  useEffect(() => {
+    clearClosedPostings();
+  }, [selectedBacklogId, clearClosedPostings]);
+
+  const runClosedCheck = useCallback(async () => {
+    const { closed, checked, error } = await checkClosedPostings(linkedItemsInBacklog);
+    if (error) {
+      toast({
+        title: checked > 0 ? `Stopped after ${checked} item${checked !== 1 ? "s" : ""}` : "Could not check the ads",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: closed === 0 ? "No closed ads" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
+      description:
+        closed === 0
+          ? `All ${checked} checked still take applications.`
+          : `Marked in the list, of ${checked} checked. Nothing was changed.`,
+    });
+  }, [checkClosedPostings, linkedItemsInBacklog]);
 
   // All labels defined in the active organisation, shown in the filter chip bar.
   const allOrgLabels = useMemo(
@@ -3578,6 +3654,30 @@ export function WorkItemTreePanel() {
               >
                 <BellOff className="w-4 h-4" />
                 <span className="text-xs font-medium tabular-nums">Snoozed: {snoozedInBacklog.length}</span>
+              </button>
+            )}
+            {!isSearchMode && !isFilterMode && linkedItemsInBacklog.length > 0 && (
+              <button
+                className={`flex items-center gap-1 w-auto h-7 px-2 rounded-md border transition-colors disabled:opacity-60 ${
+                  closedCount > 0
+                    ? "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void runClosedCheck();
+                }}
+                disabled={closedChecking}
+                title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this published backlog and mark the ads that have closed. Nothing is saved.`}
+              >
+                <Ban className={`w-4 h-4 ${closedChecking ? "animate-pulse" : ""}`} />
+                <span className="text-xs font-medium tabular-nums">
+                  {closedChecking
+                    ? `Checking ${closedProgress?.done ?? 0}/${closedProgress?.total ?? 0}`
+                    : closedCount > 0
+                      ? `Closed: ${closedCount}`
+                      : "Check ads"}
+                </span>
               </button>
             )}
             {!isSearchMode && !isFilterMode && (
