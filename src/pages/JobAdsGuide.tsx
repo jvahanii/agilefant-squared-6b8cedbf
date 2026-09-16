@@ -13,6 +13,7 @@ import { BookOpen } from "lucide-react";
 const SECTIONS = [
   { id: "what-it-does", title: "What it does" },
   { id: "job-boards", title: "Supported job boards" },
+  { id: "google-oauth", title: "Your organization's Google OAuth client" },
   { id: "getting-started", title: "Getting started" },
   { id: "importing", title: "Importing postings" },
   { id: "deadlines", title: "Application deadlines" },
@@ -140,6 +141,60 @@ export default function JobAdsGuide() {
           </P>
         </Section>
 
+        <Section id="google-oauth" title="Your organization's Google OAuth client">
+          <P>
+            Gmail is connected through your organization&apos;s own Google OAuth client, so your mail is read under an
+            app your organization controls. Until an owner or admin adds one, nobody in the organization can connect
+            Gmail. If <Em>Job ad import</Em> shows no <Em>Google OAuth client</Em> section, your organization is
+            already set up and you can skip this.
+          </P>
+          <P>An owner or admin creates the client once, in Google Cloud Console:</P>
+          <Ol>
+            <li>Create a project, or choose an existing one.</li>
+            <li>
+              Enable the <Em>Gmail API</Em> for the project.
+            </li>
+            <li>
+              Configure the OAuth consent screen: an app name, a support email, and who may use it (see the notes
+              below). Add these scopes: <Code>gmail.readonly</Code>, <Code>userinfo.email</Code> and{" "}
+              <Code>userinfo.profile</Code>.
+            </li>
+            <li>
+              Create an OAuth client ID of type <Em>Web application</Em>. Under <Em>Authorized redirect URIs</Em>, add
+              the address shown in Agilefant under <Em>Authorized redirect URI</Em> — normally{" "}
+              <Code>https://agilefant.org/gmail-callback.html</Code>. It must match exactly.
+            </li>
+            <li>
+              Copy the <Em>Client ID</Em> and <Em>Client secret</Em> into the <Em>Google OAuth client</Em> section of{" "}
+              <Em>Job ad import</Em>, and choose <Em>Save client</Em>.
+            </li>
+          </Ol>
+          <P>
+            The secret is encrypted when it is saved and is never shown again. Replacing the secret for the same
+            client keeps everyone&apos;s Gmail connections; switching to a different client ID, or removing the
+            client, disconnects everyone, who then connect again.
+          </P>
+          <Callout tone="warning">
+            <strong>Who can connect depends on how the Google app is set up.</strong> Read-only Gmail access is a
+            restricted permission, and Google limits apps that use it:
+            <Ul>
+              <li>
+                <strong>Internal</strong> — available if your organization uses Google Workspace. Anyone in your
+                Workspace domain can connect, with no approval from Google needed.
+              </li>
+              <li>
+                <strong>External, in testing</strong> — only people you add as test users can connect, up to 100.
+                Their connections expire after seven days, after which they connect again; scheduled imports stop
+                until they do.
+              </li>
+              <li>
+                <strong>External, published</strong> — anyone with a Google account can connect, but Google must
+                verify the app first, including a security assessment.
+              </li>
+            </Ul>
+          </Callout>
+        </Section>
+
         <Section id="getting-started" title="Getting started">
           <Ol>
             <li>
@@ -148,9 +203,16 @@ export default function JobAdsGuide() {
               to <Em>Job ad import</Em>.
             </li>
             <li>
+              If there is a <Em>Google OAuth client</Em> section with no client in it, an owner or admin needs to{" "}
+              <a href="#google-oauth" className="text-primary underline-offset-2 hover:underline">
+                add your organization&apos;s client
+              </a>{" "}
+              first.
+            </li>
+            <li>
               Under <Em>Your Gmail account</Em>, choose <Em>Connect Gmail</Em> and sign in to Google in the window that
-              opens. The connection is to your own Gmail account and is used only for the searches you save. You can
-              choose <Em>Disconnect</Em> at any time.
+              opens. The connection is to your own Gmail account, for this organization, and is used only for the
+              searches you save. You can choose <Em>Disconnect</Em> at any time.
             </li>
             <li>
               Under <Em>Add a saved search</Em>, fill in:
@@ -306,6 +368,18 @@ export default function JobAdsGuide() {
               [
                 "Connect Gmail first",
                 "The search needs a connected Gmail account. Connect one under Your Gmail account.",
+              ],
+              [
+                "Waiting for a Google OAuth client",
+                "Your organization has no Google OAuth client yet. An owner or admin needs to add one — see Your organization's Google OAuth client.",
+              ],
+              [
+                "Google refused the redirect address",
+                "The OAuth client in Google Cloud does not list the authorized redirect URI shown in Agilefant. Add it exactly as shown.",
+              ],
+              [
+                "Gmail keeps disconnecting every week",
+                "The Google app is External and still in testing, where connections expire after seven days. Publish the app, or use an Internal app if your organization is on Google Workspace.",
               ],
               [
                 "No links found for that query",

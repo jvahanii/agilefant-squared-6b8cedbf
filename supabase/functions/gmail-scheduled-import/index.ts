@@ -13,6 +13,24 @@ import { isDue } from '../_shared/importSchedule.ts';
 
 const MAX_MESSAGES = 50;
 
+/**
+ * The status line a saved search shows under "Last run". A scheduled run fails
+ * with nobody watching, so the line is the only explanation anyone gets — it
+ * should say what to do, not repeat an internal code.
+ */
+function readableFailure(message: string): string {
+  if (message === 'gmail_not_connected') {
+    return 'Gmail is not connected, or the connection has expired. Connect Gmail again.';
+  }
+  if (message === 'oauth_client_not_configured') {
+    return "This organization's Google OAuth client is not set up. An owner or admin can add it.";
+  }
+  if (message === 'oauth_client_rejected') {
+    return "Google rejected this organization's OAuth client ID or secret. An owner or admin can replace them.";
+  }
+  return message;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -43,9 +61,11 @@ Deno.serve(async (req) => {
       let created = 0;
       let skipped = 0;
       try {
-        const { key } = await getConnection(admin, q.user_id);
+        // The organization decides how Gmail is reached: its own OAuth client,
+        // or the shared connector if it is one of the few allowed that.
+        const { auth } = await getConnection(admin, q.user_id, q.organization_id);
         const mode = q.import_mode === 'jobs' ? 'jobs' : 'links';
-        const links = await searchLinks(key, q.query, MAX_MESSAGES, mode);
+        const links = await searchLinks(auth, q.query, MAX_MESSAGES, mode);
         const result = await importLinksAsWorkItems(
           admin,
           {
@@ -62,7 +82,7 @@ Deno.serve(async (req) => {
         skipped = result.skipped;
         status = `ok: ${created} created, ${skipped} skipped`;
       } catch (e) {
-        status = `error: ${e instanceof Error ? e.message : String(e)}`;
+        status = `error: ${readableFailure(e instanceof Error ? e.message : String(e))}`;
         console.error(`query ${q.id} failed:`, status);
       }
 

@@ -26,7 +26,10 @@
         var params = new URLSearchParams(window.location.search);
         var code = params.get('code');
         var error = params.get('error') || params.get('error_description');
-        var payload = { source: 'gmail-oauth', code: code, error: error };
+        // Passed back untouched. With an organization's own Google client the
+        // server signed it, and checks it proves who started this connection.
+        var state = params.get('state');
+        var payload = { source: 'gmail-oauth', code: code, state: state, error: error };
         try {
           if (window.opener) {
             window.opener.postMessage(payload, window.location.origin);

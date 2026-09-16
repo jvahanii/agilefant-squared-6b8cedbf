@@ -22,6 +22,8 @@ import {
   type PreviewLink,
 } from "@/lib/gmailPreview";
 import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
+import { GoogleOAuthClientSection } from "@/components/GoogleOAuthClientSection";
+import { canConnectGmail, explainGmailError, type OAuthStatus } from "@/lib/gmailOAuth";
 import {
   defaultJobQuery,
   withLookback,
@@ -129,6 +131,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [oauth, setOauth] = useState<OAuthStatus | null>(null);
 
   const [queries, setQueries] = useState<SavedQuery[]>([]);
   // Seeded rather than blank so the job-ad card is usable without knowing
@@ -167,16 +170,25 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const trees = Object.values(backlogTrees);
   const backlogsForTree = (treeId: string) => Object.values(backlogs).filter((b) => b.treeId === treeId);
 
+  // Per organization: each decides how Gmail is reached, so switching
+  // organization can change both the connection and whether one is possible.
   const loadStatus = useCallback(async () => {
+    if (!activeOrgId) return;
+    setConnected(null);
     try {
-      const res = await callGmail<{ connected: boolean; email: string | null }>({ action: "status" });
+      const res = await callGmail<{ connected: boolean; email: string | null; oauth: OAuthStatus }>({
+        action: "status",
+        organizationId: activeOrgId,
+      });
       setConnected(res.connected);
       setConnectedEmail(res.email);
+      setOauth(res.oauth);
     } catch (e) {
       setConnected(false);
+      setOauth(null);
       console.error("gmail status failed", e);
     }
-  }, []);
+  }, [activeOrgId]);
 
   const loadQueries = useCallback(async () => {
     if (!activeOrgId) return;
@@ -205,7 +217,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   useEffect(() => {
     const onMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const payload = event.data as { source?: string; code?: string; error?: string } | null;
+      const payload = event.data as { source?: string; code?: string; state?: string; error?: string } | null;
       if (!payload || payload.source !== "gmail-oauth") return;
       popupRef.current?.close();
       if (payload.error || !payload.code) {
@@ -213,26 +225,41 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
         toast({ title: "Gmail connection cancelled", description: payload.error ?? undefined, variant: "destructive" });
         return;
       }
+      if (!activeOrgId) return;
       try {
-        const res = await callGmail<{ email: string | null }>({ action: "exchange", code: payload.code });
+        const res = await callGmail<{ email: string | null }>({
+          action: "exchange",
+          organizationId: activeOrgId,
+          code: payload.code,
+          state: payload.state ?? undefined,
+        });
         setConnected(true);
         setConnectedEmail(res.email);
         toast({ title: "Gmail connected", description: res.email ?? undefined });
       } catch (e) {
-        toast({ title: "Could not finish connecting", description: (e as Error).message, variant: "destructive" });
+        toast({
+          title: "Could not finish connecting",
+          description: explainGmailError((e as Error).message),
+          variant: "destructive",
+        });
       } finally {
         setConnecting(false);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [activeOrgId]);
 
   const connect = async () => {
+    if (!activeOrgId) return;
     setConnecting(true);
     try {
       const returnUrl = `${window.location.origin}/gmail-callback.html`;
-      const res = await callGmail<{ authorizationUrl: string }>({ action: "start", returnUrl });
+      const res = await callGmail<{ authorizationUrl: string }>({
+        action: "start",
+        organizationId: activeOrgId,
+        returnUrl,
+      });
       popupRef.current = window.open(res.authorizationUrl, "gmail-oauth", "width=520,height=680");
       if (!popupRef.current) {
         setConnecting(false);
@@ -240,13 +267,18 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       }
     } catch (e) {
       setConnecting(false);
-      toast({ title: "Could not start Gmail connection", description: (e as Error).message, variant: "destructive" });
+      toast({
+        title: "Could not start Gmail connection",
+        description: explainGmailError((e as Error).message),
+        variant: "destructive",
+      });
     }
   };
 
   const disconnect = async () => {
     try {
-      await callGmail({ action: "disconnect" });
+      if (!activeOrgId) return;
+      await callGmail({ action: "disconnect", organizationId: activeOrgId });
       setConnected(false);
       setConnectedEmail(null);
       toast({ title: "Gmail disconnected" });
@@ -366,7 +398,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       const message = (e as Error).message;
       toast({
         title: message.includes("gmail_not_connected") ? "Connect Gmail first" : "Gmail search failed",
-        description: message.includes("gmail_not_connected") ? undefined : message,
+        description: message.includes("gmail_not_connected") ? undefined : explainGmailError(message),
         variant: "destructive",
       });
       setPreviewFor(null);
@@ -440,6 +472,17 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
           )}
         </p>
 
+        {oauth?.mode === "own" && activeOrgId && (
+          <GoogleOAuthClientSection
+            // Remounted when a client appears or goes, so the form opens again
+            // for a manager the moment there is nothing configured.
+            key={`${activeOrgId}:${oauth.configured}`}
+            organizationId={activeOrgId}
+            status={oauth}
+            onChanged={loadStatus}
+          />
+        )}
+
         <div className="flex items-center justify-between gap-3 border rounded-md p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">Your Gmail account</p>
@@ -448,7 +491,9 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                 ? "Checking…"
                 : connected
                   ? connectedEmail ?? "Connected"
-                  : "Not connected"}
+                  : canConnectGmail(oauth)
+                    ? "Not connected"
+                    : "Waiting for a Google OAuth client"}
             </p>
           </div>
           {connected ? (
@@ -456,7 +501,11 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
               <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
             </Button>
           ) : (
-            <Button size="sm" onClick={connect} disabled={connecting || connected === null}>
+            <Button
+              size="sm"
+              onClick={connect}
+              disabled={connecting || connected === null || !canConnectGmail(oauth)}
+            >
               {connecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
               Connect Gmail
             </Button>

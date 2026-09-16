@@ -8,6 +8,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { normalizeUrl } from './urls.ts';
 import { extractLinks, header, type ExtractedLink, type GmailMessage, type LinkMode } from './extract.ts';
+import { GMAIL_API_BASE, accessTokenSource, type OAuthClient } from './googleOAuth.ts';
 
 // Re-exported so existing importers of this module keep working.
 export { normalizeUrl, extractLinks, header };
@@ -133,36 +134,118 @@ export async function exchangeCode(code: string): Promise<string> {
 
 // ─── Gmail API ────────────────────────────────────────────────────────────
 
-export async function gmail<T>(connectionKey: string, path: string): Promise<T> {
-  const res = await fetch(`${GMAIL_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,
-      'X-Connection-Api-Key': connectionKey,
-    },
-  });
+/**
+ * How a call reaches Gmail.
+ *
+ * `gateway` goes through the shared connector with a connection key, as every
+ * call once did. `google` goes to Gmail directly with an access token from the
+ * organization's own OAuth client. Which one applies is decided per
+ * organization by gmailScope, never by the caller.
+ */
+export type GmailAuth =
+  | { kind: 'gateway'; key: string }
+  | { kind: 'google'; token: () => Promise<string> };
+
+export async function gmail<T>(auth: GmailAuth, path: string): Promise<T> {
+  const res =
+    auth.kind === 'gateway'
+      ? await fetch(`${GMAIL_BASE}${path}`, {
+          headers: {
+            Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,
+            'X-Connection-Api-Key': auth.key,
+          },
+        })
+      : await fetch(`${GMAIL_API_BASE}${path}`, {
+          headers: { Authorization: `Bearer ${await auth.token()}` },
+        });
+  // Google answers 401 once access has been withdrawn; the person needs to
+  // connect again, and saying so is more useful than relaying the raw body.
+  if (res.status === 401 && auth.kind === 'google') throw new Error('gmail_not_connected');
   if (!res.ok) await relay(res, `gmail ${path}`);
   return await res.json() as T;
 }
 
-export async function getConnection(
-  admin: ReturnType<typeof adminClient>,
-  userId: string,
-): Promise<{ key: string; email: string | null }> {
+// ─── Which connector an organization uses ─────────────────────────────────
+
+type Admin = ReturnType<typeof adminClient>;
+
+/**
+ * Whether an organization connects Gmail through the shared connector, or must
+ * use its own Google OAuth client.
+ *
+ * Read from a table only the service role can reach, so no organization can
+ * put itself on the shared connector.
+ */
+export async function usesSharedConnector(admin: Admin, organizationId: string): Promise<boolean> {
   const { data, error } = await admin
-    .from('gmail_connections')
-    .select('connection_key_encrypted, connected_email')
-    .eq('user_id', userId)
+    .from('gmail_shared_connector_organizations')
+    .select('organization_id')
+    .eq('organization_id', organizationId)
     .maybeSingle();
   if (error) throw error;
+  return !!data;
+}
+
+/** The organization's own Google OAuth client, secret decrypted, if it has one. */
+export async function getOAuthClient(
+  admin: Admin,
+  organizationId: string,
+): Promise<(OAuthClient & { updatedAt: string }) | null> {
+  const { data, error } = await admin
+    .from('organization_google_oauth_clients')
+    .select('client_id, client_secret_encrypted, updated_at')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    clientId: data.client_id as string,
+    clientSecret: await decryptKey(data.client_secret_encrypted as string),
+    updatedAt: data.updated_at as string,
+  };
+}
+
+/**
+ * Narrow a gmail_connections query to the connection that serves this
+ * organization: the user's shared one, or the one made with its own client.
+ */
+//
+// Typed loosely on purpose, like the Admin type in gmailImport.ts: supabase-js's
+// builder types recurse deeply enough that a generic over them exceeds what the
+// compiler will instantiate.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function forScope(query: any, shared: boolean, organizationId: string): any {
+  return shared ? query.is('organization_id', null) : query.eq('organization_id', organizationId);
+}
+
+export async function getConnection(
+  admin: Admin,
+  userId: string,
+  organizationId: string,
+): Promise<{ auth: GmailAuth; email: string | null }> {
+  const shared = await usesSharedConnector(admin, organizationId);
+  const { data, error } = await forScope(
+    admin.from('gmail_connections').select('connection_key_encrypted, connected_email').eq('user_id', userId),
+    shared,
+    organizationId,
+  ).maybeSingle();
+  if (error) throw error;
   if (!data) throw new Error('gmail_not_connected');
-  return { key: await decryptKey(data.connection_key_encrypted as string), email: data.connected_email as string | null };
+
+  const secret = await decryptKey(data.connection_key_encrypted as string);
+  const email = data.connected_email as string | null;
+  if (shared) return { auth: { kind: 'gateway', key: secret }, email };
+
+  const client = await getOAuthClient(admin, organizationId);
+  if (!client) throw new Error('oauth_client_not_configured');
+  return { auth: { kind: 'google', token: accessTokenSource(fetch, client, secret) }, email };
 }
 
 // ─── message parsing / link extraction ────────────────────────────────────
 
 /** Fetch matching messages for a query and return all extracted links. */
 export async function searchLinks(
-  connectionKey: string,
+  auth: GmailAuth,
   query: string,
   maxMessages: number,
   mode: LinkMode = 'links',
@@ -176,7 +259,7 @@ export async function searchLinks(
     });
     if (pageToken) params.set('pageToken', pageToken);
     const page = await gmail<{ messages?: Array<{ id: string }>; nextPageToken?: string }>(
-      connectionKey,
+      auth,
       `/users/me/messages?${params.toString()}`,
     );
     for (const m of page.messages ?? []) ids.push(m.id);
@@ -189,7 +272,7 @@ export async function searchLinks(
   for (let i = 0; i < ids.length; i += CONCURRENCY) {
     const batch = ids.slice(i, i + CONCURRENCY);
     const messages = await Promise.all(
-      batch.map((id) => gmail<GmailMessage>(connectionKey, `/users/me/messages/${id}?format=full`)),
+      batch.map((id) => gmail<GmailMessage>(auth, `/users/me/messages/${id}?format=full`)),
     );
     for (const msg of messages) links.push(...extractLinks(msg, mode));
   }
