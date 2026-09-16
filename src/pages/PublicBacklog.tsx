@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
+import { PublicAnnouncement } from "@/components/PublicAnnouncement";
 import { formatDuration } from "@/lib/formatDuration";
 import {
   backlogScope,
@@ -373,6 +374,9 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        {/* In the shell rather than the loaded page, so it is there from the
+            first paint and the backlog does not jump down underneath it. */}
+        <PublicAnnouncement />
         <div className="mb-6 flex items-center justify-between gap-3">
           <p className="text-sm font-semibold">
             Agilefant<sup className="text-primary">2</sup>
