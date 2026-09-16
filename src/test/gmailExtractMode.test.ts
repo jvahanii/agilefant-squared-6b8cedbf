@@ -135,6 +135,40 @@ describe('work item naming: company then title', () => {
     expect(link.company).toBe('Nordea');
   });
 
+  /**
+   * Fortum's job alert, with its markup and links quoted from the real mail.
+   * The brand sits in the path and the host is jobs.<employer>, so reading the
+   * host alone named every posting "Jobs".
+   */
+  it('reads a Fortum alert: every posting, each credited to Fortum', () => {
+    const q = 'from=email&amp;refid=28652025855&amp;utm_source=J2WEmail&amp;source=2&amp;eid=62155-202600160100-34188211055&amp;locale=en_US';
+    const posting = (slug: string, id: string, text: string) =>
+      `<span class="agentjoblink_bullet"></span> <a class="agentjoblink" href="http://jobs.fortum.com/Fortum/job/${slug}/${id}/?${q}">${text}</a><br/>\r\n`;
+    const html =
+      `You are receiving this email because you joined the Fortum Talent Community on 8/26/26. You will receive these messages every 7 day(s). Your Job Alert matched the following jobs at <a class="agentsitelink" href="http://jobs.fortum.com/?${q}">jobs.fortum.com</a>. <br/><br/><b> Jobs </b><br/>` +
+      posting('Espoo-Senior-Manager-Go-To-Market', '1367748155', 'Senior Manager Go-To-Market - Espoo, FI') +
+      posting('Sth-Solna-Senior-Specialist%2C-Master-Data-Management', '1367914655', 'Senior Specialist, Master Data Management - Sth Solna, SE') +
+      posting('Espoo-Senior-Technical-Manager%2C-Industrial-Energy-Solutions', '1368623155', 'Senior Technical Manager, Industrial Energy Solutions - Espoo, FI') +
+      posting('Espoo-Management-Assistant%2C-Technology-Leadership-and-Engagement', '1368041655', 'Management Assistant, Technology Leadership and Engagement - Espoo, FI') +
+      `<br/><br/><br/><a class="agentmodifylink" href="https://career55.sapsf.eu/careers?site=&amp;company=fortumoyj&amp;clientId=jobs2web&amp;lang=en_US&amp;navBarLevel=JOB_MGMT&amp;subNavBarLevel=JOB_ALERTS">Manage your Job Alerts</a>` +
+      `<a class="agentunsubscribelink" href="https://jobs.fortum.com/unsubscribe/?${q}">Unsubscribe </a>`;
+
+    const links = extractLinks(
+      message('fortumoyj-jobnotification@noreply55.jobs2web.com', html, 'New jobs posted from jobs.fortum.com'),
+      'jobs',
+    );
+
+    expect(links).toHaveLength(4);
+    expect(new Set(links.map((l) => l.company))).toEqual(new Set(['Fortum']));
+    expect(links[0].title).toBe('Fortum — Senior Manager Go-To-Market - Espoo, FI');
+  });
+
+  it('does not take a language code in the path for the employer', () => {
+    const url = 'https://careers.example.com/en_US/job/Helsinki-Role-00100/1234567/?from=email';
+    const [link] = extractLinks(message('exampleoy-jobnotification@noreply1.jobs2web.com', `<a href="${url}">Role</a>`), 'jobs');
+    expect(link.company).toBe('Example');
+  });
+
   it('does not repeat a company the title already names', () => {
     const url = 'https://thehub.io/jobs/6aa0e558dc6b58d5a066459d';
     const html = `

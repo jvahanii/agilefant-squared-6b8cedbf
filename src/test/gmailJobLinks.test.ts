@@ -199,6 +199,18 @@ describe('jobs2web / SuccessFactors career sites', () => {
     ]);
     expect(out).toEqual(['https://careers.wartsila.com/job/Helsinki-Some-Role-00100/1234567']);
   });
+
+  it('keeps postings whose path names the brand before /job/', () => {
+    // Fortum's alerts, quoted: /Fortum/job/<slug>/<id>. Requiring /job/ first
+    // discarded all four postings, so the email imported nothing at all.
+    const out = pipeline('fortumoyj-jobnotification@noreply55.jobs2web.com', [
+      'http://jobs.fortum.com/?from=email&refid=28652025855&utm_source=J2WEmail&source=2&eid=62155-202600160100-34188211055&locale=en_US',
+      'http://jobs.fortum.com/Fortum/job/Espoo-Senior-Manager-Go-To-Market/1367748155/?from=email&refid=28652025855&utm_source=J2WEmail&source=2&eid=62155-202600160100-34188211055&locale=en_US',
+      'https://career55.sapsf.eu/careers?site=&company=fortumoyj&clientId=jobs2web&lang=en_US&navBarLevel=JOB_MGMT&subNavBarLevel=JOB_ALERTS',
+      'https://jobs.fortum.com/unsubscribe/?from=email&refid=28652025855&utm_source=J2WEmail&source=2&eid=62155-202600160100-34188211055&locale=en_US',
+    ]);
+    expect(out).toEqual(['http://jobs.fortum.com/Fortum/job/Espoo-Senior-Manager-Go-To-Market/1367748155']);
+  });
 });
 
 describe('Teamtailor', () => {

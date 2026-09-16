@@ -131,16 +131,33 @@ export const JOB_SOURCES: JobSource[] = [
   {
     // jobs2web / SuccessFactors powers per-employer career sites, so one
     // profile covers every company mailing through it (Nordea, Wärtsilä,
-    // Outokumpu so far). The host differs per employer, hence a path-only test.
+    // Outokumpu, Fortum so far). The host differs per employer, hence a
+    // path-only test.
     id: 'jobs2web',
-    // Career sites are careers.<employer>.<tld>; the employer is the host.
     company: ({ url }) => {
-      const label = url.hostname.replace(/^careers?\./i, '').split('.')[0];
+      // Some sites put the brand in the path before /job/ —
+      // jobs.fortum.com/Fortum/job/… — and that is the employer's own spelling.
+      const brand = url.pathname.match(/^\/([^/]+)\/job\//i)?.[1];
+      // Not a language code in the same place (/en/job/…, /fi_FI/job/…), which
+      // would otherwise name the employer "en".
+      if (brand && !/^[a-z]{2}(?:[_-][a-z]{2})?$/i.test(brand)) {
+        try {
+          return decodeURIComponent(brand);
+        } catch {
+          return brand;
+        }
+      }
+      // Otherwise the host is careers.<employer>.<tld> or jobs.<employer>.<tld>.
+      // Stripping only "careers." named every Fortum posting "Jobs".
+      const label = url.hostname.replace(/^(careers?|jobs)\./i, '').split('.')[0];
       return label ? label.charAt(0).toUpperCase() + label.slice(1) : undefined;
     },
     senders: /@[\w.-]*jobs2web\.com/i,
     alertSenders: ['jobs2web.com'],
-    isJobUrl: (u) => /^\/job\/[^/]+\/\d+/i.test(u.pathname),
+    // /job/<slug>/<id>, optionally after one brand segment: /Fortum/job/<slug>/<id>.
+    // Requiring /job/ first threw away every posting in Fortum's alerts, so the
+    // whole email imported nothing.
+    isJobUrl: (u) => /^\/(?:[^/]+\/)?job\/[^/]+\/\d+/i.test(u.pathname),
   },
   {
     // Teamtailor, likewise multi-tenant: <company>.teamtailor.com.
