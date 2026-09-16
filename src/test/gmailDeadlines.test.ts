@@ -224,6 +224,48 @@ describe('parseDeadline', () => {
       .toBeUndefined();
   });
 
+  /**
+   * Postings name the weekday as often as not, and a pattern wanting the date
+   * immediately after the preposition saw none of these. All quoted from real
+   * ads.
+   */
+  it('reads past a weekday standing between the deadline word and the date', () => {
+    expect(
+      parseDeadline(
+        'Submit your application with your CV, cover letter and salary expectation as soon as ' +
+          'possible, but no later than Sunday, 4 October 2026.',
+        SEPT,
+      ),
+    ).toBe('2026-10-04');
+    expect(
+      parseDeadline('Hienoa! Hae tehtävään viimeistään keskiviikkona 30.9.2026 ja liitä hakuun CV:si', SEPT),
+    ).toBe('2026-09-30');
+  });
+
+  it('reads the Swedish phrasing, which is one word', () => {
+    expect(
+      parseDeadline('Skicka in din ansökan och CV via Hankens ansökningssystem LAURA senast 4.10. 2026.', SEPT),
+    ).toBe('2026-10-04');
+    // "4.10. 2026" — the year is separated from the date by a space.
+    expect(parseDeadline('Ansök senast söndagen den 4.10.2026', SEPT)).toBe('2026-10-04');
+  });
+
+  it('reads a listing header that states the hour as well', () => {
+    expect(parseDeadline('Julkaistu 15.9. (Päättyy 4.10. klo 00:00)', SEPT)).toBe('2026-10-04');
+    expect(deadlinePrefix(parseDeadline('Julkaistu 15.9. (Päättyy 4.10. klo 00:00)', SEPT))).toBe('1004');
+  });
+
+  it('still needs the bracket closed after whatever follows the date', () => {
+    // The trailing run is what lets "klo 00:00" through; without the closing
+    // bracket this is prose, and prose about dates is not a deadline.
+    expect(parseDeadline('Julkaistu 15.9. Päättyy 4.10. klo 00:00', SEPT)).toBeUndefined();
+  });
+
+  it('does not let the gap wander off into a sentence', () => {
+    // Two short words, not a clause: the date has to be nearly adjacent still.
+    expect(parseDeadline('Apply before you forget to send us anything at all on 4.10.2026', SEPT)).toBeUndefined();
+  });
+
   it('does not attach "mennessä" to a date it does not follow', () => {
     // The postposition governs the date immediately before it. A date elsewhere
     // in the sentence is somebody else's -- here, when the work starts.

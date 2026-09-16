@@ -18,6 +18,22 @@
 const DAY_MONTH = String.raw`(\d{1,2})\.(\d{1,2})\.?(?:\s*(\d{4}))?`;
 
 /**
+ * The small words that sit between a deadline word and the date it governs.
+ *
+ * Postings name the weekday as often as not -- "no later than Sunday, 4 October
+ * 2026", "viimeistään keskiviikkona 30.9.2026" -- and a pattern demanding the
+ * date immediately after the preposition saw neither. Two words rather than a
+ * list of weekdays in three languages: what has to be allowed through is a
+ * short hesitation, and enumerating "keskiviikkona" and "söndagen den" is a list
+ * that is wrong as soon as a posting is written in a fourth language.
+ *
+ * Kept to two, and to letters, so it cannot wander into a sentence: the anchor
+ * before it is still a word about applying, and the date after it still has to
+ * look like one.
+ */
+const SOFT_GAP = String.raw`(?:[A-Za-zÀ-ÿ]{2,14},?\s+){0,2}`;
+
+/**
  * A submission word, then the preposition that governs the date: "please submit
  * your application with your updated CV and cover letter via Careers site by
  * September 25th 2026".
@@ -33,7 +49,7 @@ const DAY_MONTH = String.raw`(\d{1,2})\.(\d{1,2})\.?(?:\s*(\d{4}))?`;
  * The gap excludes full stops, so the match cannot cross out of its sentence and
  * pick up the start date in the next one.
  */
-const SUBMIT_BY = String.raw`(?:deadline|appl(?:y|ies|ication|ications)|submit|send)[^.\n]{0,120}?\b(?:by|before|until|no later than)\s+`;
+const SUBMIT_BY = String.raw`(?:deadline|appl(?:y|ies|ication|ications)|submit|send)[^.\n]{0,120}?\b(?:by|before|until|no later than)\s+${SOFT_GAP}`;
 
 /** Numeric patterns. Capture order is day, month, optional year. */
 const NUMERIC_PATTERNS: RegExp[] = [
@@ -41,7 +57,11 @@ const NUMERIC_PATTERNS: RegExp[] = [
   new RegExp(String.raw`haku(?:aika)?\s*päättyy\s*${DAY_MONTH}`, "i"),
   // "jätä hakemus viimeistään 28.9.2026".
   // Spelled out rather than \w*, which does not match "ä" in JavaScript.
-  new RegExp(String.raw`viimeist[a-zäöå]*\s*${DAY_MONTH}`, "i"),
+  new RegExp(String.raw`viimeist[a-zäöå]*\s*${SOFT_GAP}${DAY_MONTH}`, "i"),
+  // Swedish, which says it in one word: "Skicka in din ansökan och CV via
+  // Hankens ansökningssystem LAURA senast 4.10. 2026". Note the space before the
+  // year -- DAY_MONTH already allows it.
+  new RegExp(String.raw`senast\s*${SOFT_GAP}${DAY_MONTH}`, "i"),
   // "jätä hakemuksesi rekrytointijärjestelmämme kautta 30.9.2026 klo 16 mennessä".
   // Public-sector postings often phrase it with no deadline word at all, only the
   // postposition. "Mennessä" means "by", and the date it governs stands directly
@@ -55,7 +75,13 @@ const NUMERIC_PATTERNS: RegExp[] = [
   // published date, which sits immediately before, out of the match.
   // "Päättynyt" as well as "päättyy": once the date has gone by Duunitori
   // rewrites the header in the past tense, and that date is still the deadline.
-  new RegExp(String.raw`\(\s*(?:ends|ended|closes|closed|päättyy|päättynyt|umpeutuu)\s*:?\s*${DAY_MONTH}\s*\)`, "i"),
+  // The trailing run allows the clock time these headers sometimes carry --
+  // "(Päättyy 4.10. klo 00:00)" -- while the closing bracket still has to be
+  // there, which is what keeps this from reading a date out of open prose.
+  new RegExp(
+    String.raw`\(\s*(?:ends|ended|closes|closed|päättyy|päättynyt|umpeutuu)\s*:?\s*${DAY_MONTH}[^)\n]{0,24}\)`,
+    "i",
+  ),
   // "Hakuaika 11.9 - 11.3." -- a range, so the deadline is the second date.
   new RegExp(String.raw`hakuaika\s*\d{1,2}\.\d{1,2}\.?\s*[-–—]\s*${DAY_MONTH}`, "i"),
   // "apply by 30.9.2026", "submit your application by 30.9.2026"
