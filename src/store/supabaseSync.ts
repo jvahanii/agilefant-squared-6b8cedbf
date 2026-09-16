@@ -1123,32 +1123,112 @@ async function upsertWorkItemBacklogRanks(
 export async function upsertWorkItemBacklogRankRows(
   rowsToUpsert: WorkItemBacklogRankUpsert[],
 ): Promise<boolean> {
-  return upsertWorkItemBacklogRankRowsImmediate(rowsToUpsert);
+  return (await upsertWorkItemBacklogRankRowsDetailed(rowsToUpsert)).ok;
+}
+
+/** What a rank write achieved, for callers that keep a retry queue. */
+export interface RankUpsertResult {
+  /** Every row was written, or skipped because its work item does not exist. */
+  ok: boolean;
+  /**
+   * Work items the rows named that are not in the database, so their rows were
+   * not written. Either deleted — the rank is moot — or not inserted yet; only
+   * the caller can tell which, from what it still holds locally.
+   */
+  missingWorkItemIds: string[];
+}
+
+type RankRow = { work_item_id: string; backlog_id: string; rank: number; organization_id: string };
+
+/** Of these work item ids, the ones the database has. Null if it cannot say. */
+async function existingWorkItemIds(ids: string[]): Promise<Set<string> | null> {
+  const found = new Set<string>();
+  const unique = [...new Set(ids)];
+  for (let i = 0; i < unique.length; i += 200) {
+    const chunk = unique.slice(i, i + 200);
+    // Never more than 200 rows, by primary key, but paginated all the same:
+    // reads from work_items go through the shared helper, which is what the
+    // pagination guard checks for.
+    const { data, error } = await paginateSelect<{ id: string }>((from, to) =>
+      supabase.from('work_items').select('id').in('id', chunk).order('id', { ascending: true }).range(from, to),
+    );
+    if (error) return null;
+    for (const row of data ?? []) found.add(row.id);
+  }
+  return found;
+}
+
+/**
+ * Upsert rank rows, surviving rows whose work item no longer exists.
+ *
+ * Both rank tables reference work_items, so a single row for a deleted item
+ * made the whole payload fail — and because failed writes stay in the retry
+ * queue and are re-sent on every load, that one row failed every write after
+ * it too, showing "Failed to save ranking" again and again. A rank for an item
+ * that is gone has nothing left to order, so on that one error the rows are
+ * checked, the rest are written, and the missing items are reported rather
+ * than treated as a failure.
+ *
+ * The check costs nothing on the normal path: it runs only after the database
+ * has already refused the write for exactly this reason.
+ */
+async function upsertRankRowsSkippingMissing(
+  table: 'work_item_backlog_ranks' | 'work_item_board_ranks',
+  rows: RankRow[],
+  failureTitle: string,
+): Promise<RankUpsertResult> {
+  if (rows.length === 0) return { ok: true, missingWorkItemIds: [] };
+  // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
+  // row locks in the same order, preventing PostgreSQL deadlocks.
+  rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
+
+  const write = async (payload: RankRow[]) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (await supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' })).error;
+
+  let error = await write(rows);
+  let missing: string[] = [];
+  // 23503 is foreign_key_violation. The constraint name is checked too, so a
+  // foreign key added to these tables later is not mistaken for this one.
+  if (error?.code === '23503' && /work_item_id_fkey/.test(error.message ?? '')) {
+    const existing = await existingWorkItemIds(rows.map((r) => r.work_item_id));
+    if (existing) {
+      missing = [...new Set(rows.filter((r) => !existing.has(r.work_item_id)).map((r) => r.work_item_id))];
+      const writable = rows.filter((r) => existing.has(r.work_item_id));
+      error = writable.length > 0 ? await write(writable) : null;
+    }
+  }
+
+  if (error) {
+    console.error(`upsert ${table}:`, error);
+    toast({ title: failureTitle, description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
+    return { ok: false, missingWorkItemIds: missing };
+  }
+  if (missing.length > 0) {
+    console.warn(`upsert ${table}: skipped ranks for ${missing.length} work item(s) not in the database`, missing);
+  }
+  return { ok: true, missingWorkItemIds: missing };
+}
+
+export async function upsertWorkItemBacklogRankRowsDetailed(
+  rowsToUpsert: WorkItemBacklogRankUpsert[],
+): Promise<RankUpsertResult> {
+  return upsertRankRowsSkippingMissing(
+    'work_item_backlog_ranks',
+    rowsToUpsert.map((row) => ({
+      work_item_id: row.workItemId,
+      backlog_id: row.backlogId,
+      rank: safeRank(row.rank),
+      organization_id: row.organizationId,
+    })),
+    'Failed to save ranking',
+  );
 }
 
 async function upsertWorkItemBacklogRankRowsImmediate(
   rowsToUpsert: WorkItemBacklogRankUpsert[],
 ): Promise<boolean> {
-  const rows = rowsToUpsert.map((row) => ({
-    work_item_id: row.workItemId,
-    backlog_id: row.backlogId,
-    rank: safeRank(row.rank),
-    organization_id: row.organizationId,
-  }));
-  if (rows.length === 0) return true;
-  // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
-  // row locks in the same order, preventing PostgreSQL deadlocks.
-  rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase
-    .from('work_item_backlog_ranks' as any)
-    .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
-  if (error) {
-    console.error('upsertWorkItemBacklogRanks:', error);
-    toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
-    return false;
-  }
-  return true;
+  return (await upsertWorkItemBacklogRankRowsDetailed(rowsToUpsert)).ok;
 }
 
 /** Upsert per-backlog ranks for a batch of work items. */
@@ -1251,24 +1331,23 @@ async function loadWorkItemBoardRanks(
 export async function upsertWorkItemBoardRankRows(
   rowsToUpsert: WorkItemBoardRankUpsert[],
 ): Promise<boolean> {
-  const rows = rowsToUpsert.map((row) => ({
+  return (await upsertWorkItemBoardRankRowsDetailed(rowsToUpsert)).ok;
+}
+
+/** Board ranks reference work_items the same way, and queue the same way. */
+export async function upsertWorkItemBoardRankRowsDetailed(
+  rowsToUpsert: WorkItemBoardRankUpsert[],
+): Promise<RankUpsertResult> {
+  return upsertRankRowsSkippingMissing(
+    'work_item_board_ranks',
+    rowsToUpsert.map((row) => ({
       work_item_id: row.workItemId,
       backlog_id: row.backlogId,
       rank: safeRank(row.rank),
       organization_id: row.organizationId,
-    }));
-    if (rows.length === 0) return true;
-    rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await supabase
-      .from('work_item_board_ranks' as any)
-      .upsert(rows, { onConflict: 'work_item_id,backlog_id' });
-    if (error) {
-      console.error('upsertWorkItemBoardRankRows:', error);
-      toast({ title: 'Failed to save board ranking', description: error.message || 'Your changes could not be saved.', variant: 'destructive' });
-      return false;
-    }
-    return true;
+    })),
+    'Failed to save board ranking',
+  );
 }
 
 export async function deleteWorkItemBoardRanks(

@@ -19,7 +19,9 @@ import {
   deleteHyperlink as deleteHyperlinkDB,
   registerWorkItemRenameCallback,
   upsertWorkItemBacklogRankRows,
+  upsertWorkItemBacklogRankRowsDetailed,
   upsertWorkItemBoardRankRows,
+  upsertWorkItemBoardRankRowsDetailed,
   type WorkItemBacklogRankUpsert,
   type WorkItemBoardRankUpsert,
 } from "./supabaseSync";
@@ -939,25 +941,72 @@ function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
   }
 }
 
-function persistRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
+function removeQueuedRankUpserts(rows: WorkItemBacklogRankUpsert[]) {
+  if (typeof localStorage === "undefined" || rows.length === 0) return;
+  try {
+    const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
+    const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
+    if (!Array.isArray(existing)) return;
+    // Only an entry holding the same rank that was saved: a newer rank queued
+    // for the same item meanwhile must stay until it is saved itself.
+    const remaining = existing.filter((row) => {
+      const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
+      return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
+    });
+    if (remaining.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(remaining));
+    else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
+
+/**
+ * How long to wait before writing again the ranks of an item the database did
+ * not have yet. A rank can be saved in the moment between an item appearing in
+ * the app and its insert landing — reordering straight after creating one — and
+ * a second or two later the item is there.
+ */
+const MISSING_ITEM_RANK_RETRY_MS = 2_500;
+
+/**
+ * Of the rows naming work items the database did not have, those whose item the
+ * app still holds. Those are most likely still being inserted, so their ranks
+ * are worth keeping. An item the app no longer has was deleted, and a rank for it
+ * orders nothing.
+ */
+function rankRowsAwaitingInsert<T extends { workItemId: string }>(rows: T[], missingWorkItemIds: string[]): T[] {
+  if (missingWorkItemIds.length === 0) return [];
+  const missing = new Set(missingWorkItemIds);
+  const { workItems } = useAppStore.getState();
+  return rows.filter((row) => missing.has(row.workItemId) && !!workItems[row.workItemId]);
+}
+
+function persistRankUpserts(rows: WorkItemBacklogRankUpsert[], isRetry = false) {
   if (rows.length === 0) return;
-  recordRankWrite(rows);
-  queueRankUpsertsForRetry(rows);
-  upsertWorkItemBacklogRankRows(rows).then((ok) => {
+  if (!isRetry) {
+    recordRankWrite(rows);
+    queueRankUpsertsForRetry(rows);
+  }
+  upsertWorkItemBacklogRankRowsDetailed(rows).then(({ ok, missingWorkItemIds }) => {
     if (!ok || typeof localStorage === "undefined") return;
     notifyPersistDebug('backlogRank', `${rows.length} row(s)`);
-    try {
-      const savedRows = new Map(rows.map((row) => [`${row.workItemId}::${row.backlogId}`, row]));
-      const existing = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
-      if (!Array.isArray(existing)) return;
-      const remaining = existing.filter((row) => {
-        const saved = savedRows.get(`${row.workItemId}::${row.backlogId}`);
-        return !saved || saved.rank !== row.rank || saved.organizationId !== row.organizationId;
-      });
-      if (remaining.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(remaining));
-      else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
-    } catch {
-      // Best-effort cleanup only.
+    const awaiting = rankRowsAwaitingInsert(rows, missingWorkItemIds);
+    const awaitingKeys = new Set(awaiting.map((row) => `${row.workItemId}::${row.backlogId}`));
+    // Saved rows, and rows for deleted items, leave the queue. Before this they
+    // stayed, and the queue re-sent a row for a deleted item on every load,
+    // failing each time.
+    removeQueuedRankUpserts(rows.filter((row) => !awaitingKeys.has(`${row.workItemId}::${row.backlogId}`)));
+    if (awaiting.length > 0 && !isRetry) {
+      setTimeout(() => {
+        // The rank as it is now, not as it was: the item may have moved again
+        // meanwhile, and that newer write must not be overwritten by this one.
+        const { workItems } = useAppStore.getState();
+        const current = awaiting.flatMap((row) => {
+          const rank = workItems[row.workItemId]?.ranks[row.backlogId];
+          return rank === undefined ? [] : [{ ...row, rank }];
+        });
+        persistRankUpserts(current, true);
+      }, MISSING_ITEM_RANK_RETRY_MS);
     }
   });
 }
@@ -992,36 +1041,76 @@ function readPendingBoardRankUpserts(): WorkItemBoardRankUpsert[] {
   }
 }
 
-function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[]) {
+function persistBoardRankUpserts(rows: WorkItemBoardRankUpsert[], isRetry = false) {
   if (rows.length === 0) return;
-  recordBoardRankWrite(rows);
-  queueBoardRankUpsertsForRetry(rows);
-  upsertWorkItemBoardRankRows(rows).then((ok) => {
+  if (!isRetry) {
+    recordBoardRankWrite(rows);
+    queueBoardRankUpsertsForRetry(rows);
+  }
+  upsertWorkItemBoardRankRowsDetailed(rows).then(({ ok, missingWorkItemIds }) => {
     if (!ok || typeof localStorage === "undefined") return;
     notifyPersistDebug('boardRank', `${rows.length} row(s)`);
-    removeQueuedBoardRankUpserts(rows);
+    const awaiting = rankRowsAwaitingInsert(rows, missingWorkItemIds);
+    const awaitingKeys = new Set(awaiting.map((row) => `${row.workItemId}::${row.backlogId}`));
+    removeQueuedBoardRankUpserts(rows.filter((row) => !awaitingKeys.has(`${row.workItemId}::${row.backlogId}`)));
+    if (awaiting.length > 0 && !isRetry) {
+      setTimeout(() => {
+        const { workItems } = useAppStore.getState();
+        const current = awaiting.flatMap((row) => {
+          const rank = workItems[row.workItemId]?.boardRanks?.[row.backlogId];
+          return rank === undefined ? [] : [{ ...row, rank }];
+        });
+        persistBoardRankUpserts(current, true);
+      }, MISSING_ITEM_RANK_RETRY_MS);
+    }
   });
 }
 
-async function flushPendingRankUpserts() {
+/**
+ * The queued rank rows still worth keeping after a load-time flush: those whose
+ * item the database lacks but which is itself still waiting in the work item
+ * queue. Nothing else is held locally at load, so any other row naming a missing
+ * item in this organization belongs to one that was deleted. Rows for another
+ * organization are kept — its queue is not the one that was just flushed.
+ */
+function queuedRankRowsToKeep<T extends { workItemId: string; organizationId: string }>(
+  pending: T[],
+  missingWorkItemIds: string[],
+  orgId: string,
+): T[] {
+  if (missingWorkItemIds.length === 0) return [];
+  const missing = new Set(missingWorkItemIds);
+  const stillQueued = new Set(readPendingWorkItemUpserts(orgId).map((entry) => entry.item.id));
+  return pending.filter(
+    (row) => missing.has(row.workItemId) && (row.organizationId !== orgId || stillQueued.has(row.workItemId)),
+  );
+}
+
+async function flushPendingRankUpserts(orgId: string) {
   if (typeof localStorage === "undefined") return;
   try {
     const pending = JSON.parse(localStorage.getItem(PENDING_RANK_UPSERTS_KEY) ?? "[]");
     if (!Array.isArray(pending) || pending.length === 0) return;
-    const ok = await upsertWorkItemBacklogRankRows(pending);
-    if (ok) localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
+    const { ok, missingWorkItemIds } = await upsertWorkItemBacklogRankRowsDetailed(pending);
+    if (!ok) return;
+    const keep = queuedRankRowsToKeep(pending, missingWorkItemIds, orgId);
+    if (keep.length > 0) localStorage.setItem(PENDING_RANK_UPSERTS_KEY, JSON.stringify(keep));
+    else localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   } catch {
     localStorage.removeItem(PENDING_RANK_UPSERTS_KEY);
   }
 }
 
-async function flushPendingBoardRankUpserts() {
+async function flushPendingBoardRankUpserts(orgId: string) {
   if (typeof localStorage === "undefined") return;
   try {
     const pending = readPendingBoardRankUpserts();
     if (pending.length === 0) return;
-    const ok = await upsertWorkItemBoardRankRows(pending);
-    if (ok) localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
+    const { ok, missingWorkItemIds } = await upsertWorkItemBoardRankRowsDetailed(pending);
+    if (!ok) return;
+    const keep = queuedRankRowsToKeep(pending, missingWorkItemIds, orgId);
+    if (keep.length > 0) localStorage.setItem(PENDING_BOARD_RANK_UPSERTS_KEY, JSON.stringify(keep));
+    else localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
   } catch {
     localStorage.removeItem(PENDING_BOARD_RANK_UPSERTS_KEY);
   }
@@ -1290,8 +1379,8 @@ export const useAppStore = create<AppState>()((set, get) => {
             const versionBeforeFetch = localMutationVersion;
             const pendingAtLoad = readPendingWorkItemUpserts(orgId);
             await flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {});
-            await flushPendingRankUpserts().catch(() => {});
-            await flushPendingBoardRankUpserts().catch(() => {});
+            await flushPendingRankUpserts(orgId).catch(() => {});
+            await flushPendingBoardRankUpserts(orgId).catch(() => {});
             const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
               loadFromSupabase(orgId),
               loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
@@ -1412,11 +1501,19 @@ export const useAppStore = create<AppState>()((set, get) => {
         // instead of blocking on it first.  If it fails or hangs the data
         // still arrives and the UI becomes interactive sooner.
         const pendingAtLoad = readPendingWorkItemUpserts(orgId);
-        const rankFlushPromise = Promise.all([
-          flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {}),
-          flushPendingRankUpserts().catch(() => {}),
-          flushPendingBoardRankUpserts().catch(() => {}),
-        ]).catch(() => {});
+        // Items first, then their ranks. Run side by side, a queued rank for a
+        // queued new item could reach the database before the item did and be
+        // refused — the same failure that kept "Failed to save ranking"
+        // coming back on load.
+        const rankFlushPromise = flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees })
+          .catch(() => {})
+          .then(() =>
+            Promise.all([
+              flushPendingRankUpserts(orgId).catch(() => {}),
+              flushPendingBoardRankUpserts(orgId).catch(() => {}),
+            ]),
+          )
+          .catch(() => {});
 
         // Run the main data load, hyperlinks (org-scoped), change log, and
         // rank flush all concurrently. Hyperlinks can be fetched by

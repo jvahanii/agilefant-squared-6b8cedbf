@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/appStore";
 import { readCachedAppData, writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
 import { getEffectiveParentId } from "@/types/models";
-import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
+import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
 vi.mock("@/store/supabaseSync", () => ({
@@ -10,7 +10,9 @@ vi.mock("@/store/supabaseSync", () => ({
   upsertWorkItem: vi.fn(),
   upsertWorkItems: vi.fn().mockResolvedValue(true),
   upsertWorkItemBacklogRankRows: vi.fn().mockResolvedValue(true),
+  upsertWorkItemBacklogRankRowsDetailed: vi.fn().mockResolvedValue({ ok: true, missingWorkItemIds: [] }),
   upsertWorkItemBoardRankRows: vi.fn().mockResolvedValue(true),
+  upsertWorkItemBoardRankRowsDetailed: vi.fn().mockResolvedValue({ ok: true, missingWorkItemIds: [] }),
   deleteWorkItemBoardRanks: vi.fn().mockResolvedValue(undefined),
   deleteWorkItems: vi.fn(),
   deleteWorkItemBacklogRanks: vi.fn(),
@@ -88,6 +90,7 @@ beforeEach(() => {
   vi.mocked(loadDataFromSupabase).mockClear();
   vi.mocked(loadDataFromSupabase).mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} });
   vi.mocked(upsertWorkItemBacklogRankRows).mockClear();
+  vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mockClear();
   vi.mocked(upsertWorkItemBoardRankRows).mockClear();
   vi.mocked(upsertWorkItemBoardRankRows).mockResolvedValue(true);
   vi.mocked(upsertWorkItems).mockClear();
@@ -124,7 +127,9 @@ describe("reorderWorkItemAmongSiblings", () => {
       .sort((a, b) => a.ranks[`${ORG}::bl-1`] - b.ranks[`${ORG}::bl-1`])
       .map((wi) => wi.title);
     expect(ordered).toEqual(["Three", "One", "Two"]);
-    expect(upsertWorkItemBacklogRankRows).toHaveBeenCalledWith(expect.arrayContaining([
+    // Rank writes go through the variant that reports missing work items, so
+    // a row for a deleted item cannot jam the retry queue.
+    expect(upsertWorkItemBacklogRankRowsDetailed).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ workItemId: `${ORG}::wi-3`, backlogId: `${ORG}::bl-1`, rank: 0 }),
       expect.objectContaining({ workItemId: `${ORG}::wi-1`, backlogId: `${ORG}::bl-1`, rank: 1 }),
       expect.objectContaining({ workItemId: `${ORG}::wi-2`, backlogId: `${ORG}::bl-1`, rank: 2 }),
@@ -3441,5 +3446,128 @@ describe("moveWorkItemsToBacklog (batched)", () => {
     for (const id of [`${ORG}::wi-0`, `${ORG}::wi-1`, `${ORG}::wi-2`]) {
       expect(items[id].backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-1`);
     }
+  });
+});
+
+// ─── RANK RETRY QUEUE AND DELETED WORK ITEMS ────────────────────────────
+//
+// "Failed to save ranking … violates foreign key constraint
+// work_item_backlog_ranks_work_item_id_fkey", again and again. A rank row for a
+// work item that no longer existed failed its write, stayed in the retry queue,
+// and was re-sent — and refused — on every load. These pin that such a row now
+// leaves the queue, while a row for an item still being inserted is kept.
+
+describe("rank retry queue with missing work items", () => {
+  const RANKS_KEY = "pending_work_item_rank_upserts";
+  const flush = async () => {
+    for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0));
+  };
+  const queuedIds = () =>
+    (JSON.parse(localStorage.getItem(RANKS_KEY) ?? "[]") as Array<{ workItemId: string }>).map((r) => r.workItemId).sort();
+
+  function seedThree() {
+    const item = (n: number) => ({
+      id: `${ORG}::wi-${n}`, title: `Item ${n}`, status: "not_started" as const,
+      parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      ranks: { [`${ORG}::bl-1`]: n - 1 }, organizationId: ORG,
+    });
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: { [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 } },
+      backlogs: { [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "BL 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 } },
+      workItems: { [`${ORG}::wi-1`]: item(1), [`${ORG}::wi-2`]: item(2), [`${ORG}::wi-3`]: item(3) },
+      selectedWorkItemIds: [`${ORG}::wi-3`], undoStack: [], redoStack: [], isLoading: false,
+    });
+  }
+
+  it("drops the queued rank of an item that has been deleted", async () => {
+    seedThree();
+    vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mockImplementationOnce(async () => {
+      // Deleted while the write was in flight — elsewhere, or by this user.
+      // After a tick, as a real deletion would be: the reorder commits its own
+      // item list straight after starting the write.
+      await new Promise((r) => setTimeout(r, 0));
+      const { [`${ORG}::wi-2`]: _gone, ...rest } = useAppStore.getState().workItems;
+      useAppStore.setState({ workItems: rest });
+      return { ok: true, missingWorkItemIds: [`${ORG}::wi-2`] };
+    });
+
+    useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-3`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+    await flush();
+
+    // Before the fix wi-2's row stayed queued forever and failed every load.
+    expect(queuedIds()).toEqual([]);
+  });
+
+  it("keeps, and retries shortly, the rank of an item still being inserted", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      seedThree();
+      vi.mocked(upsertWorkItemBacklogRankRowsDetailed)
+        .mockResolvedValueOnce({ ok: true, missingWorkItemIds: [`${ORG}::wi-2`] })
+        .mockResolvedValueOnce({ ok: true, missingWorkItemIds: [] });
+
+      useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-3`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+      await flush();
+
+      // wi-2 is still in the app, so it has probably not been inserted yet.
+      expect(queuedIds()).toEqual([`${ORG}::wi-2`]);
+
+      await vi.advanceTimersByTimeAsync(3_000);
+      await flush();
+
+      const retry = vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mock.calls[1][0];
+      expect(retry.map((r) => r.workItemId)).toEqual([`${ORG}::wi-2`]);
+      // Sent at the rank it has now, not the one it had when first queued.
+      expect(retry[0].rank).toBe(useAppStore.getState().workItems[`${ORG}::wi-2`].ranks[`${ORG}::bl-1`]);
+      expect(queuedIds()).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears a queue jammed by a deleted item when the app loads", async () => {
+    // The state users were stuck in: a queued row for an item long gone, plus
+    // a genuine one that could never be saved alongside it.
+    localStorage.setItem(RANKS_KEY, JSON.stringify([
+      { workItemId: `${ORG}::wi-deleted`, backlogId: `${ORG}::bl-1`, rank: 3, organizationId: ORG },
+      { workItemId: `${ORG}::wi-live`, backlogId: `${ORG}::bl-1`, rank: 1, organizationId: ORG },
+    ]));
+    vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mockResolvedValueOnce({
+      ok: true,
+      missingWorkItemIds: [`${ORG}::wi-deleted`],
+    });
+    useAppStore.setState({ organizationId: ORG, isLoading: false });
+
+    await useAppStore.getState().loadFromSupabase();
+    await flush();
+
+    expect(localStorage.getItem(RANKS_KEY)).toBeNull();
+  });
+
+  it("keeps a queued rank at load for an item that is itself still queued to save", async () => {
+    const pendingItem = {
+      id: `${ORG}::wi-new`, title: "Not saved yet", status: "not_started" as const,
+      parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+      ranks: { [`${ORG}::bl-1`]: 0 }, organizationId: ORG,
+    };
+    localStorage.setItem("pending_work_item_upserts", JSON.stringify([
+      { item: pendingItem, organizationId: ORG, updatedAt: Date.now() },
+    ]));
+    localStorage.setItem(RANKS_KEY, JSON.stringify([
+      { workItemId: pendingItem.id, backlogId: `${ORG}::bl-1`, rank: 0, organizationId: ORG },
+    ]));
+    // The item save fails, so it stays queued; its rank must stay with it.
+    vi.mocked(upsertWorkItems).mockResolvedValueOnce(false);
+    vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mockResolvedValueOnce({
+      ok: true,
+      missingWorkItemIds: [pendingItem.id],
+    });
+    useAppStore.setState({ organizationId: ORG, isLoading: false });
+
+    await useAppStore.getState().loadFromSupabase();
+    await flush();
+
+    expect(queuedIds()).toEqual([pendingItem.id]);
   });
 });
