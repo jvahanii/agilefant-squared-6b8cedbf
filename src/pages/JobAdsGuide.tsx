@@ -73,11 +73,6 @@ export default function JobAdsGuide() {
           when an ad closes.
         </p>
 
-        <Callout>
-          Job ad import is not yet available in every organization. If you do not see <Em>Job ad import</Em> under{" "}
-          <Em>Bells &amp; Whistles</Em>, it has not been turned on for yours.
-        </Callout>
-
         <nav aria-label="On this page" className="mt-8 rounded-lg border p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On this page</p>
           <ol className="mt-2 grid gap-1 text-sm sm:grid-cols-2">

@@ -71,12 +71,10 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
 
       <GithubIntegrationsCard />
 
-      {activeOrg?.organization_slug === "agilefant" && (
-        <>
-          <GmailIntegrationsCard />
-          <JobAdImportCard />
-        </>
-      )}
+      {/* Job ad import is open to every organization. The general link import
+          beside it is not: that one still only shows in Agilefant's own. */}
+      {activeOrg?.organization_slug === "agilefant" && <GmailIntegrationsCard />}
+      <JobAdImportCard />
 
       <Card>
         <CardHeader>
