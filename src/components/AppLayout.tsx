@@ -32,6 +32,8 @@ import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
+import { RerankGuardHost } from "@/components/RerankGuardHost";
+import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
@@ -90,6 +92,7 @@ export default function AppLayout() {
     <ScrambleProvider>
       <AppLayoutInner />
       <DeleteGuardHost />
+      <RerankGuardHost />
       <BurnupDialogHost />
     </ScrambleProvider>
   );
@@ -261,34 +264,48 @@ function AppLayoutInner() {
           !!state.workItems[wiEffectiveParent] &&
           backlogIdSet.has(state.workItems[wiEffectiveParent].backlogAssignments[treeId]);
 
-        const siblings = Object.values(state.workItems)
-          .filter((w) => {
-            if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
-            const wEffectiveParent = getEffectiveParentId(w, treeId);
-            if (anchorParentInContext) {
-              return wEffectiveParent === wiEffectiveParent;
-            }
-            return (
-              wEffectiveParent === null ||
-              !state.workItems[wEffectiveParent] ||
-              !backlogIdSet.has(state.workItems[wEffectiveParent].backlogAssignments[treeId])
-            );
-          })
-          .sort((a, b) => {
-            const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
-            return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
-          });
+        // Neighbours are found in rank order, so this runs after any save of the
+        // shown order: in a list sorted by name, "up" means the item above on
+        // screen only once that order has become the rank.
+        const move = () => {
+          const current = useAppStore.getState().workItems;
+          const siblings = Object.values(current)
+            .filter((w) => {
+              if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
+              const wEffectiveParent = getEffectiveParentId(w, treeId);
+              if (anchorParentInContext) {
+                return wEffectiveParent === wiEffectiveParent;
+              }
+              return (
+                wEffectiveParent === null ||
+                !current[wEffectiveParent] ||
+                !backlogIdSet.has(current[wEffectiveParent].backlogAssignments[treeId])
+              );
+            })
+            .sort((a, b) => {
+              const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
+              return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
+            });
 
-        // Find drop-zone indices of all selected siblings; move the whole group by one
-        // neighbour up or down — top selected → zone-1 for up, bottom selected → zone+2 for down.
-        const selectedIdxs: number[] = [];
-        siblings.forEach((s, i) => { if (selectedSet.has(s.id)) selectedIdxs.push(i); });
-        if (selectedIdxs.length === 0) return;
-        const topIdx = selectedIdxs[0];
-        const botIdx = selectedIdxs[selectedIdxs.length - 1];
-        const newIdx = direction === -1 ? topIdx - 1 : botIdx + 2;
-        if (newIdx < 0 || newIdx > siblings.length) return;
-        useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
+          // Find drop-zone indices of all selected siblings; move the whole group by one
+          // neighbour up or down — top selected → zone-1 for up, bottom selected → zone+2 for down.
+          const selectedIdxs: number[] = [];
+          siblings.forEach((s, i) => { if (selectedSet.has(s.id)) selectedIdxs.push(i); });
+          if (selectedIdxs.length === 0) return;
+          const topIdx = selectedIdxs[0];
+          const botIdx = selectedIdxs[selectedIdxs.length - 1];
+          const newIdx = direction === -1 ? topIdx - 1 : botIdx + 2;
+          if (newIdx < 0 || newIdx > siblings.length) return;
+          useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
+        };
+
+        requestTopLevelRerank({
+          treeId,
+          backlogId: selectedBacklogId,
+          backlogIds,
+          touchesTopLevel: !anchorParentInContext,
+          proceed: move,
+        });
       };
 
       // Alt+Enter or F2: rename the first selected work item
@@ -331,23 +348,32 @@ function AppLayoutInner() {
             // undo'd state back to the DB, causing items to no longer be at the top
             // on the next reload.
             const backlogIdSet = new Set(backlogIds);
-            const processedContexts = new Set<string>();
-            state.runBulk(() => {
-              state.selectedWorkItemIds.forEach((id) => {
-                const wi = state.workItems[id];
-                if (!wi) return;
-                const parentInContext = (() => {
-                  const effectiveParentId = getEffectiveParentId(wi, treeId);
-                  return effectiveParentId !== null &&
-                    backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
-                })();
-                const contextKey = parentInContext ? `child:${getEffectiveParentId(wi, treeId)}` : "root";
-                if (processedContexts.has(contextKey)) return;
-                processedContexts.add(contextKey);
-                state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
-              });
+            const contextOf = (id: string) => {
+              const wi = state.workItems[id];
+              if (!wi) return null;
+              const effectiveParentId = getEffectiveParentId(wi, treeId);
+              const parentInContext = effectiveParentId !== null &&
+                backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
+              return parentInContext ? `child:${effectiveParentId}` : "root";
+            };
+            requestTopLevelRerank({
+              treeId,
+              backlogId: selectedBacklogId,
+              backlogIds,
+              touchesTopLevel: state.selectedWorkItemIds.some((id) => contextOf(id) === "root"),
+              proceed: () => {
+                const processedContexts = new Set<string>();
+                state.runBulk(() => {
+                  state.selectedWorkItemIds.forEach((id) => {
+                    const contextKey = contextOf(id);
+                    if (!contextKey || processedContexts.has(contextKey)) return;
+                    processedContexts.add(contextKey);
+                    state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
+                  });
+                });
+                toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
+              },
             });
-            toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
           }
           break;
         }
@@ -367,23 +393,32 @@ function AppLayoutInner() {
 
               // Same deduplication as "Move to top" – one call per sibling context.
               const backlogIdSet = new Set(backlogIds);
-              const processedContexts = new Set<string>();
-              state.runBulk(() => {
-                state.selectedWorkItemIds.forEach((id) => {
-                  const wi = state.workItems[id];
-                  if (!wi) return;
-                  const parentInContext = (() => {
-                    const effectiveParentId = getEffectiveParentId(wi, treeId);
-                    return effectiveParentId !== null &&
-                      backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
-                  })();
-                  const contextKey = parentInContext ? `child:${getEffectiveParentId(wi, treeId)}` : "root";
-                  if (processedContexts.has(contextKey)) return;
-                  processedContexts.add(contextKey);
-                  state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
-                });
+              const contextOf = (id: string) => {
+                const wi = state.workItems[id];
+                if (!wi) return null;
+                const effectiveParentId = getEffectiveParentId(wi, treeId);
+                const parentInContext = effectiveParentId !== null &&
+                  backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
+                return parentInContext ? `child:${effectiveParentId}` : "root";
+              };
+              requestTopLevelRerank({
+                treeId,
+                backlogId: selectedBacklogId,
+                backlogIds,
+                touchesTopLevel: state.selectedWorkItemIds.some((id) => contextOf(id) === "root"),
+                proceed: () => {
+                  const processedContexts = new Set<string>();
+                  state.runBulk(() => {
+                    state.selectedWorkItemIds.forEach((id) => {
+                      const contextKey = contextOf(id);
+                      if (!contextKey || processedContexts.has(contextKey)) return;
+                      processedContexts.add(contextKey);
+                      state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
+                    });
+                  });
+                  toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
+                },
               });
-              toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
             }
           } else {
             // Set status to Blocked
@@ -1034,54 +1069,70 @@ function AppLayoutInner() {
         }
 
 
-        // If the drop zone targets a specific sub-backlog, move items to that backlog first
-        // (handles the combined parent-backlog view where items from multiple sub-backlogs
-        // are shown together and dragging near items of a different sub-backlog should
-        // reassign the item to that sub-backlog).
-        if (targetBacklogId) {
-          const preMoveStore = useAppStore.getState();
-          const idsToMove = draggedIds.filter((id) => {
-            const wi = preMoveStore.workItems[id];
-            if (!wi) return false;
-            const currentBacklogId = wi.backlogAssignments[treeId];
-            return !!currentBacklogId && currentBacklogId !== targetBacklogId;
-          });
-          if (idsToMove.length > 0) moveWorkItemsToBacklog(idsToMove, targetBacklogId, treeId);
-        }
-
-        // Re-read store after potential backlog moves so reparent/reorder see latest state.
-        const store = useAppStore.getState();
-        const reparentedIds: string[] = [];
-        draggedIds.forEach((id) => {
-          const wi = store.workItems[id];
-          if (!wi) return;
-          if (getEffectiveParentId(wi, treeId) !== targetParentId) {
-            const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
-            reparentWorkItem(id, targetParentId, treeId, backlogId);
-            reparentedIds.push(id);
+        // The whole drop is one action — backlog move, reparent, reorder — so it
+        // is all or nothing: cancelling the question below leaves nothing
+        // half-moved.
+        const performDrop = () => {
+          // If the drop zone targets a specific sub-backlog, move items to that backlog first
+          // (handles the combined parent-backlog view where items from multiple sub-backlogs
+          // are shown together and dragging near items of a different sub-backlog should
+          // reassign the item to that sub-backlog).
+          if (targetBacklogId) {
+            const preMoveStore = useAppStore.getState();
+            const idsToMove = draggedIds.filter((id) => {
+              const wi = preMoveStore.workItems[id];
+              if (!wi) return false;
+              const currentBacklogId = wi.backlogAssignments[treeId];
+              return !!currentBacklogId && currentBacklogId !== targetBacklogId;
+            });
+            if (idsToMove.length > 0) moveWorkItemsToBacklog(idsToMove, targetBacklogId, treeId);
           }
-        });
-        // One reorderWorkItemAmongSiblings call handles all selected items in the
-        // same sibling context (the function moves all of selectedWorkItemIds, not
-        // just the single workItemId argument).  Calling it once per dragged item
-        // would create N redundant undo entries for N dragged items.
-        if (draggedIds.length > 0) {
-          reorderWorkItemAmongSiblings(draggedIds[0], overData.index as number, treeId, backlogIds);
-        }
-        if (reparentedIds.length > 0) {
-          const newParentTitle = targetParentId
-            ? (useAppStore.getState().workItems[targetParentId]?.title ?? "item")
-            : null;
-          toast({
-            title: newParentTitle
-              ? reparentedIds.length === 1
-                ? `Reparented to "${newParentTitle}"`
-                : `Reparented ${reparentedIds.length} items to "${newParentTitle}"`
-              : reparentedIds.length === 1
-                ? "Moved to root (no parent)"
-                : `Moved ${reparentedIds.length} items to root`,
+
+          // Re-read store after potential backlog moves so reparent/reorder see latest state.
+          const store = useAppStore.getState();
+          const reparentedIds: string[] = [];
+          draggedIds.forEach((id) => {
+            const wi = store.workItems[id];
+            if (!wi) return;
+            if (getEffectiveParentId(wi, treeId) !== targetParentId) {
+              const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
+              reparentWorkItem(id, targetParentId, treeId, backlogId);
+              reparentedIds.push(id);
+            }
           });
-        }
+          // One reorderWorkItemAmongSiblings call handles all selected items in the
+          // same sibling context (the function moves all of selectedWorkItemIds, not
+          // just the single workItemId argument).  Calling it once per dragged item
+          // would create N redundant undo entries for N dragged items.
+          if (draggedIds.length > 0) {
+            reorderWorkItemAmongSiblings(draggedIds[0], overData.index as number, treeId, backlogIds);
+          }
+          if (reparentedIds.length > 0) {
+            const newParentTitle = targetParentId
+              ? (useAppStore.getState().workItems[targetParentId]?.title ?? "item")
+              : null;
+            toast({
+              title: newParentTitle
+                ? reparentedIds.length === 1
+                  ? `Reparented to "${newParentTitle}"`
+                  : `Reparented ${reparentedIds.length} items to "${newParentTitle}"`
+                : reparentedIds.length === 1
+                  ? "Moved to root (no parent)"
+                  : `Moved ${reparentedIds.length} items to root`,
+            });
+          }
+        };
+
+        // A drop between top-level items sets a top-level rank. The drop index
+        // counts rows as shown, which after saving the shown order is the rank
+        // order too, so the item lands where it was dropped.
+        requestTopLevelRerank({
+          treeId,
+          backlogId: useAppStore.getState().selectedBacklogIds[0] ?? backlogIds[0],
+          backlogIds,
+          touchesTopLevel: targetParentId === null,
+          proceed: performDrop,
+        });
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
         const backlogId = activeData.backlogId as string;
         const targetParentId = overData.parentId as string | null;

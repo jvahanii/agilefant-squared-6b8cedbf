@@ -194,6 +194,17 @@ interface AppState extends DataSnapshot {
   reorderWorkItemAmongSiblings: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[]) => void;
   reorderWorkItemInBoard: (workItemId: string, targetIndex: number, treeId: string, backlogIds: string[], statusKey?: string) => void;
   sortChildrenAlphabetically: (parentId: string | null, treeId: string, backlogIds: string[]) => void;
+  /**
+   * Rank a group of siblings in exactly the given order: list ranks 0..n, board
+   * ranks kept consistent within each status, persisted, and one undo step.
+   */
+  applySiblingOrder: (
+    parentId: string | null,
+    treeId: string,
+    backlogIds: string[],
+    orderedIds: string[],
+    logDetails: string,
+  ) => void;
   moveWorkItemToBacklog: (workItemId: string, targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   /** Batched multi-item variant of `moveWorkItemToBacklog` — a single state
    *  update, a single DB batch and a single undo entry, and it leaves the
@@ -1944,6 +1955,20 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
         .sort((a, b) => (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" }));
 
+      get().applySiblingOrder(
+        parentId,
+        treeId,
+        backlogIds,
+        siblings.map((s) => s.id),
+        `${siblings.length} items sorted alphabetically`,
+      );
+    },
+
+    applySiblingOrder: (parentId, treeId, _backlogIds, orderedIds, logDetails) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const siblings = orderedIds.map((id) => state.workItems[id]).filter((wi): wi is WorkItem => !!wi);
+
       if (siblings.length === 0) return;
 
       const updatedItems = { ...state.workItems };
@@ -2000,7 +2025,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         }),
       );
       const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
-      internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: `${siblings.length} items sorted alphabetically` });
+      internalLog({ action: "Sort", entityType: "work_item", entityId: parentId ?? treeId, entityName: contextName, details: logDetails });
 
       set({
         workItems: updatedItems,

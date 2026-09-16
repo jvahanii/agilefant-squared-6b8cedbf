@@ -229,6 +229,14 @@ function buildSections(): Section[] {
               },
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
               {
+                action: "Sort the list",
+                how: "Click the sort icon in the backlog header and choose Rank, Name A→Z, Name Z→A, Status or Team A→Z. Only the top-level items are resorted; children stay in rank order. Any order other than Rank is a view: it is remembered for that backlog in this browser, changes nothing for anyone else, and the icon shows which order is on. To keep it, choose Save current order as rank (Ctrl+Z undoes it).",
+              },
+              {
+                action: "Move items in a sorted list",
+                how: "Moving a top-level item while the list is sorted by anything but Rank — by dragging, U, O, T, Shift+B or Rank to top — first asks whether to save the current order. Yes saves the order shown as rank, makes the move, and switches the list back to Rank. Children can always be moved without being asked.",
+              },
+              {
                 action: "Set recurring",
                 how: "Click the settings icon on the item row to open respawn settings and configure the schedule.",
               },

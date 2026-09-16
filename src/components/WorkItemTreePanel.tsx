@@ -29,6 +29,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
@@ -41,12 +45,20 @@ import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { useClosedPostingsStore } from "@/store/closedPostingsStore";
+import { requestTopLevelRerank } from "@/store/rerankGuardStore";
+import {
+  currentListSortContext,
+  saveTopLevelOrderAsRank,
+  useListSortMode,
+  useListSortStore,
+} from "@/store/listSortStore";
+import { LIST_SORT_MODES, listSortLabel, sortTopLevel, type ListSortMode } from "@/lib/listSort";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { computeBacklogTotalMinutes } from "@/lib/timeUtils";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
-import { buildVisibleRows, effectiveAncestors, effectiveChildren } from "@/lib/workItemRows";
+import { buildVisibleRows, effectiveAncestors, effectiveChildren, topLevelItems } from "@/lib/workItemRows";
 import { observeWidthForRemeasure } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
@@ -1443,8 +1455,19 @@ function WorkItemNodeContent({
                 state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
               };
               collectBacklogs(backlogId);
-              reorderWorkItemAmongSiblings(workItemId, 0, treeId, backlogIds);
-              toast({ title: "Moved item to top", description: item.title });
+              const viewedBacklogId = state.selectedBacklogIds[0] ?? backlogId;
+              const inView = new Set(backlogIds);
+              const parentId = getEffectiveParentId(item, treeId);
+              requestTopLevelRerank({
+                treeId,
+                backlogId: viewedBacklogId,
+                backlogIds,
+                touchesTopLevel: parentId === null || !inView.has(state.workItems[parentId]?.backlogAssignments[treeId]),
+                proceed: () => {
+                  reorderWorkItemAmongSiblings(workItemId, 0, treeId, backlogIds);
+                  toast({ title: "Moved item to top", description: item.title });
+                },
+              });
             }}
           >
             Rank to top
@@ -2595,7 +2618,6 @@ export function WorkItemTreePanel() {
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
-  const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
   const toggleWorkItemExpand = useAppStore((s) => s.toggleWorkItemExpand);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
@@ -2612,7 +2634,6 @@ export function WorkItemTreePanel() {
     return computeBacklogTotalMinutes(selectedBacklogId, selectedTreeId, backlogs, workItems, timeEntries);
   }, [timeEntries, workItems, backlogs, selectedBacklogId, selectedTreeId, timeLoggingVisible]);
   const [showBacklogTimeLogDialog, setShowBacklogTimeLogDialog] = useState(false);
-  const [showSortRootPrompt, setShowSortRootPrompt] = useState(false);
   const [showBacklogAttributesSheet, setShowBacklogAttributesSheet] = useState(false);
   // The selected backlog's public link, reachable on a phone through its
   // attributes sheet; the desktop has it in the sidebar's context menu.
@@ -3083,21 +3104,29 @@ export function WorkItemTreePanel() {
     [labelsMap, activeOrgId],
   );
 
+  // The order the top level is shown in. Rank unless this browser chose another
+  // order for this backlog; that choice only rearranges the view, and children
+  // always stay in rank order. Teams and statuses are read so a re-sort follows
+  // when someone changes them.
+  const listSortMode = useListSortMode(selectedBacklogId);
+  const setListSortMode = useListSortStore((s) => s.setMode);
+  const sortTeams = useTeamStore((s) => s.teams);
+  const sortWorkItemTeams = useTeamStore((s) => s.workItemTeams);
+  const sortStatusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const rootWorkItems = useMemo(() => {
     if (!selectedBacklogId || !selectedTreeId || backlogIdSet.size === 0) return [];
-    return Object.values(workItems)
-      .filter(
-        (wi) => {
-          if (!backlogIdSet.has(wi.backlogAssignments[selectedTreeId])) return false;
-          const effectiveParentId = getEffectiveParentId(wi, selectedTreeId);
-          return effectiveParentId === null || !backlogIdSet.has(workItems[effectiveParentId ?? ""]?.backlogAssignments[selectedTreeId]);
-        },
-      )
-      .sort((a, b) => {
-        const rankDiff = (a.ranks[a.backlogAssignments[selectedTreeId]] ?? 0) - (b.ranks[b.backlogAssignments[selectedTreeId]] ?? 0);
-        return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
-      });
-  }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet]);
+    // Read by currentListSortContext through getState; named here so the order
+    // is recomputed when they change.
+    void sortTeams;
+    void sortWorkItemTeams;
+    void sortStatusesByBacklog;
+    return sortTopLevel(
+      topLevelItems(workItems, selectedTreeId, backlogIdSet),
+      listSortMode,
+      selectedTreeId,
+      currentListSortContext(selectedTreeId),
+    );
+  }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet, listSortMode, sortTeams, sortWorkItemTeams, sortStatusesByBacklog]);
 
   // When filter is active, hide root items that have no matching descendant-or-self.
   // Also hide root items that are currently snoozed by the current user.
@@ -3713,19 +3742,70 @@ export function WorkItemTreePanel() {
                 <ClipboardPaste className="w-4 h-4" />
               </button>
             )}
-            {!isSearchMode && !isFilterMode && rootWorkItems.length > 1 && (
-              <button
-                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!selectedBacklogId || !selectedTreeId) return;
-                  setShowSortRootPrompt(true);
-                }}
-                title="Sort root items A→Z"
-              >
-                <ArrowDownAZ className="w-4 h-4" />
-              </button>
-            )}
+            {/* The list's sort. A view only — nothing is saved until "Save
+                current order as rank" — so it lives in the list view, not on
+                the board, and says which order is showing whenever it is not
+                rank, so a sorted list is never mistaken for the ranked one. */}
+            {!isSearchMode &&
+              !isFilterMode &&
+              rootWorkItems.length > 1 &&
+              !(boardsVisible && viewMode === "board") &&
+              selectedBacklogId &&
+              selectedTreeId && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`h-7 flex items-center justify-center gap-1 rounded-md transition-colors ${
+                        listSortMode === "rank"
+                          ? "w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
+                          : "px-2 border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                      title={
+                        listSortMode === "rank"
+                          ? "Sort top-level items"
+                          : `Sorted by ${listSortLabel(listSortMode)} — shown in this order only for you`
+                      }
+                    >
+                      <ArrowDownAZ className="w-4 h-4" />
+                      {listSortMode !== "rank" && (
+                        <span className="hidden sm:inline text-xs font-medium">{listSortLabel(listSortMode)}</span>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                      Sort top-level items
+                    </DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={listSortMode}
+                      onValueChange={(value) => setListSortMode(selectedBacklogId, value as ListSortMode)}
+                    >
+                      {LIST_SORT_MODES.map(({ mode, label }) => (
+                        <DropdownMenuRadioItem key={mode} value={mode} className="text-xs">
+                          {label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                    {listSortMode !== "rank" && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-xs"
+                          onSelect={() => {
+                            saveTopLevelOrderAsRank(selectedTreeId, selectedBacklogId, allBacklogIds);
+                            // The shown order is the rank now, so rank shows the same list.
+                            setListSortMode(selectedBacklogId, "rank");
+                            toast({ title: "Order saved as rank", description: "Press Ctrl+Z to undo" });
+                          }}
+                        >
+                          Save current order as rank
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             {!isSearchMode && !isFilterMode && timeLoggingVisible && (
               <button
                 className="flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-1 min-w-[1.75rem] h-7"
@@ -4079,27 +4159,6 @@ export function WorkItemTreePanel() {
             backlogId={selectedBacklogId}
             open={showBacklogTimeLogDialog}
             onOpenChange={setShowBacklogTimeLogDialog}
-          />
-        )}
-        {showSortRootPrompt && (
-          <ActionPrompt
-            title="Sort root items A→Z?"
-            options={[
-              {
-                label: "Sort A→Z",
-                description: "Sorts root items alphabetically. You can undo with Ctrl+Z.",
-                value: "confirm",
-                isDefault: true,
-              },
-            ]}
-            onSelect={() => {
-              if (selectedTreeId) {
-                sortChildrenAlphabetically(null, selectedTreeId, allBacklogIds);
-                toast({ title: "Root items sorted A→Z", description: "Press Ctrl+Z to undo" });
-              }
-              setShowSortRootPrompt(false);
-            }}
-            onCancel={() => setShowSortRootPrompt(false)}
           />
         )}
         {showBacklogAttributesSheet && selectedBacklogId && (

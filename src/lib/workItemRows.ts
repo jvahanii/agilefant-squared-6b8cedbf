@@ -13,8 +13,25 @@
  */
 import { getEffectiveParentId, type WorkItem } from "@/types/models";
 
+/**
+ * The items a backlog shows at its top level: those in view whose effective
+ * parent in this tree is either none, or an item outside the backlogs in view.
+ * Unordered — the caller decides the order.
+ */
+export function topLevelItems(
+  workItems: Record<string, WorkItem>,
+  treeId: string,
+  backlogIdSet: ReadonlySet<string>,
+): WorkItem[] {
+  return Object.values(workItems).filter((wi) => {
+    if (!backlogIdSet.has(wi.backlogAssignments[treeId])) return false;
+    const parentId = getEffectiveParentId(wi, treeId);
+    return parentId === null || !backlogIdSet.has(workItems[parentId]?.backlogAssignments[treeId]);
+  });
+}
+
 /** Order within a sibling group: rank in the item's backlog, then id. */
-function byRank(treeId: string) {
+export function byRank(treeId: string) {
   return (a: WorkItem, b: WorkItem) => {
     const diff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
     return diff !== 0 ? diff : a.id.localeCompare(b.id);
