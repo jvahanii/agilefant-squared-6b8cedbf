@@ -40,7 +40,15 @@ export type ImportMode = "links" | "jobs";
 
 const COPY: Record<
   ImportMode,
-  { title: string; blurb: string; queryLabel: string; placeholder: string; startingQuery: string; empty: string }
+  {
+    title: string;
+    blurb: string;
+    queryLabel: string;
+    placeholder: string;
+    startingQuery: string;
+    empty: string;
+    namePlaceholder: string;
+  }
 > = {
   links: {
     title: "Gmail link import",
@@ -50,6 +58,7 @@ const COPY: Record<
     placeholder: "from:newsletter@example.com is:unread newer_than:7d",
     startingQuery: "",
     empty: "No saved Gmail searches yet.",
+    namePlaceholder: "Newsletter links",
   },
   jobs: {
     title: "Job ad import",
@@ -59,6 +68,7 @@ const COPY: Record<
     placeholder: "label:Job\u00a0ads newer_than:30d",
     startingQuery: defaultJobQuery(),
     empty: "No saved job alert searches yet.",
+    namePlaceholder: "Name of this search",
   },
 };
 
@@ -445,7 +455,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
               <Label htmlFor="gmail-query-name">Name (optional)</Label>
               <Input
                 id="gmail-query-name"
-                placeholder="Newsletter links"
+                placeholder={copy.namePlaceholder}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
