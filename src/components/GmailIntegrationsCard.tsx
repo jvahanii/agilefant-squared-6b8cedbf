@@ -423,7 +423,22 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-sm text-muted-foreground">{copy.blurb}</p>
+        <p className="text-sm text-muted-foreground">
+          {copy.blurb}
+          {mode === "jobs" && (
+            <>
+              {" "}
+              <a
+                href="/user-guide/job-ads"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                Read the guide
+              </a>
+            </>
+          )}
+        </p>
 
         <div className="flex items-center justify-between gap-3 border rounded-md p-4">
           <div className="min-w-0">

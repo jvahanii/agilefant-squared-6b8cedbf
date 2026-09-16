@@ -55,6 +55,7 @@ const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
 const UserGuide = lazy(() => import("./pages/UserGuide"));
 const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
 const PublicBacklog = lazy(() => import("./pages/PublicBacklog"));
+const JobAdsGuide = lazy(() => import("./pages/JobAdsGuide"));
 
 const queryClient = new QueryClient();
 
@@ -223,6 +224,16 @@ const App = () => (
                 element={
                   <Suspense fallback={null}>
                     <PublicBacklog />
+                  </Suspense>
+                }
+              />
+              {/* A public guide, mounted here for the same reason: someone sent
+                  the address should be reading it at once, signed in or not. */}
+              <Route
+                path="/user-guide/job-ads"
+                element={
+                  <Suspense fallback={null}>
+                    <JobAdsGuide />
                   </Suspense>
                 }
               />
