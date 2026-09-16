@@ -18,6 +18,7 @@ const OTHER_TREE = 'tree-2';
 interface Item {
   id: string;
   backlog_assignments: Record<string, string>;
+  description?: string;
 }
 
 /**
@@ -99,6 +100,27 @@ describe('urlsInTree', () => {
     const found = await urlsInTree(admin, 'org', TREE);
 
     expect(found.has('https://www.linkedin.com/jobs/view/4458065583')).toBe(true);
+  });
+
+  it('recognises a posting whose hyperlink was lost, by the link in its description', async () => {
+    // Real case: "Elisa — Team Manager, AI Development (Helsinki)" was deleted
+    // and brought back with undo. The delete cascaded its hyperlink away; the
+    // description the import wrote kept the link.
+    const description = [
+      'From email: Jarno , apply now to ‘Agile Coach at If Insurance’',
+      'Sender: LinkedIn <jobs-noreply@linkedin.com>',
+      'Received: 2026-09-15T18:53:21.000Z',
+      'Link: https://www.linkedin.com/jobs/view/4465791712',
+    ].join('\n');
+    const { admin } = makeAdmin(
+      [{ id: 'wi-1', backlog_assignments: { [TREE]: 'bl-hunt' }, description }],
+      { 'bl-hunt': 'Applied' },
+      {},
+    );
+
+    const found = await urlsInTree(admin, 'org', TREE);
+
+    expect(found.get('https://www.linkedin.com/jobs/view/4465791712')).toBe('Applied');
   });
 
   it('asks nothing further when the tree holds no items', async () => {

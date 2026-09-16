@@ -168,10 +168,14 @@ export async function urlsInTree(
 
   const { data: items } = await admin
     .from('work_items')
-    .select('id, backlog_assignments')
+    .select('id, backlog_assignments, description')
     .eq('organization_id', organizationId)
     .not(`backlog_assignments->>${treeId}`, 'is', null);
-  const inTree = (items ?? []) as Array<{ id: string; backlog_assignments: Record<string, string> }>;
+  const inTree = (items ?? []) as Array<{
+    id: string;
+    backlog_assignments: Record<string, string>;
+    description?: string | null;
+  }>;
   if (inTree.length === 0) return found;
 
   const backlogOf = new Map<string, string>();
@@ -187,27 +191,43 @@ export async function urlsInTree(
     for (const r of rows ?? []) names.set(r.id as string, r.name as string);
   }
 
+  const whereIs = (workItemId: string) => names.get(backlogOf.get(workItemId) ?? '') ?? 'this tree';
+  // Every form the URL might be compared against, for the same reason
+  // urlsInBacklog keeps all three: older items hold raw trackers.
+  const remember = (raw: string, where: string) => {
+    if (!found.has(raw)) found.set(raw, where);
+    const normalized = normalizeUrl(raw);
+    if (normalized) {
+      if (!found.has(normalized)) found.set(normalized, where);
+      const canonical = canonicalizeByHost(normalized);
+      if (canonical && !found.has(canonical)) found.set(canonical, where);
+    }
+  };
+
+  // The link an import wrote into the description counts as well as the
+  // hyperlink rows. Deleting an item cascades its hyperlinks away, and undo
+  // brings the item back without them — so a posting deleted and restored had
+  // no link left to match, and was offered again as new. The description line
+  // is written by the same import and travels with the item.
+  for (const item of inTree) {
+    for (const url of linksInDescription(item.description)) remember(url, whereIs(item.id));
+  }
+
   const ids = [...backlogOf.keys()];
   for (let i = 0; i < ids.length; i += 200) {
     const { data: urlRows } = await admin
       .from('work_item_hyperlinks')
       .select('work_item_id, url')
       .in('work_item_id', ids.slice(i, i + 200));
-    for (const r of urlRows ?? []) {
-      const where = names.get(backlogOf.get(r.work_item_id as string) ?? '') ?? 'this tree';
-      // Every form the URL might be compared against, for the same reason
-      // urlsInBacklog keeps all three: older items hold raw trackers.
-      const raw = r.url as string;
-      if (!found.has(raw)) found.set(raw, where);
-      const normalized = normalizeUrl(raw);
-      if (normalized) {
-        if (!found.has(normalized)) found.set(normalized, where);
-        const canonical = canonicalizeByHost(normalized);
-        if (canonical && !found.has(canonical)) found.set(canonical, where);
-      }
-    }
+    for (const r of urlRows ?? []) remember(r.url as string, whereIs(r.work_item_id as string));
   }
   return found;
+}
+
+/** The URLs on describe()'s "Link: …" lines. */
+export function linksInDescription(description: string | null | undefined): string[] {
+  if (!description) return [];
+  return [...description.matchAll(/^Link:[ \t]*(https?:\/\/\S+)[ \t\r]*$/gm)].map((m) => m[1]);
 }
 
 export async function importLinksAsWorkItems(
