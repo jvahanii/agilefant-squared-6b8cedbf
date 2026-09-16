@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser } from "@/lib/currentUser";
 import { useOrgStore } from "@/store/orgStore";
@@ -12,18 +12,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import {
-  groupBySourceEmail,
-  senderName,
-  senderAddress,
-  gmailMessageUrl,
-  previewSummary,
-  deadlineLabel,
-  type PreviewLink,
-} from "@/lib/gmailPreview";
-import { Mail, Trash2, Plus, Play, Loader2, LinkIcon, Unplug } from "lucide-react";
+import { Mail, Trash2, Plus, Play, Loader2, Unplug } from "lucide-react";
 import { GoogleOAuthClientSection } from "@/components/GoogleOAuthClientSection";
+import { SavedSearchPicker } from "@/components/SavedSearchPicker";
 import { canConnectGmail, explainGmailError, type OAuthStatus } from "@/lib/gmailOAuth";
+import { callGmail, type ImportMode } from "@/lib/gmailConnector";
 import {
   defaultJobQuery,
   withLookback,
@@ -33,12 +26,8 @@ import {
   LOOKBACK_OPTIONS,
 } from "../../supabase/functions/_shared/jobSources";
 
-/**
- * Which extractor a saved query runs under. Job-ad import is a separate
- * feature with its own card and its own saved queries; the two never share a
- * list, so turning on one cannot change what the other imports.
- */
-export type ImportMode = "links" | "jobs";
+// Re-exported so existing importers of ImportMode from this module keep working.
+export type { ImportMode };
 
 const COPY: Record<
   ImportMode,
@@ -101,32 +90,11 @@ function browserTimezone(): string {
   }
 }
 
-async function callGmail<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("gmail-connector", { body });
-  if (error) {
-    let details = error.message;
-    const context = (error as { context?: { text?: () => Promise<string> } }).context;
-    if (context?.text) {
-      try {
-        details = await context.text();
-      } catch {
-        /* keep original message */
-      }
-    }
-    throw new Error(details);
-  }
-  if (data && typeof data === "object" && "error" in data) {
-    throw new Error(String((data as { error: unknown }).error));
-  }
-  return data as T;
-}
-
 export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode }) {
   const copy = COPY[mode];
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
-  const reloadData = useAppStore((s) => s.loadFromSupabase);
 
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
@@ -143,27 +111,10 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const [newTree, setNewTree] = useState("");
   const [newBacklog, setNewBacklog] = useState("");
 
-  const [runQueryId, setRunQueryId] = useState<string | null>(null);
+  // The search whose picker is open, and a counter so pressing Run now again
+  // remounts the picker and searches afresh.
   const [previewFor, setPreviewFor] = useState<SavedQuery | null>(null);
-  const [preview, setPreview] = useState<PreviewLink[]>([]);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [importing, setImporting] = useState(false);
-  const [filterKeyword, setFilterKeyword] = useState("");
-
-  // Derived once: the header count and the list must not disagree when a
-  // keyword filter is on.
-  const visiblePreview = useMemo(() => {
-    if (!filterKeyword) return preview;
-    const kw = filterKeyword.toLowerCase();
-    return preview.filter(
-      (l) =>
-        l.subject?.toLowerCase().includes(kw) ||
-        l.title?.toLowerCase().includes(kw) ||
-        l.url?.toLowerCase().includes(kw) ||
-        l.from?.toLowerCase().includes(kw),
-    );
-  }, [preview, filterKeyword]);
-  const visibleGroups = useMemo(() => groupBySourceEmail(visiblePreview), [visiblePreview]);
+  const [runToken, setRunToken] = useState(0);
 
   const popupRef = useRef<Window | null>(null);
 
@@ -360,88 +311,11 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
     loadQueries();
   };
 
-  const runNow = async (q: SavedQuery) => {
-    if (!activeOrgId) return;
-    setRunQueryId(q.id);
+  // The search and the picker live in SavedSearchPicker, shared with the
+  // header's Run job search dialog.
+  const runNow = (q: SavedQuery) => {
     setPreviewFor(q);
-    setPreview([]);
-    try {
-      const res = await callGmail<{ links: PreviewLink[] }>({
-        action: "preview",
-        organizationId: activeOrgId,
-        query: q.query,
-        maxMessages: 25,
-        mode,
-        backlogId: q.backlog_id,
-        // The whole tree, so a posting already filed into another list
-        // counts as one that has been seen.
-        treeId: q.tree_id,
-      });
-      const sorted = [...res.links].sort(
-        (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
-      );
-      setPreview(sorted);
-      setFilterKeyword("");
-      // Anything already in the target backlog starts unchecked, and so does a
-      // posting that has stopped taking applications: both stay importable on
-      // purpose, neither is the default.
-      setSelected(
-        Object.fromEntries(
-          sorted.map((l) => [
-            `${l.messageId}|${l.url}`,
-            !l.alreadyImported && !l.applicationsClosed,
-          ]),
-        ),
-      );
-      if (res.links.length === 0) toast({ title: "No links found for that query" });
-    } catch (e) {
-      const message = (e as Error).message;
-      toast({
-        title: message.includes("gmail_not_connected") ? "Connect Gmail first" : "Gmail search failed",
-        description: message.includes("gmail_not_connected") ? undefined : explainGmailError(message),
-        variant: "destructive",
-      });
-      setPreviewFor(null);
-    } finally {
-      setRunQueryId(null);
-    }
-  };
-
-  const importSelected = async () => {
-    if (!previewFor || !activeOrgId) return;
-    const links = preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
-    if (links.length === 0) {
-      toast({ title: "Nothing selected", variant: "destructive" });
-      return;
-    }
-    setImporting(true);
-    try {
-      const res = await callGmail<{ created: number; skipped: number; collapsed: number }>({
-        action: "import",
-        mode,
-        organizationId: activeOrgId,
-        treeId: previewFor.tree_id,
-        backlogId: previewFor.backlog_id,
-        queryId: previewFor.id,
-        links,
-      });
-      toast({
-        title: `Imported ${res.created} work item${res.created === 1 ? "" : "s"}`,
-        description:
-          res.skipped
-            ? `${res.skipped} already imported`
-            : res.collapsed
-              ? `${res.collapsed} duplicate${res.collapsed === 1 ? "" : "s"} in this import merged`
-              : undefined,
-      });
-      setPreviewFor(null);
-      setPreview([]);
-      await reloadData();
-    } catch (e) {
-      toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setImporting(false);
-    }
+    setRunToken((n) => n + 1);
   };
 
   const treeName = (id: string) => backlogTrees[id]?.name ?? "(unknown tree)";
@@ -643,12 +517,8 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => runNow(q)} disabled={runQueryId === q.id}>
-                    {runQueryId === q.id ? (
-                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Play className="w-3.5 h-3.5 mr-1" />
-                    )}
+                  <Button size="sm" variant="outline" onClick={() => runNow(q)}>
+                    <Play className="w-3.5 h-3.5 mr-1" />
                     Run now
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => deleteQuery(q.id)}>
@@ -702,144 +572,15 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                 </p>
               )}
 
-              {previewFor?.id === q.id && preview.length > 0 && (
-                <div className="border-t pt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="Filter by keyword…"
-                      value={filterKeyword}
-                      onChange={(e) => setFilterKeyword(e.target.value)}
-                      className="h-7 text-xs flex-1"
-                    />
-                    {filterKeyword && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs h-7 px-2"
-                        onClick={() => setFilterKeyword("")}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {previewSummary({
-                        shown: visiblePreview.length,
-                        emails: visibleGroups.length,
-                        mode,
-                        total: filterKeyword ? preview.length : undefined,
-                      })}
-                    </p>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
-                    {visibleGroups.map((group) => {
-                      const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
-                      const allChecked = keys.every((k) => selected[k]);
-                      const seen = group.links.filter((l) => l.alreadyImported).length;
-                      return (
-                        <div key={group.messageId} className="border rounded-md">
-                          {/* The source email, above the jobs it produced.
-                              Wraps rather than truncates: a digest subject is
-                              long and the part that identifies it sits at the
-                              end, so clipping removes what the credit is for. */}
-                          <div className="flex items-start gap-2 bg-muted/50 px-2 py-2 rounded-t-md">
-                            <Checkbox
-                              checked={allChecked}
-                              onCheckedChange={(c) =>
-                                setSelected((prev) => {
-                                  const next = { ...prev };
-                                  for (const k of keys) next[k] = !!c;
-                                  return next;
-                                })
-                              }
-                              className="mt-0.5"
-                              aria-label={`Select all ${group.links.length} from ${group.subject}`}
-                            />
-                            <div className="min-w-0 flex-1 space-y-0.5">
-                              <p className="text-xs">
-                                <span className="text-muted-foreground">From: </span>
-                                <span className="font-medium break-words">{senderName(group.from)}</span>
-                                {senderAddress(group.from) && (
-                                  <span className="text-muted-foreground break-all">
-                                    {" "}
-                                    &lt;{senderAddress(group.from)}&gt;
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs">
-                                <span className="text-muted-foreground">Subject: </span>
-                                <span className="font-medium break-words">{group.subject}</span>
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {group.date && `${new Date(group.date).toLocaleString()} · `}
-                                {group.links.length} job{group.links.length === 1 ? "" : "s"}
-                                {seen > 0 && ` · ${seen} already in this backlog`}
-                              </p>
-                            </div>
-                            <a
-                              href={gmailMessageUrl(group.messageId)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
-                              title="Open this email in Gmail"
-                            >
-                              Open in Gmail
-                            </a>
-                          </div>
-
-                          <div className="px-2 py-1.5 space-y-1.5">
-                            {group.links.map((l) => {
-                              const key = `${l.messageId}|${l.url}`;
-                              return (
-                                <label key={key} className="flex items-start gap-2 text-sm">
-                                  <Checkbox
-                                    checked={!!selected[key]}
-                                    onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
-                                    className="mt-0.5"
-                                  />
-                                  <span className="min-w-0">
-                                    <span className="block truncate font-medium text-sm">
-                                      {l.title}
-                                      <span
-                                        className={`ml-2 align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
-                                          l.applicationsClosed
-                                            ? "border-destructive/40 text-destructive"
-                                            : l.deadline
-                                              ? ""
-                                              : "text-muted-foreground"
-                                        }`}
-                                      >
-                                        {deadlineLabel(l)}
-                                      </span>
-                                      {l.alreadyImported && (
-                                        <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
-                                          {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="block truncate text-xs text-muted-foreground">
-                                      <LinkIcon className="w-3 h-3 inline mr-1" />
-                                      {l.url}
-                                    </span>
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={importSelected} disabled={importing}>
-                      {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-                      Import selected
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setPreviewFor(null)}>
-                      Cancel
-                    </Button>
-                  </div>
+              {previewFor?.id === q.id && activeOrgId && (
+                <div className="border-t pt-3">
+                  <SavedSearchPicker
+                    key={runToken}
+                    search={q}
+                    mode={mode}
+                    organizationId={activeOrgId}
+                    onClose={() => setPreviewFor(null)}
+                  />
                 </div>
               )}
             </div>

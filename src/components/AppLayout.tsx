@@ -33,6 +33,7 @@ import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
 import { RerankGuardHost } from "@/components/RerankGuardHost";
+import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
@@ -1304,6 +1305,7 @@ function AppLayoutInner() {
             <Settings className="w-3.5 h-3.5 text-primary" />
             <span className="hidden md:inline">Bells &amp; Whistles</span>
           </button>
+          <JobSearchRunButton />
           <RoleSimulator />
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">
