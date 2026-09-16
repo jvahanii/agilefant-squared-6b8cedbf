@@ -12,8 +12,9 @@
 import { describe, it, expect } from 'vitest';
 import { urlsInTree } from '../../supabase/functions/_shared/gmailImport';
 
-const TREE = 'tree-1';
-const OTHER_TREE = 'tree-2';
+// Shaped like real ids: "<org>::bt-…".
+const TREE = '227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-47861693';
+const OTHER_TREE = '227ff1d1-36df-4f46-b97e-483ada92ccfb::bt-00000002';
 
 interface Item {
   id: string;
@@ -33,9 +34,14 @@ function makeAdmin(items: Item[], backlogs: Record<string, string>, links: Recor
       select: () => self,
       eq: () => self,
       in: () => self,
+      order: () => self,
+      range: () => self,
       not(column: string) {
-        // ".not('backlog_assignments->>tree-1', 'is', null)"
-        notNullKey = column.replace('backlog_assignments->>', '');
+        // ".not('backlog_assignments->>\"tree-1\"', 'is', null)" — the key must be
+        // quoted: a real tree id holds "::", which PostgREST reads as a cast.
+        const quoted = column.match(/^backlog_assignments->>"(.+)"$/);
+        if (!quoted) throw new Error(`unquoted jsonb key in filter: ${column}`);
+        notNullKey = quoted[1];
         return self;
       },
       then(resolve: (v: unknown) => unknown) {

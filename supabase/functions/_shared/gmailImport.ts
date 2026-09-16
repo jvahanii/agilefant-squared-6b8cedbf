@@ -166,16 +166,27 @@ export async function urlsInTree(
 ): Promise<Map<string, string>> {
   const found = new Map<string, string>();
 
-  const { data: items } = await admin
-    .from('work_items')
-    .select('id, backlog_assignments, description')
-    .eq('organization_id', organizationId)
-    .not(`backlog_assignments->>${treeId}`, 'is', null);
-  const inTree = (items ?? []) as Array<{
+  // The key is quoted because a real tree id reads "<org>::bt-…", and PostgREST
+  // parses an unquoted "::" as a cast: the filter then matched no item at all,
+  // and every posting in the tree was offered as new.
+  const inTree: Array<{
     id: string;
     backlog_assignments: Record<string, string>;
     description?: string | null;
-  }>;
+  }> = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error } = await admin
+      .from('work_items')
+      .select('id, backlog_assignments, description')
+      .eq('organization_id', organizationId)
+      .not(`backlog_assignments->>"${treeId}"`, 'is', null)
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    inTree.push(...((page ?? []) as typeof inTree));
+    if (!page || page.length < PAGE) break;
+  }
   if (inTree.length === 0) return found;
 
   const backlogOf = new Map<string, string>();
