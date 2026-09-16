@@ -75,6 +75,18 @@ interface SavedQuery {
   last_run_at: string | null;
   last_run_status: string | null;
   import_mode: ImportMode;
+  /** Hour of day a daily run should happen; null means "whenever a day has passed". */
+  run_at_hour: number | null;
+  run_at_timezone: string | null;
+}
+
+/** The zone the browser is in, which is the one the chosen hour is meant in. */
+function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
 }
 
 async function callGmail<T>(body: Record<string, unknown>): Promise<T> {
@@ -279,6 +291,20 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
 
   const setFrequency = async (q: SavedQuery, frequency: "hourly" | "daily") => {
     const { error } = await supabase.from("gmail_import_queries").update({ frequency }).eq("id", q.id);
+    if (error) {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    loadQueries();
+  };
+
+  // The hour is stored with the zone it was chosen in, not folded into UTC, so
+  // that 08:00 stays 08:00 when the clocks change.
+  const setRunAtHour = async (q: SavedQuery, hour: number | null) => {
+    const { error } = await supabase
+      .from("gmail_import_queries")
+      .update({ run_at_hour: hour, run_at_timezone: hour === null ? null : browserTimezone() })
+      .eq("id", q.id);
     if (error) {
       toast({ title: "Failed", description: error.message, variant: "destructive" });
       return;
@@ -568,8 +594,36 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                     <SelectItem value="daily">Daily</SelectItem>
                   </SelectContent>
                 </Select>
+                {q.frequency === "daily" && (
+                  <Select
+                    value={q.run_at_hour === null ? "any" : String(q.run_at_hour)}
+                    onValueChange={(v) => setRunAtHour(q, v === "any" ? null : Number(v))}
+                  >
+                    <SelectTrigger className="w-36 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any time</SelectItem>
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <SelectItem key={h} value={String(h)}>
+                          {/* :07 is not decoration — the checker wakes at seven
+                              minutes past, so that is when a run can happen. */}
+                          {String(h).padStart(2, "0")}:07
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {q.schedule_enabled && <Badge variant="secondary">Scheduled</Badge>}
               </div>
+              {q.schedule_enabled && q.frequency === "daily" && (
+                <p className="text-xs text-muted-foreground">
+                  {q.run_at_hour === null
+                    ? "Runs once a day, at whatever hour it last ran. Pick a time to pin it."
+                    : `Runs daily at ${String(q.run_at_hour).padStart(2, "0")}:07 ${q.run_at_timezone ?? browserTimezone()}.`}{" "}
+                  Run now only opens the picker; it never moves the schedule.
+                </p>
+              )}
 
               {previewFor?.id === q.id && preview.length > 0 && (
                 <div className="border-t pt-3 space-y-2">

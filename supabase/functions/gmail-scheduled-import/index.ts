@@ -9,6 +9,7 @@ import {
   searchLinks,
 } from '../_shared/gmail.ts';
 import { importLinksAsWorkItems } from '../_shared/gmailImport.ts';
+import { isDue } from '../_shared/importSchedule.ts';
 
 const MAX_MESSAGES = 50;
 
@@ -23,13 +24,20 @@ Deno.serve(async (req) => {
       .eq('schedule_enabled', true);
     if (error) throw error;
 
-    const now = Date.now();
+    const now = new Date();
     const results: Array<{ id: string; status: string; created?: number; skipped?: number }> = [];
 
     for (const q of queries ?? []) {
-      const dueAfterMs = q.frequency === 'hourly' ? 55 * 60 * 1000 : 23 * 60 * 60 * 1000;
-      const last = q.last_run_at ? new Date(q.last_run_at).getTime() : 0;
-      if (now - last < dueAfterMs) continue;
+      const due = isDue(
+        {
+          frequency: q.frequency,
+          lastRunAt: q.last_run_at,
+          runAtHour: q.run_at_hour ?? null,
+          runAtTimezone: q.run_at_timezone ?? null,
+        },
+        now,
+      );
+      if (!due) continue;
 
       let status = 'ok';
       let created = 0;

@@ -344,6 +344,8 @@ export type Database = {
           name: string | null
           organization_id: string
           query: string
+          run_at_hour: number | null
+          run_at_timezone: string | null
           schedule_enabled: boolean
           tree_id: string
           updated_at: string
@@ -360,6 +362,8 @@ export type Database = {
           name?: string | null
           organization_id: string
           query: string
+          run_at_hour?: number | null
+          run_at_timezone?: string | null
           schedule_enabled?: boolean
           tree_id: string
           updated_at?: string
@@ -376,6 +380,8 @@ export type Database = {
           name?: string | null
           organization_id?: string
           query?: string
+          run_at_hour?: number | null
+          run_at_timezone?: string | null
           schedule_enabled?: boolean
           tree_id?: string
           updated_at?: string
