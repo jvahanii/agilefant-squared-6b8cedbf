@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
-import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
@@ -40,7 +40,6 @@ import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
-import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
@@ -3027,29 +3026,17 @@ export function WorkItemTreePanel() {
   // on the board, and the item sits on the list as though it were live. Finding
   // out means fetching each posting, which only the server can do -- a job board
   // sends no CORS headers -- so the check is a button rather than something that
-  // happens by itself, offered on a published backlog, where a stale row is on
-  // show to other people, and only to a superuser, whose call it is to spend a
-  // burst of server requests.
-  const publishedBacklogs = usePublishedLinksStore((s) => s.backlogs);
-  const publishedTrees = usePublishedLinksStore((s) => s.trees);
-  const publicLinksEnabled = usePublicLinksEnabled();
-  // A link row outlives sharing being switched off, so "published" also
-  // requires that sharing is on — otherwise nothing here is public at all.
-  const backlogIsPublished =
-    publicLinksEnabled &&
-    ((!!selectedBacklogId && publishedBacklogs.has(selectedBacklogId)) ||
-      (!!selectedTreeId && publishedTrees.has(selectedTreeId)));
-
+  // happens by itself, and only a superuser's, whose call it is to spend a burst
+  // of server requests. It has nothing to do with whether the backlog is shared.
   const hyperlinks = useAppStore((s) => s.hyperlinks);
-  // Every item in the backlog and its children that has a link to check, which
-  // is what a published link shows.
+  // Every item in the backlog and its children that has a link to check.
   const linkedItemsInBacklog = useMemo(() => {
-    if (!backlogIsPublished || !isSuperuser || backlogIdSet.size === 0 || !selectedTreeId) return [];
+    if (!isSuperuser || backlogIdSet.size === 0 || !selectedTreeId) return [];
     return Object.values(workItems)
       .filter((wi) => backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
       .map((wi) => ({ id: wi.id, title: wi.title, urls: (hyperlinks[wi.id] ?? []).map((h) => h.url) }))
       .filter((item) => item.urls.length > 0);
-  }, [backlogIsPublished, isSuperuser, workItems, hyperlinks, backlogIdSet, selectedTreeId]);
+  }, [isSuperuser, workItems, hyperlinks, backlogIdSet, selectedTreeId]);
 
   const closedChecking = useClosedPostingsStore((s) => s.checking);
   const closedProgress = useClosedPostingsStore((s) => s.progress);
@@ -3695,7 +3682,7 @@ export function WorkItemTreePanel() {
                   void runClosedCheck();
                 }}
                 disabled={closedChecking}
-                title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this published backlog and mark the ads that have closed. Nothing is saved.`}
+                title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this backlog and mark the ads that have closed. Nothing is saved.`}
               >
                 <Ban className={`w-4 h-4 ${closedChecking ? "animate-pulse" : ""}`} />
                 {/* A count is worth the width on any screen; the invitation to

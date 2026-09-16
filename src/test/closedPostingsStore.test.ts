@@ -1,5 +1,5 @@
 /**
- * The "check ads" button on a published backlog reads this store. What it has
+ * The "Check for closed ads" button in the backlog header reads this store. What it has
  * to get right is the bookkeeping either side of the request: a work item may
  * carry several links and a link may be on several items, batches must not
  * exceed what the endpoint accepts, and a run that fails half way is still
