@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
-import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
@@ -373,7 +373,8 @@ export function MobileBacklogAttributesSheet({
   onOpenTimeLog,
   onOpenPublicLink,
 }: MobileBacklogAttributesSheetProps) {
-  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId));
+  const publicLinksEnabled = usePublicLinksEnabled();
+  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId)) && publicLinksEnabled;
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
@@ -457,6 +458,7 @@ export function MobileBacklogAttributesSheet({
             </div>
           )}
 
+          {publicLinksEnabled && (
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Public link</span>
             <Button
@@ -469,6 +471,7 @@ export function MobileBacklogAttributesSheet({
               {isPublished ? "Published" : "Create"}
             </Button>
           </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

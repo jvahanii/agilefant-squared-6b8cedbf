@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrgStore } from "@/store/orgStore";
-import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
@@ -3032,9 +3032,13 @@ export function WorkItemTreePanel() {
   // burst of server requests.
   const publishedBacklogs = usePublishedLinksStore((s) => s.backlogs);
   const publishedTrees = usePublishedLinksStore((s) => s.trees);
+  const publicLinksEnabled = usePublicLinksEnabled();
+  // A link row outlives sharing being switched off, so "published" also
+  // requires that sharing is on — otherwise nothing here is public at all.
   const backlogIsPublished =
-    (!!selectedBacklogId && publishedBacklogs.has(selectedBacklogId)) ||
-    (!!selectedTreeId && publishedTrees.has(selectedTreeId));
+    publicLinksEnabled &&
+    ((!!selectedBacklogId && publishedBacklogs.has(selectedBacklogId)) ||
+      (!!selectedTreeId && publishedTrees.has(selectedTreeId)));
 
   const hyperlinks = useAppStore((s) => s.hyperlinks);
   // Every item in the backlog and its children that has a link to check, which

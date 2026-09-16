@@ -552,7 +552,7 @@ function buildSections(): Section[] {
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
               {
                 action: "Publish a public link",
-                how: "Right-click a backlog and choose Public link… (on mobile, open its attributes sheet and tap Public link). For a whole tree, open the tree's Share dialog — the public link sits below organisation sharing. Anyone with the link can view it without signing in, and with nothing published yet, Enter creates the link.",
+                how: "Right-click a backlog and choose Public link… (on mobile, open its attributes sheet and tap Public link). For a whole tree, open the tree's Share dialog — the public link sits below organisation sharing. Anyone with the link can view it without signing in, and with nothing published yet, Enter creates the link. Public links are off unless an owner or admin turns on Public links in organisation settings; turning them off again stops every existing link working, without deleting any.",
               },
               {
                 action: "Choose what a link shows",

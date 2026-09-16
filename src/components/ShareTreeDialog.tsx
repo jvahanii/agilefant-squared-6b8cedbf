@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Trash2, Plus } from 'lucide-react';
 import { PublicLinkControls } from './PublicLinkControls';
+import { usePublicLinksEnabled } from '@/store/orgSettingsStore';
 
 interface Share {
   id: string;
@@ -29,6 +30,7 @@ export function ShareTreeDialog({
 }) {
   const activeOrgId = useOrgStore(s => s.activeOrgId);
   const [shares, setShares] = useState<Share[]>([]);
+  const publicLinksEnabled = usePublicLinksEnabled();
   const [slug, setSlug] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -158,10 +160,14 @@ export function ShareTreeDialog({
           <p className="text-xs text-muted-foreground text-center py-2">Not shared with any organizations yet.</p>
         )}
 
-        <div className="mt-2 space-y-2 border-t pt-4">
-          <Label className="text-xs">Public link</Label>
-          <PublicLinkControls treeId={treeId} backlogId={null} />
-        </div>
+        {/* Absent rather than disabled when the organization does not share
+            publicly: there is nothing a member could do with the control. */}
+        {publicLinksEnabled && (
+          <div className="mt-2 space-y-2 border-t pt-4">
+            <Label className="text-xs">Public link</Label>
+            <PublicLinkControls treeId={treeId} backlogId={null} />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

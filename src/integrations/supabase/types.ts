@@ -653,6 +653,7 @@ export type Database = {
           organization_id: string
           persist_notifications_enabled: boolean
           points_enabled: boolean
+          public_links_enabled: boolean
           savings_income_enabled: boolean
           time_logging_enabled: boolean
           updated_at: string
@@ -667,6 +668,7 @@ export type Database = {
           organization_id: string
           persist_notifications_enabled?: boolean
           points_enabled?: boolean
+          public_links_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
@@ -681,6 +683,7 @@ export type Database = {
           organization_id?: string
           persist_notifications_enabled?: boolean
           points_enabled?: boolean
+          public_links_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string

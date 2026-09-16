@@ -31,7 +31,7 @@ import { PublishBacklogDialog } from "./PublicLinkControls";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
@@ -357,7 +357,11 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId));
+  const publicLinksEnabled = usePublicLinksEnabled();
+  // Both hooks run every render; only then combined. A link row can outlive
+  // sharing being switched off, and a marker for it would claim a backlog is
+  // public that no longer is.
+  const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId)) && publicLinksEnabled;
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
   );
@@ -709,10 +713,12 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             View burnup…
           </ContextMenuItem>
         )}
-        <ContextMenuItem className="text-xs" onSelect={() => setShowPublishDialog(true)}>
-          <Globe className="w-3 h-3 mr-2" />
-          Public link…
-        </ContextMenuItem>
+        {publicLinksEnabled && (
+          <ContextMenuItem className="text-xs" onSelect={() => setShowPublishDialog(true)}>
+            <Globe className="w-3 h-3 mr-2" />
+            Public link…
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-xs text-destructive focus:text-destructive"
@@ -975,16 +981,18 @@ function DraggableTreeHeader({
   const treeTotalCached = useTreeTotalMinutesCached(tree.id);
   const treeTotalMinutes = timeLoggingVisible ? treeTotalCached : 0;
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
-  const isPublished = usePublishedLinksStore((s) => s.trees.has(tree.id));
+  const publicLinksEnabled = usePublicLinksEnabled();
+  const isPublished = usePublishedLinksStore((s) => s.trees.has(tree.id)) && publicLinksEnabled;
   // Backlogs published on their own inside this tree. Counted here because
   // a collapsed tree hides their own markers.
   const publishedBacklogIds = usePublishedLinksStore((s) => s.backlogs);
   const backlogsById = useAppStore((s) => s.backlogs);
   const publishedInside = useMemo(() => {
+    if (!publicLinksEnabled) return 0;
     let n = 0;
     for (const id of publishedBacklogIds) if (backlogsById[id]?.treeId === tree.id) n++;
     return n;
-  }, [publishedBacklogIds, backlogsById, tree.id]);
+  }, [publishedBacklogIds, backlogsById, tree.id, publicLinksEnabled]);
   const publishedTitle = [
     isPublished ? "This tree is published" : null,
     publishedInside > 0
@@ -1140,7 +1148,7 @@ function DraggableTreeHeader({
               e.stopPropagation();
               onShareTree();
             }}
-            title="Share tree or publish a public link"
+            title={publicLinksEnabled ? "Share tree or publish a public link" : "Share tree"}
           >
             <Share2 className="w-3.5 h-3.5" />
           </button>

@@ -28,6 +28,7 @@ import {
   Wrench,
   LayoutGrid,
   Shield,
+  Globe,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { checkDataIntegrity, cleanseData, formatIssueReport } from "@/store/dataIntegrity";
@@ -42,6 +43,7 @@ import {
   setAutoTestEnabled as setAutoTestEnabledSetting,
 } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
@@ -800,6 +802,54 @@ export default function TeamSettings() {
                     useOrgSettingsStore.getState().setBoardsEnabled(activeOrgId, checked);
                     toast({ title: checked ? "Boards enabled" : "Boards disabled" });
                   }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Public link sharing. Visible to every member, so anyone can see
+            whether this organization's backlogs can be made public, but only
+            an owner or admin can change it — the database refuses anyone else
+            regardless, and this just says so up front instead of failing. */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Globe className="w-4 h-4" /> Public links
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Allow sharing by public link</p>
+                <p className="text-xs text-muted-foreground">
+                  Lets members publish a backlog or a whole tree at an address anyone can open without signing in.
+                  Turning this off stops every existing link working straight away; it deletes nothing, so turning
+                  it back on restores them at the same addresses.
+                  {!canManage && !isSuperuser && " Only an owner or admin can change this."}
+                </p>
+              </div>
+              <Switch
+                checked={(orgSettings as { publicLinksEnabled?: boolean }).publicLinksEnabled ?? false}
+                disabled={!canManage && !isSuperuser}
+                onCheckedChange={async (checked) => {
+                  if (!activeOrgId) return;
+                  const saved = await useOrgSettingsStore.getState().setPublicLinksEnabled(activeOrgId, checked);
+                  if (!saved) {
+                    toast({
+                      title: "Could not change public links",
+                      description: "The setting was not saved, so it has been put back.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  // Publishing markers and controls depend on this, so reload them
+                  // rather than leave the sidebar describing the old setting.
+                  usePublishedLinksStore.getState().scheduleLoad();
+                  toast({
+                    title: checked ? "Public links turned on" : "Public links turned off",
+                    description: checked ? undefined : "Existing links now show as unavailable to visitors.",
+                  });
                 }}
               />
             </div>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrgStore } from '@/store/orgStore';
 
 interface OrgSettings {
   timeLoggingEnabled: boolean;
@@ -10,6 +11,9 @@ interface OrgSettings {
   boardsEnabled: boolean;
   burnupsEnabled: boolean;
   persistNotificationsEnabled: boolean;
+  /** Backlogs and trees may be shared by public link. Enforced in the database
+   *  too: switching it off stops existing links serving, not only new ones. */
+  publicLinksEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -25,6 +29,7 @@ interface OrgSettingsState {
   setBoardsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setBurnupsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setPersistNotificationsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setPublicLinksEnabled: (orgId: string, enabled: boolean) => Promise<boolean>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -37,6 +42,7 @@ const defaults: OrgSettings = {
   boardsEnabled: false,
   burnupsEnabled: false,
   persistNotificationsEnabled: false,
+  publicLinksEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -47,7 +53,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -70,6 +76,8 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
                 (data as { burnups_enabled?: boolean }).burnups_enabled ?? false,
               persistNotificationsEnabled:
                 (data as { persist_notifications_enabled?: boolean }).persist_notifications_enabled ?? false,
+              publicLinksEnabled:
+                (data as { public_links_enabled?: boolean }).public_links_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -205,6 +213,36 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       );
   },
 
+  setPublicLinksEnabled: async (orgId, enabled) => {
+    const previous = get().settings[orgId]?.publicLinksEnabled ?? false;
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), publicLinksEnabled: enabled },
+      },
+    }));
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert(
+        { organization_id: orgId, public_links_enabled: enabled, updated_at: new Date().toISOString() },
+        { onConflict: 'organization_id' },
+      );
+    // Unlike the other switches, a failed write here is put back rather than
+    // left showing. This one decides whether backlogs are public, and a switch
+    // reading "off" while links still serve is the worst way for it to be wrong.
+    if (error) {
+      set((s) => ({
+        settings: {
+          ...s.settings,
+          [orgId]: { ...(s.settings[orgId] ?? defaults), publicLinksEnabled: previous },
+        },
+      }));
+      return false;
+    }
+    return true;
+  },
+
   applyRealtimeSettings: (payload) => {
     const row = payload.new;
     if (!row?.organization_id) return;
@@ -220,6 +258,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           boardsEnabled: row.boards_enabled ?? false,
           burnupsEnabled: row.burnups_enabled ?? false,
           persistNotificationsEnabled: row.persist_notifications_enabled ?? false,
+          publicLinksEnabled: row.public_links_enabled ?? false,
         },
       },
     }));
@@ -265,4 +304,17 @@ export function isBoardsEnabled(orgId: string | null): boolean {
 export function isPersistNotificationsEnabled(orgId: string | null): boolean {
   if (!orgId) return false;
   return useOrgSettingsStore.getState().settings[orgId]?.persistNotificationsEnabled ?? false;
+}
+
+/**
+ * Whether the active organization shares by public link.
+ *
+ * The active one, because RLS lets a user read only their own organization's
+ * settings: a tree shared in from a partner has an owner whose choice the app
+ * cannot see. The database checks the tree's real owner on every request, so
+ * that gap costs at worst a refused publish, never a page that should be private.
+ */
+export function usePublicLinksEnabled(): boolean {
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  return useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId]?.publicLinksEnabled ?? false : false));
 }
