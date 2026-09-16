@@ -153,7 +153,12 @@ export function SavedSearchPicker({
   if (preview.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    // min-w-0: in a dialog this sits in a CSS grid, whose items refuse to shrink
+    // below their content. Without it the picker grew to its longest title or
+    // URL, overflowed the dialog, and left the list's scrollbar outside the
+    // dialog box — where the dialog blocks scrolling, so it looked as if the
+    // list would not scroll at all.
+    <div className="min-w-0 space-y-2">
       <div className="flex items-center gap-2">
         <Input
           placeholder="Filter by keyword…"
@@ -175,7 +180,9 @@ export function SavedSearchPicker({
           total: filterKeyword ? preview.length : undefined,
         })}
       </p>
-      <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
+      {/* At most half the window, so on a short screen the dialog still fits
+          with Import selected in reach — the dialog itself does not scroll. */}
+      <div className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-3 pr-1">
         {visibleGroups.map((group) => {
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);
