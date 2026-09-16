@@ -142,6 +142,74 @@ export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Se
   return present;
 }
 
+/**
+ * The same question asked of a whole backlog tree: where in it, if anywhere,
+ * does each URL already appear?
+ *
+ * One backlog is the wrong unit for a job hunt. The same posting arrives in two
+ * digests a week apart and gets filed into "Applied" the first time and offered
+ * again for "Ei ehtinyt hakea" the second, because nothing looked outside the
+ * backlog being imported into.
+ *
+ * Asked of `backlog_assignments` rather than the rank rows urlsInBacklog walks,
+ * which is both simpler and truer: an item holds exactly one assignment per
+ * tree, keyed by tree id, so naming the tree is the whole query. Rank rows
+ * survive a delete and a move; assignments do not.
+ *
+ * The value is the backlog the item sits in, so the picker can say where rather
+ * than only that.
+ */
+export async function urlsInTree(
+  admin: Admin,
+  organizationId: string,
+  treeId: string,
+): Promise<Map<string, string>> {
+  const found = new Map<string, string>();
+
+  const { data: items } = await admin
+    .from('work_items')
+    .select('id, backlog_assignments')
+    .eq('organization_id', organizationId)
+    .not(`backlog_assignments->>${treeId}`, 'is', null);
+  const inTree = (items ?? []) as Array<{ id: string; backlog_assignments: Record<string, string> }>;
+  if (inTree.length === 0) return found;
+
+  const backlogOf = new Map<string, string>();
+  for (const item of inTree) backlogOf.set(item.id, item.backlog_assignments?.[treeId] ?? '');
+
+  const names = new Map<string, string>();
+  const backlogIds = [...new Set([...backlogOf.values()].filter(Boolean))];
+  for (let i = 0; i < backlogIds.length; i += 200) {
+    const { data: rows } = await admin
+      .from('backlogs')
+      .select('id, name')
+      .in('id', backlogIds.slice(i, i + 200));
+    for (const r of rows ?? []) names.set(r.id as string, r.name as string);
+  }
+
+  const ids = [...backlogOf.keys()];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: urlRows } = await admin
+      .from('work_item_hyperlinks')
+      .select('work_item_id, url')
+      .in('work_item_id', ids.slice(i, i + 200));
+    for (const r of urlRows ?? []) {
+      const where = names.get(backlogOf.get(r.work_item_id as string) ?? '') ?? 'this tree';
+      // Every form the URL might be compared against, for the same reason
+      // urlsInBacklog keeps all three: older items hold raw trackers.
+      const raw = r.url as string;
+      if (!found.has(raw)) found.set(raw, where);
+      const normalized = normalizeUrl(raw);
+      if (normalized) {
+        if (!found.has(normalized)) found.set(normalized, where);
+        const canonical = canonicalizeByHost(normalized);
+        if (canonical && !found.has(canonical)) found.set(canonical, where);
+      }
+    }
+  }
+  return found;
+}
+
 export async function importLinksAsWorkItems(
   admin: Admin,
   target: ImportTarget,

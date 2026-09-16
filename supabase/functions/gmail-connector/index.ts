@@ -23,7 +23,7 @@ import {
   ExtractedLink,
   LinkMode,
 } from '../_shared/gmail.ts';
-import { importLinksAsWorkItems, urlsInBacklog } from '../_shared/gmailImport.ts';
+import { importLinksAsWorkItems, urlsInBacklog, urlsInTree } from '../_shared/gmailImport.ts';
 import { fillDeadlines } from '../_shared/fetchDeadline.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
@@ -114,17 +114,28 @@ Deno.serve(async (req) => {
 
       if (mode === 'jobs') {
         // Job ad import keeps no ledger, so "already imported" is answered from
-        // the target backlog itself: is this posting's URL already attached to
-        // an item in it. Informational only -- the import never refuses.
+        // the work items themselves: is this posting's URL already attached to
+        // one. Informational only -- the import never refuses.
         const backlogId = String(body.backlogId ?? '');
-        const present = backlogId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
+        const treeId = String(body.treeId ?? '');
+        // The tree, not the backlog, is the unit that matters: the same posting
+        // filed into another list a week ago is still one you have seen. Falls
+        // back on the backlog alone for a caller that names no tree.
+        const inTree = treeId ? await urlsInTree(admin, organizationId, treeId) : new Map<string, string>();
+        const present = backlogId && !treeId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
         // The same fetch the import does, so the picker can show a deadline and
         // say when a posting has stopped taking applications -- LinkedIn leaves
         // those up, and importing one as work is a waste of a row. Capped inside
         // fillDeadlines; a posting that will not load simply tells us nothing.
         const detailed = await fillDeadlines(links);
         return json({
-          links: detailed.map((l) => ({ ...l, alreadyImported: present.has(l.url) })),
+          links: detailed.map((l) => ({
+            ...l,
+            alreadyImported: inTree.has(l.url) || present.has(l.url),
+            // Which list it is already in, so the picker can say where rather
+            // than leaving the reader to go and find it.
+            alreadyIn: inTree.get(l.url) ?? null,
+          })),
         });
       }
 

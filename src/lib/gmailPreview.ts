@@ -9,6 +9,8 @@ export interface PreviewLink {
   from: string;
   date: string;
   alreadyImported: boolean;
+  /** The backlog it is already in, when the tree was searched. */
+  alreadyIn?: string | null;
   /** yyyy-mm-dd, when the mail stated an application deadline. */
   deadline?: string;
   /** The mail said applications stay open, as opposed to saying nothing. */

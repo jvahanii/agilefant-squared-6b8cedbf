@@ -331,6 +331,9 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
         maxMessages: 25,
         mode,
         backlogId: q.backlog_id,
+        // The whole tree, so a posting already filed into another list
+        // counts as one that has been seen.
+        treeId: q.tree_id,
       });
       const sorted = [...res.links].sort(
         (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
@@ -737,7 +740,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                                       </span>
                                       {l.alreadyImported && (
                                         <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
-                                          in this backlog
+                                          {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
                                         </span>
                                       )}
                                     </span>
