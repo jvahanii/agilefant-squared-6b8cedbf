@@ -96,6 +96,38 @@ describe("SavedSearchPicker", () => {
     expect(screen.getByText("already in Applied")).toBeInTheDocument();
   });
 
+  it("says why each unticked row is unticked, and nothing for the ticked ones", async () => {
+    // A posting whose closing date has gone by is unticked as well, with its
+    // own reason — it used to stay ticked with a date already in the past.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-17T09:00:00Z"));
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://x/new", title: "Open one", deadline: "2026-09-30" }),
+        link({ url: "https://x/seen", title: "Seen one", alreadyImported: true, alreadyIn: "Applied" }),
+        link({ url: "https://x/closed", title: "Closed one", applicationsClosed: true }),
+        link({ url: "https://x/late", title: "Late one", deadline: "2026-09-10" }),
+      ],
+    });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Open one");
+
+    expect(screen.getAllByRole("checkbox").slice(1).map((b) => b.getAttribute("data-state"))).toEqual([
+      "checked",
+      "unchecked",
+      "unchecked",
+      "unchecked",
+    ]);
+    const reasons = screen.getAllByText(/^Not selected:/).map((e) => e.textContent);
+    expect(reasons).toEqual([
+      "Not selected: already in Applied. Tick it to import anyway.",
+      "Not selected: no longer accepting applications. Tick it to import anyway.",
+      "Not selected: the closing date has passed. Tick it to import anyway.",
+    ]);
+    vi.useRealTimers();
+  });
+
   it("imports only what is ticked, then closes and reloads", async () => {
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", alreadyImported: true })] })

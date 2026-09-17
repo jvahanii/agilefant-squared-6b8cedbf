@@ -12,6 +12,7 @@ import {
   previewSummary,
   senderAddress,
   senderName,
+  uncheckedReason,
   type PreviewLink,
 } from "@/lib/gmailPreview";
 import { explainGmailError } from "@/lib/gmailOAuth";
@@ -78,11 +79,11 @@ export function SavedSearchPicker({
           return;
         }
         setPreview(sorted);
-        // Anything already in the target backlog starts unchecked, and so does a
-        // posting that has stopped taking applications: both stay importable on
-        // purpose, neither is the default.
+        // Anything uncheckedReason names starts unchecked — already in the tree,
+        // no longer accepting applications, or past its closing date. They stay
+        // importable on purpose, and the row says which it is.
         setSelected(
-          Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, !l.alreadyImported && !l.applicationsClosed])),
+          Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, uncheckedReason(l) === null])),
         );
         setLoading(false);
 
@@ -108,9 +109,10 @@ export function SavedSearchPicker({
                   : l,
               ),
             );
-            if (facts.closed) {
-              // Same default as a posting the server found closed — unless the
-              // row has already been ticked or unticked by hand.
+            // What was just learnt can make the row one to leave alone: closed,
+            // or a closing date already past. Never overrules a row the reader
+            // has ticked or unticked by hand.
+            if (uncheckedReason({ ...facts, deadline: facts.deadline, applicationsClosed: facts.closed })) {
               setSelected((prev) => {
                 const next = { ...prev };
                 for (const l of sorted) {
@@ -308,26 +310,37 @@ export function SavedSearchPicker({
                         }}
                         className="mt-0.5"
                       />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-sm">
-                          {l.title}
-                          <span
-                            className={`ml-2 align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
-                              l.applicationsClosed
-                                ? "border-destructive/40 text-destructive"
-                                : l.deadline
-                                  ? ""
-                                  : "text-muted-foreground"
-                            }`}
-                          >
-                            {deadlineLabel(l)}
-                          </span>
-                          {l.alreadyImported && (
-                            <span className="ml-2 align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
-                              {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
+                      <span className="min-w-0 flex-1">
+                        {/* The title gives way, the labels do not: a long title
+                            used to push the reason a row is unticked out of the
+                            truncated line, leaving it looking unticked for no
+                            reason. */}
+                        <span className="flex items-baseline gap-2 font-medium text-sm">
+                          <span className="truncate">{l.title}</span>
+                          <span className="flex shrink-0 items-baseline gap-2">
+                            <span
+                              className={`align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
+                                l.applicationsClosed
+                                  ? "border-destructive/40 text-destructive"
+                                  : l.deadline
+                                    ? ""
+                                    : "text-muted-foreground"
+                              }`}
+                            >
+                              {deadlineLabel(l)}
                             </span>
-                          )}
+                            {l.alreadyImported && (
+                              <span className="align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
+                                {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
+                              </span>
+                            )}
+                          </span>
                         </span>
+                        {!selected[key] && uncheckedReason(l) && (
+                          <span className="block text-xs text-muted-foreground">
+                            Not selected: {uncheckedReason(l)}. Tick it to import anyway.
+                          </span>
+                        )}
                         <span className="block truncate text-xs text-muted-foreground">
                           <LinkIcon className="w-3 h-3 inline mr-1" />
                           {l.url}

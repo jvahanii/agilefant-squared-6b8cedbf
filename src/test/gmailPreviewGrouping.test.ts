@@ -6,6 +6,7 @@ import {
   gmailMessageUrl,
   groupBySourceEmail,
   previewSummary,
+  uncheckedReason,
 } from '@/lib/gmailPreview';
 
 /**
@@ -157,5 +158,35 @@ describe('deadlineLabel', () => {
     expect(deadlineLabel({ deadline: '2026-09-30' })).toContain('closes');
     expect(deadlineLabel({ deadlineOpen: true })).toBe('open until further notice');
     expect(deadlineLabel({})).toBe('deadline unknown');
+  });
+});
+
+/**
+ * An unticked row with no reason on it looks like a mistake, so the picker
+ * unticks a row only for a reason this function can name.
+ */
+describe('uncheckedReason', () => {
+  const NOW = new Date('2026-09-17T09:00:00Z');
+
+  it('names every reason the picker unticks a row for', () => {
+    expect(uncheckedReason({ alreadyImported: true, alreadyIn: 'Ei ehtinyt hakea' }, NOW)).toBe(
+      'already in Ei ehtinyt hakea',
+    );
+    expect(uncheckedReason({ alreadyImported: true }, NOW)).toBe('already imported');
+    expect(uncheckedReason({ applicationsClosed: true }, NOW)).toBe('no longer accepting applications');
+    expect(uncheckedReason({ deadline: '2026-09-16' }, NOW)).toBe('the closing date has passed');
+  });
+
+  it('leaves a posting that can still be applied for ticked', () => {
+    expect(uncheckedReason({}, NOW)).toBeNull();
+    expect(uncheckedReason({ deadline: '2026-09-30' }, NOW)).toBeNull();
+    // Today is not too late.
+    expect(uncheckedReason({ deadline: '2026-09-17' }, NOW)).toBeNull();
+  });
+
+  it('prefers the reason that says most: where it already is', () => {
+    expect(uncheckedReason({ alreadyImported: true, alreadyIn: 'Applied', applicationsClosed: true }, NOW)).toBe(
+      'already in Applied',
+    );
   });
 });

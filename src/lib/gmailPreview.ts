@@ -1,6 +1,8 @@
 // Shaping the Gmail import picker's rows. Kept out of the component file so
 // Fast Refresh keeps working there, and so the grouping can be unit-tested.
 
+import { deadlinePassed } from "../../supabase/functions/_shared/deadlines";
+
 export interface PreviewLink {
   url: string;
   title: string;
@@ -103,6 +105,28 @@ export function previewSummary(opts: {
  * import by fetching the posting -- so "unknown" here means "not yet", not
  * "none".
  */
+/**
+ * Why a posting is not ticked for import, or null when it is ticked.
+ *
+ * The picker un-ticks a row rather than hiding it, and an un-ticked row with no
+ * visible reason looks like a mistake. Every reason the picker acts on is named
+ * here, so the list cannot un-tick a row for a reason it does not show.
+ */
+export function uncheckedReason(
+  link: {
+    deadline?: string;
+    applicationsClosed?: boolean;
+    alreadyImported?: boolean;
+    alreadyIn?: string | null;
+  },
+  now: Date | number = Date.now(),
+): string | null {
+  if (link.alreadyImported) return link.alreadyIn ? `already in ${link.alreadyIn}` : "already imported";
+  if (link.applicationsClosed) return "no longer accepting applications";
+  if (deadlinePassed(link.deadline, now)) return "the closing date has passed";
+  return null;
+}
+
 export function deadlineLabel(link: {
   deadline?: string;
   deadlineOpen?: boolean;
