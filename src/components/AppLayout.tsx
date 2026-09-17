@@ -71,6 +71,10 @@ import {
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
 import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
+import { rowAfterStatusMove } from "@/lib/statusSelection";
+import { sortTopLevel } from "@/lib/listSort";
+import { topLevelItems } from "@/lib/workItemRows";
+import { currentListSortContext, listSortModeFor } from "@/store/listSortStore";
 
 // Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
@@ -240,6 +244,61 @@ function AppLayoutInner() {
       if (dialogWasOpen || document.querySelector('[role="dialog"]')) return;
 
       const state = useAppStore.getState();
+
+      // Helper: set the status of every selected work item, as one undo step.
+      // In a list whose sort the change reorders (sorted by status), the
+      // selection then moves to the row below the old spot rather than
+      // following the item to its new group — see lib/statusSelection.
+      const setSelectedStatus = (status: WorkItemStatus, label: string) => {
+        if (state.selectedWorkItemIds.length === 0) return;
+        e.preventDefault();
+        const selectedIds = state.selectedWorkItemIds;
+        const backlogId = state.selectedBacklogIds[0];
+        const treeId = state.selectedTreeId;
+        const mode = listSortModeFor(backlogId);
+        const inList = !!backlogId && !!treeId && state.backlogs[backlogId]?.viewMode !== "board" && mode !== "rank";
+
+        // The backlogs the list shows: the selected one and everything under it.
+        const shown = new Set<string>();
+        const collect = (id: string) => {
+          shown.add(id);
+          state.backlogs[id]?.childrenIds.forEach(collect);
+        };
+        if (inList) collect(backlogId);
+        const topLevelOrder = (workItems: typeof state.workItems) =>
+          sortTopLevel(topLevelItems(workItems, treeId!, shown), mode, treeId!, currentListSortContext(treeId!)).map(
+            (wi) => wi.id,
+          );
+        const visibleBefore = visibleWorkItemIdsRef.current;
+        const orderBefore = inList ? topLevelOrder(state.workItems) : [];
+
+        state.runBulk(() => {
+          selectedIds.forEach((id) => state.setWorkItemStatus(id, status));
+        });
+
+        if (inList) {
+          const after = useAppStore.getState();
+          const selected = new Set(selectedIds);
+          const next = rowAfterStatusMove({
+            visibleBefore,
+            selectedIds,
+            orderBefore,
+            orderAfter: topLevelOrder(after.workItems),
+            isInsideSelected: (id) => {
+              const seen = new Set<string>();
+              for (let p = getEffectiveParentId(after.workItems[id], treeId!); p && !seen.has(p); ) {
+                if (selected.has(p)) return true;
+                seen.add(p);
+                const parent = after.workItems[p];
+                p = parent ? getEffectiveParentId(parent, treeId!) : null;
+              }
+              return false;
+            },
+          });
+          if (next) after.selectWorkItem(next, false);
+        }
+        toast({ title: `Marked ${selectedIds.length} item(s) as ${label}` });
+      };
 
       // Helper: move the single selected work item one step up (-1) or down (+1).
       const reorderSelectedItem = (direction: -1 | 1) => {
@@ -423,59 +482,24 @@ function AppLayoutInner() {
               });
             }
           } else {
-            // Set status to Blocked
-            if (state.selectedWorkItemIds.length > 0) {
-              e.preventDefault();
-              state.runBulk(() => {
-                state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "blocked"));
-              });
-              toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Blocked` });
-            }
+            setSelectedStatus("blocked", "Blocked");
           }
           break;
         }
         case "n": {
-          // Set status to Not Started
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            state.runBulk(() => {
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "not_started"));
-            });
-            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Not Started` });
-          }
+          setSelectedStatus("not_started", "Not Started");
           break;
         }
         case "d": {
-          // Set status to Done
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            state.runBulk(() => {
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "done"));
-            });
-            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Done` });
-          }
+          setSelectedStatus("done", "Done");
           break;
         }
         case "i": {
-          // Set status to In Progress
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            state.runBulk(() => {
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "in_progress"));
-            });
-            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as In Progress` });
-          }
+          setSelectedStatus("in_progress", "In Progress");
           break;
         }
         case "p": {
-          // Set status to Pending
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            state.runBulk(() => {
-              state.selectedWorkItemIds.forEach((id) => state.setWorkItemStatus(id, "pending"));
-            });
-            toast({ title: `Marked ${state.selectedWorkItemIds.length} item(s) as Pending` });
-          }
+          setSelectedStatus("pending", "Pending");
           break;
         }
         case "o": {
