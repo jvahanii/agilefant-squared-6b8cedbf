@@ -35,6 +35,13 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
   },
 }));
+let readerInstalled = false;
+const readPostingFacts = vi.fn();
+vi.mock("@/lib/postingReader", () => ({
+  postingReaderAvailable: async () => readerInstalled,
+  readableInBrowser: (url: string) => url.includes("jobly.fi"),
+  readPostingFacts: (...args: unknown[]) => readPostingFacts(...args),
+}));
 vi.mock("@/store/orgStore", () => ({
   useOrgStore: (select: (s: { activeOrgId: string; roleOverride: null }) => unknown) =>
     select({ activeOrgId: "org-1", roleOverride: null }),
@@ -62,6 +69,8 @@ beforeEach(() => {
   loadFromSupabase.mockClear();
   superuser = true;
   savedSearches = [];
+  readerInstalled = false;
+  readPostingFacts.mockReset();
 });
 
 describe("SavedSearchPicker", () => {
@@ -118,6 +127,87 @@ describe("SavedSearchPicker", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Connect Gmail first" }));
+  });
+});
+
+describe("SavedSearchPicker reading Jobly through the browser", () => {
+  const JOBLY_OPEN = "https://www.jobly.fi/tyopaikka/senior-ai-solutions-engineer-2760006";
+  const JOBLY_CLOSED = "https://www.jobly.fi/tyopaikka/closed-one-1";
+  const JOBLY_TOUCHED = "https://www.jobly.fi/tyopaikka/touched-2";
+
+  it("fills in deadlines and unticks a closed posting, but not one ticked by hand", async () => {
+    readerInstalled = true;
+    let releaseTouched: (v: unknown) => void = () => {};
+    readPostingFacts.mockImplementation((url: string) => {
+      if (url === JOBLY_OPEN) return Promise.resolve({ deadline: "2026-10-11", closed: false });
+      if (url === JOBLY_CLOSED) return Promise.resolve({ closed: true });
+      // Held back until the user has clicked this row.
+      return new Promise((resolve) => (releaseTouched = () => resolve({ closed: true })));
+    });
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: JOBLY_OPEN, title: "Alma Media — Senior AI Solutions Engineer" }),
+        link({ url: JOBLY_CLOSED, title: "Closed on Jobly" }),
+        link({ url: JOBLY_TOUCHED, title: "Touched on Jobly" }),
+        link({ url: "https://www.linkedin.com/jobs/view/9", title: "LinkedIn one" }),
+      ],
+    });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Alma Media — Senior AI Solutions Engineer");
+
+    // The row still waiting for its answer is unticked and ticked again by hand.
+    await waitFor(() => expect(readPostingFacts).toHaveBeenCalledTimes(3));
+    const touchedBox = () => screen.getAllByRole("checkbox")[3];
+    fireEvent.click(touchedBox());
+    fireEvent.click(touchedBox());
+    releaseTouched(undefined);
+
+    await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
+    expect(screen.getByText("Closes 10/11/2026", { exact: false })).toBeInTheDocument();
+    // [select-all, Alma, Closed, Touched, LinkedIn]
+    expect(screen.getAllByRole("checkbox").slice(1).map((b) => b.getAttribute("data-state"))).toEqual([
+      "checked",
+      "unchecked",
+      "checked",
+      "checked",
+    ]);
+    // LinkedIn stays with the server.
+    expect(readPostingFacts.mock.calls.map((c) => c[0])).not.toContain("https://www.linkedin.com/jobs/view/9");
+  });
+
+  it("imports the deadline the browser found", async () => {
+    readerInstalled = true;
+    readPostingFacts.mockResolvedValue({ deadline: "2026-10-11", closed: false });
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: JOBLY_OPEN, title: "Alma" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
+    await waitFor(() => expect(readPostingFacts).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+
+    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ url: JOBLY_OPEN, deadline: "2026-10-11" });
+  });
+
+  it("leaves the picker as it was without the extension, or for someone who is not a superuser", async () => {
+    for (const [installed, isSuper] of [
+      [false, true],
+      [true, false],
+    ]) {
+      readerInstalled = installed;
+      superuser = isSuper;
+      callGmail.mockResolvedValueOnce({ links: [link({ url: JOBLY_OPEN, title: `Alma ${installed}` })] });
+      const { unmount } = render(
+        <SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />,
+      );
+      await screen.findByText(`Alma ${installed}`);
+      await new Promise((r) => setTimeout(r, 10));
+      unmount();
+    }
+    expect(readPostingFacts).not.toHaveBeenCalled();
   });
 });
 

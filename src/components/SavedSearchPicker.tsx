@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LinkIcon, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,9 @@ import {
 } from "@/lib/gmailPreview";
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
+import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
+import { useScramble } from "@/contexts/ScrambleContext";
+import { useOrgStore } from "@/store/orgStore";
 
 /**
  * Run a saved Gmail search and choose what to import from it.
@@ -42,6 +45,13 @@ export function SavedSearchPicker({
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
+  const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
+  /** Rows ticked or unticked by hand, which a late answer must not overrule. */
+  const touched = useRef(new Set<string>());
+  const { isSuperuser } = useScramble();
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  // The posting reader is a superuser tool for now, like the header button.
+  const canReadInBrowser = isSuperuser && !roleOverride;
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +84,46 @@ export function SavedSearchPicker({
         setSelected(
           Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, !l.alreadyImported && !l.applicationsClosed])),
         );
+        setLoading(false);
+
+        // Postings the server was refused (Jobly) are read through the browser,
+        // when the posting reader extension is there. The list is already
+        // usable meanwhile; rows gain their deadline as each answer arrives.
+        if (!canReadInBrowser) return;
+        const urls = [
+          ...new Set(sorted.filter((l) => !l.deadline && !l.applicationsClosed && readableInBrowser(l.url)).map((l) => l.url)),
+        ];
+        if (urls.length === 0 || !(await postingReaderAvailable())) return;
+        if (cancelled) return;
+        setReading({ done: 0, total: urls.length });
+        for (const [i, url] of urls.entries()) {
+          const reference = sorted.find((l) => l.url === url)?.date || new Date().toISOString();
+          const facts = await readPostingFacts(url, reference);
+          if (cancelled) return;
+          if (facts.deadline || facts.closed) {
+            setPreview((prev) =>
+              prev.map((l) =>
+                l.url === url
+                  ? { ...l, deadline: l.deadline ?? facts.deadline, applicationsClosed: l.applicationsClosed || !!facts.closed }
+                  : l,
+              ),
+            );
+            if (facts.closed) {
+              // Same default as a posting the server found closed — unless the
+              // row has already been ticked or unticked by hand.
+              setSelected((prev) => {
+                const next = { ...prev };
+                for (const l of sorted) {
+                  const key = `${l.messageId}|${l.url}`;
+                  if (l.url === url && !touched.current.has(key)) next[key] = false;
+                }
+                return next;
+              });
+            }
+          }
+          setReading({ done: i + 1, total: urls.length });
+        }
+        setReading(null);
       } catch (e) {
         if (cancelled) return;
         const message = (e as Error).message;
@@ -180,6 +230,12 @@ export function SavedSearchPicker({
           total: filterKeyword ? preview.length : undefined,
         })}
       </p>
+      {reading && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Reading Jobly postings through your browser… {reading.done}/{reading.total}
+        </p>
+      )}
       {/* At most half the window, so on a short screen the dialog still fits
           with Import selected in reach — the dialog itself does not scroll. */}
       <div className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-3 pr-1">
@@ -196,13 +252,14 @@ export function SavedSearchPicker({
               <div className="flex items-start gap-2 bg-muted/50 px-2 py-2 rounded-t-md">
                 <Checkbox
                   checked={allChecked}
-                  onCheckedChange={(c) =>
+                  onCheckedChange={(c) => {
+                    keys.forEach((k) => touched.current.add(k));
                     setSelected((prev) => {
                       const next = { ...prev };
                       for (const k of keys) next[k] = !!c;
                       return next;
-                    })
-                  }
+                    });
+                  }}
                   className="mt-0.5"
                   aria-label={`Select all ${group.links.length} from ${group.subject}`}
                 />
@@ -242,7 +299,10 @@ export function SavedSearchPicker({
                     <label key={key} className="flex items-start gap-2 text-sm">
                       <Checkbox
                         checked={!!selected[key]}
-                        onCheckedChange={(c) => setSelected((s) => ({ ...s, [key]: !!c }))}
+                        onCheckedChange={(c) => {
+                          touched.current.add(key);
+                          setSelected((s) => ({ ...s, [key]: !!c }));
+                        }}
                         className="mt-0.5"
                       />
                       <span className="min-w-0">

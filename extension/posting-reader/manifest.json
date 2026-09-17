@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Agilefant posting reader",
+  "version": "1.0.0",
+  "description": "Reads job postings that refuse Agilefant's servers (Jobly) through your own browser, so their deadlines can be found.",
+  "host_permissions": ["https://www.jobly.fi/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://agilefant.org/*", "http://localhost:8080/*", "http://localhost:4173/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

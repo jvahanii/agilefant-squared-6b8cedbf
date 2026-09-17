@@ -307,6 +307,14 @@ export default function JobAdsGuide() {
             found, the item is created without a date prefix rather than with a guess — a wrong date in an item name
             is worse than none.
           </P>
+          <P>
+            Jobly refuses to show its postings to Agilefant's servers, so their deadlines cannot be read there.
+            Superusers can install the <Em>Agilefant posting reader</Em> browser extension, which reads Jobly postings
+            through your own browser instead: the picker then fills in their deadlines while you look at it.
+            <Em> Fill deadlines</Em>, in the header of a backlog, does the same for items already imported — it reads
+            the postings of job ads whose name has no date yet and puts the deadline in front of the name. One Ctrl+Z
+            undoes the whole run.
+          </P>
         </Section>
 
         <Section id="scheduling" title="Scheduled imports">
@@ -387,7 +395,7 @@ export default function JobAdsGuide() {
               ],
               [
                 "A posting has no deadline",
-                "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened.",
+                "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers) and use Fill deadlines.",
               ],
               [
                 "The same posting was imported twice",

@@ -49,6 +49,26 @@ interface ClosedPostingsState {
  */
 export const POSTING_BATCH = 20;
 
+export interface PostingStatusResult {
+  url: string;
+  closed: boolean;
+  deadline?: string | null;
+  unreachable?: number | null;
+}
+
+/**
+ * Ask the posting-status function about up to POSTING_BATCH URLs, keyed by URL.
+ * Throws when the call itself fails, so a caller can tell "the board said
+ * nothing" from "we never asked".
+ */
+export async function fetchPostingStatus(urls: string[]): Promise<Record<string, PostingStatusResult>> {
+  const { data, error } = await supabase.functions.invoke('posting-status', { body: { urls } });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  const results: PostingStatusResult[] = data?.results ?? [];
+  return Object.fromEntries(results.map((r) => [r.url, r]));
+}
+
 export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => ({
   closed: new Set(),
   checked: new Set(),

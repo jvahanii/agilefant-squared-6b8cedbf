@@ -181,32 +181,67 @@ async function fetchPosting(target: string): Promise<Response | { error: number 
   return { error: 0 };
 }
 
+/**
+ * Cloudflare's bot check: "Just a moment…", served with a 403 (sometimes a 503)
+ * to an address it will not let through. Jobly answers every Supabase server
+ * with it. It says nothing about the posting, so it must never count as gone.
+ *
+ * Recognised by its title alone. Jobly's real posting pages load Cloudflare's
+ * "challenge-platform" script too, so that marker would call every one of them
+ * a challenge.
+ */
+export function isChallengePage(html: string): boolean {
+  return /<title>\s*Just a moment\.\.\.\s*<\/title>/i.test(html);
+}
+
+/**
+ * What a fetched page says about its posting. Pure, so the server and the
+ * browser (the posting reader extension, for boards that refuse the server)
+ * judge a page by exactly the same rules.
+ *
+ * `target` is the address actually fetched — postingTextUrl's answer — since the
+ * LinkedIn rule depends on having read the guest endpoint.
+ */
+export function factsFromPage(
+  target: string,
+  status: number,
+  contentType: string,
+  html: string,
+  reference: string,
+): PostingFacts {
+  if (isChallengePage(html)) return { unreachable: status || 403 };
+  if (status < 200 || status >= 300) {
+    return closedByStatus(status) ? { closed: true } : { unreachable: status };
+  }
+  if (!contentType.includes('html') && !contentType.includes('text')) return { unreachable: status };
+
+  // One fetch answers every question, so a closed posting costs no extra
+  // request. The markup is kept as well as the text: what LinkedIn will not
+  // say in words, it says by leaving the apply button out.
+  const text = textFromHtml(html);
+  const deadline = parseDeadline(text, reference);
+  const closed =
+    parseApplicationsClosed(text) ||
+    // Against now, not `reference`: the question is whether it is too late
+    // today, while the reference only decides which year a bare "9.9." meant.
+    deadlinePassed(deadline) ||
+    (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
+  return { deadline, closed };
+}
+
 async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts> {
   const target = postingTextUrl(rawUrl);
   if (!target) return { unreachable: 0 };
 
   const res = await fetchPosting(target);
   if ('error' in res) return { unreachable: res.error };
-  if (!res.ok) {
-    return closedByStatus(res.status) ? { closed: true } : { unreachable: res.status };
-  }
   const type = res.headers.get('content-type') ?? '';
-  if (!type.includes('html') && !type.includes('text')) return { unreachable: res.status };
 
   try {
-    // One fetch answers every question, so a closed posting costs no extra
-    // request. The markup is kept as well as the text: what LinkedIn will not
-    // say in words, it says by leaving the apply button out.
-    const html = await res.text();
-    const text = textFromHtml(html);
-    const deadline = parseDeadline(text, reference);
-    const closed =
-      parseApplicationsClosed(text) ||
-      // Against now, not `reference`: the question is whether it is too late
-      // today, while the reference only decides which year a bare "9.9." meant.
-      deadlinePassed(deadline) ||
-      (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
-    return { deadline, closed };
+    // Read the body even for a failed status: a Cloudflare challenge comes as a
+    // 403 or 503, and only its body tells it apart from a real refusal.
+    const html = res.ok || !closedByStatus(res.status) ? await res.text() : '';
+    return factsFromPage(target, res.status, type, html, reference);
   } catch {
     return { unreachable: 0 };
   }

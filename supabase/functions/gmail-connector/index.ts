@@ -37,6 +37,7 @@ import {
 } from '../_shared/googleOAuth.ts';
 import { importLinksAsWorkItems, urlsInBacklog, urlsInTree } from '../_shared/gmailImport.ts';
 import { fillDeadlines } from '../_shared/fetchDeadline.ts';
+import { wellFormedDeadline } from '../_shared/deadlines.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
@@ -365,6 +366,12 @@ Deno.serve(async (req) => {
           subject: String(l.subject ?? ''),
           from: String(l.from ?? ''),
           date: String(l.date ?? ''),
+          // A deadline the picker already knows — from the mail, or read through
+          // the browser from a board that refuses this server (Jobly) — is kept,
+          // so the import does not fetch again and come back with nothing. Only
+          // a well-formed date: it becomes part of the item's name.
+          ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
+          ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
         })).filter((l) => l.url && l.messageId),
       );
       return json(result);

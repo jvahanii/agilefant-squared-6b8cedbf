@@ -98,6 +98,21 @@ extractor was keeping 400. Tidy markup tests a shape no sender ever produces.
 Real mail is reachable via the Gmail MCP; an oversized result is saved to a file
 you can run the extractor against.
 
+## Job boards that refuse the server
+
+Jobly (jobly.fi) is behind Cloudflare and answers every request from Supabase —
+edge functions and `pg_net` alike — with **403 "Just a moment…"**. That is why no
+Jobly posting ever got a deadline or a closed check, however good the parsing.
+LinkedIn, Duunitori, Työmarkkinatori, The Hub and company career sites answered
+200 when checked (2026-09-17). To test a board from Supabase's own network, use
+`select net.http_get(url)` and read `net._http_response`.
+
+The way round it is `extension/posting-reader`, an unpacked Chrome extension that
+fetches Jobly in the user's browser; the app judges the page with the same
+`factsFromPage` the server uses. Do not add LinkedIn to it: reading LinkedIn with
+a signed-in session breaches LinkedIn's terms and risks the user's account. And
+do not try to get past Cloudflare from the server.
+
 ## This machine
 
 - Norton HTTPS scanning breaks some Node/Go TLS clients. `winget`'s `msstore`

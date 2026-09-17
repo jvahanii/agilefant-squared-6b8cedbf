@@ -198,6 +198,17 @@ export function parseDeadline(text: string, reference: Date | string | number): 
   return undefined;
 }
 
+/**
+ * A deadline that arrived from outside — the import picker sends back the ones
+ * it knows — as yyyy-mm-dd if it is a real date, otherwise nothing. It ends up
+ * in a work item's name, so "2026-02-31" or free text must not get through.
+ */
+export function wellFormedDeadline(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? iso(Number(m[1]), Number(m[2]), Number(m[3])) : undefined;
+}
+
 /** "2026-09-20" -> "0920", the prefix an imported work item is named with. */
 export function deadlinePrefix(isoDate: string | undefined): string {
   if (!isoDate) return "";
