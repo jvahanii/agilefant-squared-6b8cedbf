@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LinkIcon, Loader2 } from "lucide-react";
+import { LinkIcon, Loader2, Mail } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,18 +243,19 @@ export function SavedSearchPicker({
       )}
       {/* At most half the window, so on a short screen the dialog still fits
           with Import selected in reach — the dialog itself does not scroll. */}
-      <div className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-3 pr-1">
+      <div className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-4 pr-1">
         {visibleGroups.map((group) => {
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);
           const seen = group.links.filter((l) => l.alreadyImported).length;
           return (
-            <div key={group.messageId} className="border rounded-md">
-              {/* The source email, above the jobs it produced. Wraps rather than
-                  truncates: a digest subject is long and the part that
-                  identifies it sits at the end, so clipping removes what the
-                  credit is for. */}
-              <div className="flex items-start gap-2 bg-muted/50 px-2 py-2 rounded-t-md">
+            <div key={group.messageId} className="border rounded-md overflow-hidden">
+              {/* The source email, above the jobs it produced. It reads as a
+                  heading rather than a first row: solid bar, an envelope, and
+                  the subject in its own weight — the postings beneath sit in
+                  from its edge. The subject wraps rather than truncates, since a
+                  digest subject is long and what identifies it sits at the end. */}
+              <div className="flex items-start gap-2 border-b bg-muted px-2 py-2">
                 <Checkbox
                   checked={allChecked}
                   onCheckedChange={(c) => {
@@ -268,21 +269,18 @@ export function SavedSearchPicker({
                   className="mt-0.5"
                   aria-label={`Select all ${group.links.length} from ${group.subject}`}
                 />
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">From: </span>
-                    <span className="font-medium break-words">{senderName(group.from)}</span>
+                  <p className="text-sm font-semibold leading-snug break-words">{group.subject}</p>
+                  <p className="text-xs text-muted-foreground break-words">
+                    {senderName(group.from)}
                     {senderAddress(group.from) && (
-                      <span className="text-muted-foreground break-all"> &lt;{senderAddress(group.from)}&gt;</span>
+                      <span className="break-all"> &lt;{senderAddress(group.from)}&gt;</span>
                     )}
-                  </p>
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Subject: </span>
-                    <span className="font-medium break-words">{group.subject}</span>
+                    {group.date && ` · ${new Date(group.date).toLocaleString()}`}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {group.date && `${new Date(group.date).toLocaleString()} · `}
-                    {group.links.length} job{group.links.length === 1 ? "" : "s"}
+                    {group.links.length} job{group.links.length === 1 ? "" : "s"} in this email
                     {seen > 0 && ` · ${seen} already in this backlog`}
                   </p>
                 </div>
@@ -297,7 +295,7 @@ export function SavedSearchPicker({
                 </a>
               </div>
 
-              <div className="px-2 py-1.5 space-y-1.5">
+              <div className="px-2 py-1.5 pl-4 space-y-1.5">
                 {group.links.map((l) => {
                   const key = `${l.messageId}|${l.url}`;
                   return (
