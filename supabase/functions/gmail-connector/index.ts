@@ -170,13 +170,19 @@ Deno.serve(async (req) => {
           return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
         } catch (e) {
           // The gateway remembers every app user it has connected, and demands
-          // that user's key to connect them again. Disconnect deletes the key,
-          // so after a disconnect the old identity can never be reconnected.
+          // that user's own key to connect them again. Two ways that fails:
+          //   - Disconnect deleted the key, so the old identity cannot be
+          //     reconnected at all (400, "Reconnect requires the
+          //     X-Connection-Api-Key header");
+          //   - the stored key belongs to a fresh identity started after such a
+          //     disconnect, not to the user id (403, "X-Connection-Api-Key does
+          //     not match this app_user_id").
           // Nothing else uses the app user id — every later call names the
-          // connection by its key — so start a fresh identity instead.
+          // connection by its key — so start a fresh identity, and the
+          // exchange replaces the stored connection with the new one.
           const message = e instanceof Error ? e.message : String(e);
-          if (existingKey || !/X-Connection-Api-Key/i.test(message)) throw e;
-          console.error('gateway refused to reconnect without the deleted key; starting a fresh app user');
+          if (!/X-Connection-Api-Key/i.test(message)) throw e;
+          console.error('gateway refused the reconnect for this app user; starting a fresh app user:', message);
           return json({ authorizationUrl: await startAuthorize(crypto.randomUUID(), returnUrl, null) });
         }
       }
