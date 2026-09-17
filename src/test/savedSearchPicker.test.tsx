@@ -16,8 +16,16 @@ const toast = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...args) }));
 
 const loadFromSupabase = vi.fn().mockResolvedValue(undefined);
+const applySiblingOrder = vi.fn();
+const runBulk = vi.fn((fn: () => void) => fn());
+/** The slice of the store the picker reads; backlogs decide auto-placing. */
+let storeState: Record<string, unknown> = {};
+const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, workItems: {}, backlogs: {}, ...storeState });
 vi.mock("@/store/appStore", () => ({
-  useAppStore: (select: (s: { loadFromSupabase: () => Promise<void> }) => unknown) => select({ loadFromSupabase }),
+  useAppStore: Object.assign(
+    (select: (s: ReturnType<typeof appStoreState>) => unknown) => select(appStoreState()),
+    { getState: () => appStoreState() },
+  ),
 }));
 
 let superuser = true;
@@ -71,6 +79,9 @@ beforeEach(() => {
   savedSearches = [];
   readerInstalled = false;
   readPostingFacts.mockReset();
+  applySiblingOrder.mockReset();
+  runBulk.mockClear();
+  storeState = {};
 });
 
 describe("SavedSearchPicker", () => {
@@ -159,6 +170,81 @@ describe("SavedSearchPicker", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Connect Gmail again" }));
+  });
+});
+
+describe("Import & auto-place", () => {
+  const backlog = (id: string, name: string, treeId = "tree-1") => ({
+    id, name, parentId: null, childrenIds: [], treeId, rank: 0,
+  });
+  const item = (id: string, title: string, backlogId: string) => ({
+    id, title, status: "not_started", parentId: null, childrenIds: [],
+    backlogAssignments: { "tree-1": backlogId }, ranks: { [backlogId]: 0 },
+  });
+
+  const withBothLists = () => {
+    storeState = {
+      backlogs: {
+        dl: backlog("dl", "Deadlinella"),
+        open: backlog("open", "Toistaiseksi avoimet"),
+        other: backlog("other", "ICT jobs inbox"),
+      },
+      workItems: {
+        a: item("a", "1011 Alma Media — AI", "dl"),
+        b: item("b", "0930 Fennia — Product owner", "dl"),
+        c: item("c", "Nordea — AI Platform Engineer", "open"),
+      },
+    };
+  };
+
+  it("files each posting by its deadline, then ranks both lists by name", async () => {
+    withBothLists();
+    callGmail
+      .mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/dated", title: "Dated", deadline: "2026-10-11" }),
+          link({ url: "https://x/open", title: "Open-ended", deadlineOpen: true }),
+          link({ url: "https://x/none", title: "No date" }),
+        ],
+      })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
+      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 });
+    const onClose = vi.fn();
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
+    await screen.findByText("Dated");
+    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2));
+    const [dated, undated] = callGmail.mock.calls.slice(1).map((c) => c[0]);
+    expect(dated).toMatchObject({ action: "import", backlogId: "dl" });
+    expect(dated.links.map((l: { url: string }) => l.url)).toEqual(["https://x/dated"]);
+    expect(undated).toMatchObject({ action: "import", backlogId: "open" });
+    // "Open until further notice" is not a date, so it goes with the undated.
+    expect(undated.links.map((l: { url: string }) => l.url)).toEqual(["https://x/open", "https://x/none"]);
+
+    // Name order, which for an imported title is closing-date order.
+    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["b", "a"]]);
+    expect(applySiblingOrder.mock.calls[1].slice(0, 4)).toEqual([null, "tree-1", ["open"], ["c"]]);
+    expect(runBulk).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalled();
+    expect(loadFromSupabase).toHaveBeenCalled();
+  });
+
+  it("is not offered when the tree has no such lists", async () => {
+    storeState = { backlogs: { other: backlog("other", "ICT jobs inbox") } };
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Only one");
+    expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
+  });
+
+  it("is not offered for a link import, which has no deadlines to sort by", async () => {
+    withBothLists();
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "A link" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("A link");
+    expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
   });
 });
 

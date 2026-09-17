@@ -18,6 +18,10 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
+import { AUTO_PLACE_BACKLOGS, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { sortTopLevel } from "@/lib/listSort";
+import { topLevelItems } from "@/lib/workItemRows";
+import { currentListSortContext } from "@/store/listSortStore";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
 
@@ -41,6 +45,13 @@ export function SavedSearchPicker({
   onClose: () => void;
 }) {
   const reloadData = useAppStore((s) => s.loadFromSupabase);
+  const backlogs = useAppStore((s) => s.backlogs);
+  // Only where this tree has both lists to place into; elsewhere the button
+  // simply is not offered.
+  const autoPlace = useMemo(
+    () => (mode === "jobs" ? findAutoPlaceTargets(backlogs, search.tree_id) : null),
+    [backlogs, mode, search.tree_id],
+  );
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -164,23 +175,28 @@ export function SavedSearchPicker({
   }, [preview, filterKeyword]);
   const visibleGroups = useMemo(() => groupBySourceEmail(visiblePreview), [visiblePreview]);
 
+  const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
+
+  const importInto = (backlogId: string, links: PreviewLink[]) =>
+    callGmail<{ created: number; skipped: number; collapsed: number }>({
+      action: "import",
+      mode,
+      organizationId,
+      treeId: search.tree_id,
+      backlogId,
+      queryId: search.id,
+      links,
+    });
+
   const importSelected = async () => {
-    const links = preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
+    const links = pickedLinks();
     if (links.length === 0) {
       toast({ title: "Nothing selected", variant: "destructive" });
       return;
     }
     setImporting(true);
     try {
-      const res = await callGmail<{ created: number; skipped: number; collapsed: number }>({
-        action: "import",
-        mode,
-        organizationId,
-        treeId: search.tree_id,
-        backlogId: search.backlog_id,
-        queryId: search.id,
-        links,
-      });
+      const res = await importInto(search.backlog_id, links);
       toast({
         title: `Imported ${res.created} work item${res.created === 1 ? "" : "s"}`,
         description: res.skipped
@@ -191,6 +207,62 @@ export function SavedSearchPicker({
       });
       onClose();
       await reloadData();
+    } catch (e) {
+      toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  /**
+   * Import each posting into the list its closing date decides, then put both
+   * lists in name order and keep that order as their rank. An imported title
+   * starts with its closing date, so name order is closing-date order.
+   */
+  const importAndAutoPlace = async () => {
+    const links = pickedLinks();
+    if (links.length === 0) {
+      toast({ title: "Nothing selected", variant: "destructive" });
+      return;
+    }
+    if (!autoPlace) return;
+    setImporting(true);
+    try {
+      const { dated, undated } = splitByDeadline(links);
+      const results = await Promise.all([
+        dated.length ? importInto(autoPlace.withDeadline, dated) : Promise.resolve(null),
+        undated.length ? importInto(autoPlace.withoutDeadline, undated) : Promise.resolve(null),
+      ]);
+      const created = results.reduce((sum, r) => sum + (r?.created ?? 0), 0);
+      onClose();
+      await reloadData();
+
+      // Ranking runs on the data as it is after the reload, so it covers what
+      // was already in each list as well as what has just arrived.
+      const app = useAppStore.getState();
+      app.runBulk(() => {
+        for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
+          const ordered = sortTopLevel(
+            topLevelItems(useAppStore.getState().workItems, search.tree_id, new Set([backlogId])),
+            "name-asc",
+            search.tree_id,
+            currentListSortContext(search.tree_id),
+          );
+          if (ordered.length === 0) continue;
+          app.applySiblingOrder(
+            null,
+            search.tree_id,
+            [backlogId],
+            ordered.map((item) => item.id),
+            `Auto-placed import: ${ordered.length} items in name order`,
+          );
+        }
+      });
+
+      toast({
+        title: `Imported ${created} work item${created === 1 ? "" : "s"}`,
+        description: `${dated.length} with a deadline into ${AUTO_PLACE_BACKLOGS.withDeadline}, ${undated.length} without into ${AUTO_PLACE_BACKLOGS.withoutDeadline}. Both lists sorted by name and saved as rank.`,
+      });
     } catch (e) {
       toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -328,7 +400,10 @@ export function SavedSearchPicker({
                               {deadlineLabel(l)}
                             </span>
                             {l.alreadyImported && (
-                              <span className="align-middle text-[10px] font-normal uppercase tracking-wide text-muted-foreground border rounded px-1 py-0.5">
+                              // Its own colour: which list a posting is already
+                              // in is the thing worth spotting while scanning,
+                              // and it read as one more grey label.
+                              <span className="align-middle text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 border border-primary/40 bg-primary/10 text-primary">
                                 {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
                               </span>
                             )}
@@ -357,6 +432,17 @@ export function SavedSearchPicker({
           {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Import selected
         </Button>
+        {autoPlace && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={importAndAutoPlace}
+            disabled={importing}
+            title={`Postings with a closing date go to ${AUTO_PLACE_BACKLOGS.withDeadline}, the rest to ${AUTO_PLACE_BACKLOGS.withoutDeadline}. Both lists are then sorted by name and that order saved as rank.`}
+          >
+            Import &amp; auto-place
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onClose} disabled={importing}>
           Cancel
         </Button>
