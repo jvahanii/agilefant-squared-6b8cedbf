@@ -35,8 +35,8 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
   },
   {
     name: "Teamtailor",
-    searched: "No",
-    note: "Postings are read if you include these emails in your own search, but they are not searched for by default.",
+    searched: "Yes",
+    note: "“New jobs matching your profile” emails from any employer on Teamtailor, such as NestAI, Verda and Sofigate — including postings on the employer's own career site.",
   },
 ];
 

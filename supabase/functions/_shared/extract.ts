@@ -64,10 +64,27 @@ const BLOCKED_HOST_HINTS = [
   'list-manage.com/unsubscribe',
   'mailchi.mp/unsub',
   'sendgrid.net/wf/open',
-  'beacon',
-  'pixel',
-  'tracking',
 ];
+
+/**
+ * Words that mark a tracker — but only as a host label or a whole path segment
+ * (pixel.example.com, /tracking/open), never inside one. Matched anywhere in the
+ * URL they threw away NestAI's "machine-learning-engineer-object-tracking-re-
+ * identification" posting, and would any job whose slug says tracking, pixel or
+ * beacon.
+ */
+const TRACKER_WORDS = ['beacon', 'pixel', 'tracking'];
+
+function looksLikeTracker(url: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  const parts = [...u.hostname.split('.'), ...u.pathname.split('/')].map((p) => p.toLowerCase());
+  return parts.some((part) => TRACKER_WORDS.includes(part));
+}
 
 const BLOCKED_TEXT_HINTS = ['unsubscribe', 'peruuta', 'view in browser', 'manage preferences', 'update preferences'];
 
@@ -97,6 +114,7 @@ export interface ExtractedLink {
 function looksLikeNoise(url: string, label: string): boolean {
   const lowerUrl = url.toLowerCase();
   if (BLOCKED_HOST_HINTS.some((h) => lowerUrl.includes(h))) return true;
+  if (looksLikeTracker(url)) return true;
   const lowerLabel = label.toLowerCase();
   if (BLOCKED_TEXT_HINTS.some((h) => lowerLabel.includes(h))) return true;
   if (/\.(png|jpe?g|gif|svg|webp|css|js|ico)(\?|$)/i.test(url)) return true;

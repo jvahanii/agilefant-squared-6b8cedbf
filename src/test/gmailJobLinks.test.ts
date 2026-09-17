@@ -223,6 +223,33 @@ describe('Teamtailor', () => {
       'https://sofigategroupoy.teamtailor.com/jobs/8356594-interim-it-leader-senior-it-program-manager',
     ]);
   });
+
+  it('keeps a posting on the company career domain, and nothing else from it', () => {
+    const out = pipeline('no-reply@nestai.teamtailor-mail.com', [
+      'https://careers.nestai.com/jobs/8361702-machine-learning-engineer-action-recognition',
+      'https://careers.nestai.com/en/jobs/8361702-machine-learning-engineer-action-recognition/',
+      'https://careers.nestai.com/',
+      'https://careers.nestai.com/connect/profile?utm_content=email-update-profile',
+      'https://careers.nestai.com/privacy-policy',
+      'https://careers.nestai.com/en/connect/unsubscribe/anZhaGFuaWlAZ21haWwuY29t/6e0913a8-30d2-4a51-b30a-f49509535837',
+    ]);
+    // The locale-prefixed resend is the same posting.
+    expect(out).toEqual(['https://careers.nestai.com/jobs/8361702-machine-learning-engineer-action-recognition']);
+  });
+
+  it('is searched for by default, for every company on one term', () => {
+    expect(defaultJobQuery()).toContain('teamtailor-mail.com');
+  });
+
+  it('does not claim other boards’ /jobs/ links as Teamtailor postings', () => {
+    expect(canonicalizeByHost('https://thehub.io/jobs/6aa9dd24f0b1bfe4cfb0532e')).toBe(
+      'https://thehub.io/jobs/6aa9dd24f0b1bfe4cfb0532e',
+    );
+    expect(canonicalizeByHost('https://www.linkedin.com/jobs/view/4465791712/')).toBe(
+      'https://www.linkedin.com/jobs/view/4465791712',
+    );
+    expect(canonicalizeByHost('https://careers.nestai.com/jobs')).toBeNull();
+  });
 });
 
 describe('lookback window', () => {

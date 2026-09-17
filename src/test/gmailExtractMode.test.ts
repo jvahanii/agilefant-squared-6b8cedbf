@@ -163,6 +163,57 @@ describe('work item naming: company then title', () => {
     expect(links[0].title).toBe('Fortum — Senior Manager Go-To-Market - Espoo, FI');
   });
 
+  /**
+   * NestAI's Teamtailor digest, markup quoted from the real mail. The postings
+   * live on the company's own domain, careers.nestai.com, not on
+   * nestai.teamtailor.com — requiring the latter imported nothing at all.
+   */
+  it('reads a Teamtailor digest whose postings are on the company career domain', () => {
+    const td =
+      '<td align="center" style="-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;mso-table-lspace:0pt;mso-table-rspace:0pt;padding: 0 0 2px 0; font-size: 20px; line-height: 25px; font-family: Helvetica, Arial, sans-serif; color: #737D85;">\r\n\r\n';
+    const place =
+      '</td></tr><tr>\r\n  <td align="center" style="-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;mso-table-lspace:0pt;mso-table-rspace:0pt;padding: 0 0 20px 0; font-size: 17px; line-height: 25px; font-family: Helvetica, Arial, sans-serif; color: #34353A;">\r\n\r\n\r\n\r\n\r\n\r\n              Helsinki, Tampere, Turku and 1 more\r\n                ·\r\n                Hybrid\r\n                <img alt="Remote status" width="18" height="12" src="https://tt.teamtailor.com/assets/icons/remote-gray-23d6d767.png" style="-ms-interpolation-mode:bicubic;border:0;height:auto;line-height:100%;outline:none;text-decoration:none">\r\n\r\n</td></tr>\r\n\r\n';
+    const posting = (href: string, text: string) =>
+      `        <tr>\r\n  ${td}          <a style="color:#4a18ff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-decoration:none;" href="${href}">${text}</a>\r\n\r\n          ${place}`;
+    const html =
+      '<a style="color:#4a18ff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;width: 100%; display: block; font-family: Helvetica, Arial, sans-serif; color: #666666; font-size: 16px;" border="0" align="center" href="https://careers.nestai.com">\r\n<img alt="NestAI" width="150" height="38" src="https://images.teamtailor-cdn.com/images/s3/teamtailor-production/logotype_mail_retina-v3/image_uploads/f4ff0755-1dc7-4007-9f74-8a17e43811cf/original.png">\r\n</a>' +
+      '\r\n      Jarno, we have <strong>2 new jobs</strong> that match your profile\r\n\r\n' +
+      posting('https://careers.nestai.com/jobs/8361702-machine-learning-engineer-action-recognition', 'Machine Learning Engineer, Action Recognition') +
+      posting(
+        'https://careers.nestai.com/jobs/8361711-machine-learning-engineer-object-tracking-re-identification',
+        'Machine Learning Engineer, Object Tracking &amp; Re-Identification',
+      ) +
+      '      <a href="https://careers.nestai.com/?utm_content=email-career-site&amp;utm_medium=email&amp;utm_source=new_jobs_digest" style="color:#4a18ff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">Browse career site</a> or <a href="https://careers.nestai.com/connect/profile?utm_content=email-update-profile&amp;utm_medium=email&amp;utm_source=new_jobs_digest" style="color:#4a18ff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">update your profile</a>\r\n' +
+      '<a target="_blank" href="https://careers.nestai.com/privacy-policy">\r\n<u>Privacy Policy</u>\r\n</a>' +
+      '<a href="https://careers.nestai.com/en/connect/unsubscribe/anZhaGFuaWlAZ21haWwuY29t/6e0913a8-30d2-4a51-b30a-f49509535837" target="_blank">\r\n<u>\r\nUnsubscribe\r\n</u>\r\n</a>';
+
+    const links = extractLinks(
+      message('NestAI <no-reply@nestai.teamtailor-mail.com>', html, 'NestAI: 2 new jobs matching your profile'),
+      'jobs',
+    );
+
+    expect(links.map((l) => l.url)).toEqual([
+      'https://careers.nestai.com/jobs/8361702-machine-learning-engineer-action-recognition',
+      'https://careers.nestai.com/jobs/8361711-machine-learning-engineer-object-tracking-re-identification',
+    ]);
+    expect(links.map((l) => l.title)).toEqual([
+      'NestAI — Machine Learning Engineer, Action Recognition',
+      'NestAI — Machine Learning Engineer, Object Tracking & Re-Identification',
+    ]);
+  });
+
+  it('still drops tracker links, but not a posting whose slug says tracking', () => {
+    const html = `
+      <a href="https://pixel.example.com/open.gif?u=1">.</a>
+      <a href="https://mail.example.com/tracking/open?id=abc">Open</a>
+      <a href="https://beacon.example.net/c?x=1">Click</a>
+      <a href="https://example.com/jobs/8361711-machine-learning-engineer-object-tracking-re-identification">Object Tracking role</a>`;
+    const links = extractLinks(message('someone@example.com', html));
+    expect(links.map((l) => l.url)).toEqual([
+      'https://example.com/jobs/8361711-machine-learning-engineer-object-tracking-re-identification',
+    ]);
+  });
+
   it('does not take a language code in the path for the employer', () => {
     const url = 'https://careers.example.com/en_US/job/Helsinki-Role-00100/1234567/?from=email';
     const [link] = extractLinks(message('exampleoy-jobnotification@noreply1.jobs2web.com', `<a href="${url}">Role</a>`), 'jobs');

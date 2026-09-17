@@ -171,13 +171,21 @@ export const JOB_SOURCES: JobSource[] = [
       return label ? label.charAt(0).toUpperCase() + label.slice(1) : undefined;
     },
     senders: /@[\w.-]*teamtailor-mail\.com/i,
-    // Left out of the default query on purpose: individual recruiters mail
-    // from <name>@<company>.teamtailor-mail.com too, and Gmail cannot express
-    // "no-reply@ on any subdomain" in one from: term. Extraction still works
-    // if such a message is imported; it just is not searched for by default.
-    alertSenders: [],
-    isJobUrl: (u) =>
-      /(^|\.)teamtailor\.com$/i.test(u.hostname) && /^\/jobs\/\d+/i.test(u.pathname),
+    // One term covers every company: Gmail's from:teamtailor-mail.com matches
+    // no-reply@nestai.teamtailor-mail.com, no-reply@verda.… and the rest.
+    // Recruiters writing from <name>@<company>.teamtailor-mail.com match too,
+    // which is harmless — only links to postings are kept, and a personal
+    // message rarely carries one.
+    alertSenders: ['teamtailor-mail.com'],
+    // The posting is /jobs/<numeric id>-<slug>, on <company>.teamtailor.com or on
+    // the company's own career domain — NestAI's digest links to
+    // careers.nestai.com/jobs/8361702-machine-learning-engineer-action-recognition,
+    // and requiring teamtailor.com threw every one of those away, so the email
+    // imported nothing. The numeric id is what keeps this from matching any
+    // site's /jobs/ page: The Hub's ids are hex, LinkedIn's sit under /jobs/view/.
+    // An optional locale segment comes first on some sites (/en/jobs/…).
+    isJobUrl: (u) => /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?jobs\/\d+(?:-[^/]*)?\/?$/i.test(u.pathname),
+    canonicalPath: (u) => u.pathname.replace(/^\/[a-z]{2}(?:-[a-z]{2})?(?=\/jobs\/)/i, '').replace(/\/+$/, ''),
   },
 ];
 
