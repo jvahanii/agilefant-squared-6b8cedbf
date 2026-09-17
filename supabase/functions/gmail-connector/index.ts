@@ -12,6 +12,7 @@
 import {
   adminClient,
   corsHeaders,
+  decryptKey,
   encryptKey,
   env,
   exchangeCode,
@@ -154,7 +155,18 @@ Deno.serve(async (req) => {
       await assertOrgMember(user.id, organizationId);
 
       if (await usesSharedConnector(admin, organizationId)) {
-        return json({ authorizationUrl: await startAuthorize(user.id, returnUrl) });
+        // A reconnect — typically after the connection expired — must name the
+        // stored key, or the gateway refuses to start.
+        const { data: existing, error: existingError } = await forScope(
+          admin.from('gmail_connections').select('connection_key_encrypted').eq('user_id', user.id),
+          true,
+          organizationId,
+        ).maybeSingle();
+        if (existingError) throw existingError;
+        const existingKey = existing?.connection_key_encrypted
+          ? await decryptKey(existing.connection_key_encrypted as string)
+          : null;
+        return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
       }
 
       const client = await getOAuthClient(admin, organizationId);

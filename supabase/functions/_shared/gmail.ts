@@ -93,12 +93,22 @@ export async function decryptKey(stored: string): Promise<string> {
 
 // ─── OAuth (per app user) ─────────────────────────────────────────────────
 
-export async function startAuthorize(appUserId: string, returnUrl: string): Promise<string> {
+/**
+ * Start a consent through the shared connector.
+ *
+ * `existingKey` is the user's stored connection key, when they have connected
+ * before. The gateway refuses a reconnect without it — "Reconnect requires the
+ * X-Connection-Api-Key header with this user's stored lovack_* connection key"
+ * — so an expired connection could not be renewed at all. Omitted only on a
+ * first connect.
+ */
+export async function startAuthorize(appUserId: string, returnUrl: string, existingKey?: string | null): Promise<string> {
   const res = await fetch(`${GATEWAY}/api/v1/app-users/oauth2/authorize`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,
       'X-Client-Api-Key': env('GOOGLE_MAIL_APP_USER_CONNECTOR_CLIENT_API_KEY'),
+      ...(existingKey ? { 'X-Connection-Api-Key': existingKey } : {}),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
