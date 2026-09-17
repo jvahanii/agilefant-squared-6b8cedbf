@@ -128,8 +128,11 @@ export function SavedSearchPicker({
         if (cancelled) return;
         const message = (e as Error).message;
         toast({
-          title: message.includes("gmail_not_connected") ? "Connect Gmail first" : "Gmail search failed",
-          description: message.includes("gmail_not_connected") ? undefined : explainGmailError(message),
+          title: message.includes("gmail_not_connected") ? "Connect Gmail again" : "Gmail search failed",
+          // An expired connection lands here too, so say where the fix is.
+          description: message.includes("gmail_not_connected")
+            ? "Gmail is not connected, or the connection has expired. Reconnect it under Bells & Whistles → Your Gmail account."
+            : explainGmailError(message),
           variant: "destructive",
         });
         onClose();

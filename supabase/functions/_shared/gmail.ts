@@ -9,6 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { normalizeUrl } from './urls.ts';
 import { extractLinks, header, type ExtractedLink, type GmailMessage, type LinkMode } from './extract.ts';
 import { GMAIL_API_BASE, accessTokenSource, type OAuthClient } from './googleOAuth.ts';
+import { needsReconnect } from './gmailAuthErrors.ts';
 
 // Re-exported so existing importers of this module keep working.
 export { normalizeUrl, extractLinks, header };
@@ -158,9 +159,17 @@ export async function gmail<T>(auth: GmailAuth, path: string): Promise<T> {
       : await fetch(`${GMAIL_API_BASE}${path}`, {
           headers: { Authorization: `Bearer ${await auth.token()}` },
         });
-  // Google answers 401 once access has been withdrawn; the person needs to
-  // connect again, and saying so is more useful than relaying the raw body.
-  if (res.status === 401 && auth.kind === 'google') throw new Error('gmail_not_connected');
+  // Once access has been withdrawn or has expired the person needs to connect
+  // again, and saying so is more useful than relaying the raw body.
+  if (res.status === 401) {
+    const body = await res.text();
+    if (needsReconnect(auth.kind, res.status, body)) {
+      console.error(`gmail ${path}: connection needs re-authorizing: ${body}`);
+      throw new Error('gmail_not_connected');
+    }
+    console.error(`gmail ${path} failed [401]: ${body}`);
+    throw new Error(`[401] gmail ${path}: ${body}`);
+  }
   if (!res.ok) await relay(res, `gmail ${path}`);
   return await res.json() as T;
 }

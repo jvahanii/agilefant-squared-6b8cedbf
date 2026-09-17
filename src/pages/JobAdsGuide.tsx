@@ -374,8 +374,8 @@ export default function JobAdsGuide() {
                 "Connecting Gmail opens a Google sign-in window. Allow popups for this site and choose Connect Gmail again.",
               ],
               [
-                "Connect Gmail first",
-                "The search needs a connected Gmail account. Connect one under Your Gmail account.",
+                "Connect Gmail again",
+                "Gmail is not connected, or the connection has expired. Reconnect it under Your Gmail account. A connection through a Google app that is still in testing expires every seven days — see Gmail keeps disconnecting every week.",
               ],
               [
                 "Waiting for a Google OAuth client",

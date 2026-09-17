@@ -126,7 +126,7 @@ describe("SavedSearchPicker", () => {
     const onClose = vi.fn();
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Connect Gmail first" }));
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Connect Gmail again" }));
   });
 });
 
