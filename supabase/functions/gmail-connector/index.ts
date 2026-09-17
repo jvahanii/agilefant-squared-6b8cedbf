@@ -166,7 +166,19 @@ Deno.serve(async (req) => {
         const existingKey = existing?.connection_key_encrypted
           ? await decryptKey(existing.connection_key_encrypted as string)
           : null;
-        return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
+        try {
+          return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
+        } catch (e) {
+          // The gateway remembers every app user it has connected, and demands
+          // that user's key to connect them again. Disconnect deletes the key,
+          // so after a disconnect the old identity can never be reconnected.
+          // Nothing else uses the app user id — every later call names the
+          // connection by its key — so start a fresh identity instead.
+          const message = e instanceof Error ? e.message : String(e);
+          if (existingKey || !/X-Connection-Api-Key/i.test(message)) throw e;
+          console.error('gateway refused to reconnect without the deleted key; starting a fresh app user');
+          return json({ authorizationUrl: await startAuthorize(crypto.randomUUID(), returnUrl, null) });
+        }
       }
 
       const client = await getOAuthClient(admin, organizationId);
