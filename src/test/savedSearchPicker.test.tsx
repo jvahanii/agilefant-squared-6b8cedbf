@@ -208,7 +208,8 @@ describe("Import & auto-place", () => {
         ],
       })
       .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
-      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 });
+      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 })
+      .mockResolvedValueOnce({ marked: 1 });
     const onClose = vi.fn();
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
@@ -229,6 +230,26 @@ describe("Import & auto-place", () => {
     expect(runBulk).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalled();
     expect(loadFromSupabase).toHaveBeenCalled();
+
+    // The alerts are done with, so they are marked read — once per email.
+    expect(callGmail).toHaveBeenLastCalledWith({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1"] });
+  });
+
+  it("still reports the import when Gmail will not mark the emails read", async () => {
+    withBothLists();
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/dated", title: "Dated", deadline: "2026-10-11" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
+      .mockRejectedValueOnce(new Error('{"error":"gmail_permission_missing"}'));
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Dated");
+    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
+    const titles = toast.mock.calls.map((c) => c[0].title);
+    expect(titles).toContain("Could not mark the emails as read");
+    expect(titles.some((t: string) => t.startsWith("Imported 1 work item"))).toBe(true);
   });
 
   it("is not offered when the tree has no such lists", async () => {

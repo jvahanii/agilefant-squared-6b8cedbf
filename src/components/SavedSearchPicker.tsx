@@ -234,6 +234,28 @@ export function SavedSearchPicker({
         undated.length ? importInto(autoPlace.withoutDeadline, undated) : Promise.resolve(null),
       ]);
       const created = results.reduce((sum, r) => sum + (r?.created ?? 0), 0);
+
+      // The alerts these postings came from are done with: marking them read
+      // takes them out of an "only unread" search, so the next run offers what
+      // has arrived since. Best-effort — the import itself has already
+      // succeeded, and a connection made before the app asked for permission to
+      // change labels cannot do this until it is made again.
+      const messageIds = [...new Set(links.map((l) => l.messageId).filter(Boolean))];
+      let markedRead = 0;
+      try {
+        const marked = await callGmail<{ marked: number }>({ action: "mark_read", organizationId, messageIds });
+        markedRead = marked.marked ?? 0;
+      } catch (e) {
+        const message = (e as Error).message;
+        toast({
+          title: "Could not mark the emails as read",
+          description: message.includes("gmail_permission_missing")
+            ? "Agilefant may now mark job alerts as read, which needs Gmail permission you have not given yet. Connect Gmail again under Bells & Whistles → Your Gmail account."
+            : explainGmailError(message),
+          variant: "destructive",
+        });
+      }
+
       onClose();
       await reloadData();
 
@@ -261,7 +283,10 @@ export function SavedSearchPicker({
 
       toast({
         title: `Imported ${created} work item${created === 1 ? "" : "s"}`,
-        description: `${dated.length} with a deadline into ${AUTO_PLACE_BACKLOGS.withDeadline}, ${undated.length} without into ${AUTO_PLACE_BACKLOGS.withoutDeadline}. Both lists sorted by name and saved as rank.`,
+        description:
+          `${dated.length} with a deadline into ${AUTO_PLACE_BACKLOGS.withDeadline}, ${undated.length} without into ${AUTO_PLACE_BACKLOGS.withoutDeadline}. ` +
+          `Both lists sorted by name and saved as rank.` +
+          (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : ""),
       });
     } catch (e) {
       toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });

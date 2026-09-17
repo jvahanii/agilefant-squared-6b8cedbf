@@ -27,7 +27,12 @@ export const GMAIL_BASE = `${GATEWAY}/${CONNECTOR_ID}/gmail/v1`;
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/gmail.readonly',
+  // modify rather than readonly: an import can mark the alerts it has taken as
+  // read, which is how a saved search on unread mail stops offering them again.
+  // It is the narrowest scope Google has for that — there is none that only
+  // changes labels. A connection made before this scope existed keeps working
+  // for searching and reading; marking read fails until it is made again.
+  'https://www.googleapis.com/auth/gmail.modify',
 ];
 
 export function env(name: string): string {
@@ -157,17 +162,22 @@ export type GmailAuth =
   | { kind: 'gateway'; key: string }
   | { kind: 'google'; token: () => Promise<string> };
 
-export async function gmail<T>(auth: GmailAuth, path: string): Promise<T> {
+export async function gmail<T>(auth: GmailAuth, path: string, body?: unknown): Promise<T> {
+  const send = body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) };
+  const contentType = body === undefined ? {} : { 'Content-Type': 'application/json' };
   const res =
     auth.kind === 'gateway'
       ? await fetch(`${GMAIL_BASE}${path}`, {
+          ...send,
           headers: {
             Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,
             'X-Connection-Api-Key': auth.key,
+            ...contentType,
           },
         })
       : await fetch(`${GMAIL_API_BASE}${path}`, {
-          headers: { Authorization: `Bearer ${await auth.token()}` },
+          ...send,
+          headers: { Authorization: `Bearer ${await auth.token()}`, ...contentType },
         });
   // Once access has been withdrawn or has expired the person needs to connect
   // again, and saying so is more useful than relaying the raw body.
@@ -180,8 +190,34 @@ export async function gmail<T>(auth: GmailAuth, path: string): Promise<T> {
     console.error(`gmail ${path} failed [401]: ${body}`);
     throw new Error(`[401] gmail ${path}: ${body}`);
   }
+  if (res.status === 403) {
+    // Insufficient scope: the connection was made before this app asked to
+    // change labels. Named, so the app can say "connect Gmail again" rather
+    // than showing Google's own sentence about scopes.
+    const forbidden = await res.text();
+    console.error(`gmail ${path} failed [403]: ${forbidden}`);
+    throw new Error(/insufficient|scope|permission/i.test(forbidden) ? 'gmail_permission_missing' : `[403] gmail ${path}: ${forbidden}`);
+  }
   if (!res.ok) await relay(res, `gmail ${path}`);
+  // batchModify answers 204 with no body.
+  if (res.status === 204) return undefined as T;
   return await res.json() as T;
+}
+
+/**
+ * Mark messages as read — the alerts an import has just taken.
+ *
+ * batchModify in one call, in chunks, and it answers 204 with no body. Gmail
+ * ignores ids that no longer exist, so a deleted message is not an error.
+ */
+export async function markMessagesRead(auth: GmailAuth, messageIds: string[]): Promise<void> {
+  const ids = [...new Set(messageIds.filter(Boolean))];
+  for (let at = 0; at < ids.length; at += 100) {
+    await gmail<void>(auth, '/users/me/messages/batchModify', {
+      ids: ids.slice(at, at + 100),
+      removeLabelIds: ['UNREAD'],
+    });
+  }
 }
 
 // ─── Which connector an organization uses ─────────────────────────────────

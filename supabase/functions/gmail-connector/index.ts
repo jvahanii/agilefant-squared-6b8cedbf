@@ -8,6 +8,7 @@
 //   preview     → runs a Gmail search and returns extracted links (no writes)
 //                 mode 'jobs' narrows the result to job postings
 //   import      → creates one work item per selected link
+//   mark_read   → removes the UNREAD label from the given messages
 
 import {
   adminClient,
@@ -22,6 +23,7 @@ import {
   gmail,
   GOOGLE_SCOPES,
   json,
+  markMessagesRead,
   searchLinks,
   startAuthorize,
   usesSharedConnector,
@@ -367,6 +369,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === 'mark_read') {
+      const organizationId = organizationIdFor();
+      const messageIds = Array.isArray(body.messageIds) ? body.messageIds.map(String).filter(Boolean) : [];
+      if (messageIds.length === 0) return json({ error: 'messageIds is required' }, 400);
+      if (messageIds.length > 500) return json({ error: 'too many messages at once' }, 400);
+      await assertOrgMember(user.id, organizationId);
+
+      const { auth } = await getConnection(admin, user.id, organizationId);
+      await markMessagesRead(auth, messageIds);
+      return json({ marked: [...new Set(messageIds)].length });
+    }
+
     if (action === 'import') {
       const organizationId = String(body.organizationId ?? '');
       const treeId = String(body.treeId ?? '');
@@ -413,6 +427,7 @@ Deno.serve(async (req) => {
     console.error('gmail-connector error:', message);
     if (message === 'unauthorized' || message.startsWith('unauthorized:')) return json({ error: 'unauthorized' }, 401);
     if (message === 'gmail_not_connected') return json({ error: 'gmail_not_connected' }, 409);
+    if (message === 'gmail_permission_missing') return json({ error: 'gmail_permission_missing' }, 403);
     if (message === 'oauth_client_not_configured') return json({ error: 'oauth_client_not_configured' }, 409);
     if (message === 'oauth_client_rejected') return json({ error: 'oauth_client_rejected' }, 400);
     if (message === 'oauth_state_invalid' || message === 'oauth_state_expired') return json({ error: message }, 400);

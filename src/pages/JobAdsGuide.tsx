@@ -277,8 +277,24 @@ export default function JobAdsGuide() {
             <Code>deadline unknown</Code>.
           </P>
           <P>
-            Choose <Em>Import selected</Em> to create the items.
+            Every unticked posting says under it why it is unticked, and can be ticked to import anyway. A posting
+            whose closing date has already passed starts unticked too.
           </P>
+          <P>
+            Choose <Em>Import selected</Em> to create the items in the backlog the saved search names.
+          </P>
+          <P>
+            <Em>Import &amp; auto-place</Em> files them instead by closing date: postings with one go to{" "}
+            <Code>Deadlinella</Code>, the rest to <Code>Toistaiseksi avoimet</Code>. Both lists are then sorted by
+            name — which, since an imported name begins with the closing date, is closing-date order — and that order
+            is saved as their rank. The emails the postings came from are marked as read, so a search for unread mail
+            offers only what has arrived since. The button appears only where the backlog tree has both of those
+            lists.
+          </P>
+          <Callout>
+            Marking emails as read needs permission to change your Gmail labels. A connection made before that was
+            asked for keeps working for everything else; choose <Em>Connect Gmail</Em> again to grant it.
+          </Callout>
         </Section>
 
         <Section id="deadlines" title="Application deadlines">
