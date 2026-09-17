@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/appStore";
 import { readCachedAppData, writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
 import { getEffectiveParentId } from "@/types/models";
+import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
 import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
@@ -2701,6 +2702,74 @@ describe("moveBacklog", () => {
     expect(s.workItems[`${ORG}::wi-p`].backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
     expect(s.workItems[`${ORG}::wi-c`].backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-child`);
     expect(s.workItems[`${ORG}::wi-c`].backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
+  });
+
+  it("cross-tree: dropping a multi-selection moves every selected backlog, in order, as one undo step", () => {
+    // What handleDragEnd does for a drop on another tree's root: every backlog
+    // the drag carries is moved, then placed at the drop index plus its offset.
+    const bl = (id: string, rank: number) => ({
+      id: `${ORG}::${id}`, name: id, parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank,
+    });
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: {
+          id: `${ORG}::bt-1`, name: "Tree 1",
+          rootBacklogIds: [`${ORG}::bl-a`, `${ORG}::bl-b`, `${ORG}::bl-c`, `${ORG}::bl-d`], rank: 0,
+        },
+        [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [], rank: 1 },
+      },
+      backlogs: { [`${ORG}::bl-a`]: bl("bl-a", 0), [`${ORG}::bl-b`]: bl("bl-b", 1), [`${ORG}::bl-c`]: bl("bl-c", 2), [`${ORG}::bl-d`]: bl("bl-d", 3) },
+      workItems: {
+        [`${ORG}::wi-c`]: {
+          id: `${ORG}::wi-c`, title: "In C", status: "not_started" as const,
+          parentId: null, childrenIds: [],
+          backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-c` },
+          ranks: { [`${ORG}::bl-c`]: 0 },
+        },
+      },
+      // Selected D first, then B — the drop should still keep tree order.
+      selectedBacklogIds: [`${ORG}::bl-d`, `${ORG}::bl-b`, `${ORG}::bl-c`],
+      selectedTreeId: `${ORG}::bt-1`,
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    const store = useAppStore.getState();
+    const ids = backlogsToMove(`${ORG}::bl-c`, store.selectedBacklogIds, store.backlogs, store.backlogTrees, null);
+    store.runBulk(() => dropBacklogsAt(useAppStore.getState, ids, null, `${ORG}::bt-2`, 0));
+
+    const s = useAppStore.getState();
+    expect(s.backlogTrees[`${ORG}::bt-2`].rootBacklogIds).toEqual([`${ORG}::bl-b`, `${ORG}::bl-c`, `${ORG}::bl-d`]);
+    expect(s.backlogTrees[`${ORG}::bt-1`].rootBacklogIds).toEqual([`${ORG}::bl-a`]);
+    for (const id of ["bl-b", "bl-c", "bl-d"]) expect(s.backlogs[`${ORG}::${id}`].treeId).toBe(`${ORG}::bt-2`);
+    expect(s.backlogs[`${ORG}::bl-a`].treeId).toBe(`${ORG}::bt-1`);
+    expect(s.workItems[`${ORG}::wi-c`].backlogAssignments).toEqual({ [`${ORG}::bt-2`]: `${ORG}::bl-c` });
+    expect(s.undoStack).toHaveLength(1);
+  });
+
+  it("same parent: a multi-selection dropped into a slot lands together at that slot", () => {
+    const bl = (id: string, rank: number) => ({
+      id: `${ORG}::${id}`, name: id, parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank,
+    });
+    const order = ["bl-a", "bl-b", "bl-c", "bl-d", "bl-e"];
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: {
+        [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: order.map((id) => `${ORG}::${id}`), rank: 0 },
+      },
+      backlogs: Object.fromEntries(order.map((id, i) => [`${ORG}::${id}`, bl(id, i)])),
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+
+    // A and C dropped on the line shown between D and E (slot 4).
+    dropBacklogsAt(useAppStore.getState, [`${ORG}::bl-a`, `${ORG}::bl-c`], null, `${ORG}::bt-1`, 4);
+
+    expect(useAppStore.getState().backlogTrees[`${ORG}::bt-1`].rootBacklogIds).toEqual(
+      ["bl-b", "bl-d", "bl-a", "bl-c", "bl-e"].map((id) => `${ORG}::${id}`),
+    );
   });
 });
 

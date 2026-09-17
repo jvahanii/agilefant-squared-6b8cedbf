@@ -70,6 +70,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
 import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
+import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
 
 // Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
@@ -938,7 +939,8 @@ function AppLayoutInner() {
       } else if (data?.type === "backlog-node") {
         const store = useAppStore.getState();
         const bl = store.backlogs[data.backlogId];
-        setActiveDrag({ id: data.backlogId, type: "backlog-node", title: bl?.name ?? "" });
+        const count = backlogsToMove(data.backlogId, store.selectedBacklogIds, store.backlogs, store.backlogTrees, null).length;
+        setActiveDrag({ id: data.backlogId, type: "backlog-node", title: bl?.name ?? "", count });
       } else if (data?.type === "tree-node") {
         const store = useAppStore.getState();
         const tree = store.backlogTrees[data.treeId];
@@ -1135,38 +1137,32 @@ function AppLayoutInner() {
           proceed: performDrop,
         });
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
-        const backlogId = activeData.backlogId as string;
         const targetParentId = overData.parentId as string | null;
         const treeId = overData.treeId as string;
         const targetIndex = overData.index as number;
         const store = useAppStore.getState();
-        const bl = store.backlogs[backlogId];
-        if (!bl) return;
-        const isDescendant = (parentId: string | null, checkId: string): boolean => {
-          if (!parentId) return false;
-          if (parentId === checkId) return true;
-          return isDescendant(store.backlogs[parentId]?.parentId ?? null, checkId);
-        };
-        if (targetParentId && isDescendant(targetParentId, backlogId)) return;
-        if (bl.parentId !== targetParentId || bl.treeId !== treeId) {
-          moveBacklog(backlogId, targetParentId, treeId);
-        }
-        reorderBacklogAmongSiblings(backlogId, targetIndex, targetParentId, treeId);
+        // The whole selection when the dragged backlog is part of it, in tree
+        // order, landing together at the drop point.
+        const ids = backlogsToMove(
+          activeData.backlogId as string,
+          store.selectedBacklogIds,
+          store.backlogs,
+          store.backlogTrees,
+          targetParentId,
+        );
+        dropBacklogsAt(useAppStore.getState, ids, targetParentId, treeId, targetIndex);
       } else if (activeData?.type === "backlog-node" && overData?.type === "backlog") {
-        const backlogId = activeData.backlogId as string;
         const targetBacklogId = overData.backlogId as string;
         const treeId = overData.treeId as string;
-        if (backlogId === targetBacklogId) return;
         const store = useAppStore.getState();
-        const isDescendant = (id: string): boolean => {
-          const bl = store.backlogs[id];
-          if (!bl) return false;
-          if (bl.parentId === backlogId) return true;
-          if (bl.parentId) return isDescendant(bl.parentId);
-          return false;
-        };
-        if (isDescendant(targetBacklogId)) return;
-        moveBacklog(backlogId, targetBacklogId, treeId);
+        const ids = backlogsToMove(
+          activeData.backlogId as string,
+          store.selectedBacklogIds,
+          store.backlogs,
+          store.backlogTrees,
+          targetBacklogId,
+        );
+        ids.forEach((backlogId) => moveBacklog(backlogId, targetBacklogId, treeId));
       } else if (activeData?.type === "tree-node" && overData?.type === "tree-reorder") {
         const treeId = activeData.treeId as string;
         const targetIndex = overData.index as number;
@@ -1181,7 +1177,6 @@ function AppLayoutInner() {
       reparentWorkItem,
       reorderWorkItemAmongSiblings,
       reorderWorkItemInBoard,
-      reorderBacklogAmongSiblings,
       moveBacklog,
       reorderBacklogTree,
       countWithDescendants,

@@ -472,7 +472,7 @@ function buildSections(): Section[] {
               {
                 icon: <ListTree className="w-4 h-4 text-primary" />,
                 title: "Reorder backlog nodes",
-                body: "Drag backlog nodes in the left panel to reorder siblings or change hierarchy.",
+                body: "Drag backlog nodes in the left panel to reorder siblings, change hierarchy, or move them to another tree. Ctrl/Cmd-click to select several backlogs, then drag any one of them to move them all together.",
               },
               {
                 icon: <Share2 className="w-4 h-4 text-primary" />,
