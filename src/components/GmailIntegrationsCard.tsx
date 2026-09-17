@@ -371,9 +371,20 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
             </p>
           </div>
           {connected ? (
-            <Button size="sm" variant="outline" onClick={disconnect}>
-              <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
-            </Button>
+            // Reconnect keeps the current connection until a new one replaces
+            // it, which Disconnect then Connect does not: disconnecting drops
+            // the stored key, and the connector will not renew a connection
+            // whose key is gone. It is also the way to grant a permission the
+            // app has started asking for, such as marking alerts read.
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" variant="outline" onClick={connect} disabled={connecting} title="Sign in to Google again, for example to grant a new permission. The current connection keeps working until the new one is made.">
+                {connecting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-1" />}
+                Reconnect
+              </Button>
+              <Button size="sm" variant="outline" onClick={disconnect}>
+                <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
+              </Button>
+            </div>
           ) : (
             <Button
               size="sm"
