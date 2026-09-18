@@ -22,6 +22,7 @@ import { AUTO_PLACE_BACKLOGS, findAutoPlaceTargets, splitByDeadline } from "@/li
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { currentListSortContext } from "@/store/listSortStore";
+import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
 
@@ -178,7 +179,7 @@ export function SavedSearchPicker({
   const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
 
   const importInto = (backlogId: string, links: PreviewLink[]) =>
-    callGmail<{ created: number; skipped: number; collapsed: number }>({
+    callGmail<{ created: number; skipped: number; collapsed: number; createdIds?: string[] }>({
       action: "import",
       mode,
       organizationId,
@@ -234,6 +235,7 @@ export function SavedSearchPicker({
         undated.length ? importInto(autoPlace.withoutDeadline, undated) : Promise.resolve(null),
       ]);
       const created = results.reduce((sum, r) => sum + (r?.created ?? 0), 0);
+      const createdIds = results.flatMap((r) => r?.createdIds ?? []);
 
       // The alerts these postings came from are done with: marking them read
       // takes them out of an "only unread" search, so the next run offers what
@@ -257,10 +259,16 @@ export function SavedSearchPicker({
       }
 
       onClose();
+      // The new items have to be in the store before the lists are ranked, or
+      // the ranking covers only what was there before and the new ones land at
+      // the end. A reload does not guarantee that: with cached data on screen
+      // it returns at once and fetches in the background. So wait until the
+      // imported items are actually here.
       await reloadData();
+      const arrived = await waitForItems(createdIds, reloadData);
 
-      // Ranking runs on the data as it is after the reload, so it covers what
-      // was already in each list as well as what has just arrived.
+      // Ranking covers what was already in each list as well as what has just
+      // arrived.
       const app = useAppStore.getState();
       app.runBulk(() => {
         for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
@@ -285,7 +293,9 @@ export function SavedSearchPicker({
         title: `Imported ${created} work item${created === 1 ? "" : "s"}`,
         description:
           `${dated.length} with a deadline into ${AUTO_PLACE_BACKLOGS.withDeadline}, ${undated.length} without into ${AUTO_PLACE_BACKLOGS.withoutDeadline}. ` +
-          `Both lists sorted by name and saved as rank.` +
+          (arrived
+            ? `Both lists sorted by name and saved as rank.`
+            : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : ""),
       });
     } catch (e) {

@@ -235,6 +235,35 @@ describe("Import & auto-place", () => {
     expect(callGmail).toHaveBeenLastCalledWith({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1"] });
   });
 
+  it("ranks the new items too, once they have loaded — not only what was there before", async () => {
+    withBothLists();
+    const existing = storeState.workItems as Record<string, unknown>;
+    // The reload returns before the new item is in the store, as a background
+    // refresh does; it arrives a moment later.
+    loadFromSupabase.mockImplementation(async () => {
+      setTimeout(() => {
+        storeState = {
+          ...storeState,
+          workItems: { ...existing, n: item("n", "0922 TELUS Digital AI — Transcriber", "dl") },
+        };
+      }, 30);
+    });
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/dated", title: "Dated", deadline: "2026-09-22" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["n"] })
+      .mockResolvedValueOnce({ marked: 1 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Dated");
+    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 3000 });
+    // 0922 sorts between 0930 and 1011 — not after them.
+    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["n", "b", "a"]]);
+    loadFromSupabase.mockReset();
+    loadFromSupabase.mockResolvedValue(undefined);
+  });
+
   it("still reports the import when Gmail will not mark the emails read", async () => {
     withBothLists();
     callGmail
