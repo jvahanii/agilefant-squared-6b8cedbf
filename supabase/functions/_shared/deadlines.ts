@@ -49,7 +49,17 @@ const SOFT_GAP = String.raw`(?:[A-Za-zÀ-ÿ]{2,14},?\s+){0,2}`;
  * The gap excludes full stops, so the match cannot cross out of its sentence and
  * pick up the start date in the next one.
  */
-const SUBMIT_BY = String.raw`(?:deadline|appl(?:y|ies|ication|ications)|submit|send)[^.\n]{0,120}?\b(?:by|before|until|no later than)\s+${SOFT_GAP}`;
+const SUBMIT_BY = String.raw`(?:deadline|appl(?:y|ies|ication|ications)|submit|send)[^.\n]{0,120}?\b(?:by|before|until|no later than)(?:\s+the\s+latest)?\s+${SOFT_GAP}`;
+
+/** Day-first with either separator: 02/10/2026, 2.10.2026, 2/10 */
+const SLASH_OR_DOT = String.raw`(\d{1,2})[./](\d{1,2})(?:[./]\s*(\d{4}))?(?!\d)`;
+
+/**
+ * Labels that name the date field itself: "last application date", "last day
+ * to apply", "closing date", "application deadline", "deadline for
+ * applications". Followed by an optional colon or "is".
+ */
+const LABELLED = String.raw`\b(?:last\s+(?:application\s+)?(?:date|day)(?:\s+(?:to|for|of)\s+(?:apply|applying|applications?))?|closing\s+date|(?:application\s+)?deadline(?:\s+for\s+applications?)?)\s*(?::|\bis\b)?\s*`;
 
 /** Numeric patterns. Capture order is day, month, optional year. */
 const NUMERIC_PATTERNS: RegExp[] = [
@@ -84,6 +94,14 @@ const NUMERIC_PATTERNS: RegExp[] = [
   ),
   // "Hakuaika 11.9 - 11.3." -- a range, so the deadline is the second date.
   new RegExp(String.raw`hakuaika\s*\d{1,2}\.\d{1,2}\.?\s*[-–—]\s*${DAY_MONTH}`, "i"),
+  // A labelled field: "Last application date: 02/10/2026", "Closing date:
+  // 30.9.2026", "Deadline: 30.9.". The label names the date outright, so the date
+  // has to follow it directly -- only a colon or "is" may come between -- which is
+  // what keeps a bare "deadline" from reaching some project date further on.
+  // Slashes as well as dots, read day-first like every other date here: a
+  // month-first "10/31/2026" then has no 31st month and is refused, rather than
+  // guessed at.
+  new RegExp(String.raw`${LABELLED}${SLASH_OR_DOT}`, "i"),
   // "apply by 30.9.2026", "submit your application by 30.9.2026"
   new RegExp(SUBMIT_BY + DAY_MONTH, "i"),
 ];
@@ -115,7 +133,7 @@ const NAMED_PATTERNS: Array<{ re: RegExp; monthFirst: boolean }> = [
   {
     // "deadline: 30 September 2026"
     re: new RegExp(
-      String.raw`(?:deadline|apply|applications?)[^.\n]{0,40}?\b(\d{1,2})(?:st|nd|rd|th)?\s+(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
+      String.raw`(?:deadline|apply|applications?)[^.\n]{0,40}?\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
       "i",
     ),
     monthFirst: false,
@@ -129,9 +147,10 @@ const NAMED_PATTERNS: Array<{ re: RegExp; monthFirst: boolean }> = [
     monthFirst: true,
   },
   {
-    // "submit your application ... by 25 September 2026"
+    // "submit your application ... by 25 September 2026", and "... by the latest
+    // on Sunday 20th of September"
     re: new RegExp(
-      SUBMIT_BY + String.raw`(\d{1,2})(?:st|nd|rd|th)?\s+(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
+      SUBMIT_BY + String.raw`(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(${MONTH_NAMES})\.?(?:,?\s*(\d{4}))?`,
       "i",
     ),
     monthFirst: false,

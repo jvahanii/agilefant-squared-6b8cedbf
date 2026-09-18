@@ -272,6 +272,32 @@ describe('parseDeadline', () => {
     expect(parseDeadline('Työ alkaa 1.11.2026, ilmoita osallistumisesi hyvissä ajoin mennessä.', SEPT))
       .toBeUndefined();
   });
+
+  it('reads a labelled date field, with slashes, day first', () => {
+    expect(parseDeadline('Last application date: 02/10/2026', SEPT)).toBe('2026-10-02');
+    expect(deadlinePrefix(parseDeadline('Last application date: 02/10/2026', SEPT))).toBe('1002');
+    expect(parseDeadline('Last day to apply: 30/9/2026', SEPT)).toBe('2026-09-30');
+    expect(parseDeadline('Closing date 30.9.2026', SEPT)).toBe('2026-09-30');
+    expect(parseDeadline('Application deadline is 4/10', SEPT)).toBe('2026-10-04');
+    expect(parseDeadline('Deadline for applications: 15.10.2026', SEPT)).toBe('2026-10-15');
+  });
+
+  it('reads "by the latest on <weekday> 20th of September"', () => {
+    const text =
+      'Please submit your CV and motivation letter in PDF format in Finnish or English by the latest on ' +
+      'Sunday 20th of September via our application system.';
+    expect(parseDeadline(text, SEPT)).toBe('2026-09-20');
+    expect(parseDeadline('Apply no later than the 4th of October 2026', SEPT)).toBe('2026-10-04');
+  });
+
+  it('refuses a month-first date rather than guessing at it', () => {
+    expect(parseDeadline('Last application date: 10/31/2026', SEPT)).toBeUndefined();
+  });
+
+  it('needs the labelled date directly after its label', () => {
+    expect(parseDeadline('Deadline driven team; we shipped 2/10/2026 releases', SEPT)).toBeUndefined();
+    expect(parseDeadline('Last application date: see 02/10/2026', SEPT)).toBeUndefined();
+  });
 });
 
 describe('deadlinePrefix', () => {
