@@ -71,18 +71,30 @@ export function backlogsToMove(
   trees: Record<string, BacklogTree>,
   targetParentId: string | null,
 ): string[] {
-  const selected = new Set(selectedIds.filter((id) => backlogs[id]));
-  if (!selected.has(draggedId)) return backlogs[draggedId] ? [draggedId] : [];
+  if (!backlogs[draggedId]) return [];
 
-  const hasSelectedAncestor = (id: string) => {
-    for (let p = backlogs[id]?.parentId; p; p = backlogs[p]?.parentId) {
-      if (selected.has(p)) return true;
+  // Is the drop target this backlog, or somewhere beneath it? Dropping a
+  // backlog there would make it its own ancestor: it vanishes from the tree
+  // together with everything under it. Checked for every drag — it was once
+  // checked only for a multi-selection, and dragging a lone parent onto its own
+  // child lost the whole branch. `seen` stops a walk that meets a cycle.
+  const containsTarget = (id: string) => {
+    const seen = new Set<string>();
+    for (let t: string | null | undefined = targetParentId; t && !seen.has(t); t = backlogs[t]?.parentId) {
+      if (t === id) return true;
+      seen.add(t);
     }
     return false;
   };
-  const containsTarget = (id: string) => {
-    for (let t: string | null | undefined = targetParentId; t; t = backlogs[t]?.parentId) {
-      if (t === id) return true;
+
+  const selected = new Set(selectedIds.filter((id) => backlogs[id]));
+  if (!selected.has(draggedId)) return containsTarget(draggedId) ? [] : [draggedId];
+
+  const hasSelectedAncestor = (id: string) => {
+    const seen = new Set<string>();
+    for (let p = backlogs[id]?.parentId; p && !seen.has(p); p = backlogs[p]?.parentId) {
+      if (selected.has(p)) return true;
+      seen.add(p);
     }
     return false;
   };

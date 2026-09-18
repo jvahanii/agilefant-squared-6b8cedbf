@@ -2627,6 +2627,31 @@ describe("moveBacklog", () => {
     expect(movedBl.rank).not.toBe(existingBl.rank);
   });
 
+  it("refuses to move a backlog into itself or its own descendant", () => {
+    const tree = `${ORG}::bt-1`;
+    useAppStore.setState({
+      organizationId: ORG,
+      backlogTrees: { [tree]: { id: tree, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-p`], rank: 0 } },
+      backlogs: {
+        [`${ORG}::bl-p`]: { id: `${ORG}::bl-p`, name: "Parent", parentId: null, childrenIds: [`${ORG}::bl-c`], treeId: tree, rank: 0 },
+        [`${ORG}::bl-c`]: { id: `${ORG}::bl-c`, name: "Child", parentId: `${ORG}::bl-p`, childrenIds: [`${ORG}::bl-g`], treeId: tree, rank: 0 },
+        [`${ORG}::bl-g`]: { id: `${ORG}::bl-g`, name: "Grandchild", parentId: `${ORG}::bl-c`, childrenIds: [], treeId: tree, rank: 0 },
+      },
+      workItems: {},
+      selectedWorkItemIds: [],
+      undoStack: [], redoStack: [], isLoading: false,
+    });
+    const before = useAppStore.getState();
+
+    useAppStore.getState().moveBacklog(`${ORG}::bl-p`, `${ORG}::bl-g`, tree);
+    useAppStore.getState().moveBacklog(`${ORG}::bl-p`, `${ORG}::bl-p`, tree);
+
+    const s = useAppStore.getState();
+    expect(s.backlogs).toBe(before.backlogs);
+    expect(s.backlogTrees[tree].rootBacklogIds).toEqual([`${ORG}::bl-p`]);
+    expect(s.undoStack).toHaveLength(0);
+  });
+
   it("cross-tree: moves a root backlog to another tree's root", () => {
     // bl-a is in tree-1. Moving it to tree-2 as root.
     useAppStore.setState({

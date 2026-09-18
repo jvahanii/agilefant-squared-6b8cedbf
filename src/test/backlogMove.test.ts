@@ -61,6 +61,26 @@ describe("backlogsToMove", () => {
     expect(backlogsToMove("root2", ["root2", "root3"], backlogs, trees, "root2")).toEqual(["root3"]);
   });
 
+  it("never moves a lone dragged backlog into itself or its own descendant", () => {
+    const { backlogs, trees } = fixture();
+    // Nothing selected: a parent dragged onto its child, its grandchild, or itself.
+    expect(backlogsToMove("root1", [], backlogs, trees, "child1")).toEqual([]);
+    expect(backlogsToMove("root1", [], backlogs, trees, "grandchild")).toEqual([]);
+    expect(backlogsToMove("root1", [], backlogs, trees, "root1")).toEqual([]);
+    // Dragged while something else is selected — still the lone backlog.
+    expect(backlogsToMove("child1", ["root2"], backlogs, trees, "grandchild")).toEqual([]);
+    // Anywhere outside its own branch is fine.
+    expect(backlogsToMove("child1", [], backlogs, trees, "child2")).toEqual(["child1"]);
+    expect(backlogsToMove("root1", [], backlogs, trees, null)).toEqual(["root1"]);
+  });
+
+  it("does not hang on a parent cycle in the data", () => {
+    const { backlogs, trees } = fixture();
+    backlogs.root2 = { ...backlogs.root2, parentId: "root3" };
+    backlogs.root3 = { ...backlogs.root3, parentId: "root2" };
+    expect(backlogsToMove("root1", [], backlogs, trees, "root2")).toEqual(["root1"]);
+  });
+
   it("ignores selected ids that no longer exist", () => {
     const { backlogs, trees } = fixture();
     expect(backlogsToMove("root2", ["gone", "root2"], backlogs, trees, null)).toEqual(["root2"]);

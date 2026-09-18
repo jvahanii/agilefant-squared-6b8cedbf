@@ -3848,6 +3848,16 @@ export const useAppStore = create<AppState>()((set, get) => {
       const orgId = state.organizationId!;
       const bl = state.backlogs[backlogId];
       if (!bl) return;
+      // Never into itself or anything beneath it: the backlog would become its
+      // own ancestor and vanish from the tree with its whole branch. Callers
+      // check this too; this is the last line, for any that forget.
+      for (let t: string | null | undefined = targetParentId, seen = new Set<string>(); t && !seen.has(t); t = state.backlogs[t]?.parentId) {
+        if (t === backlogId) {
+          console.warn("moveBacklog: refused to move a backlog into its own subtree", backlogId, targetParentId);
+          return;
+        }
+        seen.add(t);
+      }
       const updatedBacklogs = { ...state.backlogs };
       const updatedTrees = { ...state.backlogTrees };
       if (bl.parentId && updatedBacklogs[bl.parentId]) {
