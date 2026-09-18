@@ -147,6 +147,13 @@ function fallbackTitle(url: string): string {
  */
 const AFTER_WINDOW = 2000;
 
+/**
+ * And the markup before it. Most digests put the title in the anchor itself,
+ * but Barona's anchors all read "View job": the title and the employer are the
+ * lines above the link. Consumers cut this at the previous anchor.
+ */
+const BEFORE_WINDOW = 1500;
+
 /** Extract de-duplicated links from a Gmail message. */
 export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): ExtractedLink[] {
   const bodies = { html: [] as string[], text: [] as string[] };
@@ -164,14 +171,14 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
   // title the item from an empty logo anchor.
   const occurrences = new Map<string, LinkOccurrence[]>();
 
-  const push = (rawUrl: string, rawLabel: string, after = '') => {
+  const push = (rawUrl: string, rawLabel: string, after = '', before = '') => {
     const url = normalizeUrl(decodeEntities(rawUrl));
     if (!url) return;
     const label = decodeEntities(rawLabel).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (looksLikeNoise(url, label)) return;
     const existing = occurrences.get(url);
-    if (existing) existing.push({ label, after });
-    else occurrences.set(url, [{ label, after }]);
+    if (existing) existing.push({ label, after, before });
+    else occurrences.set(url, [{ label, after, before }]);
   };
 
   for (const html of bodies.html) {
@@ -182,7 +189,8 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
       // The markup that follows a posting's title anchor is where these
       // digests put the employer, so carry a slice of it along.
       const after = html.slice(anchor.lastIndex, anchor.lastIndex + AFTER_WINDOW);
-      push(href, m[5] ?? '', after);
+      const before = html.slice(Math.max(0, m.index - BEFORE_WINDOW), m.index);
+      push(href, m[5] ?? '', after, before);
     }
   }
 

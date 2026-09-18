@@ -35,7 +35,10 @@ export function decodeEntities(text: string): string {
  * stored on work items that can be shared through published links.
  */
 const STRIP_PARAMS =
-  /^(utm_|mc_|ck_|hsa_|fbclid|gclid|mkt_tok|_hs|vero_|trk|ref_src|refId|trackingId|lipi|midToken|midSig|otpToken|eid|ek|identity_token|savedSearchId|originToLandingJobPostings)/i;
+  /^(utm_|mc_|ck_|hsa_|fbclid|gclid|mkt_tok|_hs|vero_|trk|ref_src|refId|trackingId|lipi|midToken|midSig|otpToken|eid|ek|identity_token|savedSearchId|originToLandingJobPostings|email_(?:user|day|section)|identifier)/i;
+// email_user, email_day, email_section and identifier are Barona's: the first is
+// the recipient's own address, the last a personal token ("these links are
+// personal and intended only for you"), and neither belongs on a work item.
 
 function b64decode(s: string): string {
   const norm = s.replace(/-/g, '+').replace(/_/g, '/');
@@ -65,6 +68,24 @@ function unwrapMandrill(u: URL): string | null {
   }
 }
 
+/**
+ * Customer.io wraps every link as /e/c/<base64 JSON>/<signature>, where the
+ * JSON's "href" is the real destination. Barona's job suggestions use it, so
+ * without this every posting in them was an opaque tracker. Decoded rather than
+ * followed, for the same reason as Mandrill.
+ */
+function unwrapCustomerIo(u: URL): string | null {
+  if (!/(^|\.)customeriomail\.com$/i.test(u.hostname)) return null;
+  const payload = u.pathname.match(/^\/e\/c\/([A-Za-z0-9_-]+={0,2})(?:\/|$)/)?.[1];
+  if (!payload) return null;
+  try {
+    const data = JSON.parse(b64decode(payload)) as { href?: unknown };
+    return typeof data?.href === 'string' && data.href ? data.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Unwrap redirect wrappers and strip tracking query params. */
 export function normalizeUrl(raw: string): string | null {
   let candidate = raw.trim();
@@ -78,7 +99,7 @@ export function normalizeUrl(raw: string): string | null {
     }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
 
-    const mandrill = unwrapMandrill(u);
+    const mandrill = unwrapMandrill(u) ?? unwrapCustomerIo(u);
     if (mandrill) {
       candidate = mandrill;
       continue;

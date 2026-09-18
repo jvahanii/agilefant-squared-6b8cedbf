@@ -34,6 +34,11 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
     note: "Employers whose alerts come from jobs2web, such as Nordea, Wärtsilä and Outokumpu.",
   },
   {
+    name: "Barona Careers",
+    searched: "Yes",
+    note: "Weekly “Your latest job suggestions” emails.",
+  },
+  {
     name: "Teamtailor",
     searched: "Yes",
     note: "“New jobs matching your profile” emails from any employer on Teamtailor, such as NestAI, Verda and Sofigate — including postings on the employer's own career site.",

@@ -202,6 +202,43 @@ describe('work item naming: company then title', () => {
     ]);
   });
 
+  /**
+   * Barona's weekly job suggestions, markup quoted from the real mail of
+   * 18 September. Every link is a Customer.io tracker whose base64 payload holds
+   * the real address, every job link reads "View job", and the address carries
+   * the recipient's email and a personal token.
+   */
+  it('reads a Barona suggestion digest: unwrapped, titled from the card, no personal data', () => {
+    const style =
+      '-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; color: #4690FF !important; text-decoration: underline !important; font: 15px/1.6 verdana, sans-serif !important; font-weight: 400 !important;';
+    const b = 'style="font: 15px/1.6 verdana, sans-serif !important; color: #212121 !important; font-weight: 600 !important;"';
+    const html =
+      '<a href="https://e-eu.customeriomail.com/e/c/eyJlbWFpbF9pZCI6ImRnU1gtUW9CQUk3ckVJM3JFQUdnczRlLXJBZzZWSnhFNlpCZ05iMD0iLCJocmVmIjoiaHR0cHM6Ly93d3cuYmFyb25hY2FyZWVycy5jb20vP3V0bV9tZWRpdW09ZW1haWwiLCJpbnRlcm5hbCI6Ijk3ZjkwYTA5ZGQyZDhlZWIxMCIsImxpbmtfaWQiOjh9/249b8d53f316ba56f040a2bc5cae48e4ee8b5c3c4c7a25e07a5cd696296d8b25" style="' + style + '"><img src="https://userimg-assets-eu.customeriomail.com/images/client-env-179351/1742550978584_barona-logo-blue-L-40px_01JPW23M8NZ281AY8AAS1DQSW4.png" width="120px" alt="Barona Nordic"/></a>\r\n' +
+      `<b ${b}></b><div><b ${b}>BEST MATCHES FROM THIS WEEK</b></div><div>Catch up on the strongest matches posted in the last 7 days:</div><div><br/></div>` +
+      `<div><b ${b}>💼 Electrical Engineer for CAM Plant Project, Kotka</b></div><div>China Harbour Engineering Company Limited, Suomen sivuliike, Kotka, Finland</div><div>Posted 1 day ago</div>` +
+      '<div><a class="block blue" href="https://e-eu.customeriomail.com/e/c/eyJlbWFpbF9pZCI6ImRnU1gtUW9CQUk3ckVJM3JFQUdnczRlLXJBZzZWSnhFNlpCZ05iMD0iLCJocmVmIjoiaHR0cHM6Ly93d3cuYmFyb25hY2FyZWVycy5jb20vam9icy9lbGVjdHJpY2FsLWVuZ2luZWVyLWZvci1jYW0tcGxhbnQtcHJvamVjdC1rb3RrYS1jaGluYS1oYXJib3VyLWVuZ2luZWVyaW5nLWNvbXBhbnktbGltaXRlZC1zdW9tZW4tc2l2dWxpaWtlP2VtYWlsX2RheT0yNjA5MThcdTAwMjZlbWFpbF91c2VyPWp2YWhhbmlpJTQwZ21haWwuY29tXHUwMDI2aWRlbnRpZmllcj1Lb3ZtRkZ6T0wzNzcxNm5JWVJsTHIxUmw3WkY4YmVRNFx1MDAyNmVtYWlsX3NlY3Rpb249am9icyIsImludGVybmFsIjoiOTdmOTBhMDlkZDJkOGVlYjEwIn0/45a213e31dec89811c2e94a1ca0a7fc181a0950f2774b34a59389bd53809aa23" style="' + style + '">View job</a></div><div><br/></div>' +
+      `<div><b ${b}>💼 Vastaava työnjohtaja, Lujatalo Oy</b></div><div>Lujatalo Oy, Espoo, Oulu, Helsinki, Vantaa, Turku, Tampere, Lahti, Jyväskylä, Lappeenranta, Kouvola, Pori, Kuopio, Finland</div><div>Posted 7 days ago</div>` +
+      '<div><a class="block blue" href="https://e-eu.customeriomail.com/e/c/eyJlbWFpbF9pZCI6ImRnU1gtUW9CQUk3ckVJM3JFQUdnczRlLXJBZzZWSnhFNlpCZ05iMD0iLCJocmVmIjoiaHR0cHM6Ly93d3cuYmFyb25hY2FyZWVycy5jb20vam9icy92YXN0YWF2YS10eW9uam9odGFqYS1sdWphdGFsby1veS1sdWphdGFsby1veT9lbWFpbF9kYXk9MjYwOTE4XHUwMDI2ZW1haWxfdXNlcj1qdmFoYW5paSU0MGdtYWlsLmNvbVx1MDAyNmlkZW50aWZpZXI9S292bUZGek9MMzc3MTZuSVlSbExyMVJsN1pGOGJlUTRcdTAwMjZlbWFpbF9zZWN0aW9uPWpvYnMiLCJpbnRlcm5hbCI6Ijk3ZjkwYTA5ZGQyZDhlZWIxMCJ9/84c0dc25d10173d0f8f933d82bc6ac75b7553a552178a497d9d6f0584ffffc9d" style="' + style + '">View job</a></div>' +
+      '<div style="margin-top: 15px;"><a href="https://e-eu.customeriomail.com/e/c/eyJlbWFpbF9pZCI6ImRnU1gtUW9CQUk3ckVJM3JFQUdnczRlLXJBZzZWSnhFNlpCZ05iMD0iLCJocmVmIjoiaHR0cHM6Ly93d3cuYmFyb25hY2FyZWVycy5jb20vam9iP2VtYWlsX2RheT0yNjA5MThcdTAwMjZlbWFpbF91c2VyPWp2YWhhbmlpJTQwZ21haWwuY29tXHUwMDI2aWRlbnRpZmllcj1Lb3ZtRkZ6T0wzNzcxNm5JWVJsTHIxUmw3WkY4YmVRNFx1MDAyNmVtYWlsX3NlY3Rpb249YWxsX2pvYnMiLCJpbnRlcm5hbCI6Ijk3ZjkwYTA5ZGQyZDhlZWIxMCJ9/cbb5ee399c7c3b041d4527fecb04d081f032c8d53883340d15a39313a8c54cca" style="' + style + '">View all jobs</a></div>' +
+      '<a class="untracked" href="https://e-eu.customeriomail.com/unsubscribe/dgSX-QoBAI7rEI3rEAGgs4e-rAg6VJxE6ZBgNb0=" style="' + style + '">Unsubscribe</a>';
+
+    const links = extractLinks(
+      message('Bea <bea.barona@baronacareers.com>', html, 'Your latest job suggestions for this week'),
+      'jobs',
+    );
+
+    expect(links.map((l) => l.url)).toEqual([
+      'https://www.baronacareers.com/jobs/electrical-engineer-for-cam-plant-project-kotka-china-harbour-engineering-company-limited-suomen-sivuliike',
+      'https://www.baronacareers.com/jobs/vastaava-tyonjohtaja-lujatalo-oy-lujatalo-oy',
+    ]);
+    expect(links.map((l) => l.title)).toEqual([
+      'China Harbour Engineering Company Limited — Electrical Engineer for CAM Plant Project, Kotka',
+      'Lujatalo Oy — Vastaava työnjohtaja',
+    ]);
+    // The recipient's address and personal token never reach a work item.
+    expect(JSON.stringify(links)).not.toMatch(/jvahanii|identifier|email_user/);
+  });
+
   it('still drops tracker links, but not a posting whose slug says tracking', () => {
     const html = `
       <a href="https://pixel.example.com/open.gif?u=1">.</a>

@@ -18,6 +18,8 @@ import { parseDeadline, parseOpenEnded } from './deadlines.ts';
 export interface LinkOccurrence {
   label: string;
   after: string;
+  /** Markup before the anchor. Optional: most sources never need it. */
+  before?: string;
 }
 
 /** What a source gets to work from when naming the employer. */
@@ -26,6 +28,8 @@ export interface CompanyContext {
   labels: string[];
   /** Markup following each anchor, in the same order. */
   afters: string[];
+  /** Markup preceding each anchor, in the same order. */
+  befores: string[];
   url: URL;
   subject: string;
   from: string;
@@ -57,6 +61,11 @@ export interface JobSource {
    * several.
    */
   companyFallback?(ctx: CompanyContext): string | undefined;
+  /**
+   * The posting's title, when the anchor text is not it — Barona's anchors all
+   * read "View job". Given the same context as `company`.
+   */
+  title?(ctx: CompanyContext): string | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
 }
@@ -187,7 +196,54 @@ export const JOB_SOURCES: JobSource[] = [
     isJobUrl: (u) => /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?jobs\/\d+(?:-[^/]*)?\/?$/i.test(u.pathname),
     canonicalPath: (u) => u.pathname.replace(/^\/[a-z]{2}(?:-[a-z]{2})?(?=\/jobs\/)/i, '').replace(/\/+$/, ''),
   },
+  {
+    // Barona Careers' weekly "Your latest job suggestions". Each posting is a
+    // bold title, an employer-and-places line, "Posted n days ago", and a link
+    // that only says "View job" — so title and employer are read from the
+    // markup before the link, not from the anchor.
+    id: 'barona',
+    senders: /@baronacareers\.com/i,
+    alertSenders: ['bea.barona@baronacareers.com'],
+    title: ({ befores }) => baronaCard(befores)?.title,
+    company: ({ befores }) => baronaCard(befores)?.company,
+    // /jobs/<slug>. Not /job (all jobs) or /job/settings, which share the host.
+    isJobUrl: (u) =>
+      /(^|\.)baronacareers\.com$/i.test(u.hostname) && /^\/(?:[a-z]{2}\/[a-z]{2}\/)?jobs\/[^/]+\/?$/i.test(u.pathname),
+  },
 ];
+
+/**
+ * A Barona suggestion card: the markup between the previous link and this one.
+ *
+ *   <div><b>💼 Electrical Engineer for CAM Plant Project, Kotka</b></div>
+ *   <div>China Harbour Engineering Company Limited, Suomen sivuliike, Kotka, Finland</div>
+ *   <div>Posted 1 day ago</div><div><a …>View job</a>
+ *
+ * The employer is the line's first comma-separated part. A title that ends by
+ * repeating it ("Vastaava työnjohtaja, Lujatalo Oy") drops the repeat, since the
+ * item is named employer first anyway.
+ */
+function baronaCard(befores: string[]): { title?: string; company?: string } | undefined {
+  for (const before of befores) {
+    const card = before.split(/<\/a>/i).pop() ?? '';
+    const bold = [...card.matchAll(/<b\b[^>]*>([\s\S]*?)<\/b>/gi)];
+    const last = bold.filter((m) => stripTags(m[1])).pop();
+    if (!last || last.index === undefined) continue;
+    const rawTitle = stripTags(last[1]).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    if (!rawTitle) continue;
+    const rest = card.slice(last.index + last[0].length);
+    const line = [...rest.matchAll(/<div\b[^>]*>([\s\S]*?)<\/div>/gi)]
+      .map((m) => stripTags(m[1]))
+      .find((text) => text && !/^posted\b/i.test(text));
+    const company = line?.split(/,\s/)[0]?.trim() || undefined;
+    const title =
+      company && rawTitle.toLowerCase().endsWith(`, ${company.toLowerCase()}`)
+        ? rawTitle.slice(0, -(company.length + 2)).trim()
+        : rawTitle;
+    return { title, company };
+  }
+  return undefined;
+}
 
 export function jobSourceFor(from: string): JobSource | null {
   return JOB_SOURCES.find((s) => s.senders.test(from)) ?? null;
@@ -251,15 +307,25 @@ function resolveCompany(
   subject: string,
   from: string,
 ): string | undefined {
-  const labels = occ.map((o) => o.label).filter((l) => l.length > 0);
-  const afters = occ.map((o) => o.after);
-  const override = source.company?.({ labels, afters, url, subject, from });
+  const ctx = contextFor(occ, url, subject, from);
+  const override = source.company?.(ctx);
   if (override) return override.trim();
 
   const fromMarkup = firstSegment(beside);
   if (fromMarkup) return fromMarkup;
 
-  return source.companyFallback?.({ labels, afters, url, subject, from })?.trim();
+  return source.companyFallback?.(ctx)?.trim();
+}
+
+function contextFor(occ: LinkOccurrence[], url: URL, subject: string, from: string): CompanyContext {
+  return {
+    labels: occ.map((o) => o.label).filter((l) => l.length > 0),
+    afters: occ.map((o) => o.after),
+    befores: occ.map((o) => o.before ?? ''),
+    url,
+    subject,
+    from,
+  };
 }
 
 /** "Company — Title", unless the title already names the company. */
@@ -303,7 +369,11 @@ export function filterJobLinks<
       const company = parsed
         ? resolveCompany(source, occ, beside, parsed, l.subject ?? '', from)
         : undefined;
-      if (company) next = { ...next, company, title: composeTitle(company, l.title ?? '') };
+      const ownTitle = parsed
+        ? source.title?.(contextFor(occ, parsed, l.subject ?? '', from))?.trim()
+        : undefined;
+      if (ownTitle) next = { ...next, title: ownTitle };
+      if (company) next = { ...next, company, title: composeTitle(company, ownTitle ?? l.title ?? '') };
 
       // Only the Finnish boards state a deadline in the mail. Elsewhere it is
       // left absent rather than guessed at, and filled in at import time by
