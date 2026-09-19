@@ -341,7 +341,7 @@ export default function JobAdsGuide() {
                 "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. Both lists are then sorted by name — which, since an imported name begins with the closing date, is closing-date order — and that order is saved as their rank. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
               ],
               [
-                "Do not import anything, mark emails read",
+                "Do not import anything, mark N emails read",
                 "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import & auto-place marks the emails read as well, so after an import there is no need for this.",
               ],
             ]}

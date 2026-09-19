@@ -297,7 +297,7 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("Seen A");
-    fireEvent.click(screen.getByRole("button", { name: /Do not import anything, mark emails read/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Do not import anything, mark 2 emails read" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(callGmail).toHaveBeenLastCalledWith({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1", "m-2"] });
@@ -313,7 +313,7 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("Seen");
-    fireEvent.click(screen.getByRole("button", { name: /Do not import anything, mark emails read/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Do not import anything, mark 1 email read" }));
 
     await waitFor(() =>
       expect(toast.mock.calls.map((c) => c[0].title)).toContain("Could not mark the emails as read"),
