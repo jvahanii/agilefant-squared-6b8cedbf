@@ -98,6 +98,18 @@ function revealWorkItem(id: string) {
   window.dispatchEvent(new CustomEvent("shortcut:reveal-work-item", { detail: { id } }));
 }
 
+/**
+ * Scroll the backlog tree to a backlog's row. The tree is not virtualized, so
+ * the row is already on the page; one frame lets the selection render first.
+ */
+function revealBacklog(id: string) {
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-backlog-tree-row="${CSS.escape(id)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  });
+}
+
 export default function AppLayout() {
   return (
     <ScrambleProvider>
@@ -718,6 +730,7 @@ function AppLayoutInner() {
             if (!nextBacklog) break;
             e.preventDefault();
             useAppStore.getState().selectBacklog(ids[nextIdx], nextBacklog.treeId);
+            revealBacklog(ids[nextIdx]);
           }
           break;
         }

@@ -446,6 +446,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         ref={combinedRef}
         {...attributes}
         {...restListeners}
+        data-backlog-tree-row={backlogId}
         className={`
           flex items-center gap-1.5 px-2 py-px rounded-md
           transition-all duration-150 ease-out select-none group
