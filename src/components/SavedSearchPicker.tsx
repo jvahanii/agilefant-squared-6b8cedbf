@@ -708,10 +708,10 @@ export function SavedSearchPicker({
             variant="outline"
             onClick={markAllRead}
             disabled={importing}
-            title="Import nothing, and mark every email listed here as read — for when none of its jobs are worth importing."
+            title={`Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.`}
           >
             <MailCheck className="w-3.5 h-3.5 mr-1" />
-            Mark {emailCount} email{emailCount === 1 ? "" : "s"} as read
+            Do not import anything, mark emails read
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={onClose} disabled={importing}>
