@@ -11,7 +11,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const callGmail = vi.fn();
-vi.mock("@/lib/gmailConnector", () => ({ callGmail: (...args: unknown[]) => callGmail(...args) }));
+/** The picker reads postings batch by batch; by default they state nothing. */
+const postingFacts = vi.fn();
+vi.mock("@/lib/gmailConnector", () => ({
+  callGmail: (body: { action: string }) => (body.action === "posting_facts" ? postingFacts(body) : callGmail(body)),
+}));
 const toast = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...args) }));
 
@@ -87,6 +91,8 @@ const link = (over: Record<string, unknown>) => ({
 
 beforeEach(() => {
   callGmail.mockReset();
+  postingFacts.mockReset();
+  postingFacts.mockResolvedValue({ facts: [] });
   toast.mockReset();
   loadFromSupabase.mockClear();
   superuser = true;
@@ -122,6 +128,54 @@ describe("SavedSearchPicker", () => {
     // [select-all for the email, New, Seen, Closed]
     expect(boxes.slice(1).map((b) => b.getAttribute("data-state"))).toEqual(["checked", "unchecked", "unchecked"]);
     expect(screen.getByText("already in Applied")).toBeInTheDocument();
+  });
+
+  it("says what it is doing while it reads the postings, then uses what they say", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: Array.from({ length: 8 }, (_, i) =>
+        link({ url: `https://x/${i}`, title: `Job ${i}`, messageId: i < 4 ? "m-1" : "m-2" }),
+      ),
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    postingFacts
+      .mockImplementationOnce(async ({ links }: { links: { url: string }[] }) => {
+        await gate;
+        return {
+          facts: links.map((l) => ({
+            url: l.url,
+            deadline: l.url === "https://x/0" ? "2026-10-11" : null,
+            applicationsClosed: l.url === "https://x/1",
+          })),
+        };
+      })
+      .mockResolvedValueOnce({ facts: [] });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Found 8 jobs in 2 emails. Reading job postings for deadlines… 0/8",
+      ),
+    );
+    // Asked for without the postings, which it reads itself, six at a time.
+    expect(callGmail.mock.calls[0][0]).toMatchObject({ action: "preview", readPostings: false });
+    expect(postingFacts.mock.calls[0][0].links).toHaveLength(6);
+    release();
+
+    await screen.findByText("Job 0");
+    expect(postingFacts).toHaveBeenCalledTimes(2);
+    expect(postingFacts.mock.calls[1][0].links.map((l: { url: string }) => l.url)).toEqual(["https://x/6", "https://x/7"]);
+    // What the postings said is on the rows, and the closed one starts unticked.
+    expect(screen.getAllByText(/^closes /)).toHaveLength(1);
+    expect(screen.getByText("Not selected: no longer accepting applications. Tick it to import anyway.")).toBeInTheDocument();
+  });
+
+  it("still shows the list when the postings cannot be read", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "Unread posting" })] });
+    postingFacts.mockRejectedValueOnce(new Error("unknown action"));
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Unread posting");
+    expect(screen.getByText("deadline unknown")).toBeInTheDocument();
   });
 
   it("says why each unticked row is unticked, and nothing for the ticked ones", async () => {

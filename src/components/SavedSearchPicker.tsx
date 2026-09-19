@@ -33,6 +33,11 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 
+/** Postings read per posting_facts call — the server accepts at most this many. */
+const POSTINGS_PER_CALL = 6;
+/** Postings read per search, as the server capped it when it read them itself. */
+const MAX_POSTINGS_READ = 40;
+
 /**
  * Run a saved Gmail search and choose what to import from it.
  *
@@ -113,6 +118,8 @@ export function SavedSearchPicker({
     }
   };
   const [loading, setLoading] = useState(true);
+  /** What the wait is doing, for the line shown until the list is ready. */
+  const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
@@ -130,6 +137,7 @@ export function SavedSearchPicker({
     let cancelled = false;
     (async () => {
       try {
+        setStage("Searching Gmail…");
         const res = await callGmail<{ links: PreviewLink[] }>({
           action: "preview",
           organizationId,
@@ -140,15 +148,61 @@ export function SavedSearchPicker({
           // The whole tree, so a posting already filed into another list
           // counts as one that has been seen.
           treeId: search.tree_id,
+          // The postings are read below, batch by batch, so the wait can say
+          // how far it has got instead of sitting on "Searching Gmail…".
+          readPostings: false,
         });
         if (cancelled) return;
-        const sorted = [...res.links].sort(
+        let sorted = [...res.links].sort(
           (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
         );
         if (sorted.length === 0) {
           toast({ title: "No links found for that query" });
           onClose();
           return;
+        }
+
+        if (mode === "jobs") {
+          // Deadline and closed, from each posting the mail left undated — the
+          // reading the server used to do inside the search, and to the same
+          // limit. Jobly always refuses the server, so it is left to the
+          // browser reader below rather than waited on here.
+          const found = `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} in ${
+            new Set(sorted.map((l) => l.messageId)).size
+          } email${new Set(sorted.map((l) => l.messageId)).size === 1 ? "" : "s"}.`;
+          const toRead = [
+            ...new Map(
+              sorted
+                .filter((l) => !l.deadline && !l.applicationsClosed && !readableInBrowser(l.url))
+                .map((l) => [l.url, { url: l.url, date: l.date }]),
+            ).values(),
+          ].slice(0, MAX_POSTINGS_READ);
+          for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {
+            setStage(`${found} Reading job postings for deadlines… ${at}/${toRead.length}`);
+            let facts: { url: string; deadline: string | null; applicationsClosed: boolean }[];
+            try {
+              ({ facts } = await callGmail<{ facts: typeof facts }>({
+                action: "posting_facts",
+                organizationId,
+                links: toRead.slice(at, at + POSTINGS_PER_CALL),
+              }));
+            } catch {
+              // Deadlines are a nicety here; the import reads them again anyway.
+              break;
+            }
+            if (cancelled) return;
+            const byUrl = new Map(facts.map((f) => [f.url, f]));
+            sorted = sorted.map((l) => {
+              const f = byUrl.get(l.url);
+              if (!f) return l;
+              return {
+                ...l,
+                ...(!l.deadline && f.deadline ? { deadline: f.deadline } : {}),
+                ...(f.applicationsClosed ? { applicationsClosed: true } : {}),
+              };
+            });
+          }
+          if (cancelled) return;
         }
         setPreview(sorted);
         // Anything startingReason names starts unchecked — already in the tree,
@@ -420,7 +474,7 @@ export function SavedSearchPicker({
   if (loading) {
     return (
       <p className="flex items-center gap-2 py-2 text-xs text-muted-foreground" role="status">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching Gmail…
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> {stage}
       </p>
     );
   }

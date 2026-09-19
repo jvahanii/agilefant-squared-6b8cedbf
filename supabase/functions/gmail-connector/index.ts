@@ -44,6 +44,8 @@ import { wellFormedDeadline } from '../_shared/deadlines.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
+/** Postings per posting_facts call: one round of the reader's concurrency. */
+const POSTING_FACTS_BATCH = 6;
 
 
 async function assertOrgMember(userId: string, orgId: string) {
@@ -343,7 +345,9 @@ Deno.serve(async (req) => {
         // say when a posting has stopped taking applications -- LinkedIn leaves
         // those up, and importing one as work is a waste of a row. Capped inside
         // fillDeadlines; a posting that will not load simply tells us nothing.
-        const detailed = await fillDeadlines(links);
+        // A caller that reads the postings itself, batch by batch through
+        // posting_facts so it can show how far it has got, says so.
+        const detailed = body.readPostings === false ? links : await fillDeadlines(links);
         return json({
           links: detailed.map((l) => ({
             ...l,
@@ -366,6 +370,31 @@ Deno.serve(async (req) => {
 
       return json({
         links: links.map((l) => ({ ...l, alreadyImported: seen.has(`${l.messageId}|${l.url}`) })),
+      });
+    }
+
+    // What a few postings say about themselves -- deadline, closed -- the same
+    // reading the preview does, for a picker that asks batch by batch so it can
+    // show its progress. Small batches keep each call well inside the
+    // function's time limit.
+    if (action === 'posting_facts') {
+      const organizationId = organizationIdFor();
+      await assertOrgMember(user.id, organizationId);
+      const raw: unknown[] = Array.isArray(body.links) ? body.links : [];
+      if (raw.length > POSTING_FACTS_BATCH) {
+        return json({ error: `at most ${POSTING_FACTS_BATCH} postings per call` }, 400);
+      }
+      const links = raw
+        .map((l) => l as { url?: unknown; date?: unknown })
+        .filter((l) => typeof l.url === 'string' && /^https?:\/\//i.test(l.url))
+        .map((l) => ({ url: l.url as string, date: typeof l.date === 'string' ? l.date : undefined }));
+      const read = await fillDeadlines(links);
+      return json({
+        facts: read.map((l) => ({
+          url: l.url,
+          deadline: (l as { deadline?: string }).deadline ?? null,
+          applicationsClosed: (l as { applicationsClosed?: boolean }).applicationsClosed === true,
+        })),
       });
     }
 
