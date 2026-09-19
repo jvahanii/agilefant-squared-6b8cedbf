@@ -321,12 +321,24 @@ describe("SavedSearchPicker", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("closes, saying so, when the search finds nothing", async () => {
+  it("says it is all caught up, and stays open, when every alert has been read", async () => {
     callGmail.mockResolvedValueOnce({ links: [] });
     const onClose = vi.fn();
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "No links found for that query" }));
+    await screen.findByText("All caught up.");
+    expect(screen.getByRole("status")).toHaveTextContent("no unread emails with job ads");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("says nothing matched, for a search that is not about unread mail", async () => {
+    callGmail.mockResolvedValueOnce({ links: [] });
+    render(
+      <SavedSearchPicker search={{ ...SEARCH, query: "from:jobs newer_than:7d" }} mode="jobs" organizationId="org-1" onClose={vi.fn()} />,
+    );
+    await screen.findByText("No job ads found.");
   });
 
   it("closes, saying why, when Gmail is not connected", async () => {

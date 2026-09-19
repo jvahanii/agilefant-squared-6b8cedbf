@@ -118,6 +118,8 @@ export function SavedSearchPicker({
     }
   };
   const [loading, setLoading] = useState(true);
+  /** The search came back empty — said in place of the list. */
+  const [nothingFound, setNothingFound] = useState(false);
   /** What the wait is doing, for the line shown until the list is ready. */
   const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
@@ -157,8 +159,11 @@ export function SavedSearchPicker({
           (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
         );
         if (sorted.length === 0) {
-          toast({ title: "No links found for that query" });
-          onClose();
+          // Nothing to pick — usually because every alert has been read. Said
+          // in place, with a way out, rather than by closing on a small toast:
+          // a dialog that vanishes looks like one that failed.
+          setNothingFound(true);
+          setLoading(false);
           return;
         }
 
@@ -476,6 +481,26 @@ export function SavedSearchPicker({
       <p className="flex items-center gap-2 py-2 text-xs text-muted-foreground" role="status">
         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> {stage}
       </p>
+    );
+  }
+  if (nothingFound) {
+    const unreadOnly = /(^|\s)is:unread(\s|$)/i.test(search.query);
+    const noun = mode === "jobs" ? "job ads" : "links";
+    return (
+      <div className="space-y-3 py-2" role="status">
+        <p className="flex items-start gap-2 text-sm">
+          <MailCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <span>
+            <span className="font-medium">{unreadOnly ? "All caught up." : `No ${noun} found.`}</span>{" "}
+            {unreadOnly
+              ? `There are no unread emails with ${noun} matching this search. New alerts will show up here when they arrive.`
+              : `None of the emails this search matches contain ${noun}. Check the search in Gmail itself, or widen how far back it looks.`}
+          </span>
+        </p>
+        <Button size="sm" variant="outline" onClick={onClose}>
+          Close
+        </Button>
+      </div>
     );
   }
   if (preview.length === 0) return null;

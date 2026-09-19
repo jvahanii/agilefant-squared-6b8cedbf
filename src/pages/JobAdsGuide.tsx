@@ -419,7 +419,11 @@ export default function JobAdsGuide() {
                 "The Google app is External and still in testing, where connections expire after seven days. Publish the app, or use an Internal app if your organization is on Google Workspace.",
               ],
               [
-                "No links found for that query",
+                "All caught up",
+                "A search for unread mail found no unread job alerts — everything has been read. Nothing is wrong; new alerts will show up the next time you run it.",
+              ],
+              [
+                "No job ads found",
                 "Nothing matched. Check the search in Gmail itself, or widen How far back to look.",
               ],
               [
