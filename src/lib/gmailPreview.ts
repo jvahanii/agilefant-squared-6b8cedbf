@@ -141,28 +141,32 @@ export function uncheckedReason(
 export const rowKey = (link: { messageId: string; url: string }) => `${link.messageId}|${link.url}`;
 
 /**
- * Rows that repeat a posting an earlier row already lists, with where it was
- * listed first.
+ * Rows that repeat a posting another row already lists, with the email of the
+ * copy that is kept.
  *
  * Alerts overlap — LinkedIn re-sends a role several times a day, and a company
  * digest repeats one a board has already mailed — and the import merges
  * rows with the same link into a single item anyway. Ticking every copy only
  * made the picker overstate how much was new. `links` is in display order,
- * newest email first, so the copy that stays ticked is the most recent one.
+ * newest email first. The copy that stays ticked is the most recent one that
+ * states a closing date, or the most recent one when none does.
  */
 export function repeatedRows(links: PreviewLink[]): Map<string, string> {
-  const first = new Map<string, PreviewLink>();
+  // The copy to keep: the first one that states a closing date, since that date
+  // becomes part of the item's name and decides where auto-place files it;
+  // otherwise simply the first.
+  const kept = new Map<string, PreviewLink>();
+  for (const link of links) {
+    const current = kept.get(link.url);
+    if (!current || (!current.deadline && link.deadline)) kept.set(link.url, link);
+  }
   const repeats = new Map<string, string>();
   for (const link of links) {
-    const earlier = first.get(link.url);
-    if (!earlier) {
-      first.set(link.url, link);
-      continue;
-    }
-    // Twice in one email is the same row key as the first copy, so marking it
-    // would untick the first as well. The import merges those regardless.
-    if (earlier.messageId === link.messageId) continue;
-    repeats.set(rowKey(link), `also in "${earlier.subject}"`);
+    const keeper = kept.get(link.url)!;
+    // Twice in one email is the same row key as the kept copy, so marking it
+    // would untick that one as well. The import merges those regardless.
+    if (keeper.messageId === link.messageId) continue;
+    repeats.set(rowKey(link), `also in "${keeper.subject}"`);
   }
   return repeats;
 }

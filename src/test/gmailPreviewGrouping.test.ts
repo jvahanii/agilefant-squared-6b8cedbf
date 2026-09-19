@@ -242,3 +242,17 @@ describe('repeatedRows', () => {
     expect(startingReason(rows[1], repeatedRows(rows))).toBeNull();
   });
 });
+
+describe('repeatedRows with a closing date on one copy', () => {
+  const undated = link('m-new', 'https://x/a', 'A', 'Newest alert', 'LinkedIn');
+  const dated = { ...link('m-old', 'https://x/a', 'A', 'Older digest', 'Nordea'), deadline: '2026-10-11' };
+  const laterDated = { ...link('m-oldest', 'https://x/a', 'A', 'Oldest', 'Duunitori'), deadline: '2026-10-12' };
+
+  it('keeps the copy that states a closing date', () => {
+    const repeats = repeatedRows([undated, dated, laterDated]);
+    expect(repeats.get(rowKey(dated))).toBeUndefined();
+    expect(repeats.get(rowKey(undated))).toBe('also in "Older digest"');
+    // Of two dated copies, the newer one.
+    expect(repeats.get(rowKey(laterDated))).toBe('also in "Older digest"');
+  });
+});
