@@ -161,8 +161,10 @@ export default function JobAdsGuide() {
             </li>
             <li>
               Configure the OAuth consent screen: an app name, a support email, and who may use it (see the notes
-              below). Add these scopes: <Code>gmail.readonly</Code>, <Code>userinfo.email</Code> and{" "}
-              <Code>userinfo.profile</Code>.
+              below). Add these scopes: <Code>gmail.modify</Code>, <Code>userinfo.email</Code> and{" "}
+              <Code>userinfo.profile</Code>. <Code>gmail.modify</Code> rather than read-only access is what lets
+              Agilefant mark job alerts as read once you have dealt with them; it is the narrowest scope Google offers
+              for that.
             </li>
             <li>
               Create an OAuth client ID of type <Em>Web application</Em>. Under <Em>Authorized redirect URIs</Em>, add
@@ -180,7 +182,7 @@ export default function JobAdsGuide() {
             client, disconnects everyone, who then connect again.
           </P>
           <Callout tone="warning">
-            <strong>Who can connect depends on how the Google app is set up.</strong> Read-only Gmail access is a
+            <strong>Who can connect depends on how the Google app is set up.</strong> Access to Gmail messages is a
             restricted permission, and Google limits apps that use it:
             <Ul>
               <li>
@@ -247,58 +249,115 @@ export default function JobAdsGuide() {
         </Section>
 
         <Section id="importing" title="Importing postings">
+          <SubHeading>Running a search</SubHeading>
           <P>
-            Choose <Em>Run now</Em> on a saved search. This does not import anything yet: it searches your Gmail and
-            opens a picker listing the postings it found, so you choose what becomes work. Running a search this way
-            never changes its schedule.
+            Choose <Em>Run now</Em> on a saved search. Superusers can also choose <Em>Run job search</Em> in the app
+            header, which runs the same search from any page. Neither imports anything yet: they search your Gmail and
+            open a picker listing the postings found, so you choose what becomes work. Running a search this way never
+            changes its schedule.
           </P>
-          <P>In the picker:</P>
+          <P>While it works, the picker says what it is doing:</P>
+          <Ol>
+            <li>
+              <Code>Searching Gmail…</Code> while it finds the emails and reads them.
+            </li>
+            <li>
+              <Code>Found 40 jobs in 14 emails. Reading job postings for deadlines… 12/34</Code> while it opens the
+              postings whose email gave no deadline, up to 40 of them. This is usually the longest part.
+            </li>
+            <li>
+              The list appears. If there are Jobly postings and you have the posting reader extension,{" "}
+              <Code>Reading Jobly postings through your browser… 3/8</Code> follows, filling in their deadlines as it
+              goes — see{" "}
+              <a href="#deadlines" className="text-primary underline-offset-2 hover:underline">
+                Application deadlines
+              </a>
+              .
+            </li>
+          </Ol>
+          <P>
+            When there is nothing to show, the picker says so and stays open until you close it. For a search on
+            unread mail that is <Code>All caught up</Code>: every alert has been read, and new ones will show up the
+            next time you run it.
+          </P>
+
+          <SubHeading>Reading the list</SubHeading>
+          <P>
+            The line above the list sums it up, for example <Code>12 jobs, out of which 5 seem new, found in 3 emails</Code>
+            . Jobs are counted once however many emails list them, and the ones that <Em>seem new</Em> are the ones
+            ticked to start with.
+          </P>
           <Ul>
             <li>
               Postings are grouped under the email they came from, with its subject, sender and date.{" "}
-              <Em>Open in Gmail</Em> opens that email.
+              <Em>Open in Gmail</Em> opens that email. Under the heading it says how many jobs the email holds and
+              where any of them already are, for example <Code>2 already in Jobs with no deadline</Code>.
+            </li>
+            <li>
+              Each posting shows what is known about its deadline: <Code>closes</Code> with a date,{" "}
+              <Code>open until further notice</Code>, or <Code>deadline unknown</Code>.
             </li>
             <li>
               <Em>Filter by keyword…</Em> narrows the list, for example to a job title or an employer.
             </li>
             <li>Tick the postings to import, individually or a whole email at a time.</li>
           </Ul>
-          <P>Some postings start out unticked, so the ones worth a new item are already selected:</P>
+
+          <SubHeading>What starts unticked</SubHeading>
+          <P>
+            The picker ticks only the postings worth a new item. Every unticked posting says why under it, and can
+            still be ticked to import anyway:
+          </P>
           <Dl
             items={[
               [
                 "already in …",
-                "The posting is already an item somewhere in the same backlog tree — not only in the backlog you are importing into — and the label says which backlog it is in.",
+                "The posting is already an item somewhere in the same backlog tree — not only in the list you are importing into — and it names the list.",
               ],
               [
                 "no longer accepting applications",
                 "The posting says it has closed. There is little point tracking it as work.",
               ],
+              [
+                "the closing date has passed",
+                "The deadline stated in the email or the posting is already behind us.",
+              ],
+              [
+                "also in “…”",
+                "Another email lists the same posting, and that copy is the one ticked — the one that states a closing date if either does, otherwise the most recent. Importing both would still create just one item.",
+              ],
+            ]}
+          />
+
+          <SubHeading>Importing</SubHeading>
+          <Dl
+            items={[
+              [
+                "Import selected",
+                "Creates the ticked postings in the backlog the saved search names.",
+              ],
+              [
+                "Import & auto-place",
+                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. Both lists are then sorted by name — which, since an imported name begins with the closing date, is closing-date order — and that order is saved as their rank. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
+              ],
+              [
+                "Mark emails as read",
+                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. The button says how many emails that is.",
+              ],
             ]}
           />
           <P>
-            Both can still be ticked and imported if you want them. Each posting also shows what is known about its
-            deadline: <Code>closes</Code> with a date, <Code>open until further notice</Code>, or{" "}
-            <Code>deadline unknown</Code>.
+            Choose the two <Em>Auto-place into</Em> lists in the picker, above the buttons; the button stays unavailable
+            until both are chosen. The choice is saved on the search, so it is there next time, and renaming a list
+            does not undo it.
           </P>
           <P>
-            Every unticked posting says under it why it is unticked, and can be ticked to import anyway. A posting
-            whose closing date has already passed starts unticked too.
-          </P>
-          <P>
-            Choose <Em>Import selected</Em> to create the items in the backlog the saved search names.
-          </P>
-          <P>
-            <Em>Import &amp; auto-place</Em> files them instead by closing date: postings with one go to the list
-            chosen under <Em>With a deadline</Em>, the rest to the one under <Em>Without</Em>. Choose both lists in
-            the picker, above the buttons; the choice is saved on the search, so it is there next time, and renaming
-            a list does not undo it. Both lists are then sorted by name — which, since an imported name begins with
-            the closing date, is closing-date order — and that order is saved as their rank. The emails the postings
-            came from are marked as read, so a search for unread mail offers only what has arrived since.
-          </P>
-          <P>
-            When nothing in the list is worth importing — every job already in your lists, say — choose{" "}
-            <Em>Mark emails as read</Em>: it imports nothing and marks every email the search listed as read.
+            After an import, superusers also get a check of the ads that were already in the lists it filled: any that
+            have closed since are marked, and a message reports the result — see{" "}
+            <a href="#closed-ads" className="text-primary underline-offset-2 hover:underline">
+              Checking for closed ads
+            </a>
+            .
           </P>
           <Callout>
             Marking emails as read needs permission to change your Gmail labels. A connection made before that was
@@ -427,6 +486,10 @@ export default function JobAdsGuide() {
                 "Nothing matched. Check the search in Gmail itself, or widen How far back to look.",
               ],
               [
+                "Could not mark the emails as read",
+                "Your Gmail connection was made before Agilefant asked for permission to change labels. Everything else keeps working; choose Connect Gmail again under Your Gmail account to grant it.",
+              ],
+              [
                 "A posting has no deadline",
                 "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers); the picker then reads the deadline through your browser.",
               ],
@@ -457,6 +520,11 @@ function Section({ id, title, children }: { id: string; title: string; children:
       {children}
     </section>
   );
+}
+
+/** A step within a long section — the picker has several. */
+function SubHeading({ children }: { children: ReactNode }) {
+  return <h3 className="mt-8 text-lg font-semibold tracking-tight">{children}</h3>;
 }
 
 function P({ children }: { children: ReactNode }) {
