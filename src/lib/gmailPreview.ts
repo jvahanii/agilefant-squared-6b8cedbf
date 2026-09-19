@@ -88,13 +88,22 @@ export function previewSummary(opts: {
   mode: "links" | "jobs";
   /** Rows before the keyword filter, when one is active. */
   total?: number;
+  /**
+   * Of the rows listed, those that started ticked -- the ones uncheckedReason
+   * found nothing against. Ticking by hand does not change it.
+   */
+  fresh?: number;
 }): string {
   const noun = opts.mode === "jobs" ? "job" : "link";
   const items = `${opts.shown} ${noun}${opts.shown === 1 ? "" : "s"}`;
+  const fresh =
+    opts.fresh !== undefined && opts.shown > 0
+      ? `, out of which ${opts.fresh} seem${opts.fresh === 1 ? "s" : ""} new,`
+      : "";
   const emails = `${opts.emails} email${opts.emails === 1 ? "" : "s"}`;
   const filtered =
     opts.total !== undefined && opts.total !== opts.shown ? ` (filtered from ${opts.total})` : "";
-  return `${items} found in ${emails}${filtered} — pick what to import`;
+  return `${items}${fresh} found in ${emails}${filtered} — pick what to import`;
 }
 
 /**

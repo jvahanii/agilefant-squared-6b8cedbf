@@ -97,6 +97,18 @@ describe('previewSummary', () => {
     );
   });
 
+  it('says how many seem new', () => {
+    expect(previewSummary({ shown: 12, emails: 3, mode: 'jobs', fresh: 5 })).toBe(
+      '12 jobs, out of which 5 seem new, found in 3 emails — pick what to import',
+    );
+    expect(previewSummary({ shown: 12, emails: 3, mode: 'jobs', fresh: 1 })).toContain(
+      'out of which 1 seems new,',
+    );
+    expect(previewSummary({ shown: 3, emails: 1, mode: 'jobs', total: 12, fresh: 0 })).toBe(
+      '3 jobs, out of which 0 seem new, found in 1 email (filtered from 12) — pick what to import',
+    );
+  });
+
   it('uses singulars where they belong', () => {
     expect(previewSummary({ shown: 1, emails: 1, mode: 'jobs' })).toBe(
       '1 job found in 1 email — pick what to import',

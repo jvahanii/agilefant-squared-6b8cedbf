@@ -338,6 +338,7 @@ export function SavedSearchPicker({
         {previewSummary({
           shown: visiblePreview.length,
           emails: visibleGroups.length,
+          fresh: visiblePreview.filter((l) => uncheckedReason(l) === null).length,
           mode,
           total: filterKeyword ? preview.length : undefined,
         })}
