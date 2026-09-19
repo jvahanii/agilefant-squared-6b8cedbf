@@ -81,16 +81,17 @@ export function groupBySourceEmail(links: PreviewLink[]): SourceEmailGroup[] {
  * in markup and impossible to test there.
  */
 export function previewSummary(opts: {
-  /** Rows currently listed. */
+  /** Distinct postings currently listed; one in three emails counts once. */
   shown: number;
   /** Source emails those rows came from. */
   emails: number;
   mode: "links" | "jobs";
-  /** Rows before the keyword filter, when one is active. */
+  /** Distinct postings before the keyword filter, when one is active. */
   total?: number;
   /**
-   * Of the rows listed, those that started ticked -- the ones uncheckedReason
-   * found nothing against. Ticking by hand does not change it.
+   * Of the rows listed, those that started ticked -- the ones startingReason
+   * found nothing against, so one per new posting. Ticking by hand does not
+   * change it.
    */
   fresh?: number;
 }): string {
@@ -135,6 +136,48 @@ export function uncheckedReason(
   if (deadlinePassed(link.deadline, now)) return "the closing date has passed";
   return null;
 }
+
+/** A picker row's identity: the same posting in two emails is two rows. */
+export const rowKey = (link: { messageId: string; url: string }) => `${link.messageId}|${link.url}`;
+
+/**
+ * Rows that repeat a posting an earlier row already lists, with where it was
+ * listed first.
+ *
+ * Alerts overlap — LinkedIn re-sends a role several times a day, and a company
+ * digest repeats one a board has already mailed — and the import merges
+ * rows with the same link into a single item anyway. Ticking every copy only
+ * made the picker overstate how much was new. `links` is in display order,
+ * newest email first, so the copy that stays ticked is the most recent one.
+ */
+export function repeatedRows(links: PreviewLink[]): Map<string, string> {
+  const first = new Map<string, PreviewLink>();
+  const repeats = new Map<string, string>();
+  for (const link of links) {
+    const earlier = first.get(link.url);
+    if (!earlier) {
+      first.set(link.url, link);
+      continue;
+    }
+    // Twice in one email is the same row key as the first copy, so marking it
+    // would untick the first as well. The import merges those regardless.
+    if (earlier.messageId === link.messageId) continue;
+    repeats.set(rowKey(link), `also in "${earlier.subject}"`);
+  }
+  return repeats;
+}
+
+/** Why a row starts unticked — its own reason first, then being a repeat. */
+export function startingReason(
+  link: PreviewLink,
+  repeats: Map<string, string>,
+  now: Date | number = Date.now(),
+): string | null {
+  return uncheckedReason(link, now) ?? repeats.get(rowKey(link)) ?? null;
+}
+
+/** Distinct postings among these rows, however many emails list each. */
+export const distinctJobs = (links: { url: string }[]) => new Set(links.map((l) => l.url)).size;
 
 export function deadlineLabel(link: {
   deadline?: string;

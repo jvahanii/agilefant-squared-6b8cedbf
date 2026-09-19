@@ -9,9 +9,13 @@ import {
   deadlineLabel,
   gmailMessageUrl,
   groupBySourceEmail,
+  distinctJobs,
   previewSummary,
+  repeatedRows,
+  rowKey,
   senderAddress,
   senderName,
+  startingReason,
   uncheckedReason,
   type PreviewLink,
 } from "@/lib/gmailPreview";
@@ -144,12 +148,12 @@ export function SavedSearchPicker({
           return;
         }
         setPreview(sorted);
-        // Anything uncheckedReason names starts unchecked — already in the tree,
-        // no longer accepting applications, or past its closing date. They stay
-        // importable on purpose, and the row says which it is.
-        setSelected(
-          Object.fromEntries(sorted.map((l) => [`${l.messageId}|${l.url}`, uncheckedReason(l) === null])),
-        );
+        // Anything startingReason names starts unchecked — already in the tree,
+        // no longer accepting applications, past its closing date, or a repeat
+        // of a posting another email already lists. They stay importable on
+        // purpose, and the row says which it is.
+        const repeats = repeatedRows(sorted);
+        setSelected(Object.fromEntries(sorted.map((l) => [rowKey(l), startingReason(l, repeats) === null])));
         setLoading(false);
 
         // Postings the server was refused (Jobly) are read through the browser,
@@ -228,6 +232,9 @@ export function SavedSearchPicker({
     );
   }, [preview, filterKeyword]);
   const visibleGroups = useMemo(() => groupBySourceEmail(visiblePreview), [visiblePreview]);
+  // Over the whole list, not the filtered one: a row is a repeat because of an
+  // earlier email, whether or not the filter happens to show that email.
+  const repeats = useMemo(() => repeatedRows(preview), [preview]);
 
   const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
 
@@ -390,11 +397,11 @@ export function SavedSearchPicker({
       </div>
       <p className="text-xs font-medium text-muted-foreground">
         {previewSummary({
-          shown: visiblePreview.length,
+          shown: distinctJobs(visiblePreview),
           emails: visibleGroups.length,
-          fresh: visiblePreview.filter((l) => uncheckedReason(l) === null).length,
+          fresh: visiblePreview.filter((l) => startingReason(l, repeats) === null).length,
           mode,
-          total: filterKeyword ? preview.length : undefined,
+          total: filterKeyword ? distinctJobs(preview) : undefined,
         })}
       </p>
       {reading && (
@@ -499,9 +506,9 @@ export function SavedSearchPicker({
                             )}
                           </span>
                         </span>
-                        {!selected[key] && uncheckedReason(l) && (
+                        {!selected[key] && startingReason(l, repeats) && (
                           <span className="block text-xs text-muted-foreground">
-                            Not selected: {uncheckedReason(l)}. Tick it to import anyway.
+                            Not selected: {startingReason(l, repeats)}. Tick it to import anyway.
                           </span>
                         )}
                         <span className="block truncate text-xs text-muted-foreground">

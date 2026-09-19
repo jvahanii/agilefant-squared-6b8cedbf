@@ -7,6 +7,10 @@ import {
   groupBySourceEmail,
   previewSummary,
   uncheckedReason,
+  repeatedRows,
+  startingReason,
+  distinctJobs,
+  rowKey,
 } from '@/lib/gmailPreview';
 
 /**
@@ -200,5 +204,41 @@ describe('uncheckedReason', () => {
     expect(uncheckedReason({ alreadyImported: true, alreadyIn: 'Applied', applicationsClosed: true }, NOW)).toBe(
       'already in Applied',
     );
+  });
+});
+
+describe('repeatedRows', () => {
+  const rows = [
+    link('m-new', 'https://x/a', 'A', 'Newest alert', 'LinkedIn'),
+    link('m-new', 'https://x/b', 'B', 'Newest alert', 'LinkedIn'),
+    link('m-new', 'https://x/a', 'A again', 'Newest alert', 'LinkedIn'),
+    link('m-old', 'https://x/a', 'A', 'Older digest', 'Nordea'),
+    link('m-old', 'https://x/c', 'C', 'Older digest', 'Nordea'),
+  ];
+
+  it('keeps the first copy of a posting and names where it was first', () => {
+    const repeats = repeatedRows(rows);
+    expect(repeats.size).toBe(1);
+    expect(repeats.get(rowKey(rows[0]))).toBeUndefined();
+    expect(repeats.get(rowKey(rows[3]))).toBe('also in "Newest alert"');
+  });
+
+  it('leaves a posting listed twice in one email ticked', () => {
+    // Same row key as the first copy: marking it would untick that one too.
+    expect(repeatedRows(rows).get(rowKey(rows[2]))).toBeUndefined();
+  });
+
+  it('counts each posting once', () => {
+    expect(distinctJobs(rows)).toBe(3);
+  });
+
+  it('puts the row’s own reason before being a repeat', () => {
+    const seen = [
+      { ...rows[0], alreadyImported: true, alreadyIn: 'Applied' },
+      { ...rows[3], alreadyImported: true, alreadyIn: 'Applied' },
+    ];
+    const repeats = repeatedRows(seen);
+    expect(startingReason(seen[1], repeats)).toBe('already in Applied');
+    expect(startingReason(rows[1], repeatedRows(rows))).toBeNull();
   });
 });

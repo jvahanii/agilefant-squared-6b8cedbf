@@ -149,6 +149,28 @@ describe("SavedSearchPicker", () => {
     vi.useRealTimers();
   });
 
+  it("ticks a posting once however many emails list it, and counts it once", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://x/a", title: "Role A", messageId: "m-new", subject: "Newest alert", date: "2026-09-18T10:00:00Z" }),
+        link({ url: "https://x/b", title: "Role B", messageId: "m-new", subject: "Newest alert", date: "2026-09-18T10:00:00Z" }),
+        link({ url: "https://x/a", title: "Role A again", messageId: "m-old", subject: "Older digest", date: "2026-09-17T10:00:00Z" }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Role A again");
+
+    expect(screen.getAllByRole("checkbox").map((b) => b.getAttribute("data-state"))).toEqual([
+      "checked", // Newest alert
+      "checked",
+      "checked",
+      "unchecked", // Older digest
+      "unchecked",
+    ]);
+    expect(screen.getByText('Not selected: also in "Newest alert". Tick it to import anyway.')).toBeInTheDocument();
+    expect(screen.getByText(/^2 jobs, out of which 2 seem new, found in 2 emails/)).toBeInTheDocument();
+  });
+
   it("imports only what is ticked, then closes and reloads", async () => {
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", alreadyImported: true })] })
