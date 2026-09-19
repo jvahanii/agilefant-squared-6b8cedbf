@@ -31,6 +31,9 @@ vi.mock("@/store/appStore", () => ({
 let superuser = true;
 vi.mock("@/contexts/ScrambleContext", () => ({ useScramble: () => ({ isSuperuser: superuser }) }));
 let savedSearches: unknown[] = [];
+/** The saved search's auto-place columns, as the picker reads them. */
+let autoPlaceRow: Record<string, string | null> | null = null;
+const updates: Record<string, unknown>[] = [];
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: () => {
@@ -38,6 +41,11 @@ vi.mock("@/integrations/supabase/client", () => ({
         select: () => chain,
         eq: () => chain,
         order: () => Promise.resolve({ data: savedSearches, error: null }),
+        maybeSingle: () => Promise.resolve({ data: autoPlaceRow, error: null }),
+        update: (values: Record<string, unknown>) => {
+          updates.push(values);
+          return chain;
+        },
       };
       return chain;
     },
@@ -77,6 +85,8 @@ beforeEach(() => {
   loadFromSupabase.mockClear();
   superuser = true;
   savedSearches = [];
+  autoPlaceRow = null;
+  updates.length = 0;
   readerInstalled = false;
   readPostingFacts.mockReset();
   applySiblingOrder.mockReset();
@@ -183,10 +193,11 @@ describe("Import & auto-place", () => {
   });
 
   const withBothLists = () => {
+    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
     storeState = {
       backlogs: {
-        dl: backlog("dl", "Deadlinella"),
-        open: backlog("open", "Toistaiseksi avoimet"),
+        dl: backlog("dl", "Jobs with deadline"),
+        open: backlog("open", "Jobs with no deadline"),
         other: backlog("other", "ICT jobs inbox"),
       },
       workItems: {
@@ -214,6 +225,7 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("Dated");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2));
@@ -255,6 +267,7 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 3000 });
@@ -273,6 +286,7 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
@@ -281,12 +295,46 @@ describe("Import & auto-place", () => {
     expect(titles.some((t: string) => t.startsWith("Imported 1 work item"))).toBe(true);
   });
 
-  it("is not offered when the tree has no such lists", async () => {
-    storeState = { backlogs: { other: backlog("other", "ICT jobs inbox") } };
+  it("shows the chosen lists by their current names", async () => {
+    withBothLists();
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
+    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    await waitFor(() => expect(dated.value).toBe("dl"));
+    expect(undated.value).toBe("open");
+    expect(dated.selectedOptions[0].textContent).toBe("Jobs with deadline");
+  });
+
+  it("waits for both lists to be chosen, and saves each choice by id", async () => {
+    storeState = {
+      backlogs: {
+        dl: backlog("dl", "Jobs with deadline"),
+        open: backlog("open", "Jobs with no deadline"),
+        elsewhere: backlog("elsewhere", "Another tree's list", "tree-2"),
+      },
+    };
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Only one");
+    const button = screen.getByRole("button", { name: /Import & auto-place/ });
+    expect(button).toBeDisabled();
+
+    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    // Only this search's tree is on offer.
+    expect([...dated.options].map((o) => o.textContent)).toEqual([
+      "Choose a list…",
+      "Jobs with deadline",
+      "Jobs with no deadline",
+    ]);
+    fireEvent.change(dated, { target: { value: "dl" } });
+    expect(button).toBeDisabled();
+    fireEvent.change(undated, { target: { value: "open" } });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(updates).toEqual([
+      { auto_place_dated_backlog_id: "dl" },
+      { auto_place_undated_backlog_id: "open" },
+    ]);
   });
 
   it("is not offered for a link import, which has no deadlines to sort by", async () => {
@@ -295,6 +343,7 @@ describe("Import & auto-place", () => {
     render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A link");
     expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });
 

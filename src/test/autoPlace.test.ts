@@ -1,6 +1,6 @@
 /**
- * "Import & auto-place": postings with a closing date go to Deadlinella, the
- * rest to Toistaiseksi avoimet.
+ * "Import & auto-place": postings with a closing date go to one list, the rest
+ * to another — both chosen on the saved search.
  */
 import { describe, it, expect } from "vitest";
 import { findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
@@ -13,24 +13,35 @@ const backlog = (id: string, name: string, treeId: string): Backlog => ({
 const TREE = "org::bt-1";
 const OTHER = "org::bt-2";
 
+const search = (dated: string | null, undated: string | null, tree_id = TREE) => ({
+  tree_id,
+  auto_place_dated_backlog_id: dated,
+  auto_place_undated_backlog_id: undated,
+});
+
 describe("findAutoPlaceTargets", () => {
-  it("finds both lists in the tree being imported into", () => {
+  it("uses the lists the saved search names, by id", () => {
     const backlogs = {
-      a: backlog("a", "Deadlinella", TREE),
-      b: backlog("b", " toistaiseksi AVOIMET ", TREE),
-      c: backlog("c", "Ei ehtinyt hakea", TREE),
+      a: backlog("a", "Jobs with deadline", TREE),
+      b: backlog("b", "Jobs with no deadline", TREE),
+      c: backlog("c", "Inbox", TREE),
     };
-    expect(findAutoPlaceTargets(backlogs, TREE)).toEqual({ withDeadline: "a", withoutDeadline: "b" });
+    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toEqual({ withDeadline: "a", withoutDeadline: "b" });
   });
 
-  it("offers nothing when either list is missing, or lives in another tree", () => {
-    expect(findAutoPlaceTargets({ a: backlog("a", "Deadlinella", TREE) }, TREE)).toBeNull();
-    const split = {
-      a: backlog("a", "Deadlinella", TREE),
-      b: backlog("b", "Toistaiseksi avoimet", OTHER),
-    };
-    expect(findAutoPlaceTargets(split, TREE)).toBeNull();
-    expect(findAutoPlaceTargets(split, null)).toBeNull();
+  it("does not care what the lists are called", () => {
+    const backlogs = { a: backlog("a", "Deadlinella", TREE), b: backlog("b", "Renamed again", TREE) };
+    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toEqual({ withDeadline: "a", withoutDeadline: "b" });
+  });
+
+  it("offers nothing when not set up, or a list is gone or in another tree", () => {
+    const backlogs = { a: backlog("a", "x", TREE), b: backlog("b", "y", OTHER) };
+    expect(findAutoPlaceTargets(backlogs, search(null, null))).toBeNull();
+    expect(findAutoPlaceTargets(backlogs, search("a", null))).toBeNull();
+    expect(findAutoPlaceTargets(backlogs, search("a", "deleted"))).toBeNull();
+    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toBeNull();
+    expect(findAutoPlaceTargets(backlogs, { tree_id: TREE })).toBeNull();
+    expect(findAutoPlaceTargets(backlogs, null)).toBeNull();
   });
 });
 

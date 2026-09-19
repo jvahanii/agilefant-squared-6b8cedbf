@@ -10,34 +10,36 @@ import type { Backlog } from "@/types/models";
  * in name order — which, because an imported title starts with its closing date,
  * is closing-date order.
  *
- * The two lists are named, not configured: they are the ones this job hunt uses.
- * The button appears only where both names exist in the tree being imported
- * into, so any other tree simply does not offer it.
+ * The two lists are chosen per saved search and kept by id. They used to be
+ * found by name, and renaming either one made the button quietly disappear.
  */
-export const AUTO_PLACE_BACKLOGS = {
-  withDeadline: "Deadlinella",
-  withoutDeadline: "Toistaiseksi avoimet",
-} as const;
 
 export interface AutoPlaceTargets {
   withDeadline: string;
   withoutDeadline: string;
 }
 
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+/** The part of a saved search that says where auto-place files things. */
+export interface AutoPlaceSettings {
+  tree_id: string;
+  auto_place_dated_backlog_id?: string | null;
+  auto_place_undated_backlog_id?: string | null;
+}
 
-/** The two target backlogs in this tree, or null when either is missing. */
+/**
+ * The two target backlogs, or null when auto-place is not set up for this
+ * search — either one unset, deleted, or moved out of the search's tree.
+ */
 export function findAutoPlaceTargets(
   backlogs: Record<string, Backlog>,
-  treeId: string | null | undefined,
+  search: AutoPlaceSettings | null | undefined,
 ): AutoPlaceTargets | null {
-  if (!treeId || !backlogs) return null;
-  const inTree = Object.values(backlogs).filter((b) => b.treeId === treeId);
-  const withDeadline = inTree.find((b) => sameName(b.name, AUTO_PLACE_BACKLOGS.withDeadline));
-  const withoutDeadline = inTree.find((b) => sameName(b.name, AUTO_PLACE_BACKLOGS.withoutDeadline));
-  return withDeadline && withoutDeadline
-    ? { withDeadline: withDeadline.id, withoutDeadline: withoutDeadline.id }
-    : null;
+  if (!search?.tree_id || !backlogs) return null;
+  const inTree = (id: string | null | undefined) =>
+    id && backlogs[id]?.treeId === search.tree_id ? id : null;
+  const withDeadline = inTree(search.auto_place_dated_backlog_id);
+  const withoutDeadline = inTree(search.auto_place_undated_backlog_id);
+  return withDeadline && withoutDeadline ? { withDeadline, withoutDeadline } : null;
 }
 
 /**

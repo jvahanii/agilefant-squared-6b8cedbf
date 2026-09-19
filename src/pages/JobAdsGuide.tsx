@@ -289,12 +289,12 @@ export default function JobAdsGuide() {
             Choose <Em>Import selected</Em> to create the items in the backlog the saved search names.
           </P>
           <P>
-            <Em>Import &amp; auto-place</Em> files them instead by closing date: postings with one go to{" "}
-            <Code>Deadlinella</Code>, the rest to <Code>Toistaiseksi avoimet</Code>. Both lists are then sorted by
-            name — which, since an imported name begins with the closing date, is closing-date order — and that order
-            is saved as their rank. The emails the postings came from are marked as read, so a search for unread mail
-            offers only what has arrived since. The button appears only where the backlog tree has both of those
-            lists.
+            <Em>Import &amp; auto-place</Em> files them instead by closing date: postings with one go to the list
+            chosen under <Em>With a deadline</Em>, the rest to the one under <Em>Without</Em>. Choose both lists in
+            the picker, above the buttons; the choice is saved on the search, so it is there next time, and renaming
+            a list does not undo it. Both lists are then sorted by name — which, since an imported name begins with
+            the closing date, is closing-date order — and that order is saved as their rank. The emails the postings
+            came from are marked as read, so a search for unread mail offers only what has arrived since.
           </P>
           <Callout>
             Marking emails as read needs permission to change your Gmail labels. A connection made before that was

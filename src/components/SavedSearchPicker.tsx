@@ -18,7 +18,8 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { AUTO_PLACE_BACKLOGS, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { currentListSortContext } from "@/store/listSortStore";
@@ -47,12 +48,64 @@ export function SavedSearchPicker({
 }) {
   const reloadData = useAppStore((s) => s.loadFromSupabase);
   const backlogs = useAppStore((s) => s.backlogs);
-  // Only where this tree has both lists to place into; elsewhere the button
-  // simply is not offered.
+  // Where "Import & auto-place" files postings, by backlog id, as saved on the
+  // search. Read here rather than taken from the caller, whose copy of the
+  // search may predate a change made in an earlier run of this picker.
+  const [placeInto, setPlaceInto] = useState<{ dated: string | null; undated: string | null }>({
+    dated: null,
+    undated: null,
+  });
+  useEffect(() => {
+    if (mode !== "jobs") return;
+    let cancelled = false;
+    void supabase
+      .from("gmail_import_queries")
+      .select("auto_place_dated_backlog_id, auto_place_undated_backlog_id")
+      .eq("id", search.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setPlaceInto({ dated: data.auto_place_dated_backlog_id, undated: data.auto_place_undated_backlog_id });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, search.id]);
   const autoPlace = useMemo(
-    () => (mode === "jobs" ? findAutoPlaceTargets(backlogs, search.tree_id) : null),
-    [backlogs, mode, search.tree_id],
+    () =>
+      mode === "jobs"
+        ? findAutoPlaceTargets(backlogs, {
+            tree_id: search.tree_id,
+            auto_place_dated_backlog_id: placeInto.dated,
+            auto_place_undated_backlog_id: placeInto.undated,
+          })
+        : null,
+    [backlogs, mode, search.tree_id, placeInto],
   );
+  /** The lists a posting can be placed into: this search's tree, by name. */
+  const treeBacklogs = useMemo(
+    () =>
+      Object.values(backlogs ?? {})
+        .filter((b) => b.treeId === search.tree_id)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [backlogs, search.tree_id],
+  );
+  const backlogName = (id: string) => backlogs?.[id]?.name ?? "?";
+
+  /** Choosing a list saves it on the search straight away; a failure puts it back. */
+  const choosePlaceInto = async (which: "dated" | "undated", id: string | null) => {
+    const before = placeInto;
+    setPlaceInto({ ...before, [which]: id });
+    const column = which === "dated" ? "auto_place_dated_backlog_id" : "auto_place_undated_backlog_id";
+    const { error } = await supabase
+      .from("gmail_import_queries")
+      .update({ [column]: id })
+      .eq("id", search.id);
+    if (error) {
+      setPlaceInto(before);
+      toast({ title: "Could not save the list", description: error.message, variant: "destructive" });
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -292,7 +345,8 @@ export function SavedSearchPicker({
       toast({
         title: `Imported ${created} work item${created === 1 ? "" : "s"}`,
         description:
-          `${dated.length} with a deadline into ${AUTO_PLACE_BACKLOGS.withDeadline}, ${undated.length} without into ${AUTO_PLACE_BACKLOGS.withoutDeadline}. ` +
+          `${dated.length} with a deadline into ${backlogName(autoPlace.withDeadline)}, ` +
+          `${undated.length} without into ${backlogName(autoPlace.withoutDeadline)}. ` +
           (arrived
             ? `Both lists sorted by name and saved as rank.`
             : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
@@ -463,18 +517,50 @@ export function SavedSearchPicker({
           );
         })}
       </div>
+      {mode === "jobs" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Auto-place into:</span>
+          {(
+            [
+              ["dated", "With a deadline"],
+              ["undated", "Without"],
+            ] as const
+          ).map(([which, label]) => (
+            <label key={which} className="flex min-w-0 items-center gap-1.5">
+              {label}
+              <select
+                value={placeInto[which] ?? ""}
+                onChange={(e) => void choosePlaceInto(which, e.target.value || null)}
+                disabled={importing}
+                className="h-7 max-w-[12rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
+              >
+                <option value="">Choose a list…</option>
+                {treeBacklogs.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={importSelected} disabled={importing}>
           {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Import selected
         </Button>
-        {autoPlace && (
+        {mode === "jobs" && (
           <Button
             size="sm"
             variant="secondary"
             onClick={importAndAutoPlace}
-            disabled={importing}
-            title={`Postings with a closing date go to ${AUTO_PLACE_BACKLOGS.withDeadline}, the rest to ${AUTO_PLACE_BACKLOGS.withoutDeadline}. Both lists are then sorted by name and that order saved as rank.`}
+            disabled={importing || !autoPlace}
+            title={
+              autoPlace
+                ? `Postings with a closing date go to ${backlogName(autoPlace.withDeadline)}, the rest to ${backlogName(autoPlace.withoutDeadline)}. Both lists are then sorted by name and that order saved as rank.`
+                : "Choose both lists above first."
+            }
           >
             Import &amp; auto-place
           </Button>
