@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LinkIcon, Loader2, Mail } from "lucide-react";
+import { LinkIcon, Loader2, Mail, MailCheck } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,6 +237,7 @@ export function SavedSearchPicker({
   // Over the whole list, not the filtered one: a row is a repeat because of an
   // earlier email, whether or not the filter happens to show that email.
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
+  const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
 
   const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
 
@@ -267,6 +268,47 @@ export function SavedSearchPicker({
     if (items.length === 0) return;
     const message = closedCheckMessage(await closedStore.check(items));
     toast({ ...message, title: `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}` });
+  };
+
+  /**
+   * Mark the emails these rows came from as read, and return how many were.
+   * Best-effort: a failure is reported, not thrown — and a connection made
+   * before the app asked for permission to change labels cannot do this until
+   * it is made again.
+   */
+  const markRead = async (links: PreviewLink[]): Promise<number> => {
+    const messageIds = [...new Set(links.map((l) => l.messageId).filter(Boolean))];
+    if (messageIds.length === 0) return 0;
+    try {
+      const marked = await callGmail<{ marked: number }>({ action: "mark_read", organizationId, messageIds });
+      return marked.marked ?? 0;
+    } catch (e) {
+      const message = (e as Error).message;
+      toast({
+        title: "Could not mark the emails as read",
+        description: message.includes("gmail_permission_missing")
+          ? "Agilefant may now mark job alerts as read, which needs Gmail permission you have not given yet. Connect Gmail again under Bells & Whistles → Your Gmail account."
+          : explainGmailError(message),
+        variant: "destructive",
+      });
+      return -1;
+    }
+  };
+
+  /**
+   * Nothing worth importing, but the alerts are still unread: mark every email
+   * the search listed as read, so an "only unread" search stops offering them.
+   */
+  const markAllRead = async () => {
+    setImporting(true);
+    try {
+      const marked = await markRead(preview);
+      if (marked < 0) return;
+      toast({ title: `${marked} email${marked === 1 ? "" : "s"} marked as read`, description: "Nothing was imported." });
+      onClose();
+    } finally {
+      setImporting(false);
+    }
   };
 
   const importSelected = async () => {
@@ -323,21 +365,7 @@ export function SavedSearchPicker({
       // has arrived since. Best-effort — the import itself has already
       // succeeded, and a connection made before the app asked for permission to
       // change labels cannot do this until it is made again.
-      const messageIds = [...new Set(links.map((l) => l.messageId).filter(Boolean))];
-      let markedRead = 0;
-      try {
-        const marked = await callGmail<{ marked: number }>({ action: "mark_read", organizationId, messageIds });
-        markedRead = marked.marked ?? 0;
-      } catch (e) {
-        const message = (e as Error).message;
-        toast({
-          title: "Could not mark the emails as read",
-          description: message.includes("gmail_permission_missing")
-            ? "Agilefant may now mark job alerts as read, which needs Gmail permission you have not given yet. Connect Gmail again under Bells & Whistles → Your Gmail account."
-            : explainGmailError(message),
-          variant: "destructive",
-        });
-      }
+      const markedRead = await markRead(links);
 
       onClose();
       // The new items have to be in the store before the lists are ranked, or
@@ -574,7 +602,7 @@ export function SavedSearchPicker({
           ))}
         </div>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={importSelected} disabled={importing}>
           {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Import selected
@@ -592,6 +620,18 @@ export function SavedSearchPicker({
             }
           >
             Import &amp; auto-place
+          </Button>
+        )}
+        {mode === "jobs" && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={markAllRead}
+            disabled={importing}
+            title="Import nothing, and mark every email listed here as read — for when none of its jobs are worth importing."
+          >
+            <MailCheck className="w-3.5 h-3.5 mr-1" />
+            Mark {emailCount} email{emailCount === 1 ? "" : "s"} as read
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={onClose} disabled={importing}>

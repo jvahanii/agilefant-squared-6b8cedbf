@@ -296,6 +296,10 @@ export default function JobAdsGuide() {
             the closing date, is closing-date order — and that order is saved as their rank. The emails the postings
             came from are marked as read, so a search for unread mail offers only what has arrived since.
           </P>
+          <P>
+            When nothing in the list is worth importing — every job already in your lists, say — choose{" "}
+            <Em>Mark emails as read</Em>: it imports nothing and marks every email the search listed as read.
+          </P>
           <Callout>
             Marking emails as read needs permission to change your Gmail labels. A connection made before that was
             asked for keeps working for everything else; choose <Em>Connect Gmail</Em> again to grant it.

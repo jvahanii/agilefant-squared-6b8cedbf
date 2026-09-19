@@ -229,6 +229,44 @@ describe("SavedSearchPicker", () => {
     );
   });
 
+  it("marks every listed email read without importing, when nothing is worth it", async () => {
+    callGmail
+      .mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/a", title: "Seen A", messageId: "m-1", alreadyImported: true, alreadyIn: "Jobs" }),
+          link({ url: "https://x/b", title: "Seen B", messageId: "m-1", alreadyImported: true, alreadyIn: "Jobs" }),
+          link({ url: "https://x/c", title: "Seen C", messageId: "m-2", alreadyImported: true, alreadyIn: "Jobs" }),
+        ],
+      })
+      .mockResolvedValueOnce({ marked: 2 });
+    const onClose = vi.fn();
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
+    await screen.findByText("Seen A");
+    fireEvent.click(screen.getByRole("button", { name: /Mark 2 emails as read/ }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(callGmail).toHaveBeenLastCalledWith({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1", "m-2"] });
+    expect(callGmail.mock.calls.some((c) => c[0].action === "import")).toBe(false);
+    expect(toast.mock.calls.map((c) => c[0].title)).toContain("2 emails marked as read");
+  });
+
+  it("stays open when Gmail will not mark the emails read", async () => {
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ title: "Seen", alreadyImported: true })] })
+      .mockRejectedValueOnce(new Error('{"error":"gmail_permission_missing"}'));
+    const onClose = vi.fn();
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
+    await screen.findByText("Seen");
+    fireEvent.click(screen.getByRole("button", { name: /Mark 1 email as read/ }));
+
+    await waitFor(() =>
+      expect(toast.mock.calls.map((c) => c[0].title)).toContain("Could not mark the emails as read"),
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("closes, saying so, when the search finds nothing", async () => {
     callGmail.mockResolvedValueOnce({ links: [] });
     const onClose = vi.fn();
