@@ -9,7 +9,7 @@ learns a Jobly posting's application deadline. The same page loads normally in
 your own browser, so Agilefant asks this extension to fetch it there.
 
 It only ever fetches `https://www.jobly.fi/…` pages, one at a time, and only
-when Agilefant asks (the import picker, or **Fill deadlines** in a backlog). It
+when Agilefant's import picker asks. It
 is used for superusers only. LinkedIn is deliberately not included: reading it
 with your signed-in session would breach LinkedIn's terms.
 

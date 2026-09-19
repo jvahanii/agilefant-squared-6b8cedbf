@@ -332,9 +332,6 @@ export default function JobAdsGuide() {
             Jobly refuses to show its postings to Agilefant's servers, so their deadlines cannot be read there.
             Superusers can install the <Em>Agilefant posting reader</Em> browser extension, which reads Jobly postings
             through your own browser instead: the picker then fills in their deadlines while you look at it.
-            <Em> Fill deadlines</Em>, in the header of a backlog, does the same for items already imported — it reads
-            the postings of job ads whose name has no date yet and puts the deadline in front of the name. One Ctrl+Z
-            undoes the whole run.
           </P>
         </Section>
 
@@ -416,7 +413,7 @@ export default function JobAdsGuide() {
               ],
               [
                 "A posting has no deadline",
-                "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers) and use Fill deadlines.",
+                "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers); the picker then reads the deadline through your browser.",
               ],
               [
                 "The same posting was imported twice",

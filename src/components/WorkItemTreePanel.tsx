@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban, CalendarClock } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -44,10 +44,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
-import { fetchPostingStatus, useClosedPostingsStore } from "@/store/closedPostingsStore";
-import { findMissingDeadlines, itemsMissingDeadline, titleWithDeadline } from "@/lib/deadlineBackfill";
-import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { titleDeadline } from "../../supabase/functions/_shared/deadlines";
+import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import {
   currentListSortContext,
@@ -3098,52 +3095,6 @@ export function WorkItemTreePanel() {
     });
   }, [checkClosedPostings, linkedItemsInBacklog]);
 
-  // Job-ad items whose title has no deadline prefix yet. Jobly's are read
-  // through the posting reader extension, everything else by posting-status.
-  const itemsWithoutDeadline = useMemo(
-    () =>
-      itemsMissingDeadline(
-        linkedItemsInBacklog.map((item) => ({ ...item, description: workItems[item.id]?.description })),
-      ),
-    [linkedItemsInBacklog, workItems],
-  );
-  const [fillingDeadlines, setFillingDeadlines] = useState<{ done: number; total: number } | null>(null);
-
-  const runFillDeadlines = useCallback(async () => {
-    if (fillingDeadlines || itemsWithoutDeadline.length === 0) return;
-    setFillingDeadlines({ done: 0, total: itemsWithoutDeadline.length });
-    const reader = (await postingReaderAvailable()) ? readPostingFacts : null;
-    const result = await findMissingDeadlines(itemsWithoutDeadline, {
-      serverFacts: fetchPostingStatus,
-      needsBrowser: readableInBrowser,
-      browserFacts: reader,
-      onProgress: (done, total) => setFillingDeadlines({ done, total }),
-    });
-    setFillingDeadlines(null);
-
-    // One undo step for the whole run. Re-checked against the title as it is
-    // now, in case it was renamed while the postings were being read.
-    const store = useAppStore.getState();
-    let renamed = 0;
-    store.runBulk(() => {
-      for (const [id, iso] of result.found) {
-        const item = useAppStore.getState().workItems[id];
-        if (!item || titleDeadline(item.title) !== undefined) continue;
-        store.renameWorkItem(id, titleWithDeadline(item.title, iso));
-        renamed++;
-      }
-    });
-
-    const parts: string[] = [];
-    if (result.noneStated > 0) parts.push(`${result.noneStated} state no deadline`);
-    if (result.unreadable > 0) parts.push(`${result.unreadable} could not be read`);
-    if (result.needsReader > 0) parts.push(`${result.needsReader} Jobly ads need the posting reader extension`);
-    toast({
-      title: renamed === 0 ? "No deadlines found" : `Added a deadline to ${renamed} item${renamed !== 1 ? "s" : ""}`,
-      description: `${parts.length ? `${parts.join(", ")}. ` : ""}Of ${itemsWithoutDeadline.length} without one.${renamed > 0 ? " Ctrl+Z undoes it." : ""}`,
-    });
-  }, [fillingDeadlines, itemsWithoutDeadline]);
-
   // All labels defined in the active organisation, shown in the filter chip bar.
   const allOrgLabels = useMemo(
     () =>
@@ -3788,24 +3739,6 @@ export function WorkItemTreePanel() {
                     : closedCount > 0
                       ? `Closed: ${closedCount}`
                       : "Check for closed ads"}
-                </span>
-              </button>
-            )}
-            {!isSearchMode && !isFilterMode && (itemsWithoutDeadline.length > 0 || fillingDeadlines) && (
-              <button
-                className="flex items-center gap-1 w-auto h-7 px-2 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-60"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void runFillDeadlines();
-                }}
-                disabled={!!fillingDeadlines}
-                title={`Read the postings of the ${itemsWithoutDeadline.length} job ad${itemsWithoutDeadline.length !== 1 ? "s" : ""} in this backlog whose name has no deadline, and put the deadline in front of the name. Jobly ads are read through the posting reader extension.`}
-              >
-                <CalendarClock className={`w-4 h-4 ${fillingDeadlines ? "animate-pulse" : ""}`} />
-                <span className={`text-xs font-medium tabular-nums ${fillingDeadlines ? "" : "hidden sm:inline"}`}>
-                  {fillingDeadlines
-                    ? `Reading ${fillingDeadlines.done}/${fillingDeadlines.total}`
-                    : `Fill deadlines (${itemsWithoutDeadline.length})`}
                 </span>
               </button>
             )}
