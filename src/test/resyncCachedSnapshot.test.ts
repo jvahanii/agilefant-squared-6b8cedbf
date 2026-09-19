@@ -37,6 +37,15 @@ vi.mock("@/store/supabaseSync", () => ({
   deleteHyperlink: vi.fn(),
   registerWorkItemRenameCallback: vi.fn(),
 }));
+// The background refresh fetches the change log alongside the data, and waits
+// for both. Left unmocked that was a real request to Supabase — anywhere from a
+// third of a second to five — which decided whether the cold-start test saw the
+// refresh land inside its one-second wait. That was the whole of its flakiness.
+vi.mock("@/store/changeLog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/store/changeLog")>()),
+  loadChangeLog: vi.fn().mockResolvedValue([]),
+  insertChangeLogEntry: vi.fn().mockResolvedValue(undefined),
+}));
 
 let orgCounter = 0;
 function freshOrg() {
