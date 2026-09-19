@@ -3313,6 +3313,18 @@ export function WorkItemTreePanel() {
     [virtualizer],
   );
 
+  // Arrow-key navigation moves the selection one row at a time; the list has
+  // to follow it past the edge of the view, including onto rows the
+  // virtualizer has not drawn yet. Only the list that shows the row answers.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id && visibleItemIdsRef.current.includes(id)) scrollToWorkItem(id);
+    };
+    window.addEventListener("shortcut:reveal-work-item", handler);
+    return () => window.removeEventListener("shortcut:reveal-work-item", handler);
+  }, [scrollToWorkItem]);
+
   // Keyboard shortcuts: Tab = indent (make child of item above),
   // Shift+Tab = outdent (elevate to parent's level).
   useEffect(() => {

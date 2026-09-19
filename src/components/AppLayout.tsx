@@ -93,6 +93,11 @@ interface PendingCrossTreeDrop {
   targetTreeName: string;
 }
 
+/** Ask the list showing this work item to scroll it into view (WorkItemTreePanel listens). */
+function revealWorkItem(id: string) {
+  window.dispatchEvent(new CustomEvent("shortcut:reveal-work-item", { detail: { id } }));
+}
+
 export default function AppLayout() {
   return (
     <ScrambleProvider>
@@ -689,6 +694,7 @@ function AppLayoutInner() {
               if (!state.selectedWorkItemIds.includes(nextId)) {
                 useAppStore.getState().selectWorkItem(nextId, true);
               }
+              revealWorkItem(nextId);
             } else {
               // Plain Arrow: single-select navigation (existing behavior).
               const currentId = state.selectedWorkItemIds[state.selectedWorkItemIds.length - 1];
@@ -698,6 +704,7 @@ function AppLayoutInner() {
               if (nextIdx < 0 || nextIdx >= ids.length) break;
               e.preventDefault();
               useAppStore.getState().selectWorkItem(ids[nextIdx]);
+              revealWorkItem(ids[nextIdx]);
             }
           } else if (state.selectedBacklogIds.length > 0) {
             // Navigate selection through visible backlogs.
