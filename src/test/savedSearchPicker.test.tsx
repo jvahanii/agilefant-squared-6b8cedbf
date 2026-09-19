@@ -51,6 +51,12 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
   },
 }));
+/** The closed-ads check an import runs on the lists it filled. */
+const checkClosed = vi.fn().mockResolvedValue({ closed: 1, checked: 2, unknown: 0, fromTitle: 0 });
+vi.mock("@/store/closedPostingsStore", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/store/closedPostingsStore")>()),
+  useClosedPostingsStore: { getState: () => ({ checking: false, check: checkClosed }) },
+}));
 let readerInstalled = false;
 const readPostingFacts = vi.fn();
 vi.mock("@/lib/postingReader", () => ({
@@ -92,6 +98,7 @@ beforeEach(() => {
   applySiblingOrder.mockReset();
   runBulk.mockClear();
   storeState = {};
+  checkClosed.mockClear();
 });
 
 describe("SavedSearchPicker", () => {
@@ -186,6 +193,40 @@ describe("SavedSearchPicker", () => {
     expect(importCall).toMatchObject({ action: "import", mode: "jobs", treeId: "tree-1", backlogId: "bl-1", queryId: "q-1" });
     expect(importCall.links.map((l: { url: string }) => l.url)).toEqual(["https://x/a"]);
     await waitFor(() => expect(loadFromSupabase).toHaveBeenCalled());
+  });
+
+  it("checks the ads already in the list for closed ones once it has imported", async () => {
+    const existing = (id: string, backlogId: string) => ({
+      id, title: id, status: "not_started", parentId: null, childrenIds: [],
+      backlogAssignments: { "tree-1": backlogId }, ranks: { [backlogId]: 0 },
+    });
+    storeState = {
+      workItems: {
+        old: existing("old", "bl-1"),
+        fresh: existing("fresh", "bl-1"),
+        unlinked: existing("unlinked", "bl-1"),
+        elsewhere: existing("elsewhere", "bl-other"),
+      },
+      hyperlinks: {
+        old: [{ url: "https://x/old" }],
+        fresh: [{ url: "https://x/fresh" }],
+        elsewhere: [{ url: "https://x/elsewhere" }],
+      },
+    };
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["fresh"] });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("A");
+    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+
+    // Only what was there before, in the list imported into, with a link.
+    await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+    expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
+    await waitFor(() =>
+      expect(toast.mock.calls.map((c) => c[0].title)).toContain("Existing ads: 1 closed ad"),
+    );
   });
 
   it("closes, saying so, when the search finds nothing", async () => {

@@ -30,6 +30,7 @@ import { currentListSortContext } from "@/store/listSortStore";
 import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
+import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 /**
  * Run a saved Gmail search and choose what to import from it.
@@ -120,7 +121,8 @@ export function SavedSearchPicker({
   const touched = useRef(new Set<string>());
   const { isSuperuser } = useScramble();
   const roleOverride = useOrgStore((s) => s.roleOverride);
-  // The posting reader is a superuser tool for now, like the header button.
+  // The posting reader is a superuser tool for now, like the header button —
+  // and so is the closed-ads check that follows an import.
   const canReadInBrowser = isSuperuser && !roleOverride;
 
   useEffect(() => {
@@ -249,6 +251,24 @@ export function SavedSearchPicker({
       links,
     });
 
+  /**
+   * After an import, check the job ads that were already in the lists it filled
+   * — the new ones were read moments ago. Same check as the backlog header's
+   * "Check for closed ads", so a superuser's only: it spends a burst of server
+   * requests. Closed ads are marked on their rows; nothing is changed. Runs on
+   * after the picker has closed, and skips if a check is already going.
+   */
+  const checkExistingForClosed = async (backlogIds: string[], createdIds: string[]) => {
+    if (!canReadInBrowser) return;
+    const closedStore = useClosedPostingsStore.getState();
+    if (closedStore.checking) return;
+    const app = useAppStore.getState();
+    const items = linkedItemsIn(app.workItems, app.hyperlinks, search.tree_id, new Set(backlogIds), new Set(createdIds));
+    if (items.length === 0) return;
+    const message = closedCheckMessage(await closedStore.check(items));
+    toast({ ...message, title: `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}` });
+  };
+
   const importSelected = async () => {
     const links = pickedLinks();
     if (links.length === 0) {
@@ -268,6 +288,7 @@ export function SavedSearchPicker({
       });
       onClose();
       await reloadData();
+      void checkExistingForClosed([search.backlog_id], res.createdIds ?? []);
     } catch (e) {
       toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -359,6 +380,7 @@ export function SavedSearchPicker({
             : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : ""),
       });
+      void checkExistingForClosed([autoPlace.withDeadline, autoPlace.withoutDeadline], createdIds);
     } catch (e) {
       toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
     } finally {

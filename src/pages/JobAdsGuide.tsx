@@ -380,7 +380,14 @@ export default function JobAdsGuide() {
           </P>
           <P>
             The check changes nothing. Items are not renamed, moved or deleted — what to do about a closed ad is up to
-            you. The marks disappear when you reload the page or open another backlog.
+            you. The marks stay while you move between backlogs; the <Code>×</Code> beside the button clears the ones
+            in the backlog you are looking at, and reloading the page clears them all.
+          </P>
+          <P>
+            The check also runs by itself after a job import, on the ads that were already in the lists the import
+            filled — both lists after <Em>Import &amp; auto-place</Em>, the search&apos;s own list after{" "}
+            <Em>Import selected</Em>. The newly imported ads are left out, since their postings were just read. A
+            message reports the result when it finishes.
           </P>
         </Section>
 

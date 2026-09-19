@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { deadlinePassed, titleDeadline } from '../../supabase/functions/_shared/deadlines';
+import type { Hyperlink, WorkItem } from '@/types/models';
 
 /**
  * Which work items link to a job ad that has stopped taking applications.
@@ -12,9 +13,9 @@ import { deadlinePassed, titleDeadline } from '../../supabase/functions/_shared/
  * it was fetched.
  */
 interface ClosedPostingsState {
-  /** Work item ids whose posting said it is closed, from the last run. */
+  /** Work item ids whose posting said it is closed, from the latest run covering each. */
   closed: Set<string>;
-  /** Work item ids the last run actually reached, so "none closed" is
+  /** Work item ids a run actually reached, so "none closed" is
    *  distinguishable from "never checked". */
   checked: Set<string>;
   /**
@@ -36,7 +37,8 @@ interface ClosedPostingsState {
   check: (
     items: { id: string; title: string; urls: string[] }[],
   ) => Promise<{ closed: number; checked: number; unknown: number; fromTitle: number; error?: string }>;
-  clear: () => void;
+  /** Drop what is known about these items — the marks in one backlog, say. */
+  forget: (ids: string[]) => void;
 }
 
 /**
@@ -80,18 +82,22 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
       }
     }
     const urls = [...itemsByUrl.keys()];
+
+    // A run replaces what is known about the items it covers, and only those:
+    // marks on other lists' items, from an earlier run, stay where they are.
+    const covered = new Set(items.map((item) => item.id));
+    const keepOthers = (ids: Set<string>) => new Set([...ids].filter((id) => !covered.has(id)));
+    const { closed: closedBefore, checked: checkedBefore, unknown: unknownBefore } = get();
+    set({
+      closed: new Set([...keepOthers(closedBefore), ...settled]),
+      checked: new Set([...keepOthers(checkedBefore), ...settled]),
+      unknown: keepOthers(unknownBefore),
+    });
     if (urls.length === 0) {
-      set({ closed: new Set(settled), checked: new Set(settled), unknown: new Set() });
       return { closed: settled.size, checked: settled.size, unknown: 0, fromTitle: settled.size };
     }
 
-    set({
-      checking: true,
-      progress: { done: 0, total: urls.length },
-      closed: new Set(settled),
-      checked: new Set(settled),
-      unknown: new Set(),
-    });
+    set({ checking: true, progress: { done: 0, total: urls.length } });
     // An item counts as unreadable only when *none* of its links could be read:
     // one link that answered is enough to know something about the item.
     const reached = new Set<string>();
@@ -138,14 +144,65 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
 
     set({ checking: false, progress: null });
     const { closed, checked, unknown } = get();
+    const inRun = (ids: Set<string>) => [...ids].filter((id) => covered.has(id)).length;
     return {
-      closed: closed.size,
-      checked: checked.size,
-      unknown: unknown.size,
+      closed: inRun(closed),
+      checked: inRun(checked),
+      unknown: inRun(unknown),
       fromTitle: settled.size,
       error,
     };
   },
 
-  clear: () => set({ closed: new Set(), checked: new Set(), unknown: new Set(), progress: null }),
+  forget: (ids) => {
+    const drop = new Set(ids);
+    const keep = (from: Set<string>) => new Set([...from].filter((id) => !drop.has(id)));
+    set((s) => ({ closed: keep(s.closed), checked: keep(s.checked), unknown: keep(s.unknown) }));
+  },
 }));
+
+/**
+ * The items a closed-ads check reads: those in these backlogs of one tree that
+ * carry at least one link. `exclude` leaves out items that need no check —
+ * ones just imported, whose postings were read moments ago.
+ */
+export function linkedItemsIn(
+  workItems: Record<string, WorkItem>,
+  hyperlinks: Record<string, Hyperlink[]> | undefined,
+  treeId: string,
+  backlogIds: ReadonlySet<string>,
+  exclude: ReadonlySet<string> = new Set(),
+): { id: string; title: string; urls: string[] }[] {
+  return Object.values(workItems)
+    .filter((wi) => backlogIds.has(wi.backlogAssignments[treeId]) && !exclude.has(wi.id))
+    .map((wi) => ({ id: wi.id, title: wi.title, urls: (hyperlinks?.[wi.id] ?? []).map((h) => h.url) }))
+    .filter((item) => item.urls.length > 0);
+}
+
+/**
+ * The message a finished check shows. The three outcomes are reported
+ * separately on purpose: a board that turns the check away is not a board
+ * saying its postings are live, and rolling the two together would quietly
+ * overstate how healthy the list is.
+ */
+export function closedCheckMessage(
+  result: Awaited<ReturnType<ClosedPostingsState["check"]>>,
+): { title: string; description: string; variant?: "destructive" } {
+  const { closed, checked, unknown, fromTitle, error } = result;
+  if (error) {
+    return {
+      title: checked > 0 ? `Stopped after ${checked} item${checked !== 1 ? "s" : ""}` : "Could not check the ads",
+      description: error,
+      variant: "destructive",
+    };
+  }
+  const open = checked - closed - unknown;
+  const parts = [`${open} still open`];
+  if (unknown > 0) parts.push(`${unknown} could not be reached`);
+  if (fromTitle > 0) parts.push(`${fromTitle} from a closing date already on the item`);
+  return {
+    title: closed === 0 ? "No closed ads found" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
+    description: `${parts.join(", ")}. Of ${checked} checked; nothing was changed.`,
+    ...(unknown > checked / 2 ? { variant: "destructive" as const } : {}),
+  };
+}

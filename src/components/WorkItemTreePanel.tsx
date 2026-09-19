@@ -44,7 +44,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
-import { useClosedPostingsStore } from "@/store/closedPostingsStore";
+import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import {
   currentListSortContext,
@@ -3053,46 +3053,24 @@ export function WorkItemTreePanel() {
   // Every item in the backlog and its children that has a link to check.
   const linkedItemsInBacklog = useMemo(() => {
     if (!isSuperuser || backlogIdSet.size === 0 || !selectedTreeId) return [];
-    return Object.values(workItems)
-      .filter((wi) => backlogIdSet.has(wi.backlogAssignments[selectedTreeId]))
-      .map((wi) => ({ id: wi.id, title: wi.title, urls: (hyperlinks[wi.id] ?? []).map((h) => h.url) }))
-      .filter((item) => item.urls.length > 0);
+    return linkedItemsIn(workItems, hyperlinks, selectedTreeId, backlogIdSet);
   }, [isSuperuser, workItems, hyperlinks, backlogIdSet, selectedTreeId]);
 
   const closedChecking = useClosedPostingsStore((s) => s.checking);
   const closedProgress = useClosedPostingsStore((s) => s.progress);
-  const closedCount = useClosedPostingsStore((s) => s.closed.size);
+  const closedIds = useClosedPostingsStore((s) => s.closed);
   const checkClosedPostings = useClosedPostingsStore((s) => s.check);
-  const clearClosedPostings = useClosedPostingsStore((s) => s.clear);
-
-  // A result belongs to the backlog it was run on. Moving to another one clears
-  // it rather than leaving marks that were never about these items.
-  useEffect(() => {
-    clearClosedPostings();
-  }, [selectedBacklogId, clearClosedPostings]);
+  const forgetClosedPostings = useClosedPostingsStore((s) => s.forget);
+  // Marks are kept per item, so they stay put when another backlog is opened —
+  // an import checks two lists at once, and switching between them must not
+  // lose half the answer. The count is of this backlog's items only.
+  const closedCount = useMemo(
+    () => linkedItemsInBacklog.filter((item) => closedIds.has(item.id)).length,
+    [linkedItemsInBacklog, closedIds],
+  );
 
   const runClosedCheck = useCallback(async () => {
-    const { closed, checked, unknown, fromTitle, error } = await checkClosedPostings(linkedItemsInBacklog);
-    if (error) {
-      toast({
-        title: checked > 0 ? `Stopped after ${checked} item${checked !== 1 ? "s" : ""}` : "Could not check the ads",
-        description: error,
-        variant: "destructive",
-      });
-      return;
-    }
-    // The three outcomes are reported separately on purpose. A board that turns
-    // the check away is not a board saying its postings are live, and rolling
-    // the two together would quietly overstate how healthy the list is.
-    const open = checked - closed - unknown;
-    const parts = [`${open} still open`];
-    if (unknown > 0) parts.push(`${unknown} could not be reached`);
-    if (fromTitle > 0) parts.push(`${fromTitle} from a closing date already on the item`);
-    toast({
-      title: closed === 0 ? "No closed ads found" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
-      description: `${parts.join(", ")}. Of ${checked} checked; nothing was changed.`,
-      variant: unknown > checked / 2 ? "destructive" : undefined,
-    });
+    toast(closedCheckMessage(await checkClosedPostings(linkedItemsInBacklog)));
   }, [checkClosedPostings, linkedItemsInBacklog]);
 
   // All labels defined in the active organisation, shown in the filter chip bar.
@@ -3740,6 +3718,21 @@ export function WorkItemTreePanel() {
                       ? `Closed: ${closedCount}`
                       : "Check for closed ads"}
                 </span>
+              </button>
+            )}
+            {/* Marks outlive a change of backlog now, so they need a way off
+                other than reloading: this clears the ones in view. */}
+            {!isSearchMode && !isFilterMode && closedCount > 0 && !closedChecking && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  forgetClosedPostings(linkedItemsInBacklog.map((item) => item.id));
+                }}
+                title="Clear the closed-ad marks in this backlog"
+                aria-label="Clear the closed-ad marks in this backlog"
+              >
+                <X className="w-4 h-4" />
               </button>
             )}
             {!isSearchMode && !isFilterMode && (

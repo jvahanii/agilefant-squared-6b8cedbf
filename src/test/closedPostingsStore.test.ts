@@ -12,7 +12,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: (...args: unknown[]) => invoke(...args) } },
 }));
 
-import { POSTING_BATCH, useClosedPostingsStore } from "@/store/closedPostingsStore";
+import { POSTING_BATCH, closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 const state = () => useClosedPostingsStore.getState();
 
@@ -128,14 +128,34 @@ describe("closedPostingsStore", () => {
     expect(result).toEqual({ closed: 0, checked: 0, unknown: 0, fromTitle: 0 });
   });
 
-  it("drops a previous run's marks when a new one starts", async () => {
-    useClosedPostingsStore.setState({ closed: new Set(["stale"]), checked: new Set(["stale"]) });
+  it("replaces a previous run's marks on the items it checks again", async () => {
+    useClosedPostingsStore.setState({ closed: new Set(["i1"]), checked: new Set(["i1"]) });
     invoke.mockImplementation(answer([]));
 
     await state().check([{ id: "i1", title: "i1", urls: ["https://b.example/1"] }]);
 
     expect([...state().closed]).toEqual([]);
     expect([...state().checked]).toEqual(["i1"]);
+  });
+
+  /**
+   * An import checks two lists at once, and the header button checks the one
+   * in view; each must leave the other's marks alone, and count only its own.
+   */
+  it("keeps the marks on items it was not asked about", async () => {
+    useClosedPostingsStore.setState({
+      closed: new Set(["elsewhere"]),
+      checked: new Set(["elsewhere"]),
+      unknown: new Set(["unread-elsewhere"]),
+    });
+    invoke.mockImplementation(answer([]));
+
+    const result = await state().check([{ id: "i1", title: "i1", urls: ["https://b.example/1"] }]);
+
+    expect([...state().closed]).toEqual(["elsewhere"]);
+    expect([...state().checked].sort()).toEqual(["elsewhere", "i1"]);
+    expect([...state().unknown]).toEqual(["unread-elsewhere"]);
+    expect(result).toEqual({ closed: 0, checked: 1, unknown: 0, fromTitle: 0, error: undefined });
   });
 
   /**
@@ -210,10 +230,53 @@ describe("closedPostingsStore", () => {
     expect([...state().closed].sort()).toEqual(["a", "b"]);
   });
 
-  it("clears on request, for when the backlog in view changes", () => {
-    useClosedPostingsStore.setState({ closed: new Set(["i1"]), checked: new Set(["i1"]) });
-    state().clear();
-    expect(state().closed.size).toBe(0);
-    expect(state().checked.size).toBe(0);
+});
+
+describe("forget", () => {
+  it("clears the marks on the items given, and only those", () => {
+    useClosedPostingsStore.setState({
+      closed: new Set(["here", "elsewhere"]),
+      checked: new Set(["here", "elsewhere"]),
+      unknown: new Set(["here-unread"]),
+    });
+    state().forget(["here", "here-unread"]);
+    expect([...state().closed]).toEqual(["elsewhere"]);
+    expect([...state().checked]).toEqual(["elsewhere"]);
+    expect(state().unknown.size).toBe(0);
+  });
+});
+
+describe("linkedItemsIn", () => {
+  const item = (id: string, backlog: string) =>
+    ({ id, title: id, backlogAssignments: { tree: backlog } }) as unknown as import("@/types/models").WorkItem;
+  const link = (url: string) => [{ url }] as unknown as import("@/types/models").Hyperlink[];
+
+  it("takes the linked items of these lists, leaving out the ones asked to", () => {
+    const workItems = { a: item("a", "dl"), b: item("b", "open"), c: item("c", "other"), d: item("d", "dl"), e: item("e", "dl") };
+    const hyperlinks = { a: link("https://x/a"), b: link("https://x/b"), c: link("https://x/c"), e: link("https://x/e") };
+    const picked = linkedItemsIn(workItems, hyperlinks, "tree", new Set(["dl", "open"]), new Set(["e"]));
+    // c is in another list, d has no link, e was just imported.
+    expect(picked).toEqual([
+      { id: "a", title: "a", urls: ["https://x/a"] },
+      { id: "b", title: "b", urls: ["https://x/b"] },
+    ]);
+  });
+});
+
+describe("closedCheckMessage", () => {
+  it("reports the three outcomes apart", () => {
+    expect(closedCheckMessage({ closed: 2, checked: 10, unknown: 3, fromTitle: 1 })).toEqual({
+      title: "2 closed ads",
+      description: "5 still open, 3 could not be reached, 1 from a closing date already on the item. Of 10 checked; nothing was changed.",
+    });
+  });
+
+  it("warns when most could not be reached, and when the run stopped", () => {
+    expect(closedCheckMessage({ closed: 0, checked: 4, unknown: 3, fromTitle: 0 }).variant).toBe("destructive");
+    expect(closedCheckMessage({ closed: 0, checked: 0, unknown: 0, fromTitle: 0, error: "boom" })).toEqual({
+      title: "Could not check the ads",
+      description: "boom",
+      variant: "destructive",
+    });
   });
 });
