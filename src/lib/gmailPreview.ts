@@ -183,6 +183,24 @@ export function startingReason(
 /** Distinct postings among these rows, however many emails list each. */
 export const distinctJobs = (links: { url: string }[]) => new Set(links.map((l) => l.url)).size;
 
+/**
+ * Where an email's already-imported jobs are, for its heading: "2 already in
+ * Jobs with no deadline, 1 in Jobs with deadline". It used to say "in this
+ * backlog", but the check covers the whole tree, so the jobs are as often in a
+ * neighbouring list. Falls back to "already imported" when a row does not say
+ * which list, and is empty when none are.
+ */
+export function alreadyInSummary(links: { alreadyImported: boolean; alreadyIn?: string | null }[]): string {
+  const seen = links.filter((l) => l.alreadyImported);
+  if (seen.length === 0) return "";
+  if (seen.some((l) => !l.alreadyIn)) return `${seen.length} already imported`;
+  const perList = new Map<string, number>();
+  for (const l of seen) perList.set(l.alreadyIn!, (perList.get(l.alreadyIn!) ?? 0) + 1);
+  return [...perList]
+    .map(([list, count], i) => `${count} ${i === 0 ? "already " : ""}in ${list}`)
+    .join(", ");
+}
+
 export function deadlineLabel(link: {
   deadline?: string;
   deadlineOpen?: boolean;

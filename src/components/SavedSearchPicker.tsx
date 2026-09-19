@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import {
+  alreadyInSummary,
   deadlineLabel,
   gmailMessageUrl,
   groupBySourceEmail,
@@ -466,7 +467,7 @@ export function SavedSearchPicker({
         {visibleGroups.map((group) => {
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);
-          const seen = group.links.filter((l) => l.alreadyImported).length;
+          const alreadyIn = alreadyInSummary(group.links);
           return (
             <div key={group.messageId} className="border rounded-md overflow-hidden">
               {/* The source email, above the jobs it produced. It reads as a
@@ -500,7 +501,7 @@ export function SavedSearchPicker({
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {group.links.length} job{group.links.length === 1 ? "" : "s"} in this email
-                    {seen > 0 && ` · ${seen} already in this backlog`}
+                    {alreadyIn && ` · ${alreadyIn}`}
                   </p>
                 </div>
                 <a

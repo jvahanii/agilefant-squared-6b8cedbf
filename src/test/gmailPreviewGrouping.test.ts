@@ -11,6 +11,7 @@ import {
   startingReason,
   distinctJobs,
   rowKey,
+  alreadyInSummary,
 } from '@/lib/gmailPreview';
 
 /**
@@ -254,5 +255,23 @@ describe('repeatedRows with a closing date on one copy', () => {
     expect(repeats.get(rowKey(undated))).toBe('also in "Older digest"');
     // Of two dated copies, the newer one.
     expect(repeats.get(rowKey(laterDated))).toBe('also in "Older digest"');
+  });
+});
+
+describe('alreadyInSummary', () => {
+  const row = (alreadyIn: string | null, alreadyImported = true) => ({ alreadyImported, alreadyIn });
+
+  it('names the lists the jobs are already in', () => {
+    expect(alreadyInSummary([row('Jobs with no deadline'), row('Jobs with no deadline')])).toBe(
+      '2 already in Jobs with no deadline',
+    );
+    expect(alreadyInSummary([row('Jobs with no deadline'), row('Jobs with deadline'), row('Jobs with no deadline')])).toBe(
+      '2 already in Jobs with no deadline, 1 in Jobs with deadline',
+    );
+  });
+
+  it('says only "imported" when a row does not name its list, and nothing when none are', () => {
+    expect(alreadyInSummary([row('Applied'), row(null)])).toBe('2 already imported');
+    expect(alreadyInSummary([row(null, false)])).toBe('');
   });
 });
