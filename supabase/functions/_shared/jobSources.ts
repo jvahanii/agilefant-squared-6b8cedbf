@@ -81,10 +81,18 @@ export const JOB_SOURCES: JobSource[] = [
     // the first -- reading the subject first labelled every row "emagine".
     companyFallback: ({ subject }) => {
       const s = subject.replace(/[\u2018\u2019\u201c\u201d']/g, "'").trim();
+      // "New jobs similar to <role> at <employer>" names the posting the
+      // reader already looked at, never the ones being advertised. The
+      // 16.9.2026 digest carried ten employers -- Telenor, Wapice, GE
+      // HealthCare, Nortal, ICEYE, Polar Squad, Nordea, Witted, Verda --
+      // under a subject reading "at DNA Oyj", which appears nowhere in the
+      // mail as an advertiser. So there is no employer to recover here, and
+      // bailing out is not merely skipping a pattern: the trailing-at pattern
+      // below would otherwise claim the reference company for every row.
+      if (/^(new )?jobs similar to /i.test(s)) return undefined;
       const patterns = [
         /^You may be a fit for (.+?)'s .+ role$/i,
         /^(.+?) is hiring (?:a |an )?.+$/i,
-        /^New jobs similar to .+ at (.+?)$/i,
         /^[^:]*:\s*(.+?)\s+-\s+.+posted on/i,
         /\bat ([^,]+?)'?$/i,
       ];

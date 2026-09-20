@@ -327,3 +327,69 @@ describe('only unread', () => {
     expect(withLookback(q, '7d')).toContain('is:unread');
   });
 });
+
+describe('LinkedIn: which employer a subject line names', () => {
+  // Every subject here is verbatim from mail LinkedIn sent in September 2026.
+  //
+  // The employer normally comes from the markup beside the posting. These
+  // cases are the ones where that markup yields nothing, which is the only
+  // time `companyFallback` is consulted -- so each occurrence below carries a
+  // bare "View job" anchor and no surrounding text, exactly the shape that
+  // sends resolveCompany to the subject.
+  const named = (subject: string, url: string) => {
+    const links = [{ url: normalizeUrl(url)!, subject }];
+    const occ = new Map([[links[0].url, [{ label: 'View job', after: '', before: '' }]]]);
+    return filterJobLinks('jobs-noreply@linkedin.com', links, occ)[0]?.company;
+  };
+
+  // Posting 4460716522 is Telenor's, carried by the 16.9.2026 digest whose
+  // subject names DNA Oyj -- the job the reader had viewed, not an advertiser
+  // anywhere in the mail. The same digest advertised nine further employers.
+  it('names no employer for a "similar to" digest rather than the reference one', () => {
+    expect(
+      named(
+        'New jobs similar to Senior Software Engineer (DevOps & Platform Engineering) at DNA Oyj',
+        'https://www.linkedin.com/comm/jobs/view/4460716522/',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('is not fooled by the body heading\'s wording either', () => {
+    expect(
+      named('Jobs similar to Principal Engineer at Polar Squad', 'https://www.linkedin.com/comm/jobs/view/4452976928/'),
+    ).toBeUndefined();
+  });
+
+  // The shapes that do name the advertiser must keep working: the guard above
+  // is narrow on purpose.
+  it('reads the employer out of a saved-jobs reminder', () => {
+    expect(
+      named(
+        'Jarno , apply now to ‘Agile Coach at If Insurance’',
+        'https://www.linkedin.com/comm/jobs/view/4404995558/',
+      ),
+    ).toBe('If Insurance');
+  });
+
+  it('reads the employer out of a single-posting alert', () => {
+    expect(named('You may be a fit for Nordea’s Tech Lead, Data Mesh and AI Platforms team role', 'https://www.linkedin.com/comm/jobs/view/4460339575/')).toBe('Nordea');
+    expect(named('Istekki Oy is hiring a Liiketoimintapäällikkö, Tekoäly ja sovelluskehitys', 'https://www.linkedin.com/comm/jobs/view/4461607295/')).toBe('Istekki Oy');
+    expect(named('“scrum master On-site or Hybrid”: Wärtsilä - Agile Coach posted on 9/17/26', 'https://www.linkedin.com/comm/jobs/view/4462043115/')).toBe('Wärtsilä');
+  });
+
+  // A trailing "at <employer>" is the advertiser in every shape but the
+  // "similar to" one, including when the title itself carries commas.
+  it('keeps the trailing-at reading where it is the advertiser', () => {
+    expect(named('Senior Manager, Organizational Effectiveness & Transformation at KONE', 'https://www.linkedin.com/comm/jobs/view/4433814046/')).toBe('KONE');
+    expect(named('Agile Coach at Fintraffic', 'https://www.linkedin.com/comm/jobs/view/4465054408/')).toBe('Fintraffic');
+  });
+
+  it('names no employer for an alert-confirmation mail', () => {
+    expect(
+      named(
+        'Jarno : your job alert for Scrum Master On-site Or Hybrid in Finland has been created',
+        'https://www.linkedin.com/comm/jobs/view/4465017457/',
+      ),
+    ).toBeUndefined();
+  });
+});
