@@ -337,7 +337,11 @@ describe('LinkedIn: which employer a subject line names', () => {
   // bare "View job" anchor and no surrounding text, exactly the shape that
   // sends resolveCompany to the subject.
   const named = (subject: string, url: string) => {
-    const links = [{ url: normalizeUrl(url)!, subject }];
+    // `company` is what filterJobLinks fills in, so the element type has to
+    // admit it: T is inferred from this array, not from the return.
+    const links: { url: string; subject: string; company?: string }[] = [
+      { url: normalizeUrl(url)!, subject },
+    ];
     const occ = new Map([[links[0].url, [{ label: 'View job', after: '', before: '' }]]]);
     return filterJobLinks('jobs-noreply@linkedin.com', links, occ)[0]?.company;
   };
