@@ -45,6 +45,7 @@ vi.mock("@/store/supabaseSync", () => ({
   upsertWorkItemBoardRankRowsDetailed: vi.fn().mockResolvedValue({ ok: true, missingWorkItemIds: [] }),
   deleteWorkItemBoardRanks: vi.fn().mockResolvedValue(undefined),
   deleteWorkItems: vi.fn(),
+  restoreWorkItems: vi.fn().mockResolvedValue(true),
   deleteWorkItemBacklogRanks: vi.fn(),
   upsertBacklog: vi.fn(),
   upsertBacklogs: vi.fn(),

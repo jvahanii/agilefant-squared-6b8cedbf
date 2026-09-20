@@ -1619,6 +1619,7 @@ export type Database = {
         Args: { _item_ids: string[]; _new_org_id: string }
         Returns: Json
       }
+      restore_deleted_work_items: { Args: { _ids: string[] }; Returns: string[] }
       restore_organization_backup: {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json

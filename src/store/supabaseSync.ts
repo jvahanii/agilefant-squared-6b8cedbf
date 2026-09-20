@@ -3,6 +3,12 @@ import { paginateSelect } from '@/integrations/supabase/pagination';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 import { notifyPersistDebug } from '@/lib/persistDebug';
+import {
+  forgetDeletedWorkItems,
+  isRecentlyDeletedWorkItem,
+  markWorkItemDeletesSettled,
+  markWorkItemsDeleted,
+} from './deletedWorkItems';
 
 /** Ensure rank is a finite integer – guards against NaN / undefined / null leaking to the DB. */
 const safeRank = (r: unknown): number => (typeof r === 'number' && Number.isFinite(r) ? r : 0);
@@ -535,6 +541,8 @@ export async function upsertWorkItem(item: WorkItem, organizationId: string): Pr
 }
 
 async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): Promise<boolean> {
+  // Queued before a delete that has since been made: saving it would insert the item again.
+  if (isRecentlyDeletedWorkItem(item.id)) return true;
   const effectiveOrgId = item.organizationId ?? organizationId;
 
   // Only run the (potentially expensive) stale-prefix repair RPC when the
@@ -598,26 +606,107 @@ export async function deleteWorkItemBacklogRanks(
   }
 }
 
+/**
+ * Delete work items, and everything that cascades from them.
+ *
+ * The delete waits its turn in the work item queue. It used to run at once, so
+ * saves of the same item queued a moment earlier reached the database after it
+ * and inserted the item again. The ids are also marked deleted straight away, so
+ * any such save still waiting is skipped.
+ *
+ * bulk_delete_work_items keeps a copy of each item and its child rows, which
+ * restoreWorkItems puts back when the delete is undone.
+ */
 export async function deleteWorkItems(ids: string[]) {
   if (ids.length === 0) return;
-  // Also delete any double-prefixed variants that may exist in the DB
-  const allIds = new Set(ids);
-  ids.forEach(id => {
-    const parts = id.split('::');
-    if (parts.length === 2) {
-      allIds.add(`${parts[0]}::${id}`);
+  markWorkItemsDeleted(ids);
+  return enqueueWorkItemMutation(async () => {
+    try {
+      // Also delete any double-prefixed variants that may exist in the DB
+      const allIds = new Set(ids);
+      ids.forEach(id => {
+        const parts = id.split('::');
+        if (parts.length === 2) {
+          allIds.add(`${parts[0]}::${id}`);
+        }
+      });
+      // Route through bulk_delete_work_items RPC which sets burnups.skip_history=on
+      // to suppress per-row history snapshots for cascade deletes.
+      const { error } = await supabase.rpc('bulk_delete_work_items', { _ids: [...allIds] });
+      if (error) {
+        console.error('deleteWorkItems (rpc):', error);
+        // Fallback in case RPC is unavailable
+        const { error: fallbackErr } = await supabase.from('work_items').delete().in('id', [...allIds]);
+        if (fallbackErr) console.error('deleteWorkItems (fallback):', fallbackErr);
+      }
+      notifyPersistDebug('workitem', ids.length === 1 ? `Deleted` : `Deleted ${ids.length} items`);
+    } finally {
+      markWorkItemDeletesSettled(ids);
     }
   });
-  // Route through bulk_delete_work_items RPC which sets burnups.skip_history=on
-  // to suppress per-row history snapshots for cascade deletes.
-  const { error } = await supabase.rpc('bulk_delete_work_items', { _ids: [...allIds] });
-  if (error) {
-    console.error('deleteWorkItems (rpc):', error);
-    // Fallback in case RPC is unavailable
-    const { error: fallbackErr } = await supabase.from('work_items').delete().in('id', [...allIds]);
-    if (fallbackErr) console.error('deleteWorkItems (fallback):', fallbackErr);
-  }
-  notifyPersistDebug('workitem', ids.length === 1 ? `Deleted` : `Deleted ${ids.length} items`);
+}
+
+/**
+ * Put back work items whose delete is being undone: the rows, their ranks and
+ * board ranks, hyperlinks, team assignments, financials, snoozes and scrambles.
+ *
+ * restore_deleted_work_items does it from the copy the delete kept, which holds
+ * rows this page cannot read (a scramble's original title, other members'
+ * snoozes). For any item it did not restore — deleted before that copy existed,
+ * or the function not deployed yet — what the page holds is written instead:
+ * the item, its ranks, board ranks and hyperlinks.
+ */
+export async function restoreWorkItems(
+  items: WorkItem[],
+  organizationId: string,
+  hyperlinks: Record<string, Hyperlink[]>,
+): Promise<boolean> {
+  if (items.length === 0) return true;
+  const ids = items.map((item) => item.id);
+  forgetDeletedWorkItems(ids);
+  return enqueueWorkItemMutation(async () => {
+    const restored = new Set<string>();
+    const { data, error } = await supabase.rpc('restore_deleted_work_items', { _ids: ids });
+    if (error) console.error('restoreWorkItems (rpc):', error);
+    else for (const id of (data ?? []) as string[]) restored.add(id);
+
+    const rest = items.filter((item) => !restored.has(item.id));
+    if (rest.length === 0) {
+      notifyPersistDebug('workitem', items.length === 1 ? 'Restored' : `Restored ${items.length} items`);
+      return true;
+    }
+
+    if (!(await upsertWorkItemsImmediate(rest, organizationId))) return false;
+
+    const boardRows = rest.flatMap((item) =>
+      Object.entries(item.boardRanks ?? {}).map(([backlogId, rank]) => ({
+        workItemId: item.id, backlogId, rank, organizationId: item.organizationId ?? organizationId,
+      })),
+    );
+    const boardOk = (await upsertWorkItemBoardRankRowsDetailed(boardRows)).ok;
+
+    const linkRows = rest.flatMap((item) =>
+      (hyperlinks[item.id] ?? []).map((link) => ({
+        id: link.id,
+        work_item_id: item.id,
+        url: link.url,
+        alt_text: link.altText,
+        rank: safeRank(link.rank),
+        organization_id: item.organizationId ?? ownerOrgOf(item.id, organizationId),
+      })),
+    );
+    let linksOk = true;
+    if (linkRows.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: linkError } = await withSessionRetry(() => supabase.from('work_item_hyperlinks' as any).upsert(linkRows as any));
+      if (linkError) {
+        console.error('restoreWorkItems (hyperlinks):', linkError);
+        toast({ title: 'Failed to restore hyperlinks', description: 'Please check your connection and try again.', variant: 'destructive' });
+        linksOk = false;
+      }
+    }
+    return boardOk && linksOk;
+  });
 }
 
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
@@ -682,7 +771,9 @@ export async function upsertWorkItems(items: WorkItem[], organizationId: string)
   return enqueueWorkItemMutation(async () => upsertWorkItemsImmediate(items, organizationId));
 }
 
-async function upsertWorkItemsImmediate(items: WorkItem[], organizationId: string): Promise<boolean> {
+async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: string): Promise<boolean> {
+  // Queued before a delete that has since been made: saving them would insert them again.
+  const items = allItems.filter((item) => !isRecentlyDeletedWorkItem(item.id));
   if (items.length === 0) return true;
 
   // Only call the (potentially expensive) stale-prefix repair RPC when at
@@ -1177,7 +1268,11 @@ async function upsertRankRowsSkippingMissing(
   rows: RankRow[],
   failureTitle: string,
 ): Promise<RankUpsertResult> {
-  if (rows.length === 0) return { ok: true, missingWorkItemIds: [] };
+  // A rank for an item just deleted here is reported missing without asking the
+  // database, which may not have processed the delete yet and would take it.
+  const recentlyDeleted = [...new Set(rows.filter((r) => isRecentlyDeletedWorkItem(r.work_item_id)).map((r) => r.work_item_id))];
+  if (recentlyDeleted.length > 0) rows = rows.filter((r) => !isRecentlyDeletedWorkItem(r.work_item_id));
+  if (rows.length === 0) return { ok: true, missingWorkItemIds: recentlyDeleted };
   // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
@@ -1187,13 +1282,13 @@ async function upsertRankRowsSkippingMissing(
     (await supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' })).error;
 
   let error = await write(rows);
-  let missing: string[] = [];
+  let missing: string[] = recentlyDeleted;
   // 23503 is foreign_key_violation. The constraint name is checked too, so a
   // foreign key added to these tables later is not mistaken for this one.
   if (error?.code === '23503' && /work_item_id_fkey/.test(error.message ?? '')) {
     const existing = await existingWorkItemIds(rows.map((r) => r.work_item_id));
     if (existing) {
-      missing = [...new Set(rows.filter((r) => !existing.has(r.work_item_id)).map((r) => r.work_item_id))];
+      missing = [...new Set([...recentlyDeleted, ...rows.filter((r) => !existing.has(r.work_item_id)).map((r) => r.work_item_id)])];
       const writable = rows.filter((r) => existing.has(r.work_item_id));
       error = writable.length > 0 ? await write(writable) : null;
     }
@@ -1204,7 +1299,7 @@ async function upsertRankRowsSkippingMissing(
     toast({ title: failureTitle, description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
     return { ok: false, missingWorkItemIds: missing };
   }
-  if (missing.length > 0) {
+  if (missing.length > recentlyDeleted.length) {
     console.warn(`upsert ${table}: skipped ranks for ${missing.length} work item(s) not in the database`, missing);
   }
   return { ok: true, missingWorkItemIds: missing };

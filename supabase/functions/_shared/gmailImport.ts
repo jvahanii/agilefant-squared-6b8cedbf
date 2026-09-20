@@ -100,16 +100,14 @@ export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Se
   const rankedIds = (rankRows ?? []).map((r) => r.work_item_id as string);
   if (rankedIds.length === 0) return present;
 
-  // A rank row is not evidence that the item is in this backlog. Two ways it
-  // lies, both present in real data:
+  // A rank row is not evidence that the item is in this backlog: an item
+  // carries one assignment per tree, and moving it leaves the old backlog's
+  // rank row behind. (A delete no longer does — since 20260914220000 the rank
+  // and hyperlink rows cascade with the item.)
   //
-  //   - the item was deleted. bulk_delete_work_items removes the work_items row
-  //     and nothing else, so the rank and hyperlink rows survive it.
-  //   - the item moved. An item carries one assignment per tree, and moving it
-  //     leaves the old backlog's rank row behind.
-  //
-  // So require the item to exist *and* still name this backlog among its
-  // assignments. Checking only existence let a moved item count as present.
+  // So require the item to still name this backlog among its assignments.
+  // Reading it from work_items also covers a rank row that outlives its item
+  // for a moment, such as one written by a save racing a delete.
   const itemIds: string[] = [];
   for (let i = 0; i < rankedIds.length; i += 200) {
     const { data: liveRows } = await admin
@@ -154,7 +152,7 @@ export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Se
  * Asked of `backlog_assignments` rather than the rank rows urlsInBacklog walks,
  * which is both simpler and truer: an item holds exactly one assignment per
  * tree, keyed by tree id, so naming the tree is the whole query. Rank rows
- * survive a delete and a move; assignments do not.
+ * survive a move; assignments do not.
  *
  * The value is the backlog the item sits in, so the picker can say where rather
  * than only that.

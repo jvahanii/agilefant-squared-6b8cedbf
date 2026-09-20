@@ -22,9 +22,12 @@ import {
   upsertWorkItemBacklogRankRowsDetailed,
   upsertWorkItemBoardRankRows,
   upsertWorkItemBoardRankRowsDetailed,
+  deleteWorkItemBoardRanks,
+  restoreWorkItems,
   type WorkItemBacklogRankUpsert,
   type WorkItemBoardRankUpsert,
 } from "./supabaseSync";
+import { isRecentlyDeletedWorkItem } from "./deletedWorkItems";
 import { mockData as staticMockData } from "./mockData";
 import {
   readCachedAppData,
@@ -767,7 +770,8 @@ function readPendingWorkItemUpserts(orgId: string): PendingWorkItemUpsert[] {
     const pending = JSON.parse(localStorage.getItem(PENDING_WORK_ITEM_UPSERTS_KEY) ?? "[]");
     if (!Array.isArray(pending)) return [];
     return pending.filter((entry): entry is PendingWorkItemUpsert =>
-      entry?.organizationId === orgId && entry?.item?.id && entry.item.backlogAssignments,
+      entry?.organizationId === orgId && entry?.item?.id && entry.item.backlogAssignments &&
+      !isRecentlyDeletedWorkItem(entry.item.id),
     );
   } catch {
     return [];
@@ -933,6 +937,149 @@ function persistWorkItemUpserts(items: WorkItem[], organizationId: string, board
     }
     removeQueuedWorkItemUpserts(items, organizationId);
   });
+}
+
+/**
+ * Drop every write still queued in localStorage for these work items. A save
+ * that failed, or had not finished, stayed queued after its item was deleted,
+ * and the next load flushed it: the item was inserted again and shown again.
+ */
+function forgetQueuedWritesFor(workItemIds: string[]) {
+  if (typeof localStorage === "undefined" || workItemIds.length === 0) return;
+  const gone = new Set(workItemIds);
+  for (const key of [PENDING_WORK_ITEM_UPSERTS_KEY, PENDING_RANK_UPSERTS_KEY, PENDING_BOARD_RANK_UPSERTS_KEY]) {
+    try {
+      const existing = JSON.parse(localStorage.getItem(key) ?? "[]");
+      if (!Array.isArray(existing)) continue;
+      // Work item entries hold the item; rank entries name it.
+      const remaining = existing.filter((entry) => !gone.has(entry?.item?.id ?? entry?.workItemId));
+      if (remaining.length === existing.length) continue;
+      if (remaining.length > 0) localStorage.setItem(key, JSON.stringify(remaining));
+      else localStorage.removeItem(key);
+    } catch {
+      // Best-effort; the sync layer also skips saves of items just deleted.
+    }
+  }
+}
+
+/** Delete work items the user deleted on purpose, and nothing queued may bring them back. */
+function persistWorkItemDeletes(workItemIds: string[]) {
+  if (workItemIds.length === 0) return;
+  forgetQueuedWritesFor(workItemIds);
+  return deleteWorkItems(workItemIds);
+}
+
+function sameEntries(a: Record<string, unknown> | undefined, b: Record<string, unknown> | undefined): boolean {
+  if (a === b) return true;
+  const aKeys = Object.keys(a ?? {});
+  const bKeys = Object.keys(b ?? {});
+  return aKeys.length === bKeys.length && aKeys.every((k) => b !== undefined && k in b && a![k] === b[k]);
+}
+
+/** Whether two versions of an item would be saved as the same rows. */
+function samePersistedWorkItem(a: WorkItem, b: WorkItem): boolean {
+  return a.title === b.title && a.description === b.description && a.points === b.points &&
+    a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
+    a.respawnEnabled === b.respawnEnabled && a.respawnIntervalDays === b.respawnIntervalDays &&
+    a.respawnHour === b.respawnHour && a.respawnMinute === b.respawnMinute &&
+    a.respawnLastTriggeredAt === b.respawnLastTriggeredAt &&
+    sameEntries(a.parentIds, b.parentIds) && sameEntries(a.backlogAssignments, b.backlogAssignments) &&
+    sameEntries(a.ranks, b.ranks) && sameEntries(a.boardRanks, b.boardRanks);
+}
+
+/**
+ * Save the difference between the state on screen and the snapshot that undo
+ * or redo is about to show.
+ *
+ * Undo used to swap the snapshot locally and write nothing. Undoing a delete
+ * left the items only in the page, until a later edit saved one again through a
+ * plain upsert — the row and its ranks came back, the hyperlinks, team
+ * assignments and the rest the delete had cascaded away did not. On 2026-09-16
+ * that lost the links of 18 job postings at once.
+ *
+ * Items that reappear are restored (see restoreWorkItems), items that disappear
+ * are deleted, and items that differ are saved. Backlogs, trees and the
+ * hyperlinks of items present on both sides follow the same rule.
+ */
+function persistSnapshotSwitch(from: AppState, to: DataSnapshot) {
+  const orgId = from.organizationId;
+  if (!orgId) return;
+
+  const treesToSave = Object.values(to.backlogTrees).filter((tree) => {
+    const old = from.backlogTrees[tree.id];
+    return !old || (old !== tree && (old.name !== tree.name || old.rank !== tree.rank || old.pointsEnabled !== tree.pointsEnabled));
+  });
+  const backlogsToSave = Object.values(to.backlogs).filter((bl) => {
+    const old = from.backlogs[bl.id];
+    return !old || (old !== bl && (old.name !== bl.name || old.parentId !== bl.parentId || old.treeId !== bl.treeId || old.rank !== bl.rank));
+  });
+  if (treesToSave.length > 0 || backlogsToSave.length > 0) {
+    Promise.resolve(upsertBacklogTrees(treesToSave, orgId))
+      .then(() => upsertBacklogs(backlogsToSave, orgId))
+      .catch((err) => console.error("Undo: saving backlogs failed", err));
+  }
+
+  const removedItemIds = Object.keys(from.workItems).filter((id) => !to.workItems[id]);
+  const restoredItems = Object.values(to.workItems).filter((wi) => !from.workItems[wi.id]);
+  const changedItems = Object.values(to.workItems).filter((wi) => {
+    const old = from.workItems[wi.id];
+    return !!old && old !== wi && !samePersistedWorkItem(old, wi);
+  });
+
+  persistWorkItemDeletes(removedItemIds)?.catch((err) => console.error("Undo: deleting work items failed", err));
+  if (restoredItems.length > 0) {
+    restoreWorkItems(restoredItems, orgId, to.hyperlinks)?.catch((err) => console.error("Undo: restoring work items failed", err));
+  }
+  if (changedItems.length > 0) {
+    const boardRankRows: WorkItemBoardRankUpsert[] = [];
+    const staleRanks: Array<{ workItemId: string; backlogId: string }> = [];
+    const staleBoardRanks: Array<{ workItemId: string; backlogId: string }> = [];
+    for (const wi of changedItems) {
+      const old = from.workItems[wi.id];
+      for (const [backlogId, rank] of Object.entries(wi.boardRanks ?? {})) {
+        if (old.boardRanks?.[backlogId] !== rank) {
+          boardRankRows.push({ workItemId: wi.id, backlogId, rank, organizationId: wi.organizationId ?? orgId });
+        }
+      }
+      for (const backlogId of Object.keys(old.ranks)) {
+        if (!(backlogId in wi.ranks)) staleRanks.push({ workItemId: wi.id, backlogId });
+      }
+      for (const backlogId of Object.keys(old.boardRanks ?? {})) {
+        if (!(backlogId in (wi.boardRanks ?? {}))) staleBoardRanks.push({ workItemId: wi.id, backlogId });
+      }
+    }
+    upsertWorkItems(changedItems, orgId)?.catch((err) => console.error("Undo: saving work items failed", err));
+    if (boardRankRows.length > 0) persistBoardRankUpserts(boardRankRows);
+    if (staleRanks.length > 0) deleteWorkItemBacklogRanks(staleRanks);
+    if (staleBoardRanks.length > 0) deleteWorkItemBoardRanks(staleBoardRanks);
+  }
+
+  // Hyperlinks of items on both sides. A restored item brings its own; a
+  // removed one loses them by cascade.
+  const onBothSides = (workItemId: string) => !!from.workItems[workItemId] && !!to.workItems[workItemId];
+  for (const [workItemId, links] of Object.entries(to.hyperlinks)) {
+    const oldLinks = from.hyperlinks[workItemId] ?? [];
+    if (links === oldLinks || !onBothSides(workItemId)) continue;
+    const oldById = new Map(oldLinks.map((link) => [link.id, link]));
+    for (const link of links) {
+      if (oldById.get(link.id) !== link) upsertHyperlink(link, orgId, to.workItems[workItemId].organizationId);
+    }
+  }
+  for (const [workItemId, oldLinks] of Object.entries(from.hyperlinks)) {
+    const links = to.hyperlinks[workItemId] ?? [];
+    if (links === oldLinks || !onBothSides(workItemId)) continue;
+    const keep = new Set(links.map((link) => link.id));
+    for (const link of oldLinks) if (!keep.has(link.id)) deleteHyperlinkDB(link.id);
+  }
+
+  const removedBacklogIds = Object.keys(from.backlogs).filter((id) => !to.backlogs[id]);
+  const removedTreeIds = Object.keys(from.backlogTrees).filter((id) => !to.backlogTrees[id]);
+  if (removedBacklogIds.length > 0 || removedTreeIds.length > 0) {
+    // Backlogs before their trees: a backlog references its tree.
+    Promise.resolve(deleteBacklogs(removedBacklogIds))
+      .then(() => Promise.all(removedTreeIds.map((id) => deleteBacklogTreeDB(id))))
+      .catch((err) => console.error("Undo: deleting backlogs failed", err));
+  }
 }
 
 function queueRankUpsertsForRetry(rows: WorkItemBacklogRankUpsert[]) {
@@ -2580,7 +2727,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         upsertWorkItems(orphanRepairs, orgId);
       }
 
-      deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
+      persistWorkItemDeletes(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemId, entityName: item.title });
       const newSelectedId = computeNextWorkItemSelection(deleteSet, direction ?? deleteDirectionRef.current);
       set({
@@ -2632,7 +2779,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         upsertWorkItems(orphanRepairs, orgId);
       }
 
-      deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk delete work items failed", err));
+      persistWorkItemDeletes(allIdsToDelete)?.catch((err) => console.error("Bulk delete work items failed", err));
       internalLog({ action: "Delete", entityType: "work_item", entityId: workItemIds[0], entityName: `${workItemIds.length} items` });
       const newSelectedId = computeNextWorkItemSelection(deleteSet, direction ?? deleteDirectionRef.current);
       set({
@@ -3030,7 +3177,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           toUpsert.push(updated);
         });
 
-        deleteWorkItems(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
+        persistWorkItemDeletes(idsToDelete)?.catch((err) => console.error("Delete work item failed", err));
       }
       if (toUpsert.length > 0) {
         upsertWorkItems(toUpsert, orgId);
@@ -3099,7 +3246,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           toUpsert.push(updated);
         });
 
-        deleteWorkItems(allIdsToDelete)?.catch((err) => console.error("Bulk remove from tree failed", err));
+        persistWorkItemDeletes(allIdsToDelete)?.catch((err) => console.error("Bulk remove from tree failed", err));
       }
       if (toUpsert.length > 0) {
         upsertWorkItems(toUpsert, orgId);
@@ -3755,7 +3902,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           Object.keys(wi.backlogAssignments).length !==
             Object.keys(state.workItems[wi.id]?.backlogAssignments ?? {}).length,
       );
-      deleteWorkItems(wiIdsToDelete)?.catch((err) => console.error("Delete work items failed", err));
+      persistWorkItemDeletes(wiIdsToDelete)?.catch((err) => console.error("Delete work items failed", err));
       deleteBacklogs(blIdsToDelete)?.catch((err) => console.error("Delete backlogs failed", err));
       if (wiIdsToUpsert.length > 0) {
         upsertWorkItems(wiIdsToUpsert, state.organizationId!)?.catch((err) => console.error("Update work item assignments failed", err));
@@ -3997,7 +4144,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       blIdsToDelete.forEach((id) => delete updatedBacklogs[id]);
       const updatedTrees = { ...state.backlogTrees };
       delete updatedTrees[treeId];
-      deleteWorkItems(wiIdsToDelete);
+      persistWorkItemDeletes(wiIdsToDelete);
       deleteBacklogs(blIdsToDelete);
       deleteBacklogTreeDB(treeId);
       internalLog({ action: "Delete", entityType: "backlog_tree", entityId: treeId, entityName: state.backlogTrees[treeId]?.name });
@@ -4087,23 +4234,25 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
     },
 
-    undo: () =>
-      set((state) => {
-        const stack = [...state.undoStack];
-        const prev = stack.pop();
-        if (!prev) return state;
-        bumpMutationVersion();
-        return { ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] };
-      }),
+    undo: () => {
+      const state = get();
+      const stack = [...state.undoStack];
+      const prev = stack.pop();
+      if (!prev) return;
+      bumpMutationVersion();
+      persistSnapshotSwitch(state, prev);
+      set({ ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] });
+    },
 
-    redo: () =>
-      set((state) => {
-        const stack = [...state.redoStack];
-        const next = stack.pop();
-        if (!next) return state;
-        bumpMutationVersion();
-        return { ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack };
-      }),
+    redo: () => {
+      const state = get();
+      const stack = [...state.redoStack];
+      const next = stack.pop();
+      if (!next) return;
+      bumpMutationVersion();
+      persistSnapshotSwitch(state, next);
+      set({ ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack });
+    },
 
     runBulk: (fn) => {
       let preState: AppState | null = null;
@@ -4239,6 +4388,10 @@ export const useAppStore = create<AppState>()((set, get) => {
           }
           return { workItems: updatedWorkItems };
         }
+
+        // The echo of a save made before this page deleted the item, arriving
+        // after. Showing it again would let the next edit save it again.
+        if (!state.workItems[id] && isRecentlyDeletedWorkItem(id)) return state;
 
         // INSERT or UPDATE: preserve existing childrenIds and ranks from current state.
         // Ranks live in the separate work_item_backlog_ranks table and arrive
