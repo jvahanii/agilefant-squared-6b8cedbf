@@ -235,6 +235,33 @@ describe("undoing a delete", () => {
     expect(db.items.has(created.id)).toBe(false);
   });
 
+  it("leaves alone an item a teammate added after the last local edit", async () => {
+    const { id } = seedPosting();
+
+    // A local edit, so there is something to undo.
+    useAppStore.getState().setWorkItemStatus(id, "done");
+    await settle();
+
+    // Then a row arrives from someone else, as realtime delivers it.
+    const theirs = `${ORG}::wi-theirs`;
+    db.items.set(theirs, {
+      id: theirs, title: "Their new item", description: "", points: null, status: "not_started",
+      parentId: null, backlogAssignments: { [TREE]: BACKLOG }, rank: 1, organizationId: ORG,
+      respawnEnabled: false, respawnIntervalDays: null, respawnHour: null, respawnMinute: null,
+      respawnLastTriggeredAt: null, parentIdOverrides: {},
+    } as never);
+    useAppStore.getState().applyRealtimeWorkItem("INSERT", {
+      id: theirs, title: "Their new item", description: null, points: null, status: "not_started",
+      parent_id: null, backlog_assignments: { [TREE]: BACKLOG }, rank: 1, organization_id: ORG,
+    });
+
+    useAppStore.getState().undo();
+    await settle();
+
+    expect(db.items.has(theirs)).toBe(true);
+    expect(useAppStore.getState().workItems[theirs]).toBeDefined();
+  });
+
   it("writes back an undone edit", async () => {
     const { id } = seedPosting();
 
