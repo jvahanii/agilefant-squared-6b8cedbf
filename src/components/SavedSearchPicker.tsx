@@ -318,8 +318,19 @@ export function SavedSearchPicker({
         return status && status !== "not_started" ? { ...l, status } : l;
       });
 
-  const importInto = (backlogId: string, links: PreviewLink[]) =>
-    callGmail<{ created: number; skipped: number; collapsed: number; createdIds?: string[] }>({
+  const importInto = (
+    backlogId: string,
+    links: PreviewLink[],
+    autoPlaceTargets?: { datedBacklogId: string; undatedBacklogId: string },
+  ) =>
+    callGmail<{
+      created: number;
+      skipped: number;
+      collapsed: number;
+      createdIds?: string[];
+      dated?: number;
+      undated?: number;
+    }>({
       action: "import",
       mode,
       organizationId,
@@ -327,6 +338,10 @@ export function SavedSearchPicker({
       backlogId,
       queryId: search.id,
       links,
+      // When given, the import itself decides which of the two lists each
+      // posting goes to — after reading the closing dates, which is the only
+      // moment they are all known.
+      ...(autoPlaceTargets ? { autoPlace: autoPlaceTargets } : {}),
     });
 
   /**
@@ -429,13 +444,19 @@ export function SavedSearchPicker({
     if (!autoPlace) return;
     setImporting(true);
     try {
-      const { dated, undated } = splitByDeadline(links);
-      const results = await Promise.all([
-        dated.length ? importInto(autoPlace.withDeadline, dated) : Promise.resolve(null),
-        undated.length ? importInto(autoPlace.withoutDeadline, undated) : Promise.resolve(null),
-      ]);
-      const created = results.reduce((sum, r) => sum + (r?.created ?? 0), 0);
-      const createdIds = results.flatMap((r) => r?.createdIds ?? []);
+      // The import does the splitting: a posting whose closing date it reads
+      // while importing must land in the list that date belongs to, and only
+      // the import knows all the dates. Falls back to what the picker knows if
+      // an older server answers without the counts.
+      const local = splitByDeadline(links);
+      const res = await importInto(autoPlace.withDeadline, links, {
+        datedBacklogId: autoPlace.withDeadline,
+        undatedBacklogId: autoPlace.withoutDeadline,
+      });
+      const dated = { length: res.dated ?? local.dated.length };
+      const undated = { length: res.undated ?? local.undated.length };
+      const created = res.created ?? 0;
+      const createdIds = res.createdIds ?? [];
 
       // The alerts these postings came from are done with: marking them read
       // takes them out of an "only unread" search, so the next run offers what

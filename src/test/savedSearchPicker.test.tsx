@@ -394,7 +394,7 @@ describe("Import & auto-place", () => {
     };
   };
 
-  it("files each posting by its deadline, then ranks both lists by name", async () => {
+  it("leaves the filing to the import, then ranks both lists by name", async () => {
     withBothLists();
     callGmail
       .mockResolvedValueOnce({
@@ -404,8 +404,7 @@ describe("Import & auto-place", () => {
           link({ url: "https://x/none", title: "No date" }),
         ],
       })
-      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
-      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 })
+      .mockResolvedValueOnce({ created: 3, skipped: 0, collapsed: 0, dated: 1, undated: 2 })
       .mockResolvedValueOnce({ marked: 1 });
     const onClose = vi.fn();
 
@@ -415,12 +414,17 @@ describe("Import & auto-place", () => {
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2));
-    const [dated, undated] = callGmail.mock.calls.slice(1).map((c) => c[0]);
-    expect(dated).toMatchObject({ action: "import", backlogId: "dl" });
-    expect(dated.links.map((l: { url: string }) => l.url)).toEqual(["https://x/dated"]);
-    expect(undated).toMatchObject({ action: "import", backlogId: "open" });
-    // "Open until further notice" is not a date, so it goes with the undated.
-    expect(undated.links.map((l: { url: string }) => l.url)).toEqual(["https://x/open", "https://x/none"]);
+    // One call, naming both lists: the import splits after reading the dates.
+    const imported = callGmail.mock.calls[1][0];
+    expect(imported).toMatchObject({
+      action: "import",
+      autoPlace: { datedBacklogId: "dl", undatedBacklogId: "open" },
+    });
+    expect(imported.links.map((l: { url: string }) => l.url)).toEqual([
+      "https://x/dated",
+      "https://x/open",
+      "https://x/none",
+    ]);
 
     // Name order, which for an imported title is closing-date order.
     expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["b", "a"]]);

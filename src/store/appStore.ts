@@ -173,6 +173,13 @@ interface AppState extends DataSnapshot {
   // work items are still in flight. Lets panels show a loading state instead
   // of an "empty backlog" message they would otherwise render.
   workItemsLoading: boolean;
+  /**
+   * A cached snapshot is on screen and the real data is still being fetched.
+   * The cache can be older than the org (or missing a backlog's items), so a
+   * list that looks empty may simply not have arrived yet — panels say
+   * "loading" rather than "no items" while this is true.
+   */
+  workItemsRefreshing: boolean;
   loadingProgress: number;
   organizationId: string | null;
   userId: string | null;
@@ -1463,6 +1470,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     redoStack: [],
     isLoading: true,
     workItemsLoading: false,
+    workItemsRefreshing: false,
     loadingProgress: 0,
     organizationId: null,
     userId: null,
@@ -1580,6 +1588,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
         // Refresh in the background so the cache stays fresh.
         if (appDataBackgroundRefreshInFlight?.orgId !== orgId) {
+          set({ workItemsRefreshing: true });
           const backgroundPromise = (async () => {
           try {
             // Snapshot the mutation version before fetching so we can
@@ -1676,6 +1685,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
               appDataBackgroundRefreshInFlight = null;
             }
+            if (get().workItemsRefreshing) set({ workItemsRefreshing: false });
           });
           appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
           void backgroundPromise;
