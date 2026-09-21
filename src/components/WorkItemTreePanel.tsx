@@ -4121,7 +4121,7 @@ export function WorkItemTreePanel() {
               />
             ) : rootWorkItems.length === 0 && !isAdding ? (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground" role="status" aria-live="polite">
-                {workItemsLoading ? "Loading work items…" : "No work items in this backlog"}
+                {workItemsLoading || workItemsRefreshing ? "Loading work items…" : "No work items in this backlog"}
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex flex-col">
