@@ -249,6 +249,25 @@ describe("SavedSearchPicker", () => {
     await waitFor(() => expect(loadFromSupabase).toHaveBeenCalled());
   });
 
+  it("sends the status chosen on a row, and nothing for rows left at Not started", async () => {
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", messageId: "m-2" })] })
+      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("A");
+    // Both rows start ticked and at the default: Not started.
+    const statusA = screen.getByRole("combobox", { name: "Status for A" }) as HTMLSelectElement;
+    expect(statusA.value).toBe("not_started");
+    fireEvent.change(statusA, { target: { value: "in_progress" } });
+    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+
+    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    const links = callGmail.mock.calls[1][0].links;
+    expect(links.find((l: { url: string }) => l.url === "https://x/a")).toMatchObject({ status: "in_progress" });
+    expect(links.find((l: { url: string }) => l.url === "https://x/b")).not.toHaveProperty("status");
+  });
+
   it("checks the ads already in the list for closed ones once it has imported", async () => {
     const existing = (id: string, backlogId: string) => ({
       id, title: id, status: "not_started", parentId: null, childrenIds: [],
