@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       backlog_statuses: {
@@ -232,6 +207,36 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_work_items: {
+        Row: {
+          children: Json
+          deleted_at: string
+          deleted_by: string | null
+          id: number
+          item: Json
+          organization_id: string
+          work_item_id: string
+        }
+        Insert: {
+          children: Json
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: never
+          item: Json
+          organization_id: string
+          work_item_id: string
+        }
+        Update: {
+          children?: Json
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: never
+          item?: Json
+          organization_id?: string
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       github_repo_integrations: {
         Row: {
           created_at: string
@@ -303,6 +308,8 @@ export type Database = {
           connection_key_encrypted: string
           created_at: string
           id: string
+          organization_id: string | null
+          provider: string
           updated_at: string
           user_id: string
         }
@@ -311,6 +318,8 @@ export type Database = {
           connection_key_encrypted: string
           created_at?: string
           id?: string
+          organization_id?: string | null
+          provider?: string
           updated_at?: string
           user_id: string
         }
@@ -319,14 +328,23 @@ export type Database = {
           connection_key_encrypted?: string
           created_at?: string
           id?: string
+          organization_id?: string | null
+          provider?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "gmail_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gmail_connections_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -451,6 +469,29 @@ export type Database = {
             columns: ["query_id"]
             isOneToOne: false
             referencedRelation: "gmail_import_queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_shared_connector_organizations: {
+        Row: {
+          created_at: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_shared_connector_organizations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -604,6 +645,48 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_google_oauth_clients: {
+        Row: {
+          client_id: string
+          client_secret_encrypted: string
+          created_at: string
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          client_secret_encrypted: string
+          created_at?: string
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_secret_encrypted?: string
+          created_at?: string
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_google_oauth_clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_google_oauth_clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_invites: {
         Row: {
           created_at: string
@@ -717,6 +800,30 @@ export type Database = {
           name?: string
           slug?: string
           stripe_customer_id?: string | null
+        }
+        Relationships: []
+      }
+      posting_checks: {
+        Row: {
+          checked_at: string
+          closed: boolean
+          deadline: string | null
+          target: string
+          target_hash: string
+        }
+        Insert: {
+          checked_at?: string
+          closed: boolean
+          deadline?: string | null
+          target: string
+          target_hash: string
+        }
+        Update: {
+          checked_at?: string
+          closed?: boolean
+          deadline?: string | null
+          target?: string
+          target_hash?: string
         }
         Relationships: []
       }
@@ -1130,7 +1237,15 @@ export type Database = {
           rank?: number
           work_item_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_backlog_ranks_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_board_ranks: {
         Row: {
@@ -1157,7 +1272,15 @@ export type Database = {
           rank?: number
           work_item_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_board_ranks_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_chart_prefs: {
         Row: {
@@ -1243,7 +1366,15 @@ export type Database = {
           updated_at?: string
           work_item_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_financials_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: true
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_history: {
         Row: {
@@ -1315,7 +1446,15 @@ export type Database = {
           url?: string
           work_item_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_hyperlinks_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_scrambles: {
         Row: {
@@ -1394,7 +1533,15 @@ export type Database = {
           user_id?: string
           work_item_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "work_item_snoozes_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_item_team_assignments: {
         Row: {
@@ -1431,6 +1578,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_team_assignments_work_item_id_fkey"
+            columns: ["work_item_id"]
+            isOneToOne: false
+            referencedRelation: "work_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1526,6 +1680,10 @@ export type Database = {
       }
       current_user_id: { Args: never; Returns: string }
       get_published_backlog: { Args: { _token: string }; Returns: Json }
+      get_published_backlog_unchecked: {
+        Args: { _token: string }
+        Returns: Json
+      }
       get_published_link_options: {
         Args: { _backlog_id: string; _tree_id: string }
         Returns: Json
@@ -1606,7 +1764,15 @@ export type Database = {
         Args: { _entry_ids: string[]; _target_id: string; _target_kind: string }
         Returns: number
       }
+      public_links_enabled_for_tree: {
+        Args: { _tree_id: string }
+        Returns: boolean
+      }
       publish_backlog_link: {
+        Args: { _backlog_id?: string; _tree_id: string }
+        Returns: string
+      }
+      publish_backlog_link_unchecked: {
         Args: { _backlog_id?: string; _tree_id: string }
         Returns: string
       }
@@ -1619,7 +1785,10 @@ export type Database = {
         Args: { _item_ids: string[]; _new_org_id: string }
         Returns: Json
       }
-      restore_deleted_work_items: { Args: { _ids: string[] }; Returns: string[] }
+      restore_deleted_work_items: {
+        Args: { _ids: string[] }
+        Returns: string[]
+      }
       restore_organization_backup: {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
@@ -1786,9 +1955,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["owner", "admin", "member"],
