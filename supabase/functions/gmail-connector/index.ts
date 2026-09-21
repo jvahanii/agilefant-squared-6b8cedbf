@@ -445,6 +445,9 @@ Deno.serve(async (req) => {
           // a well-formed date: it becomes part of the item's name.
           ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
           ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
+          // The status the picker chose for this row; the import validates it
+          // against the target list's statuses and falls back to Not started.
+          ...(typeof l.status === 'string' && l.status ? { status: l.status } : {}),
         })).filter((l) => l.url && l.messageId),
       );
       return json(result);
