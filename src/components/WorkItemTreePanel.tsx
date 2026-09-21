@@ -676,16 +676,22 @@ function WorkItemNodeContent({
     const items = useAppStore.getState().workItems;
     const ids = scrambleTargets().filter((id) => items[id] && !scrambled.has(id));
     const me = peekCurrentUser()?.id ?? null;
+    const needPin = orgsNeedingPinRef.current;
     let done = 0;
     // One at a time: the first call may be the one that sets the PIN, and two
     // at once would collide on it.
     for (const id of ids) {
+      // The PIN belongs to the organization that owns the item, so it is sent
+      // only for the organizations that have none yet; sending it where one is
+      // already set would be checked against it and rejected.
+      const itemOrg = items[id].organizationId ?? activeOrgId;
+      const sendPin = !itemOrg || needPin.has(itemOrg);
       // The scrambled title is built here so the words match the app's own
       // scramble; the database keeps the original where nobody can read it.
       const { error } = await supabase.rpc("scramble_work_item", {
         _work_item_id: id,
         _scrambled_title: scrambleName(items[id].title),
-        _pin: pin || null,
+        _pin: sendPin ? (pin || null) : null,
       });
       if (error) {
         if (done > 0) toast({ title: `${done} scrambled, then it stopped`, description: error.message, variant: "destructive" });
@@ -704,14 +710,35 @@ function WorkItemNodeContent({
   };
 
   const startScramble = async () => {
-    const { data, error } = await supabase.rpc("has_scramble_pin", { _organization_id: activeOrgId });
-    if (error) {
-      toast({ title: "Could not scramble", description: error.message, variant: "destructive" });
-      return;
+    // Which organizations own the rows about to be scrambled — an item shared
+    // in from a partner belongs to that partner, not the active organization,
+    // and its PIN is checked there.
+    const items = useAppStore.getState().workItems;
+    const scrambledNow = useScrambledItemsStore.getState().byItem;
+    const orgIds = [
+      ...new Set(
+        scrambleTargets()
+          .filter((id) => items[id] && !scrambledNow.has(id))
+          .map((id) => items[id].organizationId ?? activeOrgId)
+          .filter((org): org is string => !!org),
+      ),
+    ];
+    if (orgIds.length === 0) return;
+
+    const needPin = new Set<string>();
+    for (const orgId of orgIds) {
+      const { data, error } = await supabase.rpc("has_scramble_pin", { _organization_id: orgId });
+      if (error) {
+        toast({ title: "Could not scramble", description: error.message, variant: "destructive" });
+        return;
+      }
+      if (!data) needPin.add(orgId);
     }
-    // The first scramble in an organization sets the PIN. Later ones do not
-    // ask: hiding a name needs no permission, reading one does.
-    if (!data) {
+    orgsNeedingPinRef.current = needPin;
+
+    // The first scramble in an organization sets the PIN there. Later ones do
+    // not ask: hiding a name needs no permission, reading one does.
+    if (needPin.size > 0) {
       setScramblePrompt({ kind: "scramble", mode: "set" });
       return;
     }
