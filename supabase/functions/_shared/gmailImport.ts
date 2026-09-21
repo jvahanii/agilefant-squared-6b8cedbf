@@ -357,15 +357,21 @@ export async function importLinksAsWorkItems(
     if (claimedRows.length === 0) return { created: 0, skipped, collapsed, createdIds: [] };
 
     const byKey = new Map(candidates.map((l) => [`${l.messageId}|${l.url}`, l]));
+    // The order rows come back from the upsert is not the order they were sent
+    // in, so ranks below would scramble the list. Restore the picker's order.
+    const order = new Map(candidates.map((l, i) => [`${l.messageId}|${l.url}`, i]));
     items = claimedRows
       .map((row) => ({
         id: row.work_item_id as string,
         claimId: row.id as string | null,
         link: byKey.get(`${row.gmail_message_id}|${row.normalized_url}`),
+        order: order.get(`${row.gmail_message_id}|${row.normalized_url}`) ?? Number.MAX_SAFE_INTEGER,
       }))
-      .filter((i): i is { id: string; claimId: string | null; link: ExtractedLink } =>
+      .filter((i): i is { id: string; claimId: string | null; link: ExtractedLink; order: number } =>
         Boolean(i.link && i.id),
-      );
+      )
+      .sort((a, b) => a.order - b.order)
+      .map(({ id, claimId, link }) => ({ id, claimId, link }));
   }
 
   if (items.length === 0) return { created: 0, skipped, collapsed, createdIds: [] };
