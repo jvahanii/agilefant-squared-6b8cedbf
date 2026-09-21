@@ -125,6 +125,8 @@ export function SavedSearchPicker({
   const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  /** Status chosen per row, by row key; rows without an entry start Not started. */
+  const [statusByKey, setStatusByKey] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
   const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
@@ -300,7 +302,18 @@ export function SavedSearchPicker({
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
   const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
 
-  const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
+  /** Statuses of the list "Import selected" files into — the picker's choices. */
+  const importStatuses = useMemo(() => getEffectiveStatuses(search.backlog_id), [search.backlog_id]);
+
+  const pickedLinks = () =>
+    preview
+      .filter((l) => selected[`${l.messageId}|${l.url}`])
+      .map((l) => {
+        const status = statusByKey[`${l.messageId}|${l.url}`];
+        // Not started is the server's default; leaving it out keeps the
+        // payload exactly what an older build would send.
+        return status && status !== "not_started" ? { ...l, status } : l;
+      });
 
   const importInto = (backlogId: string, links: PreviewLink[]) =>
     callGmail<{ created: number; skipped: number; collapsed: number; createdIds?: string[] }>({
