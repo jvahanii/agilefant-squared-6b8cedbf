@@ -1588,6 +1588,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
         // Refresh in the background so the cache stays fresh.
         if (appDataBackgroundRefreshInFlight?.orgId !== orgId) {
+          set({ workItemsRefreshing: true });
           const backgroundPromise = (async () => {
           try {
             // Snapshot the mutation version before fetching so we can
