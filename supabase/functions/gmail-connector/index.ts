@@ -421,6 +421,60 @@ Deno.serve(async (req) => {
       if (links.length === 0) return json({ error: 'links is required' }, 400);
       await assertOrgMember(user.id, organizationId);
 
+      const mapped = links.map((l) => ({
+        url: String(l.url ?? ''),
+        title: String(l.title ?? ''),
+        messageId: String(l.messageId ?? ''),
+        subject: String(l.subject ?? ''),
+        from: String(l.from ?? ''),
+        date: String(l.date ?? ''),
+        // A deadline the picker already knows — from the mail, or read through
+        // the browser from a board that refuses this server (Jobly) — is kept,
+        // so the import does not fetch again and come back with nothing. Only
+        // a well-formed date: it becomes part of the item's name.
+        ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
+        ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
+        // The status the picker chose for this row; the import validates it
+        // against the target list's statuses and falls back to Not started.
+        ...(typeof l.status === 'string' && l.status ? { status: l.status } : {}),
+      })).filter((l) => l.url && l.messageId);
+
+      // Auto-place: which list a posting belongs in is decided here, after the
+      // deadlines have been read, not in the browser before them. Splitting in
+      // the picker meant a posting whose closing date the import discovered got
+      // that date in its name while sitting in the "no deadline" list.
+      const auto = body.autoPlace as { datedBacklogId?: string; undatedBacklogId?: string } | undefined;
+      const datedBacklogId = String(auto?.datedBacklogId ?? '');
+      const undatedBacklogId = String(auto?.undatedBacklogId ?? '');
+      if (datedBacklogId && undatedBacklogId) {
+        const read = body.mode === 'jobs' ? await fillDeadlines(mapped) : mapped;
+        const dated = read.filter((l) => (l as { deadline?: string }).deadline);
+        const undated = read.filter((l) => !(l as { deadline?: string }).deadline);
+        const base = {
+          organizationId,
+          treeId,
+          queryId: body.queryId ?? null,
+          allowDuplicates: body.mode === 'jobs',
+          fetchDeadlines: false,
+        };
+        const results = await Promise.all([
+          dated.length
+            ? importLinksAsWorkItems(admin, { ...base, backlogId: datedBacklogId }, dated)
+            : Promise.resolve(null),
+          undated.length
+            ? importLinksAsWorkItems(admin, { ...base, backlogId: undatedBacklogId }, undated)
+            : Promise.resolve(null),
+        ]);
+        return json({
+          created: results.reduce((n, r) => n + (r?.created ?? 0), 0),
+          skipped: results.reduce((n, r) => n + (r?.skipped ?? 0), 0),
+          collapsed: results.reduce((n, r) => n + (r?.collapsed ?? 0), 0),
+          createdIds: results.flatMap((r) => r?.createdIds ?? []),
+          dated: dated.length,
+          undated: undated.length,
+        });
+      }
+
       const result = await importLinksAsWorkItems(
         admin,
         {
@@ -432,23 +486,7 @@ Deno.serve(async (req) => {
           allowDuplicates: body.mode === 'jobs',
           fetchDeadlines: body.mode === 'jobs',
         },
-        links.map((l) => ({
-          url: String(l.url ?? ''),
-          title: String(l.title ?? ''),
-          messageId: String(l.messageId ?? ''),
-          subject: String(l.subject ?? ''),
-          from: String(l.from ?? ''),
-          date: String(l.date ?? ''),
-          // A deadline the picker already knows — from the mail, or read through
-          // the browser from a board that refuses this server (Jobly) — is kept,
-          // so the import does not fetch again and come back with nothing. Only
-          // a well-formed date: it becomes part of the item's name.
-          ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
-          ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
-          // The status the picker chose for this row; the import validates it
-          // against the target list's statuses and falls back to Not started.
-          ...(typeof l.status === 'string' && l.status ? { status: l.status } : {}),
-        })).filter((l) => l.url && l.messageId),
+        mapped,
       );
       return json(result);
     }
