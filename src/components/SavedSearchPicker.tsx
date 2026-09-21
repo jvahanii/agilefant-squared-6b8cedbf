@@ -659,6 +659,27 @@ export function SavedSearchPicker({
                           <LinkIcon className="w-3 h-3 inline mr-1" />
                           {l.url}
                         </span>
+                        {selected[key] && (
+                          <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            Import as
+                            <select
+                              value={statusByKey[key] ?? "not_started"}
+                              onChange={(e) => setStatusByKey((prev) => ({ ...prev, [key]: e.target.value }))}
+                              // The row is a <label>; without this the click
+                              // would also toggle the row's checkbox.
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={importing}
+                              aria-label={`Status for ${l.title || l.url}`}
+                              className="h-6 max-w-[10rem] truncate rounded-md border border-input bg-background px-1 text-xs text-foreground"
+                            >
+                              {importStatuses.map((s) => (
+                                <option key={s.key} value={s.key}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                        )}
                       </span>
                     </label>
                   );
