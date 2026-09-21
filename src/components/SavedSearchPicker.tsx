@@ -318,8 +318,19 @@ export function SavedSearchPicker({
         return status && status !== "not_started" ? { ...l, status } : l;
       });
 
-  const importInto = (backlogId: string, links: PreviewLink[]) =>
-    callGmail<{ created: number; skipped: number; collapsed: number; createdIds?: string[] }>({
+  const importInto = (
+    backlogId: string,
+    links: PreviewLink[],
+    autoPlaceTargets?: { datedBacklogId: string; undatedBacklogId: string },
+  ) =>
+    callGmail<{
+      created: number;
+      skipped: number;
+      collapsed: number;
+      createdIds?: string[];
+      dated?: number;
+      undated?: number;
+    }>({
       action: "import",
       mode,
       organizationId,
@@ -327,6 +338,10 @@ export function SavedSearchPicker({
       backlogId,
       queryId: search.id,
       links,
+      // When given, the import itself decides which of the two lists each
+      // posting goes to — after reading the closing dates, which is the only
+      // moment they are all known.
+      ...(autoPlaceTargets ? { autoPlace: autoPlaceTargets } : {}),
     });
 
   /**
