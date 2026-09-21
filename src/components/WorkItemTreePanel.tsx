@@ -676,16 +676,22 @@ function WorkItemNodeContent({
     const items = useAppStore.getState().workItems;
     const ids = scrambleTargets().filter((id) => items[id] && !scrambled.has(id));
     const me = peekCurrentUser()?.id ?? null;
+    const needPin = orgsNeedingPinRef.current;
     let done = 0;
     // One at a time: the first call may be the one that sets the PIN, and two
     // at once would collide on it.
     for (const id of ids) {
+      // The PIN belongs to the organization that owns the item, so it is sent
+      // only for the organizations that have none yet; sending it where one is
+      // already set would be checked against it and rejected.
+      const itemOrg = items[id].organizationId ?? activeOrgId;
+      const sendPin = !itemOrg || needPin.has(itemOrg);
       // The scrambled title is built here so the words match the app's own
       // scramble; the database keeps the original where nobody can read it.
       const { error } = await supabase.rpc("scramble_work_item", {
         _work_item_id: id,
         _scrambled_title: scrambleName(items[id].title),
-        _pin: pin || null,
+        _pin: sendPin ? (pin || null) : null,
       });
       if (error) {
         if (done > 0) toast({ title: `${done} scrambled, then it stopped`, description: error.message, variant: "destructive" });
