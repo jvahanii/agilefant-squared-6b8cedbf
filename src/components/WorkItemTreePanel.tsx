@@ -396,6 +396,11 @@ function WorkItemNodeContent({
   const [scramblePrompt, setScramblePrompt] = useState<
     null | { kind: "scramble" | "reveal" | "unscramble"; mode: "set" | "enter" }
   >(null);
+  // The PIN lives per organization, and an item shared in from another one
+  // belongs to that organization, not the active one. These are the owning
+  // organizations of the rows about to be scrambled that have no PIN yet, so
+  // the PIN is asked for and sent only where it is actually needed.
+  const orgsNeedingPinRef = useRef<Set<string>>(new Set());
   const [moveToParentItemIds, setMoveToParentItemIds] = useState<string[]>([]);
   const [showMoveToBacklogDialog, setShowMoveToBacklogDialog] = useState(false);
   const [moveToBacklogItemIds, setMoveToBacklogItemIds] = useState<string[]>([]);
