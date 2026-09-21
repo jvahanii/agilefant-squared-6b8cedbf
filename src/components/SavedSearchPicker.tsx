@@ -301,6 +301,9 @@ export function SavedSearchPicker({
   // earlier email, whether or not the filter happens to show that email.
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
   const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
+  // Nothing ticked means there is no new job to import — mark-as-read then
+  // becomes the only meaningful action and stands out for it.
+  const noNewJobs = useMemo(() => preview.every((l) => !selected[`${l.messageId}|${l.url}`]), [preview, selected]);
 
   /** Statuses of the list "Import selected" files into — the picker's choices. */
   const importStatuses = useMemo(() => getEffectiveStatuses(search.backlog_id), [search.backlog_id]);
