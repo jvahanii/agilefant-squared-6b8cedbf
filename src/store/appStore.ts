@@ -4289,8 +4289,9 @@ export const useAppStore = create<AppState>()((set, get) => {
     undo: () => {
       const state = get();
       const stack = [...state.undoStack];
-      const prev = stack.pop();
-      if (!prev) return;
+      const popped = stack.pop();
+      if (!popped) return;
+      const prev = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
       persistSnapshotSwitch(state, prev);
       set({ ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] });
@@ -4299,8 +4300,9 @@ export const useAppStore = create<AppState>()((set, get) => {
     redo: () => {
       const state = get();
       const stack = [...state.redoStack];
-      const next = stack.pop();
-      if (!next) return;
+      const popped = stack.pop();
+      if (!popped) return;
+      const next = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
       persistSnapshotSwitch(state, next);
       set({ ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack });
