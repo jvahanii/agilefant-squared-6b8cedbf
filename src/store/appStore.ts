@@ -1470,6 +1470,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     redoStack: [],
     isLoading: true,
     workItemsLoading: false,
+    workItemsRefreshing: false,
     loadingProgress: 0,
     organizationId: null,
     userId: null,
