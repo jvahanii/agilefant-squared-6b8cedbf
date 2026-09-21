@@ -467,7 +467,8 @@ describe("Import & auto-place", () => {
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    // The ticked row's status dropdown comes first; the auto-place lists follow.
+    const [, dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
     await waitFor(() => expect(dated.value).toBe("dl"));
     expect(undated.value).toBe("open");
     expect(dated.selectedOptions[0].textContent).toBe("Jobs with deadline");
@@ -487,7 +488,7 @@ describe("Import & auto-place", () => {
     const button = screen.getByRole("button", { name: /Import & auto-place/ });
     expect(button).toBeDisabled();
 
-    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    const [, dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
     // Only this search's tree is on offer.
     expect([...dated.options].map((o) => o.textContent)).toEqual([
       "Choose a list…",
@@ -510,7 +511,10 @@ describe("Import & auto-place", () => {
     render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A link");
     expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    // The only dropdown is the ticked row's status choice — no auto-place lists.
+    const selects = screen.getAllByRole("combobox");
+    expect(selects).toHaveLength(1);
+    expect(selects[0]).toHaveAccessibleName(/status for a link/i);
   });
 });
 
