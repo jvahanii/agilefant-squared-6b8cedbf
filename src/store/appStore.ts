@@ -173,6 +173,13 @@ interface AppState extends DataSnapshot {
   // work items are still in flight. Lets panels show a loading state instead
   // of an "empty backlog" message they would otherwise render.
   workItemsLoading: boolean;
+  /**
+   * A cached snapshot is on screen and the real data is still being fetched.
+   * The cache can be older than the org (or missing a backlog's items), so a
+   * list that looks empty may simply not have arrived yet — panels say
+   * "loading" rather than "no items" while this is true.
+   */
+  workItemsRefreshing: boolean;
   loadingProgress: number;
   organizationId: string | null;
   userId: string | null;
