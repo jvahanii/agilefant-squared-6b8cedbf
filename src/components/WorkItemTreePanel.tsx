@@ -2645,6 +2645,9 @@ export function WorkItemTreePanel() {
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
   const workItems = useAppStore((s) => s.workItems);
   const workItemsLoading = useAppStore((s) => s.workItemsLoading);
+  // Cached data on screen while the real data is still coming: an empty list
+  // may just not have arrived yet.
+  const workItemsRefreshing = useAppStore((s) => s.workItemsRefreshing);
   const backlogs = useAppStore((s) => s.backlogs);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
