@@ -109,6 +109,11 @@ export interface ExtractedLink {
    * a digest still links to them. Imported only if deliberately chosen.
    */
   applicationsClosed?: boolean;
+  /**
+   * The backlog status the created work item should start with, chosen in the
+   * picker. Absent (or unknown to the target backlog) means 'not_started'.
+   */
+  status?: string;
 }
 
 function looksLikeNoise(url: string, label: string): boolean {
