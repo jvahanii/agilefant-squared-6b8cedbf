@@ -4447,6 +4447,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         // after. Showing it again would let the next edit save it again.
         if (!state.workItems[id] && isRecentlyDeletedWorkItem(id)) return state;
 
+        // Arrived from elsewhere: undo must not treat it as its own to delete.
+        if (!state.workItems[id]) noteRemoteArrival(remotelyAddedWorkItemIds, id);
+
+
         // INSERT or UPDATE: preserve existing childrenIds and ranks from current state.
         // Ranks live in the separate work_item_backlog_ranks table and arrive
         // via applyRealtimeWorkItemRank; we keep the existing local ranks here.
