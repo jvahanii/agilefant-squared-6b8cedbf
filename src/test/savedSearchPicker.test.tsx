@@ -7,7 +7,7 @@
  * what is ticked, and closes when there is nothing to show. For the button, that
  * it appears only for a superuser, and only where there is a search to run.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const callGmail = vi.fn();
@@ -58,9 +58,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 /** The closed-ads check an import runs on the lists it filled. */
 const checkClosed = vi.fn().mockResolvedValue({ closed: 1, checked: 2, unknown: 0, fromTitle: 0 });
+/** Work item ids a posting check has marked closed. */
+let closedIds = new Set<string>();
 vi.mock("@/store/closedPostingsStore", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/closedPostingsStore")>()),
-  useClosedPostingsStore: { getState: () => ({ checking: false, check: checkClosed }) },
+  useClosedPostingsStore: { getState: () => ({ checking: false, check: checkClosed, closed: closedIds }) },
 }));
 let readerInstalled = false;
 const readPostingFacts = vi.fn();
@@ -107,6 +109,7 @@ beforeEach(() => {
   moveWorkItemsToBacklog.mockReset();
   storeState = {};
   checkClosed.mockClear();
+  closedIds = new Set();
 });
 
 describe("SavedSearchPicker", () => {
@@ -713,5 +716,90 @@ describe("Import & auto-place: In progress goes on the shortlist", () => {
     expect(toast).toHaveBeenLastCalledWith(
       expect.objectContaining({ description: expect.not.stringContaining("in progress also in") }),
     );
+  });
+});
+
+describe("Import & auto-place: the summary", () => {
+  const backlog = (id: string, name: string) => ({ id, name, parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 });
+  const item = (id: string, title: string, backlogId: string) => ({
+    id, title, status: "not_started", parentId: null, childrenIds: [],
+    backlogAssignments: { "tree-1": backlogId }, ranks: { [backlogId]: 0 },
+  });
+
+  beforeEach(() => {
+    // Only Date: the component's own timers and waitFor keep running for real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("totals the open ads in both lists, leaving out closed ones, and stays up ten seconds", async () => {
+    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+    storeState = {
+      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") },
+      workItems: {
+        gone: item("gone", "0915 Fennia — Product owner", "dl"), // closing date passed
+        soon: item("soon", "0930 Metsä Group — Business AI", "dl"),
+        later: item("later", "1011 Alma Media — AI", "dl"),
+        nordea: item("nordea", "Nordea — AI Platform Engineer", "open"), // a check said closed
+        wartsila: item("wartsila", "Wärtsilä — Agile Coach", "open"),
+        sub: { ...item("sub", "0101 Cover letter", "dl"), parentId: "soon" }, // a task under an ad, not an ad
+      },
+    };
+    closedIds = new Set(["nordea"]);
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, dated: 1, undated: 0, createdIds: ["soon"] })
+      .mockResolvedValueOnce({ marked: 1 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Metsä");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+
+    await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
+    const summary = toast.mock.calls.find((c) => String(c[0].title).startsWith("Imported"))![0];
+    expect(summary.description).toContain("Open ads now: 2 with a deadline, 1 without (closed ones not counted).");
+    expect(summary.duration).toBe(10_000);
+  });
+
+  /** An auto-place whose lists hold one linked ad, so the closed check has work to do. */
+  const autoPlaceWithCheck = async () => {
+    readerInstalled = true;
+    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+    storeState = {
+      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") },
+      workItems: { old: item("old", "0930 Metsä Group — Business AI", "dl") },
+      hyperlinks: { old: [{ url: "https://x/old" }] },
+    };
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: "https://x/new", title: "New" })] })
+      .mockResolvedValueOnce({ created: 0, skipped: 1, collapsed: 0, dated: 0, undated: 0, createdIds: [] })
+      .mockResolvedValueOnce({ marked: 1 });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("New");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+  };
+  const existingAdsToast = () => toast.mock.calls.find((c) => String(c[0].title).startsWith("Existing ads"));
+
+  it("holds the closed check's report back while the summary is up", async () => {
+    // Only one toast shows at a time: reporting now would cut the summary short.
+    await autoPlaceWithCheck();
+    await new Promise((r) => setTimeout(r, 300));
+    expect(existingAdsToast()).toBeUndefined();
+  });
+
+  it("restates the open totals once the check knows what is closed", async () => {
+    checkClosed.mockImplementationOnce(async () => {
+      closedIds = new Set(["old"]); // the check found it closed...
+      vi.setSystemTime(new Date("2026-09-21T12:00:11Z")); // ...after the summary's ten seconds
+      return { closed: 1, checked: 1, unknown: 0, fromTitle: 0 };
+    });
+    await autoPlaceWithCheck();
+    await waitFor(() => expect(existingAdsToast()).toBeDefined());
+    expect(existingAdsToast()![0].description).toContain("Open ads now: 0 with a deadline, 0 without");
+    readerInstalled = false;
   });
 });

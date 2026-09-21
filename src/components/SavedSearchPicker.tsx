@@ -23,7 +23,7 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { APPLY_NEXT_BACKLOG_ID, APPLY_NEXT_STATUS, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { APPLY_NEXT_BACKLOG_ID, APPLY_NEXT_STATUS, AUTO_PLACE_TOAST_MS, countOpenAds, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
 import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
@@ -351,7 +351,16 @@ export function SavedSearchPicker({
    * requests. Closed ads are marked on their rows; nothing is changed. Runs on
    * after the picker has closed, and skips if a check is already going.
    */
-  const checkExistingForClosed = async (backlogIds: string[], createdIds: string[]) => {
+  const checkExistingForClosed = async (
+    backlogIds: string[],
+    createdIds: string[],
+    /**
+     * Auto-place only. Only one toast shows at a time, so the check's report
+     * waits until `notBefore` rather than cutting the import summary short, and
+     * then restates the open-ad totals with whatever the check found closed.
+     */
+    after?: { notBefore: number; totals: () => string },
+  ) => {
     if (!canReadInBrowser) return;
     const closedStore = useClosedPostingsStore.getState();
     if (closedStore.checking) return;
@@ -359,7 +368,13 @@ export function SavedSearchPicker({
     const items = linkedItemsIn(app.workItems, app.hyperlinks, search.tree_id, new Set(backlogIds), new Set(createdIds));
     if (items.length === 0) return;
     const message = closedCheckMessage(await closedStore.check(items));
-    toast({ ...message, title: `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}` });
+    const wait = after ? after.notBefore - Date.now() : 0;
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    toast({
+      ...message,
+      title: `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}`,
+      ...(after ? { description: [message.description, after.totals()].filter(Boolean).join(" ") } : {}),
+    });
   };
 
   /**
@@ -478,6 +493,21 @@ export function SavedSearchPicker({
       // arrived.
       const app = useAppStore.getState();
       const applyNext = findApplyNextTarget(app.backlogs, search.tree_id);
+      /**
+       * Job ads still open in both lists, read at the moment of asking: the
+       * toast asks once the lists are filled, the closed check again once it
+       * knows more. Closed = closing date passed, or marked closed by a check.
+       */
+      const openTotals = () => {
+        const { workItems } = useAppStore.getState();
+        const { closed } = useClosedPostingsStore.getState();
+        const open = (backlogId: string) =>
+          countOpenAds(topLevelItems(workItems, search.tree_id, new Set([backlogId])), closed);
+        return (
+          `Open ads now: ${open(autoPlace.withDeadline)} with a deadline, ` +
+          `${open(autoPlace.withoutDeadline)} without (closed ones not counted).`
+        );
+      };
       let mirrored = 0;
       app.runBulk(() => {
         for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
@@ -523,9 +553,14 @@ export function SavedSearchPicker({
           (mirrored > 0 && applyNext
             ? ` ${mirrored} in progress also in ${backlogName(applyNext.backlogId)}.`
             : "") +
-          (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : ""),
+          (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : "") +
+          ` ${openTotals()}`,
+        duration: AUTO_PLACE_TOAST_MS,
       });
-      void checkExistingForClosed([autoPlace.withDeadline, autoPlace.withoutDeadline], createdIds);
+      void checkExistingForClosed([autoPlace.withDeadline, autoPlace.withoutDeadline], createdIds, {
+        notBefore: Date.now() + AUTO_PLACE_TOAST_MS,
+        totals: openTotals,
+      });
     } catch (e) {
       toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
     } finally {

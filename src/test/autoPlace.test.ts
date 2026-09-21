@@ -3,7 +3,7 @@
  * to another — both chosen on the saved search.
  */
 import { describe, it, expect } from "vitest";
-import { APPLY_NEXT_BACKLOG_ID, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { APPLY_NEXT_BACKLOG_ID, countOpenAds, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
 
 const backlog = (id: string, name: string, treeId: string): Backlog => ({
@@ -79,5 +79,28 @@ describe("findApplyNextTarget", () => {
     // An item holds one list per tree: "mirroring" there would move it.
     const backlogs = { [APPLY_NEXT_BACKLOG_ID]: backlog(APPLY_NEXT_BACKLOG_ID, "Shortlist", TREE) };
     expect(findApplyNextTarget(backlogs, TREE)).toBeNull();
+  });
+});
+
+describe("countOpenAds", () => {
+  const NOW = "2026-09-21T12:00:00Z";
+  const ad = (id: string, title: string) => ({ id, title });
+
+  it("leaves out an ad whose closing date has gone by", () => {
+    const ads = [ad("a", "0915 Fennia — Product owner"), ad("b", "0930 Metsä Group — Business AI")];
+    expect(countOpenAds(ads, new Set(), NOW)).toBe(1);
+  });
+
+  it("counts an ad that closes today as open", () => {
+    expect(countOpenAds([ad("a", "0921 Elisa — AI lead")], new Set(), NOW)).toBe(1);
+  });
+
+  it("leaves out an ad a posting check marked closed, dated or not", () => {
+    const ads = [ad("a", "1011 Alma Media — AI"), ad("b", "Nordea — AI Platform Engineer"), ad("c", "Wärtsilä — Agile Coach")];
+    expect(countOpenAds(ads, new Set(["a", "b"]), NOW)).toBe(1);
+  });
+
+  it("counts an ad with no date in its title as open unless marked closed", () => {
+    expect(countOpenAds([ad("a", "Nordea — AI Platform Engineer")], new Set(), NOW)).toBe(1);
   });
 });

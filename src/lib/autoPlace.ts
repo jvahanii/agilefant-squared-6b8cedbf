@@ -1,4 +1,5 @@
-import type { Backlog } from "@/types/models";
+import type { Backlog, WorkItem } from "@/types/models";
+import { deadlinePassed, titleDeadline } from "../../supabase/functions/_shared/deadlines";
 
 /**
  * Filing imported job ads by whether they have a closing date.
@@ -80,4 +81,22 @@ export function findApplyNextTarget(
   const target = backlogs?.[APPLY_NEXT_BACKLOG_ID];
   if (!target || target.treeId === importTreeId) return null;
   return { backlogId: target.id, treeId: target.treeId };
+}
+
+/** How long the auto-place summary stays on screen. */
+export const AUTO_PLACE_TOAST_MS = 10_000;
+
+/**
+ * How many of these job ads are still open. An ad counts as closed when the
+ * closing date its title starts with has gone by, or when a posting check has
+ * marked it closed — the same two sources the list's own closed marks use.
+ * The title date is the one that always holds: it needs no request, so it
+ * covers the boards that will not answer one.
+ */
+export function countOpenAds(
+  items: Pick<WorkItem, "id" | "title">[],
+  closedIds: ReadonlySet<string>,
+  now: Date | string | number = Date.now(),
+): number {
+  return items.filter((item) => !closedIds.has(item.id) && !deadlinePassed(titleDeadline(item.title, now), now)).length;
 }
