@@ -19,6 +19,8 @@ export interface PreviewLink {
   deadlineOpen?: boolean;
   /** The posting has stopped taking applications. Shown, but not pre-selected. */
   applicationsClosed?: boolean;
+  /** Status the imported item should start with; absent means not_started. */
+  status?: string;
 }
 
 export interface SourceEmailGroup {
