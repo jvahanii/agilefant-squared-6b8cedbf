@@ -240,7 +240,7 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("A");
-    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const importCall = callGmail.mock.calls[1][0];
@@ -260,7 +260,7 @@ describe("SavedSearchPicker", () => {
     const statusA = screen.getByRole("combobox", { name: "Status for A" }) as HTMLSelectElement;
     expect(statusA.value).toBe("not_started");
     fireEvent.change(statusA, { target: { value: "in_progress" } });
-    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
 
     await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
     const links = callGmail.mock.calls[1][0].links;
@@ -292,7 +292,7 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A");
-    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
 
     // Only what was there before, in the list imported into, with a link.
     await waitFor(() => expect(checkClosed).toHaveBeenCalled());
@@ -411,8 +411,8 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2));
     const [dated, undated] = callGmail.mock.calls.slice(1).map((c) => c[0]);
@@ -453,8 +453,8 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 3000 });
     // 0922 sorts between 0930 and 1011 — not after them.
@@ -472,8 +472,8 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
     const titles = toast.mock.calls.map((c) => c[0].title);
@@ -504,7 +504,7 @@ describe("Import & auto-place", () => {
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    const button = screen.getByRole("button", { name: /Import & auto-place/ });
+    const button = screen.getByRole("button", { name: /Import selected & auto-place/ });
     expect(button).toBeDisabled();
 
     const [, dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
@@ -593,7 +593,7 @@ describe("SavedSearchPicker reading Jobly through the browser", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
     await waitFor(() => expect(readPostingFacts).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
 
     await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
     expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ url: JOBLY_OPEN, deadline: "2026-10-11" });

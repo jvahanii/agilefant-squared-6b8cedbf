@@ -301,6 +301,9 @@ export function SavedSearchPicker({
   // earlier email, whether or not the filter happens to show that email.
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
   const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
+  // Nothing ticked means there is no new job to import — mark-as-read then
+  // becomes the only meaningful action and stands out for it.
+  const noNewJobs = useMemo(() => preview.every((l) => !selected[`${l.messageId}|${l.url}`]), [preview, selected]);
 
   /** Statuses of the list "Import selected" files into — the picker's choices. */
   const importStatuses = useMemo(() => getEffectiveStatuses(search.backlog_id), [search.backlog_id]);
@@ -728,14 +731,10 @@ export function SavedSearchPicker({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={importSelected} disabled={importing}>
-          {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-          Import selected
-        </Button>
         {mode === "jobs" && (
           <Button
             size="sm"
-            variant="secondary"
+            variant="destructive"
             onClick={importAndAutoPlace}
             disabled={importing || !autoPlace}
             title={
@@ -744,13 +743,17 @@ export function SavedSearchPicker({
                 : "Choose both lists above first."
             }
           >
-            Import &amp; auto-place
+            Import selected &amp; auto-place
           </Button>
         )}
+        <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing}>
+          {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+          Import selected
+        </Button>
         {mode === "jobs" && (
           <Button
             size="sm"
-            variant="outline"
+            variant={noNewJobs ? "destructive" : "secondary"}
             onClick={markAllRead}
             disabled={importing}
             title={`Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.`}
