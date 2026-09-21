@@ -239,6 +239,39 @@ export function linksInDescription(description: string | null | undefined): stri
   return [...description.matchAll(/^Link:[ \t]*(https?:\/\/\S+)[ \t\r]*$/gm)].map((m) => m[1]);
 }
 
+/** The fallback when a link names no status, or one the backlog does not have. */
+const DEFAULT_STATUS = 'not_started';
+
+/** Status keys every backlog has even with no backlog_statuses rows of its own. */
+const DEFAULT_STATUS_KEYS = ['not_started', 'in_progress', 'pending', 'blocked', 'done'];
+
+/**
+ * The status keys an item created in this backlog may carry: the nearest
+ * materialized set, walking up the backlog parent chain like the client does,
+ * or the defaults when no ancestor has rows. A picker can offer a status the
+ * actual destination backlog does not have (auto-place files into two other
+ * lists); those items fall back to not_started rather than failing.
+ */
+async function statusKeysFor(admin: Admin, backlogId: string): Promise<Set<string>> {
+  let currentId: string | null = backlogId;
+  const seen = new Set<string>();
+  while (currentId && !seen.has(currentId)) {
+    seen.add(currentId);
+    const { data: rows } = await admin
+      .from('backlog_statuses')
+      .select('key')
+      .eq('backlog_id', currentId);
+    if (rows && rows.length > 0) return new Set(rows.map((r) => r.key as string));
+    const { data: backlog } = await admin
+      .from('backlogs')
+      .select('parent_id')
+      .eq('id', currentId)
+      .maybeSingle();
+    currentId = (backlog?.parent_id as string | null) ?? null;
+  }
+  return new Set(DEFAULT_STATUS_KEYS);
+}
+
 export async function importLinksAsWorkItems(
   admin: Admin,
   target: ImportTarget,
@@ -246,6 +279,11 @@ export async function importLinksAsWorkItems(
 ): Promise<ImportResult> {
   const { organizationId, treeId, backlogId, queryId } = target;
   if (links.length === 0) return { created: 0, skipped: 0, collapsed: 0, createdIds: [] };
+
+  // Resolved once for the batch: only links the picker gave a status need it.
+  const allowedStatuses = links.some((l) => l.status) ? await statusKeysFor(admin, backlogId) : null;
+  const statusFor = (link: ExtractedLink): string =>
+    link.status && allowedStatuses?.has(link.status) ? link.status : DEFAULT_STATUS;
 
   // Job ad import always imports. Decided from the links themselves rather than
   // from a flag on the request, so it holds even when the caller is an older
@@ -361,7 +399,7 @@ export async function importLinksAsWorkItems(
         id,
         title: workItemTitle(link),
         description: describe(link),
-        status: 'not_started',
+        status: statusFor(link),
         parent_id: null,
         organization_id: organizationId,
         rank,

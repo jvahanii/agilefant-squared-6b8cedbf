@@ -31,6 +31,7 @@ import { currentListSortContext } from "@/store/listSortStore";
 import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
+import { getEffectiveStatuses } from "@/store/backlogStatusesStore";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 /** Postings read per posting_facts call — the server accepts at most this many. */
@@ -124,6 +125,8 @@ export function SavedSearchPicker({
   const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  /** Status chosen per row, by row key; rows without an entry start Not started. */
+  const [statusByKey, setStatusByKey] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
   const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
@@ -299,7 +302,18 @@ export function SavedSearchPicker({
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
   const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
 
-  const pickedLinks = () => preview.filter((l) => selected[`${l.messageId}|${l.url}`]);
+  /** Statuses of the list "Import selected" files into — the picker's choices. */
+  const importStatuses = useMemo(() => getEffectiveStatuses(search.backlog_id), [search.backlog_id]);
+
+  const pickedLinks = () =>
+    preview
+      .filter((l) => selected[`${l.messageId}|${l.url}`])
+      .map((l) => {
+        const status = statusByKey[`${l.messageId}|${l.url}`];
+        // Not started is the server's default; leaving it out keeps the
+        // payload exactly what an older build would send.
+        return status && status !== "not_started" ? { ...l, status } : l;
+      });
 
   const importInto = (backlogId: string, links: PreviewLink[]) =>
     callGmail<{ created: number; skipped: number; collapsed: number; createdIds?: string[] }>({
@@ -645,6 +659,27 @@ export function SavedSearchPicker({
                           <LinkIcon className="w-3 h-3 inline mr-1" />
                           {l.url}
                         </span>
+                        {selected[key] && (
+                          <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            Import as
+                            <select
+                              value={statusByKey[key] ?? "not_started"}
+                              onChange={(e) => setStatusByKey((prev) => ({ ...prev, [key]: e.target.value }))}
+                              // The row is a <label>; without this the click
+                              // would also toggle the row's checkbox.
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={importing}
+                              aria-label={`Status for ${l.title || l.url}`}
+                              className="h-6 max-w-[10rem] truncate rounded-md border border-input bg-background px-1 text-xs text-foreground"
+                            >
+                              {importStatuses.map((s) => (
+                                <option key={s.key} value={s.key}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                        )}
                       </span>
                     </label>
                   );
