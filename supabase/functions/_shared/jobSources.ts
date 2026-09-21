@@ -13,6 +13,7 @@
 
 import { decodeEntities } from './urls.ts';
 import { parseDeadline, parseOpenEnded } from './deadlines.ts';
+import { citiesFromList } from './cities.ts';
 
 /** One appearance of a URL in a message: its anchor text, and the markup after it. */
 export interface LinkOccurrence {
@@ -66,6 +67,12 @@ export interface JobSource {
    * read "View job". Given the same context as `company`.
    */
   title?(ctx: CompanyContext): string | undefined;
+  /**
+   * Where the job is, when the mail itself says so. An empty list means the
+   * mail named a place that is no city ("Useita sijainteja"); undefined means
+   * it said nothing, and the posting page is read instead.
+   */
+  cities?(ctx: CompanyContext): string[] | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
 }
@@ -144,6 +151,20 @@ export const JOB_SOURCES: JobSource[] = [
     // The trailing segment is a locale (fi|sv|en) and the uuid is the identity,
     // so drop it -- otherwise one posting differs per language.
     canonicalPath: (u) => u.pathname.replace(/\/(fi|sv|en)\/?$/i, '').replace(/\/+$/, ''),
+    // The mail is the only place to learn where: the posting page is an empty
+    // shell its own script fills from /api/, which robots.txt closes to
+    // automated clients. Below the title the alert writes
+    //   Joppl Oy - Espoo, Helsinki<br>Haku päättyy 30.09.2026 23.59
+    // so the places are what follows the last " - " before the line break --
+    // the last, because an employer's name may carry a dash of its own.
+    cities: ({ afters }) => {
+      for (const after of afters) {
+        const line = stripTags(after.split(/<br\b|<a\b/i)[0] ?? '');
+        const at = line.lastIndexOf(' - ');
+        if (at >= 0) return citiesFromList(line.slice(at + 3));
+      }
+      return undefined;
+    },
   },
   {
     // jobs2web / SuccessFactors powers per-employer career sites, so one
@@ -356,6 +377,7 @@ export function filterJobLinks<
     deadline?: string;
     deadlineOpen?: boolean;
     date?: string;
+    cities?: string[];
   },
 >(from: string, links: T[], occurrences?: Map<string, LinkOccurrence[]>): T[] {
   const source = jobSourceFor(from);
@@ -382,6 +404,10 @@ export function filterJobLinks<
         : undefined;
       if (ownTitle) next = { ...next, title: ownTitle };
       if (company) next = { ...next, company, title: composeTitle(company, ownTitle ?? l.title ?? '') };
+      // Where the job is, for a board whose mail says so. Known here, the
+      // posting page need not be read for it at import.
+      const cities = parsed ? source.cities?.(contextFor(occ, parsed, l.subject ?? '', from)) : undefined;
+      if (cities) next = { ...next, cities };
 
       // Only the Finnish boards state a deadline in the mail. Elsewhere it is
       // left absent rather than guessed at, and filled in at import time by

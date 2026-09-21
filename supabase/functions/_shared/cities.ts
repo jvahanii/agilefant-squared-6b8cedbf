@@ -37,6 +37,8 @@ const NOT_A_CITY = new Set(
     'europe', 'eu', 'emea', 'nordics',
     // Anywhere at all.
     'remote', 'etätyö', 'etä', 'hybrid', 'hybridi', 'anywhere', 'useita paikkakuntia', 'koko suomi', 'multiple locations',
+    // Työmarkkinatori's alert mail, in its three languages.
+    'useita sijainteja', 'several locations', 'flera platser',
   ],
 );
 
@@ -100,6 +102,15 @@ function fromMarkup(html: string): string[] {
   const geo = [...html.matchAll(/class="jobGeoLocation"[^>]*>([^<]*)</g)].map((m) => m[1].trim()).find(Boolean);
   if (geo) return [geo.split(',')[0]];
   return [];
+}
+
+/**
+ * The cities in a place list as a job-alert mail writes it — "Espoo, Helsinki",
+ * "Espoo, Suomi" — with the same filtering as a page: "Suomi" and "Useita
+ * sijainteja" (several locations) are not cities, so the latter gives none.
+ */
+export function citiesFromList(text: string): string[] {
+  return keepCities(text.split(/[,;/]/));
 }
 
 /** The cities a posting page says the job is in; empty when it names none. */

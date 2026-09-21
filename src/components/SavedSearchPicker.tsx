@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LinkIcon, Loader2, Mail, MailCheck } from "lucide-react";
+import { LinkIcon, Loader2, Mail, MailCheck, MapPin } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,15 +178,19 @@ export function SavedSearchPicker({
           const found = `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} in ${
             new Set(sorted.map((l) => l.messageId)).size
           } email${new Set(sorted.map((l) => l.messageId)).size === 1 ? "" : "s"}.`;
+          // Read while the deadline or the city is unknown: a mail that states
+          // the date still leaves the page as the only place that says where,
+          // and the dialog shows it. A city the mail gave (Työmarkkinatori)
+          // needs no read.
           const toRead = [
             ...new Map(
               sorted
-                .filter((l) => !l.deadline && !l.applicationsClosed && !readableInBrowser(l.url))
+                .filter((l) => (!l.deadline || l.cities === undefined) && !l.applicationsClosed && !readableInBrowser(l.url))
                 .map((l) => [l.url, { url: l.url, date: l.date }]),
             ).values(),
           ].slice(0, MAX_POSTINGS_READ);
           for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {
-            setStage(`${found} Reading job postings for deadlines… ${at}/${toRead.length}`);
+            setStage(`${found} Reading job postings for deadlines and cities… ${at}/${toRead.length}`);
             let facts: { url: string; deadline: string | null; applicationsClosed: boolean; cities?: string[] | null }[];
             try {
               ({ facts } = await callGmail<{ facts: typeof facts }>({
@@ -753,6 +757,13 @@ export function SavedSearchPicker({
                         {!selected[key] && startingReason(l, repeats) && (
                           <span className="block text-xs text-muted-foreground">
                             Not selected: {startingReason(l, repeats)}. Tick it to import anyway.
+                          </span>
+                        )}
+                        {/* Every city here; the item's name will show two and a count. */}
+                        {!!l.cities?.length && (
+                          <span className="block truncate text-xs text-foreground/80" title={l.cities.join(", ")}>
+                            <MapPin className="w-3 h-3 inline mr-1 text-muted-foreground" aria-hidden="true" />
+                            {l.cities.join(", ")}
                           </span>
                         )}
                         <span className="block truncate text-xs text-muted-foreground">

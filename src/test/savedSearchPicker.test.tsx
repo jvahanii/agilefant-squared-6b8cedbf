@@ -159,7 +159,7 @@ describe("SavedSearchPicker", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(
-        "Found 8 jobs in 2 emails. Reading job postings for deadlines… 0/8",
+        "Found 8 jobs in 2 emails. Reading job postings for deadlines and cities… 0/8",
       ),
     );
     // Asked for without the postings, which it reads itself, six at a time.
@@ -173,6 +173,50 @@ describe("SavedSearchPicker", () => {
     // What the postings said is on the rows, and the closed one starts unticked.
     expect(screen.getAllByText(/^closes /)).toHaveLength(1);
     expect(screen.getByText("Not selected: no longer accepting applications. Tick it to import anyway.")).toBeInTheDocument();
+  });
+
+  it("reads a posting the mail dated for its cities, shows them, and imports them", async () => {
+    callGmail
+      .mockResolvedValueOnce({
+        links: [link({ url: "https://www.linkedin.com/jobs/view/7", title: "Nokia — Standardization Lead", deadline: "2026-10-11" })],
+      })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 });
+    postingFacts.mockResolvedValueOnce({
+      facts: [{ url: "https://www.linkedin.com/jobs/view/7", deadline: null, applicationsClosed: false, cities: ["Espoo", "Dallas", "Bangalore"] }],
+    });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    // All of them on the row; the item name will show two and a count.
+    expect(await screen.findByText("Espoo, Dallas, Bangalore")).toBeInTheDocument();
+    expect(postingFacts.mock.calls[0][0].links.map((l: { url: string }) => l.url)).toEqual(["https://www.linkedin.com/jobs/view/7"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ deadline: "2026-10-11", cities: ["Espoo", "Dallas", "Bangalore"] });
+  });
+
+  it("shows cities the mail itself gave, without reading the posting", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({
+          url: "https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/1f93da93-4577-45e3-9edb-73c024fed812",
+          title: "Joppl Oy — servicenow ITSM expert",
+          deadline: "2026-09-30",
+          cities: ["Espoo", "Helsinki"],
+        }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    expect(await screen.findByText("Espoo, Helsinki")).toBeInTheDocument();
+    expect(postingFacts).not.toHaveBeenCalled();
+  });
+
+  it("shows no location line for a posting known to name no city", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ url: "https://x/remote", title: "Remote one", deadline: "2026-10-01", cities: [] })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Remote one");
+    expect(document.querySelector("svg.lucide-map-pin")).toBeNull();
+    expect(postingFacts).not.toHaveBeenCalled();
   });
 
   it("still shows the list when the postings cannot be read", async () => {

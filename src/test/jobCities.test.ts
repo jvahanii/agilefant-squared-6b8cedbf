@@ -7,7 +7,8 @@
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import fs from "fs";
-import { citiesFromPage, withCities } from "../../supabase/functions/_shared/cities";
+import { citiesFromList, citiesFromPage, withCities } from "../../supabase/functions/_shared/cities";
+import { extractLinks, type GmailMessage } from "../../supabase/functions/_shared/extract";
 import { factsFromPage, fillDeadlines } from "../../supabase/functions/_shared/fetchDeadline";
 
 const page = (name: string) => fs.readFileSync(`src/test/fixtures/${name}`, "utf8");
@@ -155,5 +156,53 @@ describe("reading a posting for its city", () => {
     expect(fetched).toEqual(["https://duunitori.fi/tyopaikat/tyo/a"]);
     expect(dated).toMatchObject({ deadline: "2026-10-31", cities: ["Espoo"] });
     expect(known.cities).toEqual(["Oulu"]);
+  });
+});
+
+describe("Työmarkkinatori: the cities come from the alert mail", () => {
+  // The posting page is an empty shell filled from /api/, which robots.txt
+  // closes to automated clients, so the mail is the source. The fixture is a
+  // real alert, markup as delivered; only the recipient's address and
+  // unsubscribe tokens are replaced, at the same length.
+  const alert = (): GmailMessage => ({
+    id: "tmt-1",
+    internalDate: "1789677992000",
+    payload: {
+      mimeType: "text/html",
+      body: { data: Buffer.from(page("tyomarkkinatori-alert-two-postings.html"), "utf8").toString("base64url") },
+      headers: [
+        { name: "From", value: "Työmarkkinatori <noreply@tyomarkkinatori.fi>" },
+        { name: "Subject", value: "Työmarkkinatori: Työpaikkavahdin löytämät uusimmat työpaikat" },
+      ],
+    },
+  });
+
+  it("reads each posting's cities from the line under its title, beside the employer and the closing date", () => {
+    const links = extractLinks(alert(), "jobs");
+    expect(links.map((l) => [l.url, l.company, l.deadline, l.cities])).toEqual([
+      ["https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/1f93da93-4577-45e3-9edb-73c024fed812", "Joppl Oy", "2026-09-30", ["Espoo", "Helsinki"]],
+      // "Useita sijainteja" — several locations, none named: known to have no city.
+      ["https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/4462dd2f-7ca2-443e-9b2b-dabe73e4d2e8", "Academic Work Finland Oy", "2027-03-16", []],
+    ]);
+  });
+
+  it("names the imported item after them", () => {
+    const [first] = extractLinks(alert(), "jobs");
+    expect(withCities(first.title, first.cities)).toBe("Joppl Oy — servicenow ITSM expert (Espoo, Helsinki)");
+  });
+
+  it("does not read the posting page at import once the mail has said", async () => {
+    const fetched: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      fetched.push(url);
+      return new Response("", { status: 200, headers: { "content-type": "text/html" } });
+    });
+    await fillDeadlines(extractLinks(alert(), "jobs"));
+    expect(fetched).toEqual([]);
+    vi.unstubAllGlobals();
+  });
+
+  it("leaves a country out of the list", () => {
+    expect(citiesFromList("Espoo, Suomi")).toEqual(["Espoo"]);
   });
 });
