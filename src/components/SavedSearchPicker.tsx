@@ -23,7 +23,7 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { APPLY_NEXT_BACKLOG_ID, APPLY_NEXT_STATUS, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
 import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
@@ -477,6 +477,8 @@ export function SavedSearchPicker({
       // Ranking covers what was already in each list as well as what has just
       // arrived.
       const app = useAppStore.getState();
+      const applyNext = findApplyNextTarget(app.backlogs, search.tree_id);
+      let mirrored = 0;
       app.runBulk(() => {
         for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
           const ordered = sortTopLevel(
@@ -494,6 +496,20 @@ export function SavedSearchPicker({
             `Auto-placed import: ${ordered.length} items in name order`,
           );
         }
+
+        // Postings marked In progress in the picker also go on the shortlist
+        // of jobs to apply for next — mirrored, so each stays one item, filed
+        // in both trees. Read from the imported items rather than the picker
+        // rows: the import is what turned a row into an item, and only the
+        // item's id can be mirrored. Same bulk as the ranking: one undo.
+        if (applyNext) {
+          const items = useAppStore.getState().workItems;
+          const started = createdIds.filter((id) => items[id]?.status === APPLY_NEXT_STATUS);
+          if (started.length > 0) {
+            app.moveWorkItemsToBacklog(started, applyNext.backlogId, applyNext.treeId, "mirror", search.tree_id);
+            mirrored = started.length;
+          }
+        }
       });
 
       toast({
@@ -504,6 +520,9 @@ export function SavedSearchPicker({
           (arrived
             ? `Both lists sorted by name and saved as rank.`
             : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
+          (mirrored > 0 && applyNext
+            ? ` ${mirrored} in progress also in ${backlogName(applyNext.backlogId)}.`
+            : "") +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : ""),
       });
       void checkExistingForClosed([autoPlace.withDeadline, autoPlace.withoutDeadline], createdIds);
@@ -760,7 +779,10 @@ export function SavedSearchPicker({
             disabled={importing || !autoPlace}
             title={
               autoPlace
-                ? `Postings with a closing date go to ${backlogName(autoPlace.withDeadline)}, the rest to ${backlogName(autoPlace.withoutDeadline)}. Both lists are then sorted by name and that order saved as rank.`
+                ? `Postings with a closing date go to ${backlogName(autoPlace.withDeadline)}, the rest to ${backlogName(autoPlace.withoutDeadline)}. Both lists are then sorted by name and that order saved as rank.` +
+                  (findApplyNextTarget(backlogs, search.tree_id)
+                    ? ` Postings marked In progress also appear in ${backlogName(APPLY_NEXT_BACKLOG_ID)}.`
+                    : "")
                 : "Choose both lists above first."
             }
           >

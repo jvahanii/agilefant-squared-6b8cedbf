@@ -22,9 +22,10 @@ vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...ar
 const loadFromSupabase = vi.fn().mockResolvedValue(undefined);
 const applySiblingOrder = vi.fn();
 const runBulk = vi.fn((fn: () => void) => fn());
+const moveWorkItemsToBacklog = vi.fn();
 /** The slice of the store the picker reads; backlogs decide auto-placing. */
 let storeState: Record<string, unknown> = {};
-const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, workItems: {}, backlogs: {}, ...storeState });
+const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, moveWorkItemsToBacklog, workItems: {}, backlogs: {}, ...storeState });
 vi.mock("@/store/appStore", () => ({
   useAppStore: Object.assign(
     (select: (s: ReturnType<typeof appStoreState>) => unknown) => select(appStoreState()),
@@ -103,6 +104,7 @@ beforeEach(() => {
   readPostingFacts.mockReset();
   applySiblingOrder.mockReset();
   runBulk.mockClear();
+  moveWorkItemsToBacklog.mockReset();
   storeState = {};
   checkClosed.mockClear();
 });
@@ -646,5 +648,70 @@ describe("JobSearchRunButton", () => {
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByText("From the header")).toBeInTheDocument();
+  });
+});
+
+describe("Import & auto-place: In progress goes on the shortlist", () => {
+  const SHORTLIST = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-34431983";
+  const NEXT_TREE = "tree-next";
+  const backlog = (id: string, name: string, treeId = "tree-1") => ({
+    id, name, parentId: null, childrenIds: [], treeId, rank: 0,
+  });
+  const item = (id: string, title: string, status: string) => ({
+    id, title, status, parentId: null, childrenIds: [],
+    backlogAssignments: { "tree-1": "dl" }, ranks: { dl: 0 },
+  });
+
+  /** Two imported postings: one marked In progress in the picker, one left Not started. */
+  const importTwo = async (lists: Record<string, unknown>) => {
+    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+    storeState = {
+      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline"), ...lists },
+      workItems: {
+        started: item("started", "0930 Metsä Group — Senior Manager, Business AI", "in_progress"),
+        waiting: item("waiting", "1011 Alma Media — AI", "not_started"),
+      },
+    };
+    callGmail
+      .mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30" }),
+          link({ url: "https://x/alma", title: "Alma", deadline: "2026-10-11" }),
+        ],
+      })
+      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0, dated: 2, undated: 0, createdIds: ["started", "waiting"] })
+      .mockResolvedValueOnce({ marked: 1 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Metsä");
+    fireEvent.change(screen.getByRole("combobox", { name: "Status for Metsä" }), { target: { value: "in_progress" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
+  };
+
+  it("mirrors the In-progress ones into the shortlist, by its id, in the same undo step", async () => {
+    // Named differently on purpose: the list is found by id, not by name.
+    await importTwo({ [SHORTLIST]: backlog(SHORTLIST, "Seuraavaksi (renamed)", NEXT_TREE) });
+
+    // The picker's choice reached the import...
+    const sent = callGmail.mock.calls[1][0].links as Array<{ url: string; status?: string }>;
+    expect(sent.find((l) => l.url === "https://x/metsa")?.status).toBe("in_progress");
+    // ...and only that item is mirrored — not moved, not copied.
+    expect(moveWorkItemsToBacklog).toHaveBeenCalledTimes(1);
+    expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["started"], SHORTLIST, NEXT_TREE, "mirror", "tree-1");
+    expect(runBulk).toHaveBeenCalledTimes(1);
+    expect(toast).toHaveBeenLastCalledWith(
+      expect.objectContaining({ description: expect.stringContaining("1 in progress also in Seuraavaksi (renamed).") }),
+    );
+  });
+
+  it("skips the step when the shortlist is not in this organisation's data", async () => {
+    // A list merely called "Hae näitä seuraavaksi" is not enough.
+    await importTwo({ lookalike: backlog("lookalike", "Hae näitä seuraavaksi", NEXT_TREE) });
+    expect(moveWorkItemsToBacklog).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenLastCalledWith(
+      expect.objectContaining({ description: expect.not.stringContaining("in progress also in") }),
+    );
   });
 });

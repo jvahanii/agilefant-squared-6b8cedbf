@@ -3,7 +3,7 @@
  * to another — both chosen on the saved search.
  */
 import { describe, it, expect } from "vitest";
-import { findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { APPLY_NEXT_BACKLOG_ID, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
 
 const backlog = (id: string, name: string, treeId: string): Backlog => ({
@@ -56,5 +56,28 @@ describe("splitByDeadline", () => {
     const { dated, undated } = splitByDeadline(links);
     expect(dated.map((l) => l.url)).toEqual(["a"]);
     expect(undated.map((l) => l.url)).toEqual(["b", "c"]);
+  });
+});
+
+describe("findApplyNextTarget", () => {
+  const NEXT_TREE = "org::bt-next";
+
+  it("finds the shortlist by its id, whatever it is called now", () => {
+    const backlogs = {
+      [APPLY_NEXT_BACKLOG_ID]: backlog(APPLY_NEXT_BACKLOG_ID, "Renamed shortlist", NEXT_TREE),
+      other: backlog("other", "Hae näitä seuraavaksi", NEXT_TREE),
+    };
+    expect(findApplyNextTarget(backlogs, TREE)).toEqual({ backlogId: APPLY_NEXT_BACKLOG_ID, treeId: NEXT_TREE });
+  });
+
+  it("does not fall back to a list that only has the name", () => {
+    const backlogs = { other: backlog("other", "Hae näitä seuraavaksi", NEXT_TREE) };
+    expect(findApplyNextTarget(backlogs, TREE)).toBeNull();
+  });
+
+  it("gives nothing when the shortlist is in the tree being imported into", () => {
+    // An item holds one list per tree: "mirroring" there would move it.
+    const backlogs = { [APPLY_NEXT_BACKLOG_ID]: backlog(APPLY_NEXT_BACKLOG_ID, "Shortlist", TREE) };
+    expect(findApplyNextTarget(backlogs, TREE)).toBeNull();
   });
 });
