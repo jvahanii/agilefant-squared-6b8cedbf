@@ -399,7 +399,7 @@ export async function importLinksAsWorkItems(
         id,
         title: workItemTitle(link),
         description: describe(link),
-        status: 'not_started',
+        status: statusFor(link),
         parent_id: null,
         organization_id: organizationId,
         rank,
