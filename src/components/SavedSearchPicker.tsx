@@ -627,7 +627,17 @@ export function SavedSearchPicker({
                             truncated line, leaving it looking unticked for no
                             reason. */}
                         <span className="flex items-baseline gap-2 font-medium text-sm">
-                          <span className="truncate">{l.title}</span>
+                          <a
+                            href={l.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            // The row is a <label>; without this the click
+                            // would also toggle the row's checkbox.
+                            onClick={(e) => e.stopPropagation()}
+                            className="truncate underline decoration-muted-foreground/50 hover:text-primary hover:decoration-primary"
+                          >
+                            {l.title}
+                          </a>
                           <span className="flex shrink-0 items-baseline gap-2">
                             <span
                               className={`align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
