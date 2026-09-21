@@ -187,7 +187,7 @@ export function SavedSearchPicker({
           ].slice(0, MAX_POSTINGS_READ);
           for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {
             setStage(`${found} Reading job postings for deadlines… ${at}/${toRead.length}`);
-            let facts: { url: string; deadline: string | null; applicationsClosed: boolean }[];
+            let facts: { url: string; deadline: string | null; applicationsClosed: boolean; cities?: string[] | null }[];
             try {
               ({ facts } = await callGmail<{ facts: typeof facts }>({
                 action: "posting_facts",
@@ -207,6 +207,8 @@ export function SavedSearchPicker({
                 ...l,
                 ...(!l.deadline && f.deadline ? { deadline: f.deadline } : {}),
                 ...(f.applicationsClosed ? { applicationsClosed: true } : {}),
+                // Carried to the import, so it need not read the page again.
+                ...(Array.isArray(f.cities) ? { cities: f.cities } : {}),
               };
             });
           }
@@ -225,8 +227,13 @@ export function SavedSearchPicker({
         // when the posting reader extension is there. The list is already
         // usable meanwhile; rows gain their deadline as each answer arrives.
         if (!canReadInBrowser) return;
+        // Read while the city is unknown, even with a date from the mail: the
+        // server cannot read these pages at import, so this is the only chance
+        // to learn where the job is.
         const urls = [
-          ...new Set(sorted.filter((l) => !l.deadline && !l.applicationsClosed && readableInBrowser(l.url)).map((l) => l.url)),
+          ...new Set(
+            sorted.filter((l) => l.cities === undefined && !l.applicationsClosed && readableInBrowser(l.url)).map((l) => l.url),
+          ),
         ];
         if (urls.length === 0 || !(await postingReaderAvailable())) return;
         if (cancelled) return;
@@ -235,6 +242,9 @@ export function SavedSearchPicker({
           const reference = sorted.find((l) => l.url === url)?.date || new Date().toISOString();
           const facts = await readPostingFacts(url, reference);
           if (cancelled) return;
+          if (facts.cities) {
+            setPreview((prev) => prev.map((l) => (l.url === url ? { ...l, cities: facts.cities } : l)));
+          }
           if (facts.deadline || facts.closed) {
             setPreview((prev) =>
               prev.map((l) =>

@@ -608,6 +608,41 @@ describe("SavedSearchPicker reading Jobly through the browser", () => {
     expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ url: JOBLY_OPEN, deadline: "2026-10-11" });
   });
 
+  it("reads a posting whose mail gave a date, for its cities, and imports them", async () => {
+    // The server cannot read Jobly at import, so the picker is the only place
+    // the city can come from — date or no date.
+    readerInstalled = true;
+    readPostingFacts.mockResolvedValue({ deadline: "2026-12-01", closed: false, cities: ["Helsinki", "Tampere"] });
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ url: JOBLY_OPEN, title: "Alma", deadline: "2026-10-11" })] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await waitFor(() => expect(readPostingFacts).toHaveBeenCalledWith(JOBLY_OPEN, expect.anything()));
+    await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+
+    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    // The mail's date stands; the page adds where.
+    expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({
+      url: JOBLY_OPEN,
+      deadline: "2026-10-11",
+      cities: ["Helsinki", "Tampere"],
+    });
+  });
+
+  it("does not read a posting again once its city is known", async () => {
+    readerInstalled = true;
+    callGmail.mockResolvedValueOnce({
+      links: [link({ url: JOBLY_OPEN, title: "Alma", deadline: "2026-10-11", cities: ["Espoo"] })],
+    });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Alma");
+    await new Promise((r) => setTimeout(r, 200));
+    expect(readPostingFacts).not.toHaveBeenCalled();
+  });
+
   it("leaves the picker as it was without the extension, or for someone who is not a superuser", async () => {
     for (const [installed, isSuper] of [
       [false, true],

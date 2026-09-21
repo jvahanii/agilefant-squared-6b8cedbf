@@ -9,6 +9,7 @@
 // item's name.
 
 import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadlines.ts';
+import { citiesFromPage } from './cities.ts';
 
 /** Per request. Long enough for a slow board, short enough not to stall a preview. */
 const TIMEOUT_MS = 6_000;
@@ -142,6 +143,12 @@ export interface PostingFacts {
    *  gone, or the deadline it states has already passed. */
   closed?: boolean;
   /**
+   * The cities the posting says the job is in, from the page itself. Empty
+   * when the page was read and names none; absent when it was never read —
+   * which is what tells an import it still has to ask.
+   */
+  cities?: string[];
+  /**
    * The page never arrived, so nothing at all is known about this posting --
    * as opposed to it being open.
    *
@@ -226,7 +233,7 @@ export function factsFromPage(
     // today, while the reference only decides which year a bare "9.9." meant.
     deadlinePassed(deadline) ||
     (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
-  return { deadline, closed };
+  return { deadline, closed, cities: citiesFromPage(html) };
 }
 
 async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts> {
@@ -267,24 +274,28 @@ async function pool<T>(items: T[], job: (item: T) => Promise<void>, width = CONC
  * broad query cannot turn a preview into a crawl.
  */
 export async function fillDeadlines<
-  T extends { url: string; date?: string; deadline?: string; applicationsClosed?: boolean },
+  T extends { url: string; date?: string; deadline?: string; applicationsClosed?: boolean; cities?: string[] },
 >(links: T[]): Promise<T[]> {
+  // A deadline from the mail used to settle a posting. The page is now read
+  // for its cities as well, so it is skipped only once both are known: a
+  // Duunitori or Jobly mail states the date, and its page is still the only
+  // place that says where the job is.
   const targets: number[] = [];
   for (let i = 0; i < links.length && targets.length < MAX_FETCHES; i++) {
-    if (!links[i].deadline) targets.push(i);
+    if (!links[i].deadline || links[i].cities === undefined) targets.push(i);
   }
   if (targets.length === 0) return links;
 
   const out = [...links];
   await pool(targets, async (i) => {
     const facts = await factsFor(out[i].url, out[i].date ?? new Date().toISOString());
-    if (facts.deadline || facts.closed) {
-      out[i] = {
-        ...out[i],
-        ...(facts.deadline ? { deadline: facts.deadline } : {}),
-        ...(facts.closed ? { applicationsClosed: true } : {}),
-      };
-    }
+    out[i] = {
+      ...out[i],
+      // A date the mail stated stands: the page is read here for its city.
+      ...(!out[i].deadline && facts.deadline ? { deadline: facts.deadline } : {}),
+      ...(facts.closed ? { applicationsClosed: true } : {}),
+      ...(facts.cities ? { cities: facts.cities } : {}),
+    };
   });
   return out;
 }

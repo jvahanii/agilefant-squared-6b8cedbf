@@ -19,6 +19,11 @@ export interface PreviewLink {
   deadlineOpen?: boolean;
   /** The posting has stopped taking applications. Shown, but not pre-selected. */
   applicationsClosed?: boolean;
+  /**
+   * Where the job is, read from the posting page. Empty: read, no city named.
+   * Absent: not read yet, and the import will read it.
+   */
+  cities?: string[];
   /** Status the imported item should start with; absent means not_started. */
   status?: string;
 }

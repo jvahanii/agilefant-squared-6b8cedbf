@@ -93,3 +93,21 @@ describe('import with a chosen status', () => {
     expect(queried).not.toContain('backlog_statuses');
   });
 });
+
+describe('import names the item after where the job is', () => {
+  it('puts the closing date in front and the cities after, and lists them all in the description', async () => {
+    const { admin, inserted } = makeAdmin();
+    await importLinksAsWorkItems(admin, target, [
+      { ...link('https://x/c1'), title: 'Fortum — Analyst', deadline: '2026-09-30', cities: ['Espoo'] },
+      { ...link('https://x/c2'), title: 'HR with you — Open Application', cities: ['Helsinki', 'Tampere', 'Vantaa', 'Turku'] },
+      { ...link('https://x/c3'), title: 'Droppe — AI Operations Manager', cities: [] },
+    ]);
+    const rows = inserted.work_items as { title: string; description: string }[];
+    expect(rows.map((r) => r.title)).toEqual([
+      '0930 Fortum — Analyst (Espoo)',
+      'HR with you — Open Application (Helsinki, Tampere +2)',
+      'Droppe — AI Operations Manager',
+    ]);
+    expect(rows[1].description).toContain('Location: Helsinki, Tampere, Vantaa, Turku');
+  });
+});

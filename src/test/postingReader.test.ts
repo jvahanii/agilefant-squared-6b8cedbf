@@ -35,6 +35,8 @@ describe("factsFromPage", () => {
     expect(factsFromPage(URL_ALMA, 200, "text/html; charset=utf-8", POSTING, "2026-09-17T07:22:14Z")).toEqual({
       deadline: "2026-10-11",
       closed: false,
+      // Where the job is, from the same page: the posting is open in both.
+      cities: ["Helsinki", "Tampere"],
     });
   });
 
@@ -116,7 +118,7 @@ describe("the extension bridge", () => {
 
     const facts = await readPostingFacts("https://jobly.fi/tyopaikka/senior-ai-solutions-engineer-2760006", "2026-09-17");
 
-    expect(facts).toEqual({ deadline: "2026-10-11", closed: false });
+    expect(facts).toEqual({ deadline: "2026-10-11", closed: false, cities: ["Helsinki", "Tampere"] });
     // A bare jobly.fi link is fetched as www.jobly.fi, the host the extension allows.
     expect(requests).toEqual(["https://www.jobly.fi/tyopaikka/senior-ai-solutions-engineer-2760006"]);
     vi.useRealTimers();

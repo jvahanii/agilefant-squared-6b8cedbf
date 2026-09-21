@@ -110,6 +110,11 @@ export interface ExtractedLink {
    */
   applicationsClosed?: boolean;
   /**
+   * Where the job is, from the posting page. Empty when the page was read and
+   * names no city; absent when it has not been read yet.
+   */
+  cities?: string[];
+  /**
    * The backlog status the created work item should start with, chosen in the
    * picker. Absent (or unknown to the target backlog) means 'not_started'.
    */

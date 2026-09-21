@@ -11,6 +11,7 @@ import type { ExtractedLink } from './extract.ts';
 import { normalizeUrl } from './urls.ts';
 import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
 import { deadlinePrefix } from './deadlines.ts';
+import { withCities } from './cities.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
 
 /**
@@ -57,13 +58,14 @@ function newWorkItemId(orgId: string): string {
 }
 
 /**
- * "0920 Academic Work — AI Engineer" when a deadline is known, so a backlog
- * sorted by name groups by closing date. Without one the title is unchanged.
+ * "0920 Academic Work — AI Engineer (Helsinki)": the closing date in front,
+ * so a backlog sorted by name groups by it, and the cities after. Either is
+ * left out when not known.
  */
 function workItemTitle(link: ExtractedLink): string {
   const prefix = deadlinePrefix(link.deadline);
   const base = link.title || link.url;
-  return prefix ? `${prefix} ${base}` : base;
+  return withCities(prefix ? `${prefix} ${base}` : base, link.cities);
 }
 
 function describe(link: ExtractedLink): string {
@@ -73,6 +75,8 @@ function describe(link: ExtractedLink): string {
       : link.deadlineOpen
         ? 'Applications open until further notice'
         : '',
+    // Every city, where the name shows two and a count.
+    link.cities?.length ? `Location: ${link.cities.join(', ')}` : '',
     link.subject ? `From email: ${link.subject}` : '',
     link.from ? `Sender: ${link.from}` : '',
     link.date ? `Received: ${link.date}` : '',

@@ -394,6 +394,7 @@ Deno.serve(async (req) => {
           url: l.url,
           deadline: (l as { deadline?: string }).deadline ?? null,
           applicationsClosed: (l as { applicationsClosed?: boolean }).applicationsClosed === true,
+          cities: (l as { cities?: string[] }).cities ?? null,
         })),
       });
     }
@@ -434,6 +435,18 @@ Deno.serve(async (req) => {
         // a well-formed date: it becomes part of the item's name.
         ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
         ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
+        // Cities the picker already read — through the browser, for a board
+        // that refuses this server. They go into the item's name, so only short
+        // strings, and not many. An empty list is kept: it means the page was
+        // read and named none, so the import need not read it again.
+        ...(Array.isArray(l.cities)
+          ? {
+              cities: l.cities
+                .filter((c): c is string => typeof c === 'string' && c.trim().length > 0 && c.length <= 60)
+                .map((c) => c.trim())
+                .slice(0, 10),
+            }
+          : {}),
         // The status the picker chose for this row; the import validates it
         // against the target list's statuses and falls back to Not started.
         ...(typeof l.status === 'string' && l.status ? { status: l.status } : {}),
