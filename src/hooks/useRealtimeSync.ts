@@ -638,5 +638,5 @@ export function useRealtimeSync() {
     // A tree shared *out* after this ran is picked up by the next resync rather
     // than by rebuilding every channel on each tree edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId, partnerOrgsKey]);
+  }, [activeOrgId, partnerOrgsKey, hasOwnTrees]);
 }
