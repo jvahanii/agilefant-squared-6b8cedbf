@@ -1685,6 +1685,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
               appDataBackgroundRefreshInFlight = null;
             }
+            if (get().workItemsRefreshing) set({ workItemsRefreshing: false });
           });
           appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
           void backgroundPromise;
