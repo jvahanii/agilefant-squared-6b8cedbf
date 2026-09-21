@@ -759,7 +759,7 @@ describe("Import & auto-place: the summary", () => {
 
     await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
     const summary = toast.mock.calls.find((c) => String(c[0].title).startsWith("Imported"))![0];
-    expect(summary.description).toContain("Open ads now: 2 with a deadline, 1 without (closed ones not counted).");
+    expect(summary.description).toContain("Open ads now: 3 in total — 2 with a deadline, 1 without (closed ones not counted).");
     expect(summary.duration).toBe(10_000);
   });
 
@@ -799,7 +799,7 @@ describe("Import & auto-place: the summary", () => {
     });
     await autoPlaceWithCheck();
     await waitFor(() => expect(existingAdsToast()).toBeDefined());
-    expect(existingAdsToast()![0].description).toContain("Open ads now: 0 with a deadline, 0 without");
+    expect(existingAdsToast()![0].description).toContain("Open ads now: 0 in total — 0 with a deadline, 0 without");
     readerInstalled = false;
   });
 });

@@ -503,9 +503,11 @@ export function SavedSearchPicker({
         const { closed } = useClosedPostingsStore.getState();
         const open = (backlogId: string) =>
           countOpenAds(topLevelItems(workItems, search.tree_id, new Set([backlogId])), closed);
+        const dated = open(autoPlace.withDeadline);
+        const undated = open(autoPlace.withoutDeadline);
         return (
-          `Open ads now: ${open(autoPlace.withDeadline)} with a deadline, ` +
-          `${open(autoPlace.withoutDeadline)} without (closed ones not counted).`
+          `Open ads now: ${dated + undated} in total — ${dated} with a deadline, ` +
+          `${undated} without (closed ones not counted).`
         );
       };
       let mirrored = 0;
