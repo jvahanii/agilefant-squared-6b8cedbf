@@ -921,8 +921,13 @@ function WorkItemNodeContent({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              {/* The dot is 12px, too small a target to hit reliably. The
+                  ::before layer widens what takes the click to 24×20 without
+                  moving anything: sideways it fills the row's 6px gap on each
+                  side, and it stops at the row's own top and bottom, so it
+                  can never open the menu of the row above or below. */}
               <button
-                className="w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125"
+                className="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1"
                 style={{
                   backgroundColor:
                     treeStatuses.find((s) => s.key === item.status)?.color ?? treeStatuses[0]?.color ?? "#94a3b8",
