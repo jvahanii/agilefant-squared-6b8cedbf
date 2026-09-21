@@ -4785,6 +4785,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { backlogTrees: updatedTrees };
         }
 
+        // Arrived from elsewhere: undo must not treat it as its own to delete.
+        if (!state.backlogTrees[id]) noteRemoteArrival(remotelyAddedTreeIds, id);
+
         // INSERT or UPDATE: preserve existing rootBacklogIds so backlogs stay attached
         const newTree: BacklogTree = {
           id,
