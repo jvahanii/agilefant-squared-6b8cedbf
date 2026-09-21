@@ -78,6 +78,14 @@ export function useRealtimeSync() {
     return [...partners].sort().join(',');
   })();
 
+  // Trees load after the first render, so on a fresh page load this effect
+  // first runs with none of our own. Outgoing shares are looked up from our
+  // tree IDs, so without re-running once they arrive, the organizations we
+  // share trees *out* to would never get a channel until the page reloaded.
+  // A flag rather than the tree IDs: it flips once, instead of churning every
+  // channel whenever a tree is added or removed.
+  const hasOwnTrees = Object.keys(backlogTrees).some((id) => id.startsWith(`${activeOrgId}::`));
+
   useEffect(() => {
     if (!activeOrgId) return;
 
@@ -630,5 +638,5 @@ export function useRealtimeSync() {
     // A tree shared *out* after this ran is picked up by the next resync rather
     // than by rebuilding every channel on each tree edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId, partnerOrgsKey]);
+  }, [activeOrgId, partnerOrgsKey, hasOwnTrees]);
 }

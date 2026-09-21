@@ -486,6 +486,58 @@ function bumpMutationVersion() {
   localMutationVersion++;
 }
 
+/**
+ * Rows that arrived from somewhere else — another person, another device, a
+ * background import — rather than from an edit made on this page.
+ *
+ * Undo writes the difference between the screen and its snapshot, and an undo
+ * snapshot only ever records this page's own edits. Without this set, anything
+ * that appeared after the last local edit counts as "removed by undo" and is
+ * deleted in the database. Undo leaves these alone and keeps them on screen.
+ */
+const remotelyAddedWorkItemIds = new Set<string>();
+const remotelyAddedBacklogIds = new Set<string>();
+const remotelyAddedTreeIds = new Set<string>();
+
+function noteRemoteArrival(set: Set<string>, id: string) {
+  set.add(id);
+  // Bounded so a long session can't grow it without limit.
+  if (set.size > 5000) {
+    const first = set.values().next().value as string | undefined;
+    if (first !== undefined) set.delete(first);
+  }
+}
+
+/**
+ * Carry entities that arrived from elsewhere across an undo or redo: they stay
+ * on screen, and the snapshot switch no longer treats them as deletions.
+ */
+function keepRemoteAdditions(from: AppState, to: DataSnapshot): DataSnapshot {
+  let workItems = to.workItems;
+  let backlogs = to.backlogs;
+  let backlogTrees = to.backlogTrees;
+  for (const id of remotelyAddedWorkItemIds) {
+    if (from.workItems[id] && !workItems[id]) {
+      if (workItems === to.workItems) workItems = { ...workItems };
+      workItems[id] = from.workItems[id];
+    }
+  }
+  for (const id of remotelyAddedBacklogIds) {
+    if (from.backlogs[id] && !backlogs[id]) {
+      if (backlogs === to.backlogs) backlogs = { ...backlogs };
+      backlogs[id] = from.backlogs[id];
+    }
+  }
+  for (const id of remotelyAddedTreeIds) {
+    if (from.backlogTrees[id] && !backlogTrees[id]) {
+      if (backlogTrees === to.backlogTrees) backlogTrees = { ...backlogTrees };
+      backlogTrees[id] = from.backlogTrees[id];
+    }
+  }
+  if (workItems === to.workItems && backlogs === to.backlogs && backlogTrees === to.backlogTrees) return to;
+  return { ...to, workItems, backlogs, backlogTrees };
+}
+
 function pushUndoEntry(state: AppState): DataSnapshot[] {
   if (undoBatchDepth > 0) return state.undoStack;
   bumpMutationVersion();
@@ -4237,8 +4289,9 @@ export const useAppStore = create<AppState>()((set, get) => {
     undo: () => {
       const state = get();
       const stack = [...state.undoStack];
-      const prev = stack.pop();
-      if (!prev) return;
+      const popped = stack.pop();
+      if (!popped) return;
+      const prev = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
       persistSnapshotSwitch(state, prev);
       set({ ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] });
@@ -4247,8 +4300,9 @@ export const useAppStore = create<AppState>()((set, get) => {
     redo: () => {
       const state = get();
       const stack = [...state.redoStack];
-      const next = stack.pop();
-      if (!next) return;
+      const popped = stack.pop();
+      if (!popped) return;
+      const next = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
       persistSnapshotSwitch(state, next);
       set({ ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack });
@@ -4392,6 +4446,10 @@ export const useAppStore = create<AppState>()((set, get) => {
         // The echo of a save made before this page deleted the item, arriving
         // after. Showing it again would let the next edit save it again.
         if (!state.workItems[id] && isRecentlyDeletedWorkItem(id)) return state;
+
+        // Arrived from elsewhere: undo must not treat it as its own to delete.
+        if (!state.workItems[id]) noteRemoteArrival(remotelyAddedWorkItemIds, id);
+
 
         // INSERT or UPDATE: preserve existing childrenIds and ranks from current state.
         // Ranks live in the separate work_item_backlog_ranks table and arrive
@@ -4648,6 +4706,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           return { backlogs: updatedBacklogs, backlogTrees: updatedTrees };
         }
 
+        // Arrived from elsewhere: undo must not treat it as its own to delete.
+        if (!state.backlogs[id]) noteRemoteArrival(remotelyAddedBacklogIds, id);
+
         // INSERT or UPDATE: preserve existing childrenIds from current state
         const newBacklog: Backlog = {
           id,
@@ -4723,6 +4784,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           delete updatedTrees[id];
           return { backlogTrees: updatedTrees };
         }
+
+        // Arrived from elsewhere: undo must not treat it as its own to delete.
+        if (!state.backlogTrees[id]) noteRemoteArrival(remotelyAddedTreeIds, id);
 
         // INSERT or UPDATE: preserve existing rootBacklogIds so backlogs stay attached
         const newTree: BacklogTree = {
