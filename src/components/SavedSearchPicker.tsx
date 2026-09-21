@@ -731,14 +731,10 @@ export function SavedSearchPicker({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={importSelected} disabled={importing}>
-          {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-          Import selected
-        </Button>
         {mode === "jobs" && (
           <Button
             size="sm"
-            variant="secondary"
+            variant="destructive"
             onClick={importAndAutoPlace}
             disabled={importing || !autoPlace}
             title={
@@ -747,13 +743,17 @@ export function SavedSearchPicker({
                 : "Choose both lists above first."
             }
           >
-            Import &amp; auto-place
+            Import selected &amp; auto-place
           </Button>
         )}
+        <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing}>
+          {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+          Import selected
+        </Button>
         {mode === "jobs" && (
           <Button
             size="sm"
-            variant="outline"
+            variant={noNewJobs ? "destructive" : "secondary"}
             onClick={markAllRead}
             disabled={importing}
             title={`Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.`}
