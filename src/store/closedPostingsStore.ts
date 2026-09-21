@@ -51,6 +51,42 @@ interface ClosedPostingsState {
  */
 export const POSTING_BATCH = 20;
 
+type PostingStatusAnswer = { results?: { url: string; closed: boolean; unreachable?: number | null }[] };
+
+/**
+ * Ask posting-status about one batch.
+ *
+ * A 401 is tried once more. The sign-in token is read as each request is
+ * made, and a request held up by a sleeping laptop or a frozen tab goes out
+ * with a token that expired while it waited: on 2026-09-21 the second batch
+ * of a run left 26 minutes after the first and was refused with "JWT
+ * expired". The retry reads a fresh token.
+ *
+ * Any failure is reported in the function's own words — "JWT expired",
+ * "forbidden: superuser only" — rather than the client library's "Edge
+ * Function returned a non-2xx status code", which names no cause.
+ */
+async function askPostingStatus(urls: string[]): Promise<PostingStatusAnswer> {
+  for (let attempt = 1; ; attempt++) {
+    const { data, error } = await supabase.functions.invoke('posting-status', { body: { urls } });
+    if (!error) {
+      if (data?.error) throw new Error(data.error);
+      return data ?? {};
+    }
+    const response = (error as { context?: Response }).context;
+    if (response?.status === 401 && attempt === 1) continue;
+    let reason: string = error.message;
+    try {
+      const body = await response?.json();
+      if (body?.error) reason = String(body.error);
+    } catch {
+      // No readable body: keep the library's message.
+    }
+    if (response?.status === 401) reason = 'Your sign-in had expired. Reload the page and run the check again.';
+    throw new Error(reason);
+  }
+}
+
 export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => ({
   closed: new Set(),
   checked: new Set(),
@@ -106,11 +142,7 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
     try {
       for (let at = 0; at < urls.length; at += POSTING_BATCH) {
         const batch = urls.slice(at, at + POSTING_BATCH);
-        const { data, error: callError } = await supabase.functions.invoke('posting-status', {
-          body: { urls: batch },
-        });
-        if (callError) throw callError;
-        if (data?.error) throw new Error(data.error);
+        const data = await askPostingStatus(batch);
 
         const results: { url: string; closed: boolean; unreachable?: number | null }[] = data?.results ?? [];
         set((s) => {

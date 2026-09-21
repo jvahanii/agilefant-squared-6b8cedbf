@@ -121,6 +121,45 @@ describe("closedPostingsStore", () => {
     expect(state().closed.size).toBe(0);
   });
 
+  /** A non-2xx answer as supabase-js reports it: a generic message, the response on context. */
+  const httpError = (status: number, body: unknown) => ({
+    data: null,
+    error: Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: new Response(JSON.stringify(body), { status }),
+    }),
+  });
+
+  it("asks again once when the sign-in token had expired on the way", async () => {
+    // 2026-09-21: a batch held up by a sleeping laptop left with a stale token.
+    invoke
+      .mockResolvedValueOnce(httpError(401, { error: "unauthorized: JWT expired" }))
+      .mockImplementationOnce(answer(["https://b.example/1"]));
+
+    const result = await state().check([{ id: "i1", title: "i1", urls: ["https://b.example/1"] }]);
+
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(result.error).toBeUndefined();
+    expect([...state().closed]).toEqual(["i1"]);
+  });
+
+  it("says to sign in again when the retry is refused too, and asks no more", async () => {
+    invoke.mockResolvedValue(httpError(401, { error: "unauthorized: JWT expired" }));
+
+    const result = await state().check([{ id: "i1", title: "i1", urls: ["https://b.example/1"] }]);
+
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(result.error).toBe("Your sign-in had expired. Reload the page and run the check again.");
+  });
+
+  it("reports the function's own reason for any other refusal, without retrying", async () => {
+    invoke.mockResolvedValue(httpError(403, { error: "forbidden: superuser only" }));
+
+    const result = await state().check([{ id: "i1", title: "i1", urls: ["https://b.example/1"] }]);
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(result.error).toBe("forbidden: superuser only");
+  });
+
   it("does nothing, and asks nothing, when no item carries a link", async () => {
     const result = await state().check([{ id: "i1", title: "i1", urls: [] }]);
 
