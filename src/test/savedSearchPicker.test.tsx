@@ -733,68 +733,111 @@ describe("JobSearchRunButton", () => {
   });
 });
 
-describe("Import & auto-place: In progress goes on the shortlist", () => {
+describe("Import & auto-place: mirroring the rows switched on", () => {
   const SHORTLIST = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-34431983";
   const NEXT_TREE = "tree-next";
   const backlog = (id: string, name: string, treeId = "tree-1") => ({
     id, name, parentId: null, childrenIds: [], treeId, rank: 0,
   });
-  const item = (id: string, title: string, status: string) => ({
-    id, title, status, parentId: null, childrenIds: [],
+  const item = (id: string, title: string) => ({
+    id, title, status: "not_started", parentId: null, childrenIds: [],
     backlogAssignments: { "tree-1": "dl" }, ranks: { dl: 0 },
   });
 
-  /** Two imported postings: one marked In progress in the picker, one left Not started. */
-  const importTwo = async (lists: Record<string, unknown>) => {
-    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+  /** Two postings, imported as items "metsa-item" and "alma-item". */
+  const openPicker = async (mirrorColumn: string | null, lists: Record<string, unknown>) => {
+    autoPlaceRow = {
+      auto_place_dated_backlog_id: "dl",
+      auto_place_undated_backlog_id: "open",
+      auto_place_mirror_backlog_id: mirrorColumn,
+    };
     storeState = {
       backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline"), ...lists },
+      backlogTrees: { [NEXT_TREE]: { id: NEXT_TREE, name: "MWB uuden työn saaminen" } },
       workItems: {
-        started: item("started", "0930 Metsä Group — Senior Manager, Business AI", "in_progress"),
-        waiting: item("waiting", "1011 Alma Media — AI", "not_started"),
+        "metsa-item": item("metsa-item", "0930 Metsä Group — Senior Manager, Business AI"),
+        "alma-item": item("alma-item", "1011 Alma Media — AI"),
       },
     };
     callGmail
       .mockResolvedValueOnce({
         links: [
-          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30" }),
-          link({ url: "https://x/alma", title: "Alma", deadline: "2026-10-11" }),
+          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30", cities: [] }),
+          link({ url: "https://x/alma", title: "Alma", deadline: "2026-10-11", cities: [] }),
         ],
       })
-      .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0, dated: 2, undated: 0, createdIds: ["started", "waiting"] })
+      .mockResolvedValueOnce({
+        created: 2, skipped: 0, collapsed: 0, dated: 2, undated: 0,
+        createdIds: ["metsa-item", "alma-item"],
+        createdByUrl: { "https://x/metsa": "metsa-item", "https://x/alma": "alma-item" },
+      })
       .mockResolvedValueOnce({ marked: 1 });
-
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Metsä");
-    fireEvent.change(screen.getByRole("combobox", { name: "Status for Metsä" }), { target: { value: "in_progress" } });
     await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+  };
+  const importAndAutoPlace = async () => {
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
   };
 
-  it("mirrors the In-progress ones into the shortlist, by its id, in the same undo step", async () => {
-    // Named differently on purpose: the list is found by id, not by name.
-    await importTwo({ [SHORTLIST]: backlog(SHORTLIST, "Seuraavaksi (renamed)", NEXT_TREE) });
+  it("mirrors the rows switched on — not the ones given a status — in the same undo step", async () => {
+    await openPicker(null, { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) });
+    // Metsä gets In progress but stays off; Alma is switched on.
+    fireEvent.change(screen.getByRole("combobox", { name: "Status for Metsä" }), { target: { value: "in_progress" } });
+    fireEvent.click(screen.getByRole("switch", { name: "Mirror Alma to Hae näitä seuraavaksi" }));
+    await importAndAutoPlace();
 
-    // The picker's choice reached the import...
+    // The status still reaches the import: it sets how the item starts.
     const sent = callGmail.mock.calls[1][0].links as Array<{ url: string; status?: string }>;
     expect(sent.find((l) => l.url === "https://x/metsa")?.status).toBe("in_progress");
-    // ...and only that item is mirrored — not moved, not copied.
+    // Only the switched-on row is mirrored, found through the import's own record of it.
     expect(moveWorkItemsToBacklog).toHaveBeenCalledTimes(1);
-    expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["started"], SHORTLIST, NEXT_TREE, "mirror", "tree-1");
+    expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["alma-item"], SHORTLIST, NEXT_TREE, "mirror", "tree-1");
     expect(runBulk).toHaveBeenCalledTimes(1);
-    expect(toast).toHaveBeenLastCalledWith(
-      expect.objectContaining({ description: expect.stringContaining("1 in progress also in Seuraavaksi (renamed).") }),
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining("1 also mirrored to Hae näitä seuraavaksi.") }),
     );
   });
 
-  it("skips the step when the shortlist is not in this organisation's data", async () => {
-    // A list merely called "Hae näitä seuraavaksi" is not enough.
-    await importTwo({ lookalike: backlog("lookalike", "Hae näitä seuraavaksi", NEXT_TREE) });
+  it("starts every row switched off, and mirrors nothing then", async () => {
+    await openPicker(null, { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) });
+    expect(screen.getAllByRole("switch").map((s) => s.getAttribute("aria-checked"))).toEqual(["false", "false"]);
+    await importAndAutoPlace();
     expect(moveWorkItemsToBacklog).not.toHaveBeenCalled();
-    expect(toast).toHaveBeenLastCalledWith(
-      expect.objectContaining({ description: expect.not.stringContaining("in progress also in") }),
-    );
+  });
+
+  it("offers the shortlist by default, and mirrors into the list the search chose instead", async () => {
+    await openPicker("applied", {
+      [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE),
+      applied: backlog("applied", "Haettu", NEXT_TREE),
+    });
+    expect(screen.getByRole("combobox", { name: "Mirror to" })).toHaveValue("applied");
+    fireEvent.click(screen.getByRole("switch", { name: "Mirror Metsä to Haettu" }));
+    await importAndAutoPlace();
+    expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["metsa-item"], "applied", NEXT_TREE, "mirror", "tree-1");
+  });
+
+  it("shows the default as chosen until the search picks another, and saves a choice on the search", async () => {
+    await openPicker(null, {
+      [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE),
+      applied: backlog("applied", "Haettu", NEXT_TREE),
+    });
+    const mirrorTo = screen.getByRole("combobox", { name: "Mirror to" });
+    expect(mirrorTo).toHaveValue(SHORTLIST);
+    // Only lists in other trees, named with their tree.
+    expect([...mirrorTo.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
+      "MWB uuden työn saaminen › Hae näitä seuraavaksi",
+      "MWB uuden työn saaminen › Haettu",
+    ]);
+    fireEvent.change(mirrorTo, { target: { value: "applied" } });
+    await waitFor(() => expect(updates).toContainEqual({ auto_place_mirror_backlog_id: "applied" }));
+    expect(screen.getByRole("switch", { name: "Mirror Metsä to Haettu" })).toBeInTheDocument();
+  });
+
+  it("offers no switch when there is nowhere to mirror", async () => {
+    await openPicker(null, {});
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 });
 

@@ -3,7 +3,7 @@
  * to another — both chosen on the saved search.
  */
 import { describe, it, expect } from "vitest";
-import { APPLY_NEXT_BACKLOG_ID, countOpenAds, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { DEFAULT_MIRROR_BACKLOG_ID, countOpenAds, findAutoPlaceTargets, findMirrorTarget, splitByDeadline } from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
 
 const backlog = (id: string, name: string, treeId: string): Backlog => ({
@@ -59,26 +59,33 @@ describe("splitByDeadline", () => {
   });
 });
 
-describe("findApplyNextTarget", () => {
+describe("findMirrorTarget", () => {
   const NEXT_TREE = "org::bt-next";
 
-  it("finds the shortlist by its id, whatever it is called now", () => {
-    const backlogs = {
-      [APPLY_NEXT_BACKLOG_ID]: backlog(APPLY_NEXT_BACKLOG_ID, "Renamed shortlist", NEXT_TREE),
-      other: backlog("other", "Hae näitä seuraavaksi", NEXT_TREE),
-    };
-    expect(findApplyNextTarget(backlogs, TREE)).toEqual({ backlogId: APPLY_NEXT_BACKLOG_ID, treeId: NEXT_TREE });
+  it("uses the list the search chose, found by id", () => {
+    const backlogs = { chosen: backlog("chosen", "Applied", NEXT_TREE) };
+    expect(findMirrorTarget(backlogs, TREE, "chosen")).toEqual({ backlogId: "chosen", treeId: NEXT_TREE });
   });
 
-  it("does not fall back to a list that only has the name", () => {
+  it("falls back to the shortlist it used before, until the search chooses", () => {
+    const backlogs = { [DEFAULT_MIRROR_BACKLOG_ID]: backlog(DEFAULT_MIRROR_BACKLOG_ID, "Renamed shortlist", NEXT_TREE) };
+    expect(findMirrorTarget(backlogs, TREE, null)).toEqual({ backlogId: DEFAULT_MIRROR_BACKLOG_ID, treeId: NEXT_TREE });
+    expect(findMirrorTarget(backlogs, TREE)).toEqual({ backlogId: DEFAULT_MIRROR_BACKLOG_ID, treeId: NEXT_TREE });
+  });
+
+  it("does not fall back to a list that only has the default's name", () => {
     const backlogs = { other: backlog("other", "Hae näitä seuraavaksi", NEXT_TREE) };
-    expect(findApplyNextTarget(backlogs, TREE)).toBeNull();
+    expect(findMirrorTarget(backlogs, TREE, null)).toBeNull();
   });
 
-  it("gives nothing when the shortlist is in the tree being imported into", () => {
+  it("gives nothing for a chosen list that has since been deleted", () => {
+    expect(findMirrorTarget({}, TREE, "gone")).toBeNull();
+  });
+
+  it("gives nothing for a list in the tree being imported into", () => {
     // An item holds one list per tree: "mirroring" there would move it.
-    const backlogs = { [APPLY_NEXT_BACKLOG_ID]: backlog(APPLY_NEXT_BACKLOG_ID, "Shortlist", TREE) };
-    expect(findApplyNextTarget(backlogs, TREE)).toBeNull();
+    const backlogs = { same: backlog("same", "Inbox", TREE) };
+    expect(findMirrorTarget(backlogs, TREE, "same")).toBeNull();
   });
 });
 

@@ -4,6 +4,7 @@ import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   alreadyInSummary,
@@ -23,7 +24,7 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { APPLY_NEXT_BACKLOG_ID, APPLY_NEXT_STATUS, AUTO_PLACE_TOAST_MS, countOpenAds, findApplyNextTarget, findAutoPlaceTargets, splitByDeadline } from "@/lib/autoPlace";
+import { AUTO_PLACE_TOAST_MS, countOpenAds, findAutoPlaceTargets, findMirrorTarget, splitByDeadline } from "@/lib/autoPlace";
 import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
@@ -63,21 +64,26 @@ export function SavedSearchPicker({
   // Where "Import & auto-place" files postings, by backlog id, as saved on the
   // search. Read here rather than taken from the caller, whose copy of the
   // search may predate a change made in an earlier run of this picker.
-  const [placeInto, setPlaceInto] = useState<{ dated: string | null; undated: string | null }>({
+  const [placeInto, setPlaceInto] = useState<{ dated: string | null; undated: string | null; mirror: string | null }>({
     dated: null,
     undated: null,
+    mirror: null,
   });
   useEffect(() => {
     if (mode !== "jobs") return;
     let cancelled = false;
     void supabase
       .from("gmail_import_queries")
-      .select("auto_place_dated_backlog_id, auto_place_undated_backlog_id")
+      .select("auto_place_dated_backlog_id, auto_place_undated_backlog_id, auto_place_mirror_backlog_id")
       .eq("id", search.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled || !data) return;
-        setPlaceInto({ dated: data.auto_place_dated_backlog_id, undated: data.auto_place_undated_backlog_id });
+        setPlaceInto({
+          dated: data.auto_place_dated_backlog_id,
+          undated: data.auto_place_undated_backlog_id,
+          mirror: data.auto_place_mirror_backlog_id ?? null,
+        });
       });
     return () => {
       cancelled = true;
@@ -103,12 +109,40 @@ export function SavedSearchPicker({
     [backlogs, search.tree_id],
   );
   const backlogName = (id: string) => backlogs?.[id]?.name ?? "?";
+  /**
+   * Where the rows switched on are mirrored: the list this search chose, or
+   * the default until it chooses one. Null when there is nowhere to.
+   */
+  const mirrorTarget = useMemo(
+    () => (mode === "jobs" ? findMirrorTarget(backlogs, search.tree_id, placeInto.mirror) : null),
+    [backlogs, mode, search.tree_id, placeInto.mirror],
+  );
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
+  /**
+   * The lists a posting can be mirrored into: any outside this search's tree,
+   * since an item holds one list per tree. Named with their tree, which is what
+   * tells two same-named lists apart.
+   */
+  const mirrorBacklogs = useMemo(
+    () =>
+      Object.values(backlogs ?? {})
+        .filter((b) => b.treeId !== search.tree_id)
+        .map((b) => ({ id: b.id, label: `${backlogTrees?.[b.treeId]?.name ?? "?"} › ${b.name}` }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [backlogs, backlogTrees, search.tree_id],
+  );
 
   /** Choosing a list saves it on the search straight away; a failure puts it back. */
-  const choosePlaceInto = async (which: "dated" | "undated", id: string | null) => {
+  const choosePlaceInto = async (which: "dated" | "undated" | "mirror", id: string | null) => {
     const before = placeInto;
     setPlaceInto({ ...before, [which]: id });
-    const column = which === "dated" ? "auto_place_dated_backlog_id" : "auto_place_undated_backlog_id";
+    const column = (
+      {
+        dated: "auto_place_dated_backlog_id",
+        undated: "auto_place_undated_backlog_id",
+        mirror: "auto_place_mirror_backlog_id",
+      } as const
+    )[which];
     const { error } = await supabase
       .from("gmail_import_queries")
       .update({ [column]: id })
@@ -127,6 +161,8 @@ export function SavedSearchPicker({
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   /** Status chosen per row, by row key; rows without an entry start Not started. */
   const [statusByKey, setStatusByKey] = useState<Record<string, string>>({});
+  /** Rows switched on for mirroring, by row key; every row starts off. */
+  const [mirrorByKey, setMirrorByKey] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
   const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
@@ -342,6 +378,8 @@ export function SavedSearchPicker({
       skipped: number;
       collapsed: number;
       createdIds?: string[];
+      /** The item made from each posting, by URL; absent from an older server. */
+      createdByUrl?: Record<string, string>;
       dated?: number;
       undated?: number;
     }>({
@@ -506,7 +544,19 @@ export function SavedSearchPicker({
       // Ranking covers what was already in each list as well as what has just
       // arrived.
       const app = useAppStore.getState();
-      const applyNext = findApplyNextTarget(app.backlogs, search.tree_id);
+      // The rows switched on, turned into the items the import made of them.
+      // By URL, which is what the import reports each new item under: the
+      // switch is about a posting, and only an item can be mirrored.
+      const toMirror = mirrorTarget
+        ? [
+            ...new Set(
+              preview
+                .filter((l) => selected[`${l.messageId}|${l.url}`] && mirrorByKey[`${l.messageId}|${l.url}`])
+                .map((l) => res.createdByUrl?.[l.url])
+                .filter((id): id is string => !!id),
+            ),
+          ]
+        : [];
       /**
        * Job ads still open in both lists, read at the moment of asking: the
        * toast asks once the lists are filled, the closed check again once it
@@ -543,18 +593,12 @@ export function SavedSearchPicker({
           );
         }
 
-        // Postings marked In progress in the picker also go on the shortlist
-        // of jobs to apply for next — mirrored, so each stays one item, filed
-        // in both trees. Read from the imported items rather than the picker
-        // rows: the import is what turned a row into an item, and only the
-        // item's id can be mirrored. Same bulk as the ranking: one undo.
-        if (applyNext) {
-          const items = useAppStore.getState().workItems;
-          const started = createdIds.filter((id) => items[id]?.status === APPLY_NEXT_STATUS);
-          if (started.length > 0) {
-            app.moveWorkItemsToBacklog(started, applyNext.backlogId, applyNext.treeId, "mirror", search.tree_id);
-            mirrored = started.length;
-          }
+        // The rows switched on are mirrored into the chosen list as well —
+        // one item, filed in both trees. Whatever status a row was given plays
+        // no part. Same bulk as the ranking: one undo takes back both.
+        if (mirrorTarget && toMirror.length > 0) {
+          app.moveWorkItemsToBacklog(toMirror, mirrorTarget.backlogId, mirrorTarget.treeId, "mirror", search.tree_id);
+          mirrored = toMirror.length;
         }
       });
 
@@ -566,9 +610,7 @@ export function SavedSearchPicker({
           (arrived
             ? `Both lists sorted by name and saved as rank.`
             : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
-          (mirrored > 0 && applyNext
-            ? ` ${mirrored} in progress also in ${backlogName(applyNext.backlogId)}.`
-            : "") +
+          (mirrored > 0 && mirrorTarget ? ` ${mirrored} also mirrored to ${backlogName(mirrorTarget.backlogId)}.` : "") +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : "") +
           ` ${openTotals()}`,
         duration: AUTO_PLACE_TOAST_MS,
@@ -789,6 +831,25 @@ export function SavedSearchPicker({
                                 </option>
                               ))}
                             </select>
+                            {/* Whether "Import & auto-place" also mirrors this
+                                one. Independent of the status, which only sets
+                                how the new item starts. */}
+                            {mirrorTarget && (
+                              <span
+                                className="ml-2 flex items-center gap-1.5"
+                                // The row is a <label>; keep the switch's click
+                                // from toggling the row's checkbox too.
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Switch
+                                  checked={!!mirrorByKey[key]}
+                                  onCheckedChange={(on) => setMirrorByKey((prev) => ({ ...prev, [key]: on }))}
+                                  disabled={importing}
+                                  aria-label={`Mirror ${l.title || l.url} to ${backlogName(mirrorTarget.backlogId)}`}
+                                />
+                                <span className="truncate">Mirror to {backlogName(mirrorTarget.backlogId)}</span>
+                              </span>
+                            )}
                           </span>
                         )}
                       </span>
@@ -826,6 +887,26 @@ export function SavedSearchPicker({
               </select>
             </label>
           ))}
+          {/* Where the rows switched to mirror go as well. Shows the default
+              until the search chooses another; only lists in other trees,
+              since an item holds one list per tree. */}
+          <label className="flex min-w-0 items-center gap-1.5">
+            Mirror to
+            <select
+              value={mirrorTarget?.backlogId ?? ""}
+              onChange={(e) => void choosePlaceInto("mirror", e.target.value || null)}
+              disabled={importing}
+              aria-label="Mirror to"
+              className="h-7 max-w-[16rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
+            >
+              {!mirrorTarget && <option value="">Choose a list…</option>}
+              {mirrorBacklogs.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -838,9 +919,7 @@ export function SavedSearchPicker({
             title={
               autoPlace
                 ? `Postings with a closing date go to ${backlogName(autoPlace.withDeadline)}, the rest to ${backlogName(autoPlace.withoutDeadline)}. Both lists are then sorted by name and that order saved as rank.` +
-                  (findApplyNextTarget(backlogs, search.tree_id)
-                    ? ` Postings marked In progress also appear in ${backlogName(APPLY_NEXT_BACKLOG_ID)}.`
-                    : "")
+                  (mirrorTarget ? ` Rows switched to mirror also appear in ${backlogName(mirrorTarget.backlogId)}.` : "")
                 : "Choose both lists above first."
             }
           >

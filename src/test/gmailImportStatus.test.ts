@@ -111,3 +111,19 @@ describe('import names the item after where the job is', () => {
     expect(rows[1].description).toContain('Location: Helsinki, Tampere, Vantaa, Turku');
   });
 });
+
+describe('import reports which item it made of each posting', () => {
+  it('maps each URL to the item created for it, one per posting even when mailed twice', async () => {
+    const { admin, inserted } = makeAdmin();
+    const res = await importLinksAsWorkItems(admin, target, [
+      link('https://x/m1'),
+      link('https://x/m2'),
+      // The same posting from a second alert: one item, one entry.
+      { ...link('https://x/m1'), messageId: 'm-again' },
+    ]);
+    const rows = inserted.work_items as { id: string }[];
+    expect(Object.keys(res.createdByUrl ?? {})).toEqual(['https://x/m1', 'https://x/m2']);
+    expect(Object.values(res.createdByUrl ?? {})).toEqual(rows.map((r) => r.id));
+    expect(Object.values(res.createdByUrl ?? {})).toEqual(res.createdIds);
+  });
+});

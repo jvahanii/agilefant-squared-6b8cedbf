@@ -483,6 +483,9 @@ Deno.serve(async (req) => {
           skipped: results.reduce((n, r) => n + (r?.skipped ?? 0), 0),
           collapsed: results.reduce((n, r) => n + (r?.collapsed ?? 0), 0),
           createdIds: results.flatMap((r) => r?.createdIds ?? []),
+          // A posting lands in one list or the other, so the two maps never
+          // share a URL.
+          createdByUrl: Object.assign({}, ...results.map((r) => r?.createdByUrl ?? {})),
           dated: dated.length,
           undated: undated.length,
         });

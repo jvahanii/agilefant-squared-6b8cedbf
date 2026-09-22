@@ -338,7 +338,7 @@ export default function JobAdsGuide() {
               ],
               [
                 "Import & auto-place",
-                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. Both lists are then sorted by name — which, since an imported name begins with the closing date, is closing-date order — and that order is saved as their rank. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
+                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. Both lists are then sorted by name — which, since an imported name begins with the closing date, is closing-date order — and that order is saved as their rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
               ],
               [
                 "Do not import anything, mark N emails read",
@@ -350,6 +350,12 @@ export default function JobAdsGuide() {
             Choose the two <Em>Auto-place into</Em> lists in the picker, above the buttons; the button stays unavailable
             until both are chosen. The choice is saved on the search, so it is there next time, and renaming a list
             does not undo it.
+          </P>
+          <P>
+            Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
+            ones you mean to pursue, and <Em>Import &amp; auto-place</Em> also puts them in the <Em>Mirror to</Em> list —
+            any list in another tree, saved on the search like the other two. The status plays no part in this: it only
+            sets how the new item starts.
           </P>
           <P>
             After an import, superusers also get a check of the ads that were already in the lists it filled: any that

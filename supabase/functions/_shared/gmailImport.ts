@@ -49,6 +49,13 @@ export interface ImportResult {
   created: number;
   skipped: number;
   createdIds: string[];
+  /**
+   * The item created for each posting, by URL. How the picker knows which new
+   * item came from which row -- the row's mirror switch is about a posting,
+   * and only the item can be mirrored. Absent from the early returns, which
+   * create nothing.
+   */
+  createdByUrl?: Record<string, string>;
   /** Postings that appeared more than once in this same import and were merged. */
   collapsed: number;
 }
@@ -453,6 +460,12 @@ export async function importLinksAsWorkItems(
     throw err;
   }
 
-  return { created: ranked.length, skipped, collapsed, createdIds: ranked.map((i) => i.id) };
+  return {
+    created: ranked.length,
+    skipped,
+    collapsed,
+    createdIds: ranked.map((i) => i.id),
+    createdByUrl: Object.fromEntries(ranked.map((i) => [i.link.url, i.id])),
+  };
 }
 
