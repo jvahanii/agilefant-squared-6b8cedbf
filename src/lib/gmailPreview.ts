@@ -144,6 +144,16 @@ export function uncheckedReason(
   return null;
 }
 
+/**
+ * A row's cities, kept to one short line: "Helsinki, Joensuu +8 more". The
+ * whole list goes in the row's tooltip. Written out in full, a posting open
+ * in ten cities ran the width of the dialog and read as the row's main point.
+ */
+export function cityLine(cities: readonly string[]): string {
+  const more = cities.length - 2;
+  return `${cities.slice(0, 2).join(", ")}${more > 0 ? ` +${more} more` : ""}`;
+}
+
 /** A picker row's identity: the same posting in two emails is two rows. */
 export const rowKey = (link: { messageId: string; url: string }) => `${link.messageId}|${link.url}`;
 

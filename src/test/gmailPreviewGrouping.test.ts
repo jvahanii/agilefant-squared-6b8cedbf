@@ -275,3 +275,14 @@ describe('alreadyInSummary', () => {
     expect(alreadyInSummary([row(null, false)])).toBe('');
   });
 });
+
+describe('cityLine', () => {
+  it('keeps a long list to two cities and a count', async () => {
+    const { cityLine } = await import('@/lib/gmailPreview');
+    expect(cityLine(['Helsinki'])).toBe('Helsinki');
+    expect(cityLine(['Helsinki', 'Joensuu'])).toBe('Helsinki, Joensuu');
+    expect(
+      cityLine(['Helsinki', 'Joensuu', 'Jyväskylä', 'Kuopio', 'Lappeenranta', 'Oulu', 'Rovaniemi', 'Seinäjoki', 'Tampere', 'Turku']),
+    ).toBe('Helsinki, Joensuu +8 more');
+  });
+});

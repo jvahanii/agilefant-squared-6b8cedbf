@@ -186,8 +186,9 @@ describe("SavedSearchPicker", () => {
     });
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
-    // All of them on the row; the item name will show two and a count.
-    expect(await screen.findByText("Espoo, Dallas, Bangalore")).toBeInTheDocument();
+    // Two and a count on the row, like the item's name; every one on hover.
+    const cities = await screen.findByText("Espoo, Dallas +1 more");
+    expect(cities).toHaveAttribute("title", "Espoo, Dallas, Bangalore");
     expect(postingFacts.mock.calls[0][0].links.map((l: { url: string }) => l.url)).toEqual(["https://www.linkedin.com/jobs/view/7"]);
 
     fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));

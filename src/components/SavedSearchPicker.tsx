@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import {
   alreadyInSummary,
+  cityLine,
   deadlineLabel,
   gmailMessageUrl,
   groupBySourceEmail,
@@ -801,11 +802,12 @@ export function SavedSearchPicker({
                             Not selected: {startingReason(l, repeats)}. Tick it to import anyway.
                           </span>
                         )}
-                        {/* Every city here; the item's name will show two and a count. */}
+                        {/* Two cities and a count, like the item's name; all of
+                            them on hover. */}
                         {!!l.cities?.length && (
                           <span className="block truncate text-xs text-foreground/80" title={l.cities.join(", ")}>
                             <MapPin className="w-3 h-3 inline mr-1 text-muted-foreground" aria-hidden="true" />
-                            {l.cities.join(", ")}
+                            {cityLine(l.cities)}
                           </span>
                         )}
                         <span className="block truncate text-xs text-muted-foreground">
