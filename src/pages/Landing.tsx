@@ -363,7 +363,7 @@ export default function Landing() {
               The free plan is the whole product, not a trial. Pay only when your team needs more room.
             </p>
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mx-auto mt-10 grid max-w-3xl gap-4 md:grid-cols-2">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
