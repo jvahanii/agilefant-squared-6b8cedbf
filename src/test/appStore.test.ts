@@ -3,7 +3,7 @@ import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/app
 import { readCachedAppData, writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
 import { getEffectiveParentId } from "@/types/models";
 import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
-import { loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
+import { upsertWorkItem, loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
 vi.mock("@/store/supabaseSync", () => ({
@@ -861,6 +861,47 @@ describe("setWorkItemPoints", () => {
     seedStore();
     useAppStore.getState().setWorkItemPoints(`${ORG}::wi-1`, undefined);
     expect(useAppStore.getState().workItems[`${ORG}::wi-1`].points).toBeUndefined();
+  });
+});
+
+describe("setWorkItemRating", () => {
+  const ID = `${ORG}::wi-1`;
+
+  it("sets a rating of one to five stars, and saves the item", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 4);
+    expect(useAppStore.getState().workItems[ID].rating).toBe(4);
+    expect(upsertWorkItem).toHaveBeenCalledWith(expect.objectContaining({ id: ID, rating: 4 }), ORG);
+  });
+
+  it("takes the rating away again", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 4);
+    useAppStore.getState().setWorkItemRating(ID, undefined);
+    expect(useAppStore.getState().workItems[ID].rating).toBeUndefined();
+  });
+
+  it("refuses a rating outside one to five, as the database does", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 9);
+    expect(useAppStore.getState().workItems[ID].rating).toBeUndefined();
+    useAppStore.getState().setWorkItemRating(ID, 0);
+    expect(useAppStore.getState().workItems[ID].rating).toBeUndefined();
+  });
+
+  it("can be undone", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 5);
+    useAppStore.getState().undo();
+    expect(useAppStore.getState().workItems[ID].rating).toBeUndefined();
+  });
+
+  it("writes nothing when the rating is the one already there", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 3);
+    (upsertWorkItem as unknown as { mockClear: () => void }).mockClear();
+    useAppStore.getState().setWorkItemRating(ID, 3);
+    expect(upsertWorkItem).not.toHaveBeenCalled();
   });
 });
 

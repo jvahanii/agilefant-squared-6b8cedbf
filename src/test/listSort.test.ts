@@ -94,3 +94,44 @@ describe("isListSortMode", () => {
     expect(isListSortMode(undefined)).toBe(false);
   });
 });
+
+describe("rating ★ best first", () => {
+  const rated = (id: string, rank: number, rating?: number): WorkItem =>
+    ({ ...item(id, id, rank), rating }) as WorkItem;
+
+  it("puts the highest rating first and the unrated last", () => {
+    const items = [rated("three", 0, 3), rated("unrated", 1), rated("five", 2, 5), rated("one", 3, 1)];
+    expect(sortTopLevel(items, "rating-desc", T, ctx()).map((i) => i.id)).toEqual([
+      "five",
+      "three",
+      "one",
+      "unrated",
+    ]);
+  });
+
+  it("keeps the rank order among items rated the same, and among the unrated", () => {
+    const items = [rated("b", 1, 4), rated("a", 0, 4), rated("d", 3), rated("c", 2)];
+    expect(sortTopLevel(items, "rating-desc", T, ctx()).map((i) => i.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("treats a rating as a rating, not a number to be defaulted", () => {
+    // An unrated item is one nobody has judged; it must not sort as a zero
+    // would, above nothing, nor below a one as if it were worse.
+    const items = [rated("unrated", 0), rated("one-star", 1, 1)];
+    expect(sortTopLevel(items, "rating-desc", T, ctx()).map((i) => i.id)).toEqual(["one-star", "unrated"]);
+  });
+
+  it("is a mode the picker knows", () => {
+    expect(isListSortMode("rating-desc")).toBe(true);
+  });
+});
+
+describe("offering the rating mode", () => {
+  it("is offered only where the organization rates its items", async () => {
+    const { listSortModes } = await import("@/lib/listSort");
+    expect(listSortModes(false).map((m) => m.mode)).not.toContain("rating-desc");
+    expect(listSortModes(true).map((m) => m.mode)).toContain("rating-desc");
+    // The other modes are the same either way.
+    expect(listSortModes(false).map((m) => m.mode)).toEqual(["rank", "name-asc", "name-desc", "status", "team"]);
+  });
+});

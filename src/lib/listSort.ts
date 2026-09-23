@@ -12,7 +12,7 @@
 import type { WorkItem } from "@/types/models";
 import { byRank } from "@/lib/workItemRows";
 
-export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team";
+export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc";
 
 export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rank", label: "Rank" },
@@ -20,7 +20,14 @@ export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "name-desc", label: "Name Z→A" },
   { mode: "status", label: "Status" },
   { mode: "team", label: "Team A→Z" },
+  // Offered only where the organization has ratings on; see ratingsVisible.
+  { mode: "rating-desc", label: "Rating ★ best first" },
 ];
+
+/** Modes worth offering: rating only where the organization rates its items. */
+export function listSortModes(ratingsEnabled: boolean): { mode: ListSortMode; label: string }[] {
+  return LIST_SORT_MODES.filter((m) => ratingsEnabled || m.mode !== "rating-desc");
+}
 
 export function isListSortMode(value: unknown): value is ListSortMode {
   return LIST_SORT_MODES.some((m) => m.mode === value);
@@ -81,6 +88,10 @@ export function sortTopLevel(
         const positions = new Map(items.map((item) => [item.id, ctx.statusPosition(item)]));
         return (a, b) => nullsLast(positions.get(a.id) ?? null, positions.get(b.id) ?? null, (x, y) => x - y);
       }
+      case "rating-desc":
+        // Five stars first, unrated last — an unrated item is one nobody has
+        // judged, not one judged worthless.
+        return (a, b) => nullsLast(a.rating ?? null, b.rating ?? null, (x, y) => y - x);
       case "team": {
         const names = new Map(items.map((item) => [item.id, firstTeamName(item, ctx)]));
         return (a, b) => nullsLast(names.get(a.id) ?? null, names.get(b.id) ?? null, collator.compare);

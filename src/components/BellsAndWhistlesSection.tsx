@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -32,6 +32,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
+  const setRatingsEnabledSetting = useOrgSettingsStore((s) => s.setRatingsEnabled);
+  const ratingsEnabled = (orgSettings as { ratingsEnabled?: boolean }).ratingsEnabled ?? false;
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
@@ -96,6 +98,35 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                   toast({ title: checked ? "Points enabled" : "Points disabled" });
                 }
               }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Star className="w-4 h-4" /> Ratings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable star ratings</p>
+              <p className="text-xs text-muted-foreground">
+                Rate work items one to five stars on their row, and sort a backlog by rating. Turning this off hides
+                the stars; ratings already given are kept.
+              </p>
+            </div>
+            <Switch
+              checked={ratingsEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setRatingsEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Ratings enabled" : "Ratings disabled" });
+                }
+              }}
+              disabled={!canManage}
             />
           </div>
         </CardContent>

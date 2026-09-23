@@ -14,6 +14,8 @@ interface OrgSettings {
   /** Backlogs and trees may be shared by public link. Enforced in the database
    *  too: switching it off stops existing links serving, not only new ones. */
   publicLinksEnabled: boolean;
+  /** Work items can be rated one to five stars, and backlogs sorted by it. */
+  ratingsEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -30,6 +32,7 @@ interface OrgSettingsState {
   setBurnupsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setPersistNotificationsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setPublicLinksEnabled: (orgId: string, enabled: boolean) => Promise<boolean>;
+  setRatingsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -43,6 +46,7 @@ const defaults: OrgSettings = {
   burnupsEnabled: false,
   persistNotificationsEnabled: false,
   publicLinksEnabled: false,
+  ratingsEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -53,7 +57,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -78,6 +82,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
                 (data as { persist_notifications_enabled?: boolean }).persist_notifications_enabled ?? false,
               publicLinksEnabled:
                 (data as { public_links_enabled?: boolean }).public_links_enabled ?? false,
+              ratingsEnabled: (data as { ratings_enabled?: boolean }).ratings_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -98,6 +103,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       .upsert(
         { organization_id: orgId, time_logging_enabled: enabled, updated_at: new Date().toISOString() },
         { onConflict: 'organization_id' },
+      );
+  },
+
+  setRatingsEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), ratingsEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from("organization_settings")
+      .upsert(
+        { organization_id: orgId, ratings_enabled: enabled, updated_at: new Date().toISOString() },
+        { onConflict: "organization_id" },
       );
   },
 
@@ -259,6 +280,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           burnupsEnabled: row.burnups_enabled ?? false,
           persistNotificationsEnabled: row.persist_notifications_enabled ?? false,
           publicLinksEnabled: row.public_links_enabled ?? false,
+          ratingsEnabled: row.ratings_enabled ?? false,
         },
       },
     }));

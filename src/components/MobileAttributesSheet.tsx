@@ -9,6 +9,8 @@ import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
+import { useRatingsEnabled } from "@/lib/ratingsVisibility";
+import { StarRating } from "@/components/StarRating";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -69,6 +71,7 @@ export function MobileWorkItemAttributesSheet({
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
+  const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
@@ -78,6 +81,7 @@ export function MobileWorkItemAttributesSheet({
     [item],
   );
   const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
+  const ratingsVisible = useRatingsEnabled();
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
@@ -177,6 +181,17 @@ export function MobileWorkItemAttributesSheet({
                   {totalPoints > 0 ? totalPoints : "—"}
                 </button>
               )}
+            </div>
+          )}
+
+          {ratingsVisible && item && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Rating</span>
+              <StarRating
+                rating={item.rating}
+                label={item.title}
+                onRate={(rating) => setWorkItemRating(item.id, rating)}
+              />
             </div>
           )}
 

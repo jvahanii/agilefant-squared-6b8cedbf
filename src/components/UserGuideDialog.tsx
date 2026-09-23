@@ -223,6 +223,7 @@ function buildSections(): Section[] {
                 how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items.",
               },
               { action: "Set story points", how: "Click the story-points value on the item row. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically." },
+              { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A backlog can then be sorted by Rating ★ best first, which puts the unrated last. Offered only when the organisation has ratings on." },
               {
                 action: "Paste items",
                 how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add.",

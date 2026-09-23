@@ -29,6 +29,7 @@ type WorkItemUpsertRow = {
   title: string;
   description: string | null;
   points: number | null;
+  rating: number | null;
   status: string;
   parent_id: string | null;
   parent_id_overrides?: Record<string, string | null>;
@@ -348,7 +349,7 @@ export async function loadFromSupabase(
     }
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
-      points: row.points ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
+      points: row.points ?? undefined, rating: (row as { rating?: number | null }).rating ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
       parentIds: (row.parent_id_overrides && typeof row.parent_id_overrides === 'object' && !Array.isArray(row.parent_id_overrides))
         ? (row.parent_id_overrides as Record<string, string | null>)
@@ -557,7 +558,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
 
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
-    points: item.points ?? null, status: item.status, parent_id: item.parentId,
+    points: item.points ?? null, rating: item.rating ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: 0,
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
@@ -793,7 +794,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
     const effectiveOrgId = item.organizationId ?? organizationId;
     const row: WorkItemUpsertRow = {
       id: resolvedId, title: item.title, description: item.description ?? null,
-      points: item.points ?? null, status: item.status, parent_id: item.parentId,
+      points: item.points ?? null, rating: item.rating ?? null, status: item.status, parent_id: item.parentId,
       backlog_assignments: item.backlogAssignments, rank: 0,
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,
@@ -979,7 +980,7 @@ export async function resetOrgData(organizationId: string, mockData: MockDataSna
     id: item.id,
     title: item.title,
     description: item.description ?? null,
-    points: item.points ?? null,
+    points: item.points ?? null, rating: item.rating ?? null,
     status: item.status,
     parent_id: item.parentId,
     parent_id_overrides: item.parentIds ?? {},

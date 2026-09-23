@@ -13,6 +13,9 @@ export interface WorkItem {
   title: string;
   description?: string;
   points?: number;
+  /** One to five stars, shared by the whole organization. Absent = unrated,
+   *  which is not the same as a rating of zero and sorts last. */
+  rating?: number;
   status: WorkItemStatus;
   /** Global parent ID — the default parent used when no per-tree override is present. */
   parentId: string | null;

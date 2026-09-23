@@ -746,6 +746,7 @@ export type Database = {
           persist_notifications_enabled: boolean
           points_enabled: boolean
           public_links_enabled: boolean
+          ratings_enabled: boolean
           savings_income_enabled: boolean
           time_logging_enabled: boolean
           updated_at: string
@@ -761,6 +762,7 @@ export type Database = {
           persist_notifications_enabled?: boolean
           points_enabled?: boolean
           public_links_enabled?: boolean
+          ratings_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
@@ -776,6 +778,7 @@ export type Database = {
           persist_notifications_enabled?: boolean
           points_enabled?: boolean
           public_links_enabled?: boolean
+          ratings_enabled?: boolean
           savings_income_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
@@ -1601,6 +1604,7 @@ export type Database = {
           parent_id: string | null
           parent_id_overrides: Json
           points: number | null
+          rating: number | null
           rank: number
           respawn_enabled: boolean
           respawn_hour: number | null
@@ -1618,6 +1622,7 @@ export type Database = {
           parent_id?: string | null
           parent_id_overrides?: Json
           points?: number | null
+          rating?: number | null
           rank?: number
           respawn_enabled?: boolean
           respawn_hour?: number | null
@@ -1635,6 +1640,7 @@ export type Database = {
           parent_id?: string | null
           parent_id_overrides?: Json
           points?: number | null
+          rating?: number | null
           rank?: number
           respawn_enabled?: boolean
           respawn_hour?: number | null

@@ -233,6 +233,8 @@ interface AppState extends DataSnapshot {
   renameWorkItem: (workItemId: string, title: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
+  /** One to five stars, or undefined to take the rating away. */
+  setWorkItemRating: (workItemId: string, rating: number | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", rank?: number) => void;
@@ -3177,6 +3179,31 @@ export const useAppStore = create<AppState>()((set, get) => {
         entityId: workItemId,
         entityName: item.title,
         details: `${item.points ?? "none"} → ${points ?? "none"}`,
+      });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
+    setWorkItemRating: (workItemId, rating) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      // Out of range means nothing was chosen; the database has the same
+      // constraint, and a star count is only ever 1..5 or gone.
+      const stars = rating != null && rating >= 1 && rating <= 5 ? Math.round(rating) : undefined;
+      if (stars === item.rating) return;
+      const updated = { ...item, rating: stars };
+      upsertWorkItem(updated, orgId);
+      internalLog({
+        action: "Set Rating",
+        entityType: "work_item",
+        entityId: workItemId,
+        entityName: item.title,
+        details: `${item.rating ?? "unrated"} → ${stars ?? "unrated"}`,
       });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },

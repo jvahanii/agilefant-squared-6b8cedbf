@@ -52,7 +52,9 @@ import {
   useListSortMode,
   useListSortStore,
 } from "@/store/listSortStore";
-import { LIST_SORT_MODES, listSortLabel, sortTopLevel, type ListSortMode } from "@/lib/listSort";
+import { listSortLabel, listSortModes, sortTopLevel, type ListSortMode } from "@/lib/listSort";
+import { StarRating } from "@/components/StarRating";
+import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
@@ -312,11 +314,13 @@ function WorkItemNodeContent({
   const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
   const renameWorkItem = useAppStore((s) => s.renameWorkItem);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
+  const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const isMobile = useIsMobile();
   const activeOrgId = shared.activeOrgId;
   const pointsVisible = usePointsVisibleForTree(treeId);
+  const ratingsVisible = useRatingsEnabled();
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -959,6 +963,28 @@ function WorkItemNodeContent({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Stars before the title, where they can be read and set down a
+              list at a glance. Only where the organization rates its items. */}
+          {ratingsVisible && (
+            <StarRating
+              className="mt-0.5"
+              rating={item.rating}
+              label={item.title}
+              onRate={(rating) => {
+                // A rating given to a multi-selection goes to all of it, as a
+                // status does.
+                if (isSelected && isMultiSelected) {
+                  const sel = useAppStore.getState().selectedWorkItemIds;
+                  useAppStore.getState().runBulk(() => {
+                    sel.forEach((id) => setWorkItemRating(id, rating));
+                  });
+                } else {
+                  setWorkItemRating(workItemId, rating);
+                }
+              }}
+            />
+          )}
 
           {isEditingTitle ? (
             <textarea
@@ -2645,6 +2671,8 @@ function SearchResultItem({
 }
 
 export function WorkItemTreePanel() {
+  // Whether "Rating ★ best first" is among the sort modes.
+  const ratingsEnabled = useRatingsEnabled();
   const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
@@ -3826,7 +3854,7 @@ export function WorkItemTreePanel() {
                       value={listSortMode}
                       onValueChange={(value) => setListSortMode(selectedBacklogId, value as ListSortMode)}
                     >
-                      {LIST_SORT_MODES.map(({ mode, label }) => (
+                      {listSortModes(ratingsEnabled).map(({ mode, label }) => (
                         <DropdownMenuRadioItem key={mode} value={mode} className="text-xs">
                           {label}
                         </DropdownMenuRadioItem>
