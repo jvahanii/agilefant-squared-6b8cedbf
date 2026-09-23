@@ -49,7 +49,7 @@ const FEATURES = [
   },
   {
     icon: KanbanSquare,
-    title: "List or board",
+    title: "Lists and boards",
     body: "Rank items in a list, or drag cards across status columns. Each backlog remembers which view it prefers.",
   },
   {
@@ -80,7 +80,7 @@ const FEATURES = [
   {
     icon: Clock,
     title: "Time logging",
-    body: "Log time against work items and move entries between items when they landed in the wrong place.",
+    body: "Log time against work items and move entries between items if they landed in the wrong place. More versatile than any other time logging app you'll find",
   },
   {
     icon: Star,
@@ -89,12 +89,12 @@ const FEATURES = [
   },
   {
     icon: Globe,
-    title: "Publish a link",
+    title: "Publish a backlog",
     body: "Share a read-only web page of any backlog with people who have no account. Choose which fields show.",
   },
   {
     icon: Radio,
-    title: "Live for everyone",
+    title: "Live changes",
     body: "Changes appear for your whole team as they happen — no refresh, no stale boards.",
   },
 ] as const;
