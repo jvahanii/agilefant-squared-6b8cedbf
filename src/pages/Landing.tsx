@@ -130,8 +130,8 @@ const INTEGRATIONS = [
   },
   {
     icon: Mail,
-    title: "Gmail job alerts",
-    body: "Job-alert mail from the major Finnish and international boards turns into postings with employer, city and deadline.",
+    title: "Gmail import",
+    body: "A powerful job-alert mail import from the major Finnish and international boards turns postings into work items with employer, city, deadline and the link to the actual job add",
   },
 ] as const;
 
