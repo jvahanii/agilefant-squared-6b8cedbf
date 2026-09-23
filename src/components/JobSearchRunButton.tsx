@@ -99,7 +99,9 @@ export function JobSearchRunButton() {
       )}
 
       <Dialog open={!!running} onOpenChange={(open) => !open && setRunning(null)}>
-        <DialogContent className="max-w-2xl">
+        {/* Wide: a job ad's employer and title are what the decision rests on,
+            and they are never cut short, so the rows need the room. */}
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{running?.name ?? "Job search"}</DialogTitle>
             <DialogDescription className="break-all text-xs">{running?.query}</DialogDescription>

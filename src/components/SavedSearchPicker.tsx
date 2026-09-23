@@ -169,6 +169,29 @@ export function SavedSearchPicker({
   const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
   /** Rows ticked or unticked by hand, which a late answer must not overrule. */
   const touched = useRef(new Set<string>());
+  /**
+   * Rows unticked by hand. A row unticked for a reason of its own says which;
+   * one unticked here used to say nothing at all, and read as unticked for no
+   * reason. State rather than the ref above, because the row has to re-render.
+   */
+  const [untickedByHand, setUntickedByHand] = useState<Record<string, boolean>>({});
+  /** Tick or untick rows, remembering that the reader did it. */
+  const chooseRows = (keys: string[], on: boolean) => {
+    keys.forEach((k) => touched.current.add(k));
+    setSelected((prev) => {
+      const next = { ...prev };
+      for (const k of keys) next[k] = on;
+      return next;
+    });
+    setUntickedByHand((prev) => {
+      const next = { ...prev };
+      for (const k of keys) {
+        if (on) delete next[k];
+        else next[k] = true;
+      }
+      return next;
+    });
+  };
   const { isSuperuser } = useScramble();
   const roleOverride = useOrgStore((s) => s.roleOverride);
   // The posting reader is a superuser tool for now, like the header button —
@@ -708,14 +731,7 @@ export function SavedSearchPicker({
               <div className="flex items-start gap-2 border-b bg-muted px-2 py-2">
                 <Checkbox
                   checked={allChecked}
-                  onCheckedChange={(c) => {
-                    keys.forEach((k) => touched.current.add(k));
-                    setSelected((prev) => {
-                      const next = { ...prev };
-                      for (const k of keys) next[k] = !!c;
-                      return next;
-                    });
-                  }}
+                  onCheckedChange={(c) => chooseRows(keys, !!c)}
                   className="mt-0.5"
                   aria-label={`Select all ${group.links.length} from ${group.subject}`}
                 />
@@ -749,29 +765,32 @@ export function SavedSearchPicker({
                 {group.links.map((l) => {
                   const key = `${l.messageId}|${l.url}`;
                   return (
-                    <label key={key} className="flex items-start gap-2 text-sm">
+                    // Not a <label>: a click anywhere on one toggled the row,
+                    // so reading a cut-off line of cities unticked the posting
+                    // it belonged to. The tick follows the checkbox and the
+                    // title line only.
+                    <div key={key} className="flex items-start gap-2 text-sm">
                       <Checkbox
                         checked={!!selected[key]}
-                        onCheckedChange={(c) => {
-                          touched.current.add(key);
-                          setSelected((s) => ({ ...s, [key]: !!c }));
-                        }}
+                        onCheckedChange={(c) => chooseRows([key], !!c)}
                         className="mt-0.5"
+                        aria-label={l.title || l.url}
                       />
                       <span className="min-w-0 flex-1">
-                        {/* The title gives way, the labels do not: a long title
-                            used to push the reason a row is unticked out of the
-                            truncated line, leaving it looking unticked for no
-                            reason. */}
-                        <span className="flex items-baseline gap-2 font-medium text-sm">
+                        {/* The whole employer and job name, never cut: it is
+                            what the decision to import rests on. The labels
+                            keep their place and the line wraps instead. */}
+                        <span
+                          className="flex cursor-pointer flex-wrap items-baseline gap-2 font-medium text-sm"
+                          onClick={() => chooseRows([key], !selected[key])}
+                        >
                           <a
                             href={l.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            // The row is a <label>; without this the click
-                            // would also toggle the row's checkbox.
+                            // Opening the posting is not choosing it.
                             onClick={(e) => e.stopPropagation()}
-                            className="truncate underline decoration-muted-foreground/50 hover:text-primary hover:decoration-primary"
+                            className="break-words underline decoration-muted-foreground/50 hover:text-primary hover:decoration-primary"
                           >
                             {l.title}
                           </a>
@@ -797,9 +816,12 @@ export function SavedSearchPicker({
                             )}
                           </span>
                         </span>
-                        {!selected[key] && startingReason(l, repeats) && (
+                        {/* Why this row is not going to be imported. A row the
+                            reader unticked says so too, rather than leaving the
+                            line out and looking unticked for no reason. */}
+                        {!selected[key] && (startingReason(l, repeats) ?? (untickedByHand[key] ? "you unticked it" : null)) && (
                           <span className="block text-xs text-muted-foreground">
-                            Not selected: {startingReason(l, repeats)}. Tick it to import anyway.
+                            Not selected: {startingReason(l, repeats) ?? "you unticked it"}. Tick it to import anyway.
                           </span>
                         )}
                         {/* Two cities and a count, like the item's name; all of
@@ -820,9 +842,6 @@ export function SavedSearchPicker({
                             <select
                               value={statusByKey[key] ?? "not_started"}
                               onChange={(e) => setStatusByKey((prev) => ({ ...prev, [key]: e.target.value }))}
-                              // The row is a <label>; without this the click
-                              // would also toggle the row's checkbox.
-                              onClick={(e) => e.stopPropagation()}
                               disabled={importing}
                               aria-label={`Status for ${l.title || l.url}`}
                               className="h-6 max-w-[10rem] truncate rounded-md border border-input bg-background px-1 text-xs text-foreground"
@@ -837,12 +856,7 @@ export function SavedSearchPicker({
                                 one. Independent of the status, which only sets
                                 how the new item starts. */}
                             {mirrorTarget && (
-                              <span
-                                className="ml-2 flex items-center gap-1.5"
-                                // The row is a <label>; keep the switch's click
-                                // from toggling the row's checkbox too.
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <span className="ml-2 flex items-center gap-1.5">
                                 <Switch
                                   checked={!!mirrorByKey[key]}
                                   onCheckedChange={(on) => setMirrorByKey((prev) => ({ ...prev, [key]: on }))}
@@ -855,7 +869,7 @@ export function SavedSearchPicker({
                           </span>
                         )}
                       </span>
-                    </label>
+                    </div>
                   );
                 })}
               </div>

@@ -419,6 +419,72 @@ describe("SavedSearchPicker", () => {
   });
 });
 
+describe("choosing rows", () => {
+  const twoJobs = async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({
+          url: "https://x/a",
+          title: "Verohallinto — ICT-asiantuntija (Tiedonhallinnan asiantuntija), useita paikkakuntia",
+          cities: ["Helsinki", "Joensuu", "Oulu"],
+        }),
+        link({ url: "https://x/b", title: "Toinen" }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText(/^Verohallinto/);
+  };
+  const rowBoxes = () => screen.getAllByRole("checkbox").slice(1);
+
+  it("says so when a row is unticked by hand, which used to leave no reason at all", async () => {
+    await twoJobs();
+    fireEvent.click(rowBoxes()[0]);
+    expect(await screen.findByText("Not selected: you unticked it. Tick it to import anyway.")).toBeInTheDocument();
+    // Ticking it again takes the line away.
+    fireEvent.click(rowBoxes()[0]);
+    await waitFor(() => expect(screen.queryByText(/you unticked it/)).not.toBeInTheDocument());
+  });
+
+  it("says so for rows unticked through the select-all of their email too", async () => {
+    await twoJobs();
+    fireEvent.click(screen.getAllByRole("checkbox")[0]);
+    await waitFor(() =>
+      expect(screen.getAllByText("Not selected: you unticked it. Tick it to import anyway.")).toHaveLength(2),
+    );
+  });
+
+  it("toggles from the title line, but not from the cities or the link", async () => {
+    await twoJobs();
+    expect(rowBoxes()[0]).toHaveAttribute("data-state", "checked");
+
+    // The cities line: this is what unticked a row by accident.
+    fireEvent.click(screen.getByText("Helsinki, Joensuu +1 more"));
+    expect(rowBoxes()[0]).toHaveAttribute("data-state", "checked");
+    fireEvent.click(screen.getByText("https://x/a"));
+    expect(rowBoxes()[0]).toHaveAttribute("data-state", "checked");
+
+    // The title line does toggle it.
+    // Both rows carry this label; the first row is the one under test.
+    fireEvent.click(screen.getAllByText("deadline unknown")[0]);
+    await waitFor(() => expect(rowBoxes()[0]).toHaveAttribute("data-state", "unchecked"));
+  });
+
+  it("opens the posting without choosing it when the title link itself is clicked", async () => {
+    await twoJobs();
+    fireEvent.click(screen.getByText(/^Verohallinto/));
+    expect(rowBoxes()[0]).toHaveAttribute("data-state", "checked");
+  });
+
+  it("never cuts the employer and job name short", async () => {
+    await twoJobs();
+    const title = screen.getByText(/^Verohallinto/);
+    expect(title).toHaveTextContent(
+      "Verohallinto — ICT-asiantuntija (Tiedonhallinnan asiantuntija), useita paikkakuntia",
+    );
+    expect(title.className).not.toContain("truncate");
+  });
+});
+
 describe("Import & auto-place", () => {
   const backlog = (id: string, name: string, treeId = "tree-1") => ({
     id, name, parentId: null, childrenIds: [], treeId, rank: 0,
