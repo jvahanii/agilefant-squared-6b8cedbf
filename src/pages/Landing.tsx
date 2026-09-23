@@ -112,7 +112,7 @@ const SCALES = [
   },
   {
     icon: Building2,
-    who: "For an organisation",
+    who: "For the enterprise",
     body: "Share trees across organisations, allow each team its own statuses and labels, see the whole, and sign in through an enterprise-grade identity provider.",
   },
 ] as const;
