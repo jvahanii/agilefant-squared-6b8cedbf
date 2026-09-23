@@ -7,6 +7,7 @@ import {
   deleteWorkItems,
   deleteWorkItemBacklogRanks,
   upsertBacklog,
+  updateBacklogRatingsEnabled,
   updateBacklogViewMode,
   upsertBacklogs,
   deleteBacklogs,
@@ -245,6 +246,8 @@ interface AppState extends DataSnapshot {
   renameBacklog: (backlogId: string, name: string) => void;
   setBacklogHiddenStatusKeys: (backlogId: string, keys: string[]) => void;
   setBacklogViewMode: (backlogId: string, mode: 'list' | 'board') => void;
+  /** Show stars on this backlog's items, where the organization has ratings on. */
+  setBacklogRatingsEnabled: (backlogId: string, enabled: boolean) => void;
   reorderBacklogAmongSiblings: (
     backlogId: string,
     targetIndex: number,
@@ -4030,6 +4033,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Hiding a column is done by deleting the corresponding status.
     },
 
+
+    setBacklogRatingsEnabled: (backlogId, enabled) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      if ((bl.ratingsEnabled ?? false) === enabled) return;
+      updateBacklogRatingsEnabled(backlogId, enabled);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, ratingsEnabled: enabled } },
+      });
+    },
 
     setBacklogViewMode: (backlogId, mode) => {
       const state = get();

@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } f
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
+import { StarRating } from "@/components/StarRating";
 import { formatDuration } from "@/lib/formatDuration";
 import {
   backlogScope,
@@ -594,6 +595,9 @@ function ItemRow({
           <span className="shrink-0 leading-5">
             <TimeBadge minutes={minutes} label="logged" />
           </span>
+        )}
+        {p.ratingsVisible && item.rating != null && (
+          <StarRating rating={item.rating} label={item.title} className="shrink-0" />
         )}
         {p.pointsVisible && item.points != null && (
           <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] leading-4 tabular-nums text-muted-foreground">

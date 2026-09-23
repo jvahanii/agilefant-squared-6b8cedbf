@@ -25,6 +25,7 @@ function fixture(over: Record<string, unknown> = {}) {
     tree: { id: "t", name: "Product tree" },
     rootBacklogId: null,
     pointsVisible: true,
+    ratingsVisible: false,
     timeVisible: true,
     labelsVisible: true,
     descriptionVisible: true,
@@ -50,6 +51,7 @@ function fixture(over: Record<string, unknown> = {}) {
         title: "Parent item",
         description: "Line one\nLine two",
         points: 5,
+        rating: 4,
         status: "in_progress",
         parentId: null,
         backlogId: "b-root",
@@ -69,6 +71,7 @@ function fixture(over: Record<string, unknown> = {}) {
         title: "Child item",
         description: null,
         points: 8,
+        rating: null,
         status: "review",
         parentId: "parent",
         backlogId: "b-child",
@@ -111,6 +114,41 @@ function renderPage() {
 
 beforeEach(() => {
   rpc.mockReset();
+});
+
+describe("public backlog page: stars", () => {
+  it("shows an item's stars when the link publishes ratings", async () => {
+    rpc.mockResolvedValue({ data: fixture({ ratingsVisible: true }), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+    expect(screen.getByRole("group", { name: "Rating for Parent item: 4 of 5" })).toBeInTheDocument();
+  });
+
+  it("shows nothing for an unrated item, rather than five empty stars", async () => {
+    rpc.mockResolvedValue({ data: fixture({ ratingsVisible: true }), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    expect(screen.getByText("Child item")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: /Rating for Child item/ })).not.toBeInTheDocument();
+  });
+
+  it("shows no stars at all when the link leaves ratings out", async () => {
+    // The server withholds the ratings too; this is the second lock.
+    rpc.mockResolvedValue({ data: fixture(), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+    expect(screen.queryByRole("group", { name: /^Rating for/ })).not.toBeInTheDocument();
+  });
+
+  it("does not let a visitor rate anything", async () => {
+    rpc.mockResolvedValue({ data: fixture({ ratingsVisible: true }), error: null });
+    renderPage();
+    await screen.findByText("Parent item");
+    const stars = screen.getByRole("group", { name: /Parent item/ }).querySelectorAll("button");
+    expect(stars).toHaveLength(5);
+    expect([...stars].every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
+  });
 });
 
 describe("public backlog page", () => {

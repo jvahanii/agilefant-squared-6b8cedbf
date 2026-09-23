@@ -320,7 +320,11 @@ function WorkItemNodeContent({
   const isMobile = useIsMobile();
   const activeOrgId = shared.activeOrgId;
   const pointsVisible = usePointsVisibleForTree(treeId);
-  const ratingsVisible = useRatingsEnabled();
+  const orgRatingsEnabled = useRatingsEnabled();
+  // The backlog this row is shown in decides too, and starts off.
+  const rowBacklogId = item.backlogAssignments?.[treeId];
+  const rowBacklogRatings = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.ratingsEnabled ?? false : false));
+  const ratingsVisible = orgRatingsEnabled && rowBacklogRatings;
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -2671,10 +2675,14 @@ function SearchResultItem({
 }
 
 export function WorkItemTreePanel() {
-  // Whether "Rating ★ best first" is among the sort modes.
-  const ratingsEnabled = useRatingsEnabled();
+  // "Rating ★ best first" is offered where the organization rates its items
+  // and this backlog has its stars switched on.
+  const orgRatingsEnabled = useRatingsEnabled();
   const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
+  const ratingsEnabled = useAppStore(
+    (s) => orgRatingsEnabled && !!(selectedBacklogId && s.backlogs[selectedBacklogId]?.ratingsEnabled),
+  );
   const selectedTreeId = useAppStore((s) => s.selectedTreeId);
   const workItems = useAppStore((s) => s.workItems);
   const workItemsLoading = useAppStore((s) => s.workItemsLoading);

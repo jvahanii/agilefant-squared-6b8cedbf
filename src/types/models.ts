@@ -54,6 +54,10 @@ export interface Backlog {
   rank: number;
   boardHiddenStatusKeys?: string[];
   viewMode?: 'list' | 'board';
+  /** Stars on this backlog's items. Off until switched on, and only consulted
+   *  where the organization has ratings on. Unlike the tree-level points
+   *  override there is nothing to inherit: a backlog opts in. */
+  ratingsEnabled?: boolean;
 }
 
 export interface BacklogTree {

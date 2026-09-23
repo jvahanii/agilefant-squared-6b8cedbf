@@ -1,8 +1,9 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe, Star } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuLabel,
@@ -32,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
+import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
@@ -358,6 +360,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const publicLinksEnabled = usePublicLinksEnabled();
+  const ratingsEnabled = useRatingsEnabled();
+  const backlogRatings = useAppStore((s) => s.backlogs[backlogId]?.ratingsEnabled ?? false);
+  const setBacklogRatingsEnabled = useAppStore((s) => s.setBacklogRatingsEnabled);
   // Both hooks run every render; only then combined. A link row can outlive
   // sharing being switched off, and a marker for it would claim a backlog is
   // public that no longer is.
@@ -713,6 +718,18 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
             <TrendingUp className="w-3 h-3 mr-2" />
             View burnup…
           </ContextMenuItem>
+        )}
+        {/* Each backlog decides for itself, starting off: stars earn their
+            place on a shortlist and are noise on a sprint backlog. */}
+        {ratingsEnabled && (
+          <ContextMenuCheckboxItem
+            className="text-xs"
+            checked={backlogRatings}
+            onCheckedChange={(checked) => setBacklogRatingsEnabled(backlogId, checked === true)}
+          >
+            <Star className="w-3 h-3 mr-2" />
+            Star ratings
+          </ContextMenuCheckboxItem>
         )}
         {publicLinksEnabled && (
           <ContextMenuItem className="text-xs" onSelect={() => setShowPublishDialog(true)}>

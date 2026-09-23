@@ -125,6 +125,7 @@ export type Database = {
           rank: number
           tree_id: string
           view_mode: string
+          ratings_enabled: boolean
         }
         Insert: {
           id: string
@@ -134,6 +135,7 @@ export type Database = {
           rank?: number
           tree_id: string
           view_mode?: string
+          ratings_enabled?: boolean
         }
         Update: {
           id?: string
@@ -143,6 +145,7 @@ export type Database = {
           rank?: number
           tree_id?: string
           view_mode?: string
+          ratings_enabled?: boolean
         }
         Relationships: [
           {
