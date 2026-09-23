@@ -56,6 +56,7 @@ const UserGuide = lazy(() => import("./pages/UserGuide"));
 const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
 const PublicBacklog = lazy(() => import("./pages/PublicBacklog"));
 const JobAdsGuide = lazy(() => import("./pages/JobAdsGuide"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 const queryClient = new QueryClient();
 
@@ -168,6 +169,7 @@ function AppRoutes() {
     return (
       <Suspense fallback={pageFallback}>
         <Routes>
+          <Route path="/" element={notLinked ?? <Landing />} />
           <Route path="/auth" element={notLinked ?? <Auth />} />
           <Route path="/auth/sign-up" element={notLinked ?? <Auth mode="sign-up" />} />
           <Route path="/user-guide" element={<UserGuide />} />
