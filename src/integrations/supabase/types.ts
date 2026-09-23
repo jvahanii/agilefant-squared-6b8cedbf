@@ -123,9 +123,9 @@ export type Database = {
           organization_id: string | null
           parent_id: string | null
           rank: number
+          ratings_enabled: boolean
           tree_id: string
           view_mode: string
-          ratings_enabled: boolean
         }
         Insert: {
           id: string
@@ -133,9 +133,9 @@ export type Database = {
           organization_id?: string | null
           parent_id?: string | null
           rank?: number
+          ratings_enabled?: boolean
           tree_id: string
           view_mode?: string
-          ratings_enabled?: boolean
         }
         Update: {
           id?: string
@@ -143,9 +143,9 @@ export type Database = {
           organization_id?: string | null
           parent_id?: string | null
           rank?: number
+          ratings_enabled?: boolean
           tree_id?: string
           view_mode?: string
-          ratings_enabled?: boolean
         }
         Relationships: [
           {
@@ -356,8 +356,8 @@ export type Database = {
       gmail_import_queries: {
         Row: {
           auto_place_dated_backlog_id: string | null
-          auto_place_undated_backlog_id: string | null
           auto_place_mirror_backlog_id: string | null
+          auto_place_undated_backlog_id: string | null
           backlog_id: string
           created_at: string
           frequency: string
@@ -377,8 +377,8 @@ export type Database = {
         }
         Insert: {
           auto_place_dated_backlog_id?: string | null
-          auto_place_undated_backlog_id?: string | null
           auto_place_mirror_backlog_id?: string | null
+          auto_place_undated_backlog_id?: string | null
           backlog_id: string
           created_at?: string
           frequency?: string
@@ -398,8 +398,8 @@ export type Database = {
         }
         Update: {
           auto_place_dated_backlog_id?: string | null
-          auto_place_undated_backlog_id?: string | null
           auto_place_mirror_backlog_id?: string | null
+          auto_place_undated_backlog_id?: string | null
           backlog_id?: string
           created_at?: string
           frequency?: string
@@ -1607,8 +1607,8 @@ export type Database = {
           parent_id: string | null
           parent_id_overrides: Json
           points: number | null
-          rating: number | null
           rank: number
+          rating: number | null
           respawn_enabled: boolean
           respawn_hour: number | null
           respawn_interval_days: number | null
@@ -1625,8 +1625,8 @@ export type Database = {
           parent_id?: string | null
           parent_id_overrides?: Json
           points?: number | null
-          rating?: number | null
           rank?: number
+          rating?: number | null
           respawn_enabled?: boolean
           respawn_hour?: number | null
           respawn_interval_days?: number | null
@@ -1643,8 +1643,8 @@ export type Database = {
           parent_id?: string | null
           parent_id_overrides?: Json
           points?: number | null
-          rating?: number | null
           rank?: number
+          rating?: number | null
           respawn_enabled?: boolean
           respawn_hour?: number | null
           respawn_interval_days?: number | null
