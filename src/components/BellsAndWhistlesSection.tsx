@@ -114,8 +114,9 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div>
               <p className="text-sm font-medium">Enable star ratings</p>
               <p className="text-xs text-muted-foreground">
-                Rate work items one to five stars on their row, and sort a backlog by rating. Turning this off hides
-                the stars; ratings already given are kept.
+                Rate work items one to five stars on their row, and sort a backlog by rating. Each backlog then turns
+                its own stars on from its right-click menu in the tree, starting off. Turning this off hides the stars
+                everywhere; ratings already given are kept.
               </p>
             </div>
             <Switch
