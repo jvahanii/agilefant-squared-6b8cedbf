@@ -162,10 +162,16 @@ const PLANS = [
   },
 ] as const;
 
+/**
+ * The crest: a rearing elephant on a crimson shield under the Finnish flag.
+ * The same artwork the app ships as its icon, and the mark Agilefant has worn
+ * since long before this rewrite — not the flat pink elephant a generator left
+ * in `agilefant-logo.png`.
+ */
 function Logo() {
   return (
     <span className="flex items-center gap-2 font-semibold tracking-tight">
-      <img src="/agilefant-logo.png" alt="" width={28} height={28} className="h-7 w-7" />
+      <img src="/agilefant-shield.png" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
       <span>
         Agilefant<sup className="text-primary">2</sup>
       </span>
