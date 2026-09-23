@@ -80,7 +80,7 @@ const FEATURES = [
   {
     icon: Clock,
     title: "Time logging",
-    body: "Log time against work items and move entries between items when they landed in the wrong place.",
+    body: "Log time against work items and move entries between items if they landed in the wrong place. More versatile than any other time logging app you'll find",
   },
   {
     icon: Star,
