@@ -1040,7 +1040,7 @@ function sameEntries(a: Record<string, unknown> | undefined, b: Record<string, u
 /** Whether two versions of an item would be saved as the same rows. */
 function samePersistedWorkItem(a: WorkItem, b: WorkItem): boolean {
   return a.title === b.title && a.description === b.description && a.points === b.points &&
-    a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
+    a.rating === b.rating && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
     a.respawnEnabled === b.respawnEnabled && a.respawnIntervalDays === b.respawnIntervalDays &&
     a.respawnHour === b.respawnHour && a.respawnMinute === b.respawnMinute &&
     a.respawnLastTriggeredAt === b.respawnLastTriggeredAt &&
@@ -2893,6 +2893,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           title: src.title,
           description: src.description,
           points: src.points,
+          rating: src.rating,
           status: src.status,
           parentId: newParentId,
           // Drop per-tree parent overrides on the clone — they reference the
@@ -4569,6 +4570,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           title: row.title as string,
           description: (row.description as string | null) ?? undefined,
           points: (row.points as number | null) ?? undefined,
+          // Without this the echo of a rating's own save rebuilt the item
+          // without it, and the stars just clicked went out again.
+          rating: (row.rating as number | null) ?? undefined,
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
           parentIds: parsedParentIds,

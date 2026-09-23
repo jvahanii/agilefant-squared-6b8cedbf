@@ -905,6 +905,69 @@ describe("setWorkItemRating", () => {
   });
 });
 
+describe("a rating survives the round trip", () => {
+  const ID = `${ORG}::wi-1`;
+  /** The row realtime delivers for item 1, as the database has it after a save. */
+  const echo = (rating: number | null) => ({
+    id: ID,
+    title: "Item 1",
+    description: null,
+    status: "not_started",
+    parent_id: null,
+    backlog_assignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` },
+    rank: 0,
+    organization_id: ORG,
+    respawn_enabled: false,
+    respawn_interval_days: null,
+    respawn_hour: null,
+    respawn_minute: null,
+    respawn_last_triggered_at: null,
+    points: null,
+    rating,
+  });
+
+  it("keeps the stars just clicked when the save comes back over realtime", () => {
+    // The bug: the rating showed, then went as the echo of its own save
+    // rebuilt the item without it.
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 4);
+    useAppStore.getState().applyRealtimeWorkItem("UPDATE", echo(4));
+    expect(useAppStore.getState().workItems[ID].rating).toBe(4);
+  });
+
+  it("takes a rating someone else changed from realtime", () => {
+    seedStore();
+    useAppStore.getState().applyRealtimeWorkItem("UPDATE", echo(2));
+    expect(useAppStore.getState().workItems[ID].rating).toBe(2);
+    useAppStore.getState().applyRealtimeWorkItem("UPDATE", echo(null));
+    expect(useAppStore.getState().workItems[ID].rating).toBeUndefined();
+  });
+
+  it("saves the undone rating, not only shows it", () => {
+    // Undo writes what differs between the two snapshots; a rating the check
+    // did not compare would be undone on screen and stay in the database.
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 5);
+    (upsertWorkItems as unknown as { mockClear: () => void }).mockClear();
+    useAppStore.getState().undo();
+    const written = (upsertWorkItems as unknown as { mock: { calls: [{ id: string; rating?: number }[], string][] } }).mock.calls
+      .flatMap(([items]) => items)
+      .find((item) => item.id === ID);
+    expect(written).toBeDefined();
+    expect(written!.rating).toBeUndefined();
+  });
+
+  it("copies the rating when an item is duplicated, as it does the points", () => {
+    seedStore();
+    useAppStore.getState().setWorkItemRating(ID, 3);
+    const before = new Set(Object.keys(useAppStore.getState().workItems));
+    useAppStore.getState().duplicateWorkItems([ID]);
+    const copyId = Object.keys(useAppStore.getState().workItems).find((id) => !before.has(id));
+    expect(copyId).toBeDefined();
+    expect(useAppStore.getState().workItems[copyId!].rating).toBe(3);
+  });
+});
+
 describe("removeWorkItemFromTree", () => {
   it("removes tree assignment", () => {
     seedStore();
