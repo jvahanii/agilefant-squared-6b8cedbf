@@ -284,19 +284,19 @@ export default function Landing() {
                 Free, with no time limit
               </p>
               <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-                Every backlog you have, <span className="text-primary">in one tree.</span>
+                Every backlog you have, <span className="text-primary">in one app.</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-                Agilefant² is a backlog tool that scales from one person's to-do list to an organisation's whole
-                portfolio. Nest backlogs as deep as your work goes, keep one item in several trees at once, and do
-                nearly all of it from the keyboard.
+                Agilefant² is a backlog tool that scales from one person's to-do list to an enterprise's whole portfolio.
+                Nest backlogs as deep as your work goes, keep one item in several trees at once, share backlogs with
+                other organizations and the public, and do nearly all of it from the keyboard.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   to="/auth/sign-up"
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
                 >
-                  Start for free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  Free forever <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <Link to="/auth" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
                   Sign in
