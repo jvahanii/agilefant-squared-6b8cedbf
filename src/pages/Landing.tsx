@@ -108,12 +108,12 @@ const SCALES = [
   {
     icon: Users,
     who: "For a team",
-    body: "Sprints on a board, points that add up, burnups for the retro, and everyone looking at the same live backlog.",
+    body: "Sprints on a board, points that add up smartly, burnups, and everyone looking at the same live backlog.",
   },
   {
     icon: Building2,
     who: "For an organisation",
-    body: "Share trees across organisations, give each team its own statuses and labels, and sign in through an enterprise-grade identity provider.",
+    body: "Share trees across organisations, allow each team its own statuses and labels, see the whole, and sign in through an enterprise-grade identity provider.",
   },
 ] as const;
 
@@ -323,10 +323,10 @@ export default function Landing() {
 
         <section id="features" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-20">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight">Simple to start. Deep when you need it.</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Simple to start. Powerful when you need it.</h2>
             <p className="mt-3 text-muted-foreground">
-              A new account is a tree and a list. Everything else — points, statuses, labels, time, ratings — is a
-              switch you turn on when your work asks for it.
+              A new account is composed of backlog trees, backlogs and work items. Everything else — points,
+              statuses, labels, time, ratings and so on — is a switch you turn on when your work needs it.
             </p>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
