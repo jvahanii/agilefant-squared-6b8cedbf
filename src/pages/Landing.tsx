@@ -145,14 +145,6 @@ const PLANS = [
     featured: true,
   },
   {
-    name: "Starter",
-    tagline: "For growing teams",
-    body: "More capacity once the team outgrows the free limits.",
-    points: ["Higher limits", "Priority support", "Billing through the Stripe customer portal"],
-    cta: { label: "Start free, upgrade later", to: "/auth/sign-up" },
-    featured: false,
-  },
-  {
     name: "Enterprise",
     tagline: "Tailored",
     body: "For organisations that need it shaped around them.",
