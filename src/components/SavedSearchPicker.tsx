@@ -242,11 +242,17 @@ export function SavedSearchPicker({
           // the date still leaves the page as the only place that says where,
           // and the dialog shows it. A city the mail gave (Työmarkkinatori)
           // needs no read.
+          //
+          // Deadlines first, cities with what is left, and the same cap over
+          // both — as the server queues them. The Finnish boards give a date
+          // and never a city, so one undivided list spends the whole budget on
+          // cities and leaves the genuinely undated postings unread.
+          const readable = sorted.filter((l) => !l.applicationsClosed && !readableInBrowser(l.url));
           const toRead = [
             ...new Map(
-              sorted
-                .filter((l) => (!l.deadline || l.cities === undefined) && !l.applicationsClosed && !readableInBrowser(l.url))
-                .map((l) => [l.url, { url: l.url, date: l.date }]),
+              [...readable.filter((l) => !l.deadline), ...readable.filter((l) => l.deadline && l.cities === undefined)].map(
+                (l) => [l.url, { url: l.url, date: l.date }],
+              ),
             ).values(),
           ].slice(0, MAX_POSTINGS_READ);
           for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {

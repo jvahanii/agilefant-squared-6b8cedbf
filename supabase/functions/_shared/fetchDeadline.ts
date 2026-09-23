@@ -280,10 +280,22 @@ export async function fillDeadlines<
   // for its cities as well, so it is skipped only once both are known: a
   // Duunitori or Jobly mail states the date, and its page is still the only
   // place that says where the job is.
-  const targets: number[] = [];
-  for (let i = 0; i < links.length && targets.length < MAX_FETCHES; i++) {
-    if (!links[i].deadline || links[i].cities === undefined) targets.push(i);
+  // The order of the queue matters as much as its length. A missing deadline
+  // decides which backlog an item is filed into and whether its name carries a
+  // date; a missing city only decorates that name. So every link without a
+  // deadline is queued first and the city reads spend whatever budget is left.
+  //
+  // Queued as one list they did not: the Finnish boards state a date in the
+  // mail and never a city, so nearly every link qualified, the cap was reached
+  // among the earliest of them, and a posting past the fortieth that had no
+  // date at all was never read — arriving undated, in the wrong backlog.
+  const needDeadline: number[] = [];
+  const needCity: number[] = [];
+  for (let i = 0; i < links.length; i++) {
+    if (!links[i].deadline) needDeadline.push(i);
+    else if (links[i].cities === undefined) needCity.push(i);
   }
+  const targets = [...needDeadline, ...needCity].slice(0, MAX_FETCHES);
   if (targets.length === 0) return links;
 
   const out = [...links];

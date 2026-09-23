@@ -157,6 +157,34 @@ describe("reading a posting for its city", () => {
     expect(dated).toMatchObject({ deadline: "2026-10-31", cities: ["Espoo"] });
     expect(known.cities).toEqual(["Oulu"]);
   });
+
+  it("reads the postings with no deadline before those that only want a city", async () => {
+    // The Finnish boards state a date and never a city, so a search arrives as
+    // a long run of links wanting nothing but a city. Queued alongside them,
+    // the one posting that has no date at all falls past the 40-fetch cap and
+    // is imported undated — into the wrong backlog, and named without its date.
+    const html = page("duunitori-posting-espoo.html");
+    const fetched: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      fetched.push(url);
+      return new Response(html, { status: 200, headers: { "content-type": "text/html" } });
+    });
+
+    const links: { url: string; date?: string; deadline?: string; cities?: string[] }[] = [
+      ...Array.from({ length: 45 }, (_, i) => ({
+        url: `https://duunitori.fi/tyopaikat/tyo/${i}`,
+        deadline: "2026-10-31",
+      })),
+      { url: "https://duunitori.fi/tyopaikat/tyo/undated", date: "2026-09-21" },
+    ];
+    const out = await fillDeadlines(links);
+
+    // Read at all is the whole of it: whatever this page turned out to say
+    // about its date, the posting that had none was the first to be asked.
+    expect(fetched).toContain("https://duunitori.fi/tyopaikat/tyo/undated");
+    expect(fetched).toHaveLength(40);
+    expect(out[45].cities).toEqual(["Espoo"]);
+  });
 });
 
 describe("Työmarkkinatori: the cities come from the alert mail", () => {
