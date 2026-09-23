@@ -510,7 +510,10 @@ export default function TeamSettings() {
 
         if (currentUserWillBeOrphaned) {
           await clerkSignOut();
-          navigate("/auth");
+          // The landing page, like every other sign-out: this user has just
+          // deleted their last organization and has no account to sign back
+          // into, so a sign-in form is the one thing that cannot help them.
+          navigate("/");
           return;
         }
       } else {

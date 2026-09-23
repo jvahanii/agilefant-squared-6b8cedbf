@@ -13,7 +13,7 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 // key if it is set wherever the site is built, which is outside this repo.
 const app = clerkPublishableKey
   ? (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/auth">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
       <ClerkBridge />
       <App />
     </ClerkProvider>

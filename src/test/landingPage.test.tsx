@@ -7,6 +7,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import Landing from "@/pages/Landing";
 
 function renderLanding() {
@@ -48,6 +50,14 @@ describe("Landing", () => {
     for (const href of anchors) {
       expect(container.querySelector(href), href).not.toBeNull();
     }
+  });
+
+  it("is where Clerk drops someone who has just signed out", () => {
+    // Read from the source because main.tsx mounts the whole app on import.
+    // Signing out used to land on the sign-in form, which invites the person
+    // who has just left to go straight back in.
+    const main = readFileSync(join(process.cwd(), "src", "main.tsx"), "utf8");
+    expect(main).toMatch(/afterSignOutUrl="\/"/);
   });
 
   it("shows all three plans, with the free one free", () => {
