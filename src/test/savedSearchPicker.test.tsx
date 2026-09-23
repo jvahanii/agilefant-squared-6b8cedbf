@@ -10,6 +10,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+// An import here runs the whole flow -- search, read, import, reload, wait for
+// the new items, rank -- and waitForItems polls in 250ms steps. A test that
+// clicks Import is therefore seconds long, and the default 5s left no room:
+// these tests began failing in CI as the file grew, each one leaving its own
+// polling behind. The work itself is unchanged; only the allowance is.
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
+
 const callGmail = vi.fn();
 /** The picker reads postings batch by batch; by default they state nothing. */
 const postingFacts = vi.fn();
@@ -71,6 +78,21 @@ vi.mock("@/lib/postingReader", () => ({
   readableInBrowser: (url: string) => url.includes("jobly.fi"),
   readPostingFacts: (...args: unknown[]) => readPostingFacts(...args),
 }));
+/**
+ * Waiting for the imported items to arrive polls the store every 250ms for up
+ * to 20s, and that polling outlives the test that started it: with every test
+ * that clicks Import leaving one behind, later tests in this file grew slow
+ * enough to fail on timing. Stubbed by default, and only the test about the
+ * waiting itself uses the real one.
+ */
+let realWaitForItems = false;
+vi.mock("@/lib/waitForItems", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/waitForItems")>();
+  return {
+    waitForItems: (...args: Parameters<typeof actual.waitForItems>) =>
+      realWaitForItems ? actual.waitForItems(...args) : Promise.resolve(true),
+  };
+});
 vi.mock("@/store/orgStore", () => ({
   useOrgStore: (select: (s: { activeOrgId: string; roleOverride: null }) => unknown) =>
     select({ activeOrgId: "org-1", roleOverride: null }),
@@ -110,6 +132,7 @@ beforeEach(() => {
   storeState = {};
   checkClosed.mockClear();
   closedIds = new Set();
+  realWaitForItems = false;
 });
 
 describe("SavedSearchPicker", () => {
@@ -529,7 +552,7 @@ describe("Import & auto-place", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
-    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2), { timeout: 8000 });
     // One call, naming both lists: the import splits after reading the dates.
     const imported = callGmail.mock.calls[1][0];
     expect(imported).toMatchObject({
@@ -555,6 +578,8 @@ describe("Import & auto-place", () => {
 
   it("ranks the new items too, once they have loaded — not only what was there before", async () => {
     withBothLists();
+    // This one is about the waiting, so it does it for real.
+    realWaitForItems = true;
     const existing = storeState.workItems as Record<string, unknown>;
     // The reload returns before the new item is in the store, as a background
     // refresh does; it arrives a moment later.
@@ -567,7 +592,10 @@ describe("Import & auto-place", () => {
       }, 30);
     });
     callGmail
-      .mockResolvedValueOnce({ links: [link({ url: "https://x/dated", title: "Dated", deadline: "2026-09-22" })] })
+      .mockResolvedValueOnce({ links: [// Far future on purpose: a row whose closing date has passed starts
+      // unticked, so a date near the day this was written made the test
+      // import nothing once that day went by.
+      link({ url: "https://x/dated", title: "Dated", deadline: "2036-09-22" })] })
       .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["n"] })
       .mockResolvedValueOnce({ marked: 1 });
 
@@ -576,7 +604,7 @@ describe("Import & auto-place", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
-    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 3000 });
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
     // 0922 sorts between 0930 and 1011 — not after them.
     expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["n", "b", "a"]]);
     loadFromSupabase.mockReset();
@@ -595,7 +623,7 @@ describe("Import & auto-place", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
 
-    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
     const titles = toast.mock.calls.map((c) => c[0].title);
     expect(titles).toContain("Could not mark the emails as read");
     expect(titles.some((t: string) => t.startsWith("Imported 1 work item"))).toBe(true);
@@ -845,7 +873,7 @@ describe("Import & auto-place: mirroring the rows switched on", () => {
   };
   const importAndAutoPlace = async () => {
     fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
-    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled());
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
   };
 
   it("mirrors the rows switched on — not the ones given a status — in the same undo step", async () => {
