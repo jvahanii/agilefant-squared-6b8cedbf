@@ -271,10 +271,6 @@ export default function Landing() {
           />
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-14 sm:pt-20 lg:grid-cols-2">
             <div>
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                Free, with no time limit
-              </p>
               <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
                 Every backlog you have, <span className="text-primary">in one app.</span>
               </h1>
