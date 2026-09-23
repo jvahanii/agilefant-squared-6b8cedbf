@@ -331,7 +331,7 @@ export default function Landing() {
         <section className="bg-muted/50">
           <div className="mx-auto max-w-6xl px-4 py-20">
             <div className="max-w-2xl">
-              <h2 className="text-3xl font-bold tracking-tight">Work arrives from everywhere.</h2>
+              <h2 className="text-3xl font-bold tracking-tight">Import work items from everywhere.</h2>
               <p className="mt-3 text-muted-foreground">
                 Connect the places work starts, and it shows up in the right backlog without anyone retyping it.
               </p>
