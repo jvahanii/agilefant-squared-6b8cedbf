@@ -33,10 +33,21 @@ describe("Landing", () => {
   });
 
   it("points every call to action somewhere real", () => {
+    // The wording of this page is edited in Lovable, so the assertions below
+    // are about where a link goes, never about what it says. A route is worth
+    // pinning — a signed-out visitor sent to one the app does not serve lands
+    // back on the sign-in form with no explanation.
     renderLanding();
-    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.length).toBeGreaterThan(5);
     for (const href of hrefs) {
-      expect(href).toMatch(/^(\/auth(\/sign-up)?|\/user-guide|#[a-z]+|mailto:sales@agilefant\.org)$/);
+      expect(href, "a link with no destination").not.toBe("");
+      if (href.startsWith("#")) continue;
+      if (href.startsWith("mailto:")) {
+        expect(href, href).toMatch(/^mailto:[^@\s]+@[^@\s.]+\.[^@\s]+$/);
+        continue;
+      }
+      expect(href, href).toMatch(/^\/(auth(\/sign-up)?|user-guide)$/);
     }
   });
 
@@ -60,11 +71,20 @@ describe("Landing", () => {
     expect(main).toMatch(/afterSignOutUrl="\/"/);
   });
 
-  it("shows all three plans, with the free one free", () => {
-    renderLanding();
-    for (const plan of ["Free", "Starter", "Enterprise"]) {
-      expect(screen.getByRole("heading", { level: 3, name: plan })).toBeInTheDocument();
-    }
-    expect(screen.getByText("Unlimited work items")).toBeInTheDocument();
+  it("gives every plan a name and something under it", () => {
+    // Which plans there are, and what each promises, is a pricing decision
+    // that changes without the code changing shape — so this checks only that
+    // each one arrives whole. A blank bullet is the failure worth catching:
+    // it renders as a tick with nothing beside it.
+    const { container } = renderLanding();
+    const pricing = container.querySelector("#pricing");
+    expect(pricing).not.toBeNull();
+    const names = within(pricing as HTMLElement).getAllByRole("heading", { level: 3 });
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(names.map((h) => h.textContent)).toContain("Free");
+
+    const bullets = within(pricing as HTMLElement).getAllByRole("listitem");
+    expect(bullets.length).toBeGreaterThanOrEqual(names.length);
+    for (const li of bullets) expect(li.textContent?.trim(), "a bullet with no text").not.toBe("");
   });
 });
