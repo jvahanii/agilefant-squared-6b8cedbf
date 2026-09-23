@@ -276,7 +276,7 @@ export default function Landing() {
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
                 Agilefant² is a backlog tool that scales from one person's to-do list to an enterprise's whole portfolio.
-                Nest backlogs as deep as your work goes, keep one item in several trees at once, share backlogs with
+                Nest backlogs as deep as your work needs, keep item in multiple lists, share backlogs with
                 other organizations and the public, and do nearly all of it from the keyboard.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
