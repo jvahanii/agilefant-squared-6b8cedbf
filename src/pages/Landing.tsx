@@ -139,7 +139,7 @@ const PLANS = [
   {
     name: "Free",
     tagline: "No time limit",
-    body: "Fully functional for personal and small-team use.",
+    body: "Fully functional, from personal to enterprise use.",
     points: ["All features\u00a0", "Unlimited everything", "", "Data export always included"],
     cta: { label: "Start free", to: "/auth/sign-up" },
     featured: true,
