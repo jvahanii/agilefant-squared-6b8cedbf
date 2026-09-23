@@ -149,7 +149,7 @@ const PLANS = [
     tagline: "Tailored",
     body: "For organisations that need it shaped around them.",
     points: ["Request features\u00a0", "Dedicated support", "Tailored onboarding"],
-    cta: { label: "Contact sales", href: "mailto:sales@agilefant.org" },
+    cta: { label: "Contact sales", href: "mailto:jvahanii@gmail.com" },
     featured: false,
   },
 ] as const;
@@ -420,7 +420,7 @@ export default function Landing() {
             <Link to="/user-guide" className="hover:text-foreground">
               User guide
             </Link>
-            <a href="mailto:sales@agilefant.org" className="hover:text-foreground">
+            <a href="mailto:jvahanii@gmail.com" className="hover:text-foreground">
               sales@agilefant.org
             </a>
             <Link to="/auth" className="hover:text-foreground">
