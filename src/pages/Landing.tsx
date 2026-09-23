@@ -145,14 +145,6 @@ const PLANS = [
     featured: true,
   },
   {
-    name: "Starter",
-    tagline: "For growing teams",
-    body: "More capacity once the team outgrows the free limits.",
-    points: ["Higher limits", "Priority support", "Billing through the Stripe customer portal"],
-    cta: { label: "Start free, upgrade later", to: "/auth/sign-up" },
-    featured: false,
-  },
-  {
     name: "Enterprise",
     tagline: "Tailored",
     body: "For organisations that need it shaped around them.",
@@ -371,7 +363,7 @@ export default function Landing() {
               The free plan is the whole product, not a trial. Pay only when your team needs more room.
             </p>
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mx-auto mt-10 grid max-w-3xl gap-4 md:grid-cols-2">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
