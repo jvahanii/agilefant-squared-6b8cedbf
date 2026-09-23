@@ -417,7 +417,7 @@ export default function Landing() {
               User guide
             </Link>
             <a href="mailto:jvahanii@gmail.com" className="hover:text-foreground">
-              sales@agilefant.org
+              support: jvahanii@gmail.com
             </a>
             <Link to="/auth" className="hover:text-foreground">
               Sign in
