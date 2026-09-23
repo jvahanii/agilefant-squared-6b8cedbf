@@ -89,7 +89,7 @@ const FEATURES = [
   },
   {
     icon: Globe,
-    title: "Publish a link",
+    title: "Publish a backlog",
     body: "Share a read-only web page of any backlog with people who have no account. Choose which fields show.",
   },
   {
