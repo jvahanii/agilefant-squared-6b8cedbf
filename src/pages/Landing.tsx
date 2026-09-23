@@ -94,7 +94,7 @@ const FEATURES = [
   },
   {
     icon: Radio,
-    title: "Live for everyone",
+    title: "Live changes",
     body: "Changes appear for your whole team as they happen — no refresh, no stale boards.",
   },
 ] as const;
