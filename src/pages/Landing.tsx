@@ -140,7 +140,7 @@ const PLANS = [
     name: "Free",
     tagline: "No time limit",
     body: "Fully functional for personal and small-team use.",
-    points: ["Unlimited backlog trees", "Unlimited work items", "Unlimited team members", "Data export always included"],
+    points: ["All features\u00a0", "Unlimited everything", "", "Data export always included"],
     cta: { label: "Start free", to: "/auth/sign-up" },
     featured: true,
   },
@@ -156,7 +156,7 @@ const PLANS = [
     name: "Enterprise",
     tagline: "Tailored",
     body: "For organisations that need it shaped around them.",
-    points: ["Custom limits", "Dedicated support", "Tailored onboarding"],
+    points: ["Request features\u00a0", "Dedicated support", "Tailored onboarding"],
     cta: { label: "Contact sales", href: "mailto:sales@agilefant.org" },
     featured: false,
   },
@@ -407,15 +407,15 @@ export default function Landing() {
 
         <section className="px-4 pb-20">
           <div className="mx-auto max-w-6xl rounded-2xl bg-primary px-6 py-12 text-center text-primary-foreground sm:px-12">
-            <h2 className="text-3xl font-bold tracking-tight">Plant your first tree.</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Plant your first backlog tree</h2>
             <p className="mx-auto mt-3 max-w-xl text-primary-foreground/85">
-              Sign up with Google or an email address and you are in your own backlog in under a minute.
+              Sign up with Google or an email address and you are in your own organization in under a minute.
             </p>
             <Link
               to="/auth/sign-up"
               className="mt-7 inline-flex items-center gap-2 rounded-md bg-background px-5 py-2.5 font-medium text-foreground hover:bg-background/90"
             >
-              Get started free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </section>
