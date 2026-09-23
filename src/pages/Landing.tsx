@@ -80,7 +80,7 @@ const FEATURES = [
   {
     icon: Clock,
     title: "Time logging",
-    body: "Log time against work items and move entries between items if they landed in the wrong place. More versatile than any other time logging app you'll find",
+    body: "Log time against work items and move entries between items if they landed in the wrong place. More versatile than any other time logging app you'll find.",
   },
   {
     icon: Star,
@@ -131,7 +131,7 @@ const INTEGRATIONS = [
   {
     icon: Mail,
     title: "Gmail import",
-    body: "A powerful job-alert mail import from the major Finnish and international boards turns postings into work items with employer, city, deadline and the link to the actual job add",
+    body: "A powerful job-alert mail import from the major Finnish and international boards turns postings into work items with employer, city, deadline and the link to the actual job ad.",
   },
 ] as const;
 
