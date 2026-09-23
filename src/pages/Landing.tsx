@@ -356,7 +356,8 @@ export default function Landing() {
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight">Free means free.</h2>
             <p className="mt-3 text-muted-foreground">
-              The free plan is the whole product, not a trial. Pay only when your team needs more room.
+              The free plan is the whole product, not a trial. No credit card needed.<br />
+              Pay only when you need dedicated support and help with onboarding.
             </p>
           </div>
           <div className="mx-auto mt-10 grid max-w-3xl gap-4 md:grid-cols-2">
