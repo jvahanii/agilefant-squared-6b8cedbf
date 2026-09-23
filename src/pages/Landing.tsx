@@ -49,7 +49,7 @@ const FEATURES = [
   },
   {
     icon: KanbanSquare,
-    title: "List or board",
+    title: "Lists and boards",
     body: "Rank items in a list, or drag cards across status columns. Each backlog remembers which view it prefers.",
   },
   {
