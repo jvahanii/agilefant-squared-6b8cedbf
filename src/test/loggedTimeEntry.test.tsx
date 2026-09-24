@@ -10,6 +10,12 @@
  * guard hosts, the dialogs that are not under test — stubbed out.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Every test here renders the whole of AppLayout. Alone each takes well under a
+// second, but in a full run on a busy machine one went past the default five
+// and failed for no fault of its own — the same allowance the picker's
+// tests needed, for the same reason.
+vi.setConfig({ testTimeout: 20_000 });
 import { render as rtlRender, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactElement } from "react";

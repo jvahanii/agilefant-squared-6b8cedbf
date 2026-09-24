@@ -234,9 +234,46 @@ export function requestResync(reason: string, options?: { full?: boolean }): voi
   }, delay);
 }
 
+/**
+ * A tab hidden at least this long is caught up when it comes back.
+ *
+ * A socket can die while the tab is hidden without any channel saying so, and
+ * then nothing asks for a catch-up: changes made meanwhile — a WhatsApp message
+ * turned into items — stay missing until a reload. But a catch-up downloads
+ * every work item and rank, a couple of megabytes, so it cannot run on every
+ * return. Five minutes is when browsers start freezing background tabs, which
+ * is what kills a socket's heartbeat; a tab back sooner has almost certainly
+ * kept its connection and its updates.
+ */
+export const HIDDEN_RESYNC_MS = 5 * 60_000;
+/** Away this long — a sleeping laptop, a tab left overnight — refresh everything. */
+export const HIDDEN_FULL_RESYNC_MS = 60 * 60_000;
+
+let hiddenSince: number | null = null;
+
+/**
+ * Record a change in the tab's visibility. On return the socket is reopened if
+ * it dropped — free when it did not, and the channels' own recovery then takes
+ * over, including those that failed while hidden and deliberately did not retry.
+ * After a long enough absence a catch-up is requested as well.
+ */
+export function noteVisibilityChange(state: DocumentVisibilityState | string, now: number = Date.now()): void {
+  if (state === 'hidden') {
+    if (hiddenSince === null) hiddenSince = now;
+    return;
+  }
+  if (state !== 'visible' || hiddenSince === null) return;
+  const away = now - hiddenSince;
+  hiddenSince = null;
+  ensureSocketConnected();
+  if (away < HIDDEN_RESYNC_MS) return;
+  requestResync('tab visible again', { full: away >= HIDDEN_FULL_RESYNC_MS });
+}
+
 /** Test/teardown helper. */
 export function __resetRealtimeHealth(): void {
   channelHealth.clear();
+  hiddenSince = null;
   lastResyncAt = 0;
   pendingFull = false;
   if (resyncTimer) clearTimeout(resyncTimer);

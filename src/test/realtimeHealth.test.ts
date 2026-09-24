@@ -4,8 +4,11 @@ const loadFromSupabase = vi.fn(async () => {});
 const loadLabels = vi.fn(async () => {});
 let loadInFlight = false;
 
+/** Whether the realtime socket reports itself open, and reopen attempts. */
+let socketConnected = true;
+const connectSocket = vi.fn();
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { realtime: { isConnected: () => true, connect: () => {} } },
+  supabase: { realtime: { isConnected: () => socketConnected, connect: () => connectSocket() } },
 }));
 vi.mock('@/store/appStore', () => ({
   useAppStore: { getState: () => ({ loadFromSupabase, backlogTrees: {} }) },
@@ -49,7 +52,10 @@ import {
   markChannelIntentionalClose,
   __resetRealtimeHealth,
   isRealtimeHealthy,
+  noteVisibilityChange,
   RESYNC_MIN_INTERVAL_MS,
+  HIDDEN_RESYNC_MS,
+  HIDDEN_FULL_RESYNC_MS,
 } from '@/lib/realtimeHealth';
 
 describe('realtimeHealth', () => {
@@ -169,5 +175,80 @@ describe('subscribeRetryDelayMs', () => {
 
   it('treats a negative attempt as the first one', () => {
     expect(subscribeRetryDelayMs(-5, steady)).toBe(1_000);
+  });
+});
+
+describe('coming back to a hidden tab', () => {
+  // A socket can die while the tab is hidden without any channel reporting
+  // it, and nothing caught up afterwards: items that arrived meanwhile — from
+  // WhatsApp, in the case that found this — stayed missing until a reload.
+  const T0 = 1_800_000_000_000;
+  const MIN = 60_000;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    loadFromSupabase.mockClear();
+    loadLabels.mockClear();
+    connectSocket.mockClear();
+    socketConnected = true;
+    loadInFlight = false;
+    __resetRealtimeHealth();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('catches up on work items after five minutes away', async () => {
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('visible', T0 + HIDDEN_RESYNC_MS);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+    expect(loadLabels).not.toHaveBeenCalled();
+  });
+
+  it('downloads nothing for a quick look at another tab', async () => {
+    // A catch-up re-downloads every work item; doing it on every tab switch is
+    // the churn that once made the app slow.
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('visible', T0 + 4 * MIN);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(loadFromSupabase).not.toHaveBeenCalled();
+  });
+
+  it('refreshes everything after an hour away', async () => {
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('visible', T0 + HIDDEN_FULL_RESYNC_MS);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+    expect(loadLabels).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopens a socket that died while hidden, however short the absence', () => {
+    socketConnected = false;
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('visible', T0 + MIN);
+    expect(connectSocket).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a live socket alone', () => {
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('visible', T0 + MIN);
+    expect(connectSocket).not.toHaveBeenCalled();
+  });
+
+  it('measures from when the tab was first hidden, not from a repeat', async () => {
+    noteVisibilityChange('hidden', T0);
+    noteVisibilityChange('hidden', T0 + 4 * MIN);
+    noteVisibilityChange('visible', T0 + HIDDEN_RESYNC_MS);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing on a visible that follows no hidden', async () => {
+    noteVisibilityChange('visible', T0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(loadFromSupabase).not.toHaveBeenCalled();
+    expect(connectSocket).not.toHaveBeenCalled();
   });
 });

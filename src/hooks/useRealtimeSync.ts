@@ -17,6 +17,7 @@ import {
   getOutageDurationMs,
   markChannelIntentionalClose,
   markChannelStatus,
+  noteVisibilityChange,
   requestResync,
   subscribeRetryDelayMs,
   FULL_RESYNC_OUTAGE_MS,
@@ -60,6 +61,17 @@ export function useRealtimeSync() {
   const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
   const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
   const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
+
+  // Coming back to the tab: reconnect if the socket died while it was hidden,
+  // and after a long absence catch up on what was missed. Nothing did this
+  // before, so a tab whose socket had quietly gone showed no new items until
+  // it was reloaded.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisibility = () => noteVisibilityChange(document.visibilityState);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   // Re-subscribing tears down every channel and builds it again, and each
   // subscribe costs Realtime a publication re-check. Only the *partner*
