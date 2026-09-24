@@ -10,7 +10,11 @@
  * directly from the function directory rather than being duplicated.
  */
 import { describe, it, expect } from "vitest";
-import { splitMessage } from "../../supabase/functions/whatsapp-message-received/split";
+import {
+  isUnfilledPlaceholder,
+  senderWithoutUnreadCount,
+  splitMessage,
+} from "../../supabase/functions/whatsapp-message-received/split";
 
 describe("splitMessage", () => {
   it("splits on newlines only, by default", () => {
@@ -62,5 +66,47 @@ describe("splitMessage", () => {
 
   it("returns nothing for a body that is only delimiters or whitespace", () => {
     expect(splitMessage("  \n  ")).toEqual([]);
+  });
+});
+
+describe("isUnfilledPlaceholder", () => {
+  // A MacroDroid macro run by hand has no notification to fill its tokens
+  // from, and "{not_text_lines}" arrived in Kauppalista as an item.
+  it("recognises a token sent as written", () => {
+    expect(isUnfilledPlaceholder("{not_text_lines}")).toBe(true);
+    expect(isUnfilledPlaceholder("  {not_text}  ")).toBe(true);
+  });
+
+  it("recognises a line of tokens and punctuation only", () => {
+    expect(isUnfilledPlaceholder("{not_title}: {not_text}")).toBe(true);
+  });
+
+  it("keeps a real message, even one with braces in it", () => {
+    expect(isUnfilledPlaceholder("maito")).toBe(false);
+    expect(isUnfilledPlaceholder("osta {not_text} jos ehdit")).toBe(false);
+    expect(isUnfilledPlaceholder("{tärkeä}")).toBe(false);
+    expect(isUnfilledPlaceholder("{}")).toBe(false);
+  });
+});
+
+describe("senderWithoutUnreadCount", () => {
+  it("takes WhatsApp's unread count out of a group notification title", () => {
+    expect(senderWithoutUnreadCount("Kauppalista (2 viestiä): Paula Nikolainen")).toBe("Kauppalista: Paula Nikolainen");
+    expect(senderWithoutUnreadCount("Kauppalista (12 uutta viestiä): Paula")).toBe("Kauppalista: Paula");
+    expect(senderWithoutUnreadCount("Shopping (3 messages): Paula")).toBe("Shopping: Paula");
+  });
+
+  it("takes it off the end of a title with no sender after it", () => {
+    expect(senderWithoutUnreadCount("Kauppalista (7 viestiä)")).toBe("Kauppalista");
+  });
+
+  it("leaves a name without a count as it is", () => {
+    expect(senderWithoutUnreadCount("Paula Nikolainen")).toBe("Paula Nikolainen");
+    expect(senderWithoutUnreadCount("Kauppalista: Paula")).toBe("Kauppalista: Paula");
+  });
+
+  it("keeps parentheses that are part of the group's own name", () => {
+    expect(senderWithoutUnreadCount("Budget (2024): Paula")).toBe("Budget (2024): Paula");
+    expect(senderWithoutUnreadCount("Mökki (Kuopio): Paula")).toBe("Mökki (Kuopio): Paula");
   });
 });

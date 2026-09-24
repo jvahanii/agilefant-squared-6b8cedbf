@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { MessageCircle, Trash2, Plus, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { whatsappLastHeard } from "@/lib/whatsappLastHeard";
 
 interface Integration {
   id: string;
@@ -25,6 +26,8 @@ interface Integration {
   split_on_space: boolean;
   split_delimiters: string;
   min_fragment_length: number;
+  /** Set by the function on every request from the phone. */
+  last_received_at: string | null;
 }
 
 /** Mirrors the splitting logic used by the whatsapp-message-received function. */
@@ -290,6 +293,15 @@ export function WhatsappIntegrationsCard() {
                 <div className="grid gap-3 text-sm">
                   <div className="text-muted-foreground text-xs">
                     Target: <span className="text-foreground">{treeName} / {backlogName}</span>
+                  </div>
+                  <div
+                    className="text-muted-foreground text-xs"
+                    title={
+                      (i.last_received_at ? `${new Date(i.last_received_at).toLocaleString()}. ` : "") +
+                      "The phone sends only when someone writes in the group, so a quiet group looks the same."
+                    }
+                  >
+                    {whatsappLastHeard(i.last_received_at)}
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <span className="text-muted-foreground shrink-0 text-xs sm:w-24">Webhook URL</span>

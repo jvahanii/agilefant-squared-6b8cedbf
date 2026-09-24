@@ -1178,6 +1178,7 @@ export type Database = {
           enabled: boolean
           id: string
           label: string
+          last_received_at: string | null
           min_fragment_length: number
           organization_id: string
           split_delimiters: string
@@ -1194,6 +1195,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           label?: string
+          last_received_at?: string | null
           min_fragment_length?: number
           organization_id: string
           split_delimiters?: string
@@ -1210,6 +1212,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           label?: string
+          last_received_at?: string | null
           min_fragment_length?: number
           organization_id?: string
           split_delimiters?: string

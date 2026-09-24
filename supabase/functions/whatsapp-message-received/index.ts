@@ -11,7 +11,7 @@
 // notification forwarders resend recent messages repeatedly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { splitMessage } from './split.ts';
+import { isUnfilledPlaceholder, senderWithoutUnreadCount, splitMessage } from './split.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,6 +66,18 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    // The phone was heard from, whatever the request turns out to hold. When the
+    // forwarding was switched off nothing said so for nine days; this is what
+    // lets the integration show how long it has been quiet. A failure here must
+    // not cost the message, so it is only logged.
+    {
+      const { error: seenErr } = await supabase
+        .from('whatsapp_integrations')
+        .update({ last_received_at: new Date().toISOString() })
+        .eq('id', integ.id);
+      if (seenErr) console.error('last_received_at update failed', seenErr);
+    }
+
     if (!integ.enabled) {
       return new Response(JSON.stringify({ ignored: true, reason: 'disabled' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -160,7 +172,10 @@ Deno.serve(async (req) => {
       });
       // Drop anything already on the list, and anything repeated within this
       // request — the same line can appear twice in one forwarded batch.
+      // And anything that is only an automation placeholder sent unfilled: a
+      // macro run by hand posts "{not_text_lines}" itself.
       const lines = allLines.filter((line: string) => {
+        if (isUnfilledPlaceholder(line)) return false;
         const key = line.slice(0, 300).toLowerCase();
         if (seenTitles.has(key)) return false;
         seenTitles.add(key);
@@ -168,7 +183,8 @@ Deno.serve(async (req) => {
       });
       skipped += allLines.length - lines.length;
       if (lines.length === 0) continue;
-      const description = m.from_name ? `From ${m.from_name} via WhatsApp` : 'via WhatsApp';
+      const sender = m.from_name ? senderWithoutUnreadCount(m.from_name) : '';
+      const description = sender ? `From ${sender} via WhatsApp` : 'via WhatsApp';
 
       // Place at top: take min rank from both the ranks table and legacy work_items.rank
       const [{ data: rankRows }, { data: legacyRows }] = await Promise.all([
