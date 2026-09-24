@@ -4774,6 +4774,14 @@ export const useAppStore = create<AppState>()((set, get) => {
           rank: row.rank as number,
           boardHiddenStatusKeys: (row.board_hidden_status_keys as string[] | null) ?? [],
           viewMode: ((row.view_mode as string | null) === 'board' ? 'board' : 'list'),
+          // Rebuilt field by field, so a field left out here is wiped by the
+          // echo of every save — which is how switching stars on showed them
+          // and then took them away. A row without the column says nothing
+          // about it, so what is known stands rather than reading as "off".
+          ratingsEnabled:
+            'ratings_enabled' in row
+              ? (row.ratings_enabled as boolean | null) === true
+              : state.backlogs[id]?.ratingsEnabled,
         };
 
         const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };

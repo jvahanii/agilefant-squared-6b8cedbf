@@ -20,6 +20,7 @@ vi.mock("@/store/supabaseSync", () => ({
   deleteWorkItemBacklogRanks: vi.fn(),
   upsertBacklog: vi.fn(),
   upsertBacklogs: vi.fn(),
+  updateBacklogRatingsEnabled: vi.fn(),
   deleteBacklogs: vi.fn(),
   upsertBacklogTree: vi.fn(),
   deleteBacklogTree: vi.fn(),
@@ -965,6 +966,49 @@ describe("a rating survives the round trip", () => {
     const copyId = Object.keys(useAppStore.getState().workItems).find((id) => !before.has(id));
     expect(copyId).toBeDefined();
     expect(useAppStore.getState().workItems[copyId!].rating).toBe(3);
+  });
+});
+
+describe("a backlog's star switch survives the round trip", () => {
+  const BL = `${ORG}::bl-1`;
+  /** The row realtime delivers for backlog 1, as the database has it after a save. */
+  const echo = (ratingsEnabled?: boolean) => ({
+    id: BL,
+    name: "Backlog 1",
+    parent_id: null,
+    tree_id: `${ORG}::bt-1`,
+    rank: 0,
+    organization_id: ORG,
+    board_hidden_status_keys: [],
+    view_mode: "list",
+    ...(ratingsEnabled === undefined ? {} : { ratings_enabled: ratingsEnabled }),
+  });
+
+  it("keeps the stars on when the switch's own save comes back over realtime", () => {
+    // The bug: switching stars on from the context menu showed them, and the
+    // echo of that save rebuilt the backlog without the switch — the same way a
+    // just-given item rating was lost before it.
+    seedStore();
+    useAppStore.getState().setBacklogRatingsEnabled(BL, true);
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", echo(true));
+    expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(true);
+  });
+
+  it("takes the switch someone else flipped from realtime", () => {
+    seedStore();
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", echo(true));
+    expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(true);
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", echo(false));
+    expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(false);
+  });
+
+  it("keeps the switch through an update that says nothing about it", () => {
+    // A rename or a move arrives as a row too. Where the column is not in it,
+    // what is known stands; a missing value is not an "off".
+    seedStore();
+    useAppStore.getState().setBacklogRatingsEnabled(BL, true);
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", { ...echo(), name: "Renamed" });
+    expect(useAppStore.getState().backlogs[BL]).toMatchObject({ name: "Renamed", ratingsEnabled: true });
   });
 });
 
