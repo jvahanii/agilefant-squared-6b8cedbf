@@ -108,6 +108,42 @@ describe("the Logged time entry", () => {
   });
 });
 
+/**
+ * The header comes in two versions: the wide one lays its buttons out in a
+ * row, and the narrow one folds them into the ⋮ menu. jsdom applies no CSS, so
+ * both render here — which is how a door placed only in the ⋮ menu passed
+ * every test above while no desktop user could see it. So this looks for the
+ * button by the version it sits in.
+ */
+const wideHeader = (el: HTMLElement) => el.closest(".md\\:flex");
+const narrowHeader = (el: HTMLElement) => el.closest(".md\\:hidden");
+
+describe("the Logged time button in the wide header", () => {
+  it("is there while the organization logs time, and opens the report", async () => {
+    timeLogging(true);
+    render(<AppLayout />);
+    const button = screen.getByRole("button", { name: "Logged time" });
+    expect(wideHeader(button)).not.toBeNull();
+    expect(narrowHeader(button)).toBeNull();
+
+    fireEvent.click(button);
+    expect(await screen.findByRole("dialog", { name: "Logged time report" })).toHaveTextContent("Acme");
+  });
+
+  it("is not there where no time is logged", () => {
+    render(<AppLayout />);
+    expect(screen.queryByRole("button", { name: "Logged time" })).not.toBeInTheDocument();
+  });
+
+  it("sits beside the exports, which a desktop user already knows to look at", () => {
+    timeLogging(true);
+    render(<AppLayout />);
+    const button = screen.getByRole("button", { name: "Logged time" });
+    const row = wideHeader(button)!;
+    expect(row).toContainElement(screen.getAllByText("Export data").find((el) => wideHeader(el)) ?? null);
+  });
+});
+
 describe("Shift+L", () => {
   it("opens the report with nothing selected", async () => {
     timeLogging(true);

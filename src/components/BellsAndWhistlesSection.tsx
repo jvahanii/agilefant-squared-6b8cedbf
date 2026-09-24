@@ -162,7 +162,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                   <p className="text-sm font-medium">Who spent time on what</p>
                   <p className="text-xs text-muted-foreground">
                     Totals by person, work item, backlog or date, for any period — shared backlogs included. Also
-                    under Logged time in the ⋮ menu, or press Shift+L.
+                    from Logged time in the header, or press Shift+L.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setTimesheetBrowserOpen(true)}>

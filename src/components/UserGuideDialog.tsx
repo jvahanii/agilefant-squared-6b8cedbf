@@ -624,7 +624,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "See who spent time on what",
-                how: "Choose Logged time from the ⋮ menu, or press Shift+L. It opens on this month, totalled by person and then by work item; change the period, pick one person, or group by backlog, tree or date instead. Export the result as CSV.",
+                how: "Click Logged time in the header (in the ⋮ menu on a phone), or press Shift+L. It opens on this month, totalled by person and then by work item; change the period, pick one person, or group by backlog, tree or date instead. Export the result as CSV.",
               },
               {
                 action: "Delete an entry",

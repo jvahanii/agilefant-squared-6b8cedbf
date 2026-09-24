@@ -1379,6 +1379,25 @@ function AppLayoutInner() {
 
             {/* Desktop: show all buttons */}
             <div className="hidden md:flex items-center gap-2">
+              {/* Its own button here, not only in the ⋮ menu: that menu exists
+                  only on narrow screens, so a door placed in it alone was no
+                  door at all on a desktop. First in the row because it is a
+                  view, and the two after it are exports. */}
+              {timeLoggingOn && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      aria-label="Logged time"
+                      className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
+                      onClick={() => setShowTimesheet(true)}
+                    >
+                      <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span className="hidden lg:inline">Logged time</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Who spent time on what (Shift+L)</TooltipContent>
+                </Tooltip>
+              )}
               <button
                 className="px-2.5 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors flex items-center gap-1.5"
                 onClick={handleExportMock}
