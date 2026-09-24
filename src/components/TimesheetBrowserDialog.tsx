@@ -32,9 +32,17 @@ import { useAppStore } from "@/store/appStore";
 import { WorkItem, Backlog, BacklogTree } from "@/types/models";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDuration, parseDuration } from "@/components/TimeLogDialog";
+import { formatDuration } from "@/lib/formatDuration";
+import { parseDuration } from "@/lib/parseDuration";
 import { toast } from "@/hooks/use-toast";
-import { defaultGroupDims, presetRange, type GroupDimension, type PeriodPreset } from "@/lib/timesheetDefaults";
+import {
+  DEFAULT_GROUP_DIMS,
+  activePreset,
+  presetRange,
+  type GroupDimension,
+  type PeriodPreset,
+} from "@/lib/timesheetDefaults";
+import { DurationReading } from "@/components/DurationReading";
 
 interface TimesheetBrowserDialogProps {
   open: boolean;
@@ -195,6 +203,45 @@ interface SummaryGroupRowsProps {
   backlogs: Record<string, Backlog>;
   backlogTrees: Record<string, BacklogTree>;
   userNames: Record<string, string>;
+  /** Name who logged each entry: only needed when no level groups by person. */
+  showWho: boolean;
+}
+
+/** One logged entry, under the group it adds to. Newest first. */
+function EntryRows({
+  entries,
+  depth,
+  showWho,
+  userNames,
+}: {
+  entries: TimeEntry[];
+  depth: number;
+  showWho: boolean;
+  userNames: Record<string, string>;
+}) {
+  const sorted = [...entries].sort(
+    (a, b) => b.spentDate.localeCompare(a.spentDate) || b.createdAt.localeCompare(a.createdAt),
+  );
+  return (
+    <>
+      {sorted.map((entry) => {
+        const [y, m, d] = entry.spentDate.split("-").map(Number);
+        return (
+          <TableRow key={entry.id} className="text-muted-foreground hover:bg-transparent">
+            <TableCell className="text-xs py-1" style={{ paddingLeft: `${12 + depth * 20 + 18}px` }}>
+              <span className="tabular-nums">{new Date(y, m - 1, d).toLocaleDateString()}</span>
+              {showWho && <span> · {userNames[entry.userId] ?? entry.userId.slice(0, 8)}</span>}
+              <span> · </span>
+              {entry.note ? <span>{entry.note}</span> : <span className="italic">no note</span>}
+            </TableCell>
+            <TableCell className="text-xs tabular-nums text-right pr-4 py-1">
+              {formatDuration(entry.durationMinutes)}
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </>
+  );
 }
 
 function SummaryGroupRows({
@@ -208,6 +255,7 @@ function SummaryGroupRows({
   backlogs,
   backlogTrees,
   userNames,
+  showWho,
 }: SummaryGroupRowsProps) {
   if (dims.length === 0 || entries.length === 0) return null;
 
@@ -238,28 +286,29 @@ function SummaryGroupRows({
         const groupPath = path ? `${path}||${dim}:${key}` : `${dim}:${key}`;
         const isExpanded = expandedPaths.has(groupPath);
         const hasChildren = rest.length > 0;
+        // Every row opens: a group onto the next level, and the last level onto
+        // the entries themselves. The last level used to be the end of the road,
+        // so a total could be seen and never traced to what made it.
 
         return (
           <Fragment key={groupPath}>
             <TableRow
               className={cn(
                 depth === 0 ? "bg-muted/10" : "",
-                hasChildren && "cursor-pointer hover:bg-muted/30",
-                !hasChildren && "hover:bg-muted/10",
+                "cursor-pointer hover:bg-muted/30",
               )}
-              onClick={() => hasChildren && onToggleExpand(groupPath)}
+              onClick={() => onToggleExpand(groupPath)}
+              aria-expanded={isExpanded}
             >
               <TableCell
                 className="text-xs py-1.5"
                 style={{ paddingLeft: `${12 + depth * 20}px` }}
               >
                 <span className="flex items-center gap-1.5">
-                  {hasChildren ? (
-                    isExpanded
-                      ? <ChevronDown className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-                      : <ChevronRight className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+                  {isExpanded ? (
+                    <ChevronDown className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
                   ) : (
-                    <span className="w-3 h-3 flex-shrink-0" />
+                    <ChevronRight className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
                   )}
                   <span className={cn(depth === 0 ? "font-medium" : "")}>{label}</span>
                   <span className="text-muted-foreground text-[10px]">({groupEntries.length})</span>
@@ -281,7 +330,11 @@ function SummaryGroupRows({
                 backlogs={backlogs}
                 backlogTrees={backlogTrees}
                 userNames={userNames}
+                showWho={showWho}
               />
+            )}
+            {!hasChildren && isExpanded && (
+              <EntryRows entries={groupEntries} depth={depth + 1} showWho={showWho} userNames={userNames} />
             )}
           </Fragment>
         );
@@ -307,12 +360,12 @@ export function TimesheetBrowserDialog({
 
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [filterUser, setFilterUser] = useState<string>("__all__");
-  // It opens on the answer rather than on raw material: this month, summed,
-  // grouped by who spent the time. It used to open on every entry ever logged,
-  // one per row, grouped by date — so even someone who found it had to
+  // It opens on the answer rather than on raw material: today, summed, from
+  // each person down to the work item. It used to open on every entry ever
+  // logged, one per row, grouped by date — so even someone who found it had to
   // rearrange it before it said anything.
-  const [filterDateFrom, setFilterDateFrom] = useState(() => presetRange("month").from);
-  const [filterDateTo, setFilterDateTo] = useState(() => presetRange("month").to);
+  const [filterDateFrom, setFilterDateFrom] = useState(() => presetRange("today").from);
+  const [filterDateTo, setFilterDateTo] = useState(() => presetRange("today").to);
 
   // Summary tab state
   const [activeTab, setActiveTab] = useState<"entries" | "summary">("summary");
@@ -373,14 +426,10 @@ export function TimesheetBrowserDialog({
     [allEntriesSorted],
   );
 
-  // Derived, not stored: on the settings pages this dialog is mounted before
-  // the time entries have loaded, and a default fixed at mount would group a
-  // whole team as though one person had logged everything. Memoised because
-  // the expand effect below depends on it and would otherwise re-run forever.
-  const groupDims = useMemo(
-    () => chosenDims ?? defaultGroupDims(uniqueUserIds.length),
-    [chosenDims, uniqueUserIds.length],
-  );
+  // Memoised because the expand effect below depends on it, and a fresh array
+  // every render would re-run that effect for ever.
+  const groupDims = useMemo(() => chosenDims ?? [...DEFAULT_GROUP_DIMS], [chosenDims]);
+  const selectedPreset = activePreset(filterDateFrom, filterDateTo);
 
   // Apply filters
   const filteredEntries = useMemo(() => {
@@ -452,7 +501,7 @@ export function TimesheetBrowserDialog({
     if (!editingEntryId) return;
     const minutes = parseDuration(editDurationInput);
     if (!minutes || minutes <= 0) {
-      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
+      toast({ title: "Invalid duration", description: 'Enter minutes like "45", hours like "1.5", or "1h 30m".', variant: "destructive" });
       return;
     }
     await updateTimeEntry(editingEntryId, {
@@ -501,18 +550,23 @@ export function TimesheetBrowserDialog({
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
             <Label className="text-xs">Period</Label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Period">
               {(
                 [
                   { id: "today", label: "Today", shortLabel: "Today" },
+                  { id: "yesterday", label: "Yesterday", shortLabel: "Yest." },
                   { id: "week", label: "This week", shortLabel: "Week" },
                   { id: "month", label: "This month", shortLabel: "Month" },
                   { id: "all", label: "All time", shortLabel: "All" },
                 ] as const
               ).map(({ id, label, shortLabel }) => (
+                // Filled when the dates are this preset's, whether a button or
+                // the date fields put them there; none is, for a custom range.
                 <Button
                   key={id}
-                  variant="outline"
+                  variant={selectedPreset === id ? "default" : "outline"}
+                  aria-pressed={selectedPreset === id}
+                  aria-label={label}
                   size="sm"
                   className="h-8 text-xs px-2"
                   onClick={() => applyPreset(id)}
@@ -637,13 +691,14 @@ export function TimesheetBrowserDialog({
                                     ref={editDurationRef}
                                     value={editDurationInput}
                                     onChange={(e) => setEditDurationInput(e.target.value)}
-                                    placeholder='e.g. "1.5", "1h 30m"'
+                                    placeholder='e.g. "45", "1.5" or "1h 30m"'
                                     className="h-8 text-sm w-28 sm:w-32"
                                     onKeyDown={async (e) => {
                                       if (e.key === "Enter") await handleSaveEdit();
                                       if (e.key === "Escape") cancelEditing();
                                     }}
                                   />
+                                  <DurationReading input={editDurationInput} />
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-xs">Date</Label>
@@ -809,6 +864,7 @@ export function TimesheetBrowserDialog({
                       backlogs={backlogs}
                       backlogTrees={backlogTrees}
                       userNames={userNames}
+                      showWho={!groupDims.includes("user")}
                     />
                   )}
                 </TableBody>

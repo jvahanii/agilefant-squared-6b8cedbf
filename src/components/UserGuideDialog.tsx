@@ -616,7 +616,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Duration format",
-                how: 'Accepts "30m", "1h", "1h 30m", or a plain number (interpreted as minutes).',
+                how: 'A whole number is minutes ("45"), a decimal is hours ("1.5" or "1,5" is 1h 30m), and "30m", "1h" or "1h 30m" say it outright. The field shows how it read what you typed before you save.',
               },
               {
                 action: "View logged time",

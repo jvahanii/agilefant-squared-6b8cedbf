@@ -16,6 +16,9 @@ import { Plus, Trash2, Clock, RotateCcw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDuration } from "@/lib/formatDuration";
+import { parseDuration } from "@/lib/parseDuration";
+import { DurationReading } from "@/components/DurationReading";
+import { presetRange } from "@/lib/timesheetDefaults";
 
 interface TimeLogDialogProps {
   workItemId?: string;
@@ -28,31 +31,16 @@ interface TimeLogDialogProps {
 
 export { formatDuration };
 
-export function parseDuration(input: string): number | null {
-  // Normalise comma decimal separator (e.g. "1,5" → "1.5")
-  const trimmed = input.trim().replace(/,/g, ".");
-  if (!trimmed) return null;
 
-  // Try "Xh Ym" or "XhYm" format (with optional m/min suffix)
-  const hm = trimmed.match(/^(\d+)\s*h\s*(\d+)(?:\s*m(?:in)?)?$/i);
-  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
-
-  // Try "Xh" format (supports decimals)
-  const hOnly = trimmed.match(/^(\d+(?:\.\d+)?)\s*h$/i);
-  if (hOnly) return Math.round(parseFloat(hOnly[1]) * 60);
-
-  // Try "Xm" or "Xmin" format (supports decimals)
-  const mOnly = trimmed.match(/^(\d+(?:\.\d+)?)\s*m(?:in)?$/i);
-  if (mOnly) return Math.round(parseFloat(mOnly[1]));
-
-  // Plain number: treat as hours (supports decimals, e.g. 1.5 = 1h 30m)
-  const num = parseFloat(trimmed);
-  if (!isNaN(num) && num > 0) return Math.round(num * 60);
-
-  return null;
-}
 
 const CLOCK_RESET_KEY = (userId: string) => `timelog_clock_reset_${userId}`;
+
+/**
+ * Today in the user's own time zone. toISOString() gives the UTC date, so in
+ * Finland anything logged between midnight and three in the morning went in
+ * dated the day before — and was missing from a report that opens on today.
+ */
+const localToday = () => presetRange("today").from;
 
 export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChange }: TimeLogDialogProps) {
   const item = useAppStore((s) => workItemId ? s.workItems[workItemId] : null);
@@ -68,10 +56,14 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
 
   const [isAdding, setIsAdding] = useState(false);
   const [durationInput, setDurationInput] = useState("");
-  const [dateInput, setDateInput] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateInput, setDateInput] = useState(localToday);
   const [noteInput, setNoteInput] = useState("");
   const durationRef = useRef<HTMLInputElement>(null);
   const addFormRef = useRef<HTMLDivElement>(null);
+  // Set while an entry is being saved. Enter and the Save button both add, and
+  // nothing stopped the second while the first was still on its way: the same
+  // entry went in twice, a second apart.
+  const addingRef = useRef(false);
 
   // Edit state for existing entries
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -142,7 +134,7 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
       setIsAdding(false);
       setDurationInput("");
       setNoteInput("");
-      setDateInput(new Date().toISOString().slice(0, 10));
+      setDateInput(localToday());
       setEditingEntryId(null);
       return;
     }
@@ -176,34 +168,39 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
   const displayTitle = item?.title ?? backlog?.name ?? tree?.name ?? "";
 
   const handleAdd = async (): Promise<boolean> => {
+    if (addingRef.current) return false;
     const minutes = parseDuration(durationInput);
     if (!minutes || minutes <= 0) {
-      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
+      toast({ title: "Invalid duration", description: 'Enter minutes like "45", hours like "1.5", or "1h 30m".', variant: "destructive" });
       return false;
     }
     if (!activeOrgId || !user?.id) return false;
 
-    await addTimeEntry({
-      organizationId: activeOrgId,
-      userId: user.id,
-      workItemId: workItemId ?? null,
-      backlogId: backlogId ?? null,
-      treeId: treeId ?? null,
-      durationMinutes: minutes,
-      spentDate: dateInput,
-      note: noteInput.trim() || null,
-    });
+    addingRef.current = true;
+    try {
+      await addTimeEntry({
+        organizationId: activeOrgId,
+        userId: user.id,
+        workItemId: workItemId ?? null,
+        backlogId: backlogId ?? null,
+        treeId: treeId ?? null,
+        durationMinutes: minutes,
+        spentDate: dateInput,
+        note: noteInput.trim() || null,
+      });
 
+      if (workItemId && item?.status === "not_started") {
+        setWorkItemStatus(workItemId, "in_progress");
+      }
 
-    if (workItemId && item?.status === "not_started") {
-      setWorkItemStatus(workItemId, "in_progress");
+      setDurationInput("");
+      setNoteInput("");
+      setDateInput(localToday());
+      setIsAdding(false);
+      return true;
+    } finally {
+      addingRef.current = false;
     }
-
-    setDurationInput("");
-    setNoteInput("");
-    setDateInput(new Date().toISOString().slice(0, 10));
-    setIsAdding(false);
-    return true;
   };
 
   const canDelete = (entry: TimeEntry) => entry.userId === user?.id;
@@ -221,7 +218,7 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
     if (!editingEntryId) return false;
     const minutes = parseDuration(editDurationInput);
     if (!minutes || minutes <= 0) {
-      toast({ title: "Invalid duration", description: 'Enter a value like "1.5", "30m", "1h", or "1h 30m".', variant: "destructive" });
+      toast({ title: "Invalid duration", description: 'Enter minutes like "45", hours like "1.5", or "1h 30m".', variant: "destructive" });
       return false;
     }
     await updateTimeEntry(editingEntryId, {
@@ -285,13 +282,14 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
                         ref={editDurationRef}
                         value={editDurationInput}
                         onChange={(e) => setEditDurationInput(e.target.value)}
-                        placeholder='e.g. "1.5", "1h 30m"'
+                        placeholder='e.g. "45", "1.5" or "1h 30m"'
                         className="h-8 text-sm"
                         onKeyDown={async (e) => {
                           if (e.key === "Enter") await handleSaveEdit();
                           if (e.key === "Escape") cancelEditing();
                         }}
                       />
+                      <DurationReading input={editDurationInput} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Date</Label>
@@ -375,13 +373,14 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
                   ref={durationRef}
                   value={durationInput}
                   onChange={(e) => setDurationInput(e.target.value)}
-                  placeholder='e.g. "1.5", "1,5" or "1h 30m"'
+                  placeholder='e.g. "45", "1.5" or "1h 30m"'
                   className="h-8 text-sm"
                   onKeyDown={async (e) => {
                     if (e.key === "Enter" && await handleAdd()) onOpenChange(false);
                     if (e.key === "Escape") setIsAdding(false);
                   }}
                 />
+                <DurationReading input={durationInput} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Date</Label>

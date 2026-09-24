@@ -6,7 +6,7 @@
 
 export type GroupDimension = "tree" | "backlog" | "item" | "user" | "date";
 
-export type PeriodPreset = "today" | "week" | "month" | "all";
+export type PeriodPreset = "today" | "yesterday" | "week" | "month" | "all";
 
 /** The From and To dates a period button sets, as YYYY-MM-DD in local time. */
 export function presetRange(preset: PeriodPreset, today: Date = new Date()): { from: string; to: string } {
@@ -14,6 +14,12 @@ export function presetRange(preset: PeriodPreset, today: Date = new Date()): { f
   const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   if (preset === "today") {
     const t = fmt(today);
+    return { from: t, to: t };
+  }
+  if (preset === "yesterday") {
+    const y = new Date(today);
+    y.setDate(today.getDate() - 1);
+    const t = fmt(y);
     return { from: t, to: t };
   }
   if (preset === "week") {
@@ -33,11 +39,26 @@ export function presetRange(preset: PeriodPreset, today: Date = new Date()): { f
 }
 
 /**
- * How the summary groups until someone chooses otherwise: by person and then
- * by work item wherever more than one person has logged time, and by work item
- * alone where only one has — a solo organization does not need its own name
- * above every row.
+ * How the summary groups until someone chooses otherwise: the whole path from a
+ * person down to the work item, so any total can be followed to what made it —
+ * the person first, even where there is only one, since it is the same
+ * question asked of a team.
  */
-export function defaultGroupDims(people: number): GroupDimension[] {
-  return people > 1 ? ["user", "item"] : ["item"];
+export const DEFAULT_GROUP_DIMS: readonly GroupDimension[] = ["user", "tree", "backlog", "item"];
+
+/** The presets the period buttons offer, in the order they are shown. */
+export const PERIOD_PRESETS: readonly PeriodPreset[] = ["today", "yesterday", "week", "month", "all"];
+
+/**
+ * Which preset the current From and To dates are, or null for any other range.
+ * Derived from the dates rather than remembered from the last button pressed,
+ * so a range typed by hand that happens to be this week lights "This week",
+ * and one that is no preset lights none.
+ */
+export function activePreset(from: string, to: string, today: Date = new Date()): PeriodPreset | null {
+  for (const preset of PERIOD_PRESETS) {
+    const range = presetRange(preset, today);
+    if (range.from === from && range.to === to) return preset;
+  }
+  return null;
 }
