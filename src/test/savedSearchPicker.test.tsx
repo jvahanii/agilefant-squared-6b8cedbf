@@ -283,7 +283,7 @@ describe("SavedSearchPicker", () => {
     vi.useRealTimers();
   });
 
-  it("ticks a posting once however many emails list it, and counts it once", async () => {
+  it("lists a posting once however many emails carried it, and says how many", async () => {
     callGmail.mockResolvedValueOnce({
       links: [
         link({ url: "https://x/a", title: "Role A", messageId: "m-new", subject: "Newest alert", date: "2026-09-18T10:00:00Z" }),
@@ -292,17 +292,59 @@ describe("SavedSearchPicker", () => {
       ],
     });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
-    await screen.findByText("Role A again");
+    await screen.findByText("Role A");
 
+    // The older digest's copy is folded into the kept row rather than listed,
+    // so its card is gone too — it carried nothing else.
+    expect(screen.queryByText("Role A again")).not.toBeInTheDocument();
+    expect(screen.queryByText("Older digest")).not.toBeInTheDocument();
+    expect(screen.getByText("also in 1 other email")).toBeInTheDocument();
+
+    // [select-all for Newest alert, Role A, Role B] — nothing left unticked for
+    // being a repeat, because no repeat is on screen.
     expect(screen.getAllByRole("checkbox").map((b) => b.getAttribute("data-state"))).toEqual([
-      "checked", // Newest alert
       "checked",
       "checked",
-      "unchecked", // Older digest
-      "unchecked",
+      "checked",
     ]);
-    expect(screen.getByText('Not selected: also in "Newest alert". Tick it to import anyway.')).toBeInTheDocument();
+    // Still two emails: the folded copy came from one, and "mark read" covers it.
     expect(screen.getByText(/^2 jobs, out of which 2 seem new, found in 2 emails/)).toBeInTheDocument();
+  });
+
+  it("keeps an email's card when it carried something of its own", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://x/a", title: "Role A", messageId: "m-new", subject: "Newest alert", date: "2026-09-18T10:00:00Z" }),
+        link({ url: "https://x/a", title: "Role A again", messageId: "m-old", subject: "Older digest", date: "2026-09-17T10:00:00Z" }),
+        link({ url: "https://x/c", title: "Role C", messageId: "m-old", subject: "Older digest", date: "2026-09-17T10:00:00Z" }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Role C");
+
+    expect(screen.getByText("Older digest")).toBeInTheDocument();
+    expect(screen.queryByText("Role A again")).not.toBeInTheDocument();
+    // Each card counts what it still shows, not what it arrived with: the older
+    // digest brought two postings and now lists one, like the newest alert.
+    expect(screen.getAllByText(/^1 job in this email/)).toHaveLength(2);
+  });
+
+  it("never lets a keyword filter fold a matching posting out of sight", async () => {
+    // Folded over everything, the newest alert's copy would be the one kept; a
+    // filter naming the older digest hides that copy and would fold away the
+    // one it matched — so the job disappears from a search that found it.
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://x/a", title: "Role A", messageId: "m-new", subject: "Newest alert", date: "2026-09-18T10:00:00Z" }),
+        link({ url: "https://x/a", title: "Role A again", messageId: "m-old", subject: "Older digest", date: "2026-09-17T10:00:00Z" }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Role A");
+
+    fireEvent.change(screen.getByPlaceholderText("Filter by keyword…"), { target: { value: "Older digest" } });
+    expect(await screen.findByText("Role A again")).toBeInTheDocument();
+    expect(screen.queryByText("Role A")).not.toBeInTheDocument();
   });
 
   it("imports only what is ticked, then closes and reloads", async () => {

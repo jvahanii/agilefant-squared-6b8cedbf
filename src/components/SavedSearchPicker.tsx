@@ -12,8 +12,11 @@ import {
   deadlineLabel,
   gmailMessageUrl,
   groupBySourceEmail,
+  alsoInLabel,
   distinctJobs,
+  keptCopies,
   previewSummary,
+  repeatedElsewhere,
   repeatedRows,
   rowKey,
   senderAddress,
@@ -376,7 +379,27 @@ export function SavedSearchPicker({
         l.from?.toLowerCase().includes(kw),
     );
   }, [preview, filterKeyword]);
-  const visibleGroups = useMemo(() => groupBySourceEmail(visiblePreview), [visiblePreview]);
+  // One row per posting. A job carried by three alerts drew three rows, which
+  // read as three jobs however carefully each repeat was labelled — and the
+  // import collapses them to one item regardless.
+  //
+  // Folded against the *visible* rows, not the whole preview: were the kept copy
+  // decided over everything, a keyword filter that showed only a later email
+  // would hide that copy and fold the rest, and a matching job would vanish.
+  const foldedPreview = useMemo(() => {
+    const kept = keptCopies(visiblePreview);
+    return visiblePreview.filter((l) => kept.get(l.url) === l);
+  }, [visiblePreview]);
+  /** For a kept row, the other emails that carried it. */
+  const alsoIn = useMemo(() => repeatedElsewhere(visiblePreview), [visiblePreview]);
+  const visibleGroups = useMemo(() => groupBySourceEmail(foldedPreview), [foldedPreview]);
+  // Counted before folding: an email whose every posting folded away still
+  // carried those postings, and is still one of the emails "mark read" covers.
+  // Counting the cards instead would contradict that button.
+  const visibleEmailCount = useMemo(
+    () => new Set(visiblePreview.map((l) => l.messageId)).size,
+    [visiblePreview],
+  );
   // Over the whole list, not the filtered one: a row is a repeat because of an
   // earlier email, whether or not the filter happens to show that email.
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
@@ -707,9 +730,11 @@ export function SavedSearchPicker({
       </div>
       <p className="text-xs font-medium text-muted-foreground">
         {previewSummary({
-          shown: distinctJobs(visiblePreview),
-          emails: visibleGroups.length,
-          fresh: visiblePreview.filter((l) => startingReason(l, repeats) === null).length,
+          shown: distinctJobs(foldedPreview),
+          emails: visibleEmailCount,
+          // Over the rows actually listed, so the count and the list agree now
+          // that the folded-away copies are not on screen to be counted.
+          fresh: foldedPreview.filter((l) => startingReason(l, repeats) === null).length,
           mode,
           total: filterKeyword ? distinctJobs(preview) : undefined,
         })}
@@ -842,6 +867,19 @@ export function SavedSearchPicker({
                           <LinkIcon className="w-3 h-3 inline mr-1" />
                           {l.url}
                         </span>
+                        {/* The emails folded into this row. Said plainly rather
+                            than shown as rows of their own: the same posting
+                            listed three times read as three jobs, and the
+                            import merges them into one item anyway. */}
+                        {alsoIn.has(key) && (
+                          <span
+                            className="block truncate text-xs text-muted-foreground"
+                            title={alsoIn.get(key)!.subjects.join("\n")}
+                          >
+                            <Mail className="w-3 h-3 inline mr-1" aria-hidden="true" />
+                            {alsoInLabel(alsoIn.get(key)!.count)}
+                          </span>
+                        )}
                         {selected[key] && (
                           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                             Import as

@@ -158,6 +158,64 @@ export function cityLine(cities: readonly string[]): string {
 export const rowKey = (link: { messageId: string; url: string }) => `${link.messageId}|${link.url}`;
 
 /**
+ * The one row that stands for each posting: the first copy that states a
+ * closing date, since that date becomes part of the item's name and decides
+ * where auto-place files it; otherwise simply the first. `links` is in display
+ * order, newest email first, so "first" means "most recent".
+ *
+ * Both the unticking and the folding below hang off this one rule, so it lives
+ * here rather than twice.
+ */
+export function keptCopies(links: PreviewLink[]): Map<string, PreviewLink> {
+  const kept = new Map<string, PreviewLink>();
+  for (const link of links) {
+    const current = kept.get(link.url);
+    if (!current || (!current.deadline && link.deadline)) kept.set(link.url, link);
+  }
+  return kept;
+}
+
+/**
+ * For each kept row, the other emails that carried the same posting.
+ *
+ * The picker folds those other copies away rather than listing them, so this is
+ * what is left to say about them: how many there were, and which subjects, for
+ * the row's tooltip. Keyed by the *kept* row — the opposite of `repeatedRows`,
+ * which keys the copies being dropped.
+ */
+export function repeatedElsewhere(
+  links: PreviewLink[],
+): Map<string, { count: number; subjects: string[] }> {
+  const kept = keptCopies(links);
+  const seen = new Map<string, Set<string>>();
+  const others = new Map<string, { count: number; subjects: string[] }>();
+  for (const link of links) {
+    const keeper = kept.get(link.url)!;
+    // The kept row itself, and a second copy inside the same email: neither is
+    // another email carrying the posting.
+    if (keeper.messageId === link.messageId) continue;
+    const key = rowKey(keeper);
+    // Counted by email, not by subject: LinkedIn sends the same subject several
+    // times a day, and those are different emails.
+    const messages = seen.get(key) ?? new Set<string>();
+    if (messages.has(link.messageId)) continue;
+    messages.add(link.messageId);
+    seen.set(key, messages);
+    const entry = others.get(key) ?? { count: 0, subjects: [] };
+    entry.count += 1;
+    const subject = link.subject || "(no subject)";
+    if (!entry.subjects.includes(subject)) entry.subjects.push(subject);
+    others.set(key, entry);
+  }
+  return others;
+}
+
+/** What a folded row says: `also in 2 other emails`. */
+export function alsoInLabel(count: number): string {
+  return `also in ${count} other email${count === 1 ? "" : "s"}`;
+}
+
+/**
  * Rows that repeat a posting another row already lists, with the email of the
  * copy that is kept.
  *
@@ -169,14 +227,7 @@ export const rowKey = (link: { messageId: string; url: string }) => `${link.mess
  * states a closing date, or the most recent one when none does.
  */
 export function repeatedRows(links: PreviewLink[]): Map<string, string> {
-  // The copy to keep: the first one that states a closing date, since that date
-  // becomes part of the item's name and decides where auto-place files it;
-  // otherwise simply the first.
-  const kept = new Map<string, PreviewLink>();
-  for (const link of links) {
-    const current = kept.get(link.url);
-    if (!current || (!current.deadline && link.deadline)) kept.set(link.url, link);
-  }
+  const kept = keptCopies(links);
   const repeats = new Map<string, string>();
   for (const link of links) {
     const keeper = kept.get(link.url)!;

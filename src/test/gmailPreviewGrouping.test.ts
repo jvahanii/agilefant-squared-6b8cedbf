@@ -12,6 +12,9 @@ import {
   distinctJobs,
   rowKey,
   alreadyInSummary,
+  keptCopies,
+  repeatedElsewhere,
+  alsoInLabel,
 } from '@/lib/gmailPreview';
 
 /**
@@ -241,6 +244,66 @@ describe('repeatedRows', () => {
     const repeats = repeatedRows(seen);
     expect(startingReason(seen[1], repeats)).toBe('already in Applied');
     expect(startingReason(rows[1], repeatedRows(rows))).toBeNull();
+  });
+});
+
+describe('folding a posting that several emails carried', () => {
+  const rows = [
+    link('m-new', 'https://x/a', 'A', 'Newest alert', 'LinkedIn'),
+    link('m-new', 'https://x/b', 'B', 'Newest alert', 'LinkedIn'),
+    link('m-new', 'https://x/a', 'A again', 'Newest alert', 'LinkedIn'),
+    link('m-old', 'https://x/a', 'A', 'Older digest', 'Nordea'),
+    link('m-old', 'https://x/c', 'C', 'Older digest', 'Nordea'),
+  ];
+
+  it('keeps one row per posting, whichever email it came from', () => {
+    const kept = keptCopies(rows);
+    const shown = rows.filter((l) => kept.get(l.url) === l);
+    // Three postings, five rows: the second copy of A in the same email and the
+    // copy in the older digest both fold away.
+    expect(shown).toHaveLength(3);
+    expect(shown.map((l) => l.url)).toEqual(['https://x/a', 'https://x/b', 'https://x/c']);
+    expect(shown[0].messageId).toBe('m-new');
+  });
+
+  it('tells the kept row how many other emails carried it, and which', () => {
+    const also = repeatedElsewhere(rows);
+    expect(also.get(rowKey(rows[0]))).toEqual({ count: 1, subjects: ['Older digest'] });
+    // A posting only one email carried has nothing to say.
+    expect(also.has(rowKey(rows[1]))).toBe(false);
+  });
+
+  it('does not count a second copy inside the same email as another email', () => {
+    // rows[2] is A again, in m-new — the kept row's own email.
+    expect(repeatedElsewhere(rows).get(rowKey(rows[0]))!.count).toBe(1);
+  });
+
+  it('counts emails rather than subjects, since alerts repeat a subject', () => {
+    const repeated = [
+      link('m-1', 'https://x/a', 'A', 'New jobs similar to Analyst', 'LinkedIn'),
+      link('m-2', 'https://x/a', 'A', 'New jobs similar to Analyst', 'LinkedIn'),
+      link('m-3', 'https://x/a', 'A', 'New jobs similar to Analyst', 'LinkedIn'),
+    ];
+    const entry = repeatedElsewhere(repeated).get(rowKey(repeated[0]))!;
+    expect(entry.count).toBe(2);
+    // One subject worth showing, two emails behind it.
+    expect(entry.subjects).toEqual(['New jobs similar to Analyst']);
+  });
+
+  it('folds towards the copy that states a closing date', () => {
+    const undated = link('m-new', 'https://x/a', 'A', 'Newest alert', 'LinkedIn');
+    const dated = { ...link('m-old', 'https://x/a', 'A', 'Older digest', 'Nordea'), deadline: '2026-10-11' };
+    const kept = keptCopies([undated, dated]);
+    expect(kept.get('https://x/a')).toBe(dated);
+    expect(repeatedElsewhere([undated, dated]).get(rowKey(dated))).toEqual({
+      count: 1,
+      subjects: ['Newest alert'],
+    });
+  });
+
+  it('says it in words', () => {
+    expect(alsoInLabel(1)).toBe('also in 1 other email');
+    expect(alsoInLabel(3)).toBe('also in 3 other emails');
   });
 });
 
