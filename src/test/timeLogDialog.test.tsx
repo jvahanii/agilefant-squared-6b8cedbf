@@ -20,6 +20,11 @@ import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 
+// jsdom has no scrollIntoView, and the dialog scrolls its add form into view on
+// a timer once it opens. Whether that timer fired inside a test or after it was
+// a matter of machine speed: locally it never did, on CI it failed the run.
+Element.prototype.scrollIntoView = vi.fn();
+
 const ITEM = "org-1::wi-a";
 let addTimeEntry: ReturnType<typeof vi.fn>;
 
