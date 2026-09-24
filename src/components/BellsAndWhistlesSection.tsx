@@ -159,9 +159,10 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div className="mt-4 pt-4 border-t space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Browse time logs</p>
+                  <p className="text-sm font-medium">Who spent time on what</p>
                   <p className="text-xs text-muted-foreground">
-                    View and filter all logged time for users and backlogs, including shared.
+                    Totals by person, work item, backlog or date, for any period — shared backlogs included. Also
+                    under Logged time in the ⋮ menu, or press Shift+L.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setTimesheetBrowserOpen(true)}>

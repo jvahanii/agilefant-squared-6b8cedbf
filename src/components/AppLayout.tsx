@@ -14,7 +14,7 @@ import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
-import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
+import { isTimeLoggingEnabled, useOrgSettingsStore } from "@/store/orgSettingsStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +50,7 @@ import {
   EyeOff,
   ClipboardList,
   Settings,
+  Clock,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { checkDataIntegrity, formatIssueReport } from "@/store/dataIntegrity";
@@ -80,6 +81,13 @@ import { currentListSortContext, listSortModeFor } from "@/store/listSortStore";
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
 const BurnupChartDialog = lazy(() =>
   import("@/components/BurnupChartDialog").then((m) => ({ default: m.BurnupChartDialog })),
+);
+
+// Lazy for the same reason. Until it had a door here the report was reachable
+// only from the settings pages, which are lazy themselves, so it never weighed
+// on start-up; a static import would have added it to every cold start.
+const TimesheetBrowserDialog = lazy(() =>
+  import("@/components/TimesheetBrowserDialog").then((m) => ({ default: m.TimesheetBrowserDialog })),
 );
 
 interface PendingCrossTreeDrop {
@@ -155,6 +163,7 @@ function AppLayoutInner() {
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
+  const [showTimesheet, setShowTimesheet] = useState(false);
   const [mobileBacklogsCollapsed, setMobileBacklogsCollapsed] = useState(false);
 
   const isMobile = useIsMobile();
@@ -578,6 +587,15 @@ function AppLayoutInner() {
         }
         case "l": {
           const orgId = useOrgStore.getState().activeOrgId;
+          // Shift+L reads the time back: who spent it on what. Unlike logging,
+          // it needs nothing selected — the question is about everyone.
+          if (e.shiftKey) {
+            if (isTimeLoggingEnabled(orgId)) {
+              e.preventDefault();
+              setShowTimesheet(true);
+            }
+            break;
+          }
           if (state.selectedWorkItemIds.length > 0 && isTimeLoggingEnabled(orgId)) {
             e.preventDefault();
             window.dispatchEvent(new CustomEvent("shortcut:log-time"));
@@ -879,6 +897,13 @@ function AppLayoutInner() {
   // Auto integrity check on data changes
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const roleOverride = useOrgStore((s) => s.roleOverride);
+  // Selected rather than read through isTimeLoggingEnabled, which takes a
+  // snapshot: the menu must redraw when the settings arrive, when someone
+  // switches logging on, and when the organization changes.
+  const timeLoggingOn = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
+  const orgName = useOrgStore(
+    (s) => s.memberships.find((m) => m.organization_id === s.activeOrgId)?.organization_name ?? "",
+  );
   const prevDataRef = useRef<string>("");
 
   useEffect(() => {
@@ -1467,8 +1492,11 @@ function AppLayoutInner() {
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors">
-                    <MoreVertical className="w-4 h-4" />
+                  <button
+                    aria-label="More"
+                    className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <MoreVertical className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -1476,6 +1504,19 @@ function AppLayoutInner() {
                     <HelpCircle className="w-4 h-4 mr-2" />
                     User Guide
                   </DropdownMenuItem>
+                  {/* Until this entry the report was reachable only from
+                      Settings, under a name that read as maintenance, and was
+                      easily forgotten. It belongs where the time is logged. */}
+                  {timeLoggingOn && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowTimesheet(true)}>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Logged time
+                        <span className="ml-auto pl-2 text-[10px] text-muted-foreground">Shift+L</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportMock}>
                     <Copy className="w-4 h-4 mr-2" />
@@ -1580,6 +1621,13 @@ function AppLayoutInner() {
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
 
       <UserGuideDialog open={showUserGuide} onOpenChange={setShowUserGuide} />
+      {/* Mounted only once asked for, so the lazy chunk is fetched on first
+          open rather than on start-up. */}
+      {showTimesheet && (
+        <Suspense fallback={null}>
+          <TimesheetBrowserDialog open={showTimesheet} onOpenChange={setShowTimesheet} orgName={orgName} />
+        </Suspense>
+      )}
       <PersistDebugOverlay />
     </DndContext>
   );
@@ -1620,6 +1668,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["B"], description: "Set status: Blocked" },
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
     { keys: ["L"], description: "Log spent time" },
+    { keys: ["Shift", "L"], description: "Logged time: who spent it on what" },
     { keys: ["M"], description: "Move to backlog…" },
     { keys: ["R"], description: "Reparent (change parent)…" },
   ];

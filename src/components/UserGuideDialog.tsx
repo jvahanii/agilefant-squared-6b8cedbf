@@ -364,6 +364,7 @@ function buildSections(): Section[] {
             <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
             <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
             <ShortcutRow keys={["L"]} description="Log spent time" />
+            <ShortcutRow keys={["Shift", "L"]} description="Logged time: who spent it on what" />
             <ShortcutRow keys={["Alt", "Enter"]} description="Rename first selected item" />
             <ShortcutRow keys={["F2"]} description="Rename first selected item" />
             <ShortcutRow keys={["/"]} description="Focus search bar" />
@@ -620,6 +621,10 @@ function buildSections(): Section[] {
               {
                 action: "View logged time",
                 how: "Open the Time Log dialog on any item to see all entries, their dates, durations, notes, and who logged them.",
+              },
+              {
+                action: "See who spent time on what",
+                how: "Choose Logged time from the ⋮ menu, or press Shift+L. It opens on this month, totalled by person and then by work item; change the period, pick one person, or group by backlog, tree or date instead. Export the result as CSV.",
               },
               {
                 action: "Delete an entry",

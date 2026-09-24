@@ -34,6 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDuration, parseDuration } from "@/components/TimeLogDialog";
 import { toast } from "@/hooks/use-toast";
+import { defaultGroupDims, presetRange, type GroupDimension, type PeriodPreset } from "@/lib/timesheetDefaults";
 
 interface TimesheetBrowserDialogProps {
   open: boolean;
@@ -105,9 +106,14 @@ function exportToCsv(
 
 // ── Summary grouping ──────────────────────────────────────────────────────────
 
-type GroupDimension = "tree" | "backlog" | "item" | "user" | "date";
 
-const ALL_DIMS: GroupDimension[] = ["tree", "backlog", "item", "user", "date"];
+/**
+ * The order dimensions nest in, whichever are switched on. Person comes first
+ * because the question this report answers is about people — who spent time on
+ * what — and toggling re-sorts into this order, so a person placed anywhere else
+ * would drop beneath the work the moment anyone changed the grouping.
+ */
+const ALL_DIMS: GroupDimension[] = ["user", "tree", "backlog", "item", "date"];
 
 const DIMENSION_LABELS: Record<GroupDimension, string> = {
   tree: "Tree",
@@ -301,12 +307,17 @@ export function TimesheetBrowserDialog({
 
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [filterUser, setFilterUser] = useState<string>("__all__");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo] = useState("");
+  // It opens on the answer rather than on raw material: this month, summed,
+  // grouped by who spent the time. It used to open on every entry ever logged,
+  // one per row, grouped by date — so even someone who found it had to
+  // rearrange it before it said anything.
+  const [filterDateFrom, setFilterDateFrom] = useState(() => presetRange("month").from);
+  const [filterDateTo, setFilterDateTo] = useState(() => presetRange("month").to);
 
   // Summary tab state
-  const [activeTab, setActiveTab] = useState<"entries" | "summary">("entries");
-  const [groupDims, setGroupDims] = useState<GroupDimension[]>(["date"]);
+  const [activeTab, setActiveTab] = useState<"entries" | "summary">("summary");
+  /** The grouping someone picked; null until they pick one, meaning the default. */
+  const [chosenDims, setChosenDims] = useState<GroupDimension[] | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
 
   // Edit state
@@ -360,6 +371,15 @@ export function TimesheetBrowserDialog({
   const uniqueUserIds = useMemo(
     () => [...new Set(allEntriesSorted.map((e) => e.userId))],
     [allEntriesSorted],
+  );
+
+  // Derived, not stored: on the settings pages this dialog is mounted before
+  // the time entries have loaded, and a default fixed at mount would group a
+  // whole team as though one person had logged everything. Memoised because
+  // the expand effect below depends on it and would otherwise re-run forever.
+  const groupDims = useMemo(
+    () => chosenDims ?? defaultGroupDims(uniqueUserIds.length),
+    [chosenDims, uniqueUserIds.length],
   );
 
   // Apply filters
@@ -444,7 +464,9 @@ export function TimesheetBrowserDialog({
   };
 
   const toggleGroupDim = (dim: GroupDimension) => {
-    setGroupDims((prev) => {
+    setChosenDims((chosen) => {
+      // The first click starts from what is on screen, default included.
+      const prev = chosen ?? groupDims;
       const next = prev.includes(dim) ? prev.filter((d) => d !== dim) : [...prev, dim];
       // Keep dims in the fixed ALL_DIMS order so toggling off/on doesn't change position
       return next.sort((a, b) => ALL_DIMS.indexOf(a) - ALL_DIMS.indexOf(b));
@@ -460,32 +482,10 @@ export function TimesheetBrowserDialog({
     });
   };
 
-  const applyPreset = (preset: "today" | "week" | "month" | "all") => {
-    const today = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    if (preset === "today") {
-      const t = fmt(today);
-      setFilterDateFrom(t);
-      setFilterDateTo(t);
-    } else if (preset === "week") {
-      const dow = today.getDay(); // 0=Sun
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - ((dow + 6) % 7));
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      setFilterDateFrom(fmt(monday));
-      setFilterDateTo(fmt(sunday));
-    } else if (preset === "month") {
-      const first = new Date(today.getFullYear(), today.getMonth(), 1);
-      const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      setFilterDateFrom(fmt(first));
-      setFilterDateTo(fmt(last));
-    } else {
-      setFilterDateFrom("");
-      setFilterDateTo("");
-    }
+  const applyPreset = (preset: PeriodPreset) => {
+    const { from, to } = presetRange(preset);
+    setFilterDateFrom(from);
+    setFilterDateTo(to);
   };
 
   return (
@@ -524,9 +524,9 @@ export function TimesheetBrowserDialog({
             </div>
           </div>
           <div className="space-y-1 min-w-0">
-            <Label className="text-xs">User</Label>
+            <Label htmlFor="timesheet-user" className="text-xs">User</Label>
             <Select value={filterUser} onValueChange={setFilterUser}>
-              <SelectTrigger className="w-36 sm:w-44 h-8 text-sm">
+              <SelectTrigger id="timesheet-user" className="w-36 sm:w-44 h-8 text-sm">
                 <SelectValue placeholder="All users" />
               </SelectTrigger>
               <SelectContent>
@@ -540,8 +540,9 @@ export function TimesheetBrowserDialog({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">From</Label>
+            <Label htmlFor="timesheet-from" className="text-xs">From</Label>
             <Input
+              id="timesheet-from"
               type="date"
               value={filterDateFrom}
               onChange={(e) => {
@@ -553,8 +554,9 @@ export function TimesheetBrowserDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">To</Label>
+            <Label htmlFor="timesheet-to" className="text-xs">To</Label>
             <Input
+              id="timesheet-to"
               type="date"
               value={filterDateTo}
               onChange={(e) => {
