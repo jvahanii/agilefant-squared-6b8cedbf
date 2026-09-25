@@ -3,7 +3,7 @@ import { useAppStore, sanitizeData, resetRankEchoSuppression } from "@/store/app
 import { readCachedAppData, writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
 import { getEffectiveParentId } from "@/types/models";
 import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
-import { upsertWorkItem, loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems } from "@/store/supabaseSync";
+import { upsertWorkItem, loadFromSupabase as loadDataFromSupabase, upsertWorkItemBacklogRankRows, upsertWorkItemBacklogRankRowsDetailed, upsertWorkItemBoardRankRows, upsertWorkItems, updateBacklogPoints } from "@/store/supabaseSync";
 
 // Mock supabase sync — all DB calls are no-ops in tests
 vi.mock("@/store/supabaseSync", () => ({
@@ -21,6 +21,7 @@ vi.mock("@/store/supabaseSync", () => ({
   upsertBacklog: vi.fn(),
   upsertBacklogs: vi.fn(),
   updateBacklogRatingsEnabled: vi.fn(),
+  updateBacklogPoints: vi.fn(),
   deleteBacklogs: vi.fn(),
   upsertBacklogTree: vi.fn(),
   deleteBacklogTree: vi.fn(),
@@ -3812,5 +3813,57 @@ describe("rank retry queue with missing work items", () => {
     await flush();
 
     expect(queuedIds()).toEqual([pendingItem.id]);
+  });
+});
+
+describe("a backlog's own points", () => {
+  const BL = `${ORG}::bl-1`;
+  const echo = (points?: number | null) => ({
+    id: BL,
+    name: "Backlog 1",
+    parent_id: null,
+    tree_id: `${ORG}::bt-1`,
+    rank: 0,
+    organization_id: ORG,
+    board_hidden_status_keys: [],
+    view_mode: "list",
+    ...(points === undefined ? {} : { points }),
+  });
+  const saved = () => updateBacklogPoints as unknown as { mock: { calls: unknown[][] }; mockClear: () => void };
+
+  it("sets an estimate, saves it, and undo takes it back in the database too", () => {
+    seedStore();
+    saved().mockClear();
+    useAppStore.getState().setBacklogPoints(BL, 40);
+    expect(useAppStore.getState().backlogs[BL].points).toBe(40);
+    expect(saved().mock.calls.at(-1)).toEqual([BL, 40]);
+    useAppStore.getState().undo();
+    expect(useAppStore.getState().backlogs[BL].points).toBeUndefined();
+    expect(saved().mock.calls.at(-1)).toEqual([BL, null]);
+  });
+
+  it("keeps the estimate when its own save comes back over realtime", () => {
+    seedStore();
+    useAppStore.getState().setBacklogPoints(BL, 40);
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", echo(40));
+    expect(useAppStore.getState().backlogs[BL].points).toBe(40);
+  });
+
+  it("keeps it through an update that says nothing about it, and takes one that does", () => {
+    seedStore();
+    useAppStore.getState().setBacklogPoints(BL, 40);
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", { ...echo(), name: "Renamed" });
+    expect(useAppStore.getState().backlogs[BL]).toMatchObject({ name: "Renamed", points: 40 });
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", echo(null));
+    expect(useAppStore.getState().backlogs[BL].points).toBeUndefined();
+  });
+
+  it("takes only whole numbers of zero or more", () => {
+    seedStore();
+    useAppStore.getState().setBacklogPoints(BL, 40);
+    useAppStore.getState().setBacklogPoints(BL, -5);
+    expect(useAppStore.getState().backlogs[BL].points).toBeUndefined();
+    useAppStore.getState().setBacklogPoints(BL, 2.5);
+    expect(useAppStore.getState().backlogs[BL].points).toBeUndefined();
   });
 });

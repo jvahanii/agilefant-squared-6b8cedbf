@@ -6,6 +6,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/appStore";
+import { itemEffectivePoints } from "@/lib/backlogPoints";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
@@ -137,14 +138,8 @@ export function MobileWorkItemAttributesSheet({
 
   if (!item) return null;
 
-  const getEffectivePoints = (wi: (typeof workItems)[string]): number => {
-    const own = wi.points ?? 0;
-    const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
-      const child = workItems[cid];
-      return sum + (child ? getEffectivePoints(child) : 0);
-    }, 0);
-    return Math.max(own, childrenSum);
-  };
+  const pointsMemo = new Map<string, number>();
+  const getEffectivePoints = (wi: (typeof workItems)[string]): number => itemEffectivePoints(workItems, wi.id, pointsMemo);
   const totalPoints = getEffectivePoints(item);
   const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
     const child = workItems[cid];
@@ -453,6 +448,29 @@ export function MobileBacklogAttributesSheet({
               <span className="text-sm tabular-nums text-muted-foreground">
                 {totalPoints > 0 ? `${totalPoints} pt${totalPoints !== 1 ? "s" : ""}` : "—"}
               </span>
+            </div>
+          )}
+
+          {/* An estimate for the whole backlog; the total above is the larger
+              of it and the contents. Emptying the field takes it away. */}
+          {pointsVisible && (
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="sheet-backlog-points" className="text-sm font-medium">
+                Estimate
+              </label>
+              <input
+                id="sheet-backlog-points"
+                inputMode="numeric"
+                defaultValue={backlog.points ?? ""}
+                placeholder="—"
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  if (t === "") useAppStore.getState().setBacklogPoints(backlogId, undefined);
+                  else if (/^\d+$/.test(t)) useAppStore.getState().setBacklogPoints(backlogId, Number(t));
+                  else e.target.value = backlog.points != null ? String(backlog.points) : "";
+                }}
+                className="h-9 w-24 rounded-md border bg-background px-2 text-right text-sm tabular-nums"
+              />
             </div>
           )}
 

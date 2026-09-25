@@ -1,4 +1,5 @@
 import { wellFormedDeadline } from "@/lib/deadlineFormat";
+import { wellFormedPoints } from "@/lib/backlogPoints";
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink, getEffectiveParentId } from "@/types/models";
 import {
@@ -9,6 +10,7 @@ import {
   deleteWorkItemBacklogRanks,
   upsertBacklog,
   updateBacklogRatingsEnabled,
+  updateBacklogPoints,
   updateBacklogViewMode,
   upsertBacklogs,
   deleteBacklogs,
@@ -251,6 +253,8 @@ interface AppState extends DataSnapshot {
   setBacklogViewMode: (backlogId: string, mode: 'list' | 'board') => void;
   /** Show stars on this backlog's items, where the organization has ratings on. */
   setBacklogRatingsEnabled: (backlogId: string, enabled: boolean) => void;
+  /** A backlog's own estimate: a whole number of zero or more, or undefined to take it away. */
+  setBacklogPoints: (backlogId: string, points: number | undefined) => void;
   reorderBacklogAmongSiblings: (
     backlogId: string,
     targetIndex: number,
@@ -1084,6 +1088,15 @@ function persistSnapshotSwitch(from: AppState, to: DataSnapshot) {
     Promise.resolve(upsertBacklogTrees(treesToSave, orgId))
       .then(() => upsertBacklogs(backlogsToSave, orgId))
       .catch((err) => console.error("Undo: saving backlogs failed", err));
+  }
+  // A backlog's estimate has its own call, as upsertBacklogs leaves it alone.
+  for (const bl of Object.values(to.backlogs)) {
+    const old = from.backlogs[bl.id];
+    if (old && old.points !== bl.points) {
+      Promise.resolve(updateBacklogPoints(bl.id, bl.points ?? null)).catch((err) =>
+        console.error("Undo: saving backlog points failed", err),
+      );
+    }
   }
 
   const removedItemIds = Object.keys(from.workItems).filter((id) => !to.workItems[id]);
@@ -4074,6 +4087,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogPoints: (backlogId, points) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      const estimate = wellFormedPoints(points);
+      if (estimate === bl.points) return;
+      updateBacklogPoints(backlogId, estimate ?? null);
+      internalLog({
+        action: "Set Backlog Points",
+        entityType: "backlog",
+        entityId: backlogId,
+        entityName: bl.name,
+        details: `${bl.points ?? "none"} → ${estimate ?? "none"}`,
+      });
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, points: estimate } },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
     setBacklogViewMode: (backlogId, mode) => {
       const state = get();
       const bl = state.backlogs[backlogId];
@@ -4814,6 +4848,9 @@ export const useAppStore = create<AppState>()((set, get) => {
             'ratings_enabled' in row
               ? (row.ratings_enabled as boolean | null) === true
               : state.backlogs[id]?.ratingsEnabled,
+          // The same for its estimate: left out, the echo of setting one would
+          // take it away again a moment later.
+          points: 'points' in row ? ((row.points as number | null) ?? undefined) : state.backlogs[id]?.points,
         };
 
         const updatedBacklogs = { ...state.backlogs, [id]: newBacklog };

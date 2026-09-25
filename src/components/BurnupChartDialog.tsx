@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/appStore";
+import { backlogPoints, burnupTargets } from "@/lib/backlogPoints";
 import { useOrgStore } from "@/store/orgStore";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -199,6 +200,8 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
   const { user } = useAuth();
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const workItems = useAppStore((s) => s.workItems);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const backlogTrees = useAppStore((s) => s.backlogTrees);
   const chartPrefs = useChartPrefsStore((s) => s.prefs);
   const setMetric = useChartPrefsStore((s) => s.setMetric);
 
@@ -258,8 +261,8 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     [itemIds, scopeSet, workItems],
   );
 
-  // The vertical scale target: branch total for points, item count for count.
-  const total = useMemo(() => {
+  // The items' total: branch total for points, item count for count.
+  const itemsTotal = useMemo(() => {
     if (metric === "count") return itemIds.length;
     const memo = new Map<string, number>();
     return scopeRoots.reduce(
@@ -267,6 +270,36 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
       0,
     );
   }, [metric, itemIds, scopeRoots, scopeSet, workItems]);
+
+  // What estimates on backlogs add: the backlog's own points, and for a backlog
+  // or a tree the excess of estimates below over their own items.
+  const estimate = useMemo((): { own?: number; upliftBelow: number } => {
+    if (!scope || metric === "count") return { upliftBelow: 0 };
+    if (scope.kind === "backlog") {
+      const bl = backlogs[scope.id];
+      if (!bl) return { upliftBelow: 0 };
+      const bp = backlogPoints(scope.id, bl.treeId, workItems, backlogs);
+      return { own: bp.own, upliftBelow: bp.contents - bp.itemsTotal };
+    }
+    if (scope.kind === "tree") {
+      const tree = backlogTrees[scope.id];
+      if (!tree) return { upliftBelow: 0 };
+      const memo = new Map<string, number>();
+      const uplift = tree.rootBacklogIds.reduce((sum, id) => {
+        const bp = backlogPoints(id, scope.id, workItems, backlogs, memo);
+        return sum + (bp.effective - bp.itemsTotal);
+      }, 0);
+      return { upliftBelow: uplift };
+    }
+    return { upliftBelow: 0 };
+  }, [scope, metric, backlogs, backlogTrees, workItems]);
+
+  const targets = useMemo(
+    () => burnupTargets({ metric, itemsTotal, ...estimate }),
+    [metric, itemsTotal, estimate],
+  );
+  const total = targets.target;
+  const chartTop = Math.max(targets.target, targets.scopeLine?.value ?? 0, targets.projectTo);
 
   useEffect(() => {
     if (!open || !scope || itemIds.length === 0) {
@@ -384,10 +417,10 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
   // the target, extrapolating the completion rate observed so far.
   const projection = useMemo(() => {
     const data = chartData.data;
-    if (!data || data.length === 0 || total <= 0) return null;
+    if (!data || data.length === 0 || targets.projectTo <= 0) return null;
     const last = data[data.length - 1];
     const doneNow = (last.done as number) ?? 0;
-    if (doneNow <= 0 || doneNow >= total) return null;
+    if (doneNow <= 0 || doneNow >= targets.projectTo) return null;
 
     let firstDoneIdx = -1;
     for (let i = 0; i < data.length; i++) {
@@ -405,16 +438,16 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     const rate = doneNow / daysElapsed;
     if (!(rate > 0)) return null;
 
-    const remaining = total - doneNow;
+    const remaining = targets.projectTo - doneNow;
     const daysToGo = Math.max(1, Math.ceil(remaining / rate));
     const endDate = new Date(today.getTime() + daysToGo * 86400000);
 
     return {
       start: { x: today.toISOString().slice(0, 10), y: doneNow },
-      end: { x: endDate.toISOString().slice(0, 10), y: total },
+      end: { x: endDate.toISOString().slice(0, 10), y: targets.projectTo },
       endStr: endDate.toISOString().slice(0, 10),
     };
-  }, [chartData, total]);
+  }, [chartData, targets.projectTo]);
 
   // Extend the series out to the projection end date so the dashed line's
   // endpoint lands on a real x-axis category.
@@ -435,7 +468,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
   }, [projection, chartData]);
 
   const yDomain: [number | string, number | string] =
-    total > 0 ? [0, total] : [0, "auto"];
+    chartTop > 0 ? [0, chartTop] : [0, "auto"];
 
   const handleMetricChange = async (m: ChartMetric) => {
     if (!scope || !user || !activeOrgId) return;
@@ -496,6 +529,21 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
                       value: `Target ${total}`,
                       position: "insideTopRight",
                       fill: "#ef4444",
+                      fontSize: 10,
+                    }}
+                  />
+                )}
+                {/* What the contents add up to, beside an estimate that differs. */}
+                {targets.scopeLine && targets.scopeLine.value > 0 && (
+                  <ReferenceLine
+                    y={targets.scopeLine.value}
+                    stroke="#64748b"
+                    strokeDasharray="3 3"
+                    strokeWidth={1.25}
+                    label={{
+                      value: targets.scopeLine.label,
+                      position: "insideBottomRight",
+                      fill: "#64748b",
                       fontSize: 10,
                     }}
                   />

@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { itemEffectivePoints } from "@/lib/backlogPoints";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
@@ -1307,14 +1308,8 @@ function WorkItemNodeContent({
 
           <div className="flex items-start gap-1 mt-0.5">
             {pointsVisible && (() => {
-                const getEffectivePoints = (wi: any): number => {
-                  const own = wi.points ?? 0;
-                  const childrenSum = wi.childrenIds.reduce((sum: number, cid: string) => {
-                    const child = workItems[cid];
-                    return sum + (child ? getEffectivePoints(child) : 0);
-                  }, 0);
-                  return Math.max(own, childrenSum);
-                };
+                const pointsMemo = new Map<string, number>();
+                const getEffectivePoints = (wi: WorkItem): number => itemEffectivePoints(workItems, wi.id, pointsMemo);
                 const getCompletedPoints = (wi: any): number => {
                   if (wi.status === 'done') return getEffectivePoints(wi);
                   return wi.childrenIds.reduce((sum: number, cid: string) => {

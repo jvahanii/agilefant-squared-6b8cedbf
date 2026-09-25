@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe, Star } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe, Star, Hash } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
@@ -36,6 +36,8 @@ import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsS
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
+import { BacklogPointsDialog } from "./BacklogPointsDialog";
+import { backlogPoints, type BacklogPoints as BacklogPointsBreakdown } from "@/lib/backlogPoints";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -259,42 +261,14 @@ function useBacklogTotalMinutes(backlogId: string, treeId: string) {
   return timeLoggingVisible ? cached : 0;
 }
 
-/** Compute total points for a backlog (including descendant backlogs) */
-function useBacklogPoints(backlogId: string, treeId: string) {
+/**
+ * A backlog's points: the larger of its own estimate and its contents, which
+ * are its items and those of every backlog below it. See lib/backlogPoints.
+ */
+function useBacklogPoints(backlogId: string, treeId: string): BacklogPointsBreakdown {
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
-
-  return useMemo(() => {
-    const backlogIds = new Set<string>();
-    const collectBacklogs = (id: string) => {
-      backlogIds.add(id);
-      backlogs[id]?.childrenIds.forEach(collectBacklogs);
-    };
-    collectBacklogs(backlogId);
-
-    const getEffectivePoints = (wi: (typeof workItems)[string]): number => {
-      const own = wi.points ?? 0;
-      const childrenSum = wi.childrenIds.reduce((sum, cid) => {
-        const child = workItems[cid];
-        return sum + (child ? getEffectivePoints(child) : 0);
-      }, 0);
-      return Math.max(own, childrenSum);
-    };
-
-    let total = 0;
-    Object.values(workItems).forEach((wi) => {
-      if (wi.backlogAssignments[treeId] && backlogIds.has(wi.backlogAssignments[treeId])) {
-        const parentInSet = (() => {
-          const effectiveParentId = getEffectiveParentId(wi, treeId);
-          return effectiveParentId && workItems[effectiveParentId] && backlogIds.has(workItems[effectiveParentId].backlogAssignments[treeId]);
-        })();
-        if (!parentInSet) {
-          total += getEffectivePoints(wi);
-        }
-      }
-    });
-    return total;
-  }, [workItems, backlogs, backlogId, treeId]);
+  return useMemo(() => backlogPoints(backlogId, treeId, workItems, backlogs), [workItems, backlogs, backlogId, treeId]);
 }
 
 const DRAG_THRESHOLD = 8; // pixels — minimum movement to count as a drag vs. a tap
@@ -348,7 +322,14 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
     [setDragRef, setDropRef],
   );
 
-  const totalPoints = useBacklogPoints(backlogId, backlog?.treeId ?? "");
+  const pointsBreakdown = useBacklogPoints(backlogId, backlog?.treeId ?? "");
+  const totalPoints = pointsBreakdown.effective;
+  // Said on hover where the backlog has an estimate: which of the two it is.
+  const pointsTitle =
+    pointsBreakdown.own != null
+      ? `Estimate ${pointsBreakdown.own} · contents add up to ${pointsBreakdown.contents}`
+      : undefined;
+  const [showPointsDialog, setShowPointsDialog] = useState(false);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const pointsVisible = usePointsVisibleForTree(treeId);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
@@ -563,7 +544,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           </div>
         )}
         {pointsVisible && totalPoints > 0 && (
-          <span className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
+          <span title={pointsTitle} className="text-xs tabular-nums text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0 group-hover:hidden">
             {totalPoints} pt{totalPoints !== 1 ? "s" : ""}
           </span>
         )}
@@ -721,6 +702,13 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
         )}
         {/* Each backlog decides for itself, starting off: stars earn their
             place on a shortlist and are noise on a sprint backlog. */}
+        {/* An estimate for the whole backlog, before its work is broken down. */}
+        {pointsVisible && (
+          <ContextMenuItem className="text-xs" onSelect={() => setShowPointsDialog(true)}>
+            <Hash className="w-3 h-3 mr-2" />
+            {backlog?.points != null ? "Change points…" : "Set points…"}
+          </ContextMenuItem>
+        )}
         {ratingsEnabled && (
           <ContextMenuCheckboxItem
             className="text-xs"
@@ -815,6 +803,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           open={showTimeLogDialog}
           onOpenChange={setShowTimeLogDialog}
         />
+      )}
+      {showPointsDialog && (
+        <BacklogPointsDialog backlogId={backlogId} treeId={treeId} open onOpenChange={setShowPointsDialog} />
       )}
       <MobileBacklogAttributesSheet
         backlogId={backlogId}

@@ -122,6 +122,7 @@ export type Database = {
           name: string
           organization_id: string | null
           parent_id: string | null
+          points: number | null
           rank: number
           ratings_enabled: boolean
           tree_id: string
@@ -132,6 +133,7 @@ export type Database = {
           name: string
           organization_id?: string | null
           parent_id?: string | null
+          points?: number | null
           rank?: number
           ratings_enabled?: boolean
           tree_id: string
@@ -142,6 +144,7 @@ export type Database = {
           name?: string
           organization_id?: string | null
           parent_id?: string | null
+          points?: number | null
           rank?: number
           ratings_enabled?: boolean
           tree_id?: string
