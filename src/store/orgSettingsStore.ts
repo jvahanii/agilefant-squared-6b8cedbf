@@ -16,6 +16,8 @@ interface OrgSettings {
   publicLinksEnabled: boolean;
   /** Work items can be rated one to five stars, and backlogs sorted by it. */
   ratingsEnabled: boolean;
+  /** Work items show a deadline, can be given one, and lists sort by it. */
+  deadlinesEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -33,6 +35,7 @@ interface OrgSettingsState {
   setPersistNotificationsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setPublicLinksEnabled: (orgId: string, enabled: boolean) => Promise<boolean>;
   setRatingsEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setDeadlinesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -47,6 +50,7 @@ const defaults: OrgSettings = {
   persistNotificationsEnabled: false,
   publicLinksEnabled: false,
   ratingsEnabled: false,
+  deadlinesEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -57,7 +61,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled, deadlines_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -83,6 +87,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
               publicLinksEnabled:
                 (data as { public_links_enabled?: boolean }).public_links_enabled ?? false,
               ratingsEnabled: (data as { ratings_enabled?: boolean }).ratings_enabled ?? false,
+              deadlinesEnabled: (data as { deadlines_enabled?: boolean }).deadlines_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -118,6 +123,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       .from("organization_settings")
       .upsert(
         { organization_id: orgId, ratings_enabled: enabled, updated_at: new Date().toISOString() },
+        { onConflict: "organization_id" },
+      );
+  },
+
+  setDeadlinesEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), deadlinesEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from("organization_settings")
+      .upsert(
+        { organization_id: orgId, deadlines_enabled: enabled, updated_at: new Date().toISOString() },
         { onConflict: "organization_id" },
       );
   },
@@ -281,6 +302,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           persistNotificationsEnabled: row.persist_notifications_enabled ?? false,
           publicLinksEnabled: row.public_links_enabled ?? false,
           ratingsEnabled: row.ratings_enabled ?? false,
+          deadlinesEnabled: row.deadlines_enabled ?? false,
         },
       },
     }));

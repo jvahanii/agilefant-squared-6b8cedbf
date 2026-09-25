@@ -10,7 +10,7 @@
 import type { ExtractedLink } from './extract.ts';
 import { normalizeUrl } from './urls.ts';
 import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
-import { deadlinePrefix } from './deadlines.ts';
+import { deadlinePrefix, wellFormedDeadline } from './deadlines.ts';
 import { withCities } from './cities.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
 
@@ -65,12 +65,15 @@ function newWorkItemId(orgId: string): string {
 }
 
 /**
- * "0920 Academic Work — AI Engineer (Helsinki)": the closing date in front,
- * so a backlog sorted by name groups by it, and the cities after. Either is
- * left out when not known.
+ * "Academic Work — AI Engineer (Helsinki)", the cities after the title.
+ *
+ * Where the organization has no deadlines, the closing date goes in front as
+ * well — "0920 Academic Work — …" — as it always did, since the name is then
+ * the only place anyone sees it. Where it has them, the date is the item's own
+ * deadline and the name stays clean.
  */
-function workItemTitle(link: ExtractedLink): string {
-  const prefix = deadlinePrefix(link.deadline);
+function workItemTitle(link: ExtractedLink, datePrefix: boolean): string {
+  const prefix = datePrefix ? deadlinePrefix(link.deadline) : "";
   const base = link.title || link.url;
   return withCities(prefix ? `${prefix} ${base}` : base, link.cities);
 }
@@ -379,13 +382,26 @@ export async function importLinksAsWorkItems(
       );
   };
 
+  // Whether this organization keeps deadlines as a field of their own. Read
+  // once per import; if it cannot be read, the name keeps the date, which
+  // loses nothing.
+  const { data: settingsRow } = await admin
+    .from('organization_settings')
+    .select('deadlines_enabled')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  const deadlinesAsField = (settingsRow as { deadlines_enabled?: boolean } | null)?.deadlines_enabled === true;
+
   try {
     const { error: itemsError } = await admin.from('work_items').insert(
       ranked.map(({ id, link, rank }) => ({
         id,
-        title: workItemTitle(link),
+        title: workItemTitle(link, !deadlinesAsField),
         description: describe(link),
         rating: ratingFor(link),
+        // Stored everywhere, shown where the organization has deadlines on:
+        // switching them on later then finds every date already in place.
+        deadline: wellFormedDeadline(link.deadline) ?? null,
         parent_id: null,
         organization_id: organizationId,
         rank,

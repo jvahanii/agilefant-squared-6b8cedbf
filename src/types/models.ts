@@ -16,6 +16,9 @@ export interface WorkItem {
   /** One to five stars, shared by the whole organization. Absent = unrated,
    *  which is not the same as a rating of zero and sorts last. */
   rating?: number;
+  /** The day it is due, as yyyy-mm-dd. Absent = no deadline. Shown only where
+   *  the organization has deadlines on; kept, not lost, where it is off. */
+  deadline?: string;
   status: WorkItemStatus;
   /** Global parent ID — the default parent used when no per-tree override is present. */
   parentId: string | null;

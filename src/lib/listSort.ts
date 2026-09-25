@@ -12,7 +12,7 @@
 import type { WorkItem } from "@/types/models";
 import { byRank } from "@/lib/workItemRows";
 
-export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc";
+export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc" | "deadline-asc";
 
 export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rank", label: "Rank" },
@@ -22,11 +22,21 @@ export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "team", label: "Team A→Z" },
   // Offered only where the organization has ratings on; see ratingsVisible.
   { mode: "rating-desc", label: "Rating ★ best first" },
+  // Offered only where the organization has deadlines on.
+  { mode: "deadline-asc", label: "Deadline, soonest first" },
 ];
 
-/** Modes worth offering: rating only where the organization rates its items. */
-export function listSortModes(ratingsEnabled: boolean): { mode: ListSortMode; label: string }[] {
-  return LIST_SORT_MODES.filter((m) => ratingsEnabled || m.mode !== "rating-desc");
+/**
+ * Modes worth offering: rating only where the organization rates its items,
+ * deadline only where it uses deadlines.
+ */
+export function listSortModes(
+  ratingsEnabled: boolean,
+  deadlinesEnabled = false,
+): { mode: ListSortMode; label: string }[] {
+  return LIST_SORT_MODES.filter(
+    (m) => (ratingsEnabled || m.mode !== "rating-desc") && (deadlinesEnabled || m.mode !== "deadline-asc"),
+  );
 }
 
 export function isListSortMode(value: unknown): value is ListSortMode {
@@ -92,6 +102,10 @@ export function sortTopLevel(
         // Five stars first, unrated last — an unrated item is one nobody has
         // judged, not one judged worthless.
         return (a, b) => nullsLast(a.rating ?? null, b.rating ?? null, (x, y) => y - x);
+      case "deadline-asc":
+        // Soonest first — gone-by ones lead, still to be dealt with — and items
+        // with no deadline after every one that has one.
+        return (a, b) => nullsLast(a.deadline ?? null, b.deadline ?? null, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
       case "team": {
         const names = new Map(items.map((item) => [item.id, firstTeamName(item, ctx)]));
         return (a, b) => nullsLast(names.get(a.id) ?? null, names.get(b.id) ?? null, collator.compare);

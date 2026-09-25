@@ -743,6 +743,7 @@ export type Database = {
           burnups_enabled: boolean
           created_at: string
           custom_statuses_enabled: boolean
+          deadlines_enabled: boolean
           id: string
           labels_enabled: boolean
           organization_id: string
@@ -759,6 +760,7 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
+          deadlines_enabled?: boolean
           id?: string
           labels_enabled?: boolean
           organization_id: string
@@ -775,6 +777,7 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           custom_statuses_enabled?: boolean
+          deadlines_enabled?: boolean
           id?: string
           labels_enabled?: boolean
           organization_id?: string
@@ -1604,6 +1607,7 @@ export type Database = {
       work_items: {
         Row: {
           backlog_assignments: Json
+          deadline: string | null
           description: string | null
           id: string
           organization_id: string | null
@@ -1622,6 +1626,7 @@ export type Database = {
         }
         Insert: {
           backlog_assignments?: Json
+          deadline?: string | null
           description?: string | null
           id: string
           organization_id?: string | null
@@ -1640,6 +1645,7 @@ export type Database = {
         }
         Update: {
           backlog_assignments?: Json
+          deadline?: string | null
           description?: string | null
           id?: string
           organization_id?: string | null

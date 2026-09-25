@@ -99,9 +99,11 @@ export default function JobAdsGuide() {
               <strong>Named after the employer and the role</strong> — for example <Code>Fennia — Product owner</Code>.
             </li>
             <li>
-              <strong>Prefixed with the closing date</strong> when one can be found, as month and day:{" "}
-              <Code>0930 Fennia — Product owner</Code> closes on 30 September. Sorting a backlog by name then puts the
-              soonest deadlines first.
+              <strong>Given the closing date</strong> when one can be found. Where your organization has{" "}
+              <strong>Deadlines</strong> switched on in Bells &amp; Whistles, it becomes the item's deadline, shown before
+              the name and sortable with <em>Deadline, soonest first</em>. Otherwise it goes in front of the name as
+              month and day — <Code>0930 Fennia — Product owner</Code> closes on 30 September — and sorting by name puts
+              the soonest first.
             </li>
             <li>
               <strong>With the posting attached as a hyperlink</strong>, and a description recording when applications
@@ -338,7 +340,7 @@ export default function JobAdsGuide() {
               ],
               [
                 "Import & auto-place",
-                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. Both lists are then sorted by name — which, since an imported name begins with the closing date, is closing-date order — and that order is saved as their rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
+                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. The list with deadlines is then put in closing-date order and the other in name order, and that order is saved as their rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
               ],
               [
                 "Do not import anything, mark N emails read",
@@ -429,7 +431,7 @@ export default function JobAdsGuide() {
           <Callout>This check is currently available to superusers only.</Callout>
           <P>An item is marked as closed when:</P>
           <Ul>
-            <li>the closing date in its name has already passed — this needs no checking online at all;</li>
+            <li>its closing date — its deadline, or the date in its name — has already passed; this needs no checking online at all;</li>
             <li>
               the posting says so, for example &ldquo;No longer accepting applications&rdquo;, &ldquo;Hakuaika on
               päättynyt&rdquo; or &ldquo;Job is not open for applying&rdquo;;

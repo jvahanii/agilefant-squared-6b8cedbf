@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
 import { StarRating } from "@/components/StarRating";
+import { formatDeadline, isDeadlinePassed } from "@/lib/deadlineFormat";
 import { formatDuration } from "@/lib/formatDuration";
 import {
   backlogScope,
@@ -553,6 +554,15 @@ function ItemRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            {/* Before the title, as in the app: a job list reads date first. */}
+            {p.deadlinesVisible && item.deadline && (
+              <span
+                className={`shrink-0 text-xs tabular-nums ${isDeadlinePassed(item.deadline) ? "text-destructive" : "text-muted-foreground"}`}
+                title={`Deadline ${item.deadline}${isDeadlinePassed(item.deadline) ? " — passed" : ""}`}
+              >
+                {formatDeadline(item.deadline)}
+              </span>
+            )}
             {hasDetails ? (
               <button
                 type="button"

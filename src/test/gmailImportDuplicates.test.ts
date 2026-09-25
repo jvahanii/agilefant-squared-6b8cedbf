@@ -21,6 +21,8 @@ interface StubState {
   orphanedItemIds?: string[];
   /** Ranked into the backlog but assigned to a different one. */
   movedItemIds?: string[];
+  /** The organization's deadlines setting; absent means no settings row. */
+  deadlinesEnabled?: boolean;
 }
 
 function makeAdmin(state: StubState = {}) {
@@ -38,6 +40,13 @@ function makeAdmin(state: StubState = {}) {
       in: () => self,
       order: () => self,
       limit: () => self,
+      /** The first row the query would return, or null — as supabase-js does. */
+      maybeSingle() {
+        return Promise.resolve(result()).then((r) => {
+          const rows = (r as { data: unknown[] | null }).data;
+          return { data: Array.isArray(rows) ? rows[0] ?? null : rows, error: null };
+        });
+      },
       insert(rows: unknown[]) {
         ctx.op = 'insert';
         (inserted[table] ??= []).push(...rows);
@@ -85,6 +94,12 @@ function makeAdmin(state: StubState = {}) {
             ...(state.existingItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl' } })),
             ...(state.movedItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl-other' } })),
           ],
+          error: null,
+        };
+      }
+      if (table === 'organization_settings') {
+        return {
+          data: state.deadlinesEnabled === undefined ? [] : [{ deadlines_enabled: state.deadlinesEnabled }],
           error: null,
         };
       }
@@ -320,5 +335,38 @@ describe('an item moved to another backlog is not in this one', () => {
   it('still counts an item actually assigned here', async () => {
     const { admin } = makeAdmin({ existingItemIds: ['wi-live'], existingUrls: [A3] });
     expect((await urlsInBacklog(admin, 'bl')).has(A3)).toBe(true);
+  });
+});
+
+describe("a job ad's closing date", () => {
+  // The date used to live only in the name, "0930 AI Engineer". It is now the
+  // item's own deadline, and stays in the name only where the organization has
+  // no deadlines to show it in.
+  const dated = { ...link('m1', A, 'AI Engineer'), deadline: '2026-09-30' };
+  const title = (inserted: Record<string, unknown[]>) =>
+    (inserted['work_items'][0] as { title: string; deadline: string | null });
+
+  it("is the item's deadline, with a clean name, where the organization has deadlines", async () => {
+    const { admin, inserted } = makeAdmin({ deadlinesEnabled: true });
+    await importLinksAsWorkItems(admin, target, [dated]);
+    expect(title(inserted)).toMatchObject({ title: 'AI Engineer', deadline: '2026-09-30' });
+  });
+
+  it('stays in front of the name where it does not, and is stored all the same', async () => {
+    const { admin, inserted } = makeAdmin({ deadlinesEnabled: false });
+    await importLinksAsWorkItems(admin, target, [dated]);
+    expect(title(inserted)).toMatchObject({ title: '0930 AI Engineer', deadline: '2026-09-30' });
+  });
+
+  it('stays in the name when the setting cannot be read', async () => {
+    const { admin, inserted } = makeAdmin();
+    await importLinksAsWorkItems(admin, target, [dated]);
+    expect(title(inserted).title).toBe('0930 AI Engineer');
+  });
+
+  it('is no deadline at all for a posting that states none', async () => {
+    const { admin, inserted } = makeAdmin({ deadlinesEnabled: true });
+    await importLinksAsWorkItems(admin, target, [link('m1', A, 'AI Engineer')]);
+    expect(title(inserted)).toMatchObject({ title: 'AI Engineer', deadline: null });
   });
 });

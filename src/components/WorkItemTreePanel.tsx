@@ -2,7 +2,7 @@ import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban, CalendarClock } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -21,10 +21,13 @@ import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
 import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
+import { DeadlineDialog } from "./DeadlineDialog";
+import { formatDeadline, isDeadlinePassed, useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
 import { releaseOverlayLock } from "@/lib/overlayLock";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -325,6 +328,7 @@ function WorkItemNodeContent({
   const rowBacklogId = item.backlogAssignments?.[treeId];
   const rowBacklogRatings = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.ratingsEnabled ?? false : false));
   const ratingsVisible = orgRatingsEnabled && rowBacklogRatings;
+  const deadlinesVisible = useDeadlinesEnabled();
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -394,6 +398,7 @@ function WorkItemNodeContent({
   const [showMoveTimeDialog, setShowMoveTimeDialog] = useState(false);
   const [moveTimeEntryIds, setMoveTimeEntryIds] = useState<string[]>([]);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [showDeadlineDialog, setShowDeadlineDialog] = useState(false);
   const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
@@ -990,6 +995,27 @@ function WorkItemNodeContent({
             />
           )}
 
+          {/* The deadline before the title, where the importer used to write it
+              into the name as "0930": a list still reads date first. Red once
+              it has gone by. Clicking it changes it. */}
+          {deadlinesVisible && item.deadline && (
+            <button
+              type="button"
+              className={cn(
+                "mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums hover:bg-muted",
+                isDeadlinePassed(item.deadline) ? "text-destructive" : "text-muted-foreground",
+              )}
+              title={`Deadline ${item.deadline}${isDeadlinePassed(item.deadline) ? " — passed" : ""}`}
+              aria-label={`Deadline ${formatDeadline(item.deadline)}${isDeadlinePassed(item.deadline) ? ", passed" : ""}. Change`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeadlineDialog(true);
+              }}
+            >
+              {formatDeadline(item.deadline)}
+            </button>
+          )}
+
           {isEditingTitle ? (
             <textarea
               ref={titleRef}
@@ -1492,6 +1518,12 @@ function WorkItemNodeContent({
               </ContextMenuRadioGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          {deadlinesVisible && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowDeadlineDialog(true)}>
+              <CalendarClock className="w-3 h-3 mr-2" />
+              {item.deadline ? "Change deadline…" : "Set deadline…"}
+            </ContextMenuItem>
+          )}
           <ContextMenuItem className="text-xs" onSelect={() => {
             setViewMode("board");
             // Select the item after view mode change and React reconciliation
@@ -2052,6 +2084,13 @@ function WorkItemNodeContent({
           workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
           open
           onOpenChange={(o) => { setShowSnoozeDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showDeadlineDialog && (
+        <DeadlineDialog
+          workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
+          open
+          onOpenChange={(o) => { setShowDeadlineDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
       {showMobileAttributesSheet && (
@@ -2680,6 +2719,8 @@ export function WorkItemTreePanel() {
   const orgRatingsEnabled = useRatingsEnabled();
   const selectedBacklogIds = useAppStore((s) => s.selectedBacklogIds);
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
+  // Deadline sort, offered where the organization uses deadlines.
+  const deadlinesEnabledForSort = useDeadlinesEnabled();
   const ratingsEnabled = useAppStore(
     (s) => orgRatingsEnabled && !!(selectedBacklogId && s.backlogs[selectedBacklogId]?.ratingsEnabled),
   );
@@ -3862,7 +3903,7 @@ export function WorkItemTreePanel() {
                       value={listSortMode}
                       onValueChange={(value) => setListSortMode(selectedBacklogId, value as ListSortMode)}
                     >
-                      {listSortModes(ratingsEnabled).map(({ mode, label }) => (
+                      {listSortModes(ratingsEnabled, deadlinesEnabledForSort).map(({ mode, label }) => (
                         <DropdownMenuRadioItem key={mode} value={mode} className="text-xs">
                           {label}
                         </DropdownMenuRadioItem>

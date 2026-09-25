@@ -5,6 +5,8 @@ import { topLevelItems } from "@/lib/workItemRows";
 import { useTeamStore } from "@/store/teamStore";
 import { getEffectiveStatuses } from "@/store/backlogStatusesStore";
 import { useAppStore } from "@/store/appStore";
+import { useOrgStore } from "@/store/orgStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
 /**
  * Which order each backlog's list shows, in this browser only.
@@ -52,13 +54,41 @@ export const useListSortStore = create<ListSortState>((set, get) => ({
   },
 }));
 
+/**
+ * The mode a list is actually shown in. A chosen mode stays stored after the
+ * feature it sorts by is switched off — deadlines for the organization, stars
+ * for it or for the backlog — and would then order the list by something no
+ * one can see, with nothing offered to undo it. It falls back to rank instead,
+ * and comes back if the feature does.
+ */
+function effectiveMode(
+  mode: ListSortMode,
+  deadlinesOn: boolean,
+  ratingsOn: boolean,
+): ListSortMode {
+  if (mode === "deadline-asc" && !deadlinesOn) return "rank";
+  if (mode === "rating-desc" && !ratingsOn) return "rank";
+  return mode;
+}
+
 export function listSortModeFor(backlogId: string | null | undefined): ListSortMode {
   if (!backlogId) return "rank";
-  return useListSortStore.getState().modeByBacklog[backlogId] ?? "rank";
+  const orgId = useOrgStore.getState().activeOrgId ?? "";
+  const settings = useOrgSettingsStore.getState().settings[orgId];
+  return effectiveMode(
+    useListSortStore.getState().modeByBacklog[backlogId] ?? "rank",
+    settings?.deadlinesEnabled ?? false,
+    (settings?.ratingsEnabled ?? false) && !!useAppStore.getState().backlogs[backlogId]?.ratingsEnabled,
+  );
 }
 
 export function useListSortMode(backlogId: string | null | undefined): ListSortMode {
-  return useListSortStore((s) => (backlogId ? s.modeByBacklog[backlogId] ?? "rank" : "rank"));
+  const stored = useListSortStore((s) => (backlogId ? s.modeByBacklog[backlogId] ?? "rank" : "rank"));
+  const orgId = useOrgStore((s) => s.activeOrgId) ?? "";
+  const deadlinesOn = useOrgSettingsStore((s) => s.settings[orgId]?.deadlinesEnabled ?? false);
+  const orgRatingsOn = useOrgSettingsStore((s) => s.settings[orgId]?.ratingsEnabled ?? false);
+  const backlogRatingsOn = useAppStore((s) => (backlogId ? !!s.backlogs[backlogId]?.ratingsEnabled : false));
+  return effectiveMode(stored, deadlinesOn, orgRatingsOn && backlogRatingsOn);
 }
 
 /** The team and status facts the non-rank sorts read, as they are now. */

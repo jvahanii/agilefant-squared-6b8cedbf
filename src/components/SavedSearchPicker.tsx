@@ -34,6 +34,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { currentListSortContext } from "@/store/listSortStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { compareDeadlines } from "@/lib/deadlineFormat";
 import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
@@ -626,20 +628,32 @@ export function SavedSearchPicker({
       };
       let mirrored = 0;
       app.runBulk(() => {
+        // The dated list in closing-date order. Where the organization keeps
+        // deadlines, names no longer start with the date, so name order would
+        // be company order: sort by deadline, ties by name as before. Without
+        // deadlines the date is still in the name and name order does it.
+        const deadlinesAsField =
+          useOrgSettingsStore.getState().settings[organizationId]?.deadlinesEnabled ?? false;
         for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
-          const ordered = sortTopLevel(
+          const byName = sortTopLevel(
             topLevelItems(useAppStore.getState().workItems, search.tree_id, new Set([backlogId])),
             "name-asc",
             search.tree_id,
             currentListSortContext(search.tree_id),
           );
+          const ordered =
+            deadlinesAsField && backlogId === autoPlace.withDeadline
+              ? [...byName].sort(compareDeadlines)
+              : byName;
           if (ordered.length === 0) continue;
           app.applySiblingOrder(
             null,
             search.tree_id,
             [backlogId],
             ordered.map((item) => item.id),
-            `Auto-placed import: ${ordered.length} items in name order`,
+            `Auto-placed import: ${ordered.length} items in ${
+              deadlinesAsField && backlogId === autoPlace.withDeadline ? "deadline" : "name"
+            } order`,
           );
         }
 

@@ -35,7 +35,7 @@ interface ClosedPostingsState {
    * marks rows while it is still going rather than all at the end.
    */
   check: (
-    items: { id: string; title: string; urls: string[] }[],
+    items: { id: string; title: string; deadline?: string; urls: string[] }[],
   ) => Promise<{ closed: number; checked: number; unknown: number; fromTitle: number; error?: string }>;
   /** Drop what is known about these items — the marks in one backlog, say. */
   forget: (ids: string[]) => void;
@@ -97,13 +97,14 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
   check: async (items) => {
     if (get().checking) return { closed: 0, checked: 0, unknown: 0, fromTitle: 0 };
 
-    // Settle whatever the item already knows about itself first. The import
-    // writes the closing date into the title, so an item whose date has gone by
-    // needs no request at all -- which is the only reliable way past a board
-    // that will not answer one.
+    // Settle whatever the item already knows about itself first: its own
+    // deadline, or for an organization without deadlines the closing date the
+    // import writes into the title. An item whose date has gone by needs no
+    // request at all -- the only reliable way past a board that will not
+    // answer one.
     const settled = new Set<string>();
     for (const item of items) {
-      if (deadlinePassed(titleDeadline(item.title))) settled.add(item.id);
+      if (deadlinePassed(item.deadline ?? titleDeadline(item.title))) settled.add(item.id);
     }
 
     // One request per URL, but an item may hold several: the item is closed if
@@ -204,10 +205,10 @@ export function linkedItemsIn(
   treeId: string,
   backlogIds: ReadonlySet<string>,
   exclude: ReadonlySet<string> = new Set(),
-): { id: string; title: string; urls: string[] }[] {
+): { id: string; title: string; deadline?: string; urls: string[] }[] {
   return Object.values(workItems)
     .filter((wi) => backlogIds.has(wi.backlogAssignments[treeId]) && !exclude.has(wi.id))
-    .map((wi) => ({ id: wi.id, title: wi.title, urls: (hyperlinks?.[wi.id] ?? []).map((h) => h.url) }))
+    .map((wi) => ({ id: wi.id, title: wi.title, deadline: wi.deadline, urls: (hyperlinks?.[wi.id] ?? []).map((h) => h.url) }))
     .filter((item) => item.urls.length > 0);
 }
 

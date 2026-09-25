@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -33,7 +33,9 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
   const setPointsEnabledSetting = useOrgSettingsStore((s) => s.setPointsEnabled);
   const setRatingsEnabledSetting = useOrgSettingsStore((s) => s.setRatingsEnabled);
+  const setDeadlinesEnabledSetting = useOrgSettingsStore((s) => s.setDeadlinesEnabled);
   const ratingsEnabled = (orgSettings as { ratingsEnabled?: boolean }).ratingsEnabled ?? false;
+  const deadlinesEnabled = (orgSettings as { deadlinesEnabled?: boolean }).deadlinesEnabled ?? false;
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
@@ -125,6 +127,36 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setRatingsEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Ratings enabled" : "Ratings disabled" });
+                }
+              }}
+              disabled={!canManage}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarClock className="w-4 h-4" /> Deadlines
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable deadlines</p>
+              <p className="text-xs text-muted-foreground">
+                Give work items a due date from their right-click menu; it shows before the title, red once it has
+                gone by, and a backlog can be sorted by it. Job ads imported from email get theirs automatically.
+                Turning this off hides deadlines everywhere; dates already set are kept.
+              </p>
+            </div>
+            <Switch
+              checked={deadlinesEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setDeadlinesEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Deadlines enabled" : "Deadlines disabled" });
                 }
               }}
               disabled={!canManage}

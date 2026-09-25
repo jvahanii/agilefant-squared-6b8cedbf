@@ -11,6 +11,7 @@ import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsS
 import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { StarRating } from "@/components/StarRating";
+import { useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -72,6 +73,7 @@ export function MobileWorkItemAttributesSheet({
   const workItems = useAppStore((s) => s.workItems);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
+  const setWorkItemDeadline = useAppStore((s) => s.setWorkItemDeadline);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
@@ -82,6 +84,7 @@ export function MobileWorkItemAttributesSheet({
   );
   const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
   const ratingsVisible = useRatingsEnabled();
+  const deadlinesVisible = useDeadlinesEnabled();
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
@@ -191,6 +194,22 @@ export function MobileWorkItemAttributesSheet({
                 rating={item.rating}
                 label={item.title}
                 onRate={(rating) => setWorkItemRating(item.id, rating)}
+              />
+            </div>
+          )}
+
+          {deadlinesVisible && item && (
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="sheet-deadline" className="text-sm font-medium">
+                Deadline
+              </label>
+              {/* The phone's own date picker; emptying it takes the deadline away. */}
+              <input
+                id="sheet-deadline"
+                type="date"
+                value={item.deadline ?? ""}
+                onChange={(e) => setWorkItemDeadline(item.id, e.target.value || undefined)}
+                className="h-9 rounded-md border bg-background px-2 text-sm"
               />
             </div>
           )}

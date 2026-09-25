@@ -1,3 +1,4 @@
+import { wellFormedDeadline } from "@/lib/deadlineFormat";
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink, getEffectiveParentId } from "@/types/models";
 import {
@@ -236,6 +237,8 @@ interface AppState extends DataSnapshot {
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   /** One to five stars, or undefined to take the rating away. */
   setWorkItemRating: (workItemId: string, rating: number | undefined) => void;
+  /** A yyyy-mm-dd deadline, or undefined to take it away. */
+  setWorkItemDeadline: (workItemId: string, deadline: string | undefined) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", rank?: number) => void;
@@ -1043,7 +1046,7 @@ function sameEntries(a: Record<string, unknown> | undefined, b: Record<string, u
 /** Whether two versions of an item would be saved as the same rows. */
 function samePersistedWorkItem(a: WorkItem, b: WorkItem): boolean {
   return a.title === b.title && a.description === b.description && a.points === b.points &&
-    a.rating === b.rating && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
+    a.rating === b.rating && a.deadline === b.deadline && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
     a.respawnEnabled === b.respawnEnabled && a.respawnIntervalDays === b.respawnIntervalDays &&
     a.respawnHour === b.respawnHour && a.respawnMinute === b.respawnMinute &&
     a.respawnLastTriggeredAt === b.respawnLastTriggeredAt &&
@@ -2897,6 +2900,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           description: src.description,
           points: src.points,
           rating: src.rating,
+          deadline: src.deadline,
           status: src.status,
           parentId: newParentId,
           // Drop per-tree parent overrides on the clone — they reference the
@@ -3183,6 +3187,31 @@ export const useAppStore = create<AppState>()((set, get) => {
         entityId: workItemId,
         entityName: item.title,
         details: `${item.points ?? "none"} → ${points ?? "none"}`,
+      });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
+    setWorkItemDeadline: (workItemId, deadline) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      // Only a real calendar date gets in; anything else takes it away, as
+      // an emptied date field means.
+      const due = wellFormedDeadline(deadline);
+      if (due === item.deadline) return;
+      const updated = { ...item, deadline: due };
+      upsertWorkItem(updated, orgId);
+      internalLog({
+        action: "Set Deadline",
+        entityType: "work_item",
+        entityId: workItemId,
+        entityName: item.title,
+        details: `${item.deadline ?? "none"} → ${due ?? "none"}`,
       });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
@@ -4587,6 +4616,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           // Without this the echo of a rating's own save rebuilt the item
           // without it, and the stars just clicked went out again.
           rating: (row.rating as number | null) ?? undefined,
+          // The same for a deadline: left out here, the echo of setting one
+          // would clear it a moment later, as it did for stars before.
+          deadline: (row.deadline as string | null) ?? undefined,
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
           parentIds: parsedParentIds,

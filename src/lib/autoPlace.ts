@@ -7,9 +7,10 @@ import { deadlinePassed, titleDeadline } from "../../supabase/functions/_shared/
  * A job hunt splits the same way every time: the ones with a deadline are the
  * ones to plan around, and the open-ended ones can wait. Rather than import
  * everything into one list and sort it out by hand afterwards, "Import &
- * auto-place" sends each posting to the list it belongs in and puts both lists
- * in name order — which, because an imported title starts with its closing date,
- * is closing-date order.
+ * auto-place" sends each posting to the list it belongs in and puts the dated
+ * list in closing-date order: by each item's deadline where the organization
+ * keeps deadlines, and otherwise by name, which works because the import then
+ * starts every title with its closing date.
  *
  * The two lists are chosen per saved search and kept by id. They used to be
  * found by name, and renaming either one made the button quietly disappear.
@@ -88,16 +89,16 @@ export function findMirrorTarget(
 export const AUTO_PLACE_TOAST_MS = 10_000;
 
 /**
- * How many of these job ads are still open. An ad counts as closed when the
- * closing date its title starts with has gone by, or when a posting check has
+ * How many of these job ads are still open. An ad counts as closed when its
+ * deadline — or, without deadlines, the date its title starts with — has gone by, or when a posting check has
  * marked it closed — the same two sources the list's own closed marks use.
  * The title date is the one that always holds: it needs no request, so it
  * covers the boards that will not answer one.
  */
 export function countOpenAds(
-  items: Pick<WorkItem, "id" | "title">[],
+  items: Pick<WorkItem, "id" | "title" | "deadline">[],
   closedIds: ReadonlySet<string>,
   now: Date | string | number = Date.now(),
 ): number {
-  return items.filter((item) => !closedIds.has(item.id) && !deadlinePassed(titleDeadline(item.title, now), now)).length;
+  return items.filter((item) => !closedIds.has(item.id) && !deadlinePassed(item.deadline ?? titleDeadline(item.title, now), now)).length;
 }
