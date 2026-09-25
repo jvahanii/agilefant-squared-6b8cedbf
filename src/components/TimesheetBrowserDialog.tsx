@@ -131,6 +131,16 @@ const DIMENSION_LABELS: Record<GroupDimension, string> = {
   date: "Date",
 };
 
+/**
+ * Joins the ids of every backlog (or tree) an item is in into one group key.
+ *
+ * An item mirrored into several backlogs used to be filed under "(multiple)",
+ * which said nothing about where the time went. Its time is still counted once —
+ * split between the backlogs it would be guessed at, and doubled it would be
+ * wrong — but the group now names them all.
+ */
+const SEVERAL = "\u0001";
+
 function getEntryGroupKey(
   entry: TimeEntry,
   dim: GroupDimension,
@@ -149,22 +159,21 @@ function getEntryGroupKey(
       if (entry.workItemId) {
         const wi = workItems[entry.workItemId];
         if (wi) {
-          const blIds = Object.values(wi.backlogAssignments);
-          if (blIds.length === 1) return blIds[0];
-          if (blIds.length > 1) return "__multiple__";
+          const blIds = [...new Set(Object.values(wi.backlogAssignments))].sort();
+          if (blIds.length > 0) return blIds.join(SEVERAL);
         }
       }
       return "__none__";
     }
     case "tree": {
       if (entry.treeId) return entry.treeId;
-      let blId = entry.backlogId;
+      const blId = entry.backlogId;
       if (!blId && entry.workItemId) {
         const wi = workItems[entry.workItemId];
         if (wi) {
-          const blIds = Object.values(wi.backlogAssignments);
-          if (blIds.length === 1) blId = blIds[0];
-          else if (blIds.length > 1) return "__multiple__";
+          // backlogAssignments is keyed by tree, so its keys are the trees.
+          const treeIds = [...new Set(Object.keys(wi.backlogAssignments))].sort();
+          if (treeIds.length > 0) return treeIds.join(SEVERAL);
         }
       }
       if (blId && backlogs[blId]) return backlogs[blId].treeId;
@@ -182,7 +191,12 @@ function getGroupLabel(
   userNames: Record<string, string>,
 ): string {
   if (key === "__none__") return "(none)";
-  if (key === "__multiple__") return "(multiple)";
+  if ((dim === "backlog" || dim === "tree") && key.includes(SEVERAL)) {
+    const names = key.split(SEVERAL).map((id) =>
+      dim === "backlog" ? backlogs[id]?.name ?? "(deleted)" : backlogTrees[id]?.name ?? "(deleted)",
+    );
+    return names.sort((a, b) => a.localeCompare(b)).join(", ");
+  }
   switch (dim) {
     case "date": return key;
     case "user": return userNames[key] ?? key.slice(0, 8);
@@ -269,8 +283,8 @@ function SummaryGroupRows({
   }
 
   const sortedKeys = [...groups.keys()].sort((a, b) => {
-    if (a === "__none__" || a === "__multiple__") return 1;
-    if (b === "__none__" || b === "__multiple__") return -1;
+    if (a === "__none__") return 1;
+    if (b === "__none__") return -1;
     if (dim === "date") return b.localeCompare(a);
     const la = getGroupLabel(a, dim, workItems, backlogs, backlogTrees, userNames);
     const lb = getGroupLabel(b, dim, workItems, backlogs, backlogTrees, userNames);

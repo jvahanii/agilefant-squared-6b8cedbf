@@ -182,3 +182,44 @@ describe("following a total to what made it", () => {
     expect(within(table).getByText("30m")).toBeInTheDocument();
   });
 });
+
+describe("an item in more than one backlog", () => {
+  it("is grouped under all of them by name, and its time counted once", async () => {
+    useTimeEntryStore.setState({
+      // As the app saves time on an item: no backlog or tree of its own, so
+      // where it belongs comes from the item — all 234 real ones are this way.
+      timeEntries: { t1: { ...entry("t1", "u-ann", "org-1::wi-m", 60), backlogId: null, treeId: null } },
+    });
+    useAppStore.setState({
+      workItems: {
+        "org-1::wi-m": {
+          id: "org-1::wi-m",
+          title: "Mirrored",
+          status: "in_progress",
+          parentId: null,
+          childrenIds: [],
+          backlogAssignments: { "org-1::bt-1": "org-1::bl-1", "org-1::bt-2": "org-1::bl-2" },
+          ranks: {},
+        },
+      },
+      backlogs: {
+        "org-1::bl-1": { id: "org-1::bl-1", name: "Sprint", parentId: null, childrenIds: [], treeId: "org-1::bt-1", rank: 0 },
+        "org-1::bl-2": { id: "org-1::bl-2", name: "Hae näitä", parentId: null, childrenIds: [], treeId: "org-1::bt-2", rank: 0 },
+      },
+      backlogTrees: {
+        "org-1::bt-1": { id: "org-1::bt-1", name: "Product", rootBacklogIds: ["org-1::bl-1"], rank: 0 },
+        "org-1::bt-2": { id: "org-1::bt-2", name: "Jobs", rootBacklogIds: ["org-1::bl-2"], rank: 0 },
+      },
+    });
+    open();
+    const table = screen.getByRole("table");
+    // It used to read "(multiple)" at both levels.
+    const trees = await within(table).findByText("Jobs, Product");
+    expect(within(table).queryByText("(multiple)")).not.toBeInTheDocument();
+    fireEvent.click(trees);
+    expect(within(table).getByText("Hae näitä, Sprint")).toBeInTheDocument();
+    // Once, not once per backlog: the person's total and the group's agree.
+    expect(within(table).getAllByText("1h").length).toBeGreaterThanOrEqual(2);
+    expect(within(table).queryByText("2h")).not.toBeInTheDocument();
+  });
+});
