@@ -6,7 +6,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/appStore";
-import { itemEffectivePoints } from "@/lib/backlogPoints";
+import { childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsVisibility";
@@ -75,6 +75,9 @@ export function MobileWorkItemAttributesSheet({
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
   const setWorkItemDeadline = useAppStore((s) => s.setWorkItemDeadline);
+  // The sheet opens from the list being viewed, so that list's tree decides
+  // which children an item has — see childrenInTree.
+  const selectedTreeId = useAppStore((s) => s.selectedTreeId) ?? undefined;
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const orgSettings = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""] ?? DEFAULT_MOBILE_ORG_SETTINGS,
@@ -139,9 +142,10 @@ export function MobileWorkItemAttributesSheet({
   if (!item) return null;
 
   const pointsMemo = new Map<string, number>();
-  const getEffectivePoints = (wi: (typeof workItems)[string]): number => itemEffectivePoints(workItems, wi.id, pointsMemo);
+  const getEffectivePoints = (wi: (typeof workItems)[string]): number =>
+    itemEffectivePoints(workItems, wi.id, pointsMemo, selectedTreeId);
   const totalPoints = getEffectivePoints(item);
-  const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
+  const directChildrenSum = childrenInTree(workItems, item.id, selectedTreeId).reduce((sum, cid) => {
     const child = workItems[cid];
     return sum + (child ? getEffectivePoints(child) : 0);
   }, 0);

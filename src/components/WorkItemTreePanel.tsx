@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { itemEffectivePoints } from "@/lib/backlogPoints";
+import { childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
@@ -1308,22 +1308,25 @@ function WorkItemNodeContent({
 
           <div className="flex items-start gap-1 mt-0.5">
             {pointsVisible && (() => {
+                // Children as this tree sees them: an item with a different
+                // parent here is listed under both, and was counted under both.
                 const pointsMemo = new Map<string, number>();
-                const getEffectivePoints = (wi: WorkItem): number => itemEffectivePoints(workItems, wi.id, pointsMemo);
-                const getCompletedPoints = (wi: any): number => {
+                const kids = (wi: WorkItem) => childrenInTree(workItems, wi.id, treeId);
+                const getEffectivePoints = (wi: WorkItem): number => itemEffectivePoints(workItems, wi.id, pointsMemo, treeId);
+                const getCompletedPoints = (wi: WorkItem): number => {
                   if (wi.status === 'done') return getEffectivePoints(wi);
-                  return wi.childrenIds.reduce((sum: number, cid: string) => {
+                  return kids(wi).reduce((sum: number, cid: string) => {
                     const child = workItems[cid];
                     return sum + (child ? getCompletedPoints(child) : 0);
                   }, 0);
                 };
                 const totalPoints = getEffectivePoints(item);
-                const directChildrenSum = item.childrenIds.reduce((sum, cid) => {
+                const directChildrenSum = kids(item).reduce((sum, cid) => {
                   const child = workItems[cid];
                   return sum + (child ? getEffectivePoints(child) : 0);
                 }, 0);
                 const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
-                const hasChildren = item.childrenIds.length > 0;
+                const hasChildren = kids(item).length > 0;
                 const completedPoints = hasChildren ? getCompletedPoints(item) : 0;
                 const pointsLabel = hasChildren && totalPoints > 0
                   ? `${completedPoints}/${totalPoints}`
@@ -1533,7 +1536,7 @@ function WorkItemNodeContent({
             <ContextMenuItem
               className="text-xs"
               onSelect={() =>
-                useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title })
+                useBurnupDialogStore.getState().openBurnup({ kind: 'work_item', id: workItemId, name: item.title, treeId })
               }
             >
               View burnup…

@@ -18,15 +18,45 @@ import { getEffectiveParentId, type Backlog, type WorkItem } from "@/types/model
 type Items = Record<string, WorkItem>;
 type Backlogs = Record<string, Backlog>;
 
-/** `max(own, children)`, all the way down. Pass one memo across many calls. */
-export function itemEffectivePoints(workItems: Items, id: string, memo: Map<string, number> = new Map()): number {
+/**
+ * An item's children as one tree sees them.
+ *
+ * childrenIds lists an item under its default parent and under every parent it
+ * has in a particular tree, so a walk over it counts such an item twice when
+ * both parents are in view — which is how a burnup came to show 283 points for
+ * items worth 232. In a tree, a child belongs to the parent getEffectiveParentId
+ * names there; with no tree given, to its default parent.
+ */
+export function childrenInTree(workItems: Items, id: string, treeId?: string): string[] {
+  const wi = workItems[id];
+  if (!wi) return [];
+  return wi.childrenIds.filter((cid) => {
+    const child = workItems[cid];
+    if (!child) return false;
+    return (treeId ? getEffectiveParentId(child, treeId) : child.parentId) === id;
+  });
+}
+
+/**
+ * `max(own, children)`, all the way down, with the children the tree sees.
+ * Pass one memo across many calls in the same tree.
+ */
+export function itemEffectivePoints(
+  workItems: Items,
+  id: string,
+  memo: Map<string, number> = new Map(),
+  treeId?: string,
+): number {
   const known = memo.get(id);
   if (known !== undefined) return known;
   const wi = workItems[id];
   if (!wi) return 0;
   // Held at 0 while its children are summed, so a cycle in bad data ends.
   memo.set(id, 0);
-  const children = wi.childrenIds.reduce((sum, cid) => sum + itemEffectivePoints(workItems, cid, memo), 0);
+  const children = childrenInTree(workItems, id, treeId).reduce(
+    (sum, cid) => sum + itemEffectivePoints(workItems, cid, memo, treeId),
+    0,
+  );
   const total = Math.max(wi.points ?? 0, children);
   memo.set(id, total);
   return total;
@@ -63,7 +93,7 @@ export function backlogItemsTotal(
     const parentId = getEffectiveParentId(wi, treeId);
     const parent = parentId ? workItems[parentId] : undefined;
     if (parent && ids.has(parent.backlogAssignments[treeId])) continue;
-    total += itemEffectivePoints(workItems, wi.id, memo);
+    total += itemEffectivePoints(workItems, wi.id, memo, treeId);
   }
   return total;
 }

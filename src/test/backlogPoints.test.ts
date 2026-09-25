@@ -6,7 +6,7 @@
  * the release, its tasks in a sprint) is counted once however estimates stack.
  */
 import { describe, it, expect } from "vitest";
-import { backlogItemsTotal, backlogPoints, burnupTargets, itemEffectivePoints, treePoints, wellFormedPoints } from "@/lib/backlogPoints";
+import { backlogItemsTotal, backlogPoints, burnupTargets, childrenInTree, itemEffectivePoints, treePoints, wellFormedPoints } from "@/lib/backlogPoints";
 import type { Backlog, WorkItem } from "@/types/models";
 
 const T = "t";
@@ -113,5 +113,37 @@ describe("the burnup's lines", () => {
       scopeLine: { value: 9, label: "Items 9" },
       projectTo: 12,
     });
+  });
+});
+
+describe("an item with a different parent in this tree", () => {
+  // As on "Stronger faster fitter healthier @ 50": "Bike" has "Fat 28%=>20%"
+  // as its default parent and "Actions" in this tree. The loader lists it under
+  // both, and the backlog's burnup showed 283 points for items worth 232.
+  const goals = byId([bl("goals")]);
+  const shape = () => {
+    const bike: WorkItem = { ...wi("bike", "goals", 6, [], "fat"), parentIds: { [T]: "actions" } };
+    return byId([
+      wi("fat", "goals", 0, ["bike"]),
+      wi("actions", "goals", 0, ["bike"]),
+      bike,
+    ]);
+  };
+
+  it("is the child of its parent in this tree only", () => {
+    const items = shape();
+    expect(childrenInTree(items, "actions", T)).toEqual(["bike"]);
+    expect(childrenInTree(items, "fat", T)).toEqual([]);
+  });
+
+  it("is counted once in the backlog's total", () => {
+    expect(backlogItemsTotal("goals", T, shape(), goals)).toBe(6);
+    expect(backlogPoints("goals", T, shape(), goals).effective).toBe(6);
+  });
+
+  it("rolls up into the parent this tree gives it", () => {
+    const items = shape();
+    expect(itemEffectivePoints(items, "actions", new Map(), T)).toBe(6);
+    expect(itemEffectivePoints(items, "fat", new Map(), T)).toBe(0);
   });
 });

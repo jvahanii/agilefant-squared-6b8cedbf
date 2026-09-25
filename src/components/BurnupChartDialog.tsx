@@ -10,7 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/appStore";
-import { backlogPoints, burnupTargets } from "@/lib/backlogPoints";
+import { backlogPoints, burnupTargets, childrenInTree } from "@/lib/backlogPoints";
+import { effectivePointsInScope, extendToDate, statusBreakdown } from "@/lib/burnupMath";
 import { useOrgStore } from "@/store/orgStore";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -31,12 +32,22 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import type { WorkItem } from "@/types/models";
+import { getEffectiveParentId, type WorkItem } from "@/types/models";
 
 export interface BurnupScope {
   kind: ChartScopeKind;
   id: string;
   name: string;
+  /** For a work item, the tree it was opened in: an item's children depend on
+   *  the tree, since one can have a different parent in each. */
+  treeId?: string;
+}
+
+/** The tree a scope is seen in: its own, its backlog's, or the one it was opened in. */
+function scopeTreeId(scope: BurnupScope, backlogs: Record<string, { treeId: string }>): string | undefined {
+  if (scope.kind === "tree") return scope.id;
+  if (scope.kind === "backlog") return backlogs[scope.id]?.treeId;
+  return scope.treeId;
 }
 
 interface Props {
@@ -54,81 +65,6 @@ interface HistoryRow {
   snapshot_at: string;
 }
 
-/** Effective points of a (sub)branch: max(own points, sum of in-scope children). */
-function effectivePointsInScope(
-  workItems: Record<string, WorkItem>,
-  id: string,
-  scopeSet: Set<string>,
-  memo: Map<string, number>,
-): number {
-  const cached = memo.get(id);
-  if (cached !== undefined) return cached;
-  const wi = workItems[id];
-  if (!wi) {
-    memo.set(id, 0);
-    return 0;
-  }
-  const own = wi.points ?? 0;
-  let childSum = 0;
-  for (const cid of wi.childrenIds) {
-    if (!scopeSet.has(cid)) continue;
-    childSum += effectivePointsInScope(workItems, cid, scopeSet, memo);
-  }
-  const total = Math.max(own, childSum);
-  memo.set(id, total);
-  return total;
-}
-
-/**
- * Distributes a branch's effective points across status buckets for a single
- * day. A rolled-up parent (its own points >= children sum) contributes the
- * leftover to its own status; when the parent is "done", the whole branch is
- * credited as done. This mirrors the list-view effective/completed points so
- * parent points never double-count their children.
- */
-function statusBreakdown(
-  workItems: Record<string, WorkItem>,
-  id: string,
-  scopeSet: Set<string>,
-  dayState: Map<string, { status: string; points: number }>,
-  statusKeys: string[],
-  seen: Set<string>,
-): Record<string, number> {
-  if (seen.has(id)) return {};
-  seen.add(id);
-  const wi = workItems[id];
-  if (!wi) return {};
-
-  const live = dayState.get(id);
-  let status = live?.status ?? wi.status;
-  if (!statusKeys.includes(status)) status = "not_started";
-  const ownPoints = live ? (live.points ?? 0) : (wi.points ?? 0);
-
-  if (wi.childrenIds.length === 0) {
-    return { [status]: ownPoints };
-  }
-
-  const childBreak: Record<string, number> = {};
-  for (const cid of wi.childrenIds) {
-    if (!scopeSet.has(cid)) continue;
-    const sub = statusBreakdown(workItems, cid, scopeSet, dayState, statusKeys, seen);
-    for (const [k, v] of Object.entries(sub)) {
-      childBreak[k] = (childBreak[k] ?? 0) + v;
-    }
-  }
-  const childSum = Object.values(childBreak).reduce((a, b) => a + b, 0);
-
-  if (status === "done") {
-    return { done: Math.max(ownPoints, childSum) };
-  }
-
-  const leftover = Math.max(0, ownPoints - childSum);
-  if (leftover > 0) {
-    childBreak[status] = (childBreak[status] ?? 0) + leftover;
-  }
-  return childBreak;
-}
-
 /** Collect all descendant work item ids that belong to the given scope. */
 function collectScopeItemIds(scope: BurnupScope): string[] {
   const state = useAppStore.getState();
@@ -139,7 +75,7 @@ function collectScopeItemIds(scope: BurnupScope): string[] {
     const wi = workItems[id];
     if (!wi) return;
     out.add(id);
-    wi.childrenIds.forEach((c) => addAllUnderItem(c, out));
+    childrenInTree(workItems, id, scope.treeId).forEach((c) => addAllUnderItem(c, out));
   };
 
   const collectBacklogIds = (rootId: string): string[] => {
@@ -250,15 +186,19 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
   }, [statusPalette]);
 
   const scopeSet = useMemo(() => new Set(itemIds), [itemIds]);
+  const treeId = useMemo(() => (scope ? scopeTreeId(scope, backlogs) : undefined), [scope, backlogs]);
 
-  // Top-level items within the scope: used to sum up the branch's total.
+  // Top-level items within the scope: used to sum up the branch's total. The
+  // parent is the one this tree gives an item, as everywhere below.
   const scopeRoots = useMemo(
     () =>
       itemIds.filter((id) => {
         const wi = workItems[id];
-        return !wi || wi.parentId == null || !scopeSet.has(wi.parentId);
+        if (!wi) return true;
+        const parentId = treeId ? getEffectiveParentId(wi, treeId) : wi.parentId;
+        return parentId == null || !scopeSet.has(parentId);
       }),
-    [itemIds, scopeSet, workItems],
+    [itemIds, scopeSet, workItems, treeId],
   );
 
   // The items' total: branch total for points, item count for count.
@@ -266,10 +206,10 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     if (metric === "count") return itemIds.length;
     const memo = new Map<string, number>();
     return scopeRoots.reduce(
-      (sum, id) => sum + effectivePointsInScope(workItems, id, scopeSet, memo),
+      (sum, id) => sum + effectivePointsInScope(workItems, id, scopeSet, memo, treeId),
       0,
     );
-  }, [metric, itemIds, scopeRoots, scopeSet, workItems]);
+  }, [metric, itemIds, scopeRoots, scopeSet, workItems, treeId]);
 
   // What estimates on backlogs add: the backlog's own points, and for a backlog
   // or a tree the excess of estimates below over their own items.
@@ -381,6 +321,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
             dayState,
             keys,
             new Set<string>(),
+            treeId,
           );
           for (const [k, v] of Object.entries(breakdown)) {
             out[k] = ((out[k] as number) ?? 0) + v;
@@ -411,7 +352,7 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
     });
 
     return { data, keys };
-  }, [rows, statusPalette, metric, itemIds, scopeRoots, scopeSet, workItems]);
+  }, [rows, statusPalette, metric, itemIds, scopeRoots, scopeSet, workItems, treeId]);
 
   // Projected completion: a dashed red line from today's completed amount to
   // the target, extrapolating the completion rate observed so far.
@@ -451,21 +392,10 @@ export function BurnupChartDialog({ open, onOpenChange, scope }: Props) {
 
   // Extend the series out to the projection end date so the dashed line's
   // endpoint lands on a real x-axis category.
-  const chartRows = useMemo(() => {
-    if (!projection || chartData.data.length === 0) return chartData.data;
-    const last = chartData.data[chartData.data.length - 1];
-    const lastTime = new Date((last.date as string) + "T00:00:00Z").getTime();
-    const endTime = new Date(projection.endStr + "T00:00:00Z").getTime();
-    if (endTime <= lastTime) return chartData.data;
-    const out = [...chartData.data];
-    const cursor = new Date(lastTime);
-    while (true) {
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
-      if (cursor.getTime() > endTime) break;
-      out.push({ ...last, date: cursor.toISOString().slice(0, 10) });
-    }
-    return out;
-  }, [projection, chartData]);
+  const chartRows = useMemo(
+    () => (projection ? extendToDate(chartData.data, projection.endStr) : chartData.data),
+    [projection, chartData],
+  );
 
   const yDomain: [number | string, number | string] =
     chartTop > 0 ? [0, chartTop] : [0, "auto"];
