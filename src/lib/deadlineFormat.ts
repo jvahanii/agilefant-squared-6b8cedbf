@@ -59,3 +59,28 @@ export function wellFormedDeadline(value: string | null | undefined): string | u
   const [y, m, day] = value.split("-").map(Number);
   return d.getFullYear() === y && d.getMonth() === m - 1 && d.getDate() === day ? value : undefined;
 }
+
+/**
+ * A deadline as someone types it, as yyyy-mm-dd — or undefined when it is not
+ * a real date yet. The field shows and asks for YYYY-MM-DD, the same in every
+ * country; the browser's own date input would show the reader's locale
+ * (12/31/2027) and cannot be told otherwise. Quick forms are taken too:
+ * "2026-9-30" and "20260930" both mean 2026-09-30.
+ */
+export function parseDeadlineInput(text: string): string | undefined {
+  const t = text.trim();
+  const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) ?? t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!m) return undefined;
+  return wellFormedDeadline(`${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`);
+}
+
+/** A local calendar date as yyyy-mm-dd, for what a date picker hands back. */
+export function toIsoDate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** A yyyy-mm-dd as a local calendar date, for handing to a date picker. */
+export function fromIsoDate(iso: string): Date | undefined {
+  return asDate(iso) ?? undefined;
+}
