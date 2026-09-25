@@ -24,8 +24,8 @@ export interface PreviewLink {
    * Absent: not read yet, and the import will read it.
    */
   cities?: string[];
-  /** Status the imported item should start with; absent means not_started. */
-  status?: string;
+  /** Star rating the created item should carry; absent means unrated. */
+  rating?: number;
 }
 
 export interface SourceEmailGroup {
