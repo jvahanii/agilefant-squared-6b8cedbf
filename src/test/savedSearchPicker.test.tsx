@@ -8,7 +8,7 @@
  * it appears only for a superuser, and only where there is a search to run.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 // An import here runs the whole flow -- search, read, import, reload, wait for
 // the new items, rank -- and waitForItems polls in 250ms steps. A test that
@@ -364,23 +364,22 @@ describe("SavedSearchPicker", () => {
     await waitFor(() => expect(loadFromSupabase).toHaveBeenCalled());
   });
 
-  it("sends the status chosen on a row, and nothing for rows left at Not started", async () => {
+  it("sends the rating given on a row, and nothing for rows left unrated", async () => {
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", messageId: "m-2" })] })
       .mockResolvedValueOnce({ created: 2, skipped: 0, collapsed: 0 });
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A");
-    // Both rows start ticked and at the default: Not started.
-    const statusA = screen.getByRole("combobox", { name: "Status for A" }) as HTMLSelectElement;
-    expect(statusA.value).toBe("not_started");
-    fireEvent.change(statusA, { target: { value: "in_progress" } });
+    // Both rows start ticked and unrated.
+    const starsA = screen.getByRole("group", { name: "Rating for A: unrated" });
+    fireEvent.click(within(starsA).getByRole("button", { name: "3 stars" }));
     fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
 
     await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
     const links = callGmail.mock.calls[1][0].links;
-    expect(links.find((l: { url: string }) => l.url === "https://x/a")).toMatchObject({ status: "in_progress" });
-    expect(links.find((l: { url: string }) => l.url === "https://x/b")).not.toHaveProperty("status");
+    expect(links.find((l: { url: string }) => l.url === "https://x/a")).toMatchObject({ rating: 3 });
+    expect(links.find((l: { url: string }) => l.url === "https://x/b")).not.toHaveProperty("rating");
   });
 
   it("checks the ads already in the list for closed ones once it has imported", async () => {
@@ -676,8 +675,9 @@ describe("Import & auto-place", () => {
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    // The ticked row's status dropdown comes first; the auto-place lists follow.
-    const [, dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    // The stars on the row are buttons, not a dropdown, so the comboboxes left
+    // are exactly the two auto-place lists.
+    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
     await waitFor(() => expect(dated.value).toBe("dl"));
     expect(undated.value).toBe("open");
     expect(dated.selectedOptions[0].textContent).toBe("Jobs with deadline");
@@ -697,7 +697,7 @@ describe("Import & auto-place", () => {
     const button = screen.getByRole("button", { name: /Import selected & auto-place/ });
     expect(button).toBeDisabled();
 
-    const [, dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
     // Only this search's tree is on offer.
     expect([...dated.options].map((o) => o.textContent)).toEqual([
       "Choose a list…",
@@ -720,10 +720,9 @@ describe("Import & auto-place", () => {
     render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A link");
     expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
-    // The only dropdown is the ticked row's status choice — no auto-place lists.
-    const selects = screen.getAllByRole("combobox");
-    expect(selects).toHaveLength(1);
-    expect(selects[0]).toHaveAccessibleName(/status for a link/i);
+    // Stars on the row instead of the old status dropdown — no combobox left,
+    // and no auto-place lists either.
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });
 
@@ -918,16 +917,18 @@ describe("Import & auto-place: mirroring the rows switched on", () => {
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
   };
 
-  it("mirrors the rows switched on — not the ones given a status — in the same undo step", async () => {
+  it("mirrors the rows switched on — not the ones given a rating — in the same undo step", async () => {
     await openPicker(null, { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) });
-    // Metsä gets In progress but stays off; Alma is switched on.
-    fireEvent.change(screen.getByRole("combobox", { name: "Status for Metsä" }), { target: { value: "in_progress" } });
+    // Metsä gets three stars but its mirror switch stays off; Alma is switched on.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Rating for Metsä: unrated" })).getByRole("button", { name: "3 stars" }),
+    );
     fireEvent.click(screen.getByRole("switch", { name: "Mirror Alma to Hae näitä seuraavaksi" }));
     await importAndAutoPlace();
 
-    // The status still reaches the import: it sets how the item starts.
-    const sent = callGmail.mock.calls[1][0].links as Array<{ url: string; status?: string }>;
-    expect(sent.find((l) => l.url === "https://x/metsa")?.status).toBe("in_progress");
+    // The rating still reaches the import: it travels with the created item.
+    const sent = callGmail.mock.calls[1][0].links as Array<{ url: string; rating?: number }>;
+    expect(sent.find((l) => l.url === "https://x/metsa")?.rating).toBe(3);
     // Only the switched-on row is mirrored, found through the import's own record of it.
     expect(moveWorkItemsToBacklog).toHaveBeenCalledTimes(1);
     expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["alma-item"], SHORTLIST, NEXT_TREE, "mirror", "tree-1");
