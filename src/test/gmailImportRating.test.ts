@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { importLinksAsWorkItems } from '../../supabase/functions/_shared/gmailImport';
 
 /**
- * The picker lets each imported posting start with a chosen status. The server
- * takes it only when the target backlog actually has that status — anything
- * else, or nothing, means not_started.
+ * The picker lets each imported posting carry a star rating. The server keeps
+ * a whole number 1-5; anything else, or nothing, means unrated.
  */
 
 function makeAdmin(statusKeys?: string[]) {
@@ -54,43 +53,40 @@ function makeAdmin(statusKeys?: string[]) {
   return { admin: { from } as never, inserted, queried };
 }
 
-const link = (url: string, status?: string) => ({
+const link = (url: string, rating?: number) => ({
   url,
   title: 'AI Engineer',
   messageId: `m-${url}`,
   subject: 's',
   from: 'duunivahti@duunitori.fi',
   date: '2026-09-21T00:00:00.000Z',
-  ...(status ? { status } : {}),
+  ...(rating !== undefined ? { rating } : {}),
 });
 
 const target = { organizationId: 'org', treeId: 'tree', backlogId: 'bl', allowDuplicates: true };
 
-describe('import with a chosen status', () => {
-  it('creates the item with the chosen status when the backlog has it', async () => {
-    const { admin, inserted } = makeAdmin(['not_started', 'in_progress', 'done']);
-    const res = await importLinksAsWorkItems(admin, target, [link('https://x/1', 'in_progress')]);
+describe('import with a chosen rating', () => {
+  it('creates the item with the rating the picker chose', async () => {
+    const { admin, inserted } = makeAdmin();
+    const res = await importLinksAsWorkItems(admin, target, [link('https://x/1', 3)]);
     expect(res.created).toBe(1);
-    expect(inserted.work_items[0]).toMatchObject({ status: 'in_progress' });
+    expect(inserted.work_items[0]).toMatchObject({ rating: 3 });
   });
 
-  it('falls back to not_started for a status the backlog does not have', async () => {
-    const { admin, inserted } = makeAdmin(['not_started', 'done']);
-    await importLinksAsWorkItems(admin, target, [link('https://x/2', 'in_progress')]);
-    expect(inserted.work_items[0]).toMatchObject({ status: 'not_started' });
+  it('leaves the item unrated when the picker gave none', async () => {
+    const { admin, inserted } = makeAdmin();
+    await importLinksAsWorkItems(admin, target, [link('https://x/2')]);
+    expect(inserted.work_items[0]).toMatchObject({ rating: null });
   });
 
-  it('uses the default status keys when no backlog has materialized statuses', async () => {
-    const { admin, inserted } = makeAdmin([]);
-    await importLinksAsWorkItems(admin, target, [link('https://x/3', 'blocked')]);
-    expect(inserted.work_items[0]).toMatchObject({ status: 'blocked' });
-  });
-
-  it('does not look statuses up when no link carries one', async () => {
-    const { admin, inserted, queried } = makeAdmin();
-    await importLinksAsWorkItems(admin, target, [link('https://x/4')]);
-    expect(inserted.work_items[0]).toMatchObject({ status: 'not_started' });
-    expect(queried).not.toContain('backlog_statuses');
+  it('drops a rating out of range rather than failing', async () => {
+    const { admin, inserted } = makeAdmin();
+    await importLinksAsWorkItems(admin, target, [
+      link('https://x/3', 0),
+      link('https://x/4', 6),
+      link('https://x/5', 2.5),
+    ]);
+    expect(inserted.work_items.map((r) => (r as { rating: number | null }).rating)).toEqual([null, null, null]);
   });
 });
 

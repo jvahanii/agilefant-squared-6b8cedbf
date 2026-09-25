@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { StarRating } from "@/components/StarRating";
 import { toast } from "@/hooks/use-toast";
 import {
   alreadyInSummary,
@@ -36,7 +37,6 @@ import { currentListSortContext } from "@/store/listSortStore";
 import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
-import { getEffectiveStatuses } from "@/store/backlogStatusesStore";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 /** Postings read per posting_facts call — the server accepts at most this many. */
@@ -163,8 +163,8 @@ export function SavedSearchPicker({
   const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  /** Status chosen per row, by row key; rows without an entry start Not started. */
-  const [statusByKey, setStatusByKey] = useState<Record<string, string>>({});
+  /** Star rating chosen per row, by row key; rows without an entry import unrated. */
+  const [ratingByKey, setRatingByKey] = useState<Record<string, number | undefined>>({});
   /** Rows switched on for mirroring, by row key; every row starts off. */
   const [mirrorByKey, setMirrorByKey] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
@@ -408,17 +408,14 @@ export function SavedSearchPicker({
   // becomes the only meaningful action and stands out for it.
   const noNewJobs = useMemo(() => preview.every((l) => !selected[`${l.messageId}|${l.url}`]), [preview, selected]);
 
-  /** Statuses of the list "Import selected" files into — the picker's choices. */
-  const importStatuses = useMemo(() => getEffectiveStatuses(search.backlog_id), [search.backlog_id]);
-
   const pickedLinks = () =>
     preview
       .filter((l) => selected[`${l.messageId}|${l.url}`])
       .map((l) => {
-        const status = statusByKey[`${l.messageId}|${l.url}`];
-        // Not started is the server's default; leaving it out keeps the
-        // payload exactly what an older build would send.
-        return status && status !== "not_started" ? { ...l, status } : l;
+        const rating = ratingByKey[`${l.messageId}|${l.url}`];
+        // Unrated is the server's default; leaving it out keeps the payload
+        // exactly what an older build would send.
+        return rating ? { ...l, rating } : l;
       });
 
   const importInto = (
@@ -647,7 +644,7 @@ export function SavedSearchPicker({
         }
 
         // The rows switched on are mirrored into the chosen list as well —
-        // one item, filed in both trees. Whatever status a row was given plays
+        // one item, filed in both trees. Whatever rating a row was given plays
         // no part. Same bulk as the ranking: one undo takes back both.
         if (mirrorTarget && toMirror.length > 0) {
           app.moveWorkItemsToBacklog(toMirror, mirrorTarget.backlogId, mirrorTarget.treeId, "mirror", search.tree_id);
@@ -882,23 +879,15 @@ export function SavedSearchPicker({
                         )}
                         {selected[key] && (
                           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            Import as
-                            <select
-                              value={statusByKey[key] ?? "not_started"}
-                              onChange={(e) => setStatusByKey((prev) => ({ ...prev, [key]: e.target.value }))}
+                            <StarRating
+                              rating={ratingByKey[key]}
+                              onRate={(r) => setRatingByKey((prev) => ({ ...prev, [key]: r }))}
                               disabled={importing}
-                              aria-label={`Status for ${l.title || l.url}`}
-                              className="h-6 max-w-[10rem] truncate rounded-md border border-input bg-background px-1 text-xs text-foreground"
-                            >
-                              {importStatuses.map((s) => (
-                                <option key={s.key} value={s.key}>
-                                  {s.label}
-                                </option>
-                              ))}
-                            </select>
+                              label={l.title || l.url}
+                            />
                             {/* Whether "Import & auto-place" also mirrors this
-                                one. Independent of the status, which only sets
-                                how the new item starts. */}
+                                one. Independent of the rating, which travels
+                                with the item the import creates. */}
                             {mirrorTarget && (
                               <span className="ml-2 flex items-center gap-1.5">
                                 <Switch

@@ -447,9 +447,11 @@ Deno.serve(async (req) => {
                 .slice(0, 10),
             }
           : {}),
-        // The status the picker chose for this row; the import validates it
-        // against the target list's statuses and falls back to Not started.
-        ...(typeof l.status === 'string' && l.status ? { status: l.status } : {}),
+        // The star rating the picker gave this row; the import drops one out
+        // of range rather than failing.
+        ...(Number.isInteger(l.rating) && (l.rating as number) >= 1 && (l.rating as number) <= 5
+          ? { rating: l.rating }
+          : {}),
       })).filter((l) => l.url && l.messageId);
 
       // Auto-place: which list a posting belongs in is decided here, after the

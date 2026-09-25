@@ -115,10 +115,10 @@ export interface ExtractedLink {
    */
   cities?: string[];
   /**
-   * The backlog status the created work item should start with, chosen in the
-   * picker. Absent (or unknown to the target backlog) means 'not_started'.
+   * The star rating the created work item should carry, chosen in the picker.
+   * Absent (or out of range) means unrated.
    */
-  status?: string;
+  rating?: number;
 }
 
 function looksLikeNoise(url: string, label: string): boolean {
