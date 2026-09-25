@@ -13,7 +13,8 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => ({ select: () => ({ in: () => Promise.resolve({ data: [] }) }) }) },
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "u-ann" } }) }));
-vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
+const toast = vi.fn();
+vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...args) }));
 
 import { TimeLogDialog } from "@/components/TimeLogDialog";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -29,8 +30,10 @@ const ITEM = "org-1::wi-a";
 let addTimeEntry: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  // A save that takes a moment, as a real one over the network does.
-  addTimeEntry = vi.fn(() => new Promise<void>((resolve) => setTimeout(resolve, 50)));
+  // A save that takes a moment, as a real one over the network does, and then
+  // hands back the saved entry.
+  addTimeEntry = vi.fn(() => new Promise((resolve) => setTimeout(() => resolve({ id: "te-1" }), 50)));
+  toast.mockClear();
   useTimeEntryStore.setState({ timeEntries: {}, addTimeEntry } as never);
   useOrgStore.setState({ activeOrgId: "org-1" });
   useAppStore.setState({
@@ -40,8 +43,10 @@ beforeEach(() => {
   });
 });
 
+let onOpenChange: ReturnType<typeof vi.fn>;
 const openDialog = () => {
-  render(<TimeLogDialog workItemId={ITEM} open onOpenChange={vi.fn()} />);
+  onOpenChange = vi.fn();
+  render(<TimeLogDialog workItemId={ITEM} open onOpenChange={onOpenChange} />);
   return screen.getByPlaceholderText('e.g. "45", "1.5" or "1h 30m"');
 };
 
@@ -71,9 +76,44 @@ describe("saving", () => {
     fireEvent.change(field, { target: { value: "45" } });
     fireEvent.keyDown(field, { key: "Enter" });
     fireEvent.keyDown(field, { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: /Log Time/ }));
+    // The form closes on the first; if a Save button is still there, press it.
+    const save = screen.queryByRole("button", { name: /Log Time/ });
+    if (save) fireEvent.click(save);
     await new Promise((resolve) => setTimeout(resolve, 120));
     expect(addTimeEntry).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes before the save comes back, instead of waiting on it", async () => {
+    // A save that never answers: the dialog must not wait for it.
+    addTimeEntry.mockImplementation(() => new Promise(() => {}));
+    const field = openDialog();
+    fireEvent.change(field, { target: { value: "45" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(addTimeEntry).toHaveBeenCalledTimes(1);
+  });
+
+  it("says what was lost when a save fails after the dialog has closed", async () => {
+    addTimeEntry.mockResolvedValue(null);
+    const field = openDialog();
+    fireEvent.change(field, { target: { value: "45" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Time not saved", variant: "destructive" }),
+      ),
+    );
+    expect(toast.mock.calls[0][0].description).toContain("45m");
+    expect(toast.mock.calls[0][0].description).toContain("Checkout");
+  });
+
+  it("says nothing when the save succeeds", async () => {
+    const field = openDialog();
+    fireEvent.change(field, { target: { value: "45" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    await waitFor(() => expect(addTimeEntry).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it("dates a new entry by the local calendar, not UTC's", () => {

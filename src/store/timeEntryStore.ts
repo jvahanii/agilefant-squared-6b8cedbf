@@ -45,7 +45,7 @@ interface TimeEntryState {
     durationMinutes: number;
     spentDate: string;
     note?: string | null;
-  }) => Promise<void>;
+  }) => Promise<TimeEntry | null>;
   updateTimeEntry: (id: string, updates: Partial<{
     workItemId: string | null;
     backlogId: string | null;
@@ -199,11 +199,14 @@ export const useTimeEntryStore = create<TimeEntryState>((set, get) => ({
 
     if (error) {
       console.error('Failed to add time entry', error);
-      return;
+      // Said, not only logged: the dialog closes before the save comes back,
+      // so a failure would otherwise lose the entry without anyone knowing.
+      return null;
     }
 
     const te = rowToTimeEntry(data as Record<string, unknown>);
     set((s) => ({ timeEntries: { ...s.timeEntries, [te.id]: te } }));
+    return te;
   },
 
   updateTimeEntry: async (id, updates) => {

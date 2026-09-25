@@ -131,6 +131,9 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
 
   useEffect(() => {
     if (!open) {
+      // A save still on its way belongs to the entry just closed, not to the
+      // next one: without this, reopening quickly would refuse to add.
+      addingRef.current = false;
       setIsAdding(false);
       setDurationInput("");
       setNoteInput("");
@@ -176,31 +179,44 @@ export function TimeLogDialog({ workItemId, backlogId, treeId, open, onOpenChang
     }
     if (!activeOrgId || !user?.id) return false;
 
+    // The dialog closes now and the entry is saved behind it. It used to stay
+    // open until the database answered, and that round trip — however quick the
+    // insert itself — was the pause felt on every save. A save that fails says
+    // so, with what was lost, so nothing disappears quietly.
     addingRef.current = true;
-    try {
-      await addTimeEntry({
-        organizationId: activeOrgId,
-        userId: user.id,
-        workItemId: workItemId ?? null,
-        backlogId: backlogId ?? null,
-        treeId: treeId ?? null,
-        durationMinutes: minutes,
-        spentDate: dateInput,
-        note: noteInput.trim() || null,
-      });
+    const entry = {
+      organizationId: activeOrgId,
+      userId: user.id,
+      workItemId: workItemId ?? null,
+      backlogId: backlogId ?? null,
+      treeId: treeId ?? null,
+      durationMinutes: minutes,
+      spentDate: dateInput,
+      note: noteInput.trim() || null,
+    };
+    const onWhat = displayTitle;
 
-      if (workItemId && item?.status === "not_started") {
-        setWorkItemStatus(workItemId, "in_progress");
-      }
-
-      setDurationInput("");
-      setNoteInput("");
-      setDateInput(localToday());
-      setIsAdding(false);
-      return true;
-    } finally {
-      addingRef.current = false;
+    if (workItemId && item?.status === "not_started") {
+      setWorkItemStatus(workItemId, "in_progress");
     }
+    setDurationInput("");
+    setNoteInput("");
+    setDateInput(localToday());
+    setIsAdding(false);
+
+    void addTimeEntry(entry)
+      .then((saved) => {
+        if (saved) return;
+        toast({
+          title: "Time not saved",
+          description: `${formatDuration(minutes)} on "${onWhat}" could not be saved. Log it again.`,
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        addingRef.current = false;
+      });
+    return true;
   };
 
   const canDelete = (entry: TimeEntry) => entry.userId === user?.id;
