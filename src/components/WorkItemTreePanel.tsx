@@ -1,9 +1,11 @@
 import { useAppStore } from "@/store/appStore";
-import { childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
+import { backlogPoints, childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
+import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
+import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, SlidersHorizontal, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Settings2, Users, Lock, Ban, CalendarClock } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -177,6 +179,31 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
     if (trimmed && trimmed !== backlog?.name) renameBacklog(backlogId, trimmed);
     setIsEditing(false);
   };
+
+  // "Insert icon" from the backlog's right-click menu over the header: at the
+  // cursor while the name is being edited, otherwise at the end of the name in
+  // the editor, to confirm or move — as the same item does in the tree.
+  useEffect(() => {
+    const onInsert = (e: Event) => {
+      const { backlogId: target, shortcode } = (e as CustomEvent<{ backlogId: string; shortcode: string }>).detail;
+      if (target !== backlogId) return;
+      const inp = inputRef.current;
+      if (isEditing && inp) {
+        const start = inp.selectionStart ?? editValue.length;
+        const end = inp.selectionEnd ?? start;
+        setEditValue(editValue.slice(0, start) + shortcode + editValue.slice(end));
+        requestAnimationFrame(() => {
+          inp.focus();
+          inp.setSelectionRange(start + shortcode.length, start + shortcode.length);
+        });
+      } else {
+        setEditValue((backlog?.name ?? "") + shortcode);
+        setIsEditing(true);
+      }
+    };
+    window.addEventListener("backlog-name:insert-icon", onInsert);
+    return () => window.removeEventListener("backlog-name:insert-icon", onInsert);
+  }, [backlogId, isEditing, editValue, backlog?.name]);
 
   if (!backlog) return null;
 
@@ -2755,6 +2782,7 @@ export function WorkItemTreePanel() {
   const [showBacklogPublishDialog, setShowBacklogPublishDialog] = useState(false);
   const [showBacklogStatusesDialog, setShowBacklogStatusesDialog] = useState(false);
   const [showBacklogDeleteConfirm, setShowBacklogDeleteConfirm] = useState(false);
+  const [showBacklogPointsDialog, setShowBacklogPointsDialog] = useState(false);
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
   const guardedDelete = useDeleteWithTimeGuard();
 
@@ -3963,31 +3991,25 @@ export function WorkItemTreePanel() {
           </div>
         </div>
         </ContextMenuTrigger>
+        {/* The same menu as right-clicking this backlog in the tree. */}
         <ContextMenuContent className="w-44">
-          <ContextMenuLabel className="text-xs truncate">{isScrambled ? scrambleName(backlogs[selectedBacklogId!]?.name ?? "") : (backlogs[selectedBacklogId!]?.name ?? "")}</ContextMenuLabel>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => setShowBacklogAttributesSheet(true)}
-          >
-            <SlidersHorizontal className="w-3 h-3 mr-2" />
-            Attributes
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => setShowBacklogStatusesDialog(true)}
-          >
-            <Settings2 className="w-3 h-3 mr-2" />
-            Statuses…
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="text-xs text-destructive focus:text-destructive"
-            onSelect={() => setShowBacklogDeleteConfirm(true)}
-          >
-            <Trash2 className="w-3 h-3 mr-2" />
-            Delete backlog
-          </ContextMenuItem>
+          {selectedBacklogId && selectedTreeId && (
+            <BacklogContextMenuItems
+              backlogId={selectedBacklogId}
+              treeId={selectedTreeId}
+              isScrambled={isScrambled}
+              onInsertIcon={(shortcode) =>
+                window.dispatchEvent(
+                  new CustomEvent("backlog-name:insert-icon", { detail: { backlogId: selectedBacklogId, shortcode } }),
+                )
+              }
+              onAttributes={() => setShowBacklogAttributesSheet(true)}
+              onStatuses={() => setShowBacklogStatusesDialog(true)}
+              onPoints={() => setShowBacklogPointsDialog(true)}
+              onPublish={() => setShowBacklogPublishDialog(true)}
+              onDelete={() => setShowBacklogDeleteConfirm(true)}
+            />
+          )}
         </ContextMenuContent>
         </ContextMenu>
         ) : (
@@ -4284,7 +4306,7 @@ export function WorkItemTreePanel() {
         {showBacklogAttributesSheet && selectedBacklogId && (
           <MobileBacklogAttributesSheet
             backlogId={selectedBacklogId}
-            totalPoints={0}
+            totalPoints={selectedTreeId ? backlogPoints(selectedBacklogId, selectedTreeId, workItems, backlogs).effective : 0}
             open={showBacklogAttributesSheet}
             onOpenChange={setShowBacklogAttributesSheet}
             onOpenTimeLog={() => setShowBacklogTimeLogDialog(true)}
@@ -4298,6 +4320,14 @@ export function WorkItemTreePanel() {
             backlogName={backlogs[selectedBacklogId]?.name ?? ""}
             open
             onOpenChange={setShowBacklogPublishDialog}
+          />
+        )}
+        {showBacklogPointsDialog && selectedBacklogId && selectedTreeId && (
+          <BacklogPointsDialog
+            backlogId={selectedBacklogId}
+            treeId={selectedTreeId}
+            open
+            onOpenChange={setShowBacklogPointsDialog}
           />
         )}
         {showBacklogStatusesDialog && selectedBacklogId && (

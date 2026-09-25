@@ -1,16 +1,10 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, SlidersHorizontal, Settings2, TrendingUp, Globe, Star, Hash } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, TrendingUp, Globe } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useDroppable, useDraggable, useDndContext } from "@dnd-kit/core";
@@ -33,16 +27,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
-import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { BacklogPointsDialog } from "./BacklogPointsDialog";
+import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
 import { backlogPoints, type BacklogPoints as BacklogPointsBreakdown } from "@/lib/backlogPoints";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { IconizedTitle } from "@/components/IconizedTitle";
-import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
@@ -51,7 +44,6 @@ import { FinancialTotalsBadge } from "./FinancialTotalsBadge";
 import { useBacklogFinancialTotals, useTreeFinancialTotals } from "@/hooks/useFinancialTotals";
 import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/timeTotals";
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
-import { getEffectiveParentId } from "@/types/models";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 
@@ -341,19 +333,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const publicLinksEnabled = usePublicLinksEnabled();
-  const ratingsEnabled = useRatingsEnabled();
-  const backlogRatings = useAppStore((s) => s.backlogs[backlogId]?.ratingsEnabled ?? false);
-  const setBacklogRatingsEnabled = useAppStore((s) => s.setBacklogRatingsEnabled);
   // Both hooks run every render; only then combined. A link row can outlive
   // sharing being switched off, and a marker for it would claim a backlog is
   // public that no longer is.
   const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId)) && publicLinksEnabled;
-  const customStatusesEnabled = useOrgSettingsStore(
-    (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
-  );
-  const burnupsEnabled = useOrgSettingsStore(
-    (s) => (s.settings[activeOrgId ?? ""] as { burnupsEnabled?: boolean })?.burnupsEnabled ?? false,
-  );
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -633,106 +616,34 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
       </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-44">
-        <ContextMenuLabel className="text-xs truncate">{isScrambled ? scrambleName(backlog.name) : backlog.name}</ContextMenuLabel>
-        <ContextMenuSeparator />
-        <ContextMenuSub>
-          <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
-          <ContextMenuSubContent
-            className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
-            collisionPadding={8}
-          >
-            <div className="grid grid-cols-6 gap-0.5 p-1">
-              {ICON_SHORTCODES.map((sc) => (
-                <button
-                  key={sc}
-                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
-                  title={`:${sc}:`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const shortcode = `:${sc}:`;
-                    if (isEditing && editRef.current) {
-                      const inp = editRef.current;
-                      const start = inp.selectionStart ?? editValue.length;
-                      const end = inp.selectionEnd ?? start;
-                      const before = editValue.slice(0, start);
-                      const after = editValue.slice(end);
-                      const newName = before + shortcode + after;
-                      setEditValue(newName);
-                      requestAnimationFrame(() => {
-                        inp.focus();
-                        const pos = start + shortcode.length;
-                        inp.setSelectionRange(pos, pos);
-                      });
-                    } else {
-                      setEditValue(backlog.name + shortcode);
-                      setIsEditing(true);
-                    }
-                  }}
-                >
-                  {ICON_MAP[sc]}
-                </button>
-              ))}
-            </div>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-        <ContextMenuItem
-          className="text-xs"
-          onSelect={() => setShowMobileAttributesSheet(true)}
-        >
-          <SlidersHorizontal className="w-3 h-3 mr-2" />
-          Attributes
-        </ContextMenuItem>
-        {customStatusesEnabled && (
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => setShowStatusesDialog(true)}
-          >
-            <Settings2 className="w-3 h-3 mr-2" />
-            Statuses…
-          </ContextMenuItem>
-        )}
-        {burnupsEnabled && (
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => useBurnupDialogStore.getState().openBurnup({ kind: 'backlog', id: backlogId, name: backlog.name })}
-          >
-            <TrendingUp className="w-3 h-3 mr-2" />
-            View burnup…
-          </ContextMenuItem>
-        )}
-        {/* Each backlog decides for itself, starting off: stars earn their
-            place on a shortlist and are noise on a sprint backlog. */}
-        {/* An estimate for the whole backlog, before its work is broken down. */}
-        {pointsVisible && (
-          <ContextMenuItem className="text-xs" onSelect={() => setShowPointsDialog(true)}>
-            <Hash className="w-3 h-3 mr-2" />
-            {backlog?.points != null ? "Change points…" : "Set points…"}
-          </ContextMenuItem>
-        )}
-        {ratingsEnabled && (
-          <ContextMenuCheckboxItem
-            className="text-xs"
-            checked={backlogRatings}
-            onCheckedChange={(checked) => setBacklogRatingsEnabled(backlogId, checked === true)}
-          >
-            <Star className="w-3 h-3 mr-2" />
-            Star ratings
-          </ContextMenuCheckboxItem>
-        )}
-        {publicLinksEnabled && (
-          <ContextMenuItem className="text-xs" onSelect={() => setShowPublishDialog(true)}>
-            <Globe className="w-3 h-3 mr-2" />
-            Public link…
-          </ContextMenuItem>
-        )}
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-xs text-destructive focus:text-destructive"
-          onSelect={() => setConfirmDeleteOpen(true)}
-        >
-          <Trash2 className="w-3 h-3 mr-2" />
-          Delete backlog
-        </ContextMenuItem>
+        <BacklogContextMenuItems
+          backlogId={backlogId}
+          treeId={treeId}
+          isScrambled={isScrambled}
+          onInsertIcon={(shortcode) => {
+            // At the cursor while the name is being edited; otherwise at the
+            // end of the name, in the editor, to confirm or move.
+            if (isEditing && editRef.current) {
+              const inp = editRef.current;
+              const start = inp.selectionStart ?? editValue.length;
+              const end = inp.selectionEnd ?? start;
+              setEditValue(editValue.slice(0, start) + shortcode + editValue.slice(end));
+              requestAnimationFrame(() => {
+                inp.focus();
+                const pos = start + shortcode.length;
+                inp.setSelectionRange(pos, pos);
+              });
+            } else {
+              setEditValue(backlog.name + shortcode);
+              setIsEditing(true);
+            }
+          }}
+          onAttributes={() => setShowMobileAttributesSheet(true)}
+          onStatuses={() => setShowStatusesDialog(true)}
+          onPoints={() => setShowPointsDialog(true)}
+          onPublish={() => setShowPublishDialog(true)}
+          onDelete={() => setConfirmDeleteOpen(true)}
+        />
       </ContextMenuContent>
       </ContextMenu>
 
