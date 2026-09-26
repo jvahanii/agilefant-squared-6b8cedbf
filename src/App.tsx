@@ -10,6 +10,7 @@ import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Auth from "./pages/Auth";
 import { clerkEnabled } from "@/lib/clerkBridge";
+import { looksSignedIn } from "@/lib/storedSession";
 
 // Pre-load appStore data as soon as the active org is known, before any page
 // component mounts. Zustand's subscribe fires synchronously inside
@@ -36,11 +37,11 @@ const Index = lazy(importIndex);
 // when no session is stored so the sign-in screen doesn't drag the whole app
 // down with it.
 const hasStoredSession = () => {
-  // Clerk keeps its session in a cookie. This used to also scan localStorage
-  // for an "sb-…-auth-token" key, which is where Supabase Auth kept its
-  // session; nothing writes one any more.
+  // Clerk keeps its session in cookies; see lib/storedSession for which one
+  // lasts. This used to also scan localStorage for an "sb-…-auth-token" key,
+  // which is where Supabase Auth kept its session; nothing writes one any more.
   try {
-    return document.cookie.includes("__session");
+    return looksSignedIn(document.cookie);
   } catch {
     // Cookie access can throw in private/sandboxed contexts.
     return false;

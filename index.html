@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Sign-in and the database are the first two things a start waits on;
+         open both connections while the page is still arriving, not after the
+         scripts that need them have run. -->
+    <link rel="preconnect" href="https://clerk.agilefant.org" crossorigin />
+    <link rel="preconnect" href="https://hwwjwkdbautfkhpxuord.supabase.co" crossorigin />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -13,6 +13,7 @@ import {
   subscribeToClerk,
 } from "@/lib/clerkBridge";
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
+import { forgetRememberedProfiles, rememberProfileFor, rememberedProfileFor } from '@/lib/profileMapping';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 
 /**
@@ -111,33 +112,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
+    // On every start but the first, the profile this account was last found to
+    // belong to is used at once, and the lookup below confirms it behind the
+    // scenes. The lookup is two round trips; waiting for it is what made one
+    // start on a phone quick and the next slow. See lib/profileMapping.
+    const remembered = rememberedProfileFor(clerkUserId);
+    if (remembered) setMapping({ clerkUserId, appUserId: remembered, error: null });
     // Without this the app would spin on "Loading..." indefinitely if the
     // lookup never comes back. Reporting it as a failed link at least leaves
-    // the sign-out button reachable.
-    const timeout = setTimeout(() => {
-      if (!cancelled) {
-        setMapping({ clerkUserId, appUserId: null, error: 'the profile lookup timed out' });
-      }
-    }, 8000);
+    // the sign-out button reachable. Not needed where a profile is remembered:
+    // nothing is waiting.
+    const timeout = remembered
+      ? null
+      : setTimeout(() => {
+          if (!cancelled) {
+            setMapping({ clerkUserId, appUserId: null, error: 'the profile lookup timed out' });
+          }
+        }, 8000);
     // A first-time Clerk account has no profile yet, so the read comes back
     // empty and link_clerk_identity() is what creates or claims one. Only
     // after that has been tried is an empty result really "not linked".
     fetchAppUserId()
       .then((appUserId) => appUserId ?? linkClerkIdentity())
       .then((appUserId) => {
-        clearTimeout(timeout);
-        if (!cancelled) setMapping({ clerkUserId, appUserId, error: null });
+        if (timeout) clearTimeout(timeout);
+        rememberProfileFor(clerkUserId, appUserId);
+        if (cancelled) return;
+        // Confirming what was remembered changes nothing, so it re-renders nothing.
+        setMapping((prev) =>
+          prev && prev.clerkUserId === clerkUserId && prev.appUserId === appUserId && !prev.error
+            ? prev
+            : { clerkUserId, appUserId, error: null },
+        );
       })
       .catch((err: unknown) => {
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         if (cancelled) return;
         const message = err instanceof Error ? err.message : String(err);
+        // A remembered profile stands through a failed check: a phone dropping
+        // its connection for a moment is not an account losing its profile.
+        if (remembered) {
+          console.warn('Could not confirm the remembered profile:', message);
+          return;
+        }
         console.error('Could not map the Clerk session onto a profile:', message);
         setMapping({ clerkUserId, appUserId: null, error: message });
       });
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
     };
   }, [clerkUserId]);
 
@@ -184,6 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const signOut = async () => {
+    // Before Clerk lets go, so nothing of this person is left for the next one.
+    forgetRememberedProfiles();
     await clerkSignOut();
     setMapping(null);
     // Clerk fires no event the stores listen for, so they are cleared here.
