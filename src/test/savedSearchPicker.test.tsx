@@ -867,6 +867,28 @@ describe("JobSearchRunButton", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByText("From the header")).toBeInTheDocument();
   });
+  it("scrolls its list of job ads with the up and down arrows, wherever focus is", async () => {
+    // Focus sits on a checkbox or the filter, never on the list, which is its
+    // own scrolling box: the arrows went nowhere.
+    savedSearches = [{ ...SEARCH, name: "Only unread" }];
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "A" }), link({ url: "https://x/b", title: "B" })] });
+    const scrollBy = vi.fn();
+    const original = Element.prototype.scrollBy;
+    Element.prototype.scrollBy = scrollBy as never;
+    try {
+      render(<JobSearchRunButton />);
+      fireEvent.click(await screen.findByTitle('Run "Only unread"'));
+      await screen.findByText("A");
+      const aRow = screen.getAllByRole("checkbox")[1];
+      fireEvent.keyDown(aRow, { key: "ArrowDown" });
+      fireEvent.keyDown(screen.getByPlaceholderText("Filter by keyword…"), { key: "ArrowUp" });
+      expect(scrollBy.mock.calls).toEqual([[{ top: 48 }], [{ top: -48 }]]);
+      const list = document.querySelector("[data-scroll-with-arrows]");
+      expect(scrollBy.mock.contexts?.[0] ?? list).toBe(list);
+    } finally {
+      Element.prototype.scrollBy = original;
+    }
+  });
 });
 
 describe("Import & auto-place: mirroring the rows switched on", () => {

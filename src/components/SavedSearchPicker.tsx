@@ -758,7 +758,7 @@ export function SavedSearchPicker({
       )}
       {/* At most half the window, so on a short screen the dialog still fits
           with Import selected in reach — the dialog itself does not scroll. */}
-      <div className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-4 pr-1">
+      <div data-scroll-with-arrows className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-4 pr-1">
         {visibleGroups.map((group) => {
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);

@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SavedSearchPicker } from "@/components/SavedSearchPicker";
+import { scrollListWithArrows } from "@/lib/scrollListWithArrows";
 import type { RunnableSearch } from "@/lib/gmailConnector";
 
 type JobSearch = RunnableSearch & { name: string | null };
@@ -101,7 +102,8 @@ export function JobSearchRunButton() {
       <Dialog open={!!running} onOpenChange={(open) => !open && setRunning(null)}>
         {/* Wide: a job ad's employer and title are what the decision rests on,
             and they are never cut short, so the rows need the room. */}
-        <DialogContent className="max-w-4xl">
+        {/* Up and down scroll the list of job ads, wherever focus is in the dialog. */}
+        <DialogContent className="max-w-4xl" onKeyDown={scrollListWithArrows}>
           <DialogHeader>
             <DialogTitle>{running?.name ?? "Job search"}</DialogTitle>
             <DialogDescription className="break-all text-xs">{running?.query}</DialogDescription>
