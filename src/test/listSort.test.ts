@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import type { WorkItem } from "@/types/models";
-import { isListSortMode, sortTopLevel, type ListSortContext } from "@/lib/listSort";
+import { atTopFirst, isListSortMode, sortTopLevel, type ListSortContext } from "@/lib/listSort";
 
 const T = "tree";
 const BL = "backlog";
@@ -133,5 +133,13 @@ describe("offering the rating mode", () => {
     expect(listSortModes(true).map((m) => m.mode)).toContain("rating-desc");
     // The other modes are the same either way.
     expect(listSortModes(false).map((m) => m.mode)).toEqual(["rank", "name-asc", "name-desc", "status", "team"]);
+  });
+});
+
+describe("atTopFirst", () => {
+  it("moves the lifted items to the front, each group keeping its order", () => {
+    const rows = ["a", "b", "c", "d"].map((id) => ({ id }));
+    expect(atTopFirst(rows, new Set(["d", "b"])).map((r) => r.id)).toEqual(["b", "d", "a", "c"]);
+    expect(atTopFirst(rows, new Set()).map((r) => r.id)).toEqual(["a", "b", "c", "d"]);
   });
 });

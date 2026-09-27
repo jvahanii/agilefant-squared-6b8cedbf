@@ -41,6 +41,7 @@ vi.mock("@/store/mockData", () => ({
 import { useAppStore } from "@/store/appStore";
 import { useListSortStore, saveTopLevelOrderAsRank, listSortModeFor } from "@/store/listSortStore";
 import { requestTopLevelRerank, useRerankGuardStore } from "@/store/rerankGuardStore";
+import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 const ORG = "org";
 const TREE = `${ORG}::bt-1`;
@@ -82,6 +83,7 @@ beforeEach(() => {
   localStorage.clear();
   useListSortStore.setState({ modeByBacklog: {} });
   useRerankGuardStore.setState({ pending: null });
+  useClosedPostingsStore.setState({ closed: new Set(), atTop: new Set() });
   seed();
 });
 
@@ -187,6 +189,37 @@ describe("requestTopLevelRerank", () => {
     const ranks = useAppStore.getState().workItems;
     expect([ranks[`${ORG}::c`].ranks[BL], ranks[`${ORG}::a`].ranks[BL], ranks[`${ORG}::b`].ranks[BL]]).toEqual([0, 1, 2]);
     expect(useAppStore.getState().undoStack).toHaveLength(0);
+  });
+});
+
+describe("closed ads shown first", () => {
+  it("counts as an order of its own: a move in rank order asks, and yes saves them first and stops lifting them", () => {
+    // Ranked Charlie, Alpha, Bravo; a check found Bravo closed, so it shows first.
+    useClosedPostingsStore.setState({ closed: new Set([`${ORG}::b`]), atTop: new Set([`${ORG}::b`]) });
+    const proceed = vi.fn();
+    requestTopLevelRerank({ treeId: TREE, backlogId: BL, backlogIds: [BL], touchesTopLevel: true, proceed });
+    expect(proceed).not.toHaveBeenCalled();
+
+    useRerankGuardStore.getState().confirm();
+    expect(proceed).toHaveBeenCalledTimes(1);
+    expect(topLevelByRank()).toEqual(["Bravo", "Charlie", "Alpha"]);
+    // Ranked first now, so it is no longer lifted -- and is still marked closed.
+    expect(useClosedPostingsStore.getState().atTop.size).toBe(0);
+    expect(useClosedPostingsStore.getState().closed.has(`${ORG}::b`)).toBe(true);
+  });
+
+  it("go first within a chosen sort too when its order is saved", () => {
+    useListSortStore.getState().setMode(BL, "name-asc");
+    useClosedPostingsStore.setState({ atTop: new Set([`${ORG}::c`]) });
+    saveTopLevelOrderAsRank(TREE, BL, [BL]);
+    expect(topLevelByRank()).toEqual(["Charlie", "Alpha", "Bravo"]);
+  });
+
+  it("do not make another list's moves ask", () => {
+    useClosedPostingsStore.setState({ atTop: new Set(["elsewhere"]) });
+    const proceed = vi.fn();
+    requestTopLevelRerank({ treeId: TREE, backlogId: BL, backlogIds: [BL], touchesTopLevel: true, proceed });
+    expect(proceed).toHaveBeenCalledTimes(1);
   });
 });
 

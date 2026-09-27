@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useAppStore } from "@/store/appStore";
-import { listSortModeFor, saveTopLevelOrderAsRank, useListSortStore } from "@/store/listSortStore";
+import { listSortModeFor, saveTopLevelOrderAsRank, topLevelIdsAtTop, useListSortStore } from "@/store/listSortStore";
 
 /**
  * Asking before a top-level move while the list is sorted by something other
@@ -62,7 +62,10 @@ export function requestTopLevelRerank(request: TopLevelRerankRequest): void {
   const viewMode = useAppStore.getState().backlogs[request.backlogId]?.viewMode ?? "list";
   // The sort is a list-view order. On a board, or in rank order, or for a move
   // among children, there is nothing on screen that the move could contradict.
-  if (!touchesTopLevel || viewMode === "board" || listSortModeFor(request.backlogId) === "rank") {
+  // Closed ads lifted to the top by a check are a view order too, even in rank.
+  const shownAsRanked =
+    listSortModeFor(request.backlogId) === "rank" && topLevelIdsAtTop(request.treeId, request.backlogIds).length === 0;
+  if (!touchesTopLevel || viewMode === "board" || shownAsRanked) {
     request.proceed();
     return;
   }

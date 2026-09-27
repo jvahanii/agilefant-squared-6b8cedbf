@@ -80,6 +80,16 @@ function nullsLast<T>(a: T | null, b: T | null, compare: (x: T, y: T) => number)
   return compare(a, b);
 }
 
+/**
+ * `items` with the ones in `atTop` moved to the front, each group keeping its
+ * order: a finished closed-ads check puts the closed ones first in whatever
+ * order the list is sorted by. Returns a new array.
+ */
+export function atTopFirst<T extends { id: string }>(items: readonly T[], atTop: ReadonlySet<string>): T[] {
+  if (atTop.size === 0) return [...items];
+  return [...items.filter((item) => atTop.has(item.id)), ...items.filter((item) => !atTop.has(item.id))];
+}
+
 /** The top-level items in the order the mode puts them. Returns a new array. */
 export function sortTopLevel(
   items: readonly WorkItem[],

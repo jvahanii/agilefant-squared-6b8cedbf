@@ -33,9 +33,11 @@ beforeEach(() => {
     closed: new Set(),
     checked: new Set(),
     unknown: new Set(),
+    atTop: new Set(),
     checking: false,
     progress: null,
   });
+  localStorage.clear();
   invoke.mockReset();
 });
 
@@ -302,11 +304,58 @@ describe("linkedItemsIn", () => {
   });
 });
 
+describe("closed ads shown first", () => {
+  it("lifts nothing while the check runs, then every closed ad it found once it is over", async () => {
+    let atTopMidRun: string[] | null = null;
+    invoke.mockImplementation((name: string, opts: { body: { urls: string[] } }) => {
+      // The second batch: the first batch's closed ad is marked but not yet lifted.
+      if (opts.body.urls.includes("https://x/last")) atTopMidRun = [...state().atTop];
+      return answer(["https://x/0", "https://x/last"])(name, opts);
+    });
+    const items = Array.from({ length: POSTING_BATCH }, (_, i) => ({ id: `i${i}`, title: "", urls: [`https://x/${i}`] }));
+    items.push({ id: "last", title: "", urls: ["https://x/last"] });
+
+    await state().check(items);
+
+    expect(atTopMidRun).toEqual([]);
+    expect([...state().atTop].sort()).toEqual(["i0", "last"]);
+  });
+
+  it("is remembered in this browser, and read back when the app starts", async () => {
+    invoke.mockImplementation(answer(["https://x/1"]));
+    await state().check([
+      { id: "i1", title: "", urls: ["https://x/1"] },
+      { id: "i2", title: "", urls: ["https://x/2"] },
+    ]);
+    expect(JSON.parse(localStorage.getItem("closed-postings-v1")!)).toEqual({ closed: ["i1"], atTop: ["i1"] });
+
+    vi.resetModules();
+    const fresh = (await import("@/store/closedPostingsStore")).useClosedPostingsStore.getState();
+    expect([...fresh.atTop]).toEqual(["i1"]);
+    expect([...fresh.closed]).toEqual(["i1"]);
+  });
+
+  it("drops an ad a later check finds open again, and keeps other lists' ones", async () => {
+    useClosedPostingsStore.setState({ closed: new Set(["i1", "other"]), atTop: new Set(["i1", "other"]) });
+    invoke.mockImplementation(answer([]));
+    await state().check([{ id: "i1", title: "", urls: ["https://x/1"] }]);
+    expect([...state().atTop]).toEqual(["other"]);
+  });
+
+  it("is let go by Clear marks", async () => {
+    invoke.mockImplementation(answer(["https://x/1"]));
+    await state().check([{ id: "i1", title: "", urls: ["https://x/1"] }]);
+    state().forget(["i1"]);
+    expect(state().atTop.size).toBe(0);
+    expect(localStorage.getItem("closed-postings-v1")).toBeNull();
+  });
+});
+
 describe("closedCheckMessage", () => {
   it("reports the three outcomes apart", () => {
     expect(closedCheckMessage({ closed: 2, checked: 10, unknown: 3, fromTitle: 1 })).toEqual({
       title: "2 closed ads",
-      description: "5 still open, 3 could not be reached, 1 from a closing date already on the item. Of 10 checked; nothing was changed.",
+      description: "5 still open, 3 could not be reached, 1 from a closing date already on the item. Of 10 checked; nothing was changed — the closed ones are shown first, on this device only.",
     });
   });
 

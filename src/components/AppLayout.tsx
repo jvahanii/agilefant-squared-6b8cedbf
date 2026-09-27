@@ -73,9 +73,8 @@ import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from 
 import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
 import { rowAfterStatusMove } from "@/lib/statusSelection";
-import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
-import { currentListSortContext, listSortModeFor } from "@/store/listSortStore";
+import { listSortModeFor, shownTopLevelOrder } from "@/store/listSortStore";
 
 // Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
@@ -292,7 +291,7 @@ function AppLayoutInner() {
         };
         if (inList) collect(backlogId);
         const topLevelOrder = (workItems: typeof state.workItems) =>
-          sortTopLevel(topLevelItems(workItems, treeId!, shown), mode, treeId!, currentListSortContext(treeId!)).map(
+          shownTopLevelOrder(topLevelItems(workItems, treeId!, shown), mode, treeId!).map(
             (wi) => wi.id,
           );
         const visibleBefore = visibleWorkItemIdsRef.current;

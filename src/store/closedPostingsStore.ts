@@ -6,11 +6,11 @@ import type { Hyperlink, WorkItem } from '@/types/models';
 /**
  * Which work items link to a job ad that has stopped taking applications.
  *
- * Deliberately not persisted, and never written back to the item. A closed ad
- * is a prompt to do something -- move it off the list, or decide it stays --
- * and the answer belongs to whoever is looking, not to a column. Reloading the
- * app clears this, which is correct: the answer is only as good as the moment
- * it was fetched.
+ * Never written back to the item or anywhere in the database. A closed ad is a
+ * prompt to do something -- move it off the list, or decide it stays -- and the
+ * answer belongs to whoever is looking, not to a column. What a finished check
+ * found closed is kept in this browser's local storage, so the closed ads stay
+ * marked and at the top of their lists until the next check or "Clear marks".
  */
 interface ClosedPostingsState {
   /** Work item ids whose posting said it is closed, from the latest run covering each. */
@@ -27,6 +27,12 @@ interface ClosedPostingsState {
    * looking as open as one that actually said so.
    */
   unknown: Set<string>;
+  /**
+   * Items shown first in their list: those a *finished* check found closed.
+   * Kept apart from `closed`, which fills in as each batch returns, so rows
+   * do not jump about while a check is still running.
+   */
+  atTop: Set<string>;
   checking: boolean;
   /** How far through the current run, for the button's own label. */
   progress: { done: number; total: number } | null;
@@ -39,6 +45,8 @@ interface ClosedPostingsState {
   ) => Promise<{ closed: number; checked: number; unknown: number; fromTitle: number; error?: string }>;
   /** Drop what is known about these items — the marks in one backlog, say. */
   forget: (ids: string[]) => void;
+  /** Stop showing these items first, keeping their marks: their shown order has been saved as rank. */
+  release: (ids: string[]) => void;
 }
 
 /**
@@ -50,6 +58,31 @@ interface ClosedPostingsState {
  * has to stay well inside the function's own deadline.
  */
 export const POSTING_BATCH = 20;
+
+/** Local storage only: a view of one browser, not a fact about the item. */
+const STORAGE_KEY = 'closed-postings-v1';
+
+function readStored(): { closed: Set<string>; atTop: Set<string> } {
+  const ids = (value: unknown) =>
+    new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []);
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    return { closed: ids(parsed?.closed), atTop: ids(parsed?.atTop) };
+  } catch {
+    return { closed: new Set(), atTop: new Set() };
+  }
+}
+
+function store(closed: Set<string>, atTop: Set<string>): void {
+  try {
+    if (closed.size === 0 && atTop.size === 0) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify({ closed: [...closed], atTop: [...atTop] }));
+  } catch {
+    // Blocked storage: the marks still hold until the page is reloaded.
+  }
+}
+
+const stored = readStored();
 
 type PostingStatusAnswer = { results?: { url: string; closed: boolean; unreachable?: number | null }[] };
 
@@ -88,9 +121,10 @@ async function askPostingStatus(urls: string[]): Promise<PostingStatusAnswer> {
 }
 
 export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => ({
-  closed: new Set(),
+  closed: stored.closed,
   checked: new Set(),
   unknown: new Set(),
+  atTop: stored.atTop,
   checking: false,
   progress: null,
 
@@ -130,7 +164,17 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
       checked: new Set([...keepOthers(checkedBefore), ...settled]),
       unknown: keepOthers(unknownBefore),
     });
+    // Once the check is over, its closed items go to the top of their lists --
+    // all at once, rather than rows jumping as each batch comes back -- and
+    // what it found is remembered in this browser.
+    const finish = () => {
+      const { closed, atTop } = get();
+      const nextTop = new Set([...keepOthers(atTop), ...[...closed].filter((id) => covered.has(id))]);
+      set({ atTop: nextTop });
+      store(closed, nextTop);
+    };
     if (urls.length === 0) {
+      finish();
       return { closed: settled.size, checked: settled.size, unknown: 0, fromTitle: settled.size };
     }
 
@@ -176,6 +220,7 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
     }
 
     set({ checking: false, progress: null });
+    finish();
     const { closed, checked, unknown } = get();
     const inRun = (ids: Set<string>) => [...ids].filter((id) => covered.has(id)).length;
     return {
@@ -190,7 +235,16 @@ export const useClosedPostingsStore = create<ClosedPostingsState>((set, get) => 
   forget: (ids) => {
     const drop = new Set(ids);
     const keep = (from: Set<string>) => new Set([...from].filter((id) => !drop.has(id)));
-    set((s) => ({ closed: keep(s.closed), checked: keep(s.checked), unknown: keep(s.unknown) }));
+    set((s) => ({ closed: keep(s.closed), checked: keep(s.checked), unknown: keep(s.unknown), atTop: keep(s.atTop) }));
+    const { closed, atTop } = get();
+    store(closed, atTop);
+  },
+
+  release: (ids) => {
+    const drop = new Set(ids);
+    const atTop = new Set([...get().atTop].filter((id) => !drop.has(id)));
+    set({ atTop });
+    store(get().closed, atTop);
   },
 }));
 
@@ -235,7 +289,9 @@ export function closedCheckMessage(
   if (fromTitle > 0) parts.push(`${fromTitle} from a closing date already on the item`);
   return {
     title: closed === 0 ? "No closed ads found" : `${closed} closed ad${closed !== 1 ? "s" : ""}`,
-    description: `${parts.join(", ")}. Of ${checked} checked; nothing was changed.`,
+    description:
+      `${parts.join(", ")}. Of ${checked} checked; nothing was changed` +
+      (closed > 0 ? " — the closed ones are shown first, on this device only." : "."),
     ...(unknown > checked / 2 ? { variant: "destructive" as const } : {}),
   };
 }

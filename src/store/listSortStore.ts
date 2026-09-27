@@ -1,12 +1,13 @@
 import { create } from "zustand";
 import type { WorkItem } from "@/types/models";
-import { isListSortMode, sortTopLevel, type ListSortContext, type ListSortMode } from "@/lib/listSort";
+import { atTopFirst, isListSortMode, sortTopLevel, type ListSortContext, type ListSortMode } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { useTeamStore } from "@/store/teamStore";
 import { getEffectiveStatuses } from "@/store/backlogStatusesStore";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 
 /**
  * Which order each backlog's list shows, in this browser only.
@@ -115,6 +116,23 @@ export function currentListSortContext(treeId: string): ListSortContext {
 }
 
 /**
+ * A list's top-level items in the order it shows them: sorted by the mode, then
+ * the ads a finished closed-ads check found closed moved to the front.
+ */
+export function shownTopLevelOrder(items: readonly WorkItem[], mode: ListSortMode, treeId: string): WorkItem[] {
+  return atTopFirst(sortTopLevel(items, mode, treeId, currentListSortContext(treeId)), useClosedPostingsStore.getState().atTop);
+}
+
+/** The top-level items of a list that closed-ads checks have put first. */
+export function topLevelIdsAtTop(treeId: string, backlogIds: string[]): string[] {
+  const { atTop } = useClosedPostingsStore.getState();
+  if (atTop.size === 0) return [];
+  return topLevelItems(useAppStore.getState().workItems, treeId, new Set(backlogIds))
+    .filter((item) => atTop.has(item.id))
+    .map((item) => item.id);
+}
+
+/**
  * Store the order a backlog is currently shown in as its rank.
  *
  * Every top-level item is ranked — snoozed and filtered-out ones too, which are
@@ -125,6 +143,9 @@ export function saveTopLevelOrderAsRank(treeId: string, backlogId: string, backl
   const mode = listSortModeFor(backlogId);
   const app = useAppStore.getState();
   const items = topLevelItems(app.workItems, treeId, new Set(backlogIds));
-  const ordered = sortTopLevel(items, mode, treeId, currentListSortContext(treeId));
+  const ordered = shownTopLevelOrder(items, mode, treeId);
   app.applySiblingOrder(null, treeId, backlogIds, ordered.map((item) => item.id), `Saved ${ordered.length} items in their shown order as rank`);
+  // Closed ads shown first are now ranked first, so they need no lifting any
+  // more -- and would otherwise snap back to the top when moved down.
+  useClosedPostingsStore.getState().release(ordered.map((item) => item.id));
 }

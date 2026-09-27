@@ -58,7 +58,7 @@ import {
   useListSortMode,
   useListSortStore,
 } from "@/store/listSortStore";
-import { listSortLabel, listSortModes, sortTopLevel, type ListSortMode } from "@/lib/listSort";
+import { atTopFirst, listSortLabel, listSortModes, sortTopLevel, type ListSortMode } from "@/lib/listSort";
 import { StarRating } from "@/components/StarRating";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { peekCurrentUser } from "@/lib/currentUser";
@@ -3204,6 +3204,7 @@ export function WorkItemTreePanel() {
   const closedIds = useClosedPostingsStore((s) => s.closed);
   const checkClosedPostings = useClosedPostingsStore((s) => s.check);
   const forgetClosedPostings = useClosedPostingsStore((s) => s.forget);
+  const closedAtTop = useClosedPostingsStore((s) => s.atTop);
   // Marks are kept per item, so they stay put when another backlog is opened —
   // an import checks two lists at once, and switching between them must not
   // lose half the answer. The count is of this backlog's items only.
@@ -3241,13 +3242,17 @@ export function WorkItemTreePanel() {
     void sortTeams;
     void sortWorkItemTeams;
     void sortStatusesByBacklog;
-    return sortTopLevel(
-      topLevelItems(workItems, selectedTreeId, backlogIdSet),
-      listSortMode,
-      selectedTreeId,
-      currentListSortContext(selectedTreeId),
+    // Closed ads a finished check found go first, in this browser only.
+    return atTopFirst(
+      sortTopLevel(
+        topLevelItems(workItems, selectedTreeId, backlogIdSet),
+        listSortMode,
+        selectedTreeId,
+        currentListSortContext(selectedTreeId),
+      ),
+      closedAtTop,
     );
-  }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet, listSortMode, sortTeams, sortWorkItemTeams, sortStatusesByBacklog]);
+  }, [workItems, selectedBacklogId, selectedTreeId, backlogIdSet, listSortMode, sortTeams, sortWorkItemTeams, sortStatusesByBacklog, closedAtTop]);
 
   // When filter is active, hide root items that have no matching descendant-or-self.
   // Also hide root items that are currently snoozed by the current user.
