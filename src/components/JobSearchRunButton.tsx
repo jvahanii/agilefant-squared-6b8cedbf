@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SavedSearchPicker } from "@/components/SavedSearchPicker";
 import { scrollListWithArrows } from "@/lib/scrollListWithArrows";
+import { JOB_ADS_TREE_ID, countItemsInTree } from "@/lib/jobAdsTree";
+import { useAppStore } from "@/store/appStore";
 import type { RunnableSearch } from "@/lib/gmailConnector";
 
 type JobSearch = RunnableSearch & { name: string | null };
@@ -28,6 +30,8 @@ export function JobSearchRunButton() {
   const { isSuperuser } = useScramble();
   const roleOverride = useOrgStore((s) => s.roleOverride);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const workItems = useAppStore((s) => s.workItems);
+  const jobAdCount = useMemo(() => countItemsInTree(workItems, JOB_ADS_TREE_ID), [workItems]);
   const [searches, setSearches] = useState<JobSearch[]>([]);
   const [running, setRunning] = useState<JobSearch | null>(null);
   const [runToken, setRunToken] = useState(0);
@@ -73,6 +77,11 @@ export function JobSearchRunButton() {
     <>
       <BriefcaseBusiness className="w-3.5 h-3.5 text-primary" />
       <span className="hidden md:inline">Run job search</span>
+      {/* How many job ads the hunt holds, kept up to date by the store: an
+          import, a deletion or a move in or out of the tree changes it at once.
+          Shown even where the words are not, since on a phone the count is the
+          part worth the width. */}
+      {jobAdCount > 0 && <span className="tabular-nums">({jobAdCount})</span>}
     </>
   );
 
