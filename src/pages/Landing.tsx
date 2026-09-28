@@ -44,13 +44,13 @@ const FEATURES = [
   },
   {
     icon: GitBranch,
-    title: "One item, many trees",
-    body: "Mirror an item into another tree and it is the same item in both, with its own place in each.",
+    title: "One item in many lists",
+    body: "Mirror an item into a list in another tree and it is the same item in both, with its own place in each.",
   },
   {
     icon: KanbanSquare,
     title: "Lists and boards",
-    body: "Rank items in a list, or drag cards across status columns. Each list remembers which view it prefers.",
+    body: "Rank items in a list, or drag cards across status columns. The view chosen the last time is remembered.",
   },
   {
     icon: Keyboard,
@@ -70,7 +70,7 @@ const FEATURES = [
   {
     icon: BarChart3,
     title: "Points and burnups",
-    body: "Story points roll up through the tree, and burnup charts show whether scope or progress is winning.",
+    body: "Story points roll up through the item tree, and burnup charts show\u00a0scope changes and\u00a0progress.",
   },
   {
     icon: Tags,
@@ -80,7 +80,7 @@ const FEATURES = [
   {
     icon: Clock,
     title: "Time logging",
-    body: "Log time against work items and move entries between items if they landed in the wrong place. More versatile than any other time logging app you'll find.",
+    body: "Log time against work items, lists and trees - and move entries if they landed in the wrong place. Probably versatile than any other time logging app you'll find.",
   },
   {
     icon: Star,
@@ -108,7 +108,7 @@ const SCALES = [
   {
     icon: Users,
     who: "For a team",
-    body: "Sprints on a board, points that add up smartly, burnups, and everyone looking at the same live list.",
+    body: "Sprints on a board, points that add up smartly, burnups, and everyone looking at the same live view.",
   },
   {
     icon: Building2,
@@ -275,7 +275,7 @@ export default function Landing() {
                 Every list you have, <span className="text-primary">in one app.</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-                Agilefant² is a list tool that scales from one person's to-do list to an enterprise's whole portfolio.
+                Agilefant² that scales from one person's to-do list to an enterprise's whole portfolio of products, projects and backlogs.
                 Nest lists as deep as your work needs, keep item in multiple lists, share lists with
                 other organizations and the public, and do nearly all of it from the keyboard.
               </p>
@@ -313,7 +313,7 @@ export default function Landing() {
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold tracking-tight">Simple to start. Powerful when you need it.</h2>
             <p className="mt-3 text-muted-foreground">
-              A new account is composed of trees, lists and work items. Everything else — points,
+              A new account is composed of trees of lists, lists and work items. Everything else — points,
               statuses, labels, time, ratings and so on — is a switch you turn on when your work needs it.
             </p>
           </div>
