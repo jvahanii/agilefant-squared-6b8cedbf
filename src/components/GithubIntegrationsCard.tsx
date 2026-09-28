@@ -123,7 +123,7 @@ export function GithubIntegrationsCard() {
     const tree = draftTree[integ.id];
     const backlog = draftBacklog[integ.id];
     if (!tree || !backlog) {
-      toast({ title: "Pick a tree and backlog", variant: "destructive" });
+      toast({ title: "Pick a tree and list", variant: "destructive" });
       return;
     }
     const { error } = await supabase.from("github_repo_targets").insert({
@@ -155,7 +155,7 @@ export function GithubIntegrationsCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Connect GitHub repositories so every merged pull request creates a "Done" work item at the top of the chosen backlog(s).
+          Connect GitHub repositories so every merged pull request creates a "Done" work item at the top of the chosen list(s).
           Use the URL and secret below as the webhook in each repo's GitHub settings (event: <em>Pull requests</em>, content type: <em>application/json</em>).
         </p>
 
@@ -224,7 +224,7 @@ export function GithubIntegrationsCard() {
 
                 <div className="space-y-2">
                   <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Target backlogs
+                    Target lists
                   </div>
                   {its.length === 0 && (
                     <p className="text-sm text-muted-foreground italic">No targets — merged PRs will be ignored.</p>
@@ -263,13 +263,13 @@ export function GithubIntegrationsCard() {
                       </Select>
                     </div>
                     <div className="flex-1 min-w-[140px]">
-                      <Label className="text-xs">Backlog</Label>
+                      <Label className="text-xs">List</Label>
                       <Select
                         value={draftBacklog[i.id] ?? ""}
                         onValueChange={(v) => setDraftBacklog((d) => ({ ...d, [i.id]: v }))}
                         disabled={!draftTree[i.id]}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select backlog" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select list" /></SelectTrigger>
                         <SelectContent>
                           {draftTree[i.id] && backlogsByTree(draftTree[i.id]).map((b) => (
                             <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>

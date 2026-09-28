@@ -80,7 +80,7 @@ beforeEach(() => {
   visibleWorkItemIdsRef.current = [];
 });
 
-describe("selection after moving an item to another backlog", () => {
+describe("selection after moving an item to another list", () => {
   it("moves to the row below", () => {
     seed([B]);
     useAppStore.getState().moveWorkItemsToBacklog([B], ELSEWHERE, TREE);

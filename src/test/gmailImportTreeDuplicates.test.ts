@@ -69,7 +69,7 @@ function makeAdmin(items: Item[], backlogs: Record<string, string>, links: Recor
 const LINKEDIN = 'https://www.linkedin.com/jobs/view/4458065583/';
 
 describe('urlsInTree', () => {
-  it('finds a posting filed into a different backlog of the same tree', async () => {
+  it('finds a posting filed into a different list of the same tree', async () => {
     const { admin } = makeAdmin(
       [{ id: 'wi-1', backlog_assignments: { [TREE]: 'bl-applied' } }],
       { 'bl-applied': 'Applied' },
@@ -136,7 +136,7 @@ describe('urlsInTree', () => {
     expect(calls).toEqual(['work_items']);
   });
 
-  it('still answers when the backlog has no name to give', async () => {
+  it('still answers when the list has no name to give', async () => {
     const { admin } = makeAdmin(
       [{ id: 'wi-1', backlog_assignments: { [TREE]: 'bl-gone' } }],
       {},

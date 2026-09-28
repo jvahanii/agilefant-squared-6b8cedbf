@@ -84,7 +84,7 @@ const payload = (over: Partial<PublishedPayload>): PublishedPayload => ({
 const ids = (nodes: { item: PublishedItem; children: unknown[] }[]): string[] => nodes.map((n) => n.item.id);
 
 describe("backlogScope", () => {
-  it("includes every descendant backlog, as selecting a parent does in the app", () => {
+  it("includes every descendant list, as selecting a parent does in the app", () => {
     const backlogs = [bl("a", null), bl("b", "a"), bl("c", "b"), bl("d", null)];
     expect([...backlogScope("a", backlogs)].sort()).toEqual(["a", "b", "c"]);
     expect([...backlogScope("b", backlogs)].sort()).toEqual(["b", "c"]);
@@ -109,7 +109,7 @@ describe("buildItemTree", () => {
     expect(ids(buildItemTree(items, new Set(["a"])))).toEqual(["c"]);
   });
 
-  it("nests across backlogs that are both in scope", () => {
+  it("nests across lists that are both in scope", () => {
     const items = [item("p", "a"), item("c", "child-of-a", "p")];
     const tree = buildItemTree(items, new Set(["a", "child-of-a"]));
     expect(ids(tree)).toEqual(["p"]);
@@ -121,7 +121,7 @@ describe("buildItemTree", () => {
     expect(ids(buildItemTree(items, new Set(["a"])))).toEqual(["x", "y", "w", "z"]);
   });
 
-  it("leaves out items assigned to backlogs outside the scope", () => {
+  it("leaves out items assigned to lists outside the scope", () => {
     expect(ids(buildItemTree([item("in", "a"), item("out", "b")], new Set(["a"])))).toEqual(["in"]);
   });
 
@@ -134,13 +134,13 @@ describe("buildItemTree", () => {
 });
 
 describe("buildBacklogTree", () => {
-  it("returns every root backlog of a published tree, ordered by rank", () => {
+  it("returns every root list of a published tree, ordered by rank", () => {
     const tree = buildBacklogTree(payload({ backlogs: [bl("b2", null, 2), bl("b1", null, 1), bl("c", "b1")] }));
     expect(tree.map((n) => n.backlog.id)).toEqual(["b1", "b2"]);
     expect(tree[0].children.map((n) => n.backlog.id)).toEqual(["c"]);
   });
 
-  it("puts only the published backlog at the top of a backlog link", () => {
+  it("puts only the published list at the top of a list link", () => {
     const tree = buildBacklogTree(
       payload({ kind: "backlog", rootBacklogId: "b", backlogs: [bl("b", "hidden-parent"), bl("c", "b")] }),
     );
@@ -150,7 +150,7 @@ describe("buildBacklogTree", () => {
 });
 
 describe("statusFor", () => {
-  it("uses the backlog's own status set", () => {
+  it("uses the list's own status set", () => {
     const statuses = { a: [{ key: "review", label: "In review", color: "#abcdef", rank: 1 }] };
     expect(statusFor(item("i", "a", null, null, { status: "review" }), statuses)).toEqual({
       label: "In review",
@@ -178,7 +178,7 @@ describe("totalPoints", () => {
 });
 
 describe("scopeMinutes", () => {
-  it("adds time on the backlogs themselves to their items' own time", () => {
+  it("adds time on the lists themselves to their items' own time", () => {
     const p = payload({
       backlogs: [bl("a", null, 0, { minutes: 10 }), bl("b", "a", 0, { minutes: 5 }), bl("x", null, 0, { minutes: 99 })],
       items: [
@@ -192,7 +192,7 @@ describe("scopeMinutes", () => {
 });
 
 describe("treeMinutes", () => {
-  it("adds time on the tree itself to its backlogs' and items' own time", () => {
+  it("adds time on the tree itself to its lists' and items' own time", () => {
     const p = payload({
       treeMinutes: 45,
       backlogs: [bl("a", null, 0, { minutes: 15 }), bl("b", "a", 0, { minutes: 5 })],

@@ -36,12 +36,12 @@ beforeEach(() => {
   seed();
 });
 
-describe("a backlog's star switch", () => {
-  it("starts off, so a backlog shows no stars until someone says so", () => {
+describe("a list's star switch", () => {
+  it("starts off, so a list shows no stars until someone says so", () => {
     expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBeFalsy();
   });
 
-  it("is switched on for that backlog alone, and saved", () => {
+  it("is switched on for that list alone, and saved", () => {
     useAppStore.getState().setBacklogRatingsEnabled(BL, true);
     expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(true);
     expect(updateBacklogRatingsEnabled).toHaveBeenCalledWith(BL, true);
@@ -59,7 +59,7 @@ describe("a backlog's star switch", () => {
     expect(updateBacklogRatingsEnabled).not.toHaveBeenCalled();
   });
 
-  it("does nothing for a backlog that is not there", () => {
+  it("does nothing for a list that is not there", () => {
     useAppStore.getState().setBacklogRatingsEnabled(`${ORG}::bl-gone`, true);
     expect(updateBacklogRatingsEnabled).not.toHaveBeenCalled();
   });

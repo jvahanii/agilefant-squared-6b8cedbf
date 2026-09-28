@@ -345,7 +345,7 @@ describe("integration: list ↔ board round-trip", () => {
 
 // ─── SCENARIO 2: Multi-backlog hierarchy consistency ────────────────────
 
-describe("integration: multi-backlog consistency", () => {
+describe("integration: multi-list consistency", () => {
   beforeEach(() => {
     useAppStore.setState({
       organizationId: ORG,
@@ -395,7 +395,7 @@ describe("integration: multi-backlog consistency", () => {
     });
   });
 
-  it("moving an item between sibling backlogs preserves ranks", () => {
+  it("moving an item between sibling lists preserves ranks", () => {
     const store = useAppStore.getState();
     store.moveWorkItemToBacklog(
       `${ORG}::wi-3`,
@@ -424,7 +424,7 @@ describe("integration: multi-backlog consistency", () => {
     ).toHaveLength(1);
   });
 
-  it("reparent within the same backlog tree does not lose backlog assignments", () => {
+  it("reparent within the same tree does not lose list assignments", () => {
     const store = useAppStore.getState();
     // Make wi-2 a child of wi-1
     store.reparentWorkItem(
@@ -443,7 +443,7 @@ describe("integration: multi-backlog consistency", () => {
     expect(parent.childrenIds).toContain(`${ORG}::wi-2`);
   });
 
-  it("reparent + reorder across backlogs keeps all invariants", () => {
+  it("reparent + reorder across lists keeps all invariants", () => {
     const store = useAppStore.getState();
 
     // 1. Reparent: wi-2 (in bl-child) under wi-1 (in bl-root)

@@ -45,7 +45,7 @@ export function BacklogPointsDialog({ backlogId, treeId, open, onOpenChange }: B
         {backlog && <p className="text-sm text-muted-foreground break-words">{backlog.name}</p>}
         <div className="space-y-1">
           <Label htmlFor="backlog-points" className="text-xs">
-            Estimate for the whole backlog
+            Estimate for the whole list
           </Label>
           <Input
             id="backlog-points"
@@ -65,7 +65,7 @@ export function BacklogPointsDialog({ backlogId, treeId, open, onOpenChange }: B
           <p id="backlog-points-help" className={`text-xs ${invalid ? "text-destructive" : "text-muted-foreground"}`}>
             {invalid
               ? "A whole number of zero or more."
-              : `Its contents add up to ${contents} pt${contents === 1 ? "" : "s"}. The backlog counts as the larger of the two.`}
+              : `Its contents add up to ${contents} pt${contents === 1 ? "" : "s"}. The list counts as the larger of the two.`}
           </p>
         </div>
         <DialogFooter className="gap-2 sm:justify-between">

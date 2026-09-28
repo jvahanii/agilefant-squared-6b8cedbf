@@ -940,8 +940,8 @@ function AppLayoutInner() {
           "Ghost Parent",
           "Orphaned Children",
           "Circular Reference",
-          "Backlog Displacement",
-          "Tree-Backlog Desync",
+          "List Displacement",
+          "Tree-List Desync",
           "Duplicate Rank",
           "Cross-Org Pollution",
           "Malformed ID",
@@ -1671,7 +1671,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["↑", "↓"], description: "Change selection up/down" },
     { keys: ["U"], description: "Move item up" },
     { keys: ["O"], description: "Move item down" },
-    { keys: ["→"], description: "Expand selected item or backlog branch" },
+    { keys: ["→"], description: "Expand selected item or list branch" },
     { keys: ["T"], description: "Move selection to Top" },
     { keys: ["Shift", "B"], description: "Move selection to Bottom" },
     { keys: ["Ctrl/Cmd", "A"], description: "Select all visible work items" },
@@ -1687,7 +1687,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
     { keys: ["L"], description: "Log spent time" },
     { keys: ["Shift", "L"], description: "Logged time: who spent it on what" },
-    { keys: ["M"], description: "Move to backlog…" },
+    { keys: ["M"], description: "Move to list…" },
     { keys: ["R"], description: "Reparent (change parent)…" },
   ];
 

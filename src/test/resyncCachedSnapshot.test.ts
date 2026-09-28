@@ -63,7 +63,7 @@ function structureFor({ tree, backlog }: Ids) {
     },
     backlogs: {
       [backlog]: {
-        id: backlog, name: "Backlog", parentId: null, childrenIds: [], treeId: tree,
+        id: backlog, name: "List", parentId: null, childrenIds: [], treeId: tree,
         rank: 0, boardHiddenStatusKeys: [], viewMode: "list" as const,
       },
     },

@@ -45,7 +45,7 @@ export function DeleteGuardHost() {
       options={[
         {
           label: 'Move time entries…',
-          description: 'Reassign the logged time to another item, backlog, or tree first.',
+          description: 'Reassign the logged time to another item, list, or tree first.',
           value: 'move',
           isDefault: true,
         },

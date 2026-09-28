@@ -599,8 +599,8 @@ export default function TeamSettings() {
       "Ghost Parent",
       "Orphaned Children",
       "Circular Reference",
-      "Backlog Displacement",
-      "Tree-Backlog Desync",
+      "List Displacement",
+      "Tree-List Desync",
       "Duplicate Rank",
       "Cross-Org Pollution",
       "Malformed ID",
@@ -795,7 +795,7 @@ export default function TeamSettings() {
               <div>
                 <p className="text-sm font-medium">Enable board view</p>
                 <p className="text-xs text-muted-foreground">
-                  Adds a List/Board toggle to each backlog. The board shows leaf items grouped by the tree's statuses; drag between columns to change status.
+                  Adds a List/Board toggle to each list. The board shows leaf items grouped by the tree's statuses; drag between columns to change status.
                 </p>
               </div>
               <Switch
@@ -826,7 +826,7 @@ export default function TeamSettings() {
               <div>
                 <p className="text-sm font-medium">Allow sharing by public link</p>
                 <p className="text-xs text-muted-foreground">
-                  Lets members publish a backlog or a whole tree at an address anyone can open without signing in.
+                  Lets members publish a list or a whole tree at an address anyone can open without signing in.
                   Turning this off stops every existing link working straight away; it deletes nothing, so turning
                   it back on restores them at the same addresses.
                   {!canManage && !isSuperuser && " Only an owner or admin can change this."}
@@ -874,7 +874,7 @@ export default function TeamSettings() {
                 <div>
                   <p className="text-sm font-medium">Auto-check on changes</p>
                   <p className="text-xs text-muted-foreground">
-                    Automatically run data integrity checks whenever item or backlog relationships change.
+                    Automatically run data integrity checks whenever item or list relationships change.
                   </p>
                 </div>
                 <Switch
@@ -892,7 +892,7 @@ export default function TeamSettings() {
                 <div>
                   <p className="text-sm font-medium">Auto-run tests on changes</p>
                   <p className="text-xs text-muted-foreground">
-                    Automatically run all integrity tests whenever item or backlog relationships change and copy results
+                    Automatically run all integrity tests whenever item or list relationships change and copy results
                     to clipboard.
                   </p>
                 </div>
@@ -1028,7 +1028,7 @@ export default function TeamSettings() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{activeOrg?.organization_name ?? orgName}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. All backlog trees, backlogs, work items, hyperlinks, and
+                        This action cannot be undone. All trees, lists, work items, hyperlinks, and
                         memberships will be permanently deleted. Members who do not belong to any other organization
                         will also have their accounts deleted.
                         <br />

@@ -135,7 +135,7 @@ export function PublicLinkControls({
     }
   };
 
-  const what = backlogId ? "this backlog and everything under it" : "this whole tree";
+  const what = backlogId ? "this list and everything under it" : "this whole tree";
 
   if (!loaded) return <p className="text-xs text-muted-foreground">Loading…</p>;
 

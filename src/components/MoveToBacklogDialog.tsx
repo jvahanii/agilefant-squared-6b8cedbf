@@ -145,14 +145,14 @@ export function MoveToBacklogDialog({
         <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-4 pt-4 pb-2">
             <DialogTitle className="text-sm font-semibold">
-              Move &ldquo;{movingTitle}&rdquo; to backlog
+              Move &ldquo;{movingTitle}&rdquo; to list
             </DialogTitle>
           </DialogHeader>
 
           <div className="px-4 pb-2">
             <Input
               ref={inputRef}
-              placeholder="Search backlogs…"
+              placeholder="Search lists…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="h-8 text-sm"
@@ -165,7 +165,7 @@ export function MoveToBacklogDialog({
           <div className="overflow-y-auto max-h-72 border-t border-border/50">
             {candidates.length === 0 ? (
               <div className="flex items-center justify-center h-16 text-sm text-muted-foreground">
-                No other backlogs available
+                No other lists available
               </div>
             ) : (
               <div className="flex flex-col">

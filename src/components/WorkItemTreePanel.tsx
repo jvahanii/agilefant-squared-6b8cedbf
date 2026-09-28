@@ -1709,7 +1709,7 @@ function WorkItemNodeContent({
           {allBacklogIds.length > 1 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">
-                Move to backlog
+                Move to list
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {allBacklogIds
@@ -1980,21 +1980,21 @@ function WorkItemNodeContent({
       )}
       {showDeletePrompt && (
         <ActionPrompt
-          title={deleteItemIds.length > 1 ? `Delete ${deleteItemIds.length} selected items?` : `"${item.title}" is in ${assignmentCount} backlogs`}
+          title={deleteItemIds.length > 1 ? `Delete ${deleteItemIds.length} selected items?` : `"${item.title}" is in ${assignmentCount} lists`}
           options={[
             {
-              label: "Remove from this backlog",
+              label: "Remove from this list",
               description: deleteItemIds.length > 1
-                ? `Remove all selected items from this backlog only. Keeps them in other backlogs.`
-                : `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other backlogs.`,
+                ? `Remove all selected items from this list only. Keeps them in other lists.`
+                : `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name}" only. Keeps it in other lists.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
               description: deleteItemIds.length > 1
-                ? "Permanently delete all selected items from all backlogs."
-                : "Permanently delete this item from all backlogs.",
+                ? "Permanently delete all selected items from all lists."
+                : "Permanently delete this item from all lists.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -2433,7 +2433,7 @@ function SearchResultItem({
                   {isSnoozed && (
                     <BellOff
                       className="w-3 h-3 text-amber-500/80 shrink-0 inline-block"
-                      aria-label="Snoozed — hidden in backlog view; click to reveal"
+                      aria-label="Snoozed — hidden in list view; click to reveal"
                     />
                   )}
                   {titleNode}
@@ -2484,7 +2484,7 @@ function SearchResultItem({
             </ContextMenuItem>
             {treeBacklogIds.length > 1 && (
               <ContextMenuSub>
-                <ContextMenuSubTrigger className="text-xs">Move to backlog</ContextMenuSubTrigger>
+                <ContextMenuSubTrigger className="text-xs">Move to list</ContextMenuSubTrigger>
                 <ContextMenuSubContent>
                   {treeBacklogIds
                     .filter((blId) => blId !== backlogId)
@@ -2679,17 +2679,17 @@ function SearchResultItem({
       )}
       {showDeletePrompt && (
         <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} backlogs`}
+          title={`"${item.title}" is in ${assignmentCount} lists`}
           options={[
             {
-              label: "Remove from this backlog",
-              description: `Remove from "${backlogs[backlogId]?.name ?? backlogId}" only. Keeps it in other backlogs.`,
+              label: "Remove from this list",
+              description: `Remove from "${backlogs[backlogId]?.name ?? backlogId}" only. Keeps it in other lists.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
+              description: "Permanently delete this item from all lists.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -3767,7 +3767,7 @@ export function WorkItemTreePanel() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-              <p className="text-sm">Select a backlog to view work items</p>
+              <p className="text-sm">Select a list to view work items</p>
             </div>
           </div>
         ) : (
@@ -3849,7 +3849,7 @@ export function WorkItemTreePanel() {
                   void runClosedCheck();
                 }}
                 disabled={closedChecking}
-                title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this backlog and mark the ads that have closed. Nothing is saved.`}
+                title={`Check the ${linkedItemsInBacklog.length} linked item${linkedItemsInBacklog.length !== 1 ? "s" : ""} in this list and mark the ads that have closed. Nothing is saved.`}
               >
                 <Ban className={`w-4 h-4 ${closedChecking ? "animate-pulse" : ""}`} />
                 {/* A count is worth the width on any screen; the invitation to
@@ -3877,8 +3877,8 @@ export function WorkItemTreePanel() {
                   e.stopPropagation();
                   forgetClosedPostings(linkedItemsInBacklog.map((item) => item.id));
                 }}
-                title="Clear the closed-ad marks in this backlog"
-                aria-label="Clear the closed-ad marks in this backlog"
+                title="Clear the closed-ad marks in this list"
+                aria-label="Clear the closed-ad marks in this list"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -3966,7 +3966,7 @@ export function WorkItemTreePanel() {
                   e.stopPropagation();
                   setShowBacklogTimeLogDialog(true);
                 }}
-                title="Log time for this backlog"
+                title="Log time for this list"
               >
                 {backlogTotalMinutes > 0 ? (
                   <span className="text-xs font-medium tabular-nums">{formatDuration(backlogTotalMinutes)}</span>
@@ -4085,7 +4085,7 @@ export function WorkItemTreePanel() {
                           <div className="min-w-0 flex-1">
                             <span className="text-sm leading-snug break-words">
                               {titleNode}
-                              <span className="text-[10px] text-muted-foreground ml-1">(backlog)</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">(list)</span>
                             </span>
                             <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                               {isScrambled ? "···" : [treeName, ...backlogPath].join(" › ")}
@@ -4231,7 +4231,7 @@ export function WorkItemTreePanel() {
               />
             ) : rootWorkItems.length === 0 && !isAdding ? (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground" role="status" aria-live="polite">
-                {workItemsLoading || workItemsRefreshing ? "Loading work items…" : "No work items in this backlog"}
+                {workItemsLoading || workItemsRefreshing ? "Loading work items…" : "No work items in this list"}
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex flex-col">
@@ -4345,7 +4345,7 @@ export function WorkItemTreePanel() {
         )}
         {showBacklogDeleteConfirm && selectedBacklogId && (
           <ActionPrompt
-            title="Delete backlog?"
+            title="Delete list?"
             options={[
               {
                 label: "Delete",
@@ -4358,7 +4358,7 @@ export function WorkItemTreePanel() {
             onSelect={() => {
               setShowBacklogDeleteConfirm(false);
               const id = selectedBacklogId;
-              guardedDelete({ kind: 'backlog', id }, backlogs[id]?.name ?? 'this backlog', () => deleteBacklog(id));
+              guardedDelete({ kind: 'backlog', id }, backlogs[id]?.name ?? 'this list', () => deleteBacklog(id));
             }}
             onCancel={() => setShowBacklogDeleteConfirm(false)}
           />

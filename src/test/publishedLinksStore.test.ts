@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("publishedLinksStore", () => {
-  it("files tree links and backlog links separately", async () => {
+  it("files tree links and list links separately", async () => {
     select.mockResolvedValue({
       data: [
         { tree_id: "t1", backlog_id: null },

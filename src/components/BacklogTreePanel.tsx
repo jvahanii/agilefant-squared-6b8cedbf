@@ -239,7 +239,7 @@ function BacklogTreeRootDropZone({ treeId }: { treeId: string }) {
             : "border-border/60 text-muted-foreground/50"}
       `}
     >
-      {isActive ? "Release to add backlog" : isDraggingBacklog ? "Drop backlog here" : "No backlogs yet"}
+      {isActive ? "Release to add list" : isDraggingBacklog ? "Drop list here" : "No lists yet"}
     </div>
   );
 }
@@ -499,7 +499,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           <button
             type="button"
             className="shrink-0 text-primary/80 hover:text-primary transition-colors"
-            title="Published: anyone with the link can view this backlog"
+            title="Published: anyone with the link can view this list"
             aria-label="Published with a public link"
             onClick={(e) => {
               e.stopPropagation();
@@ -567,7 +567,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
               e.stopPropagation();
               setIsAdding(true);
             }}
-            title="Add child backlog (Shift+Enter)"
+            title="Add child list (Shift+Enter)"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -608,7 +608,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
               e.stopPropagation();
               setConfirmDeleteOpen(true);
             }}
-            title="Delete backlog (Del)"
+            title="Delete list (Del)"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -748,9 +748,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
 
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete backlog?</AlertDialogTitle>
+            <AlertDialogTitle>Delete list?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the backlog "{backlog.name}" and all its nested backlogs and work items. This action cannot be undone.
+              This will permanently delete the list "{backlog.name}" and all its nested lists and work items. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -916,7 +916,7 @@ function DraggableTreeHeader({
   const publishedTitle = [
     isPublished ? "This tree is published" : null,
     publishedInside > 0
-      ? `${publishedInside} backlog${publishedInside === 1 ? " in it is" : "s in it are"} published`
+      ? `${publishedInside} list${publishedInside === 1 ? " in it is" : "s in it are"} published`
       : null,
   ]
     .filter(Boolean)
@@ -1078,7 +1078,7 @@ function DraggableTreeHeader({
               e.stopPropagation();
               onAddBacklog();
             }}
-            title="Add root backlog"
+            title="Add root list"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -1088,7 +1088,7 @@ function DraggableTreeHeader({
               e.stopPropagation();
               onDeleteTree();
             }}
-            title="Delete backlog tree"
+            title="Delete tree"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -1201,13 +1201,13 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
   return (
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-0.5 pb-0 md:p-1 md:pb-0.5 flex items-center justify-between">
-        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">BACKLOGS</h2>
+        <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-extrabold">LISTS</h2>
         <div className="flex items-center gap-0.5">
           {onToggleMobileCollapse && (
             <button
               className="md:hidden w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={onToggleMobileCollapse}
-              title={mobileCollapsed ? "Expand backlogs" : "Collapse backlogs"}
+              title={mobileCollapsed ? "Expand lists" : "Collapse lists"}
             >
               {mobileCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </button>
@@ -1215,7 +1215,7 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
           <button
             className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={() => setIsAddingTree(true)}
-            title="Add backlog tree"
+            title="Add tree"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
@@ -1310,9 +1310,9 @@ export function BacklogTreePanel({ mobileCollapsed, onToggleMobileCollapse }: Ba
       <AlertDialog open={!!pendingDeleteTree} onOpenChange={(open) => { if (!open) setPendingDeleteTree(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete backlog tree?</AlertDialogTitle>
+            <AlertDialogTitle>Delete tree?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the backlog tree "{pendingDeleteTree?.name}" and all its backlogs and work items. This action cannot be undone.
+              This will permanently delete the tree "{pendingDeleteTree?.name}" and all its lists and work items. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

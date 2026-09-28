@@ -65,10 +65,10 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     // 4. Backlog Displacement — assignment points to missing tree or backlog
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       if (!backlogTrees[treeId]) {
-        issues.push({ category: "Backlog Displacement", type: "work_item", id: wi.id, name: wi.title, detail: `assigned to missing tree "${treeId}"` });
+        issues.push({ category: "List Displacement", type: "work_item", id: wi.id, name: wi.title, detail: `assigned to missing tree "${treeId}"` });
       }
       if (!backlogs[blId]) {
-        issues.push({ category: "Backlog Displacement", type: "work_item", id: wi.id, name: wi.title, detail: `assigned to missing backlog "${blId}"` });
+        issues.push({ category: "List Displacement", type: "work_item", id: wi.id, name: wi.title, detail: `assigned to missing list "${blId}"` });
       }
     });
 
@@ -76,13 +76,13 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     Object.entries(wi.backlogAssignments).forEach(([treeId, blId]) => {
       const bl = backlogs[blId];
       if (bl && backlogTrees[treeId] && bl.treeId !== treeId) {
-        issues.push({ category: "Zombie Assignment", type: "work_item", id: wi.id, name: wi.title, detail: `assigned via tree "${treeId}" to backlog "${bl.name}" which belongs to tree "${bl.treeId}"` });
+        issues.push({ category: "Zombie Assignment", type: "work_item", id: wi.id, name: wi.title, detail: `assigned via tree "${treeId}" to list "${bl.name}" which belongs to tree "${bl.treeId}"` });
       }
     });
 
     // No assignments at all
     if (Object.keys(wi.backlogAssignments).length === 0) {
-      issues.push({ category: "Backlog Displacement", type: "work_item", id: wi.id, name: wi.title, detail: "has no backlog assignments (fully orphaned)" });
+      issues.push({ category: "List Displacement", type: "work_item", id: wi.id, name: wi.title, detail: "has no list assignments (fully orphaned)" });
     }
   });
 
@@ -95,7 +95,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
 
     // Missing tree
     if (!backlogTrees[bl.treeId]) {
-      issues.push({ category: "Backlog Displacement", type: "backlog", id: bl.id, name: bl.name, detail: `treeId "${bl.treeId}" does not exist` });
+      issues.push({ category: "List Displacement", type: "backlog", id: bl.id, name: bl.name, detail: `treeId "${bl.treeId}" does not exist` });
     }
 
     // Missing children
@@ -108,14 +108,14 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     // Orphaned from parent
     if (bl.parentId && backlogs[bl.parentId]) {
       if (!backlogs[bl.parentId].childrenIds.includes(bl.id)) {
-        issues.push({ category: "Orphaned Children", type: "backlog", id: bl.id, name: bl.name, detail: `parent "${backlogs[bl.parentId].name}" doesn't list this backlog in childrenIds` });
+        issues.push({ category: "Orphaned Children", type: "backlog", id: bl.id, name: bl.name, detail: `parent "${backlogs[bl.parentId].name}" doesn't list this list in childrenIds` });
       }
     }
 
     // 5. Tree-Backlog Desync — root backlog not in tree's rootBacklogIds
     if (!bl.parentId && backlogTrees[bl.treeId]) {
       if (!backlogTrees[bl.treeId].rootBacklogIds.includes(bl.id)) {
-        issues.push({ category: "Tree-Backlog Desync", type: "backlog", id: bl.id, name: bl.name, detail: `is a root backlog but not listed in tree "${backlogTrees[bl.treeId].name}" rootBacklogIds` });
+        issues.push({ category: "Tree-List Desync", type: "backlog", id: bl.id, name: bl.name, detail: `is a root list but not listed in tree "${backlogTrees[bl.treeId].name}" rootBacklogIds` });
       }
     }
 
@@ -136,7 +136,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
   Object.values(backlogTrees).forEach((tree) => {
     tree.rootBacklogIds.forEach((blId) => {
       if (!backlogs[blId]) {
-        issues.push({ category: "Tree-Backlog Desync", type: "backlog_tree", id: tree.id, name: tree.name, detail: `rootBacklogIds contains non-existent "${blId}"` });
+        issues.push({ category: "Tree-List Desync", type: "backlog_tree", id: tree.id, name: tree.name, detail: `rootBacklogIds contains non-existent "${blId}"` });
       }
     });
   });
@@ -191,7 +191,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
           type: "backlog",
           id: dupes.map((d) => d.id).join(", "),
           name: dupes.map((d) => d.name).join(", "),
-          detail: `${dupes.length} sibling backlogs share rank ${rank}`,
+          detail: `${dupes.length} sibling lists share rank ${rank}`,
         });
       }
     });
@@ -215,7 +215,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
         issues.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: `item org prefix "${wiOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
       }
       if (wiOrgPrefix && blOrgPrefix && wiOrgPrefix !== blOrgPrefix) {
-        issues.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: `item org prefix "${wiOrgPrefix}" mismatches backlog org prefix "${blOrgPrefix}"` });
+        issues.push({ category: "Cross-Org Pollution", type: "work_item", id: wi.id, name: wi.title, detail: `item org prefix "${wiOrgPrefix}" mismatches list org prefix "${blOrgPrefix}"` });
       }
     });
   });
@@ -238,7 +238,7 @@ export function checkDataIntegrity(data: StoreData): DataIssue[] {
     const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
     const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
     if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix && !backlogTrees[bl.treeId]) {
-      issues.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org prefix "${blOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
+      issues.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `list org prefix "${blOrgPrefix}" mismatches tree org prefix "${treeOrgPrefix}"` });
     }
   });
 
@@ -264,7 +264,7 @@ export function cleanseData(data: StoreData): CleanseResult {
   // --- Remove backlogs with missing trees ---
   Object.keys(backlogs).forEach((id) => {
     if (!backlogTrees[backlogs[id].treeId]) {
-      removed.push({ category: "Backlog Displacement", type: "backlog", id, name: backlogs[id].name, detail: `tree "${backlogs[id].treeId}" missing` });
+      removed.push({ category: "List Displacement", type: "backlog", id, name: backlogs[id].name, detail: `tree "${backlogs[id].treeId}" missing` });
       delete backlogs[id];
     }
   });
@@ -303,7 +303,7 @@ export function cleanseData(data: StoreData): CleanseResult {
   Object.values(backlogs).forEach((bl) => {
     if (!bl.parentId && backlogTrees[bl.treeId]) {
       if (!backlogTrees[bl.treeId].rootBacklogIds.includes(bl.id)) {
-        fixed.push({ category: "Tree-Backlog Desync", type: "backlog", id: bl.id, name: bl.name, detail: `added to tree's rootBacklogIds` });
+        fixed.push({ category: "Tree-List Desync", type: "backlog", id: bl.id, name: bl.name, detail: `added to tree's rootBacklogIds` });
         backlogTrees[bl.treeId] = { ...backlogTrees[bl.treeId], rootBacklogIds: [...backlogTrees[bl.treeId].rootBacklogIds, bl.id] };
       }
     }
@@ -314,7 +314,7 @@ export function cleanseData(data: StoreData): CleanseResult {
     const valid = tree.rootBacklogIds.filter((id) => backlogs[id]);
     if (valid.length !== tree.rootBacklogIds.length) {
       const stale = tree.rootBacklogIds.filter((id) => !backlogs[id]);
-      stale.forEach((id) => fixed.push({ category: "Tree-Backlog Desync", type: "backlog_tree", id: tree.id, name: tree.name, detail: `removed stale rootBacklogId "${id}"` }));
+      stale.forEach((id) => fixed.push({ category: "Tree-List Desync", type: "backlog_tree", id: tree.id, name: tree.name, detail: `removed stale rootBacklogId "${id}"` }));
       backlogTrees[tree.id] = { ...tree, rootBacklogIds: valid };
     }
   });
@@ -339,8 +339,8 @@ export function cleanseData(data: StoreData): CleanseResult {
         const reason = !backlogTrees[treeId]
           ? `tree "${treeId}" missing`
           : !bl
-            ? `backlog "${blId}" missing`
-            : `backlog belongs to tree "${bl.treeId}" not "${treeId}" (zombie)`;
+            ? `list "${blId}" missing`
+            : `list belongs to tree "${bl.treeId}" not "${treeId}" (zombie)`;
         fixed.push({ category: "Zombie Assignment", type: "work_item", id: wi.id, name: wi.title, detail: reason });
       }
     });
@@ -352,7 +352,7 @@ export function cleanseData(data: StoreData): CleanseResult {
   // --- Remove work items with no valid assignments left ---
   Object.keys(workItems).forEach((id) => {
     if (Object.keys(workItems[id].backlogAssignments).length === 0) {
-      removed.push({ category: "Backlog Displacement", type: "work_item", id, name: workItems[id].title, detail: "no valid backlog assignments remain" });
+      removed.push({ category: "List Displacement", type: "work_item", id, name: workItems[id].title, detail: "no valid list assignments remain" });
       delete workItems[id];
     }
   });
@@ -433,7 +433,7 @@ export function cleanseData(data: StoreData): CleanseResult {
         if (curRank <= prevRank) {
           const newRank = prevRank + 1;
           const itemId = pairs[i].id;
-          fixed.push({ category: "Duplicate Rank", type: "work_item", id: itemId, name: pairs[i].item.title, detail: `rank ${curRank} → ${newRank} in backlog ${backlogId}` });
+          fixed.push({ category: "Duplicate Rank", type: "work_item", id: itemId, name: pairs[i].item.title, detail: `rank ${curRank} → ${newRank} in list ${backlogId}` });
           workItems[itemId] = { ...workItems[itemId], ranks: { ...workItems[itemId].ranks, [backlogId]: newRank } };
           pairs[i] = { id: itemId, item: workItems[itemId] };
           changed = true;
@@ -532,7 +532,7 @@ export function cleanseData(data: StoreData): CleanseResult {
     const blOrgPrefix = bl.id.includes("::") ? bl.id.split("::")[0] : null;
     const treeOrgPrefix = bl.treeId.includes("::") ? bl.treeId.split("::")[0] : null;
     if (blOrgPrefix && treeOrgPrefix && blOrgPrefix !== treeOrgPrefix && !backlogTrees[bl.treeId]) {
-      removed.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `backlog org "${blOrgPrefix}" mismatches tree org "${treeOrgPrefix}"` });
+      removed.push({ category: "Cross-Org Pollution", type: "backlog", id: bl.id, name: bl.name, detail: `list org "${blOrgPrefix}" mismatches tree org "${treeOrgPrefix}"` });
       delete backlogs[id];
     }
   });

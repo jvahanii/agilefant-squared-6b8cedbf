@@ -38,7 +38,7 @@ describe("items", () => {
   });
 });
 
-describe("a backlog without an estimate", () => {
+describe("a list without an estimate", () => {
   it("adds up exactly as it always did", () => {
     expect(backlogItemsTotal("release", T, items, backlogs())).toBe(9); // story 7 + other 2
     expect(backlogPoints("release", T, items, backlogs())).toEqual({ own: undefined, itemsTotal: 9, contents: 9, effective: 9 });
@@ -46,7 +46,7 @@ describe("a backlog without an estimate", () => {
   });
 });
 
-describe("a backlog with an estimate", () => {
+describe("a list with an estimate", () => {
   it("counts the estimate while its contents are smaller", () => {
     expect(backlogPoints("release", T, items, backlogs(20)).effective).toBe(20);
   });
@@ -55,20 +55,20 @@ describe("a backlog with an estimate", () => {
     expect(backlogPoints("release", T, items, backlogs(5)).effective).toBe(9);
   });
 
-  it("passes up only what a sub-backlog's estimate adds beyond its own items", () => {
+  it("passes up only what a sub-list's estimate adds beyond its own items", () => {
     // The sprint is estimated at 10; its tasks add up to 7, so 3 more is
     // expected there. The release has no estimate: 9 from items, plus 3.
     const p = backlogPoints("release", T, items, backlogs(undefined, 10));
     expect(p).toEqual({ own: undefined, itemsTotal: 9, contents: 12, effective: 12 });
   });
 
-  it("never counts a task twice when its story is in the parent backlog", () => {
+  it("never counts a task twice when its story is in the parent list", () => {
     // Both estimated below their items: nothing is added, and the tasks — in
     // the sprint, under a story in the release — are counted once, in the story.
     expect(backlogPoints("release", T, items, backlogs(1, 1)).effective).toBe(9);
   });
 
-  it("adds a tree up from its root backlogs", () => {
+  it("adds a tree up from its root lists", () => {
     expect(treePoints(T, ["release"], items, backlogs(undefined, 10))).toBe(12);
     expect(treePoints(T, ["release"], items, backlogs())).toBe(9);
   });
@@ -90,7 +90,7 @@ describe("the burnup's lines", () => {
     expect(burnupTargets({ metric: "count", itemsTotal: 12, own: 100 })).toEqual({ target: 12, scopeLine: null, projectTo: 12 });
   });
 
-  it("aim at the estimate, with the contents as a scope line, when the backlog has one", () => {
+  it("aim at the estimate, with the contents as a scope line, when the list has one", () => {
     // 60 done of a 100 estimate: 40 still to come, not yet broken into items.
     expect(burnupTargets({ metric: "points", itemsTotal: 60, own: 100 })).toEqual({
       target: 100,
@@ -136,7 +136,7 @@ describe("an item with a different parent in this tree", () => {
     expect(childrenInTree(items, "fat", T)).toEqual([]);
   });
 
-  it("is counted once in the backlog's total", () => {
+  it("is counted once in the list's total", () => {
     expect(backlogItemsTotal("goals", T, shape(), goals)).toBe(6);
     expect(backlogPoints("goals", T, shape(), goals).effective).toBe(6);
   });

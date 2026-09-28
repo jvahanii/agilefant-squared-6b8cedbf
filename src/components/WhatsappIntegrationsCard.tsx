@@ -109,7 +109,7 @@ export function WhatsappIntegrationsCard() {
   const add = async () => {
     if (!activeOrgId) return;
     if (!draftTree || !draftBacklog) {
-      toast({ title: "Pick a tree and backlog", variant: "destructive" });
+      toast({ title: "Pick a tree and list", variant: "destructive" });
       return;
     }
     const { error } = await supabase.from("whatsapp_integrations").insert({
@@ -186,8 +186,8 @@ export function WhatsappIntegrationsCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Forward a WhatsApp chat into a backlog. Every message becomes an "In Progress" work item at the top of the
-          chosen backlog, and <strong>you choose how a message is split into items</strong> — by line breaks (the
+          Forward a WhatsApp chat into a list. Every message becomes an "In Progress" work item at the top of the
+          chosen list, and <strong>you choose how a message is split into items</strong> — by line breaks (the
           default), commas, spaces or characters of your own — so a list posted in one go arrives as separate tasks in
           the order written.
         </p>
@@ -242,13 +242,13 @@ export function WhatsappIntegrationsCard() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Backlog</Label>
+              <Label className="text-xs">List</Label>
               <Select
                 value={draftBacklog}
                 onValueChange={setDraftBacklog}
                 disabled={!draftTree}
               >
-                <SelectTrigger><SelectValue placeholder="Select backlog" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select list" /></SelectTrigger>
                 <SelectContent>
                   {draftTree && backlogsByTree(draftTree).map((b) => (
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>

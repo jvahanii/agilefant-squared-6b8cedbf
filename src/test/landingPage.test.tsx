@@ -22,7 +22,7 @@ function renderLanding() {
 describe("Landing", () => {
   it("says what Agilefant is in one heading", () => {
     renderLanding();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/every backlog you have/i);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/every list you have/i);
   });
 
   it("offers both a sign-up and a sign-in from the header", () => {

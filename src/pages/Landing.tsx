@@ -39,18 +39,18 @@ import {
 const FEATURES = [
   {
     icon: ListTree,
-    title: "Backlogs inside backlogs",
-    body: "Nest backlogs as deep as your work goes — product, release, sprint, or home, garden, shed. Items nest too.",
+    title: "Lists inside lists",
+    body: "Nest lists as deep as your work goes — product, release, sprint, or home, garden, shed. Items nest too.",
   },
   {
     icon: GitBranch,
     title: "One item, many trees",
-    body: "Mirror an item into another backlog tree and it is the same item in both, with its own place in each.",
+    body: "Mirror an item into another tree and it is the same item in both, with its own place in each.",
   },
   {
     icon: KanbanSquare,
     title: "Lists and boards",
-    body: "Rank items in a list, or drag cards across status columns. Each backlog remembers which view it prefers.",
+    body: "Rank items in a list, or drag cards across status columns. Each list remembers which view it prefers.",
   },
   {
     icon: Keyboard,
@@ -85,12 +85,12 @@ const FEATURES = [
   {
     icon: Star,
     title: "Star ratings",
-    body: "Rate items one to five stars and sort a backlog best first — for backlogs where taste matters more than order.",
+    body: "Rate items one to five stars and sort a list best first — for lists where taste matters more than order.",
   },
   {
     icon: Globe,
-    title: "Publish a backlog",
-    body: "Share a read-only web page of any backlog with people who have no account. Choose which fields show.",
+    title: "Publish a list",
+    body: "Share a read-only web page of any list with people who have no account. Choose which fields show.",
   },
   {
     icon: Radio,
@@ -108,7 +108,7 @@ const SCALES = [
   {
     icon: Users,
     who: "For a team",
-    body: "Sprints on a board, points that add up smartly, burnups, and everyone looking at the same live backlog.",
+    body: "Sprints on a board, points that add up smartly, burnups, and everyone looking at the same live list.",
   },
   {
     icon: Building2,
@@ -121,7 +121,7 @@ const INTEGRATIONS = [
   {
     icon: GitMerge,
     title: "GitHub",
-    body: "Every merged pull request becomes a Done item at the top of the backlog you choose.",
+    body: "Every merged pull request becomes a Done item at the top of the list you choose.",
   },
   {
     icon: MessageCircle,
@@ -272,11 +272,11 @@ export default function Landing() {
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-14 sm:pt-20 lg:grid-cols-2">
             <div>
               <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-                Every backlog you have, <span className="text-primary">in one app.</span>
+                Every list you have, <span className="text-primary">in one app.</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-                Agilefant² is a backlog tool that scales from one person's to-do list to an enterprise's whole portfolio.
-                Nest backlogs as deep as your work needs, keep item in multiple lists, share backlogs with
+                Agilefant² is a list tool that scales from one person's to-do list to an enterprise's whole portfolio.
+                Nest lists as deep as your work needs, keep item in multiple lists, share lists with
                 other organizations and the public, and do nearly all of it from the keyboard.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -313,7 +313,7 @@ export default function Landing() {
           <div className="max-w-2xl">
             <h2 className="text-3xl font-bold tracking-tight">Simple to start. Powerful when you need it.</h2>
             <p className="mt-3 text-muted-foreground">
-              A new account is composed of backlog trees, backlogs and work items. Everything else — points,
+              A new account is composed of trees, lists and work items. Everything else — points,
               statuses, labels, time, ratings and so on — is a switch you turn on when your work needs it.
             </p>
           </div>
@@ -333,7 +333,7 @@ export default function Landing() {
             <div className="max-w-2xl">
               <h2 className="text-3xl font-bold tracking-tight">Import work items from everywhere.</h2>
               <p className="mt-3 text-muted-foreground">
-                Connect the places work starts, and it shows up in the right backlog without anyone retyping it.
+                Connect the places work starts, and it shows up in the right list without anyone retyping it.
               </p>
             </div>
             <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -396,7 +396,7 @@ export default function Landing() {
 
         <section className="px-4 pb-20">
           <div className="mx-auto max-w-6xl rounded-2xl bg-primary px-6 py-12 text-center text-primary-foreground sm:px-12">
-            <h2 className="text-3xl font-bold tracking-tight">Plant your first backlog tree</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Plant your first tree</h2>
             <p className="mx-auto mt-3 max-w-xl text-primary-foreground/85">
               Sign up with Google or an email address and you are in your own organization in under a minute.
             </p>

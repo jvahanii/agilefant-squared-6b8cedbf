@@ -802,14 +802,14 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
           title={`Delete ${bulkDeleteRef.current.ids.length} item${bulkDeleteRef.current.ids.length !== 1 ? "s" : ""}?`}
           options={[
             {
-              label: "Remove from this backlog",
-              description: "Items in other backlogs will be kept.",
+              label: "Remove from this list",
+              description: "Items in other lists will be kept.",
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
-              description: "Permanently delete from all backlogs.",
+              description: "Permanently delete from all lists.",
               value: "delete-everywhere",
               variant: "destructive",
             },
@@ -1659,7 +1659,7 @@ function BoardCard({
           {allBacklogIds.length > 1 && (
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">
-                Move to backlog
+                Move to list
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
                 {allBacklogIds
@@ -1879,17 +1879,17 @@ function BoardCard({
 
       {showDeletePrompt && (
         <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} backlogs`}
+          title={`"${item.title}" is in ${assignmentCount} lists`}
           options={[
             {
-              label: "Remove from this backlog",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name ?? backlogId}" only. Keeps it in other backlogs.`,
+              label: "Remove from this list",
+              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name ?? backlogId}" only. Keeps it in other lists.`,
               value: "remove-from-backlog",
               isDefault: true,
             },
             {
               label: "Delete everywhere",
-              description: "Permanently delete this item from all backlogs.",
+              description: "Permanently delete this item from all lists.",
               value: "delete-everywhere",
               variant: "destructive",
             },

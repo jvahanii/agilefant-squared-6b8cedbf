@@ -102,7 +102,7 @@ export function BacklogStatusesDialog({ backlogId, backlogName, open, onOpenChan
         <DialogHeader>
           <DialogTitle>Statuses — {backlogName}</DialogTitle>
           <DialogDescription>
-            Statuses are the board columns for this backlog. Add, rename, reorder, or
+            Statuses are the board columns for this list. Add, rename, reorder, or
             remove them below. Statuses marked with a lock icon are required and cannot
             be edited or removed.
           </DialogDescription>
@@ -112,7 +112,7 @@ export function BacklogStatusesDialog({ backlogId, backlogName, open, onOpenChan
           <div className="rounded-md border border-dashed border-muted-foreground/30 bg-muted/30 px-3 py-2 text-xs">
             <span className="text-muted-foreground">
               Inherited from <span className="font-medium text-foreground">{inheritedFromName}</span>.
-              Any edit here will create a copy for this backlog.
+              Any edit here will create a copy for this list.
             </span>
           </div>
         )}
@@ -243,7 +243,7 @@ function StatusRow({
             onClick={onDelete}
             disabled={!canDelete}
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            title={canDelete ? "Delete" : "Backlog must keep at least one status"}
+            title={canDelete ? "Delete" : "List must keep at least one status"}
           >
             <Trash2 className="w-4 h-4" />
           </Button>

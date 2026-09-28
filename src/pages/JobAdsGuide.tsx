@@ -74,7 +74,7 @@ export default function JobAdsGuide() {
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Job ad import</h1>
         <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-          Job ad import turns the job alert emails in your Gmail into backlog items — one item per job posting —
+          Job ad import turns the job alert emails in your Gmail into list items — one item per job posting —
           so a job search can be tracked like any other work: prioritised, moved between lists, and cleared away
           when an ad closes.
         </p>
@@ -240,7 +240,7 @@ export default function JobAdsGuide() {
                   <Em>Only unread</Em> — to skip emails you have already opened.
                 </li>
                 <li>
-                  <Em>Backlog tree</Em> and <Em>Backlog</Em> — where the imported postings go.
+                  <Em>Tree</Em> and <Em>List</Em> — where the imported postings go.
                 </li>
               </Ul>
             </li>
@@ -314,7 +314,7 @@ export default function JobAdsGuide() {
             items={[
               [
                 "already in …",
-                "The posting is already an item somewhere in the same backlog tree — not only in the list you are importing into — and it names the list.",
+                "The posting is already an item somewhere in the same tree — not only in the list you are importing into — and it names the list.",
               ],
               [
                 "no longer accepting applications",
@@ -336,7 +336,7 @@ export default function JobAdsGuide() {
             items={[
               [
                 "Import selected",
-                "Creates the ticked postings in the backlog the saved search names.",
+                "Creates the ticked postings in the list the saved search names.",
               ],
               [
                 "Import & auto-place",
@@ -416,7 +416,7 @@ export default function JobAdsGuide() {
           <P>The saved search shows when it last ran and how many items that run created.</P>
           <Callout tone="warning">
             <strong>A scheduled run imports every posting it finds.</strong> There is no picker, and postings already
-            in your backlog are imported again. Give a scheduled search a short look-back that matches how often it
+            in your list are imported again. Give a scheduled search a short look-back that matches how often it
             runs — for a daily search, <Em>Last 24 hours</Em> with <Em>Only unread</Em> — so each run brings in only
             what is new.
           </Callout>
@@ -425,8 +425,8 @@ export default function JobAdsGuide() {
         <Section id="closed-ads" title="Checking for closed ads">
           <P>
             Job boards often leave a posting up after it has stopped taking applications, so an item can look live
-            long after its chance has passed. <Em>Check for closed ads</Em>, in the header of a backlog, checks every
-            item in that backlog and the backlogs beneath it that has a link.
+            long after its chance has passed. <Em>Check for closed ads</Em>, in the header of a list, checks every
+            item in that list and the lists beneath it that has a link.
           </P>
           <Callout>This check is currently available to superusers only.</Callout>
           <P>An item is marked as closed when:</P>
@@ -451,8 +451,8 @@ export default function JobAdsGuide() {
           </P>
           <P>
             The check changes nothing. Items are not renamed, moved or deleted — what to do about a closed ad is up to
-            you. The marks stay while you move between backlogs; the <Code>×</Code> beside the button clears the ones
-            in the backlog you are looking at, and reloading the page clears them all.
+            you. The marks stay while you move between lists; the <Code>×</Code> beside the button clears the ones
+            in the list you are looking at, and reloading the page clears them all.
           </P>
           <P>
             The check also runs by itself after a job import, on the ads that were already in the lists the import

@@ -50,7 +50,7 @@ function structureFor(tree: string, backlog: string) {
     },
     backlogs: {
       [backlog]: {
-        id: backlog, name: "Backlog", parentId: null, childrenIds: [], treeId: tree,
+        id: backlog, name: "List", parentId: null, childrenIds: [], treeId: tree,
         rank: 0, boardHiddenStatusKeys: [], viewMode: "list" as const,
       },
     },
@@ -89,7 +89,7 @@ beforeEach(() => {
 });
 
 describe("staged cold load", () => {
-  it("commits backlogs and trees before work items finish downloading", async () => {
+  it("commits lists and trees before work items finish downloading", async () => {
     const { org, tree, backlog } = freshOrg();
     let releaseWorkItems!: () => void;
     const workItemsGate = new Promise<void>((resolve) => { releaseWorkItems = resolve; });
@@ -149,7 +149,7 @@ describe("staged cold load", () => {
     expect(settled.backlogs[backlog].treeId).toBe(tree);
   });
 
-  it("restores the previously selected backlog during the early paint", async () => {
+  it("restores the previously selected list during the early paint", async () => {
     const { org, tree, backlog } = freshOrg();
     localStorage.setItem(`selection_${org}_backlogIds`, JSON.stringify([backlog]));
     localStorage.setItem(`selection_${org}_treeId`, tree);

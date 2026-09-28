@@ -2548,11 +2548,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       const oldBacklogName = oldBacklogId ? state.backlogs[oldBacklogId]?.name : '?';
       const newBacklogName = state.backlogs[cleanTargetBl]?.name ?? cleanTargetBl;
       internalLog({
-        action: "Move to Backlog",
+        action: "Move to List",
         entityType: "work_item",
         entityId: roots[0],
         entityName: roots.length === 1 ? (firstRoot?.title ?? roots[0]) : `${roots.length} items`,
-        details: `backlog: "${oldBacklogName}" → "${newBacklogName}"`,
+        details: `list: "${oldBacklogName}" → "${newBacklogName}"`,
       });
       // A move that takes the selected item off screen leaves the selection
       // where the eye already is: the row below it, or the one above when it
@@ -2693,7 +2693,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       }, [id]);
 
       const backlogName = state.backlogs[ensureCleanId(backlogId, orgId)]?.name ?? backlogId;
-      internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `backlog: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
+      internalLog({ action: "Add", entityType: "work_item", entityId: id, entityName: title, details: `list: "${backlogName}", parent: ${parentId ? `"${state.workItems[parentId]?.title ?? parentId}"` : "none"}` });
     },
 
     bulkAddWorkItems: (titles, parentId, backlogId, treeId) => {
@@ -4095,7 +4095,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (estimate === bl.points) return;
       updateBacklogPoints(backlogId, estimate ?? null);
       internalLog({
-        action: "Set Backlog Points",
+        action: "Set List Points",
         entityType: "backlog",
         entityId: backlogId,
         entityName: bl.name,

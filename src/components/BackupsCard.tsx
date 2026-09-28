@@ -246,7 +246,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
     }
     toast({
       title: "Restore complete",
-      description: `Mode: ${mode} · ${data?.work_items ?? 0} work items, ${data?.backlogs ?? 0} backlogs, ${data?.trees ?? 0} trees`,
+      description: `Mode: ${mode} · ${data?.work_items ?? 0} work items, ${data?.backlogs ?? 0} lists, ${data?.trees ?? 0} trees`,
     });
     // Refresh local state so restored items appear immediately without a hard refresh
     useAppStore.getState().loadFromSupabase();
@@ -267,14 +267,14 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
               <div className="flex items-center gap-2"><RadioGroupItem value="all" id="s-all" /><Label htmlFor="s-all">Everything in the snapshot</Label></div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="trees" id="s-trees" />
-                <Label htmlFor="s-trees">Selected backlog trees</Label>
+                <Label htmlFor="s-trees">Selected trees</Label>
                 {scope === "trees" && selectedTrees.size > 0 && (
                   <Badge variant="secondary" className={SCOPE_BADGE_CLS}>{selectedTrees.size}</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="backlogs" id="s-backlogs" />
-                <Label htmlFor="s-backlogs">Selected backlogs</Label>
+                <Label htmlFor="s-backlogs">Selected lists</Label>
                 {scope === "backlogs" && selectedBacklogs.size > 0 && (
                   <Badge variant="secondary" className={SCOPE_BADGE_CLS}>{selectedBacklogs.size}</Badge>
                 )}
@@ -286,7 +286,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
             <div className="space-y-1.5">
               <SelectionControls
                 total={trees.length}
-                label="backlog tree"
+                label="tree"
                 onSelectAll={() => setSelectedTrees(new Set(trees.map((t) => t.id)))}
                 onClear={() => setSelectedTrees(new Set())}
               />
@@ -307,7 +307,7 @@ function RestoreDialog({ backup, onClose }: { backup: BackupRow; onClose: (didRe
             <div className="space-y-1.5">
               <SelectionControls
                 total={backlogList.length}
-                label="backlog"
+                label="list"
                 onSelectAll={() => setSelectedBacklogs(new Set(backlogList.map((b) => b.id)))}
                 onClear={() => setSelectedBacklogs(new Set())}
               />

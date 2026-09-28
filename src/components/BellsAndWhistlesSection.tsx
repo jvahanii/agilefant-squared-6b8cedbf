@@ -90,7 +90,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Enable story points</p>
-              <p className="text-xs text-muted-foreground">Show story points on work items and backlogs.</p>
+              <p className="text-xs text-muted-foreground">Show story points on work items and lists.</p>
             </div>
             <Switch
               checked={orgSettings.pointsEnabled}
@@ -116,7 +116,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div>
               <p className="text-sm font-medium">Enable star ratings</p>
               <p className="text-xs text-muted-foreground">
-                Rate work items one to five stars on their row, and sort a backlog by rating. Each backlog then turns
+                Rate work items one to five stars on their row, and sort a list by rating. Each list then turns
                 its own stars on from its right-click menu in the tree, starting off. Turning this off hides the stars
                 everywhere; ratings already given are kept.
               </p>
@@ -147,7 +147,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
               <p className="text-sm font-medium">Enable deadlines</p>
               <p className="text-xs text-muted-foreground">
                 Give work items a due date from their right-click menu; it shows before the title, red once it has
-                gone by, and a backlog can be sorted by it. Job ads imported from email get theirs automatically.
+                gone by, and a list can be sorted by it. Job ads imported from email get theirs automatically.
                 Turning this off hides deadlines everywhere; dates already set are kept.
               </p>
             </div>
@@ -193,7 +193,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 <div>
                   <p className="text-sm font-medium">Who spent time on what</p>
                   <p className="text-xs text-muted-foreground">
-                    Totals by person, work item, backlog or date, for any period — shared backlogs included. Also
+                    Totals by person, work item, list or date, for any period — shared lists included. Also
                     from Logged time in the header, or press Shift+L.
                   </p>
                 </div>
@@ -219,7 +219,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
               <div>
                 <p className="text-sm font-medium">Enable per-tree statuses</p>
                 <p className="text-xs text-muted-foreground">
-                  Show a gear icon on each backlog tree so users can configure its statuses and colors.
+                  Show a gear icon on each tree so users can configure its statuses and colors.
                 </p>
               </div>
               <Switch
@@ -247,7 +247,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div>
               <p className="text-sm font-medium">Enable labels</p>
               <p className="text-xs text-muted-foreground">
-                Attach color-coded labels to work items and backlogs.
+                Attach color-coded labels to work items and lists.
               </p>
             </div>
             <Switch
@@ -281,7 +281,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
               <p className="text-sm font-medium">Enable savings &amp; income</p>
               <p className="text-xs text-muted-foreground">
                 Attach a monthly savings and monthly income amount to work items, then see cumulative flow diagrams
-                per backlog tree sliced by different perspectives.
+                per tree sliced by different perspectives.
               </p>
             </div>
             <Switch
@@ -308,7 +308,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div>
               <p className="text-sm font-medium">Burnups</p>
               <p className="text-xs text-muted-foreground">
-                Show cumulative flow diagrams for work item branches, backlogs and backlog trees,
+                Show cumulative flow diagrams for work item branches, lists and trees,
                 by item count or points.
               </p>
             </div>

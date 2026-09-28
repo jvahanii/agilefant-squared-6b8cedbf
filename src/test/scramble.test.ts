@@ -45,7 +45,7 @@ describe("scrambleName", () => {
   });
 
   it("replaces each word with a Moomin word", () => {
-    const result = scrambleName("Sprint Backlog");
+    const result = scrambleName("Sprint List");
     const parts = result.split(" ");
     expect(parts).toHaveLength(2);
     for (const part of parts) {

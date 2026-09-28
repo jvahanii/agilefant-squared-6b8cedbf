@@ -62,7 +62,7 @@ function seed() {
   useAppStore.setState({
     organizationId: ORG,
     backlogTrees: { [TREE]: { id: TREE, name: "Tree", rootBacklogIds: [BL], rank: 0 } },
-    backlogs: { [BL]: { id: BL, name: "Backlog", parentId: null, childrenIds: [], treeId: TREE, rank: 0 } },
+    backlogs: { [BL]: { id: BL, name: "List", parentId: null, childrenIds: [], treeId: TREE, rank: 0 } },
     workItems: items,
     selectedBacklogIds: [BL],
     selectedTreeId: TREE,
@@ -88,7 +88,7 @@ beforeEach(() => {
 });
 
 describe("list sort choice", () => {
-  it("is rank until one is chosen, and is kept per backlog", () => {
+  it("is rank until one is chosen, and is kept per list", () => {
     expect(listSortModeFor(BL)).toBe("rank");
     useListSortStore.getState().setMode(BL, "name-asc");
     useListSortStore.getState().setMode("other-backlog", "team");

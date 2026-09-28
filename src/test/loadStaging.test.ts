@@ -66,7 +66,7 @@ beforeEach(() => {
     error: null,
   }));
   tableResults.set("backlogs", async () => ({
-    data: [{ id: BACKLOG, name: "Backlog", parent_id: null, tree_id: TREE, rank: 0 }],
+    data: [{ id: BACKLOG, name: "List", parent_id: null, tree_id: TREE, rank: 0 }],
     error: null,
   }));
 });

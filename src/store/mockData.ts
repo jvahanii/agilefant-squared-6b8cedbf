@@ -27,7 +27,7 @@ export const mockData = {
     },
     "wi-e65f9217": {
       id: "wi-e65f9217",
-      title: "You can share backlog trees between organizations",
+      title: "You can share trees between organizations",
       status: "not_started",
       parentId: null,
       childrenIds: [],
@@ -110,7 +110,7 @@ export const mockData = {
     },
     "bl-0f6a9fc0": {
       id: "bl-0f6a9fc0",
-      name: "nested backlogs",
+      name: "nested lists",
       parentId: "bl-aa605b71",
       childrenIds: [],
       treeId: "bt-f6e09d2d",
@@ -118,7 +118,7 @@ export const mockData = {
     },
     "bl-3042770a": {
       id: "bl-3042770a",
-      name: "A work item can belong to many backlog trees",
+      name: "A work item can belong to many trees",
       parentId: null,
       childrenIds: [],
       treeId: "bt-b31ed72f",
@@ -128,13 +128,13 @@ export const mockData = {
   backlogTrees: {
     "bt-f6e09d2d": {
       id: "bt-f6e09d2d",
-      name: "This is a backlog tree",
+      name: "This is a tree",
       rank: 0,
       rootBacklogIds: ["bl-7bb1aafd", "bl-c107b839", "bl-aadba711"],
     },
     "bt-b31ed72f": {
       id: "bt-b31ed72f",
-      name: "There can be many backlog trees",
+      name: "There can be many trees",
       rank: 1,
       rootBacklogIds: ["bl-3042770a"],
     },

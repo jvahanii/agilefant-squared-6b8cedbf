@@ -29,7 +29,7 @@ function fixture() {
 }
 
 describe("backlogsToMove", () => {
-  it("carries the whole selection when the dragged backlog is in it, in tree order", () => {
+  it("carries the whole selection when the dragged list is in it, in tree order", () => {
     const { backlogs, trees } = fixture();
     expect(backlogsToMove("root2", ["root3", "child2", "root2"], backlogs, trees, null)).toEqual([
       "child2",
@@ -38,12 +38,12 @@ describe("backlogsToMove", () => {
     ]);
   });
 
-  it("carries only the dragged backlog when it is not selected", () => {
+  it("carries only the dragged list when it is not selected", () => {
     const { backlogs, trees } = fixture();
     expect(backlogsToMove("root3", ["root2", "child2"], backlogs, trees, null)).toEqual(["root3"]);
   });
 
-  it("leaves out a selected backlog whose ancestor is selected too — it moves inside that ancestor", () => {
+  it("leaves out a selected list whose ancestor is selected too — it moves inside that ancestor", () => {
     const { backlogs, trees } = fixture();
     expect(backlogsToMove("root1", ["root1", "grandchild", "root2"], backlogs, trees, null)).toEqual([
       "root1",
@@ -51,7 +51,7 @@ describe("backlogsToMove", () => {
     ]);
   });
 
-  it("never moves a backlog into itself or its own descendant", () => {
+  it("never moves a list into itself or its own descendant", () => {
     const { backlogs, trees } = fixture();
     // Dropping onto grandchild: root1 and child1 contain it, so they stay put.
     expect(backlogsToMove("root2", ["child1", "root2", "root3"], backlogs, trees, "grandchild")).toEqual([
@@ -61,7 +61,7 @@ describe("backlogsToMove", () => {
     expect(backlogsToMove("root2", ["root2", "root3"], backlogs, trees, "root2")).toEqual(["root3"]);
   });
 
-  it("never moves a lone dragged backlog into itself or its own descendant", () => {
+  it("never moves a lone dragged list into itself or its own descendant", () => {
     const { backlogs, trees } = fixture();
     // Nothing selected: a parent dragged onto its child, its grandchild, or itself.
     expect(backlogsToMove("root1", [], backlogs, trees, "child1")).toEqual([]);

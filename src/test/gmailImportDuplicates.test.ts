@@ -177,7 +177,7 @@ describe('job ad import: no memory between runs', () => {
 describe('generic link import still de-duplicates', () => {
   const dedupTarget = { organizationId: 'org', treeId: 'tree', backlogId: 'bl' };
 
-  it('claims each link and skips one already attached in the backlog', async () => {
+  it('claims each link and skips one already attached in the list', async () => {
     const links = [plain('m1', A, 'AI Engineer'), plain('m2', B, 'Specialist, Paid Social')];
     const { admin, upserted } = makeAdmin({ existingItemIds: ['wi-old'], existingUrls: [A] });
     const r = await importLinksAsWorkItems(admin, dedupTarget, links);
@@ -251,7 +251,7 @@ describe('urlsInBacklog', () => {
     'https://mandrillapp.com/track/click/30900652/www.jobly.fi?p=eyJzIjoiaW4xWUhaUUVwY093d1ZXNW1KMnJueEVQNERVIiwidiI6MiwicCI6IntcInVcIjozMDkwMDY1MixcInZcIjoyLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL3d3dy5qb2JseS5maVxcXC90eW9wYWlra2FcXFwvb3BzLXNwZWNpYWxpc3QtdHV1c3VsYS1oZWxzaW5raS0yNzM0NzM0XCJ9In0';
   const JOBLY_CANONICAL = 'https://www.jobly.fi/tyopaikka/ops-specialist-tuusula-helsinki-2734734';
 
-  it('is empty for a backlog with no items', async () => {
+  it('is empty for a list with no items', async () => {
     const { admin } = makeAdmin();
     expect((await urlsInBacklog(admin, 'bl')).size).toBe(0);
   });
@@ -271,7 +271,7 @@ describe('urlsInBacklog', () => {
     expect((await urlsInBacklog(admin, 'bl')).has(JOBLY_CANONICAL)).toBe(true);
   });
 
-  it('leaves a posting that is not in the backlog unmatched', async () => {
+  it('leaves a posting that is not in the list unmatched', async () => {
     const { admin } = makeAdmin({ existingItemIds: ['wi-1'], existingUrls: [JOBLY_CANONICAL] });
     const present = await urlsInBacklog(admin, 'bl');
     expect(present.has('https://duunitori.fi/tyopaikat/tyo/ai-engineer-scsom-20567347')).toBe(false);
@@ -321,7 +321,7 @@ describe('deleted items do not count as present', () => {
   });
 });
 
-describe('an item moved to another backlog is not in this one', () => {
+describe('an item moved to another list is not in this one', () => {
   const A3 = 'https://www.linkedin.com/jobs/view/4444116317';
 
   it('ignores a rank row left behind by a move', () => {

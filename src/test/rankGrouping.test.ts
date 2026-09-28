@@ -126,7 +126,7 @@ beforeEach(() => {
 });
 
 describe("grouped rank fetch", () => {
-  it("decodes interned backlog ids back onto the right work items", async () => {
+  it("decodes interned list ids back onto the right work items", async () => {
     const result = await loadFromSupabase(ORG);
 
     expect(result.workItems[WI_1].ranks).toEqual({ [BL_A]: 3, [BL_B]: 7 });

@@ -56,7 +56,7 @@ describe("the ratings setting", () => {
     expect(result.current).toBe(true);
   });
 
-  it("decides whether a backlog can be sorted by rating", () => {
+  it("decides whether a list can be sorted by rating", () => {
     expect(listSortModes(false).map((m) => m.mode)).not.toContain("rating-desc");
     expect(listSortModes(true).map((m) => m.mode)).toContain("rating-desc");
   });

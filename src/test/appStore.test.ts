@@ -74,7 +74,7 @@ function seedStore() {
       [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
     },
     backlogs: {
-      [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+      [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
     },
     workItems: {
       [`${ORG}::wi-1`]: {
@@ -376,7 +376,7 @@ describe("addWorkItem", () => {
     vi.mocked(loadDataFromSupabase).mockResolvedValueOnce({
       workItems: {},
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
       },
       backlogTrees: {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
@@ -390,7 +390,7 @@ describe("addWorkItem", () => {
     expect(localStorage.getItem("pending_work_item_upserts")).toBeNull();
   });
 
-  it("keeps pending items visible when their cached backlog has not reached Supabase yet", async () => {
+  it("keeps pending items visible when their cached list has not reached Supabase yet", async () => {
     const treeId = `${ORG}::bt-local`;
     const backlogId = `${ORG}::bl-local`;
     const pendingItem = {
@@ -412,7 +412,7 @@ describe("addWorkItem", () => {
       isLoading: false,
       workItems: {},
       backlogs: {
-        [backlogId]: { id: backlogId, name: "Unsynced Backlog", parentId: null, childrenIds: [], treeId, rank: 0 },
+        [backlogId]: { id: backlogId, name: "Unsynced List", parentId: null, childrenIds: [], treeId, rank: 0 },
       },
       backlogTrees: {
         [treeId]: { id: treeId, name: "Unsynced Tree", rootBacklogIds: [backlogId], rank: 0 },
@@ -425,14 +425,14 @@ describe("addWorkItem", () => {
 
     const loaded = useAppStore.getState();
     expect(loaded.backlogTrees[treeId]?.name).toBe("Unsynced Tree");
-    expect(loaded.backlogs[backlogId]?.name).toBe("Unsynced Backlog");
+    expect(loaded.backlogs[backlogId]?.name).toBe("Unsynced List");
     expect(loaded.workItems[pendingItem.id]?.title).toBe("Local Container Pending");
   });
 });
 
 // ─── E2E: create items → refresh → items still appear in correct tree ─────
 describe("end-to-end: create work items and refresh", () => {
-  it("keeps newly created items in the correct backlog tree after a refresh", async () => {
+  it("keeps newly created items in the correct tree after a refresh", async () => {
     seedStore();
 
     // Create three items under bl-1 / bt-1 via the real user-facing action.
@@ -545,7 +545,7 @@ describe("loadFromSupabase refresh guards", () => {
     const rawData = {
       workItems: {},
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
       },
       backlogTrees: {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
@@ -774,8 +774,8 @@ describe("setWorkItemStatus", () => {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-in-progress`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default List", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress List", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-grandparent`]: {
@@ -817,8 +817,8 @@ describe("setWorkItemStatus", () => {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-no-in-progress`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress Backlog", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Default List", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-no-in-progress`]: { id: `${ORG}::bl-no-in-progress`, name: "No Progress List", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-grandparent`]: {
@@ -970,12 +970,12 @@ describe("a rating survives the round trip", () => {
   });
 });
 
-describe("a backlog's star switch survives the round trip", () => {
+describe("a list's star switch survives the round trip", () => {
   const BL = `${ORG}::bl-1`;
   /** The row realtime delivers for backlog 1, as the database has it after a save. */
   const echo = (ratingsEnabled?: boolean) => ({
     id: BL,
-    name: "Backlog 1",
+    name: "List 1",
     parent_id: null,
     tree_id: `${ORG}::bt-1`,
     rank: 0,
@@ -1025,7 +1025,7 @@ describe("removeWorkItemFromTree", () => {
       },
       backlogs: {
         ...useAppStore.getState().backlogs,
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-1`]: {
@@ -1060,7 +1060,7 @@ describe("removeWorkItemFromTree", () => {
       },
       backlogs: {
         ...useAppStore.getState().backlogs,
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-1`]: {
@@ -1281,7 +1281,7 @@ describe("reparentWorkItem", () => {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
       },
       workItems: {
         [parentAId]: {
@@ -1326,8 +1326,8 @@ describe("reparentWorkItem", () => {
         [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
@@ -1367,23 +1367,23 @@ describe("reparentWorkItem", () => {
     expect(child.ranks[`${ORG}::bl-1`]).toBeUndefined();
   });
 
-  it("same tree, different backlog: migrates item to the target backlog", () => {
+  it("same tree, different list: migrates item to the target list", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
-          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          id: `${ORG}::wi-parent`, title: "Parent (List 2)", status: "not_started" as const,
           parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
         },
         [`${ORG}::wi-1`]: {
-          id: `${ORG}::wi-1`, title: "Item 1 (Backlog 1)", status: "not_started" as const,
+          id: `${ORG}::wi-1`, title: "Item 1 (List 1)", status: "not_started" as const,
           parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
         },
       },
@@ -1406,27 +1406,27 @@ describe("reparentWorkItem", () => {
     expect(moved.parentId).toBe(`${ORG}::wi-parent`);
   });
 
-  it("same tree, different backlog: migrates item and all descendants to the target backlog", () => {
+  it("same tree, different list: migrates item and all descendants to the target list", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
-          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          id: `${ORG}::wi-parent`, title: "Parent (List 2)", status: "not_started" as const,
           parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
         },
         [`${ORG}::wi-1`]: {
-          id: `${ORG}::wi-1`, title: "Item 1 (Backlog 1)", status: "not_started" as const,
+          id: `${ORG}::wi-1`, title: "Item 1 (List 1)", status: "not_started" as const,
           parentId: null, childrenIds: [`${ORG}::wi-child`], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
         },
         [`${ORG}::wi-child`]: {
-          id: `${ORG}::wi-child`, title: "Child (Backlog 1)", status: "not_started" as const,
+          id: `${ORG}::wi-child`, title: "Child (List 1)", status: "not_started" as const,
           parentId: `${ORG}::wi-1`, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-1` }, ranks: { [`${ORG}::bl-1`]: 0 },
         },
       },
@@ -1451,7 +1451,7 @@ describe("reparentWorkItem", () => {
     expect(child.ranks[`${ORG}::bl-2`]).toBeDefined();
   });
 
-  it("same tree, different backlog: preserves assignments in other trees when migrating", () => {
+  it("same tree, different list: preserves assignments in other trees when migrating", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
@@ -1459,13 +1459,13 @@ describe("reparentWorkItem", () => {
         [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-3`], rank: 1 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
-        [`${ORG}::bl-3`]: { id: `${ORG}::bl-3`, name: "Backlog 3", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-3`]: { id: `${ORG}::bl-3`, name: "List 3", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
-          id: `${ORG}::wi-parent`, title: "Parent (Backlog 2)", status: "not_started" as const,
+          id: `${ORG}::wi-parent`, title: "Parent (List 2)", status: "not_started" as const,
           parentId: null, childrenIds: [], backlogAssignments: { [`${ORG}::bt-1`]: `${ORG}::bl-2` }, ranks: { [`${ORG}::bl-2`]: 0 },
         },
         [`${ORG}::wi-1`]: {
@@ -1503,8 +1503,8 @@ describe("reparentWorkItem", () => {
         [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
@@ -1550,8 +1550,8 @@ describe("reparentWorkItem", () => {
         [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", treeId: `${ORG}::bt-1`, childrenIds: [], parentId: null, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", treeId: `${ORG}::bt-2`, childrenIds: [], parentId: null, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", treeId: `${ORG}::bt-1`, childrenIds: [], parentId: null, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", treeId: `${ORG}::bt-2`, childrenIds: [], parentId: null, rank: 0 },
       },
       workItems: {
         // Parent in tree 1
@@ -1619,8 +1619,8 @@ describe("moveWorkItemToBacklog", () => {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`, `${ORG}::bl-2`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 1 },
       },
       workItems: {
         [`${ORG}::wi-1`]: {
@@ -1638,14 +1638,14 @@ describe("moveWorkItemToBacklog", () => {
     });
   }
 
-  it("updates backlog assignment of the moved item", () => {
+  it("updates list assignment of the moved item", () => {
     seedTwoBacklogStore();
     useAppStore.getState().moveWorkItemToBacklog(`${ORG}::wi-1`, `${ORG}::bl-2`, `${ORG}::bt-1`);
     const moved = useAppStore.getState().workItems[`${ORG}::wi-1`];
     expect(moved.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
   });
 
-  it("assigns a non-duplicate rank when target backlog already has an item with the same rank", () => {
+  it("assigns a non-duplicate rank when target list already has an item with the same rank", () => {
     seedTwoBacklogStore();
     // wi-1 (rank 0) is in bl-1; wi-2 (rank 0) is in bl-2.
     // Moving wi-1 to bl-2 must not result in two rank-0 root items in bl-2.
@@ -1655,7 +1655,7 @@ describe("moveWorkItemToBacklog", () => {
     expect(movedItem.ranks[`${ORG}::bl-2`]).not.toBe(existingItem.ranks[`${ORG}::bl-2`]);
   });
 
-  it("places the moved item at the top of the target backlog", () => {
+  it("places the moved item at the top of the target list", () => {
     seedTwoBacklogStore();
     // wi-2 is already in bl-2 with rank 0. Moving wi-1 to bl-2 should give it
     // a rank lower than wi-2 (i.e. it sorts before wi-2).
@@ -1665,7 +1665,7 @@ describe("moveWorkItemToBacklog", () => {
     expect(movedItem.ranks[`${ORG}::bl-2`]).toBeLessThan(existingItem.ranks[`${ORG}::bl-2`]!);
   });
 
-  it("places the moved item at rank 0 when the target backlog is empty", () => {
+  it("places the moved item at rank 0 when the target list is empty", () => {
     seedTwoBacklogStore();
     // Remove wi-2 from bl-2 so it is empty, then move wi-1 there.
     useAppStore.setState({
@@ -1678,7 +1678,7 @@ describe("moveWorkItemToBacklog", () => {
     expect(movedItem.ranks[`${ORG}::bl-2`]).toBe(0);
   });
 
-  it("also moves child items' backlog assignment recursively", () => {
+  it("also moves child items' list assignment recursively", () => {
     seedTwoBacklogStore();
     // Give wi-1 a child
     useAppStore.setState({
@@ -1700,7 +1700,7 @@ describe("moveWorkItemToBacklog", () => {
     expect(child.backlogAssignments[`${ORG}::bt-1`]).toBe(`${ORG}::bl-2`);
   });
 
-  it("moves an item that also resides in a non-shared backlog (cross-org scenario)", () => {
+  it("moves an item that also resides in a non-shared list (cross-org scenario)", () => {
     // Simulates: item owned by partner-org appears in a shared tree (bt-1) and
     // also has an assignment in a non-shared tree (bt-nonshared). The active user
     // (ORG) should be able to move it between backlogs within bt-1 without the
@@ -1759,8 +1759,8 @@ describe("respawnItem", () => {
         [`${ORG}::bt-2`]: { id: `${ORG}::bt-2`, name: "Tree 2", rootBacklogIds: [`${ORG}::bl-2`], rank: 1 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
-        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-2`]: { id: `${ORG}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG}::bt-2`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-1`]: {
@@ -1787,7 +1787,7 @@ describe("respawnItem", () => {
     });
   }
 
-  it("respawned item inherits all backlog assignments from the original", () => {
+  it("respawned item inherits all list assignments from the original", () => {
     seedRespawnStore();
     useAppStore.getState().respawnItem(`${ORG}::wi-1`);
     const items = Object.values(useAppStore.getState().workItems);
@@ -1822,7 +1822,7 @@ describe("respawnItem", () => {
     expect(source.respawnLastTriggeredAt).toBeDefined();
   });
 
-  it("shifts siblings in all backlog tree contexts", () => {
+  it("shifts siblings in all tree contexts", () => {
     seedRespawnStore();
     // Add a sibling in tree 2 only (not in tree 1)
     useAppStore.setState({
@@ -1906,7 +1906,7 @@ describe("respawnItem", () => {
         [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
       },
       backlogs: {
-        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
+        [`${ORG}::bl-1`]: { id: `${ORG}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG}::bt-1`, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-parent`]: {
@@ -1960,7 +1960,7 @@ describe("respawnItem", () => {
 // ─── BACKLOG CRUD ──────────────────────────────────────────────────────
 
 describe("addBacklog", () => {
-  it("creates a root backlog", () => {
+  it("creates a root list", () => {
     seedStore();
     useAppStore.getState().addBacklog("New BL", null, `${ORG}::bt-1`);
     const bls = Object.values(useAppStore.getState().backlogs);
@@ -1969,7 +1969,7 @@ describe("addBacklog", () => {
     expect(tree.rootBacklogIds.length).toBe(2);
   });
 
-  it("creates a child backlog", () => {
+  it("creates a child list", () => {
     seedStore();
     useAppStore.getState().addBacklog("Child BL", `${ORG}::bl-1`, `${ORG}::bt-1`);
     const parent = useAppStore.getState().backlogs[`${ORG}::bl-1`];
@@ -1978,7 +1978,7 @@ describe("addBacklog", () => {
 });
 
 describe("deleteBacklog", () => {
-  it("removes backlog and orphaned work items", () => {
+  it("removes list and orphaned work items", () => {
     seedStore();
     useAppStore.getState().deleteBacklog(`${ORG}::bl-1`);
     expect(useAppStore.getState().backlogs[`${ORG}::bl-1`]).toBeUndefined();
@@ -2033,7 +2033,7 @@ describe("addBacklogTree", () => {
 });
 
 describe("deleteBacklogTree", () => {
-  it("removes tree, backlogs, and orphaned items", () => {
+  it("removes tree, lists, and orphaned items", () => {
     seedStore();
     useAppStore.getState().deleteBacklogTree(`${ORG}::bt-1`);
     expect(useAppStore.getState().backlogTrees[`${ORG}::bt-1`]).toBeUndefined();
@@ -2084,7 +2084,7 @@ describe("applyRealtimeWorkItem", () => {
     expect(item.ranks[`${ORG}::bl-1`]).toBe(-1);
   });
 
-  it("INSERT: item appears in rootWorkItems filter (backlog membership)", () => {
+  it("INSERT: item appears in rootWorkItems filter (list membership)", () => {
     seedStore();
     const store = useAppStore.getState();
 
@@ -2249,7 +2249,7 @@ describe("applyRealtimeWorkItemRank", () => {
         [TREE]: { id: TREE, name: "Tree 1", rootBacklogIds: [BL], rank: 0 },
       },
       backlogs: {
-        [BL]: { id: BL, name: "Backlog 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
+        [BL]: { id: BL, name: "List 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
       },
       workItems: {
         [`${ORG}::wi-a`]: { id: `${ORG}::wi-a`, title: "A", status: "not_started" as const, parentId: null, childrenIds: [], backlogAssignments: { [TREE]: BL }, ranks: { [BL]: 1 } },
@@ -2300,7 +2300,7 @@ describe("applyRealtimeWorkItemRank", () => {
         [TREE]: { id: TREE, name: "Tree 1", rootBacklogIds: [BL], rank: 0 },
       },
       backlogs: {
-        [BL]: { id: BL, name: "Backlog 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
+        [BL]: { id: BL, name: "List 1", parentId: null, childrenIds: [], treeId: TREE, rank: 0 },
       },
       workItems: {
         // local state reflects reorder-2: A=0, B=1, C=2
@@ -2365,7 +2365,7 @@ describe("sanitizeData", () => {
     expect(result.workItems[`${ORG}::${ORG}::wi-1`]).toBeUndefined();
   });
 
-  it("removes invalid backlog assignments", () => {
+  it("removes invalid list assignments", () => {
     const result = sanitizeData({
       workItems: {
         "wi-1": {
@@ -2671,25 +2671,25 @@ describe("reorderBacklogAmongSiblings", () => {
     return tree.rootBacklogIds.map((id) => useAppStore.getState().backlogs[id]?.name);
   }
 
-  it("moves first backlog to end", () => {
+  it("moves first list to end", () => {
     seedThreeBacklogs();
     useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-a`, 3, null, `${ORG}::bt-1`);
     expect(rootOrder()).toEqual(["B", "C", "A"]);
   });
 
-  it("moves last backlog to beginning", () => {
+  it("moves last list to beginning", () => {
     seedThreeBacklogs();
     useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-c`, 0, null, `${ORG}::bt-1`);
     expect(rootOrder()).toEqual(["C", "A", "B"]);
   });
 
-  it("moves middle backlog to beginning", () => {
+  it("moves middle list to beginning", () => {
     seedThreeBacklogs();
     useAppStore.getState().reorderBacklogAmongSiblings(`${ORG}::bl-b`, 0, null, `${ORG}::bt-1`);
     expect(rootOrder()).toEqual(["B", "A", "C"]);
   });
 
-  it("reorders child backlogs within their parent", () => {
+  it("reorders child lists within their parent", () => {
     useAppStore.setState({
       organizationId: ORG,
       backlogTrees: {
@@ -2777,7 +2777,7 @@ describe("moveBacklog", () => {
     expect(movedBl.rank).not.toBe(existingBl.rank);
   });
 
-  it("refuses to move a backlog into itself or its own descendant", () => {
+  it("refuses to move a list into itself or its own descendant", () => {
     const tree = `${ORG}::bt-1`;
     useAppStore.setState({
       organizationId: ORG,
@@ -2802,7 +2802,7 @@ describe("moveBacklog", () => {
     expect(s.undoStack).toHaveLength(0);
   });
 
-  it("cross-tree: moves a root backlog to another tree's root", () => {
+  it("cross-tree: moves a root list to another tree's root", () => {
     // bl-a is in tree-1. Moving it to tree-2 as root.
     useAppStore.setState({
       organizationId: ORG,
@@ -2838,7 +2838,7 @@ describe("moveBacklog", () => {
     expect(wi.backlogAssignments[`${ORG}::bt-2`]).toBe(`${ORG}::bl-a`);
   });
 
-  it("cross-tree: updates treeId of descendant backlogs and their work items", () => {
+  it("cross-tree: updates treeId of descendant lists and their work items", () => {
     // bl-parent (tree-1) has child bl-child. Work items in bl-child also need remapping.
     useAppStore.setState({
       organizationId: ORG,
@@ -2879,7 +2879,7 @@ describe("moveBacklog", () => {
     expect(s.workItems[`${ORG}::wi-c`].backlogAssignments[`${ORG}::bt-1`]).toBeUndefined();
   });
 
-  it("cross-tree: dropping a multi-selection moves every selected backlog, in order, as one undo step", () => {
+  it("cross-tree: dropping a multi-selection moves every selected list, in order, as one undo step", () => {
     // What handleDragEnd does for a drop on another tree's root: every backlog
     // the drag carries is moved, then placed at the drop index plus its offset.
     const bl = (id: string, rank: number) => ({
@@ -3087,7 +3087,7 @@ describe("bulkAddWorkItems", () => {
     expect(ranks.every((r) => r > 2)).toBe(true);
   });
 
-  it("does not produce duplicate ranks when child backlogs have items at higher ranks", () => {
+  it("does not produce duplicate ranks when child lists have items at higher ranks", () => {
     // bl-parent has an item at rank=1; bl-child (child of bl-parent) has an item at rank=3.
     // The combined panel shows both at the same level, sorted by rank.
     // Pasting into bl-parent must start ranks AFTER rank=3 (the child-backlog max),
@@ -3214,7 +3214,7 @@ describe("moveWorkItemToBacklog cross-context rank", () => {
     expect(b.ranks[`${ORG}::bl-2`]).toBe(0);
   });
 
-  it("deduplicates child ranks when siblings were in different backlogs before the move", () => {
+  it("deduplicates child ranks when siblings were in different lists before the move", () => {
     // Parent P: bt-1:bl-A, rank=5
     // Child C1: bt-1:bl-B (individually moved there), rank=0
     // Child C2: bt-1:bl-A, rank=0
@@ -3646,8 +3646,8 @@ describe("moveWorkItemsToBacklog (batched)", () => {
         [`${ORG_ID}::bt-1`]: { id: `${ORG_ID}::bt-1`, name: "Tree 1", rootBacklogIds: [`${ORG_ID}::bl-1`, `${ORG_ID}::bl-2`], rank: 0 },
       },
       backlogs: {
-        [`${ORG_ID}::bl-1`]: { id: `${ORG_ID}::bl-1`, name: "Backlog 1", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 0 },
-        [`${ORG_ID}::bl-2`]: { id: `${ORG_ID}::bl-2`, name: "Backlog 2", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 1 },
+        [`${ORG_ID}::bl-1`]: { id: `${ORG_ID}::bl-1`, name: "List 1", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 0 },
+        [`${ORG_ID}::bl-2`]: { id: `${ORG_ID}::bl-2`, name: "List 2", parentId: null, childrenIds: [], treeId: `${ORG_ID}::bt-1`, rank: 1 },
       },
       workItems: items,
       undoStack: [],
@@ -3816,11 +3816,11 @@ describe("rank retry queue with missing work items", () => {
   });
 });
 
-describe("a backlog's own points", () => {
+describe("a list's own points", () => {
   const BL = `${ORG}::bl-1`;
   const echo = (points?: number | null) => ({
     id: BL,
-    name: "Backlog 1",
+    name: "List 1",
     parent_id: null,
     tree_id: `${ORG}::bt-1`,
     rank: 0,

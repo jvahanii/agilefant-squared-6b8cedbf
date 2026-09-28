@@ -295,11 +295,11 @@ export default function PublicBacklog() {
       </header>
 
       {p.backlogs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">There are no backlogs here yet.</p>
+        <p className="text-sm text-muted-foreground">There are no lists here yet.</p>
       ) : (
         <div className="flex flex-col gap-6 md:flex-row">
           {showNav && (
-            <nav aria-label="Backlogs" className="md:w-64 md:shrink-0">
+            <nav aria-label="Lists" className="md:w-64 md:shrink-0">
               <ul className="space-y-0.5">
                 {backlogTree.map((node) => (
                   <BacklogNavItem
@@ -338,7 +338,7 @@ export default function PublicBacklog() {
               </div>
             )}
             {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing in this backlog yet.</p>
+              <p className="text-sm text-muted-foreground">Nothing in this list yet.</p>
             ) : (
               <ul className="space-y-px">
                 {items.map((node) => (

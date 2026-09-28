@@ -64,20 +64,20 @@ const handlers = () => ({
 const openMenu = (h = handlers()) => {
   render(
     <ContextMenu>
-      <ContextMenuTrigger>backlog</ContextMenuTrigger>
+      <ContextMenuTrigger>list</ContextMenuTrigger>
       <ContextMenuContent>
         <BacklogContextMenuItems backlogId={BL} treeId={TREE} {...h} />
       </ContextMenuContent>
     </ContextMenu>,
   );
-  fireEvent.contextMenu(screen.getByText("backlog"));
+  fireEvent.contextMenu(screen.getByText("list"));
   return h;
 };
 
-describe("a backlog's right-click menu", () => {
+describe("a list's right-click menu", () => {
   it("offers everything the organization has switched on", () => {
     openMenu();
-    for (const item of ["Insert icon", "Attributes", "Statuses…", "View burnup…", "Set points…", "Star ratings", "Public link…", "Delete backlog"]) {
+    for (const item of ["Insert icon", "Attributes", "Statuses…", "View burnup…", "Set points…", "Star ratings", "Public link…", "Delete list"]) {
       expect(screen.getByText(item)).toBeInTheDocument();
     }
   });
@@ -89,7 +89,7 @@ describe("a backlog's right-click menu", () => {
       expect(screen.queryByText(item)).not.toBeInTheDocument();
     }
     expect(screen.getByText("Attributes")).toBeInTheDocument();
-    expect(screen.getByText("Delete backlog")).toBeInTheDocument();
+    expect(screen.getByText("Delete list")).toBeInTheDocument();
   });
 
   it("hands each choice to the place that opened it", () => {
@@ -98,14 +98,14 @@ describe("a backlog's right-click menu", () => {
     expect(h.onPoints).toHaveBeenCalled();
   });
 
-  it("switches the backlog's stars itself", () => {
+  it("switches the list's stars itself", () => {
     openMenu();
     fireEvent.click(screen.getByText("Star ratings"));
     expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(true);
   });
 });
 
-describe("both places a backlog is right-clicked", () => {
+describe("both places a list is right-clicked", () => {
   it("use the one menu, so they cannot drift apart again", () => {
     for (const file of ["BacklogTreePanel.tsx", "WorkItemTreePanel.tsx"]) {
       const source = readFileSync(join(process.cwd(), "src", "components", file), "utf8");

@@ -84,7 +84,7 @@ describe("list view rows", () => {
     expect(depths.get("skate")).toBe(1);
   });
 
-  it("hides children in backlogs outside the view, and doesn't descend into collapsed items", () => {
+  it("hides children in lists outside the view, and doesn't descend into collapsed items", () => {
     const items = fixture();
     items.bike.backlogAssignments = { [T]: "elsewhere" };
     const { ids } = buildVisibleRows(["stronger"], new Set(["stronger", "q34", "vo2"]), items, T, inView);

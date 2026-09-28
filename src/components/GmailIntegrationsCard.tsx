@@ -54,7 +54,7 @@ const COPY: Record<
   jobs: {
     title: "Job ad import",
     blurb:
-      "Turn job alert emails into backlog items — one item per posting. Site navigation, editorial links and previously-seen roles in a digest are left out, and the same posting arriving from several alerts is imported once.",
+      "Turn job alert emails into list items — one item per posting. Site navigation, editorial links and previously-seen roles in a digest are left out, and the same posting arriving from several alerts is imported once.",
     queryLabel: "Gmail search query for job alerts",
     placeholder: "label:Job\u00a0ads newer_than:30d",
     startingQuery: defaultJobQuery(),
@@ -246,7 +246,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       return;
     }
     if (!newTree || !newBacklog) {
-      toast({ title: "Pick a backlog tree and backlog", variant: "destructive" });
+      toast({ title: "Pick a tree and list", variant: "destructive" });
       return;
     }
     const currentUser = await getCurrentUser();
@@ -319,7 +319,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   };
 
   const treeName = (id: string) => backlogTrees[id]?.name ?? "(unknown tree)";
-  const backlogName = (id: string) => backlogs[id]?.name ?? "(unknown backlog)";
+  const backlogName = (id: string) => backlogs[id]?.name ?? "(unknown list)";
 
   return (
     <Card>
@@ -467,7 +467,7 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
               </div>
             )}
             <div>
-              <Label>Backlog tree</Label>
+              <Label>Tree</Label>
               <Select
                 value={newTree}
                 onValueChange={(v) => {
@@ -488,10 +488,10 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
               </Select>
             </div>
             <div>
-              <Label>Backlog</Label>
+              <Label>List</Label>
               <Select value={newBacklog} onValueChange={setNewBacklog} disabled={!newTree}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select backlog" />
+                  <SelectValue placeholder="Select list" />
                 </SelectTrigger>
                 <SelectContent>
                   {backlogsForTree(newTree).map((b) => (

@@ -94,7 +94,7 @@ export function MoveTimeDialog({
         <Tabs value={tab} onValueChange={(v) => { setTab(v as typeof tab); setSelected(null); }}>
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="work_item">Work items</TabsTrigger>
-            <TabsTrigger value="backlog">Backlogs</TabsTrigger>
+            <TabsTrigger value="backlog">Lists</TabsTrigger>
             <TabsTrigger value="tree">Trees</TabsTrigger>
           </TabsList>
           <div className="mt-3">

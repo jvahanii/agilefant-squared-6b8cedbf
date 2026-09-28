@@ -44,7 +44,7 @@ const GROUP_BY_OPTIONS: { value: GroupBy; label: string; description: string }[]
   { value: "type", label: "Financials type", description: "Income vs savings" },
   { value: "item", label: "Item", description: "One area per work item" },
   { value: "status", label: "Item status", description: "Grouped by current status" },
-  { value: "list", label: "List", description: "Grouped by backlog list" },
+  { value: "list", label: "List", description: "Grouped by list" },
   { value: "team", label: "Team", description: "Grouped by assigned team" },
 ];
 

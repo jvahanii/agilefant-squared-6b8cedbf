@@ -123,7 +123,7 @@ describe("TimesheetBrowserDialog, as it opens", () => {
     expect(DEFAULT_GROUP_DIMS).toEqual(["user", "tree", "backlog", "item"]);
     seed([entry("t1", "u-ann", "org-1::wi-a", 60)]);
     open();
-    expect(screen.getByRole("columnheader", { name: "Person › Tree › Backlog › Work Item" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Person › Tree › List › Work Item" })).toBeInTheDocument();
   });
 
   it("names every person in a team", async () => {
@@ -183,7 +183,7 @@ describe("following a total to what made it", () => {
   });
 });
 
-describe("an item in more than one backlog", () => {
+describe("an item in more than one list", () => {
   it("is grouped under all of them by name, and its time counted once", async () => {
     useTimeEntryStore.setState({
       // As the app saves time on an item: no backlog or tree of its own, so

@@ -64,7 +64,7 @@ function exportToCsv(
   backlogs: ReturnType<typeof useAppStore.getState>["backlogs"],
   orgName: string,
 ): void {
-  const headers = ["Date", "User", "Work Item / Backlog", "Duration (min)", "Duration", "Note"];
+  const headers = ["Date", "User", "Work Item / List", "Duration (min)", "Duration", "Note"];
 
   const rows = entries.map((entry) => {
     const userName = userNames[entry.userId] ?? `Unknown (${entry.userId.slice(0, 8)})`;
@@ -125,7 +125,7 @@ const ALL_DIMS: GroupDimension[] = ["user", "tree", "backlog", "item", "date"];
 
 const DIMENSION_LABELS: Record<GroupDimension, string> = {
   tree: "Tree",
-  backlog: "Backlog",
+  backlog: "List",
   item: "Work Item",
   user: "Person",
   date: "Date",
@@ -680,7 +680,7 @@ export function TimesheetBrowserDialog({
                       <TableHead className="w-20 text-right">Duration</TableHead>
                       <TableHead className="w-24">Date</TableHead>
                       <TableHead className="w-32 hidden sm:table-cell">User</TableHead>
-                      <TableHead>Work Item / Backlog</TableHead>
+                      <TableHead>Work Item / List</TableHead>
                       <TableHead className="hidden md:table-cell">Note</TableHead>
                       <TableHead className="w-10" />
                     </TableRow>

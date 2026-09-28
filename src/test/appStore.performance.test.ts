@@ -363,7 +363,7 @@ describe("performance: large dataset operations", () => {
 
   // ── Large reorder ───────────────────────────────────────────────────
 
-  it("reorders an item from top to bottom in 1 000-item backlog within 100 ms", () => {
+  it("reorders an item from top to bottom in 1 000-item list within 100 ms", () => {
     seedFlatItems(1000);
     const elapsed = measure(() => {
       useAppStore
@@ -378,7 +378,7 @@ describe("performance: large dataset operations", () => {
     expect(elapsed).toBeLessThan(100); // ~16 ms observed
   });
 
-  it("reorders last item to first in 1 000-item backlog within 60 ms", () => {
+  it("reorders last item to first in 1 000-item list within 60 ms", () => {
     seedFlatItems(1000);
     const elapsed = measure(() => {
       useAppStore
@@ -474,7 +474,7 @@ describe("performance: large dataset operations", () => {
 
   // ── Load from Supabase ──────────────────────────────────────────────
 
-  it("loads 2 000 items, 50 backlogs, and 5 trees within 100 ms", async () => {
+  it("loads 2 000 items, 50 lists, and 5 trees within 100 ms", async () => {
     const bigData = {
       workItems: {} as Record<string, ReturnType<typeof mkWi>>,
       backlogs: {} as Record<

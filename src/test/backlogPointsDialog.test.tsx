@@ -40,16 +40,16 @@ describe("BacklogPointsDialog", () => {
     expect(screen.getByText(/Its contents add up to 13 pts/)).toBeInTheDocument();
   });
 
-  it("saves a whole number as the backlog's estimate", () => {
+  it("saves a whole number as the list's estimate", () => {
     open();
-    fireEvent.change(screen.getByLabelText("Estimate for the whole backlog"), { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText("Estimate for the whole list"), { target: { value: "40" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(useAppStore.getState().backlogs[BL].points).toBe(40);
   });
 
   it("will not save anything but a whole number", () => {
     open();
-    fireEvent.change(screen.getByLabelText("Estimate for the whole backlog"), { target: { value: "4.5" } });
+    fireEvent.change(screen.getByLabelText("Estimate for the whole list"), { target: { value: "4.5" } });
     expect(screen.getByText("A whole number of zero or more.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });

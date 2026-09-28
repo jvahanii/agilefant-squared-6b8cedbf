@@ -138,7 +138,7 @@ export function BacklogContextMenuItems({
       <ContextMenuSeparator />
       <ContextMenuItem className="text-xs text-destructive focus:text-destructive" onSelect={onDelete}>
         <Trash2 className="w-3 h-3 mr-2" />
-        Delete backlog
+        Delete list
       </ContextMenuItem>
     </>
   );

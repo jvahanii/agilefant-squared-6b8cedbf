@@ -31,7 +31,7 @@ function baseData() {
       [p("wi-1")]: makeWi({ id: p("wi-1"), title: "Item 1" }),
     } as Record<string, WorkItem>,
     backlogs: {
-      [p("bl-1")]: makeBl({ id: p("bl-1"), name: "Backlog 1" }),
+      [p("bl-1")]: makeBl({ id: p("bl-1"), name: "List 1" }),
     } as Record<string, Backlog>,
     backlogTrees: {
       [p("bt-1")]: { id: p("bt-1"), name: "Tree 1", rootBacklogIds: [p("bl-1")], rank: 0 },
@@ -49,7 +49,7 @@ describe("Ghost Parent", () => {
     expect(issues.some((i) => i.category === "Ghost Parent" && i.id === p("wi-1"))).toBe(true);
   });
 
-  it("detects backlog with missing parent", () => {
+  it("detects list with missing parent", () => {
     const data = baseData();
     data.backlogs[p("bl-1")].parentId = p("bl-missing");
     const issues = checkDataIntegrity(data);
@@ -110,26 +110,26 @@ describe("Circular Reference", () => {
 
 // ─── CHECK: Backlog Displacement ───────────────────────────────────────
 
-describe("Backlog Displacement", () => {
-  it("detects assignment to missing backlog", () => {
+describe("List Displacement", () => {
+  it("detects assignment to missing list", () => {
     const data = baseData();
     data.workItems[p("wi-1")].backlogAssignments = { [p("bt-1")]: p("bl-missing") };
     const issues = checkDataIntegrity(data);
-    expect(issues.some((i) => i.category === "Backlog Displacement")).toBe(true);
+    expect(issues.some((i) => i.category === "List Displacement")).toBe(true);
   });
 
   it("detects assignment to missing tree", () => {
     const data = baseData();
     data.workItems[p("wi-1")].backlogAssignments = { [p("bt-missing")]: p("bl-1") };
     const issues = checkDataIntegrity(data);
-    expect(issues.some((i) => i.category === "Backlog Displacement")).toBe(true);
+    expect(issues.some((i) => i.category === "List Displacement")).toBe(true);
   });
 
   it("detects fully orphaned work item (no assignments)", () => {
     const data = baseData();
     data.workItems[p("wi-1")].backlogAssignments = {};
     const issues = checkDataIntegrity(data);
-    expect(issues.some((i) => i.category === "Backlog Displacement" && i.detail.includes("fully orphaned"))).toBe(true);
+    expect(issues.some((i) => i.category === "List Displacement" && i.detail.includes("fully orphaned"))).toBe(true);
   });
 
   it("cleanse removes work item with no valid assignments", () => {
@@ -142,15 +142,15 @@ describe("Backlog Displacement", () => {
 
 // ─── CHECK: Tree-Backlog Desync ────────────────────────────────────────
 
-describe("Tree-Backlog Desync", () => {
-  it("detects root backlog missing from tree rootBacklogIds", () => {
+describe("Tree-List Desync", () => {
+  it("detects root list missing from tree rootBacklogIds", () => {
     const data = baseData();
     data.backlogTrees[p("bt-1")].rootBacklogIds = [];
     const issues = checkDataIntegrity(data);
-    expect(issues.some((i) => i.category === "Tree-Backlog Desync")).toBe(true);
+    expect(issues.some((i) => i.category === "Tree-List Desync")).toBe(true);
   });
 
-  it("cleanse adds missing root backlog to tree", () => {
+  it("cleanse adds missing root list to tree", () => {
     const data = baseData();
     data.backlogTrees[p("bt-1")].rootBacklogIds = [];
     const result = cleanseData(data);
@@ -161,7 +161,7 @@ describe("Tree-Backlog Desync", () => {
     const data = baseData();
     data.backlogTrees[p("bt-1")].rootBacklogIds.push(p("bl-nonexistent"));
     const issues = checkDataIntegrity(data);
-    expect(issues.some((i) => i.category === "Tree-Backlog Desync" && i.type === "backlog_tree")).toBe(true);
+    expect(issues.some((i) => i.category === "Tree-List Desync" && i.type === "backlog_tree")).toBe(true);
   });
 });
 
@@ -228,7 +228,7 @@ describe("Duplicate Rank", () => {
 // ─── CHECK: Cross-Org Pollution ────────────────────────────────────────
 
 describe("Cross-Org Pollution", () => {
-  it("detects cross-org backlog assignment when backlog is missing from store", () => {
+  it("detects cross-org list assignment when list is missing from store", () => {
     const data = baseData();
     // Tree from another org exists in store, but the assigned backlog does NOT –
     // this is a genuinely dangling / polluted assignment.
@@ -238,7 +238,7 @@ describe("Cross-Org Pollution", () => {
     expect(issues.some((i) => i.category === "Cross-Org Pollution")).toBe(true);
   });
 
-  it("cleanse removes cross-org assignments where backlog is dangling", () => {
+  it("cleanse removes cross-org assignments where list is dangling", () => {
     const data = baseData();
     // Valid assignment + dangling cross-org assignment (tree exists, backlog does NOT)
     data.workItems[p("wi-1")].backlogAssignments = {
@@ -287,7 +287,7 @@ describe("Cross-Org Pollution", () => {
 // ─── CHECK: Zombie Assignment ──────────────────────────────────────────
 
 describe("Zombie Assignment", () => {
-  it("detects backlog assigned via wrong tree", () => {
+  it("detects list assigned via wrong tree", () => {
     const data = baseData();
     data.backlogTrees[p("bt-2")] = { id: p("bt-2"), name: "Tree 2", rootBacklogIds: [], rank: 1 };
     // wi-1 assigned to bt-2 -> bl-1, but bl-1 belongs to bt-1

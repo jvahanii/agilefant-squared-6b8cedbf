@@ -34,7 +34,7 @@ function fixture(over: Record<string, unknown> = {}) {
     linksVisible: true,
     treeMinutes: 45,
     backlogs: [
-      { id: "b-root", name: "Roadmap backlog", parentId: null, rank: 0, labelIds: ["l-roadmap"], minutes: 15 },
+      { id: "b-root", name: "Roadmap list", parentId: null, rank: 0, labelIds: ["l-roadmap"], minutes: 15 },
       { id: "b-child", name: "Sprint 1", parentId: "b-root", rank: 0, labelIds: [], minutes: 0 },
     ],
     statusesByBacklog: {
@@ -116,7 +116,7 @@ beforeEach(() => {
   rpc.mockReset();
 });
 
-describe("public backlog page: stars", () => {
+describe("public list page: stars", () => {
   it("shows an item's stars when the link publishes ratings", async () => {
     rpc.mockResolvedValue({ data: fixture({ ratingsVisible: true }), error: null });
     renderPage();
@@ -151,7 +151,7 @@ describe("public backlog page: stars", () => {
   });
 });
 
-describe("public backlog page", () => {
+describe("public list page", () => {
   it("asks for exactly the token in the URL", async () => {
     rpc.mockResolvedValue({ data: fixture(), error: null });
     renderPage();
@@ -178,7 +178,7 @@ describe("public backlog page", () => {
     expect(screen.getAllByText("Roadmap").length).toBeGreaterThan(0);
   });
 
-  it("nests a child under its parent, with the child backlog's own status", async () => {
+  it("nests a child under its parent, with the child list's own status", async () => {
     rpc.mockResolvedValue({ data: fixture(), error: null });
     renderPage();
 
@@ -259,7 +259,7 @@ describe("public backlog page", () => {
     expect(screen.getByText("3h 20m")).toBeTruthy();
   });
 
-  it("names the tree above a published backlog, but not when it repeats the backlog's name", async () => {
+  it("names the tree above a published list, but not when it repeats the list's name", async () => {
     // The small line above the heading, naming the tree.
     const kicker = () => document.querySelector("header p");
 
@@ -268,16 +268,16 @@ describe("public backlog page", () => {
     // Different names: the tree is worth naming above the heading. The backlog's
     // own name is on the page three times over — heading, nav and section — so
     // this waits on all of them rather than a single match.
-    await screen.findAllByText("Roadmap backlog");
+    await screen.findAllByText("Roadmap list");
     expect(kicker()?.textContent).toBe("Product tree");
     unmount();
 
     // A tree's root backlog usually carries the tree's own name, and naming the
     // tree above the heading then just repeats it.
-    const repeated = fixture({ kind: "backlog", rootBacklogId: "b-root", tree: { id: "t", name: "Roadmap backlog" } });
+    const repeated = fixture({ kind: "backlog", rootBacklogId: "b-root", tree: { id: "t", name: "Roadmap list" } });
     rpc.mockResolvedValue({ data: repeated, error: null });
     renderPage();
-    await screen.findAllByText("Roadmap backlog");
+    await screen.findAllByText("Roadmap list");
     expect(kicker()).toBeNull();
   });
 
@@ -304,10 +304,10 @@ describe("public backlog page", () => {
     // just below was the same title twice.
     rpc.mockResolvedValue({ data: fixture({ kind: "backlog", rootBacklogId: "b-root" }), error: null });
     renderPage();
-    await screen.findAllByText("Roadmap backlog");
+    await screen.findAllByText("Roadmap list");
 
     const h2 = document.querySelector("h2");
-    expect(h2?.textContent).toBe("Roadmap backlog");
+    expect(h2?.textContent).toBe("Roadmap list");
     // Kept for screen readers, out of sight.
     expect(h2?.className).toContain("sr-only");
   });

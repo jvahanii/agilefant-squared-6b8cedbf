@@ -97,22 +97,22 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Agilefant²</strong> is a free, simple and powerful tool for backlog and
+            <strong className="text-foreground">Agilefant²</strong> is a free, simple and powerful tool for list and
             work item management. It scales from the individual to the enterprise. Organise your work into nested
-            backlogs, track item status, collaborate across organisations, and move fast with keyboard-first
+            lists, track item status, collaborate across organisations, and move fast with keyboard-first
             interactions.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               {
                 icon: <ListTree className="w-4 h-4 text-primary" />,
-                title: "Backlog Trees",
-                body: "Organise work into hierarchical backlog trees shown in the left panel.",
+                title: "Trees",
+                body: "Organise work into hierarchical trees shown in the left panel.",
               },
               {
                 icon: <Layers className="w-4 h-4 text-primary" />,
                 title: "Work Items",
-                body: "Create and manage work items within any backlog node in the right panel.",
+                body: "Create and manage work items within any list node in the right panel.",
               },
               {
                 icon: <Keyboard className="w-4 h-4 text-primary" />,
@@ -135,8 +135,8 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            New here? Start by creating a <strong>backlog tree</strong> in the left panel, then add a{" "}
-            <strong>work item</strong> by selecting a backlog node and pressing <KbdKey>Enter</KbdKey>.
+            New here? Start by creating a <strong>tree</strong> in the left panel, then add a{" "}
+            <strong>work item</strong> by selecting a list node and pressing <KbdKey>Enter</KbdKey>.
           </Tip>
         </div>
       ),
@@ -144,18 +144,18 @@ function buildSections(): Section[] {
     {
       id: "backlogs",
       icon: <ListTree className="w-4 h-4" />,
-      label: "Backlog Trees",
+      label: "Trees",
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            The <strong className="text-foreground">left panel</strong> contains your backlog trees — hierarchical
-            containers that organise work. Each tree can have multiple nested backlog nodes.
+            The <strong className="text-foreground">left panel</strong> contains your trees — hierarchical
+            containers that organise work. Each tree can have multiple nested list nodes.
           </p>
           <div className="space-y-2">
             {[
               { action: "Create a tree", how: 'Click the "+" button at the top of the left panel.' },
               {
-                action: "Add a backlog node",
+                action: "Add a list node",
                 how: "Select an existing node and press Shift+Enter, or hover the node row and click the + icon.",
               },
               {
@@ -163,8 +163,8 @@ function buildSections(): Section[] {
                 how: "Double-click the node name to edit it in-place. Tree headers can also be renamed by double-clicking their name.",
               },
               {
-                action: "Select a backlog",
-                how: "Click anywhere on a backlog row to select it and load its work items in the right panel.",
+                action: "Select a list",
+                how: "Click anywhere on a list row to select it and load its work items in the right panel.",
               },
               { action: "Delete a node", how: "Select the node and press Delete / Backspace." },
               { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
@@ -174,7 +174,7 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            You can have multiple top-level backlog trees. Use them to separate unrelated workstreams (e.g. "Product",
+            You can have multiple top-level trees. Use them to separate unrelated workstreams (e.g. "Product",
             "Engineering", "Marketing").
           </Tip>
         </div>
@@ -187,14 +187,14 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            The <strong className="text-foreground">right panel</strong> shows work items for the selected backlog.
+            The <strong className="text-foreground">right panel</strong> shows work items for the selected list.
             Items can be nested into child items for fine-grained breakdown.
           </p>
           <div className="space-y-2">
             {[
               {
                 action: "New root item",
-                how: "Select a backlog and press Enter, or click the + button in the panel header.",
+                how: "Select a list and press Enter, or click the + button in the panel header.",
               },
               {
                 action: "New child item",
@@ -223,8 +223,8 @@ function buildSections(): Section[] {
                 how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items.",
               },
               { action: "Set story points", how: "Click the story-points value on the item row. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically." },
-              { action: "Estimate a whole backlog", how: "Right-click a backlog in the tree and choose Set points… to give a release or a sprint an estimate before its work is broken into items. The backlog then counts as the larger of that estimate and what its contents add up to — in its own total, in its parents' roll-ups, and in its burnup, where the estimate becomes the target line and the contents a dashed scope line. Hover the backlog's points to see both numbers." },
-              { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A backlog can then be sorted by Rating ★ best first, which puts the unrated last. Offered only when the organisation has ratings on." },
+              { action: "Estimate a whole list", how: "Right-click a list in the tree and choose Set points… to give a release or a sprint an estimate before its work is broken into items. The list then counts as the larger of that estimate and what its contents add up to — in its own total, in its parents' roll-ups, and in its burnup, where the estimate becomes the target line and the contents a dashed scope line. Hover the list's points to see both numbers." },
+              { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A list can then be sorted by Rating ★ best first, which puts the unrated last. Offered only when the organisation has ratings on." },
               {
                 action: "Paste items",
                 how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add.",
@@ -232,7 +232,7 @@ function buildSections(): Section[] {
               { action: "Add hyperlinks", how: "Press H or Ctrl/Cmd+K to open the hyperlinks dialog." },
               {
                 action: "Sort the list",
-                how: "Click the sort icon in the backlog header and choose Rank, Name A→Z, Name Z→A, Status or Team A→Z. Only the top-level items are resorted; children stay in rank order. Any order other than Rank is a view: it is remembered for that backlog in this browser, changes nothing for anyone else, and the icon shows which order is on. To keep it, choose Save current order as rank (Ctrl+Z undoes it).",
+                how: "Click the sort icon in the list header and choose Rank, Name A→Z, Name Z→A, Status or Team A→Z. Only the top-level items are resorted; children stay in rank order. Any order other than Rank is a view: it is remembered for that list in this browser, changes nothing for anyone else, and the icon shows which order is on. To keep it, choose Save current order as rank (Ctrl+Z undoes it).",
               },
               {
                 action: "Move items in a sorted list",
@@ -247,8 +247,8 @@ function buildSections(): Section[] {
                 how: "Select item(s) and press R, or right-click and choose Reparent, to open the Move to Parent dialog. Search for a new parent item or choose \"Move to root (no parent)\".",
               },
               {
-                action: "Move to backlog",
-                how: "Select item(s) and press M, or right-click and choose Move to Backlog, to move items to a different backlog within the same tree.",
+                action: "Move to list",
+                how: "Select item(s) and press M, or right-click and choose Move to List, to move items to a different list within the same tree.",
               },
               {
                 action: "Indent (make child)",
@@ -285,9 +285,9 @@ function buildSections(): Section[] {
               When a child item transitions away from <strong>Not Started</strong> (to In Progress, Pending,
               Blocked, or Done), any ancestor that is still <strong>Not Started</strong> is automatically
               promoted to <strong>In Progress</strong> (or the nearest equivalent intermediate status in
-              that ancestor's backlog). Propagation walks up the full ancestry chain. If an intermediate
-              ancestor belongs to a backlog without any intermediate statuses, it stays Not Started but
-              the promotion continues upward to the next ancestor whose backlog supports one.
+              that ancestor's list). Propagation walks up the full ancestry chain. If an intermediate
+              ancestor belongs to a list without any intermediate statuses, it stays Not Started but
+              the promotion continues upward to the next ancestor whose list supports one.
             </p>
           </div>
           <Tip>
@@ -322,8 +322,8 @@ function buildSections(): Section[] {
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Navigation</p>
             <ShortcutRow keys={["↑", "↓"]} description="Move selection up / down" />
-            <ShortcutRow keys={["→"]} description="Expand selected item or backlog branch" />
-            <ShortcutRow keys={["←"]} description="Collapse selected item or backlog branch" />
+            <ShortcutRow keys={["→"]} description="Expand selected item or list branch" />
+            <ShortcutRow keys={["←"]} description="Collapse selected item or list branch" />
             <ShortcutRow keys={["Esc"]} description="Deselect all items" />
           </div>
           <div className="space-y-1">
@@ -352,7 +352,7 @@ function buildSections(): Section[] {
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reparenting & Moving</p>
             <ShortcutRow keys={["R"]} description="Reparent: open Move to Parent dialog" />
-            <ShortcutRow keys={["M"]} description="Move to Backlog dialog" />
+            <ShortcutRow keys={["M"]} description="Move to List dialog" />
             <ShortcutRow keys={["Tab"]} description="Indent: make child of item above" />
             <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
           </div>
@@ -393,7 +393,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Switch to Board",
-                how: 'Click "Board" in the List / Board toggle in the work items panel header. Your choice is remembered per backlog and shared with everyone viewing that backlog.',
+                how: 'Click "Board" in the List / Board toggle in the work items panel header. Your choice is remembered per list and shared with everyone viewing that list.',
               },
               {
                 action: "Switch back to List",
@@ -451,7 +451,7 @@ function buildSections(): Section[] {
           <Tip>
             Board view is ideal for kanban-style workflows — drag an item from "Not Started" to "In Progress"
             to "Done" as it moves through your pipeline. Columns and statuses are the same thing, so adding a
-            column also creates a new status available everywhere in that backlog tree.
+            column also creates a new status available everywhere in that tree.
           </Tip>
         </div>
       ),
@@ -463,19 +463,19 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Drag and drop lets you restructure your backlogs and work items without leaving the mouse.
+            Drag and drop lets you restructure your lists and work items without leaving the mouse.
           </p>
           <div className="space-y-3">
             {[
               {
                 icon: <MoveVertical className="w-4 h-4 text-primary" />,
                 title: "Reorder work items",
-                body: "Grab any work item row and drag it up or down to reorder within the same backlog.",
+                body: "Grab any work item row and drag it up or down to reorder within the same list.",
               },
               {
                 icon: <ListTree className="w-4 h-4 text-primary" />,
-                title: "Reorder backlog nodes",
-                body: "Drag backlog nodes in the left panel to reorder siblings, change hierarchy, or move them to another tree. Ctrl/Cmd-click to select several backlogs, then drag any one of them to move them all together.",
+                title: "Reorder list nodes",
+                body: "Drag list nodes in the left panel to reorder siblings, change hierarchy, or move them to another tree. Ctrl/Cmd-click to select several lists, then drag any one of them to move them all together.",
               },
               {
                 icon: <Share2 className="w-4 h-4 text-primary" />,
@@ -485,12 +485,12 @@ function buildSections(): Section[] {
               {
                 icon: <Share2 className="w-4 h-4 text-primary" />,
                 title: "Move items across trees",
-                body: "Drag a work item from one backlog tree and drop it onto a node in a different tree. A prompt will ask whether to Move or Mirror the item.",
+                body: "Drag a work item from one tree and drop it onto a node in a different tree. A prompt will ask whether to Move or Mirror the item.",
               },
               {
                 icon: <Share2 className="w-4 h-4 text-primary" />,
                 title: "Move to root",
-                body: "Drag a work item and drop it onto a backlog node (in the left panel) to move it to root level in that backlog.",
+                body: "Drag a work item and drop it onto a list node (in the left panel) to move it to root level in that list.",
               },
             ].map((card) => (
               <div key={card.title} className="flex gap-3 p-3 rounded-lg border bg-card">
@@ -504,7 +504,7 @@ function buildSections(): Section[] {
           </div>
           <Tip>
             On mobile, press and hold an item briefly to start dragging it. Long-press any item to move it to the top of
-            its backlog. Swipe left to deselect, swipe right to expand the selected branch.
+            its list. Swipe left to deselect, swipe right to expand the selected branch.
           </Tip>
         </div>
       ),
@@ -517,7 +517,7 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Agilefant² is multi-tenant. Each <strong className="text-foreground">organisation</strong> has its own
-            backlog trees, work items, and team members. You can belong to multiple organisations.
+            trees, work items, and team members. You can belong to multiple organisations.
           </p>
           <div className="space-y-2">
             {[
@@ -547,7 +547,7 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Backlog trees can be shared with other organisations so multiple teams can view and work with the same
+            Trees can be shared with other organisations so multiple teams can view and work with the same
             structure.
           </p>
           <div className="space-y-2">
@@ -563,7 +563,7 @@ function buildSections(): Section[] {
               { action: "Revoke access", how: "Return to the Share dialog and remove the organisation from the list." },
               {
                 action: "Publish a public link",
-                how: "Right-click a backlog and choose Public link… (on mobile, open its attributes sheet and tap Public link). For a whole tree, open the tree's Share dialog — the public link sits below organisation sharing. Anyone with the link can view it without signing in, and with nothing published yet, Enter creates the link. Public links are off unless an owner or admin turns on Public links in organisation settings; turning them off again stops every existing link working, without deleting any.",
+                how: "Right-click a list and choose Public link… (on mobile, open its attributes sheet and tap Public link). For a whole tree, open the tree's Share dialog — the public link sits below organisation sharing. Anyone with the link can view it without signing in, and with nothing published yet, Enter creates the link. Public links are off unless an owner or admin turns on Public links in organisation settings; turning them off again stops every existing link working, without deleting any.",
               },
               {
                 action: "Choose what a link shows",
@@ -571,7 +571,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "See what is published",
-                how: "A globe marks a published backlog in the left panel, and a tree header carries one with a count when anything inside it is published. The markers update as soon as anyone publishes or stops.",
+                how: "A globe marks a published list in the left panel, and a tree header carries one with a count when anything inside it is published. The markers update as soon as anyone publishes or stops.",
               },
               {
                 action: "Stop publishing",
@@ -625,7 +625,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "See who spent time on what",
-                how: "Click Logged time in the header (in the ⋮ menu on a phone), or press Shift+L. It opens on this month, totalled by person and then by work item; change the period, pick one person, or group by backlog, tree or date instead. Export the result as CSV.",
+                how: "Click Logged time in the header (in the ⋮ menu on a phone), or press Shift+L. It opens on this month, totalled by person and then by work item; change the period, pick one person, or group by list, tree or date instead. Export the result as CSV.",
               },
               {
                 action: "Delete an entry",
@@ -642,7 +642,7 @@ function buildSections(): Section[] {
               {[
                 {
                   action: "Move time to another item",
-                  how: "Right-click a work item with time entries and choose \"Transfer time entries…\" to open the Move Time dialog. Search for a target backlog or work item, select it, and click Transfer. All selected time entries are reassigned to the new target.",
+                  how: "Right-click a work item with time entries and choose \"Transfer time entries…\" to open the Move Time dialog. Search for a target list or work item, select it, and click Transfer. All selected time entries are reassigned to the new target.",
                 },
                 {
                   action: "When it's useful",
@@ -680,15 +680,15 @@ function buildSections(): Section[] {
               },
               {
                 action: "Entries tab",
-                how: "Lists every time entry in a scrollable table showing duration, date, user, work item/backlog, and note. Click any row you own to edit the duration, date, or note inline. Press Enter to save, Escape to cancel.",
+                how: "Lists every time entry in a scrollable table showing duration, date, user, work item/list, and note. Click any row you own to edit the duration, date, or note inline. Press Enter to save, Escape to cancel.",
               },
               {
                 action: "Summary tab",
-                how: "Group entries hierarchically by any combination of Tree, Backlog, Work Item, Person, and Date. Click dimension pills to toggle them — the numbered badges show nesting order. Expand/collapse group rows to drill down.",
+                how: "Group entries hierarchically by any combination of Tree, List, Work Item, Person, and Date. Click dimension pills to toggle them — the numbered badges show nesting order. Expand/collapse group rows to drill down.",
               },
               {
                 action: "Export as CSV",
-                how: "Click the Export CSV button to download the currently filtered entries as a UTF-8 CSV file with columns for Date, User, Work Item / Backlog, Duration (minutes), Duration (formatted), and Note.",
+                how: "Click the Export CSV button to download the currently filtered entries as a UTF-8 CSV file with columns for Date, User, Work Item / List, Duration (minutes), Duration (formatted), and Note.",
               },
               {
                 action: "Delete an entry",
@@ -713,7 +713,7 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Snooze</strong> temporarily hides a work item until a future date and
-            time. Snoozed items disappear from the backlog view and automatically reappear when the snooze expires.
+            time. Snoozed items disappear from the list view and automatically reappear when the snooze expires.
             Snoozes are per-user — your teammates see items at all times.
           </p>
           <div className="space-y-2">
@@ -736,7 +736,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Unsnooze All",
-                how: "When there are snoozed items in the current backlog a bell-off badge appears in the work items panel header showing the count. Click it to instantly wake all snoozed items in that backlog.",
+                how: "When there are snoozed items in the current list a bell-off badge appears in the work items panel header showing the count. Click it to instantly wake all snoozed items in that list.",
               },
               {
                 action: "Automatic wake-up",
@@ -800,7 +800,7 @@ function buildSections(): Section[] {
           </div>
           <Tip>
             Label chips in the filter bar are only shown for labels that appear on at least one item in the currently
-            selected backlog, keeping the bar compact.
+            selected list, keeping the bar compact.
           </Tip>
         </div>
       ),
@@ -813,7 +813,7 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             The <strong className="text-foreground">search bar</strong> at the top of the left panel lets you find work
-            items by name across all backlog trees in your organisation. Results are shown in the right panel with full
+            items by name across all trees in your organisation. Results are shown in the right panel with full
             context so you can navigate directly to any item.
           </p>
           <div className="space-y-2">
@@ -828,15 +828,15 @@ function buildSections(): Section[] {
               },
               {
                 action: "Result context",
-                how: "Each result shows the matching title with the search term highlighted, the backlog tree and full backlog hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
+                how: "Each result shows the matching title with the search term highlighted, the tree and full list hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
               },
               {
                 action: "Navigate to an item",
-                how: "Click a search result to navigate directly to it: the left panel expands to the correct backlog, the right panel opens and selects the matching item.",
+                how: "Click a search result to navigate directly to it: the left panel expands to the correct list, the right panel opens and selects the matching item.",
               },
               {
                 action: "Clear search",
-                how: 'Press Escape, click the × button in the search bar, or click a result — the search field clears and the normal backlog view returns.',
+                how: 'Press Escape, click the × button in the search bar, or click a result — the search field clears and the normal list view returns.',
               },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
@@ -855,7 +855,7 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Custom statuses</strong> let each backlog tree define its own set of
+            <strong className="text-foreground">Custom statuses</strong> let each tree define its own set of
             colored work item statuses, replacing the default Not Started / In Progress / Pending / Blocked / Done
             labels with names and colors that match your team's workflow. The feature is enabled by a superuser in{" "}
             <strong className="text-foreground">Settings → Custom Statuses</strong>.
@@ -864,7 +864,7 @@ function buildSections(): Section[] {
             {[
               {
                 action: "Enable",
-                how: "A superuser opens Settings and toggles the \"Enable per-tree statuses\" switch on. A gear (⚙) icon will then appear on each backlog tree header.",
+                how: "A superuser opens Settings and toggles the \"Enable per-tree statuses\" switch on. A gear (⚙) icon will then appear on each tree header.",
               },
               {
                 action: "Open the editor",
@@ -888,7 +888,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Locked statuses",
-                how: '"Not Started" and "Done" are locked (marked with a lock icon). Their label can be renamed but their color cannot be changed and they cannot be removed — every backlog must have at least these two.',
+                how: '"Not Started" and "Done" are locked (marked with a lock icon). Their label can be renamed but their color cannot be changed and they cannot be removed — every list must have at least these two.',
               },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} labelWidth="sm:w-40" />
@@ -910,7 +910,7 @@ function buildSections(): Section[] {
           <p className="text-sm text-muted-foreground leading-relaxed">
             Agilefant² takes <strong className="text-foreground">automatic daily snapshots</strong> of your entire
             organisation and keeps them for 30 days. You can also create manual backups at any time and restore from
-            any snapshot — either the whole org, selected trees, or individual backlogs.
+            any snapshot — either the whole org, selected trees, or individual lists.
           </p>
           <div className="space-y-2">
             {[
@@ -928,7 +928,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Restore scope",
-                how: "Choose Everything in the snapshot to restore the whole org, Selected backlog trees to pick one or more trees, or Selected backlogs to restore individual backlog nodes.",
+                how: "Choose Everything in the snapshot to restore the whole org, Selected trees to pick one or more trees, or Selected lists to restore individual list nodes.",
               },
               {
                 action: "Restore mode",
@@ -1008,11 +1008,11 @@ function buildSections(): Section[] {
             <div>
               <p className="font-medium">Cumulative Flow Chart</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Click the chart icon on any backlog tree header to open the Cumulative Flow Chart. It overlays{" "}
+                Click the chart icon on any tree header to open the Cumulative Flow Chart. It overlays{" "}
                 <strong>Plan</strong> (dashed, translucent) and <strong>Actual</strong> (solid) series side-by-side so
                 you can spot variances at a glance. A vertical <strong>today</strong> reference line marks the boundary
                 between realised and projected months. Use the Group&nbsp;By selector to view financials broken down by
-                type (savings vs income), by work item, by item status, or by backlog list.
+                type (savings vs income), by work item, by item status, or by list.
               </p>
             </div>
           </div>
@@ -1052,7 +1052,7 @@ function buildSections(): Section[] {
               {
                 icon: <Settings className="w-4 h-4 text-primary" />,
                 title: "Cleanse Data",
-                body: 'Beside it, "Cleanse Data" removes orphaned records that no longer belong to any tree or backlog.',
+                body: 'Beside it, "Cleanse Data" removes orphaned records that no longer belong to any tree or list.',
               },
               {
                 icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
@@ -1094,7 +1094,7 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Connect <strong className="text-foreground">GitHub repositories</strong> so every merged pull request
-            automatically creates a "Done" work item at the top of your chosen backlog. Configure webhooks per
+            automatically creates a "Done" work item at the top of your chosen list. Configure webhooks per
             repository from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → GitHub repositories</strong>.
           </p>
@@ -1109,8 +1109,8 @@ function buildSections(): Section[] {
                 how: "In your GitHub repo settings, add a webhook with the Payload URL and Secret shown in the integration card. Set Content type to application/json and select the Pull requests event.",
               },
               {
-                action: "Add target backlogs",
-                how: "For each integration, pick a backlog tree and backlog node as a target. You can add multiple targets per repo — each merged PR creates a Done item in every target.",
+                action: "Add target lists",
+                how: "For each integration, pick a tree and list node as a target. You can add multiple targets per repo — each merged PR creates a Done item in every target.",
               },
               {
                 action: "Enable / disable",
@@ -1144,14 +1144,14 @@ function buildSections(): Section[] {
           <p className="text-sm text-muted-foreground leading-relaxed">
             Connect a <strong className="text-foreground">WhatsApp chat</strong> via a bridge such as{" "}
             <em>whapi.cloud</em> so every text message creates an "In Progress" work item in your chosen
-            backlog. Configure integrations from{" "}
+            list. Configure integrations from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → WhatsApp</strong>.
           </p>
           <div className="space-y-2">
             {[
               {
                 action: "Add an integration",
-                how: "Give it a label, optionally restrict to a specific Chat ID, then pick the target tree and backlog. Click Add integration.",
+                how: "Give it a label, optionally restrict to a specific Chat ID, then pick the target tree and list. Click Add integration.",
               },
               {
                 action: "Configure the bridge",
@@ -1192,8 +1192,8 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Burnup charts</strong> show cumulative work completed over time
-            as a stacked area chart, grouped by status. Track progress across work item branches, backlogs, or
-            entire backlog trees. Enable from{" "}
+            as a stacked area chart, grouped by status. Track progress across work item branches, lists, or
+            entire trees. Enable from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → Labs → Burnups</strong>.
           </p>
           <div className="space-y-2">
@@ -1204,7 +1204,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Open a burnup chart",
-                how: "Click the chart icon on any work item row, backlog node, or backlog tree header. A dialog opens showing the cumulative flow diagram scoped to that item and all its descendants.",
+                how: "Click the chart icon on any work item row, list node, or tree header. A dialog opens showing the cumulative flow diagram scoped to that item and all its descendants.",
               },
               {
                 action: "Metric",
@@ -1223,7 +1223,7 @@ function buildSections(): Section[] {
             ))}
           </div>
           <Tip>
-            Open a burnup chart on a backlog tree header to see the big-picture progress across your
+            Open a burnup chart on a tree header to see the big-picture progress across your
             entire project. The extrapolation line helps you predict when all items might be Done
             based on current velocity.
           </Tip>
@@ -1238,7 +1238,7 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Connect <strong className="text-foreground">Gmail</strong> so starred emails automatically become
-            work items in your chosen backlog. Star an email in Gmail and it appears as an "In Progress" item
+            work items in your chosen list. Star an email in Gmail and it appears as an "In Progress" item
             with the email subject as the title and a hyperlink back to the conversation. Configure from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → Gmail</strong>.
           </p>
@@ -1250,11 +1250,11 @@ function buildSections(): Section[] {
               },
               {
                 action: "Pick a target",
-                how: "Choose the backlog tree and backlog node where starred emails should create work items.",
+                how: "Choose the tree and list node where starred emails should create work items.",
               },
               {
                 action: "How it works",
-                how: "Star an email in Gmail. Within a few minutes it appears as a new work item in your chosen backlog with status In Progress, a hyperlink to the Gmail conversation, and the email subject as the title.",
+                how: "Star an email in Gmail. Within a few minutes it appears as a new work item in your chosen list with status In Progress, a hyperlink to the Gmail conversation, and the email subject as the title.",
               },
               {
                 action: "Disconnect",
@@ -1290,7 +1290,7 @@ function buildSections(): Section[] {
               {
                 icon: <CheckCircle2 className="w-4 h-4 text-green-500" />,
                 title: "Free",
-                body: "Everything you need for personal or small-team use. Unlimited backlog trees, work items, and team members. Data export always included.",
+                body: "Everything you need for personal or small-team use. Unlimited trees, work items, and team members. Data export always included.",
               },
               {
                 icon: <CreditCard className="w-4 h-4 text-primary" />,
