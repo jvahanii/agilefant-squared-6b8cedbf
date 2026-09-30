@@ -275,7 +275,7 @@ export default function Landing() {
                 Every list you have, <span className="text-primary">in one app.</span>
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
-                Agilefant² that scales from one person's to-do list to an enterprise's whole portfolio of products, projects and backlogs.
+                Agilefant scales from one person's to-do list to an enterprise's whole portfolio of initiatives, products, projects and backlogs.
                 Nest lists as deep as your work needs, keep item in multiple lists, share lists with
                 other organizations and the public, and do nearly all of it from the keyboard.
               </p>
