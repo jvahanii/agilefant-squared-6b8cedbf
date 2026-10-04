@@ -65,13 +65,25 @@ export function wellFormedDeadline(value: string | null | undefined): string | u
  * a real date yet. The field shows and asks for YYYY-MM-DD, the same in every
  * country; the browser's own date input would show the reader's locale
  * (12/31/2027) and cannot be told otherwise. Quick forms are taken too:
- * "2026-9-30" and "20260930" both mean 2026-09-30.
+ * "2026-9-30", "2026.9.30" and "20260930" all mean 2026-09-30, dots may also
+ * come Finnish style — "30.9.2026" — and the year can be left out, in which
+ * case the ongoing year is used ("30.9." during 2026 means 2026-09-30).
  */
 export function parseDeadlineInput(text: string): string | undefined {
   const t = text.trim();
-  const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) ?? t.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (!m) return undefined;
-  return wellFormedDeadline(`${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`);
+  const year = new Date().getFullYear();
+  let y: string, m: string, d: string;
+  const yearFirst = t.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/) ?? t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (yearFirst) {
+    [y, m, d] = [yearFirst[1], yearFirst[2], yearFirst[3]];
+  } else {
+    // Finnish dots put the day first, and the trailing dot of "30.9." is part
+    // of the habit, not the date. The year, when it is missing, is this one.
+    const dayFirst = t.match(/^(\d{1,2})[-.](\d{1,2})[-.]?(\d{4})?$/);
+    if (!dayFirst) return undefined;
+    [d, m, y] = [dayFirst[1], dayFirst[2], dayFirst[3] ?? String(year)];
+  }
+  return wellFormedDeadline(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
 }
 
 /** A local calendar date as yyyy-mm-dd, for what a date picker hands back. */
