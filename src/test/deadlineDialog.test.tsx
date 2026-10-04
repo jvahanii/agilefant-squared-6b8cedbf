@@ -34,7 +34,7 @@ describe("parseDeadlineInput", () => {
     expect(parseDeadlineInput("2026-09-30")).toBe("2026-09-30");
     expect(parseDeadlineInput("2026-9-30")).toBe("2026-09-30");
     expect(parseDeadlineInput(" 20260930 ")).toBe("2026-09-30");
-ag  });
+  });
 
   it("takes dots in the place of dashes, year first or Finnish style", () => {
     expect(parseDeadlineInput("2026.9.30")).toBe("2026-09-30");
