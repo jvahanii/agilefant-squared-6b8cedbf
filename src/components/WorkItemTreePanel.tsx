@@ -799,7 +799,24 @@ function WorkItemNodeContent({
     const me = peekCurrentUser()?.id ?? null;
     // Only the ones this person scrambled: the database refuses the rest, and
     // there is no point asking it.
-    const ids = scrambleTargets().filter((id) => scrambled.has(id) && scrambled.get(id) === me);
+    // Unscrambling a parent also restores every descendant.
+    const all = useAppStore.getState().workItems;
+    const childrenOf = new Map<string, string[]>();
+    for (const wi of Object.values(all)) {
+      if (!wi.parentId) continue;
+      const list = childrenOf.get(wi.parentId) ?? [];
+      list.push(wi.id);
+      childrenOf.set(wi.parentId, list);
+    }
+    const expanded = new Set<string>();
+    const stack = [...scrambleTargets()];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (expanded.has(id)) continue;
+      expanded.add(id);
+      for (const c of childrenOf.get(id) ?? []) stack.push(c);
+    }
+    const ids = [...expanded].filter((id) => scrambled.has(id) && scrambled.get(id) === me);
     if (ids.length === 0) return { error: "Nothing here that you scrambled" };
     let done = 0;
     for (const id of ids) {
