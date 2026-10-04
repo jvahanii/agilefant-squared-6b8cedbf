@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { patchCachedWorkItems } from "@/store/appDataCache";
 import { backlogPoints, childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
 import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
 import { BacklogPointsDialog } from "./BacklogPointsDialog";
@@ -799,12 +800,24 @@ function WorkItemNodeContent({
     // Only the ones this person scrambled: the database refuses the rest, and
     // there is no point asking it.
     const ids = scrambleTargets().filter((id) => scrambled.has(id) && scrambled.get(id) === me);
+    if (ids.length === 0) return { error: "Nothing here that you scrambled" };
     let done = 0;
     for (const id of ids) {
-      const { error } = await supabase.rpc("unscramble_work_item", { _work_item_id: id, _pin: pin });
+      const { data, error } = await supabase.rpc("unscramble_work_item", { _work_item_id: id, _pin: pin });
       if (error) {
         if (done > 0) toast({ title: `${done} restored, then it stopped`, description: error.message, variant: "destructive" });
         return { error: error.message };
+      }
+      // The database already holds the real name; show it now rather than
+      // waiting for a live update that may never come for our own change.
+      if (typeof data === "string") {
+        const item = useAppStore.getState().workItems[id];
+        if (item) {
+          const restored = { ...item, title: data };
+          useAppStore.setState((s) => ({ workItems: { ...s.workItems, [id]: restored } }));
+          const orgId = item.organizationId ?? activeOrgId;
+          if (orgId) patchCachedWorkItems(orgId, { [id]: restored });
+        }
       }
       useScrambledItemsStore.getState().setScrambled(id, undefined);
       done += 1;
