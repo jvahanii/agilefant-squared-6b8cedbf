@@ -94,7 +94,7 @@ export function DeadlineDialog({ workItemIds, open, onOpenChange }: DeadlineDial
           </div>
           {invalid && (
             <p id="deadline-date-error" className="text-xs text-destructive">
-              Write it as YYYY-MM-DD, for example 2026-09-30.
+              Write it as YYYY-MM-DD, for example 2026-09-30. Dots work too, and the year can be left out: 30.9.
             </p>
           )}
         </div>

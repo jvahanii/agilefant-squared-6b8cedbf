@@ -36,11 +36,27 @@ describe("parseDeadlineInput", () => {
     expect(parseDeadlineInput(" 20260930 ")).toBe("2026-09-30");
   });
 
+  it("takes dots in the place of dashes, year first or Finnish style", () => {
+    expect(parseDeadlineInput("2026.9.30")).toBe("2026-09-30");
+    expect(parseDeadlineInput("2026.09.30")).toBe("2026-09-30");
+    expect(parseDeadlineInput("30.9.2026")).toBe("2026-09-30");
+    expect(parseDeadlineInput("30-9-2026")).toBe("2026-09-30");
+  });
+
+  it("prefills the ongoing year when it is left out", () => {
+    const y = new Date().getFullYear();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const expected = `${y}-09-30`;
+    expect(parseDeadlineInput("30.9.")).toBe(expected);
+    expect(parseDeadlineInput("30.9")).toBe(expected);
+    expect(parseDeadlineInput("30-9")).toBe(expected);
+  });
+
   it("refuses other orders and dates that do not exist", () => {
-    expect(parseDeadlineInput("30.9.2026")).toBeUndefined();
     expect(parseDeadlineInput("12/31/2027")).toBeUndefined();
     expect(parseDeadlineInput("2026-02-31")).toBeUndefined();
     expect(parseDeadlineInput("2027031")).toBeUndefined();
+    expect(parseDeadlineInput("31.2.2026")).toBeUndefined();
   });
 });
 
