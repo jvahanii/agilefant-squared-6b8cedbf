@@ -91,7 +91,14 @@ export function MobileWorkItemAttributesSheet({
   const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
   const ratingsVisible = useRatingsEnabled();
   const deadlinesVisible = useDeadlinesEnabled();
-  const createdDatesVisible = useCreatedDatesEnabled();
+  // Two switches, as on the row: the organization's, and that of the list the
+  // item sits in — in the tree being viewed, which is where the sheet opened.
+  const orgCreatedDatesEnabled = useCreatedDatesEnabled();
+  const sheetBacklogId = item && selectedTreeId ? item.backlogAssignments[selectedTreeId] : undefined;
+  const listCreatedDatesEnabled = useAppStore((s) =>
+    sheetBacklogId ? s.backlogs[sheetBacklogId]?.createdDatesEnabled ?? false : false,
+  );
+  const createdDatesVisible = orgCreatedDatesEnabled && listCreatedDatesEnabled;
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
