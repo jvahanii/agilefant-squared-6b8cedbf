@@ -216,7 +216,7 @@ describe("Työmarkkinatori: the cities come from the alert mail", () => {
 
   it("names the imported item after them", () => {
     const [first] = extractLinks(alert(), "jobs");
-    expect(withCities(first.title, first.cities)).toBe("Joppl Oy — servicenow ITSM expert (Espoo, Helsinki)");
+    expect(withCities(first.title, first.cities)).toBe("Joppl Oy - servicenow ITSM expert (Espoo, Helsinki)");
   });
 
   it("does not read the posting page at import once the mail has said", async () => {

@@ -96,13 +96,13 @@ export default function JobAdsGuide() {
           <P>For every job posting it finds in a matching email, job ad import creates one work item:</P>
           <Ul>
             <li>
-              <strong>Named after the employer and the role</strong> — for example <Code>Fennia — Product owner</Code>.
+              <strong>Named after the employer and the role</strong> — for example <Code>Fennia - Product owner</Code>.
             </li>
             <li>
               <strong>Given the closing date</strong> when one can be found. Where your organization has{" "}
               <strong>Deadlines</strong> switched on in Bells &amp; Whistles, it becomes the item's deadline, shown before
               the name and sortable with <em>Deadline, soonest first</em>. Otherwise it goes in front of the name as
-              month and day — <Code>0930 Fennia — Product owner</Code> closes on 30 September — and sorting by name puts
+              month and day — <Code>0930 Fennia - Product owner</Code> closes on 30 September — and sorting by name puts
               the soonest first.
             </li>
             <li>

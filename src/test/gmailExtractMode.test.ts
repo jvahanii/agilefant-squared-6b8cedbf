@@ -81,7 +81,7 @@ describe('work item naming: company then title', () => {
       <p class="job_text"><span class="company-name">Academic Work</span> | Tuusula, Helsinki | 12.09.2026</p>`;
     const [link] = extractLinks(message('noreply@jobly.fi', html), 'jobs');
     expect(link.company).toBe('Academic Work');
-    expect(link.title).toBe('Academic Work — OPS Specialist, Tuusula/Helsinki');
+    expect(link.title).toBe('Academic Work - OPS Specialist, Tuusula/Helsinki');
   });
 
   it('does not mistake the logo anchor for the title anchor', () => {
@@ -104,7 +104,7 @@ describe('work item naming: company then title', () => {
       </td></tr><tr><td class="dark-gray"><u></u> Academic Work, Espoo - Hakuaika 11.9 - 11.3. <u></u></td></tr>`;
     const [link] = extractLinks(message('duunivahti@duunitori.fi', html), 'jobs');
     expect(link.company).toBe('Academic Work');
-    expect(link.title).toBe('Academic Work — Junior Data & Software Specialist, Espoo');
+    expect(link.title).toBe('Academic Work - Junior Data & Software Specialist, Espoo');
   });
 
   it('falls back to the subject when a single-role alert has no company markup', () => {
@@ -125,7 +125,7 @@ describe('work item naming: company then title', () => {
       <a href="${url}">Helsinki</a>`;
     const [link] = extractLinks(message('noreply@thehub.io', html), 'jobs');
     expect(link.company).toBe('JohTo Partners Oy');
-    expect(link.title).toBe('JohTo Partners Oy — Account Executive');
+    expect(link.title).toBe('JohTo Partners Oy - Account Executive');
   });
 
   it('takes the employer from the career-site host on jobs2web', () => {
@@ -160,7 +160,7 @@ describe('work item naming: company then title', () => {
 
     expect(links).toHaveLength(4);
     expect(new Set(links.map((l) => l.company))).toEqual(new Set(['Fortum']));
-    expect(links[0].title).toBe('Fortum — Senior Manager Go-To-Market - Espoo, FI');
+    expect(links[0].title).toBe('Fortum - Senior Manager Go-To-Market - Espoo, FI');
   });
 
   /**
@@ -197,8 +197,8 @@ describe('work item naming: company then title', () => {
       'https://careers.nestai.com/jobs/8361711-machine-learning-engineer-object-tracking-re-identification',
     ]);
     expect(links.map((l) => l.title)).toEqual([
-      'NestAI — Machine Learning Engineer, Action Recognition',
-      'NestAI — Machine Learning Engineer, Object Tracking & Re-Identification',
+      'NestAI - Machine Learning Engineer, Action Recognition',
+      'NestAI - Machine Learning Engineer, Object Tracking & Re-Identification',
     ]);
   });
 
@@ -232,8 +232,8 @@ describe('work item naming: company then title', () => {
       'https://www.baronacareers.com/jobs/vastaava-tyonjohtaja-lujatalo-oy-lujatalo-oy',
     ]);
     expect(links.map((l) => l.title)).toEqual([
-      'China Harbour Engineering Company Limited — Electrical Engineer for CAM Plant Project, Kotka',
-      'Lujatalo Oy — Vastaava työnjohtaja',
+      'China Harbour Engineering Company Limited - Electrical Engineer for CAM Plant Project, Kotka',
+      'Lujatalo Oy - Vastaava työnjohtaja',
     ]);
     // The recipient's address and personal token never reach a work item.
     expect(JSON.stringify(links)).not.toMatch(/jvahanii|identifier|email_user/);
@@ -326,7 +326,7 @@ describe('LinkedIn digests name each employer, not the subject line', () => {
 
   it('titles each row with its own employer', () => {
     const links = extractLinks(message('jobs-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
-    expect(links[1].title).toBe('If Insurance — Agile Coach');
+    expect(links[1].title).toBe('If Insurance - Agile Coach');
   });
 
   it('still falls back to the subject when the markup carries no employer', () => {
@@ -387,6 +387,6 @@ describe('LinkedIn job alert digest names each employer', () => {
     const links = extractLinks(message('jobalerts-noreply@linkedin.com', DIGEST, SUBJECT), 'jobs');
     // One of six really is Basware; the other five were mislabelled.
     expect(links.filter((l) => l.company === 'Basware')).toHaveLength(1);
-    expect(links[1].title).toBe('Alibaba Cloud — Data Center IT Manager-Helsinki, Finland');
+    expect(links[1].title).toBe('Alibaba Cloud - Data Center IT Manager-Helsinki, Finland');
   });
 });

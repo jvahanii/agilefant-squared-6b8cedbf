@@ -357,11 +357,18 @@ function contextFor(occ: LinkOccurrence[], url: URL, subject: string, from: stri
   };
 }
 
-/** "Company — Title", unless the title already names the company. */
+/**
+ * "Company - Title", unless the title already names the company.
+ *
+ * A plain hyphen, not an em dash: the name is typed into search boxes and
+ * filters, and nobody has an em dash on their keyboard. Em dashes the posting's
+ * own title carries are turned into hyphens too, so a name never mixes the two.
+ */
 function composeTitle(company: string, title: string): string {
-  if (!title) return company;
-  if (title.toLowerCase().startsWith(company.toLowerCase())) return title;
-  return `${company} \u2014 ${title}`.slice(0, 300);
+  const plain = (text: string) => text.replace(/\u2014/g, "-");
+  if (!title) return plain(company);
+  if (title.toLowerCase().startsWith(company.toLowerCase())) return plain(title);
+  return plain(`${company} - ${title}`).slice(0, 300);
 }
 
 /**
