@@ -6,7 +6,7 @@
  * Statuses… even where custom statuses were off.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -14,6 +14,13 @@ import { BacklogContextMenuItems } from "@/components/BacklogContextMenuItems";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+
+// The switches in this menu save straight to the database; here they must not.
+vi.mock("@/store/supabaseSync", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
+  updateBacklogRatingsEnabled: vi.fn(),
+  updateBacklogCreatedDatesEnabled: vi.fn(),
+}));
 
 // jsdom has no DOMRect, which a right-click menu uses to place itself at the
 // pointer; without it every test passes and the run still fails on the error.
@@ -102,6 +109,18 @@ describe("a list's right-click menu", () => {
     openMenu();
     fireEvent.click(screen.getByText("Star ratings"));
     expect(useAppStore.getState().backlogs[BL].ratingsEnabled).toBe(true);
+  });
+
+  it("offers the list's created dates only where the organization has them on, and switches them itself", () => {
+    openMenu();
+    expect(screen.queryByText("Created dates")).not.toBeInTheDocument();
+    cleanup();
+
+    settings({ createdDatesEnabled: true });
+    openMenu();
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled ?? false).toBe(false);
+    fireEvent.click(screen.getByText("Created dates"));
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(true);
   });
 });
 

@@ -118,6 +118,7 @@ export type Database = {
       }
       backlogs: {
         Row: {
+          created_dates_enabled: boolean
           id: string
           name: string
           organization_id: string | null
@@ -129,6 +130,7 @@ export type Database = {
           view_mode: string
         }
         Insert: {
+          created_dates_enabled?: boolean
           id: string
           name: string
           organization_id?: string | null
@@ -140,6 +142,7 @@ export type Database = {
           view_mode?: string
         }
         Update: {
+          created_dates_enabled?: boolean
           id?: string
           name?: string
           organization_id?: string | null

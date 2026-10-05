@@ -178,9 +178,10 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             <div>
               <p className="text-sm font-medium">Show created dates</p>
               <p className="text-xs text-muted-foreground">
-                Show on each work item the day it was made, and sort a list newest or oldest first. The date can be
-                corrected from the item's right-click menu. Items made before dates were recorded show none until
-                one is set. Turning this off hides the dates everywhere; they are kept.
+                Let lists show the day each work item was made, and be sorted newest or oldest first. Each list then
+                turns its own on from its right-click menu, under Created dates. A date can be corrected from the
+                item's right-click menu; items made before dates were recorded show none until one is set. Turning
+                this off hides the dates everywhere; they and each list's choice are kept.
               </p>
             </div>
             <Switch

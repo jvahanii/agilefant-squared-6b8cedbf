@@ -10,6 +10,7 @@ import {
   deleteWorkItemBacklogRanks,
   upsertBacklog,
   updateBacklogRatingsEnabled,
+  updateBacklogCreatedDatesEnabled,
   updateBacklogPoints,
   updateBacklogViewMode,
   upsertBacklogs,
@@ -256,6 +257,8 @@ interface AppState extends DataSnapshot {
   setBacklogViewMode: (backlogId: string, mode: 'list' | 'board') => void;
   /** Show stars on this backlog's items, where the organization has ratings on. */
   setBacklogRatingsEnabled: (backlogId: string, enabled: boolean) => void;
+  /** Show created dates on this backlog's items, where the organization has them on. */
+  setBacklogCreatedDatesEnabled: (backlogId: string, enabled: boolean) => void;
   /** A backlog's own estimate: a whole number of zero or more, or undefined to take it away. */
   setBacklogPoints: (backlogId: string, points: number | undefined) => void;
   reorderBacklogAmongSiblings: (
@@ -4119,6 +4122,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogCreatedDatesEnabled: (backlogId, enabled) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      if ((bl.createdDatesEnabled ?? false) === enabled) return;
+      updateBacklogCreatedDatesEnabled(backlogId, enabled);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, createdDatesEnabled: enabled } },
+      });
+    },
+
     setBacklogPoints: (backlogId, points) => {
       const state = get();
       const bl = state.backlogs[backlogId];
@@ -4883,6 +4897,11 @@ export const useAppStore = create<AppState>()((set, get) => {
             'ratings_enabled' in row
               ? (row.ratings_enabled as boolean | null) === true
               : state.backlogs[id]?.ratingsEnabled,
+          // And for its created-dates switch, for the same reason.
+          createdDatesEnabled:
+            'created_dates_enabled' in row
+              ? (row.created_dates_enabled as boolean | null) === true
+              : state.backlogs[id]?.createdDatesEnabled,
           // The same for its estimate: left out, the echo of setting one would
           // take it away again a moment later.
           points: 'points' in row ? ((row.points as number | null) ?? undefined) : state.backlogs[id]?.points,

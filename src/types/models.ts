@@ -65,6 +65,10 @@ export interface Backlog {
    *  where the organization has ratings on. Unlike the tree-level points
    *  override there is nothing to inherit: a backlog opts in. */
   ratingsEnabled?: boolean;
+  /** Created dates on this backlog's items. Off until switched on, and only
+   *  consulted where the organization has created dates on — the same shape
+   *  as the stars switch above. */
+  createdDatesEnabled?: boolean;
   /** An estimate for the backlog as a whole, before its work is broken into
    *  items. It counts as the larger of this and what its contents add up to;
    *  absent, the backlog is just the sum of its items. See lib/backlogPoints. */

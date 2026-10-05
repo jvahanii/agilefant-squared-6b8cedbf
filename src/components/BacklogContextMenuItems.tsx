@@ -1,4 +1,4 @@
-import { Globe, Hash, Settings2, SlidersHorizontal, Star, Trash2, TrendingUp } from "lucide-react";
+import { CalendarPlus, Globe, Hash, Settings2, SlidersHorizontal, Star, Trash2, TrendingUp } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -13,6 +13,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
+import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { scrambleName } from "@/lib/scramble";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
@@ -53,6 +54,7 @@ export function BacklogContextMenuItems({
 }: BacklogContextMenuItemsProps) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const setBacklogRatingsEnabled = useAppStore((s) => s.setBacklogRatingsEnabled);
+  const setBacklogCreatedDatesEnabled = useAppStore((s) => s.setBacklogCreatedDatesEnabled);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
@@ -62,6 +64,7 @@ export function BacklogContextMenuItems({
   );
   const pointsVisible = usePointsVisibleForTree(treeId);
   const ratingsEnabled = useRatingsEnabled();
+  const createdDatesEnabled = useCreatedDatesEnabled();
   const publicLinksEnabled = usePublicLinksEnabled();
 
   if (!backlog) return null;
@@ -127,6 +130,19 @@ export function BacklogContextMenuItems({
         >
           <Star className="w-3 h-3 mr-2" />
           Star ratings
+        </ContextMenuCheckboxItem>
+      )}
+      {/* The same choice for created dates: worth a column on a list where
+          arrival order matters, clutter on one where it does not. Offered only
+          where the organization has created dates on at all. */}
+      {createdDatesEnabled && (
+        <ContextMenuCheckboxItem
+          className="text-xs"
+          checked={backlog.createdDatesEnabled ?? false}
+          onCheckedChange={(checked) => setBacklogCreatedDatesEnabled(backlogId, checked === true)}
+        >
+          <CalendarPlus className="w-3 h-3 mr-2" />
+          Created dates
         </ContextMenuCheckboxItem>
       )}
       {publicLinksEnabled && (

@@ -12,6 +12,7 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
   upsertWorkItem: vi.fn(),
   upsertWorkItems: vi.fn(),
+  updateBacklogCreatedDatesEnabled: vi.fn(),
 }));
 
 import { toIsoDate } from "@/lib/deadlineFormat";
@@ -45,7 +46,9 @@ const seed = (items: WorkItem[] = [item(ID, { title: "Fortum - Analyst" })]) =>
   useAppStore.setState({
     organizationId: ORG,
     backlogTrees: { [TREE]: { id: TREE, name: "Tree", rootBacklogIds: [BL], rank: 0 } },
-    backlogs: { [BL]: { id: BL, name: "Jobs", parentId: null, childrenIds: [], treeId: TREE, rank: 0 } },
+    backlogs: {
+      [BL]: { id: BL, name: "Jobs", parentId: null, childrenIds: [], treeId: TREE, rank: 0, createdDatesEnabled: true },
+    },
     workItems: Object.fromEntries(items.map((i) => [i.id, i])),
     undoStack: [],
     redoStack: [],
@@ -107,6 +110,16 @@ describe("sorting by created date", () => {
     createdDates(false);
     expect(listSortModeFor(BL)).toBe("rank");
     createdDates(true);
+    expect(listSortModeFor(BL)).toBe("created-desc");
+  });
+
+  it("needs the list's own switch as well as the organization's", () => {
+    // Two switches, as for stars: a list that has not turned created dates on
+    // is not sorted by them, whatever the organization allows.
+    useListSortStore.setState({ modeByBacklog: { [BL]: "created-desc" } });
+    useAppStore.getState().setBacklogCreatedDatesEnabled(BL, false);
+    expect(listSortModeFor(BL)).toBe("rank");
+    useAppStore.getState().setBacklogCreatedDatesEnabled(BL, true);
     expect(listSortModeFor(BL)).toBe("created-desc");
   });
 });
@@ -187,6 +200,27 @@ describe("correcting a created date", () => {
     useAppStore.getState().setWorkItemCreatedOn(ID, "2026-08-01");
     useAppStore.getState().applyRealtimeWorkItem("UPDATE", echo());
     expect(useAppStore.getState().workItems[ID].createdOn).toBe("2026-08-01");
+  });
+});
+
+describe("a list's own switch", () => {
+  it("starts off, and is switched on and off from the list", () => {
+    seed();
+    useAppStore.setState((s) => ({ backlogs: { [BL]: { ...s.backlogs[BL], createdDatesEnabled: undefined } } }));
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled ?? false).toBe(false);
+    useAppStore.getState().setBacklogCreatedDatesEnabled(BL, true);
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(true);
+    useAppStore.getState().setBacklogCreatedDatesEnabled(BL, false);
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(false);
+  });
+
+  it("keeps what it holds when an echo of the list does not carry the column", () => {
+    useAppStore.getState().applyRealtimeBacklog("UPDATE", { id: BL, name: "Jobs", parent_id: null, tree_id: TREE, rank: 0 });
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(true);
+    useAppStore
+      .getState()
+      .applyRealtimeBacklog("UPDATE", { id: BL, name: "Jobs", parent_id: null, tree_id: TREE, rank: 0, created_dates_enabled: false });
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(false);
   });
 });
 

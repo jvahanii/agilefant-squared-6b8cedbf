@@ -254,7 +254,7 @@ export async function loadFromSupabase(
 
   const backlogs: Record<string, Backlog> = {};
   for (const row of cleanBacklogRows) {
-    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
+    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, createdDatesEnabled: (row as { created_dates_enabled?: boolean | null }).created_dates_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
   }
   for (const bl of Object.values(backlogs)) {
     if (bl.parentId && backlogs[bl.parentId]) {
@@ -743,6 +743,14 @@ export async function updateBacklogRatingsEnabled(backlogId: string, enabled: bo
     .update({ ratings_enabled: enabled } as never)
     .eq('id', backlogId);
   if (error) console.error('updateBacklogRatingsEnabled:', error);
+}
+
+export async function updateBacklogCreatedDatesEnabled(backlogId: string, enabled: boolean) {
+  const { error } = await supabase
+    .from('backlogs')
+    .update({ created_dates_enabled: enabled } as never)
+    .eq('id', backlogId);
+  if (error) console.error('updateBacklogCreatedDatesEnabled:', error);
 }
 
 /**

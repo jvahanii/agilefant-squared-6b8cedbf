@@ -360,7 +360,10 @@ function WorkItemNodeContent({
   const rowBacklogRatings = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.ratingsEnabled ?? false : false));
   const ratingsVisible = orgRatingsEnabled && rowBacklogRatings;
   const deadlinesVisible = useDeadlinesEnabled();
-  const createdDatesVisible = useCreatedDatesEnabled();
+  // Two switches, as for stars: the organization's, and the row's own list's.
+  const orgCreatedDatesEnabled = useCreatedDatesEnabled();
+  const rowBacklogCreatedDates = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.createdDatesEnabled ?? false : false));
+  const createdDatesVisible = orgCreatedDatesEnabled && rowBacklogCreatedDates;
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -2812,7 +2815,10 @@ export function WorkItemTreePanel() {
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
   // Deadline sort, offered where the organization uses deadlines.
   const deadlinesEnabledForSort = useDeadlinesEnabled();
-  const createdDatesEnabledForSort = useCreatedDatesEnabled();
+  const orgCreatedDatesEnabledForSort = useCreatedDatesEnabled();
+  const createdDatesEnabledForSort = useAppStore(
+    (s) => orgCreatedDatesEnabledForSort && !!(selectedBacklogId && s.backlogs[selectedBacklogId]?.createdDatesEnabled),
+  );
   const ratingsEnabled = useAppStore(
     (s) => orgRatingsEnabled && !!(selectedBacklogId && s.backlogs[selectedBacklogId]?.ratingsEnabled),
   );

@@ -82,7 +82,7 @@ export function listSortModeFor(backlogId: string | null | undefined): ListSortM
     useListSortStore.getState().modeByBacklog[backlogId] ?? "rank",
     settings?.deadlinesEnabled ?? false,
     (settings?.ratingsEnabled ?? false) && !!useAppStore.getState().backlogs[backlogId]?.ratingsEnabled,
-    settings?.createdDatesEnabled ?? false,
+    (settings?.createdDatesEnabled ?? false) && !!useAppStore.getState().backlogs[backlogId]?.createdDatesEnabled,
   );
 }
 
@@ -92,8 +92,9 @@ export function useListSortMode(backlogId: string | null | undefined): ListSortM
   const deadlinesOn = useOrgSettingsStore((s) => s.settings[orgId]?.deadlinesEnabled ?? false);
   const orgRatingsOn = useOrgSettingsStore((s) => s.settings[orgId]?.ratingsEnabled ?? false);
   const backlogRatingsOn = useAppStore((s) => (backlogId ? !!s.backlogs[backlogId]?.ratingsEnabled : false));
-  const createdDatesOn = useOrgSettingsStore((s) => s.settings[orgId]?.createdDatesEnabled ?? false);
-  return effectiveMode(stored, deadlinesOn, orgRatingsOn && backlogRatingsOn, createdDatesOn);
+  const orgCreatedDatesOn = useOrgSettingsStore((s) => s.settings[orgId]?.createdDatesEnabled ?? false);
+  const backlogCreatedDatesOn = useAppStore((s) => (backlogId ? !!s.backlogs[backlogId]?.createdDatesEnabled : false));
+  return effectiveMode(stored, deadlinesOn, orgRatingsOn && backlogRatingsOn, orgCreatedDatesOn && backlogCreatedDatesOn);
 }
 
 /** The team and status facts the non-rank sorts read, as they are now. */
