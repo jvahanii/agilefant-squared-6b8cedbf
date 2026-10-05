@@ -32,6 +32,14 @@ type WorkItemUpsertRow = {
   rating: number | null;
   /** yyyy-mm-dd, or null for none. */
   deadline: string | null;
+  /**
+   * yyyy-mm-dd. Named only where the item has one, and never as null: a row
+   * that leaves it out keeps what the database holds on an update, and takes
+   * the column's default — today — on an insert. Sending null instead would
+   * let a tab still holding items from before the column existed wipe the
+   * dates the migration filled in.
+   */
+  created_on?: string;
   status: string;
   parent_id: string | null;
   parent_id_overrides?: Record<string, string | null>;
@@ -351,7 +359,7 @@ export async function loadFromSupabase(
     }
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
-      points: row.points ?? undefined, rating: (row as { rating?: number | null }).rating ?? undefined, deadline: (row as { deadline?: string | null }).deadline ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
+      points: row.points ?? undefined, rating: (row as { rating?: number | null }).rating ?? undefined, deadline: (row as { deadline?: string | null }).deadline ?? undefined, createdOn: (row as { created_on?: string | null }).created_on ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
       parentIds: (row.parent_id_overrides && typeof row.parent_id_overrides === 'object' && !Array.isArray(row.parent_id_overrides))
         ? (row.parent_id_overrides as Record<string, string | null>)
@@ -574,6 +582,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
   // includes the column causes PostgREST to fill in NULL, which violates
   // the column's NOT NULL constraint.
   row.parent_id_overrides = item.parentIds ?? {};
+  if (item.createdOn) row.created_on = item.createdOn;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any));
   if (error) {
@@ -828,6 +837,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
     };
     // Always include parent_id_overrides — see note in upsertWorkItem.
     row.parent_id_overrides = item.parentIds ?? {};
+    if (item.createdOn) row.created_on = item.createdOn;
     return row;
   });
   // Dedupe by id (last write wins) so a single upsert payload never contains
@@ -836,8 +846,19 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
   const dedupedById = new Map<string, WorkItemUpsertRow>();
   for (const row of rows) dedupedById.set(row.id, row);
   const dedupedRows = Array.from(dedupedById.values());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(dedupedRows as any));
+  // Rows that name created_on and rows that leave it out go in separate
+  // requests. In one request PostgREST fills a column some rows omit with
+  // NULL for those rows, which is exactly the wipe leaving it out is for.
+  let error: { message?: string } | null = null;
+  for (const group of [
+    dedupedRows.filter((row) => row.created_on !== undefined),
+    dedupedRows.filter((row) => row.created_on === undefined),
+  ]) {
+    if (group.length === 0) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ error } = await withSessionRetry(() => supabase.from('work_items').upsert(group as any)));
+    if (error) break;
+  }
   if (error) {
     console.error('upsertWorkItems:', error, 'rows:', dedupedRows);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });

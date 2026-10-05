@@ -1,4 +1,4 @@
-import { wellFormedDeadline } from "@/lib/deadlineFormat";
+import { toIsoDate, wellFormedDeadline } from "@/lib/deadlineFormat";
 import { wellFormedPoints } from "@/lib/backlogPoints";
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink, getEffectiveParentId } from "@/types/models";
@@ -241,6 +241,9 @@ interface AppState extends DataSnapshot {
   setWorkItemRating: (workItemId: string, rating: number | undefined) => void;
   /** A yyyy-mm-dd deadline, or undefined to take it away. */
   setWorkItemDeadline: (workItemId: string, deadline: string | undefined) => void;
+  /** Correct the day an item was made, as yyyy-mm-dd. It can be changed but
+   *  not taken away: anything that is not a real date is ignored. */
+  setWorkItemCreatedOn: (workItemId: string, createdOn: string) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", rank?: number) => void;
@@ -1050,7 +1053,7 @@ function sameEntries(a: Record<string, unknown> | undefined, b: Record<string, u
 /** Whether two versions of an item would be saved as the same rows. */
 function samePersistedWorkItem(a: WorkItem, b: WorkItem): boolean {
   return a.title === b.title && a.description === b.description && a.points === b.points &&
-    a.rating === b.rating && a.deadline === b.deadline && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
+    a.rating === b.rating && a.deadline === b.deadline && a.createdOn === b.createdOn && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
     a.respawnEnabled === b.respawnEnabled && a.respawnIntervalDays === b.respawnIntervalDays &&
     a.respawnHour === b.respawnHour && a.respawnMinute === b.respawnMinute &&
     a.respawnLastTriggeredAt === b.respawnLastTriggeredAt &&
@@ -2659,6 +2662,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         childrenIds: [],
         points: undefined,
         organizationId: orgId,
+        // Today on the user's own calendar, not the server's.
+        createdOn: toIsoDate(new Date()),
       };
 
       updatedWorkItems[id] = newItem;
@@ -2737,6 +2742,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           childrenIds: [],
           points: undefined,
           organizationId: orgId,
+          createdOn: toIsoDate(new Date()),
         };
         updatedWorkItems[id] = newItem;
         newItems.push(newItem);
@@ -2914,6 +2920,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           points: src.points,
           rating: src.rating,
           deadline: src.deadline,
+          // A copy is made today, whenever its original was.
+          createdOn: toIsoDate(new Date()),
           status: src.status,
           parentId: newParentId,
           // Drop per-tree parent overrides on the clone — they reference the
@@ -3225,6 +3233,29 @@ export const useAppStore = create<AppState>()((set, get) => {
         entityId: workItemId,
         entityName: item.title,
         details: `${item.deadline ?? "none"} → ${due ?? "none"}`,
+      });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
+    setWorkItemCreatedOn: (workItemId, createdOn) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const made = wellFormedDeadline(createdOn);
+      if (!made || made === item.createdOn) return;
+      const updated = { ...item, createdOn: made };
+      upsertWorkItem(updated, orgId);
+      internalLog({
+        action: "Set Created Date",
+        entityType: "work_item",
+        entityId: workItemId,
+        entityName: item.title,
+        details: `${item.createdOn ?? "none"} → ${made}`,
       });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
@@ -3905,6 +3936,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         backlogAssignments: { ...item.backlogAssignments },
         status: "not_started" as WorkItemStatus,
         childrenIds: [],
+        createdOn: toIsoDate(new Date()),
       };
       updatedWorkItems[newId] = copy;
       itemsToUpdateInDB.push(copy);
@@ -4653,6 +4685,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           // The same for a deadline: left out here, the echo of setting one
           // would clear it a moment later, as it did for stars before.
           deadline: (row.deadline as string | null) ?? undefined,
+          // And for the created date — falling back on what is held here, so
+          // an echo that does not carry the column cannot blank it.
+          createdOn: (row.created_on as string | null) ?? state.workItems[id]?.createdOn,
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
           parentIds: parsedParentIds,

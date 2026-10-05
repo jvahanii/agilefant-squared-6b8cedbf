@@ -892,6 +892,17 @@ describe("JobSearchRunButton", () => {
 });
 
 describe("Import & auto-place: mirroring the rows switched on", () => {
+  // The postings below close on 30 September and 11 October 2026. Read against
+  // the real calendar, the first one counts as closed from 1 October on, loses
+  // its rating and mirror controls, and every test here that touches them
+  // fails — as they did, on that day. The clock is pinned to when both were
+  // open. Only Date is faked, so the timers the picker waits on still run.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-21T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
   const SHORTLIST = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-34431983";
   const NEXT_TREE = "tree-next";
   const backlog = (id: string, name: string, treeId = "tree-1") => ({

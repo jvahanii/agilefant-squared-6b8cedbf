@@ -12,7 +12,7 @@
 import type { WorkItem } from "@/types/models";
 import { byRank } from "@/lib/workItemRows";
 
-export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc" | "deadline-asc";
+export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc" | "deadline-asc" | "created-desc" | "created-asc";
 
 export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rank", label: "Rank" },
@@ -24,19 +24,31 @@ export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rating-desc", label: "Rating ★ best first" },
   // Offered only where the organization has deadlines on.
   { mode: "deadline-asc", label: "Deadline, soonest first" },
+  // Offered only where the organization has created dates on.
+  { mode: "created-desc", label: "Created, newest first" },
+  { mode: "created-asc", label: "Created, oldest first" },
 ];
 
 /**
  * Modes worth offering: rating only where the organization rates its items,
- * deadline only where it uses deadlines.
+ * deadline only where it uses deadlines, created only where it shows them.
  */
 export function listSortModes(
   ratingsEnabled: boolean,
   deadlinesEnabled = false,
+  createdDatesEnabled = false,
 ): { mode: ListSortMode; label: string }[] {
   return LIST_SORT_MODES.filter(
-    (m) => (ratingsEnabled || m.mode !== "rating-desc") && (deadlinesEnabled || m.mode !== "deadline-asc"),
+    (m) =>
+      (ratingsEnabled || m.mode !== "rating-desc") &&
+      (deadlinesEnabled || m.mode !== "deadline-asc") &&
+      (createdDatesEnabled || !isCreatedSort(m.mode)),
   );
+}
+
+/** The two orders that read an item's created date. */
+export function isCreatedSort(mode: ListSortMode): boolean {
+  return mode === "created-desc" || mode === "created-asc";
 }
 
 export function isListSortMode(value: unknown): value is ListSortMode {
@@ -116,6 +128,12 @@ export function sortTopLevel(
         // Soonest first — gone-by ones lead, still to be dealt with — and items
         // with no deadline after every one that has one.
         return (a, b) => nullsLast(a.deadline ?? null, b.deadline ?? null, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
+      case "created-desc":
+        // Newest first. Items whose day was never recorded come last either
+        // way: unknown is not "oldest", and not "newest" either.
+        return (a, b) => nullsLast(a.createdOn ?? null, b.createdOn ?? null, (x, y) => (x < y ? 1 : x > y ? -1 : 0));
+      case "created-asc":
+        return (a, b) => nullsLast(a.createdOn ?? null, b.createdOn ?? null, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
       case "team": {
         const names = new Map(items.map((item) => [item.id, firstTeamName(item, ctx)]));
         return (a, b) => nullsLast(names.get(a.id) ?? null, names.get(b.id) ?? null, collator.compare);

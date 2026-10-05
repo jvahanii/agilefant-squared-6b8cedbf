@@ -50,6 +50,9 @@ export interface PublishedItem {
   rating: number | null;
   /** yyyy-mm-dd, or null: none, or not published. */
   deadline?: string | null;
+  /** The day it was made, yyyy-mm-dd, or null: never recorded, or not
+   *  published. */
+  createdOn?: string | null;
   /** Null when the link hides statuses. */
   status: string | null;
   /** Effective parent within the published tree (per-tree override applied). */
@@ -87,6 +90,9 @@ export interface PublishedPayload {
   /** Deadlines. False unless the organization uses them and the link keeps
    *  them. Absent from pages served before deadlines existed. */
   deadlinesVisible?: boolean;
+  /** Created dates. False unless the organization shows them and the link
+   *  keeps them. Absent from pages served before they existed. */
+  createdDatesVisible?: boolean;
   backlogs: PublishedBacklog[];
   /** Time logged against the tree itself; only a whole-tree link has any. */
   treeMinutes: number;
@@ -220,6 +226,7 @@ export const PUBLISHABLE_ATTRIBUTES = [
   { key: "links", label: "Links" },
   { key: "rating", label: "Ratings" },
   { key: "deadline", label: "Deadlines" },
+  { key: "created", label: "Created dates" },
   { key: "time", label: "Logged time" },
 ] as const;
 

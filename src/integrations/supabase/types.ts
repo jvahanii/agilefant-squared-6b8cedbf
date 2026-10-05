@@ -745,6 +745,7 @@ export type Database = {
           boards_enabled: boolean
           burnups_enabled: boolean
           created_at: string
+          created_dates_enabled: boolean
           custom_statuses_enabled: boolean
           deadlines_enabled: boolean
           id: string
@@ -762,6 +763,7 @@ export type Database = {
           boards_enabled?: boolean
           burnups_enabled?: boolean
           created_at?: string
+          created_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -779,6 +781,7 @@ export type Database = {
           boards_enabled?: boolean
           burnups_enabled?: boolean
           created_at?: string
+          created_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -1610,6 +1613,7 @@ export type Database = {
       work_items: {
         Row: {
           backlog_assignments: Json
+          created_on: string | null
           deadline: string | null
           description: string | null
           id: string
@@ -1629,6 +1633,7 @@ export type Database = {
         }
         Insert: {
           backlog_assignments?: Json
+          created_on?: string | null
           deadline?: string | null
           description?: string | null
           id: string
@@ -1648,6 +1653,7 @@ export type Database = {
         }
         Update: {
           backlog_assignments?: Json
+          created_on?: string | null
           deadline?: string | null
           description?: string | null
           id?: string

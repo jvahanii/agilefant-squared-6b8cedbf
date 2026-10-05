@@ -601,6 +601,16 @@ function ItemRow({
           )}
         </div>
 
+        {/* A column of its own at the row's end, so the dates line up down the
+            list. Kept even where a row has none, for the same reason. */}
+        {p.createdDatesVisible && (
+          <span
+            className="w-14 shrink-0 text-right text-xs leading-5 tabular-nums text-muted-foreground"
+            title={item.createdOn ? `Created ${item.createdOn}` : undefined}
+          >
+            {item.createdOn ? formatDeadline(item.createdOn) : ""}
+          </span>
+        )}
         {p.timeVisible && minutes > 0 && (
           <span className="shrink-0 leading-5">
             <TimeBadge minutes={minutes} label="logged" />

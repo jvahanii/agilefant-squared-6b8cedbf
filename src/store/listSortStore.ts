@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { WorkItem } from "@/types/models";
-import { atTopFirst, isListSortMode, sortTopLevel, type ListSortContext, type ListSortMode } from "@/lib/listSort";
+import { atTopFirst, isCreatedSort, isListSortMode, sortTopLevel, type ListSortContext, type ListSortMode } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { useTeamStore } from "@/store/teamStore";
 import { getEffectiveStatuses } from "@/store/backlogStatusesStore";
@@ -66,8 +66,10 @@ function effectiveMode(
   mode: ListSortMode,
   deadlinesOn: boolean,
   ratingsOn: boolean,
+  createdDatesOn: boolean,
 ): ListSortMode {
   if (mode === "deadline-asc" && !deadlinesOn) return "rank";
+  if (isCreatedSort(mode) && !createdDatesOn) return "rank";
   if (mode === "rating-desc" && !ratingsOn) return "rank";
   return mode;
 }
@@ -80,6 +82,7 @@ export function listSortModeFor(backlogId: string | null | undefined): ListSortM
     useListSortStore.getState().modeByBacklog[backlogId] ?? "rank",
     settings?.deadlinesEnabled ?? false,
     (settings?.ratingsEnabled ?? false) && !!useAppStore.getState().backlogs[backlogId]?.ratingsEnabled,
+    settings?.createdDatesEnabled ?? false,
   );
 }
 
@@ -89,7 +92,8 @@ export function useListSortMode(backlogId: string | null | undefined): ListSortM
   const deadlinesOn = useOrgSettingsStore((s) => s.settings[orgId]?.deadlinesEnabled ?? false);
   const orgRatingsOn = useOrgSettingsStore((s) => s.settings[orgId]?.ratingsEnabled ?? false);
   const backlogRatingsOn = useAppStore((s) => (backlogId ? !!s.backlogs[backlogId]?.ratingsEnabled : false));
-  return effectiveMode(stored, deadlinesOn, orgRatingsOn && backlogRatingsOn);
+  const createdDatesOn = useOrgSettingsStore((s) => s.settings[orgId]?.createdDatesEnabled ?? false);
+  return effectiveMode(stored, deadlinesOn, orgRatingsOn && backlogRatingsOn, createdDatesOn);
 }
 
 /** The team and status facts the non-rank sorts read, as they are now. */

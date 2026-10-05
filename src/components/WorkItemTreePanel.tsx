@@ -6,7 +6,7 @@ import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -26,6 +26,8 @@ import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
 import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { DeadlineDialog } from "./DeadlineDialog";
+import { CreatedDateDialog } from "./CreatedDateDialog";
+import { formatCreatedOn, useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { formatDeadline, isDeadlinePassed, useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -358,6 +360,7 @@ function WorkItemNodeContent({
   const rowBacklogRatings = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.ratingsEnabled ?? false : false));
   const ratingsVisible = orgRatingsEnabled && rowBacklogRatings;
   const deadlinesVisible = useDeadlinesEnabled();
+  const createdDatesVisible = useCreatedDatesEnabled();
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -428,6 +431,7 @@ function WorkItemNodeContent({
   const [moveTimeEntryIds, setMoveTimeEntryIds] = useState<string[]>([]);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showDeadlineDialog, setShowDeadlineDialog] = useState(false);
+  const [showCreatedDateDialog, setShowCreatedDateDialog] = useState(false);
   const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
@@ -1239,6 +1243,25 @@ function WorkItemNodeContent({
             );
           })()}
 
+          {/* The day it was made, after the title and out of its way: a fact
+              about the row rather than something to act on, unlike the
+              deadline that leads it. Clicking it corrects it. Rows whose day
+              was never recorded show nothing; theirs is set from the menu. */}
+          {createdDatesVisible && item.createdOn && (
+            <button
+              type="button"
+              className="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground"
+              title={`Created ${item.createdOn}`}
+              aria-label={`Created ${formatCreatedOn(item.createdOn)}. Change`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCreatedDateDialog(true);
+              }}
+            >
+              {formatCreatedOn(item.createdOn)}
+            </button>
+          )}
+
           {isSnoozed && activeSnooze && (
             <TooltipProvider>
               <Tooltip>
@@ -1577,6 +1600,12 @@ function WorkItemNodeContent({
             <ContextMenuItem className="text-xs" onSelect={() => setShowDeadlineDialog(true)}>
               <CalendarClock className="w-3 h-3 mr-2" />
               {item.deadline ? "Change deadline…" : "Set deadline…"}
+            </ContextMenuItem>
+          )}
+          {createdDatesVisible && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowCreatedDateDialog(true)}>
+              <CalendarPlus className="w-3 h-3 mr-2" />
+              {item.createdOn ? "Change created date…" : "Set created date…"}
             </ContextMenuItem>
           )}
           <ContextMenuItem className="text-xs" onSelect={() => {
@@ -2146,6 +2175,13 @@ function WorkItemNodeContent({
           workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
           open
           onOpenChange={(o) => { setShowDeadlineDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showCreatedDateDialog && (
+        <CreatedDateDialog
+          workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
+          open
+          onOpenChange={(o) => { setShowCreatedDateDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
       {showMobileAttributesSheet && (
@@ -2776,6 +2812,7 @@ export function WorkItemTreePanel() {
   const selectedBacklogId = selectedBacklogIds[0] ?? null;
   // Deadline sort, offered where the organization uses deadlines.
   const deadlinesEnabledForSort = useDeadlinesEnabled();
+  const createdDatesEnabledForSort = useCreatedDatesEnabled();
   const ratingsEnabled = useAppStore(
     (s) => orgRatingsEnabled && !!(selectedBacklogId && s.backlogs[selectedBacklogId]?.ratingsEnabled),
   );
@@ -3964,7 +4001,7 @@ export function WorkItemTreePanel() {
                       value={listSortMode}
                       onValueChange={(value) => setListSortMode(selectedBacklogId, value as ListSortMode)}
                     >
-                      {listSortModes(ratingsEnabled, deadlinesEnabledForSort).map(({ mode, label }) => (
+                      {listSortModes(ratingsEnabled, deadlinesEnabledForSort, createdDatesEnabledForSort).map(({ mode, label }) => (
                         <DropdownMenuRadioItem key={mode} value={mode} className="text-xs">
                           {label}
                         </DropdownMenuRadioItem>

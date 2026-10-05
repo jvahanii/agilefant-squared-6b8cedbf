@@ -19,6 +19,10 @@ export interface WorkItem {
   /** The day it is due, as yyyy-mm-dd. Absent = no deadline. Shown only where
    *  the organization has deadlines on; kept, not lost, where it is off. */
   deadline?: string;
+  /** The day it was made, as yyyy-mm-dd. Absent = never recorded: items older
+   *  than the attribute, where nothing showed when they were made. Editable.
+   *  Shown only where the organization has created dates on. */
+  createdOn?: string;
   status: WorkItemStatus;
   /** Global parent ID — the default parent used when no per-tree override is present. */
   parentId: string | null;

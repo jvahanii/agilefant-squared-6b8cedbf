@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock, CalendarPlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -36,6 +36,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setDeadlinesEnabledSetting = useOrgSettingsStore((s) => s.setDeadlinesEnabled);
   const ratingsEnabled = (orgSettings as { ratingsEnabled?: boolean }).ratingsEnabled ?? false;
   const deadlinesEnabled = (orgSettings as { deadlinesEnabled?: boolean }).deadlinesEnabled ?? false;
+  const setCreatedDatesEnabledSetting = useOrgSettingsStore((s) => s.setCreatedDatesEnabled);
+  const createdDatesEnabled = (orgSettings as { createdDatesEnabled?: boolean }).createdDatesEnabled ?? false;
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
@@ -157,6 +159,36 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setDeadlinesEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Deadlines enabled" : "Deadlines disabled" });
+                }
+              }}
+              disabled={!canManage}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarPlus className="w-4 h-4" /> Created dates
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Show created dates</p>
+              <p className="text-xs text-muted-foreground">
+                Show on each work item the day it was made, and sort a list newest or oldest first. The date can be
+                corrected from the item's right-click menu. Items made before dates were recorded show none until
+                one is set. Turning this off hides the dates everywhere; they are kept.
+              </p>
+            </div>
+            <Switch
+              checked={createdDatesEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setCreatedDatesEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Created dates shown" : "Created dates hidden" });
                 }
               }}
               disabled={!canManage}

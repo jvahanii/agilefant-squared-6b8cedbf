@@ -13,6 +13,7 @@ import { usePointsVisibleForTree, usePointsVisibleForTrees } from "@/lib/pointsV
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { StarRating } from "@/components/StarRating";
 import { useDeadlinesEnabled } from "@/lib/workItemDeadline";
+import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -75,6 +76,7 @@ export function MobileWorkItemAttributesSheet({
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
   const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
   const setWorkItemDeadline = useAppStore((s) => s.setWorkItemDeadline);
+  const setWorkItemCreatedOn = useAppStore((s) => s.setWorkItemCreatedOn);
   // The sheet opens from the list being viewed, so that list's tree decides
   // which children an item has — see childrenInTree.
   const selectedTreeId = useAppStore((s) => s.selectedTreeId) ?? undefined;
@@ -89,6 +91,7 @@ export function MobileWorkItemAttributesSheet({
   const pointsVisible = usePointsVisibleForTrees(assignedTreeIds);
   const ratingsVisible = useRatingsEnabled();
   const deadlinesVisible = useDeadlinesEnabled();
+  const createdDatesVisible = useCreatedDatesEnabled();
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
@@ -208,6 +211,23 @@ export function MobileWorkItemAttributesSheet({
                 type="date"
                 value={item.deadline ?? ""}
                 onChange={(e) => setWorkItemDeadline(item.id, e.target.value || undefined)}
+                className="h-9 rounded-md border bg-background px-2 text-sm"
+              />
+            </div>
+          )}
+
+          {createdDatesVisible && item && (
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="sheet-created" className="text-sm font-medium">
+                Created
+              </label>
+              {/* It can be corrected but not removed, so emptying the field
+                  changes nothing and the date comes back. */}
+              <input
+                id="sheet-created"
+                type="date"
+                value={item.createdOn ?? ""}
+                onChange={(e) => e.target.value && setWorkItemCreatedOn(item.id, e.target.value)}
                 className="h-9 rounded-md border bg-background px-2 text-sm"
               />
             </div>

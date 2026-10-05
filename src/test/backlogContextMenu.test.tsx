@@ -42,7 +42,7 @@ const settings = (over: Record<string, boolean> = {}) =>
       [ORG]: {
         timeLoggingEnabled: false, pointsEnabled: true, labelsEnabled: false, customStatusesEnabled: true,
         savingsIncomeEnabled: false, boardsEnabled: false, burnupsEnabled: true, persistNotificationsEnabled: false,
-        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, ...over,
+        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, createdDatesEnabled: false, ...over,
       },
     },
   });
