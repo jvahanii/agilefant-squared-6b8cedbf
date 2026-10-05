@@ -214,6 +214,48 @@ export function statusFor(
   return { label: item.status ?? "", color: "#94a3b8" };
 }
 
+/**
+ * How a visitor has asked for the list to be ordered, or null for the order
+ * the list's owner gave it. A view of the page only: nothing is saved, and the
+ * next visitor sees the owner's order again.
+ */
+export type PublicSort = { by: "deadline" | "created"; direction: "asc" | "desc" } | null;
+
+/**
+ * What a click on a column heading asks for next. The first click gives the
+ * order most likely wanted — deadlines soonest first, created dates newest
+ * first — the second reverses it, and the third goes back to the owner's
+ * order. Clicking the other heading starts that one's cycle afresh.
+ */
+export function nextPublicSort(current: PublicSort, by: "deadline" | "created"): PublicSort {
+  const first = by === "deadline" ? "asc" : "desc";
+  if (!current || current.by !== by) return { by, direction: first };
+  if (current.direction === first) return { by, direction: first === "asc" ? "desc" : "asc" };
+  return null;
+}
+
+/**
+ * The list in the order asked for. Only the top level is reordered — children
+ * stay under their parent in the owner's order, as they do in the app's own
+ * sorted lists. Items without the date come last in either direction: having
+ * no deadline is not "latest", and having no recorded created date is not
+ * "oldest". Ties keep the owner's order.
+ */
+export function sortItemNodes(nodes: ItemNode[], sort: PublicSort): ItemNode[] {
+  if (!sort) return nodes;
+  const dateOf = (n: ItemNode) => (sort.by === "deadline" ? n.item.deadline : n.item.createdOn) ?? null;
+  const sign = sort.direction === "asc" ? 1 : -1;
+  return nodes
+    .map((node, index) => ({ node, index }))
+    .sort((a, b) => {
+      const x = dateOf(a.node);
+      const y = dateOf(b.node);
+      if (x === null || y === null) return x === y ? a.index - b.index : x === null ? 1 : -1;
+      return x === y ? a.index - b.index : (x < y ? -1 : 1) * sign;
+    })
+    .map(({ node }) => node);
+}
+
 /** The item attributes a public link can hide, in the order the link dialog
  *  offers them. Titles and structure are always shown. Keep in step with
  *  published_link_settings' CHECK constraint. */

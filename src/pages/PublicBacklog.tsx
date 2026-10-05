@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
@@ -12,13 +12,16 @@ import {
   buildBacklogTree,
   buildItemTree,
   linkifySegments,
+  nextPublicSort,
   safeLinkHref,
   scopeMinutes,
+  sortItemNodes,
   statusFor,
   totalPoints,
   treeMinutes,
   type BacklogNode,
   type ItemNode,
+  type PublicSort,
   type PublishedLink,
   type PublishedPayload,
 } from "@/lib/publicBacklog";
@@ -79,7 +82,20 @@ export default function PublicBacklog() {
     () => (payload && effectiveSelected ? backlogScope(effectiveSelected, payload.backlogs) : new Set<string>()),
     [payload, effectiveSelected],
   );
-  const items = useMemo(() => (payload ? buildItemTree(payload.items, scope) : []), [payload, scope]);
+  // A visitor's own ordering of the list, by one of the dates it shows. It
+  // lasts as long as the page is open and is never saved.
+  const [sort, setSort] = useState<PublicSort>(null);
+  const deadlinesShown = !!payload?.deadlinesVisible;
+  const createdShown = !!payload?.createdDatesVisible;
+  // A sort by a date the page does not show orders the list by something the
+  // visitor cannot see; it is ignored rather than applied.
+  const activeSort: PublicSort =
+    sort && (sort.by === "deadline" ? deadlinesShown : createdShown) ? sort : null;
+  const items = useMemo(
+    () => (payload ? sortItemNodes(buildItemTree(payload.items, scope), activeSort) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [payload, scope, activeSort?.by, activeSort?.direction],
+  );
 
   // Which rows are open, held here rather than in each row, so the numbering
   // below can count exactly what is on screen.
@@ -340,6 +356,33 @@ export default function PublicBacklog() {
             {items.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing in this list yet.</p>
             ) : (
+              <>
+                {/* Headings for the dates the page shows, each a way to sort by
+                    it. "Deadline" stands over the dates that lead the titles;
+                    "Created" over its own column at the row's end. */}
+                {(deadlinesShown || createdShown) && (
+                  <div className="mb-1 flex items-center justify-between gap-2 pl-14 pr-2">
+                    <span>
+                      {deadlinesShown && (
+                        <SortHeading
+                          label="Deadline"
+                          by="deadline"
+                          sort={activeSort}
+                          onSort={() => setSort(nextPublicSort(activeSort, "deadline"))}
+                        />
+                      )}
+                    </span>
+                    {createdShown && (
+                      <SortHeading
+                        label="Created"
+                        by="created"
+                        sort={activeSort}
+                        onSort={() => setSort(nextPublicSort(activeSort, "created"))}
+                        className="w-14 justify-end"
+                      />
+                    )}
+                  </div>
+                )}
               <ul className="space-y-px">
                 {items.map((node) => (
                   <ItemRow
@@ -355,6 +398,7 @@ export default function PublicBacklog() {
                   />
                 ))}
               </ul>
+              </>
             )}
           </section>
         </div>
@@ -391,6 +435,53 @@ function Shell({ children, actions }: { children: React.ReactNode; actions?: Rea
         {children}
       </div>
     </div>
+  );
+}
+
+/**
+ * A column heading that sorts the list by its date. The arrow says which way
+ * the list runs now; the faint double arrow, that it could be sorted this way.
+ */
+function SortHeading({
+  label,
+  by,
+  sort,
+  onSort,
+  className = "",
+}: {
+  label: string;
+  by: "deadline" | "created";
+  sort: PublicSort;
+  onSort: () => void;
+  className?: string;
+}) {
+  const direction = sort?.by === by ? sort.direction : null;
+  const next = nextPublicSort(sort, by);
+  const describe = (s: PublicSort) =>
+    !s
+      ? "the list's own order"
+      : s.by === "deadline"
+        ? s.direction === "asc" ? "deadline, soonest first" : "deadline, latest first"
+        : s.direction === "desc" ? "created date, newest first" : "created date, oldest first";
+  return (
+    <button
+      type="button"
+      onClick={onSort}
+      aria-pressed={direction !== null}
+      title={`${direction ? `Sorted by ${describe(sort)}. ` : ""}Click for ${describe(next)}.`}
+      className={`inline-flex items-center gap-0.5 rounded text-xs font-medium hover:text-foreground ${
+        direction ? "text-foreground" : "text-muted-foreground"
+      } ${className}`}
+    >
+      {label}
+      {direction === "asc" ? (
+        <ArrowUp className="h-3 w-3" aria-label="ascending" />
+      ) : direction === "desc" ? (
+        <ArrowDown className="h-3 w-3" aria-label="descending" />
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-40" aria-hidden="true" />
+      )}
+    </button>
   );
 }
 
@@ -601,16 +692,6 @@ function ItemRow({
           )}
         </div>
 
-        {/* A column of its own at the row's end, so the dates line up down the
-            list. Kept even where a row has none, for the same reason. */}
-        {p.createdDatesVisible && (
-          <span
-            className="w-14 shrink-0 text-right text-xs leading-5 tabular-nums text-muted-foreground"
-            title={item.createdOn ? `Created ${item.createdOn}` : undefined}
-          >
-            {item.createdOn ? formatDeadline(item.createdOn) : ""}
-          </span>
-        )}
         {p.timeVisible && minutes > 0 && (
           <span className="shrink-0 leading-5">
             <TimeBadge minutes={minutes} label="logged" />
@@ -622,6 +703,17 @@ function ItemRow({
         {p.pointsVisible && item.points != null && (
           <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] leading-4 tabular-nums text-muted-foreground">
             {item.points}
+          </span>
+        )}
+        {/* A column of its own, last in the row, so the dates line up down the
+            list under their heading. Kept even where a row has none, for the
+            same reason. */}
+        {p.createdDatesVisible && (
+          <span
+            className="w-14 shrink-0 text-right text-xs leading-5 tabular-nums text-muted-foreground"
+            title={item.createdOn ? `Created ${item.createdOn}` : undefined}
+          >
+            {item.createdOn ? formatDeadline(item.createdOn) : ""}
           </span>
         )}
       </div>
