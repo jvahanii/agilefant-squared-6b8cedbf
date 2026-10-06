@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
@@ -13,7 +13,9 @@ import {
   buildItemTree,
   buildSearchIndex,
   countItemNodes,
+  dateFilterActive,
   filterItemNodes,
+  filterSummary,
   filterTerms,
   highlightSegments,
   linkifySegments,
@@ -25,6 +27,7 @@ import {
   totalPoints,
   treeMinutes,
   type BacklogNode,
+  type DateFilter,
   type FilterMatch,
   type ItemNode,
   type PublicSort,
@@ -141,12 +144,27 @@ export default function PublicBacklog() {
   const [filterMatch, setFilterMatch] = useState<FilterMatch>("any");
   const terms = useMemo(() => filterTerms(filter), [filter]);
   const searchIndex = useMemo(() => (payload ? buildSearchIndex(payload) : new Map<string, string>()), [payload]);
+  // Spans of days to keep, for the dates the page shows. A span for a date the
+  // link does not publish is ignored: it would hide rows for a reason the
+  // visitor cannot see.
+  const [dateRanges, setDateRanges] = useState<DateFilter>({});
+  const [datesOpen, setDatesOpen] = useState(false);
+  const dates = useMemo<DateFilter>(
+    () => ({
+      ...(deadlinesShown && dateRanges.deadline ? { deadline: dateRanges.deadline } : {}),
+      ...(createdShown && dateRanges.created ? { created: dateRanges.created } : {}),
+    }),
+    [dateRanges, deadlinesShown, createdShown],
+  );
+  const filteringByDate = dateFilterActive(dates);
+  const setRange = (which: "deadline" | "created", end: "from" | "to", value: string) =>
+    setDateRanges((current) => ({ ...current, [which]: { ...current[which], [end]: value || undefined } }));
   const { nodes: items, matched: matchedRows } = useMemo(
-    () => filterItemNodes(allItems, terms, searchIndex, filterMatch),
-    [allItems, terms, searchIndex, filterMatch],
+    () => filterItemNodes(allItems, terms, searchIndex, filterMatch, dates),
+    [allItems, terms, searchIndex, filterMatch, dates],
   );
   const totalRows = useMemo(() => countItemNodes(allItems), [allItems]);
-  const filtering = terms.length > 0;
+  const filtering = terms.length > 0 || filteringByDate;
 
   // Which rows are open, held here rather than in each row, so the numbering
   // below can count exactly what is on screen.
@@ -483,18 +501,75 @@ export default function PublicBacklog() {
                         </button>
                       ))}
                     </div>
+                    {/* Date spans sit behind this, so the bar stays one line
+                        until someone wants them. It shows when one is set. */}
+                    {(deadlinesShown || createdShown) && (
+                      <button
+                        type="button"
+                        onClick={() => setDatesOpen((open) => !open)}
+                        aria-expanded={datesOpen || filteringByDate}
+                        aria-label="Filter by date"
+                        title="Filter by date"
+                        className={`flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium ${
+                          filteringByDate ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="hidden sm:inline">Dates</span>
+                      </button>
+                    )}
                   </div>
+                  {(datesOpen || filteringByDate) && (deadlinesShown || createdShown) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                      {(
+                        [
+                          ["deadline", "Deadline", deadlinesShown],
+                          ["created", "Created", createdShown],
+                        ] as const
+                      )
+                        .filter(([, , shown]) => shown)
+                        .map(([which, label]) => (
+                          <span key={which} className="flex items-center gap-1.5">
+                            <span className="font-medium text-foreground">{label}</span>
+                            <input
+                              type="date"
+                              aria-label={`${label} from`}
+                              value={dateRanges[which]?.from ?? ""}
+                              max={dateRanges[which]?.to}
+                              onChange={(e) => setRange(which, "from", e.target.value)}
+                              className="h-8 rounded-md border bg-background px-1.5 text-xs text-foreground"
+                            />
+                            <span aria-hidden="true">–</span>
+                            <input
+                              type="date"
+                              aria-label={`${label} to`}
+                              value={dateRanges[which]?.to ?? ""}
+                              min={dateRanges[which]?.from}
+                              onChange={(e) => setRange(which, "to", e.target.value)}
+                              className="h-8 rounded-md border bg-background px-1.5 text-xs text-foreground"
+                            />
+                          </span>
+                        ))}
+                      {filteringByDate && (
+                        <button
+                          type="button"
+                          onClick={() => setDateRanges({})}
+                          className="rounded px-1.5 py-1 font-medium hover:bg-accent hover:text-foreground"
+                        >
+                          Clear dates
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {filtering && (
                     <p className="mt-1 text-xs text-muted-foreground" role="status">
-                      {matchedRows === 0
-                        ? `No rows contain ${
-                            terms.length === 1 ? `“${terms[0]}”` : filterMatch === "all" ? "all of those" : "any of those"
-                          }.`
-                        : `Showing ${matchedRows} of ${totalRows} rows${
-                            terms.length > 1
-                              ? ` — those containing ${filterMatch === "all" ? "all" : "any"} of the words`
-                              : ""
-                          }.`}
+                      {filterSummary({
+                        matched: matchedRows,
+                        total: totalRows,
+                        terms,
+                        match: filterMatch,
+                        byDate: filteringByDate,
+                      })}
                     </p>
                   )}
                 </div>

@@ -259,6 +259,39 @@ export function sortItemNodes(nodes: ItemNode[], sort: PublicSort): ItemNode[] {
 /** Whether a row must contain any one of the filter's strings, or every one. */
 export type FilterMatch = "any" | "all";
 
+/** A span of days, yyyy-mm-dd, either end of which may be left open. */
+export interface DateRange {
+  from?: string;
+  to?: string;
+}
+
+/** The spans a visitor has asked for: by deadline, by created date, or both. */
+export interface DateFilter {
+  deadline?: DateRange;
+  created?: DateRange;
+}
+
+const rangeSet = (range: DateRange | undefined) => !!(range?.from || range?.to);
+
+/** Whether any span is set at all. */
+export function dateFilterActive(dates: DateFilter | undefined): boolean {
+  return rangeSet(dates?.deadline) || rangeSet(dates?.created);
+}
+
+/**
+ * Whether a day falls in a span, both ends included. An open end is no limit.
+ * A row with no date is outside any span that is set: asked for deadlines up
+ * to the 20th, a row with no deadline is not one of them. Dates are compared
+ * as text, which is safe because yyyy-mm-dd sorts as the calendar does.
+ */
+export function inDateRange(day: string | null | undefined, range: DateRange | undefined): boolean {
+  if (!rangeSet(range)) return true;
+  if (!day) return false;
+  if (range!.from && day < range!.from) return false;
+  if (range!.to && day > range!.to) return false;
+  return true;
+}
+
 /**
  * The strings a visitor typed into the filter box, ready to compare: split on
  * spaces and commas, lower-cased, empties dropped. Each is looked for on its
@@ -295,7 +328,8 @@ export function buildSearchIndex(payload: PublishedPayload): Map<string, string>
 /**
  * The rows the filter keeps: those containing any one of the strings, or —
  * when the visitor asks for all — every one of them. Either way a string
- * counts wherever it appears, as part of a longer word too. A row that does
+ * counts wherever it appears, as part of a longer word too. Where date spans
+ * are set as well, a row has to fall inside each of them too. A row that does
  * not qualify is dropped — unless something beneath it does, in which case it stays as
  * the way down to that match: a match shown without its parents would have
  * lost its place in the list. `matched` is how many rows matched in their
@@ -306,8 +340,10 @@ export function filterItemNodes(
   terms: string[],
   index: Map<string, string>,
   match: FilterMatch = "any",
+  dates?: DateFilter,
 ): { nodes: ItemNode[]; matched: number } {
-  if (terms.length === 0) return { nodes, matched: countItemNodes(nodes) };
+  const byDate = dateFilterActive(dates);
+  if (terms.length === 0 && !byDate) return { nodes, matched: countItemNodes(nodes) };
   let matched = 0;
   const keep = (list: ItemNode[]): ItemNode[] => {
     const out: ItemNode[] = [];
@@ -315,8 +351,13 @@ export function filterItemNodes(
       const text = index.get(node.item.id) ?? node.item.title.toLowerCase();
       // "All" is asked of the row itself: its strings may not be shared out
       // between it and the rows above or below it.
+      const byText =
+        terms.length === 0 ||
+        (match === "all" ? terms.every((term) => text.includes(term)) : terms.some((term) => text.includes(term)));
       const own =
-        match === "all" ? terms.every((term) => text.includes(term)) : terms.some((term) => text.includes(term));
+        byText &&
+        (!byDate ||
+          (inDateRange(node.item.deadline, dates!.deadline) && inDateRange(node.item.createdOn, dates!.created)));
       const children = keep(node.children);
       if (own) matched++;
       if (own || children.length > 0) out.push({ item: node.item, children });
@@ -324,6 +365,30 @@ export function filterItemNodes(
     return out;
   };
   return { nodes: keep(nodes), matched };
+}
+
+/**
+ * The line under the filter box: how many rows are left, and by what. Built as
+ * a string, away from the markup, because its cases are easy to get wrong
+ * there and impossible to test.
+ */
+export function filterSummary(opts: {
+  matched: number;
+  total: number;
+  terms: string[];
+  match: FilterMatch;
+  byDate: boolean;
+}): string {
+  const { matched, total, terms, match, byDate } = opts;
+  if (matched === 0) {
+    if (terms.length === 0) return "No rows in that date range.";
+    const what = terms.length === 1 ? `“${terms[0]}”` : match === "all" ? "all of those" : "any of those";
+    return `No rows contain ${what}${byDate ? " in that date range" : ""}.`;
+  }
+  const words = terms.length > 1 ? `containing ${match === "all" ? "all" : "any"} of the words` : "";
+  const range = byDate ? "in the date range" : "";
+  const those = [words, range].filter(Boolean).join(", ");
+  return `Showing ${matched} of ${total} rows${those ? ` — those ${those}` : ""}.`;
 }
 
 /**
