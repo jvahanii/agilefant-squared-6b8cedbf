@@ -256,6 +256,72 @@ export function sortItemNodes(nodes: ItemNode[], sort: PublicSort): ItemNode[] {
     .map(({ node }) => node);
 }
 
+/**
+ * The strings a visitor typed into the filter box, ready to compare: split on
+ * spaces and commas, lower-cased, empties dropped. Each is looked for on its
+ * own, so "helsinki espoo" asks for rows mentioning either.
+ */
+export function filterTerms(text: string): string[] {
+  return [...new Set(text.toLowerCase().split(/[\s,]+/).filter(Boolean))];
+}
+
+/**
+ * Everything a row shows that a visitor could be looking for, per item, lower-
+ * cased: its title, its description, the labels and addresses of its links,
+ * and the names of its status, teams and labels. Only what the link publishes
+ * is in the payload at all, so nothing hidden can be found by searching.
+ */
+export function buildSearchIndex(payload: PublishedPayload): Map<string, string> {
+  const teams = new Map(payload.teams.map((t) => [t.id, t.name]));
+  const labels = new Map(payload.labels.map((l) => [l.id, l.name]));
+  const index = new Map<string, string>();
+  for (const item of payload.items) {
+    const parts = [
+      item.title,
+      item.description ?? "",
+      ...item.links.flatMap((link) => [link.altText ?? "", link.url]),
+      ...item.teamIds.map((id) => teams.get(id) ?? ""),
+      ...item.labelIds.map((id) => labels.get(id) ?? ""),
+      item.status != null ? statusFor(item, payload.statusesByBacklog).label : "",
+    ];
+    index.set(item.id, parts.join("\n").toLowerCase());
+  }
+  return index;
+}
+
+/**
+ * The rows that contain at least one of the strings. A row that contains none
+ * is dropped — unless something beneath it matches, in which case it stays as
+ * the way down to that match: a match shown without its parents would have
+ * lost its place in the list. `matched` is how many rows matched in their
+ * own right, which is what a "showing N of M" line should count.
+ */
+export function filterItemNodes(
+  nodes: ItemNode[],
+  terms: string[],
+  index: Map<string, string>,
+): { nodes: ItemNode[]; matched: number } {
+  if (terms.length === 0) return { nodes, matched: countItemNodes(nodes) };
+  let matched = 0;
+  const keep = (list: ItemNode[]): ItemNode[] => {
+    const out: ItemNode[] = [];
+    for (const node of list) {
+      const text = index.get(node.item.id) ?? node.item.title.toLowerCase();
+      const own = terms.some((term) => text.includes(term));
+      const children = keep(node.children);
+      if (own) matched++;
+      if (own || children.length > 0) out.push({ item: node.item, children });
+    }
+    return out;
+  };
+  return { nodes: keep(nodes), matched };
+}
+
+/** Every row in a list, at every depth. */
+export function countItemNodes(nodes: ItemNode[]): number {
+  return nodes.reduce((sum, node) => sum + 1 + countItemNodes(node.children), 0);
+}
+
 /** The item attributes a public link can hide, in the order the link dialog
  *  offers them. Titles and structure are always shown. Keep in step with
  *  published_link_settings' CHECK constraint. */

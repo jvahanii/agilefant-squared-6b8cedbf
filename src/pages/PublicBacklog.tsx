@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
@@ -11,6 +11,10 @@ import {
   backlogScope,
   buildBacklogTree,
   buildItemTree,
+  buildSearchIndex,
+  countItemNodes,
+  filterItemNodes,
+  filterTerms,
   linkifySegments,
   nextPublicSort,
   safeLinkHref,
@@ -91,15 +95,42 @@ export default function PublicBacklog() {
   // visitor cannot see; it is ignored rather than applied.
   const activeSort: PublicSort =
     sort && (sort.by === "deadline" ? deadlinesShown : createdShown) ? sort : null;
-  const items = useMemo(
+  const allItems = useMemo(
     () => (payload ? sortItemNodes(buildItemTree(payload.items, scope), activeSort) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [payload, scope, activeSort?.by, activeSort?.direction],
   );
 
+  // A visitor's own filter: only rows containing at least one of the strings
+  // typed stay. Like the sort, it is theirs for as long as the page is open.
+  const [filter, setFilter] = useState("");
+  const terms = useMemo(() => filterTerms(filter), [filter]);
+  const searchIndex = useMemo(() => (payload ? buildSearchIndex(payload) : new Map<string, string>()), [payload]);
+  const { nodes: items, matched: matchedRows } = useMemo(
+    () => filterItemNodes(allItems, terms, searchIndex),
+    [allItems, terms, searchIndex],
+  );
+  const totalRows = useMemo(() => countItemNodes(allItems), [allItems]);
+  const filtering = terms.length > 0;
+
   // Which rows are open, held here rather than in each row, so the numbering
   // below can count exactly what is on screen.
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [openedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  // While filtering, every branch left holds a match somewhere below, so each
+  // is shown open: a match folded away inside its parent would look like no
+  // match at all. The visitor's own open and closed rows return with the list.
+  const expandedItems = useMemo(() => {
+    if (!filtering) return openedItems;
+    const open = new Set<string>();
+    const walk = (nodes: ItemNode[]) => {
+      for (const node of nodes) {
+        if (node.children.length > 0) open.add(node.item.id);
+        walk(node.children);
+      }
+    };
+    walk(items);
+    return open;
+  }, [filtering, openedItems, items]);
   const toggleItem = useCallback((id: string) => {
     setExpandedItems((prev) => {
       const next = new Set(prev);
@@ -349,14 +380,55 @@ export default function PublicBacklog() {
                 </div>
                 <div className="flex shrink-0 items-baseline gap-3 text-xs tabular-nums text-muted-foreground">
                   {p.timeVisible && selectedMinutes > 0 && <TimeBadge minutes={selectedMinutes} label="logged" />}
-                  {p.pointsVisible && <span>{totalPoints(items)} pts</span>}
+                  {p.pointsVisible && <span>{totalPoints(allItems)} pts</span>}
                 </div>
               </div>
             )}
-            {items.length === 0 ? (
+            {allItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing in this list yet.</p>
             ) : (
               <>
+                {/* Stuck to the top of the window while the list scrolls under
+                    it, so the filter is in reach from row 400 as from row 1. */}
+                <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/95 px-1 py-2 backdrop-blur">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <input
+                      type="text"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setFilter("");
+                      }}
+                      aria-label="Filter rows"
+                      placeholder="Filter rows — type one or more words"
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="h-9 w-full rounded-md border bg-background pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary"
+                    />
+                    {filter && (
+                      <button
+                        type="button"
+                        onClick={() => setFilter("")}
+                        aria-label="Clear filter"
+                        className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {filtering && (
+                    <p className="mt-1 text-xs text-muted-foreground" role="status">
+                      {matchedRows === 0
+                        ? `No rows contain ${terms.length === 1 ? `“${terms[0]}”` : "any of those"}.`
+                        : `Showing ${matchedRows} of ${totalRows} rows${
+                            terms.length > 1 ? " — those containing any of the words" : ""
+                          }.`}
+                    </p>
+                  )}
+                </div>
+                {items.length > 0 && (
+                <>
                 {/* Headings for the dates the page shows, each a way to sort by
                     it. "Deadline" stands over the dates that lead the titles;
                     "Created" over its own column at the row's end. */}
@@ -398,6 +470,8 @@ export default function PublicBacklog() {
                   />
                 ))}
               </ul>
+                </>
+                )}
               </>
             )}
           </section>
