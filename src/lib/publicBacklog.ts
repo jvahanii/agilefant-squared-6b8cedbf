@@ -317,6 +317,41 @@ export function filterItemNodes(
   return { nodes: keep(nodes), matched };
 }
 
+/**
+ * A text cut into the stretches that match one of the filter's strings and the
+ * stretches between them, in order, so the matches can be marked. Matching
+ * ignores case; the pieces keep the text's own. Matches that touch or overlap
+ * — "hel" and "sinki" in "Helsinki" — come out as one stretch.
+ */
+export function highlightSegments(text: string, terms: string[]): { text: string; hit: boolean }[] {
+  const active = terms.filter(Boolean);
+  if (!text || active.length === 0) return text ? [{ text, hit: false }] : [];
+  const lower = text.toLowerCase();
+  const ranges: [number, number][] = [];
+  for (const term of active) {
+    for (let at = lower.indexOf(term); at !== -1; at = lower.indexOf(term, at + 1)) {
+      ranges.push([at, at + term.length]);
+    }
+  }
+  if (ranges.length === 0) return [{ text, hit: false }];
+  ranges.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const merged: [number, number][] = [];
+  for (const range of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+    else merged.push([range[0], range[1]]);
+  }
+  const out: { text: string; hit: boolean }[] = [];
+  let cursor = 0;
+  for (const [from, to] of merged) {
+    if (from > cursor) out.push({ text: text.slice(cursor, from), hit: false });
+    out.push({ text: text.slice(from, to), hit: true });
+    cursor = to;
+  }
+  if (cursor < text.length) out.push({ text: text.slice(cursor), hit: false });
+  return out;
+}
+
 /** Every row in a list, at every depth. */
 export function countItemNodes(nodes: ItemNode[]): number {
   return nodes.reduce((sum, node) => sum + 1 + countItemNodes(node.children), 0);

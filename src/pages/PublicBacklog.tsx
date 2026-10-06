@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import {
   countItemNodes,
   filterItemNodes,
   filterTerms,
+  highlightSegments,
   linkifySegments,
   nextPublicSort,
   safeLinkHref,
@@ -39,6 +40,37 @@ type LoadState =
 type LabelInfo = { id: string; name: string; color: string };
 
 /** Lookups every row needs, built once per payload. */
+/**
+ * The strings the visitor's filter is looking for, for the rows to mark where
+ * they found them. Empty outside the list and while nothing is typed, so the
+ * same pieces drawn elsewhere on the page — the list's own labels — stay plain.
+ */
+const HighlightContext = createContext<string[]>([]);
+
+/**
+ * Text with the filter's matches marked. A row is in the list because it
+ * contains one of the strings; this shows which one, and where.
+ */
+function Marked({ text }: { text: string }) {
+  const terms = useContext(HighlightContext);
+  if (terms.length === 0) return <>{text}</>;
+  return (
+    <>
+      {highlightSegments(text, terms).map((segment, i) =>
+        segment.hit ? (
+          <mark key={i} className="rounded-sm bg-yellow-200 text-inherit dark:bg-yellow-500/40">
+            {segment.text}
+          </mark>
+        ) : (
+          <span key={i}>{segment.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+const markText = (text: string) => <Marked text={text} />;
+
 interface Lookups {
   teams: Map<string, string>;
   labels: Map<string, LabelInfo>;
@@ -455,6 +487,7 @@ export default function PublicBacklog() {
                     )}
                   </div>
                 )}
+              <HighlightContext.Provider value={terms}>
               <ul className="space-y-px">
                 {items.map((node) => (
                   <ItemRow
@@ -470,6 +503,7 @@ export default function PublicBacklog() {
                   />
                 ))}
               </ul>
+              </HighlightContext.Provider>
                 </>
                 )}
               </>
@@ -576,7 +610,7 @@ function LabelList({ ids, labels }: { ids: string[]; labels: Map<string, LabelIn
   if (shown.length === 1) {
     return (
       <span className="text-xs" style={{ color: shown[0].color }}>
-        {shown[0].name}
+        <Marked text={shown[0].name} />
       </span>
     );
   }
@@ -586,7 +620,9 @@ function LabelList({ ids, labels }: { ids: string[]; labels: Map<string, LabelIn
       {shown.map((l, i) => (
         <span key={l.id}>
           {i > 0 && ", "}
-          <span style={{ color: l.color }}>{l.name}</span>
+          <span style={{ color: l.color }}>
+            <Marked text={l.name} />
+          </span>
         </span>
       ))}
       {"]"}
@@ -650,7 +686,8 @@ function ItemRow({
   selectedIds: Set<string>;
   onSelect: (id: string, modifiers: { multi: boolean; range: boolean }) => void;
 }) {
-  const [showDetails, setShowDetails] = useState(false);
+  const [detailsOpened, setShowDetails] = useState(false);
+  const terms = useContext(HighlightContext);
   const expanded = expandedIds.has(node.item.id);
   const selected = selectedIds.has(node.item.id);
   const { item, children } = node;
@@ -667,6 +704,11 @@ function ItemRow({
     .filter(Boolean);
   const [firstLine, ...restOfDescription] = descriptionLines;
   const hasDetails = restOfDescription.length > 0;
+  // A match in the part of the description that is folded away would leave the
+  // row in the list with nothing marked on it, so that part opens by itself.
+  const matchInDetails =
+    terms.length > 0 && terms.some((term) => restOfDescription.join("\n").toLowerCase().includes(term));
+  const showDetails = detailsOpened || matchInDetails;
   // Precomputed by the server, exactly as the app shows it — including time on
   // children this link does not show.
   const minutes = item.totalMinutes;
@@ -713,7 +755,7 @@ function ItemRow({
             title={status.label}
           >
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden="true" />
-            {status.label}
+            <Marked text={status.label} />
           </span>
         )}
 
@@ -736,18 +778,22 @@ function ItemRow({
                 className="inline-flex max-w-full items-start gap-1 text-left text-sm hover:underline underline-offset-4"
               >
                 <span className="min-w-0 break-words">
-                  <IconizedTitle title={item.title} />
+                  <IconizedTitle title={item.title} renderText={markText} />
                 </span>
                 <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has more to read" />
               </button>
             ) : (
               <span className="text-sm break-words">
-                <IconizedTitle title={item.title} />
+                <IconizedTitle title={item.title} renderText={markText} />
               </span>
             )}
             {hasLinks && item.links.map((link, i) => <ItemLink key={i} link={link} />)}
             {p.labelsVisible && <LabelList ids={item.labelIds} labels={lookups.labels} />}
-            {teamNames.length > 0 && <span className="text-xs text-muted-foreground">{teamNames.join(", ")}</span>}
+            {teamNames.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                <Marked text={teamNames.join(", ")} />
+              </span>
+            )}
           </div>
 
           {/* The description's first line, with its addresses clickable. For an
@@ -824,7 +870,11 @@ function ItemLink({ link }: { link: PublishedLink }) {
   const href = safeLinkHref(link.url);
   const label = link.altText?.trim() || shortLinkLabel(href, link.url);
   if (!href) {
-    return <span className="break-all text-xs text-muted-foreground">{label}</span>;
+    return (
+      <span className="break-all text-xs text-muted-foreground">
+        <Marked text={label} />
+      </span>
+    );
   }
   return (
     <a
@@ -837,7 +887,9 @@ function ItemLink({ link }: { link: PublishedLink }) {
       className="inline-flex max-w-[14rem] items-center gap-0.5 text-xs text-primary underline-offset-4 hover:underline"
     >
       <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-      <span className="truncate">{label}</span>
+      <span className="truncate">
+        <Marked text={label} />
+      </span>
     </a>
   );
 }
@@ -861,10 +913,12 @@ function Linkified({ text }: { text: string }) {
             rel="noopener noreferrer nofollow ugc"
             className="text-primary underline-offset-4 hover:underline"
           >
-            {segment.text}
+            <Marked text={segment.text} />
           </a>
         ) : (
-          <span key={i}>{segment.text}</span>
+          <span key={i}>
+            <Marked text={segment.text} />
+          </span>
         ),
       )}
     </>
