@@ -256,6 +256,9 @@ export function sortItemNodes(nodes: ItemNode[], sort: PublicSort): ItemNode[] {
     .map(({ node }) => node);
 }
 
+/** Whether a row must contain any one of the filter's strings, or every one. */
+export type FilterMatch = "any" | "all";
+
 /**
  * The strings a visitor typed into the filter box, ready to compare: split on
  * spaces and commas, lower-cased, empties dropped. Each is looked for on its
@@ -290,8 +293,10 @@ export function buildSearchIndex(payload: PublishedPayload): Map<string, string>
 }
 
 /**
- * The rows that contain at least one of the strings. A row that contains none
- * is dropped — unless something beneath it matches, in which case it stays as
+ * The rows the filter keeps: those containing any one of the strings, or —
+ * when the visitor asks for all — every one of them. Either way a string
+ * counts wherever it appears, as part of a longer word too. A row that does
+ * not qualify is dropped — unless something beneath it does, in which case it stays as
  * the way down to that match: a match shown without its parents would have
  * lost its place in the list. `matched` is how many rows matched in their
  * own right, which is what a "showing N of M" line should count.
@@ -300,6 +305,7 @@ export function filterItemNodes(
   nodes: ItemNode[],
   terms: string[],
   index: Map<string, string>,
+  match: FilterMatch = "any",
 ): { nodes: ItemNode[]; matched: number } {
   if (terms.length === 0) return { nodes, matched: countItemNodes(nodes) };
   let matched = 0;
@@ -307,7 +313,10 @@ export function filterItemNodes(
     const out: ItemNode[] = [];
     for (const node of list) {
       const text = index.get(node.item.id) ?? node.item.title.toLowerCase();
-      const own = terms.some((term) => text.includes(term));
+      // "All" is asked of the row itself: its strings may not be shared out
+      // between it and the rows above or below it.
+      const own =
+        match === "all" ? terms.every((term) => text.includes(term)) : terms.some((term) => text.includes(term));
       const children = keep(node.children);
       if (own) matched++;
       if (own || children.length > 0) out.push({ item: node.item, children });

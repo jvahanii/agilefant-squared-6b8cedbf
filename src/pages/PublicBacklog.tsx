@@ -25,6 +25,7 @@ import {
   totalPoints,
   treeMinutes,
   type BacklogNode,
+  type FilterMatch,
   type ItemNode,
   type PublicSort,
   type PublishedLink,
@@ -136,11 +137,13 @@ export default function PublicBacklog() {
   // A visitor's own filter: only rows containing at least one of the strings
   // typed stay. Like the sort, it is theirs for as long as the page is open.
   const [filter, setFilter] = useState("");
+  // Any one of the strings typed, or every one of them. Any to begin with.
+  const [filterMatch, setFilterMatch] = useState<FilterMatch>("any");
   const terms = useMemo(() => filterTerms(filter), [filter]);
   const searchIndex = useMemo(() => (payload ? buildSearchIndex(payload) : new Map<string, string>()), [payload]);
   const { nodes: items, matched: matchedRows } = useMemo(
-    () => filterItemNodes(allItems, terms, searchIndex),
-    [allItems, terms, searchIndex],
+    () => filterItemNodes(allItems, terms, searchIndex, filterMatch),
+    [allItems, terms, searchIndex, filterMatch],
   );
   const totalRows = useMemo(() => countItemNodes(allItems), [allItems]);
   const filtering = terms.length > 0;
@@ -423,7 +426,8 @@ export default function PublicBacklog() {
                 {/* Stuck to the top of the window while the list scrolls under
                     it, so the filter is in reach from row 400 as from row 1. */}
                 <div className="sticky top-0 z-10 -mx-1 mb-2 bg-background/95 px-1 py-2 backdrop-blur">
-                  <div className="relative">
+                  <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                     <input
                       type="text"
@@ -449,12 +453,47 @@ export default function PublicBacklog() {
                       </button>
                     )}
                   </div>
+                    {/* With several words typed: a row containing any one of
+                        them, or only rows containing every one. */}
+                    <div
+                      role="radiogroup"
+                      aria-label="Rows must contain"
+                      className="flex h-9 shrink-0 items-center rounded-md border p-0.5 text-xs"
+                    >
+                      {(
+                        [
+                          ["any", "Any", "Rows containing any one of the words"],
+                          ["all", "All", "Only rows containing every one of the words"],
+                        ] as const
+                      ).map(([value, label, hint]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={filterMatch === value}
+                          title={hint}
+                          onClick={() => setFilterMatch(value)}
+                          className={`h-full rounded px-2 font-medium transition-colors ${
+                            filterMatch === value
+                              ? "bg-accent text-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {filtering && (
                     <p className="mt-1 text-xs text-muted-foreground" role="status">
                       {matchedRows === 0
-                        ? `No rows contain ${terms.length === 1 ? `“${terms[0]}”` : "any of those"}.`
+                        ? `No rows contain ${
+                            terms.length === 1 ? `“${terms[0]}”` : filterMatch === "all" ? "all of those" : "any of those"
+                          }.`
                         : `Showing ${matchedRows} of ${totalRows} rows${
-                            terms.length > 1 ? " — those containing any of the words" : ""
+                            terms.length > 1
+                              ? ` — those containing ${filterMatch === "all" ? "all" : "any"} of the words`
+                              : ""
                           }.`}
                     </p>
                   )}
