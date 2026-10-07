@@ -75,6 +75,25 @@ export function dayWidth(range: TimelineRange): number {
   return 2;
 }
 
+/**
+ * The widths a day can be zoomed to, narrowest first. They include the four
+ * dayWidth chooses from, so zooming starts from wherever the automatic scale
+ * left off rather than jumping to a scale of its own.
+ */
+export const ZOOM_WIDTHS = [2, 4, 6, 10, 16, 24, 40, 64] as const;
+
+/** The next width in or out from this one, or null at the end of the scale. */
+export function zoomStep(width: number, direction: 1 | -1): number | null {
+  if (direction > 0) return ZOOM_WIDTHS.find((w) => w > width) ?? null;
+  return [...ZOOM_WIDTHS].reverse().find((w) => w < width) ?? null;
+}
+
+/** A stored zoom, if it is one of the widths on offer; otherwise none chosen. */
+export function validZoom(value: unknown): number | null {
+  const n = Number(value);
+  return (ZOOM_WIDTHS as readonly number[]).includes(n) ? n : null;
+}
+
 export type BarKind =
   /** Started and ended: a closed bar. */
   | "span"

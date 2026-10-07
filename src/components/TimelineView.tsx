@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { StartEndDatesDialog } from "@/components/StartEndDatesDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +15,8 @@ import {
   timelineRange,
   todayNumber,
   weekStarts,
+  validZoom,
+  zoomStep,
   type DragMode,
   type TimelineBar,
 } from "@/lib/timeline";
@@ -35,6 +38,15 @@ interface TimelineViewProps {
 }
 
 const ROW_HEIGHT = 28;
+/** Where the zoom chosen is kept, so it is still there on the next visit. */
+const ZOOM_KEY = "timeline-day-width-v1";
+const storedZoom = (): number | null => {
+  try {
+    return validZoom(localStorage.getItem(ZOOM_KEY));
+  } catch {
+    return null;
+  }
+};
 /** Every branch open: a timeline has no rows to fold. */
 const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
 
@@ -53,6 +65,10 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * can also be dragged: by its middle to move the work in time, by an end to
  * make it longer or shorter. The dates follow the pointer a day at a time and
  * are saved when it is let go — one step to undo.
+ *
+ * The scale is chosen from the span of the dates — days readable for a few
+ * weeks, squeezed for years — until the reader zooms in or out, which is then
+ * kept for every list until they hand the choice back.
  */
 export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: TimelineViewProps) {
   const workItems = useAppStore((s) => s.workItems);
@@ -103,7 +119,31 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     () => timelineRange(rowIds.map((id) => workItems[id]).filter(Boolean), today),
     [rowIds, workItems, today],
   );
-  const width = dayWidth(range);
+  // Where the calendar was scrolled to, as the reader left it. Not read off
+  // the element once the scale has changed: a calendar that has just got
+  // narrower has already been pulled back to its new end by then, and the
+  // middle worked out from that is the wrong day. Kept by the scroll itself,
+  // and taken again just before a change made here, since a scroll is only
+  // reported once the browser gets round to drawing it.
+  const scrolledTo = useRef(0);
+  const noteScroll = () => {
+    if (scrollRef.current) scrolledTo.current = scrollRef.current.scrollLeft;
+  };
+  // Null while the scale is left to the span of the dates.
+  const [zoom, setZoom] = useState<number | null>(storedZoom);
+  const width = zoom ?? dayWidth(range);
+  const chooseZoom = (next: number | null) => {
+    noteScroll();
+    setZoom(next);
+    try {
+      if (next === null) localStorage.removeItem(ZOOM_KEY);
+      else localStorage.setItem(ZOOM_KEY, String(next));
+    } catch {
+      /* not kept; the view still zooms */
+    }
+  };
+  const zoomIn = zoomStep(width, 1);
+  const zoomOut = zoomStep(width, -1);
   const totalDays = range.end - range.start + 1;
   const trackWidth = totalDays * width;
   const leftWidth = isMobile ? 150 : 280;
@@ -118,8 +158,9 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
 
   // Open on today, a little in from the left edge, rather than on whatever day
   // the span happens to begin with. After that the calendar stays put: when a
-  // change of dates stretches the span or tightens the scale, the day that was
-  // at the left edge is kept there, so a bar just dragged does not jump away.
+  // change of dates stretches the span, or the scale changes — by itself or by
+  // zooming — the day in the middle of the screen is kept there, so a bar just
+  // dragged does not jump away and zooming closes in on what was being looked at.
   const drawn = useRef<{ start: number; width: number } | null>(null);
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -129,9 +170,11 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     if (!before) {
       el.scrollLeft = Math.max(0, todayLeft - (el.clientWidth - leftWidth) / 3);
     } else if (before.start !== range.start || before.width !== width) {
-      const leftDay = before.start + el.scrollLeft / before.width;
-      el.scrollLeft = Math.max(0, (leftDay - range.start) * width);
+      const half = Math.max(0, el.clientWidth - leftWidth) / 2;
+      const middleDay = before.start + (scrolledTo.current + half) / before.width;
+      el.scrollLeft = Math.max(0, (middleDay - range.start) * width - half);
     }
+    scrolledTo.current = el.scrollLeft;
   }, [range.start, width, todayLeft, leftWidth]);
 
   const daysCarried = (clientX: number) =>
@@ -165,6 +208,7 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     const change = item ? dragDates(item, started.mode, days, today) : {};
     if (Object.keys(change).length === 0) return;
     justDragged.current = true;
+    noteScroll();
     // The click that follows a release arrives at once; if none does — the
     // pointer was let go somewhere else — the next real click must still work.
     window.setTimeout(() => {
@@ -202,15 +246,50 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
       className="flex-1 overflow-auto"
       role="region"
       aria-label="Timeline"
+      onScroll={noteScroll}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="relative" style={{ width: leftWidth + trackWidth, minWidth: "100%" }}>
         {/* The axis, stuck to the top; its corner cell stuck to the left too. */}
         <div className="sticky top-0 z-20 flex h-12 border-b bg-background">
           <div
-            className="sticky left-0 z-30 flex shrink-0 items-end border-r bg-background px-2 pb-1.5"
+            className="sticky left-0 z-30 flex shrink-0 flex-col justify-between border-r bg-background px-2 pb-1.5 pt-1"
             style={{ width: leftWidth }}
           >
+            <div className="flex items-center gap-0.5 text-muted-foreground" role="group" aria-label="Zoom">
+              <button
+                type="button"
+                onClick={() => zoomOut !== null && chooseZoom(zoomOut)}
+                disabled={zoomOut === null}
+                aria-label="Zoom out"
+                title="Zoom out: more time on the screen"
+                className="rounded p-0.5 hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => zoomIn !== null && chooseZoom(zoomIn)}
+                disabled={zoomIn === null}
+                aria-label="Zoom in"
+                title="Zoom in: more room for each day"
+                className="rounded p-0.5 hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              {/* Only once a zoom has been chosen: until then the scale already
+                  is the automatic one, and the button would do nothing. */}
+              {zoom !== null && (
+                <button
+                  type="button"
+                  onClick={() => chooseZoom(null)}
+                  title="Back to the scale chosen from the dates shown"
+                  className="ml-1 rounded px-1 text-[11px] hover:bg-accent hover:text-foreground"
+                >
+                  Reset zoom
+                </button>
+              )}
+            </div>
             <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
               <input
                 type="checkbox"
