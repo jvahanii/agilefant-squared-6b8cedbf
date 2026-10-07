@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { StartEndDatesDialog } from "@/components/StartEndDatesDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -8,15 +8,17 @@ import {
   barPixels,
   dayIso,
   dayWidth,
+  dragDates,
   isWeekend,
   monthTicks,
   timelineRange,
   todayNumber,
   weekStarts,
+  type DragMode,
   type TimelineBar,
 } from "@/lib/timeline";
 import { buildVisibleRows } from "@/lib/workItemRows";
-import { describeStartEnd } from "@/lib/workItemStartEnd";
+import { describeStartEnd, formatStartEnd } from "@/lib/workItemStartEnd";
 import { useAppStore } from "@/store/appStore";
 import { getEffectiveStatuses, useBacklogStatusesStore } from "@/store/backlogStatusesStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
@@ -47,7 +49,10 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * any row has a date, since a list is usually mostly undated.
  *
  * Clicking a row selects it, as in the list, so the keyboard works the same;
- * clicking its bar (or, on an undated row, the track) sets its dates.
+ * clicking its bar (or, on an undated row, the track) sets its dates. A bar
+ * can also be dragged: by its middle to move the work in time, by an end to
+ * make it longer or shorter. The dates follow the pointer a day at a time and
+ * are saved when it is let go — one step to undo.
  */
 export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: TimelineViewProps) {
   const workItems = useAppStore((s) => s.workItems);
@@ -57,6 +62,13 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState<string | null>(null);
+  // The bar being dragged, and how many days the pointer has carried it. The
+  // store is not touched until the drag ends; the row draws from this.
+  const [drag, setDrag] = useState<{ id: string; mode: DragMode; days: number } | null>(null);
+  const dragStart = useRef<{ id: string; mode: DragMode; x: number } | null>(null);
+  // Letting go after a drag also counts as a click on the bar; it must not
+  // open the dates dialog on top of the change just made.
+  const justDragged = useRef(false);
   // Null until the reader chooses: with dates only once anything has one.
   const [datedOnlyChoice, setDatedOnlyChoice] = useState<boolean | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -105,14 +117,65 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   }, [rowIds]);
 
   // Open on today, a little in from the left edge, rather than on whatever day
-  // the span happens to begin with.
-  const scrolledFor = useRef<string | null>(null);
-  useEffect(() => {
-    const key = `${range.start}:${width}`;
-    if (!scrollRef.current || scrolledFor.current === key) return;
-    scrolledFor.current = key;
-    scrollRef.current.scrollLeft = Math.max(0, todayLeft - (scrollRef.current.clientWidth - leftWidth) / 3);
+  // the span happens to begin with. After that the calendar stays put: when a
+  // change of dates stretches the span or tightens the scale, the day that was
+  // at the left edge is kept there, so a bar just dragged does not jump away.
+  const drawn = useRef<{ start: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const before = drawn.current;
+    drawn.current = { start: range.start, width };
+    if (!before) {
+      el.scrollLeft = Math.max(0, todayLeft - (el.clientWidth - leftWidth) / 3);
+    } else if (before.start !== range.start || before.width !== width) {
+      const leftDay = before.start + el.scrollLeft / before.width;
+      el.scrollLeft = Math.max(0, (leftDay - range.start) * width);
+    }
   }, [range.start, width, todayLeft, leftWidth]);
+
+  const daysCarried = (clientX: number) =>
+    dragStart.current ? Math.round((clientX - dragStart.current.x) / width) : 0;
+  const beginDrag = (id: string, mode: DragMode, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    // Capture keeps the drag going when the pointer leaves the bar. A browser
+    // may refuse it — the pointer already gone, say — and the drag then simply
+    // ends where the pointer leaves, which is no reason not to start it.
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* dragging without capture */
+    }
+    dragStart.current = { id, mode, x: e.clientX };
+    setDrag({ id, mode, days: 0 });
+  };
+  const moveDrag = (e: React.PointerEvent) => {
+    if (!dragStart.current) return;
+    const days = daysCarried(e.clientX);
+    setDrag((current) => (current && current.days !== days ? { ...current, days } : current));
+  };
+  const endDrag = (e: React.PointerEvent) => {
+    const started = dragStart.current;
+    if (!started) return;
+    const days = daysCarried(e.clientX);
+    dragStart.current = null;
+    setDrag(null);
+    const item = useAppStore.getState().workItems[started.id];
+    const change = item ? dragDates(item, started.mode, days, today) : {};
+    if (Object.keys(change).length === 0) return;
+    justDragged.current = true;
+    // The click that follows a release arrives at once; if none does — the
+    // pointer was let go somewhere else — the next real click must still work.
+    window.setTimeout(() => {
+      justDragged.current = false;
+    }, 100);
+    useAppStore.getState().setWorkItemStartEnd(started.id, change);
+  };
+  const cancelDrag = () => {
+    dragStart.current = null;
+    setDrag(null);
+  };
 
   // Keyboard selection moving out of sight brings its row back into view.
   useEffect(() => {
@@ -241,7 +304,10 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
             rowIds.map((id) => {
               const item = workItems[id];
               if (!item) return null;
-              const bar = barFor(item, today);
+              // While its bar is dragged, the row draws where the drag has it.
+              const dragging = drag?.id === id;
+              const shown = dragging ? { ...item, ...dragDates(item, drag.mode, drag.days, today) } : item;
+              const bar = barFor(shown, today);
               const selected = selectedWorkItemIds.includes(id);
               const depth = allRows.depths.get(id) ?? 0;
               return (
@@ -266,13 +332,38 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                   </div>
                   <div className="relative" style={{ width: trackWidth }}>
                     {bar ? (
-                      <Bar
-                        bar={bar}
-                        pixels={barPixels(bar, range, width)}
-                        color={statusColor(item)}
-                        label={describeStartEnd(item.startedOn, item.endedOn)}
-                        onEdit={() => setEditing(id)}
-                      />
+                      <>
+                        <Bar
+                          bar={bar}
+                          pixels={barPixels(bar, range, width)}
+                          color={statusColor(item)}
+                          label={describeStartEnd(shown.startedOn, shown.endedOn)}
+                          dragging={dragging}
+                          onEdit={() => {
+                            if (justDragged.current) {
+                              justDragged.current = false;
+                              return;
+                            }
+                            setEditing(id);
+                          }}
+                          onDragStart={(mode, e) => beginDrag(id, mode, e)}
+                          onDragMove={moveDrag}
+                          onDragEnd={endDrag}
+                          onDragCancel={cancelDrag}
+                        />
+                        {/* The dates the drag would set, beside the bar as it moves. */}
+                        {dragging && (
+                          <span
+                            className="pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] tabular-nums text-background"
+                            style={{
+                              left: barPixels(bar, range, width).left + barPixels(bar, range, width).width + 8,
+                            }}
+                            role="status"
+                          >
+                            {formatStartEnd(shown.startedOn, shown.endedOn)}
+                          </span>
+                        )}
+                      </>
                     ) : (
                       // An undated row: the whole track is the way to give it dates,
                       // said only on hover so a list of them stays quiet.
@@ -311,36 +402,59 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   );
 }
 
-/** One item's mark on the calendar. Clicking it changes its dates. */
+/**
+ * One item's mark on the calendar. Clicking it changes its dates; dragging it
+ * moves them. A bar wide enough has an edge at each end to drag on its own.
+ */
 function Bar({
   bar,
   pixels,
   color,
   label,
+  dragging,
   onEdit,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onDragCancel,
 }: {
   bar: TimelineBar;
   pixels: { left: number; width: number };
   color: string;
   label: string;
+  dragging: boolean;
   onEdit: () => void;
+  onDragStart: (mode: DragMode, e: React.PointerEvent) => void;
+  onDragMove: (e: React.PointerEvent) => void;
+  onDragEnd: (e: React.PointerEvent) => void;
+  onDragCancel: () => void;
 }) {
   const common = {
     type: "button" as const,
-    title: `${label}. Click to change`,
+    title: dragging ? undefined : `${label}. Drag to move, click to change`,
     "aria-label": `${label}. Change`,
     "data-bar-kind": bar.kind,
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation();
       onEdit();
     },
+    // Which part was taken hold of: an end, marked below, or the bar itself.
+    onPointerDown: (e: React.PointerEvent) =>
+      onDragStart(((e.target as HTMLElement).dataset?.handle as DragMode | undefined) ?? "move", e),
+    onPointerMove: onDragMove,
+    onPointerUp: onDragEnd,
+    onPointerCancel: onDragCancel,
   };
+  // Dragging must not scroll the calendar or select its text.
+  const grip = `touch-none select-none ${dragging ? "cursor-grabbing brightness-110" : "cursor-grab"}`;
+  // Too narrow a bar has no room for ends of its own; all of it moves.
+  const ends = Math.max(pixels.width, 6) >= 18;
   if (bar.kind === "end-only") {
     // A diamond centred on the day it ended.
     return (
       <button
         {...common}
-        className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] hover:brightness-110"
+        className={`absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[1px] hover:brightness-110 ${grip}`}
         style={{ left: pixels.left + pixels.width / 2, backgroundColor: color }}
       />
     );
@@ -350,7 +464,7 @@ function Bar({
     return (
       <button
         {...common}
-        className="absolute top-1/2 h-3.5 -translate-y-1/2 rounded-sm border-2 bg-background hover:brightness-110"
+        className={`absolute top-1/2 h-3.5 -translate-y-1/2 rounded-sm border-2 bg-background hover:brightness-110 ${grip}`}
         style={{ left: pixels.left, width: Math.max(pixels.width, 8), borderColor: color }}
       />
     );
@@ -360,13 +474,21 @@ function Bar({
       {...common}
       className={`absolute top-1/2 h-3.5 -translate-y-1/2 hover:brightness-110 ${
         bar.kind === "ongoing" ? "rounded-l-sm" : "rounded-sm"
-      }`}
+      } ${grip}`}
       style={{
         left: pixels.left,
         width: Math.max(pixels.width, 6),
         // Still going: solid where it began, fading towards today.
         background: bar.kind === "ongoing" ? `linear-gradient(to right, ${color} 40%, transparent)` : color,
       }}
-    />
+    >
+      {ends && (
+        <>
+          <span data-handle="start" className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize" />
+          {/* On work still going this is its open end: dragging it gives the work an end date. */}
+          <span data-handle="end" className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize" />
+        </>
+      )}
+    </button>
   );
 }

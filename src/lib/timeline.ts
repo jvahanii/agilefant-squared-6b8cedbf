@@ -108,6 +108,40 @@ export function barFor(item: Dated, today: number): TimelineBar | null {
   return { kind: "end-only", from: end!, to: end! };
 }
 
+/** What is being dragged: the whole bar, or one of its ends. */
+export type DragMode = "move" | "start" | "end";
+
+/**
+ * The dates a drag of so many days leaves an item with — only the ones that
+ * change, as yyyy-mm-dd; nothing when the drag changes nothing.
+ *
+ * Moving shifts whichever dates the item has, keeping its length. Dragging an
+ * end moves that end alone, and stops at the other: a bar can be shrunk to a
+ * single day, not turned inside out. Work still going has no end to drag, so
+ * its open end — drawn at today — is what is taken hold of, and letting go of
+ * it gives the work an end date.
+ */
+export function dragDates(item: Dated, mode: DragMode, days: number, today: number): Dated {
+  const start = dayNumber(item.startedOn);
+  const end = dayNumber(item.endedOn);
+  if (days === 0) return {};
+  if (mode === "move") {
+    return {
+      ...(start !== null ? { startedOn: dayIso(start + days) } : {}),
+      ...(end !== null ? { endedOn: dayIso(end + days) } : {}),
+    };
+  }
+  if (mode === "start") {
+    if (start === null) return {};
+    const next = end !== null ? Math.min(start + days, end) : start + days;
+    return next === start ? {} : { startedOn: dayIso(next) };
+  }
+  const held = end ?? (start !== null ? Math.max(today, start) : null);
+  if (held === null) return {};
+  const next = start !== null ? Math.max(held + days, start) : held + days;
+  return end !== null && next === end ? {} : { endedOn: dayIso(next) };
+}
+
 /** A bar's left edge and width in pixels, within the track. */
 export function barPixels(bar: TimelineBar, range: TimelineRange, width: number): { left: number; width: number } {
   return { left: (bar.from - range.start) * width, width: (bar.to - bar.from + 1) * width };
