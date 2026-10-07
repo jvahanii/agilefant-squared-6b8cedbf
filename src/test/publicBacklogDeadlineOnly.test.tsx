@@ -152,7 +152,7 @@ describe("on the page", () => {
       </MemoryRouter>,
     );
   const rows = () => [...document.querySelectorAll("[data-item-id]")].map((el) => el.getAttribute("data-item-id"));
-  const toggle = () => screen.getByRole("switch", { name: "Only rows with a deadline" });
+  const toggle = () => screen.getByRole("switch", { name: "Show only jobs with deadline" });
 
   beforeEach(() => {
     rpc.mockReset();
@@ -163,6 +163,7 @@ describe("on the page", () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
     expect(toggle()).toHaveAttribute("aria-checked", "false");
+    expect(toggle()).toHaveTextContent("Show only jobs with deadline");
     expect(toggle().querySelector("[data-state]")).toHaveAttribute("data-state", "off");
     // The group is folded, so its children are not on screen yet.
     expect(rows()).toEqual(["Fortum - Architect", "Open application", "Nordea - Architect", "Group"]);
@@ -203,6 +204,6 @@ describe("on the page", () => {
     rpc.mockResolvedValue({ data: payload(ITEMS, { deadlinesVisible: false }), error: null });
     renderPage();
     await screen.findByText("Fortum - Architect");
-    expect(screen.queryByRole("switch", { name: "Only rows with a deadline" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Show only jobs with deadline" })).not.toBeInTheDocument();
   });
 });
