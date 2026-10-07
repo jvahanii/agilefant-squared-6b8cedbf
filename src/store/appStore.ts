@@ -11,6 +11,7 @@ import {
   upsertBacklog,
   updateBacklogRatingsEnabled,
   updateBacklogCreatedDatesEnabled,
+  updateBacklogStartEndDatesEnabled,
   updateBacklogPoints,
   updateBacklogViewMode,
   upsertBacklogs,
@@ -245,6 +246,13 @@ interface AppState extends DataSnapshot {
   /** Correct the day an item was made, as yyyy-mm-dd. It can be changed but
    *  not taken away: anything that is not a real date is ignored. */
   setWorkItemCreatedOn: (workItemId: string, createdOn: string) => void;
+  /**
+   * Set, change or remove the days work on an item started and ended. Each of
+   * the two: a yyyy-mm-dd to set it, null to remove it, left out to leave it
+   * as it is. Anything that is not a real date removes it, as an emptied field
+   * means.
+   */
+  setWorkItemStartEnd: (workItemId: string, dates: { startedOn?: string | null; endedOn?: string | null }) => void;
   removeWorkItemFromTree: (workItemId: string, treeId: string) => void;
   removeWorkItemsFromTreeBulk: (items: Array<{ workItemId: string; treeId: string }>) => void;
   reparentWorkItem: (workItemId: string, newParentId: string | null, treeId?: string, backlogId?: string, strategy?: "move-to-tree" | "mirror", rank?: number) => void;
@@ -259,6 +267,8 @@ interface AppState extends DataSnapshot {
   setBacklogRatingsEnabled: (backlogId: string, enabled: boolean) => void;
   /** Show created dates on this backlog's items, where the organization has them on. */
   setBacklogCreatedDatesEnabled: (backlogId: string, enabled: boolean) => void;
+  /** Show start and end dates on this backlog's rows, where the organization has them on. */
+  setBacklogStartEndDatesEnabled: (backlogId: string, enabled: boolean) => void;
   /** A backlog's own estimate: a whole number of zero or more, or undefined to take it away. */
   setBacklogPoints: (backlogId: string, points: number | undefined) => void;
   reorderBacklogAmongSiblings: (
@@ -1056,7 +1066,7 @@ function sameEntries(a: Record<string, unknown> | undefined, b: Record<string, u
 /** Whether two versions of an item would be saved as the same rows. */
 function samePersistedWorkItem(a: WorkItem, b: WorkItem): boolean {
   return a.title === b.title && a.description === b.description && a.points === b.points &&
-    a.rating === b.rating && a.deadline === b.deadline && a.createdOn === b.createdOn && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
+    a.rating === b.rating && a.deadline === b.deadline && a.createdOn === b.createdOn && a.startedOn === b.startedOn && a.endedOn === b.endedOn && a.status === b.status && a.parentId === b.parentId && a.organizationId === b.organizationId &&
     a.respawnEnabled === b.respawnEnabled && a.respawnIntervalDays === b.respawnIntervalDays &&
     a.respawnHour === b.respawnHour && a.respawnMinute === b.respawnMinute &&
     a.respawnLastTriggeredAt === b.respawnLastTriggeredAt &&
@@ -3267,6 +3277,30 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setWorkItemStartEnd: (workItemId, dates) => {
+      const state = get();
+      const orgId = state.organizationId!;
+      const item = state.workItems[workItemId];
+      if (!item) return;
+      const startedOn = "startedOn" in dates ? wellFormedDeadline(dates.startedOn) : item.startedOn;
+      const endedOn = "endedOn" in dates ? wellFormedDeadline(dates.endedOn) : item.endedOn;
+      if (startedOn === item.startedOn && endedOn === item.endedOn) return;
+      const updated = { ...item, startedOn, endedOn };
+      upsertWorkItem(updated, orgId);
+      internalLog({
+        action: "Set Start and End Dates",
+        entityType: "work_item",
+        entityId: workItemId,
+        entityName: item.title,
+        details: `${item.startedOn ?? "none"}–${item.endedOn ?? "none"} → ${startedOn ?? "none"}–${endedOn ?? "none"}`,
+      });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
     setWorkItemRating: (workItemId, rating) => {
       const state = get();
       const orgId = state.organizationId!;
@@ -4133,6 +4167,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    setBacklogStartEndDatesEnabled: (backlogId, enabled) => {
+      const state = get();
+      const bl = state.backlogs[backlogId];
+      if (!bl) return;
+      if ((bl.startEndDatesEnabled ?? false) === enabled) return;
+      updateBacklogStartEndDatesEnabled(backlogId, enabled);
+      set({
+        backlogs: { ...state.backlogs, [backlogId]: { ...bl, startEndDatesEnabled: enabled } },
+      });
+    },
+
     setBacklogPoints: (backlogId, points) => {
       const state = get();
       const bl = state.backlogs[backlogId];
@@ -4702,6 +4747,11 @@ export const useAppStore = create<AppState>()((set, get) => {
           // And for the created date — falling back on what is held here, so
           // an echo that does not carry the column cannot blank it.
           createdOn: (row.created_on as string | null) ?? state.workItems[id]?.createdOn,
+          // Start and end dates can be removed, so a null in the row means
+          // none — but a row that does not carry the columns says nothing, and
+          // what is held here stands.
+          startedOn: 'started_on' in row ? ((row.started_on as string | null) ?? undefined) : state.workItems[id]?.startedOn,
+          endedOn: 'ended_on' in row ? ((row.ended_on as string | null) ?? undefined) : state.workItems[id]?.endedOn,
           status: ((row.status as string) ?? 'not_started') as WorkItemStatus,
           parentId: (row.parent_id as string | null) ?? null,
           parentIds: parsedParentIds,
@@ -4902,6 +4952,10 @@ export const useAppStore = create<AppState>()((set, get) => {
             'created_dates_enabled' in row
               ? (row.created_dates_enabled as boolean | null) === true
               : state.backlogs[id]?.createdDatesEnabled,
+          startEndDatesEnabled:
+            'start_end_dates_enabled' in row
+              ? (row.start_end_dates_enabled as boolean | null) === true
+              : state.backlogs[id]?.startEndDatesEnabled,
           // The same for its estimate: left out, the echo of setting one would
           // take it away again a moment later.
           points: 'points' in row ? ((row.points as number | null) ?? undefined) : state.backlogs[id]?.points,

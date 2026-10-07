@@ -20,6 +20,7 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
   updateBacklogRatingsEnabled: vi.fn(),
   updateBacklogCreatedDatesEnabled: vi.fn(),
+  updateBacklogStartEndDatesEnabled: vi.fn(),
 }));
 
 // jsdom has no DOMRect, which a right-click menu uses to place itself at the
@@ -49,7 +50,7 @@ const settings = (over: Record<string, boolean> = {}) =>
       [ORG]: {
         timeLoggingEnabled: false, pointsEnabled: true, labelsEnabled: false, customStatusesEnabled: true,
         savingsIncomeEnabled: false, boardsEnabled: false, burnupsEnabled: true, persistNotificationsEnabled: false,
-        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, createdDatesEnabled: false, ...over,
+        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, createdDatesEnabled: false, startEndDatesEnabled: false, ...over,
       },
     },
   });
@@ -121,6 +122,18 @@ describe("a list's right-click menu", () => {
     expect(useAppStore.getState().backlogs[BL].createdDatesEnabled ?? false).toBe(false);
     fireEvent.click(screen.getByText("Created dates"));
     expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(true);
+  });
+
+  it("offers showing start and end dates only where the organization has them on, and switches it itself", () => {
+    openMenu();
+    expect(screen.queryByText("Start and end dates")).not.toBeInTheDocument();
+    cleanup();
+
+    settings({ startEndDatesEnabled: true });
+    openMenu();
+    expect(useAppStore.getState().backlogs[BL].startEndDatesEnabled ?? false).toBe(false);
+    fireEvent.click(screen.getByText("Start and end dates"));
+    expect(useAppStore.getState().backlogs[BL].startEndDatesEnabled).toBe(true);
   });
 });
 

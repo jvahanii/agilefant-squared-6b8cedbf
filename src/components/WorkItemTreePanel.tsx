@@ -6,7 +6,7 @@ import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus, CalendarRange } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -27,6 +27,8 @@ import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
 import { SnoozeDialog } from "./SnoozeDialog";
 import { DeadlineDialog } from "./DeadlineDialog";
 import { CreatedDateDialog } from "./CreatedDateDialog";
+import { StartEndDatesDialog } from "./StartEndDatesDialog";
+import { describeStartEnd, formatStartEnd, useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { formatCreatedOn, useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { formatDeadline, isDeadlinePassed, useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -364,6 +366,11 @@ function WorkItemNodeContent({
   const orgCreatedDatesEnabled = useCreatedDatesEnabled();
   const rowBacklogCreatedDates = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.createdDatesEnabled ?? false : false));
   const createdDatesVisible = orgCreatedDatesEnabled && rowBacklogCreatedDates;
+  // Start and end dates: the organization's switch offers them in the menu;
+  // the row's own list decides whether they also show on the row.
+  const startEndDatesEnabled = useStartEndDatesEnabled();
+  const rowBacklogStartEnd = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.startEndDatesEnabled ?? false : false));
+  const startEndDatesVisible = startEndDatesEnabled && rowBacklogStartEnd;
   const labelsVisible = shared.labelsVisible;
   const timeLoggingVisible = shared.timeLoggingVisible;
   const savingsIncomeVisible = shared.savingsIncomeVisible;
@@ -435,6 +442,7 @@ function WorkItemNodeContent({
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showDeadlineDialog, setShowDeadlineDialog] = useState(false);
   const [showCreatedDateDialog, setShowCreatedDateDialog] = useState(false);
+  const [showStartEndDialog, setShowStartEndDialog] = useState(false);
   const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
@@ -1246,6 +1254,24 @@ function WorkItemNodeContent({
             );
           })()}
 
+          {/* When the work ran, as one span: "1.10.–5.10.", or "1.10.–" while
+              it is still going. After the title, beside the created date.
+              Clicking it changes it. Rows with neither date show nothing. */}
+          {startEndDatesVisible && (item.startedOn || item.endedOn) && (
+            <button
+              type="button"
+              className="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground"
+              title={describeStartEnd(item.startedOn, item.endedOn)}
+              aria-label={`${describeStartEnd(item.startedOn, item.endedOn)}. Change`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowStartEndDialog(true);
+              }}
+            >
+              {formatStartEnd(item.startedOn, item.endedOn)}
+            </button>
+          )}
+
           {/* The day it was made, after the title and out of its way: a fact
               about the row rather than something to act on, unlike the
               deadline that leads it. Clicking it corrects it. Rows whose day
@@ -1609,6 +1635,12 @@ function WorkItemNodeContent({
             <ContextMenuItem className="text-xs" onSelect={() => setShowCreatedDateDialog(true)}>
               <CalendarPlus className="w-3 h-3 mr-2" />
               {item.createdOn ? "Change created date…" : "Set created date…"}
+            </ContextMenuItem>
+          )}
+          {startEndDatesEnabled && (
+            <ContextMenuItem className="text-xs" onSelect={() => setShowStartEndDialog(true)}>
+              <CalendarRange className="w-3 h-3 mr-2" />
+              {item.startedOn || item.endedOn ? "Change start and end dates…" : "Set start and end dates…"}
             </ContextMenuItem>
           )}
           <ContextMenuItem className="text-xs" onSelect={() => {
@@ -2185,6 +2217,13 @@ function WorkItemNodeContent({
           workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
           open
           onOpenChange={(o) => { setShowCreatedDateDialog(o); if (!o) releaseOverlayLock(); }}
+        />
+      )}
+      {showStartEndDialog && (
+        <StartEndDatesDialog
+          workItemIds={isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId]}
+          open
+          onOpenChange={(o) => { setShowStartEndDialog(o); if (!o) releaseOverlayLock(); }}
         />
       )}
       {showMobileAttributesSheet && (

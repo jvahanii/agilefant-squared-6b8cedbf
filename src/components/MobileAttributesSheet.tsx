@@ -14,6 +14,7 @@ import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { StarRating } from "@/components/StarRating";
 import { useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
+import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
@@ -77,6 +78,7 @@ export function MobileWorkItemAttributesSheet({
   const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
   const setWorkItemDeadline = useAppStore((s) => s.setWorkItemDeadline);
   const setWorkItemCreatedOn = useAppStore((s) => s.setWorkItemCreatedOn);
+  const setWorkItemStartEnd = useAppStore((s) => s.setWorkItemStartEnd);
   // The sheet opens from the list being viewed, so that list's tree decides
   // which children an item has — see childrenInTree.
   const selectedTreeId = useAppStore((s) => s.selectedTreeId) ?? undefined;
@@ -99,6 +101,9 @@ export function MobileWorkItemAttributesSheet({
     sheetBacklogId ? s.backlogs[sheetBacklogId]?.createdDatesEnabled ?? false : false,
   );
   const createdDatesVisible = orgCreatedDatesEnabled && listCreatedDatesEnabled;
+  // Setting these needs only the organization's switch — this sheet is where a
+  // phone sets them — whatever the list shows on its rows.
+  const startEndDatesVisible = useStartEndDatesEnabled();
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
 
@@ -238,6 +243,38 @@ export function MobileWorkItemAttributesSheet({
                 className="h-9 rounded-md border bg-background px-2 text-sm"
               />
             </div>
+          )}
+
+          {startEndDatesVisible && item && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="sheet-started" className="text-sm font-medium">
+                  Started
+                </label>
+                {/* The phone's own date picker; emptying it removes the date. */}
+                <input
+                  id="sheet-started"
+                  type="date"
+                  value={item.startedOn ?? ""}
+                  max={item.endedOn}
+                  onChange={(e) => setWorkItemStartEnd(item.id, { startedOn: e.target.value || null })}
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="sheet-ended" className="text-sm font-medium">
+                  Ended
+                </label>
+                <input
+                  id="sheet-ended"
+                  type="date"
+                  value={item.endedOn ?? ""}
+                  min={item.startedOn}
+                  onChange={(e) => setWorkItemStartEnd(item.id, { endedOn: e.target.value || null })}
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                />
+              </div>
+            </>
           )}
 
           {labelsVisible && (

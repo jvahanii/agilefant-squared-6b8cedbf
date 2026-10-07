@@ -40,6 +40,9 @@ type WorkItemUpsertRow = {
    * dates the migration filled in.
    */
   created_on?: string;
+  /** yyyy-mm-dd, or null for none — sent either way, as a deadline is. */
+  started_on: string | null;
+  ended_on: string | null;
   status: string;
   parent_id: string | null;
   parent_id_overrides?: Record<string, string | null>;
@@ -254,7 +257,7 @@ export async function loadFromSupabase(
 
   const backlogs: Record<string, Backlog> = {};
   for (const row of cleanBacklogRows) {
-    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, createdDatesEnabled: (row as { created_dates_enabled?: boolean | null }).created_dates_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
+    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, createdDatesEnabled: (row as { created_dates_enabled?: boolean | null }).created_dates_enabled === true, startEndDatesEnabled: (row as { start_end_dates_enabled?: boolean | null }).start_end_dates_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
   }
   for (const bl of Object.values(backlogs)) {
     if (bl.parentId && backlogs[bl.parentId]) {
@@ -359,7 +362,7 @@ export async function loadFromSupabase(
     }
     workItems[row.id] = {
       id: row.id, title: row.title, description: row.description ?? undefined,
-      points: row.points ?? undefined, rating: (row as { rating?: number | null }).rating ?? undefined, deadline: (row as { deadline?: string | null }).deadline ?? undefined, createdOn: (row as { created_on?: string | null }).created_on ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
+      points: row.points ?? undefined, rating: (row as { rating?: number | null }).rating ?? undefined, deadline: (row as { deadline?: string | null }).deadline ?? undefined, createdOn: (row as { created_on?: string | null }).created_on ?? undefined, startedOn: (row as { started_on?: string | null }).started_on ?? undefined, endedOn: (row as { ended_on?: string | null }).ended_on ?? undefined, status: (row.status as WorkItemStatus) ?? 'not_started',
       parentId: row.parent_id, childrenIds: [],
       parentIds: (row.parent_id_overrides && typeof row.parent_id_overrides === 'object' && !Array.isArray(row.parent_id_overrides))
         ? (row.parent_id_overrides as Record<string, string | null>)
@@ -568,7 +571,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
 
   const row: WorkItemUpsertRow = {
     id: resolvedId, title: item.title, description: item.description ?? null,
-    points: item.points ?? null, rating: item.rating ?? null, deadline: item.deadline ?? null, status: item.status, parent_id: item.parentId,
+    points: item.points ?? null, rating: item.rating ?? null, deadline: item.deadline ?? null, started_on: item.startedOn ?? null, ended_on: item.endedOn ?? null, status: item.status, parent_id: item.parentId,
     backlog_assignments: item.backlogAssignments, rank: 0,
     organization_id: effectiveOrgId,
     respawn_enabled: item.respawnEnabled ?? false,
@@ -753,6 +756,14 @@ export async function updateBacklogCreatedDatesEnabled(backlogId: string, enable
   if (error) console.error('updateBacklogCreatedDatesEnabled:', error);
 }
 
+export async function updateBacklogStartEndDatesEnabled(backlogId: string, enabled: boolean) {
+  const { error } = await supabase
+    .from('backlogs')
+    .update({ start_end_dates_enabled: enabled } as never)
+    .eq('id', backlogId);
+  if (error) console.error('updateBacklogStartEndDatesEnabled:', error);
+}
+
 /**
  * A backlog's own points, or null to take them away. Its own call rather than a
  * field of upsertBacklog(s): those write on every rename and move, and would put
@@ -834,7 +845,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
     const effectiveOrgId = item.organizationId ?? organizationId;
     const row: WorkItemUpsertRow = {
       id: resolvedId, title: item.title, description: item.description ?? null,
-      points: item.points ?? null, rating: item.rating ?? null, deadline: item.deadline ?? null, status: item.status, parent_id: item.parentId,
+      points: item.points ?? null, rating: item.rating ?? null, deadline: item.deadline ?? null, started_on: item.startedOn ?? null, ended_on: item.endedOn ?? null, status: item.status, parent_id: item.parentId,
       backlog_assignments: item.backlogAssignments, rank: 0,
       organization_id: effectiveOrgId,
       respawn_enabled: item.respawnEnabled ?? false,

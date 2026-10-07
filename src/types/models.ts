@@ -23,6 +23,11 @@ export interface WorkItem {
    *  than the attribute, where nothing showed when they were made. Editable.
    *  Shown only where the organization has created dates on. */
   createdOn?: string;
+  /** The days work on it began and finished, as yyyy-mm-dd. Either may be
+   *  absent: not started, or started and not yet ended. Set by hand. Offered
+   *  only where the organization has start and end dates on. */
+  startedOn?: string;
+  endedOn?: string;
   status: WorkItemStatus;
   /** Global parent ID — the default parent used when no per-tree override is present. */
   parentId: string | null;
@@ -69,6 +74,10 @@ export interface Backlog {
    *  consulted where the organization has created dates on — the same shape
    *  as the stars switch above. */
   createdDatesEnabled?: boolean;
+  /** Start and end dates on this backlog's rows. Off until switched on, and
+   *  only consulted where the organization has them on. Setting the dates
+   *  does not depend on it; only showing them on the row does. */
+  startEndDatesEnabled?: boolean;
   /** An estimate for the backlog as a whole, before its work is broken into
    *  items. It counts as the larger of this and what its contents add up to;
    *  absent, the backlog is just the sum of its items. See lib/backlogPoints. */

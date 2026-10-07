@@ -69,6 +69,7 @@ const timeLogging = (enabled: boolean) =>
         ratingsEnabled: false,
         deadlinesEnabled: false,
         createdDatesEnabled: false,
+        startEndDatesEnabled: false,
       },
     },
   });

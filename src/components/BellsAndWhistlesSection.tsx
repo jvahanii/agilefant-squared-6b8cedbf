@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock, CalendarPlus } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock, CalendarPlus, CalendarRange } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -38,6 +38,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const deadlinesEnabled = (orgSettings as { deadlinesEnabled?: boolean }).deadlinesEnabled ?? false;
   const setCreatedDatesEnabledSetting = useOrgSettingsStore((s) => s.setCreatedDatesEnabled);
   const createdDatesEnabled = (orgSettings as { createdDatesEnabled?: boolean }).createdDatesEnabled ?? false;
+  const setStartEndDatesEnabledSetting = useOrgSettingsStore((s) => s.setStartEndDatesEnabled);
+  const startEndDatesEnabled = (orgSettings as { startEndDatesEnabled?: boolean }).startEndDatesEnabled ?? false;
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
   const setLabelsEnabledSetting = useOrgSettingsStore((s) => s.setLabelsEnabled);
@@ -190,6 +192,37 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setCreatedDatesEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Created dates shown" : "Created dates hidden" });
+                }
+              }}
+              disabled={!canManage}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarRange className="w-4 h-4" /> Start and end dates
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable start and end dates</p>
+              <p className="text-xs text-muted-foreground">
+                Give work items the day their work started and the day it ended, from their right-click menu. Either
+                can be set without the other. Each list then chooses, from its own right-click menu under Start and
+                end dates, whether to show them on its rows. Turning this off hides the dates everywhere; they and
+                each list's choice are kept.
+              </p>
+            </div>
+            <Switch
+              checked={startEndDatesEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setStartEndDatesEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Start and end dates enabled" : "Start and end dates disabled" });
                 }
               }}
               disabled={!canManage}

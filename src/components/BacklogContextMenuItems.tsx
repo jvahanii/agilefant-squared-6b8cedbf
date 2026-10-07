@@ -1,4 +1,4 @@
-import { CalendarPlus, Globe, Hash, Settings2, SlidersHorizontal, Star, Trash2, TrendingUp } from "lucide-react";
+import { CalendarPlus, CalendarRange, Globe, Hash, Settings2, SlidersHorizontal, Star, Trash2, TrendingUp } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -14,6 +14,7 @@ import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsS
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
+import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { scrambleName } from "@/lib/scramble";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
@@ -55,6 +56,7 @@ export function BacklogContextMenuItems({
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const setBacklogRatingsEnabled = useAppStore((s) => s.setBacklogRatingsEnabled);
   const setBacklogCreatedDatesEnabled = useAppStore((s) => s.setBacklogCreatedDatesEnabled);
+  const setBacklogStartEndDatesEnabled = useAppStore((s) => s.setBacklogStartEndDatesEnabled);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const customStatusesEnabled = useOrgSettingsStore(
     (s) => s.settings[activeOrgId ?? ""]?.customStatusesEnabled ?? true,
@@ -65,6 +67,7 @@ export function BacklogContextMenuItems({
   const pointsVisible = usePointsVisibleForTree(treeId);
   const ratingsEnabled = useRatingsEnabled();
   const createdDatesEnabled = useCreatedDatesEnabled();
+  const startEndDatesEnabled = useStartEndDatesEnabled();
   const publicLinksEnabled = usePublicLinksEnabled();
 
   if (!backlog) return null;
@@ -143,6 +146,19 @@ export function BacklogContextMenuItems({
         >
           <CalendarPlus className="w-3 h-3 mr-2" />
           Created dates
+        </ContextMenuCheckboxItem>
+      )}
+      {/* And for start and end dates. The dates themselves are set from an
+          item's menu wherever the organization has them on; this is only
+          whether this list's rows show them. */}
+      {startEndDatesEnabled && (
+        <ContextMenuCheckboxItem
+          className="text-xs"
+          checked={backlog.startEndDatesEnabled ?? false}
+          onCheckedChange={(checked) => setBacklogStartEndDatesEnabled(backlogId, checked === true)}
+        >
+          <CalendarRange className="w-3 h-3 mr-2" />
+          Start and end dates
         </ContextMenuCheckboxItem>
       )}
       {publicLinksEnabled && (

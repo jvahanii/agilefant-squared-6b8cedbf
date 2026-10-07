@@ -119,6 +119,7 @@ export type Database = {
       backlogs: {
         Row: {
           created_dates_enabled: boolean
+          start_end_dates_enabled: boolean
           id: string
           name: string
           organization_id: string | null
@@ -131,6 +132,7 @@ export type Database = {
         }
         Insert: {
           created_dates_enabled?: boolean
+          start_end_dates_enabled?: boolean
           id: string
           name: string
           organization_id?: string | null
@@ -143,6 +145,7 @@ export type Database = {
         }
         Update: {
           created_dates_enabled?: boolean
+          start_end_dates_enabled?: boolean
           id?: string
           name?: string
           organization_id?: string | null
@@ -749,6 +752,7 @@ export type Database = {
           burnups_enabled: boolean
           created_at: string
           created_dates_enabled: boolean
+          start_end_dates_enabled: boolean
           custom_statuses_enabled: boolean
           deadlines_enabled: boolean
           id: string
@@ -767,6 +771,7 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           created_dates_enabled?: boolean
+          start_end_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -785,6 +790,7 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           created_dates_enabled?: boolean
+          start_end_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -1617,6 +1623,8 @@ export type Database = {
         Row: {
           backlog_assignments: Json
           created_on: string | null
+          ended_on: string | null
+          started_on: string | null
           deadline: string | null
           description: string | null
           id: string
@@ -1637,6 +1645,8 @@ export type Database = {
         Insert: {
           backlog_assignments?: Json
           created_on?: string | null
+          ended_on?: string | null
+          started_on?: string | null
           deadline?: string | null
           description?: string | null
           id: string
@@ -1657,6 +1667,8 @@ export type Database = {
         Update: {
           backlog_assignments?: Json
           created_on?: string | null
+          ended_on?: string | null
+          started_on?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
