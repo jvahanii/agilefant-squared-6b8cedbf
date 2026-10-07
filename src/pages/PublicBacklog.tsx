@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
@@ -157,14 +157,18 @@ export default function PublicBacklog() {
     [dateRanges, deadlinesShown, createdShown],
   );
   const filteringByDate = dateFilterActive(dates);
+  // Leave out the rows with no deadline. Off to begin with; and, like a span,
+  // ignored on a page that does not show deadlines at all.
+  const [deadlineOnlyChosen, setDeadlineOnly] = useState(false);
+  const deadlineOnly = deadlinesShown && deadlineOnlyChosen;
   const setRange = (which: "deadline" | "created", end: "from" | "to", value: string) =>
     setDateRanges((current) => ({ ...current, [which]: { ...current[which], [end]: value || undefined } }));
   const { nodes: items, matched: matchedRows } = useMemo(
-    () => filterItemNodes(allItems, terms, searchIndex, filterMatch, dates),
-    [allItems, terms, searchIndex, filterMatch, dates],
+    () => filterItemNodes(allItems, terms, searchIndex, filterMatch, dates, deadlineOnly),
+    [allItems, terms, searchIndex, filterMatch, dates, deadlineOnly],
   );
   const totalRows = useMemo(() => countItemNodes(allItems), [allItems]);
-  const filtering = terms.length > 0 || filteringByDate;
+  const filtering = terms.length > 0 || filteringByDate || deadlineOnly;
 
   // Which rows are open, held here rather than in each row, so the numbering
   // below can count exactly what is on screen.
@@ -501,6 +505,25 @@ export default function PublicBacklog() {
                         </button>
                       ))}
                     </div>
+                    {/* Rows with no deadline, in or out. A switch of its own
+                        rather than part of the spans below: it asks whether a
+                        row has a deadline, not when. */}
+                    {deadlinesShown && (
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={deadlineOnly}
+                        aria-label="Only rows with a deadline"
+                        title={deadlineOnly ? "Showing only rows with a deadline. Click to show all rows." : "Hide rows without a deadline"}
+                        onClick={() => setDeadlineOnly((on) => !on)}
+                        className={`flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium ${
+                          deadlineOnly ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="hidden sm:inline">With deadline</span>
+                      </button>
+                    )}
                     {/* Date spans sit behind this, so the bar stays one line
                         until someone wants them. It shows when one is set. */}
                     {(deadlinesShown || createdShown) && (
@@ -569,6 +592,7 @@ export default function PublicBacklog() {
                         terms,
                         match: filterMatch,
                         byDate: filteringByDate,
+                        withDeadlineOnly: deadlineOnly,
                       })}
                     </p>
                   )}

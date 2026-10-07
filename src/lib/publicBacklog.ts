@@ -329,7 +329,8 @@ export function buildSearchIndex(payload: PublishedPayload): Map<string, string>
  * The rows the filter keeps: those containing any one of the strings, or —
  * when the visitor asks for all — every one of them. Either way a string
  * counts wherever it appears, as part of a longer word too. Where date spans
- * are set as well, a row has to fall inside each of them too. A row that does
+ * are set as well, a row has to fall inside each of them too — and, when the
+ * visitor asks for rows with a deadline only, to have one. A row that does
  * not qualify is dropped — unless something beneath it does, in which case it stays as
  * the way down to that match: a match shown without its parents would have
  * lost its place in the list. `matched` is how many rows matched in their
@@ -341,9 +342,10 @@ export function filterItemNodes(
   index: Map<string, string>,
   match: FilterMatch = "any",
   dates?: DateFilter,
+  withDeadlineOnly = false,
 ): { nodes: ItemNode[]; matched: number } {
   const byDate = dateFilterActive(dates);
-  if (terms.length === 0 && !byDate) return { nodes, matched: countItemNodes(nodes) };
+  if (terms.length === 0 && !byDate && !withDeadlineOnly) return { nodes, matched: countItemNodes(nodes) };
   let matched = 0;
   const keep = (list: ItemNode[]): ItemNode[] => {
     const out: ItemNode[] = [];
@@ -356,6 +358,7 @@ export function filterItemNodes(
         (match === "all" ? terms.every((term) => text.includes(term)) : terms.some((term) => text.includes(term)));
       const own =
         byText &&
+        (!withDeadlineOnly || !!node.item.deadline) &&
         (!byDate ||
           (inDateRange(node.item.deadline, dates!.deadline) && inDateRange(node.item.createdOn, dates!.created)));
       const children = keep(node.children);
@@ -378,16 +381,22 @@ export function filterSummary(opts: {
   terms: string[];
   match: FilterMatch;
   byDate: boolean;
+  /** Rows without a deadline are being left out. */
+  withDeadlineOnly?: boolean;
 }): string {
-  const { matched, total, terms, match, byDate } = opts;
+  const { matched, total, terms, match, byDate, withDeadlineOnly = false } = opts;
   if (matched === 0) {
-    if (terms.length === 0) return "No rows in that date range.";
+    if (terms.length === 0) {
+      if (!byDate) return "No rows have a deadline.";
+      return withDeadlineOnly ? "No rows with a deadline in that date range." : "No rows in that date range.";
+    }
     const what = terms.length === 1 ? `“${terms[0]}”` : match === "all" ? "all of those" : "any of those";
-    return `No rows contain ${what}${byDate ? " in that date range" : ""}.`;
+    return `No rows contain ${what}${withDeadlineOnly ? " and have a deadline" : ""}${byDate ? " in that date range" : ""}.`;
   }
   const words = terms.length > 1 ? `containing ${match === "all" ? "all" : "any"} of the words` : "";
   const range = byDate ? "in the date range" : "";
-  const those = [words, range].filter(Boolean).join(", ");
+  const deadline = withDeadlineOnly ? "with a deadline" : "";
+  const those = [words, range, deadline].filter(Boolean).join(", ");
   return `Showing ${matched} of ${total} rows${those ? ` — those ${those}` : ""}.`;
 }
 
