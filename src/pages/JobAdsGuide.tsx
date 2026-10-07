@@ -363,19 +363,16 @@ export default function JobAdsGuide() {
                 "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
               ],
               [
-                "Import selected",
-                "Creates the ticked postings in the list the saved search was saved with, and does nothing else: the list is not reordered and the emails stay unread.",
-              ],
-              [
                 "Do not import anything, mark N emails read",
                 "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import selected into … marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
               ],
             ]}
           />
           <P>
-            Choose the <Em>Import into</Em> list in the picker, above the buttons; the button stays unavailable until
-            one is chosen. The choice is saved on the search, so it is there next time, and it is kept by the list
-            itself rather than its name: rename the list and the import follows it.
+            A job search imports into one list. It starts as the list the search was saved with; choose another
+            under <Em>Import into</Em> in the picker, above the buttons, and it becomes the search&apos;s list from
+            then on — in the picker, under the saved search, and for a scheduled run. It is kept by the list itself
+            rather than its name: rename the list and the import follows it.
           </P>
           <P>
             Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
@@ -464,10 +461,6 @@ export default function JobAdsGuide() {
             </li>
             <li>
               <Em>Do not import anything, … skip N career page jobs</Em> remembers all of them.
-            </li>
-            <li>
-              <Em>Import selected</Em> remembers nothing, as it leaves emails unread: what you did not import comes
-              back on the next run.
             </li>
           </Ul>
           <Callout>
@@ -558,8 +551,7 @@ export default function JobAdsGuide() {
           </P>
           <P>
             The check also runs by itself after a job import, on the ads that were already in the list the import
-            filled — the chosen list after <Em>Import selected into …</Em>, the search&apos;s own list after{" "}
-            <Em>Import selected</Em>. The newly imported ads are left out, since their postings were just read. A
+            filled. The newly imported ads are left out, since their postings were just read. A
             message reports the result when it finishes.
           </P>
         </Section>

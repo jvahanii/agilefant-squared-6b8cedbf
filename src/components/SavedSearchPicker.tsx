@@ -113,13 +113,19 @@ export function SavedSearchPicker({
       cancelled = true;
     };
   }, [mode, search.id]);
-  /** The one list every chosen posting goes into, or null until one is chosen. */
+  /**
+   * The one list every chosen posting goes into: the list chosen in this
+   * picker, and until one is — or once that one is gone — the list the search
+   * was saved with. A job search imports into one list and nowhere else; null
+   * only for a link import, which has its own button.
+   */
   const importList = useMemo(
     () =>
       mode === "jobs"
-        ? findImportList(backlogs, { tree_id: search.tree_id, auto_place_backlog_id: placeInto.list })
+        ? (findImportList(backlogs, { tree_id: search.tree_id, auto_place_backlog_id: placeInto.list }) ??
+          search.backlog_id)
         : null,
-    [backlogs, mode, search.tree_id, placeInto.list],
+    [backlogs, mode, search.tree_id, search.backlog_id, placeInto.list],
   );
   /** The lists a posting can be imported into: this search's tree, by name. */
   const treeBacklogs = useMemo(
@@ -157,11 +163,14 @@ export function SavedSearchPicker({
   const choosePlaceInto = async (which: "list" | "mirror", id: string | null) => {
     const before = placeInto;
     setPlaceInto({ ...before, [which]: id });
-    const column = ({ list: "auto_place_backlog_id", mirror: "auto_place_mirror_backlog_id" } as const)[which];
-    const { error } = await supabase
-      .from("gmail_import_queries")
-      .update({ [column]: id })
-      .eq("id", search.id);
+    // The list chosen here becomes the search's own list as well, so there is
+    // one answer to "where does this search import to" — here, under the saved
+    // search in Bells & Whistles, and for a scheduled run.
+    const change =
+      which === "mirror"
+        ? { auto_place_mirror_backlog_id: id }
+        : { auto_place_backlog_id: id, ...(id ? { backlog_id: id } : {}) };
+    const { error } = await supabase.from("gmail_import_queries").update(change).eq("id", search.id);
     if (error) {
       setPlaceInto(before);
       toast({ title: "Could not save the list", description: error.message, variant: "destructive" });
@@ -1035,12 +1044,14 @@ export function SavedSearchPicker({
             <span className="font-medium text-foreground">Import into</span>
             <select
               value={importList ?? ""}
-              onChange={(e) => void choosePlaceInto("list", e.target.value || null)}
+              onChange={(e) => e.target.value && e.target.value !== importList && void choosePlaceInto("list", e.target.value)}
               disabled={importing}
               aria-label="Import into"
               className="h-7 max-w-[16rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
             >
-              {!importList && <option value="">Choose a list…</option>}
+              {/* Shown only while the list in use is not one of this tree's:
+                  deleted, or not loaded yet. */}
+              {!treeBacklogs.some((b) => b.id === importList) && <option value={importList ?? ""}>Choose a list…</option>}
               {treeBacklogs.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -1071,36 +1082,30 @@ export function SavedSearchPicker({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {mode === "jobs" && (
+        {/* A job search has one import, into its one list. The plain import
+            below is the link import's: it used to be offered for jobs as well,
+            into the list the search was saved with, which was a second place
+            for a job to end up. */}
+        {mode === "jobs" && importList ? (
           <Button
             size="sm"
             variant="destructive"
             onClick={importIntoList}
-            disabled={importing || !importList}
+            disabled={importing}
             title={
-              importList
-                ? `Every ticked posting goes into ${backlogName(importList)}. The list is then put in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order saved as its rank. The emails are marked as read.` +
-                  (mirrorTarget ? ` Rows switched to mirror also appear in ${backlogName(mirrorTarget.backlogId)}.` : "")
-                : "Choose the list above first."
+              `Every ticked posting goes into ${backlogName(importList)}. The list is then put in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order saved as its rank. The emails are marked as read.` +
+              (mirrorTarget ? ` Rows switched to mirror also appear in ${backlogName(mirrorTarget.backlogId)}.` : "")
             }
           >
-            {importList ? `Import selected into ${backlogName(importList)}` : "Import selected into…"}
+            {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+            Import selected into {backlogName(importList)}
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing}>
+            {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+            Import selected
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={importSelected}
-          disabled={importing}
-          title={
-            mode === "jobs"
-              ? `Into ${backlogName(search.backlog_id)}, the list this search was saved with, and nothing else: no ordering, and the emails stay unread.`
-              : undefined
-          }
-        >
-          {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-          Import selected
-        </Button>
         {mode === "jobs" && (
           <Button
             size="sm"

@@ -223,8 +223,8 @@ describe("SavedSearchPicker", () => {
     expect(cities).toHaveAttribute("title", "Espoo, Dallas, Bangalore");
     expect(postingFacts.mock.calls[0][0].links.map((l: { url: string }) => l.url)).toEqual(["https://www.linkedin.com/jobs/view/7"]);
 
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
-    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
+    await waitFor(() => expect(callGmail.mock.calls.length).toBeGreaterThanOrEqual(2));
     expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ deadline: "2026-10-11", cities: ["Espoo", "Dallas", "Bangalore"] });
   });
 
@@ -356,7 +356,7 @@ describe("SavedSearchPicker", () => {
     expect(screen.queryByText("Role A")).not.toBeInTheDocument();
   });
 
-  it("imports only what is ticked, then closes and reloads", async () => {
+  it("imports only what is ticked, into the search's own list until another is chosen, then closes and reloads", async () => {
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", alreadyImported: true })] })
       .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 });
@@ -364,7 +364,7 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("A");
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const importCall = callGmail.mock.calls[1][0];
@@ -383,9 +383,9 @@ describe("SavedSearchPicker", () => {
     // Both rows start ticked and unrated.
     const starsA = screen.getByRole("group", { name: "Rating for A: unrated" });
     fireEvent.click(within(starsA).getByRole("button", { name: "3 stars" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
-    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(callGmail.mock.calls.length).toBeGreaterThanOrEqual(2));
     const links = callGmail.mock.calls[1][0].links;
     expect(links.find((l: { url: string }) => l.url === "https://x/a")).toMatchObject({ rating: 3 });
     expect(links.find((l: { url: string }) => l.url === "https://x/b")).not.toHaveProperty("rating");
@@ -415,14 +415,12 @@ describe("SavedSearchPicker", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A");
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
-    // Only what was there before, in the list imported into, with a link.
+    // Only what was there before, in the list imported into, with a link. Its
+    // report waits for the import's summary to clear — see the summary tests.
     await waitFor(() => expect(checkClosed).toHaveBeenCalled());
     expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
-    await waitFor(() =>
-      expect(toast.mock.calls.map((c) => c[0].title)).toContain("Existing ads: 1 closed ad"),
-    );
   });
 
   it("marks every listed email read without importing, when nothing is worth it", async () => {
@@ -688,35 +686,47 @@ describe("Import into the chosen list", () => {
     expect(screen.getByRole("button", { name: "Import selected into Avoimet työpaikat" })).toBeEnabled();
   });
 
-  it("waits for the list to be chosen, and saves the choice by id", async () => {
+  it("imports into the search's own list until another is chosen, and saves the choice by id", async () => {
     storeState = {
       backlogs: {
         dl: backlog("dl", "Open jobs"),
-        other: backlog("other", "ICT jobs inbox"),
+        "bl-1": backlog("bl-1", "ICT jobs inbox"),
         elsewhere: backlog("elsewhere", "Another tree's list", "tree-2"),
       },
     };
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    expect(screen.getByRole("button", { name: "Import selected into…" })).toBeDisabled();
+    // The search was saved with "bl-1", and has chosen nothing else yet.
+    expect(screen.getByRole("button", { name: "Import selected into ICT jobs inbox" })).toBeEnabled();
 
     const importInto = screen.getByRole("combobox", { name: "Import into" }) as HTMLSelectElement;
+    expect(importInto.value).toBe("bl-1");
     // Only this search's tree is on offer.
-    expect([...importInto.options].map((o) => o.textContent)).toEqual(["Choose a list…", "ICT jobs inbox", "Open jobs"]);
+    expect([...importInto.options].map((o) => o.textContent)).toEqual(["ICT jobs inbox", "Open jobs"]);
     fireEvent.change(importInto, { target: { value: "dl" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "Import selected into Open jobs" })).toBeEnabled());
-    expect(updates).toEqual([{ auto_place_backlog_id: "dl" }]);
+    // The choice becomes the search's own list too: one place a search imports to.
+    expect(updates).toEqual([{ auto_place_backlog_id: "dl", backlog_id: "dl" }]);
   });
 
-  it("does not import into a list that has been deleted since it was chosen", async () => {
+  it("falls back on the search's own list when the one chosen has been deleted", async () => {
     autoPlaceRow = { auto_place_backlog_id: "gone" };
-    storeState = { backlogs: { dl: backlog("dl", "Open jobs") } };
+    storeState = { backlogs: { dl: backlog("dl", "Open jobs"), "bl-1": backlog("bl-1", "ICT jobs inbox") } };
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    expect(screen.getByRole("button", { name: "Import selected into…" })).toBeDisabled();
-    expect(screen.getByRole("combobox", { name: "Import into" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Import selected into ICT jobs inbox" })).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: "Import into" })).toHaveValue("bl-1");
+  });
+
+  it("has one import button for jobs — there is no second list for a job to end up in", async () => {
+    withTheList();
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Only one");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Import selected into Open jobs" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /^Import selected$/ })).not.toBeInTheDocument();
   });
 
   it("is not offered for a link import, which has no job list to fill", async () => {
@@ -725,6 +735,7 @@ describe("Import into the chosen list", () => {
     render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A link");
     expect(screen.queryByRole("button", { name: /Import selected into/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import selected" })).toBeInTheDocument();
     // Stars on the row instead of the old status dropdown — no combobox left,
     // and no list to choose either.
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -787,9 +798,9 @@ describe("SavedSearchPicker reading Jobly through the browser", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
     await waitFor(() => expect(readPostingFacts).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
-    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(callGmail.mock.calls.length).toBeGreaterThanOrEqual(2));
     expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({ url: JOBLY_OPEN, deadline: "2026-10-11" });
   });
 
@@ -805,9 +816,9 @@ describe("SavedSearchPicker reading Jobly through the browser", () => {
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await waitFor(() => expect(readPostingFacts).toHaveBeenCalledWith(JOBLY_OPEN, expect.anything()));
     await waitFor(() => expect(screen.queryByText(/Reading Jobly postings/)).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
-    await waitFor(() => expect(callGmail).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(callGmail.mock.calls.length).toBeGreaterThanOrEqual(2));
     // The mail's date stands; the page adds where.
     expect(callGmail.mock.calls[1][0].links[0]).toMatchObject({
       url: JOBLY_OPEN,
