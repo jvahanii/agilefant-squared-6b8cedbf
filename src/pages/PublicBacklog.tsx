@@ -547,14 +547,14 @@ export default function PublicBacklog() {
                         type="button"
                         onClick={() => setDatesOpen((open) => !open)}
                         aria-expanded={datesOpen || filteringByDate}
-                        aria-label="Filter by date"
-                        title="Filter by date"
+                        aria-label="Date range filter"
+                        title="Show rows by a range of dates"
                         className={`flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium ${
                           filteringByDate ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="hidden sm:inline">Dates</span>
+                        <span>Date range filter</span>
                       </button>
                     )}
                   </div>

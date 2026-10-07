@@ -213,7 +213,7 @@ describe("on the page", () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
     expect(screen.queryByLabelText("Deadline from")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Filter by date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Date range filter" }));
     for (const label of ["Deadline from", "Deadline to", "Created from", "Created to"]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
@@ -222,7 +222,7 @@ describe("on the page", () => {
   it("filters by a deadline span, and says how many rows are left", async () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
-    fireEvent.click(screen.getByRole("button", { name: "Filter by date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Date range filter" }));
     setDate("Deadline from", "2026-10-10");
     expect(rows()).toEqual(["Elisa - Lead", "Nordea - Architect"]);
     expect(screen.getByRole("status")).toHaveTextContent("Showing 2 of 4 rows — those in the date range.");
@@ -233,7 +233,7 @@ describe("on the page", () => {
   it("combines a created span with the words typed", async () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
-    fireEvent.click(screen.getByRole("button", { name: "Filter by date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Date range filter" }));
     setDate("Created from", "2026-10-01");
     expect(rows()).toEqual(["Elisa - Lead", "Nordea - Architect"]);
     fireEvent.change(screen.getByRole("textbox", { name: "Filter rows" }), { target: { value: "architect" } });
@@ -243,7 +243,7 @@ describe("on the page", () => {
   it("clears the spans in one go, and keeps them in view while one is set", async () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
-    const toggle = screen.getByRole("button", { name: "Filter by date" });
+    const toggle = screen.getByRole("button", { name: "Date range filter" });
     fireEvent.click(toggle);
     setDate("Deadline to", "2026-10-06");
     expect(rows()).toEqual(["Fortum - Architect"]);
@@ -260,7 +260,7 @@ describe("on the page", () => {
     rpc.mockResolvedValue({ data: payload(items, { createdDatesVisible: false }), error: null });
     renderPage();
     await screen.findByText("Fortum - Architect");
-    fireEvent.click(screen.getByRole("button", { name: "Filter by date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Date range filter" }));
     expect(screen.getByLabelText("Deadline from")).toBeInTheDocument();
     expect(screen.queryByLabelText("Created from")).not.toBeInTheDocument();
   });
@@ -269,6 +269,6 @@ describe("on the page", () => {
     rpc.mockResolvedValue({ data: payload(items, { deadlinesVisible: false, createdDatesVisible: false }), error: null });
     renderPage();
     await screen.findByText("Fortum - Architect");
-    expect(screen.queryByRole("button", { name: "Filter by date" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Date range filter" })).not.toBeInTheDocument();
   });
 });
