@@ -213,8 +213,9 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
               <p className="text-xs text-muted-foreground">
                 Give work items the day their work started and the day it ended, from their right-click menu. Either
                 can be set without the other. Each list then chooses, from its own right-click menu under Start and
-                end dates, whether to show them on its rows. Turning this off hides the dates everywhere; they and
-                each list's choice are kept.
+                end dates, whether to show them on its rows. This also adds a Timeline view beside List and Board,
+                which draws each item as a bar from its start to its end. Turning this off hides the dates and the
+                timeline everywhere; the dates and each list's choices are kept.
               </p>
             </div>
             <Switch
