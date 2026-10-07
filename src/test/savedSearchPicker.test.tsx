@@ -50,7 +50,7 @@ vi.mock("@/store/appStore", () => ({
 let superuser = true;
 vi.mock("@/contexts/ScrambleContext", () => ({ useScramble: () => ({ isSuperuser: superuser }) }));
 let savedSearches: unknown[] = [];
-/** The saved search's auto-place columns, as the picker reads them. */
+/** The saved search's import-list and mirror columns, as the picker reads them. */
 let autoPlaceRow: Record<string, string | null> | null = null;
 const updates: Record<string, unknown>[] = [];
 vi.mock("@/integrations/supabase/client", () => ({
@@ -558,7 +558,7 @@ describe("choosing rows", () => {
   });
 });
 
-describe("Import & auto-place", () => {
+describe("Import into the chosen list", () => {
   const backlog = (id: string, name: string, treeId = "tree-1") => ({
     id, name, parentId: null, childrenIds: [], treeId, rank: 0,
   });
@@ -567,24 +567,24 @@ describe("Import & auto-place", () => {
     backlogAssignments: { "tree-1": backlogId }, ranks: { [backlogId]: 0 },
   });
 
-  const withBothLists = () => {
-    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+  /** The search has chosen "Open jobs", which already holds three ads. */
+  const withTheList = () => {
+    autoPlaceRow = { auto_place_backlog_id: "dl" };
     storeState = {
       backlogs: {
-        dl: backlog("dl", "Jobs with deadline"),
-        open: backlog("open", "Jobs with no deadline"),
+        dl: backlog("dl", "Open jobs"),
         other: backlog("other", "ICT jobs inbox"),
       },
       workItems: {
         a: item("a", "1011 Alma Media — AI", "dl"),
         b: item("b", "0930 Fennia — Product owner", "dl"),
-        c: item("c", "Nordea — AI Platform Engineer", "open"),
+        c: item("c", "Nordea — AI Platform Engineer", "dl"),
       },
     };
   };
 
-  it("leaves the filing to the import, then ranks both lists by name", async () => {
-    withBothLists();
+  it("puts every chosen posting in the one list, dated or not, then leaves the list in order", async () => {
+    withTheList();
     callGmail
       .mockResolvedValueOnce({
         links: [
@@ -593,31 +593,28 @@ describe("Import & auto-place", () => {
           link({ url: "https://x/none", title: "No date" }),
         ],
       })
-      .mockResolvedValueOnce({ created: 3, skipped: 0, collapsed: 0, dated: 1, undated: 2 })
+      .mockResolvedValueOnce({ created: 3, skipped: 0, collapsed: 0 })
       .mockResolvedValueOnce({ marked: 1 });
     const onClose = vi.fn();
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
 
-    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(2), { timeout: 8000 });
-    // One call, naming both lists: the import splits after reading the dates.
+    await waitFor(() => expect(applySiblingOrder).toHaveBeenCalledTimes(1), { timeout: 8000 });
+    // One import, into the list the search names by id — and no splitting.
     const imported = callGmail.mock.calls[1][0];
-    expect(imported).toMatchObject({
-      action: "import",
-      autoPlace: { datedBacklogId: "dl", undatedBacklogId: "open" },
-    });
+    expect(imported).toMatchObject({ action: "import", backlogId: "dl", treeId: "tree-1" });
+    expect(imported.autoPlace).toBeUndefined();
     expect(imported.links.map((l: { url: string }) => l.url)).toEqual([
       "https://x/dated",
       "https://x/open",
       "https://x/none",
     ]);
 
-    // Name order, which for an imported title is closing-date order.
-    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["b", "a"]]);
-    expect(applySiblingOrder.mock.calls[1].slice(0, 4)).toEqual([null, "tree-1", ["open"], ["c"]]);
+    // The jobs with a deadline first, soonest at the top, then the one without.
+    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["b", "a", "c"]]);
     expect(runBulk).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalled();
     expect(loadFromSupabase).toHaveBeenCalled();
@@ -627,7 +624,7 @@ describe("Import & auto-place", () => {
   });
 
   it("ranks the new items too, once they have loaded — not only what was there before", async () => {
-    withBothLists();
+    withTheList();
     // This one is about the waiting, so it does it for real.
     realWaitForItems = true;
     const existing = storeState.workItems as Record<string, unknown>;
@@ -651,18 +648,18 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
-    // 0922 sorts between 0930 and 1011 — not after them.
-    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["n", "b", "a"]]);
+    // 0922 sorts between nothing and 0930 — not after the undated one.
+    expect(applySiblingOrder.mock.calls[0].slice(0, 4)).toEqual([null, "tree-1", ["dl"], ["n", "b", "a", "c"]]);
     loadFromSupabase.mockReset();
     loadFromSupabase.mockResolvedValue(undefined);
   });
 
   it("still reports the import when Gmail will not mark the emails read", async () => {
-    withBothLists();
+    withTheList();
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/dated", title: "Dated", deadline: "2026-10-11" })] })
       .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
@@ -670,8 +667,8 @@ describe("Import & auto-place", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Dated");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
 
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
     const titles = toast.mock.calls.map((c) => c[0].title);
@@ -679,58 +676,57 @@ describe("Import & auto-place", () => {
     expect(titles.some((t: string) => t.startsWith("Imported 1 work item"))).toBe(true);
   });
 
-  it("shows the chosen lists by their current names", async () => {
-    withBothLists();
+  it("names the list by what it is called now — it is kept by id", async () => {
+    withTheList();
+    (storeState.backlogs as Record<string, { name: string }>).dl.name = "Avoimet työpaikat";
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    // The stars on the row are buttons, not a dropdown, so the comboboxes left
-    // are exactly the two auto-place lists.
-    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
-    await waitFor(() => expect(dated.value).toBe("dl"));
-    expect(undated.value).toBe("open");
-    expect(dated.selectedOptions[0].textContent).toBe("Jobs with deadline");
+    const importInto = screen.getByRole("combobox", { name: "Import into" }) as HTMLSelectElement;
+    await waitFor(() => expect(importInto.value).toBe("dl"));
+    expect(importInto.selectedOptions[0].textContent).toBe("Avoimet työpaikat");
+    expect(screen.getByRole("button", { name: "Import selected into Avoimet työpaikat" })).toBeEnabled();
   });
 
-  it("waits for both lists to be chosen, and saves each choice by id", async () => {
+  it("waits for the list to be chosen, and saves the choice by id", async () => {
     storeState = {
       backlogs: {
-        dl: backlog("dl", "Jobs with deadline"),
-        open: backlog("open", "Jobs with no deadline"),
+        dl: backlog("dl", "Open jobs"),
+        other: backlog("other", "ICT jobs inbox"),
         elsewhere: backlog("elsewhere", "Another tree's list", "tree-2"),
       },
     };
     callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Only one");
-    const button = screen.getByRole("button", { name: /Import selected & auto-place/ });
-    expect(button).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import selected into…" })).toBeDisabled();
 
-    const [dated, undated] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    const importInto = screen.getByRole("combobox", { name: "Import into" }) as HTMLSelectElement;
     // Only this search's tree is on offer.
-    expect([...dated.options].map((o) => o.textContent)).toEqual([
-      "Choose a list…",
-      "Jobs with deadline",
-      "Jobs with no deadline",
-    ]);
-    fireEvent.change(dated, { target: { value: "dl" } });
-    expect(button).toBeDisabled();
-    fireEvent.change(undated, { target: { value: "open" } });
-    await waitFor(() => expect(button).toBeEnabled());
-    expect(updates).toEqual([
-      { auto_place_dated_backlog_id: "dl" },
-      { auto_place_undated_backlog_id: "open" },
-    ]);
+    expect([...importInto.options].map((o) => o.textContent)).toEqual(["Choose a list…", "ICT jobs inbox", "Open jobs"]);
+    fireEvent.change(importInto, { target: { value: "dl" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Import selected into Open jobs" })).toBeEnabled());
+    expect(updates).toEqual([{ auto_place_backlog_id: "dl" }]);
   });
 
-  it("is not offered for a link import, which has no deadlines to sort by", async () => {
-    withBothLists();
+  it("does not import into a list that has been deleted since it was chosen", async () => {
+    autoPlaceRow = { auto_place_backlog_id: "gone" };
+    storeState = { backlogs: { dl: backlog("dl", "Open jobs") } };
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "Only one" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Only one");
+    expect(screen.getByRole("button", { name: "Import selected into…" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Import into" })).toHaveValue("");
+  });
+
+  it("is not offered for a link import, which has no job list to fill", async () => {
+    withTheList();
     callGmail.mockResolvedValueOnce({ links: [link({ title: "A link" })] });
     render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("A link");
-    expect(screen.queryByRole("button", { name: /auto-place/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Import selected into/ })).not.toBeInTheDocument();
     // Stars on the row instead of the old status dropdown — no combobox left,
-    // and no auto-place lists either.
+    // and no list to choose either.
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 });
@@ -900,7 +896,7 @@ describe("JobSearchRunButton", () => {
   });
 });
 
-describe("Import & auto-place: mirroring the rows switched on", () => {
+describe("Import into the chosen list: mirroring the rows switched on", () => {
   // The postings below close on 30 September and 11 October 2026. Read against
   // the real calendar, the first one counts as closed from 1 October on, loses
   // its rating and mirror controls, and every test here that touches them
@@ -925,12 +921,11 @@ describe("Import & auto-place: mirroring the rows switched on", () => {
   /** Two postings, imported as items "metsa-item" and "alma-item". */
   const openPicker = async (mirrorColumn: string | null, lists: Record<string, unknown>) => {
     autoPlaceRow = {
-      auto_place_dated_backlog_id: "dl",
-      auto_place_undated_backlog_id: "open",
+      auto_place_backlog_id: "dl",
       auto_place_mirror_backlog_id: mirrorColumn,
     };
     storeState = {
-      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline"), ...lists },
+      backlogs: { dl: backlog("dl", "Open jobs"), ...lists },
       backlogTrees: { [NEXT_TREE]: { id: NEXT_TREE, name: "MWB uuden työn saaminen" } },
       workItems: {
         "metsa-item": item("metsa-item", "0930 Metsä Group — Senior Manager, Business AI"),
@@ -952,10 +947,10 @@ describe("Import & auto-place: mirroring the rows switched on", () => {
       .mockResolvedValueOnce({ marked: 1 });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Metsä");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
   };
   const importAndAutoPlace = async () => {
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
     await waitFor(() => expect(applySiblingOrder).toHaveBeenCalled(), { timeout: 8000 });
   };
 
@@ -1021,7 +1016,7 @@ describe("Import & auto-place: mirroring the rows switched on", () => {
   });
 });
 
-describe("Import & auto-place: the summary", () => {
+describe("Import into the chosen list: the summary", () => {
   const backlog = (id: string, name: string) => ({ id, name, parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 });
   const item = (id: string, title: string, backlogId: string) => ({
     id, title, status: "not_started", parentId: null, childrenIds: [],
@@ -1035,16 +1030,16 @@ describe("Import & auto-place: the summary", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("totals the open ads in both lists, leaving out closed ones, and stays up ten seconds", async () => {
-    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+  it("totals the open ads in the list, leaving out closed ones, and stays up ten seconds", async () => {
+    autoPlaceRow = { auto_place_backlog_id: "dl" };
     storeState = {
-      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") },
+      backlogs: { dl: backlog("dl", "Open jobs") },
       workItems: {
         gone: item("gone", "0915 Fennia — Product owner", "dl"), // closing date passed
         soon: item("soon", "0930 Metsä Group — Business AI", "dl"),
         later: item("later", "1011 Alma Media — AI", "dl"),
-        nordea: item("nordea", "Nordea — AI Platform Engineer", "open"), // a check said closed
-        wartsila: item("wartsila", "Wärtsilä — Agile Coach", "open"),
+        nordea: item("nordea", "Nordea — AI Platform Engineer", "dl"), // a check said closed
+        wartsila: item("wartsila", "Wärtsilä — Agile Coach", "dl"),
         sub: { ...item("sub", "0101 Cover letter", "dl"), parentId: "soon" }, // a task under an ad, not an ad
       },
     };
@@ -1056,21 +1051,23 @@ describe("Import & auto-place: the summary", () => {
 
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("Metsä");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
 
     await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
     const summary = toast.mock.calls.find((c) => String(c[0].title).startsWith("Imported"))![0];
+    expect(summary.title).toBe("Imported 1 work item into Open jobs");
+    expect(summary.description).toContain("jobs with a deadline first, soonest at the top, then the rest by name");
     expect(summary.description).toContain("Open ads now: 3 in total — 2 with a deadline, 1 without (closed ones not counted).");
     expect(summary.duration).toBe(10_000);
   });
 
-  /** An auto-place whose lists hold one linked ad, so the closed check has work to do. */
+  /** An import into a list that holds one linked ad, so the closed check has work to do. */
   const autoPlaceWithCheck = async () => {
     readerInstalled = true;
-    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+    autoPlaceRow = { auto_place_backlog_id: "dl" };
     storeState = {
-      backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") },
+      backlogs: { dl: backlog("dl", "Open jobs") },
       workItems: { old: item("old", "0930 Metsä Group — Business AI", "dl") },
       hyperlinks: { old: [{ url: "https://x/old" }] },
     };
@@ -1080,8 +1077,8 @@ describe("Import & auto-place: the summary", () => {
       .mockResolvedValueOnce({ marked: 1 });
     render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
     await screen.findByText("New");
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
     await waitFor(() => expect(checkClosed).toHaveBeenCalled());
   };
   const existingAdsToast = () => toast.mock.calls.find((c) => String(c[0].title).startsWith("Existing ads"));
@@ -1278,10 +1275,10 @@ describe("career pages beside the mail", () => {
     expect(within(row).getByText("Helsinki")).toBeInTheDocument();
   });
 
-  it("auto-place: a page chosen from is done with, so what was left on it is not offered again", async () => {
-    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+  it("import: a page chosen from is done with, so what was left on it is not offered again", async () => {
+    autoPlaceRow = { auto_place_backlog_id: "dl" };
     const backlog = (id: string, name: string) => ({ id, name, parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 });
-    storeState = { backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") } };
+    storeState = { backlogs: { dl: backlog("dl", "Open jobs") } };
     callGmail
       .mockResolvedValueOnce({ links: [] })
       .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, dated: 0, undated: 1 })
@@ -1292,8 +1289,8 @@ describe("career pages beside the mail", () => {
 
     await screen.findByText("Reaktor - AI Developer");
     fireEvent.click(screen.getByRole("checkbox", { name: "Reaktor - Lead Developer" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 8000 });
     const imported = callGmail.mock.calls[1][0];

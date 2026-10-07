@@ -364,6 +364,7 @@ export type Database = {
       }
       gmail_import_queries: {
         Row: {
+          auto_place_backlog_id: string | null
           auto_place_dated_backlog_id: string | null
           auto_place_mirror_backlog_id: string | null
           auto_place_undated_backlog_id: string | null
@@ -386,6 +387,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_place_backlog_id?: string | null
           auto_place_dated_backlog_id?: string | null
           auto_place_mirror_backlog_id?: string | null
           auto_place_undated_backlog_id?: string | null
@@ -408,6 +410,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_place_backlog_id?: string | null
           auto_place_dated_backlog_id?: string | null
           auto_place_mirror_backlog_id?: string | null
           auto_place_undated_backlog_id?: string | null

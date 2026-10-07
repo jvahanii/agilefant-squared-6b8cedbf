@@ -2,58 +2,54 @@ import type { Backlog, WorkItem } from "@/types/models";
 import { deadlinePassed, titleDeadline } from "../../supabase/functions/_shared/deadlines";
 
 /**
- * Filing imported job ads by whether they have a closing date.
+ * Where the job picker imports to, and how the list is left afterwards.
  *
- * A job hunt splits the same way every time: the ones with a deadline are the
- * ones to plan around, and the open-ended ones can wait. Rather than import
- * everything into one list and sort it out by hand afterwards, "Import &
- * auto-place" sends each posting to the list it belongs in and puts the dated
- * list in closing-date order: by each item's deadline where the organization
- * keeps deadlines, and otherwise by name, which works because the import then
- * starts every title with its closing date.
+ * Every posting chosen goes into one list. It used to be two — one for the
+ * postings with a closing date, one for the rest — from when the date lived in
+ * an item's name and a list could only be ordered by it. A deadline is a field
+ * of its own now, so one list holds both and is kept in the order that used to
+ * take two: the jobs with a deadline first, soonest at the top, then the jobs
+ * without one, by name.
  *
- * The two lists are chosen per saved search and kept by id. They used to be
- * found by name, and renaming either one made the button quietly disappear.
+ * The list is chosen per saved search and kept by id. Found by name, a rename
+ * would make the import quietly stop.
  */
 
-export interface AutoPlaceTargets {
-  withDeadline: string;
-  withoutDeadline: string;
-}
-
-/** The part of a saved search that says where auto-place files things. */
-export interface AutoPlaceSettings {
+/** The part of a saved search that says where its picker imports to. */
+export interface ImportListSettings {
   tree_id: string;
-  auto_place_dated_backlog_id?: string | null;
-  auto_place_undated_backlog_id?: string | null;
+  auto_place_backlog_id?: string | null;
 }
 
 /**
- * The two target backlogs, or null when auto-place is not set up for this
- * search — either one unset, deleted, or moved out of the search's tree.
+ * The list the picker imports into, or null when the search has not chosen
+ * one — or the one it chose has been deleted, or moved out of the search's tree.
  */
-export function findAutoPlaceTargets(
+export function findImportList(
   backlogs: Record<string, Backlog>,
-  search: AutoPlaceSettings | null | undefined,
-): AutoPlaceTargets | null {
-  if (!search?.tree_id || !backlogs) return null;
-  const inTree = (id: string | null | undefined) =>
-    id && backlogs[id]?.treeId === search.tree_id ? id : null;
-  const withDeadline = inTree(search.auto_place_dated_backlog_id);
-  const withoutDeadline = inTree(search.auto_place_undated_backlog_id);
-  return withDeadline && withoutDeadline ? { withDeadline, withoutDeadline } : null;
+  search: ImportListSettings | null | undefined,
+): string | null {
+  const id = search?.auto_place_backlog_id;
+  if (!search?.tree_id || !backlogs || !id) return null;
+  return backlogs[id]?.treeId === search.tree_id ? id : null;
 }
 
 /**
- * Which list each posting goes to. A posting counts as having a deadline only
- * when it states a date: "open until further notice" is an answer, but it is not
- * a date, and it belongs with the open-ended ones.
+ * The order the list is left in: the jobs with a deadline first, soonest at
+ * the top, then the jobs without one — each group by name where nothing else
+ * decides. `byName` is the list already in name order.
+ *
+ * Where the organization keeps deadlines as a field, that is a sort by
+ * deadline that leaves name order standing among equals. Where it does not,
+ * the date is the start of the name — "0930 Fennia - Product owner" — and name
+ * order already is that order: digits sort ahead of letters.
  */
-export function splitByDeadline<T extends { deadline?: string }>(links: T[]): { dated: T[]; undated: T[] } {
-  const dated: T[] = [];
-  const undated: T[] = [];
-  for (const link of links) (link.deadline ? dated : undated).push(link);
-  return { dated, undated };
+export function importListOrder<T extends Pick<WorkItem, "deadline">>(byName: T[], deadlinesAsField: boolean): T[] {
+  if (!deadlinesAsField) return byName;
+  const dated = byName.filter((item) => item.deadline);
+  const undated = byName.filter((item) => !item.deadline);
+  // A stable sort: two jobs closing the same day stay in name order.
+  return [...dated.sort((a, b) => (a.deadline! < b.deadline! ? -1 : a.deadline! > b.deadline! ? 1 : 0)), ...undated];
 }
 
 /**
@@ -62,7 +58,7 @@ export function splitByDeadline<T extends { deadline?: string }>(links: T[]): { 
  * chooses another, which is where the picker mirrored before the list could be
  * chosen.
  *
- * Kept by id for the same reason as the lists above: found by name, a rename
+ * Kept by id for the same reason as the list above: found by name, a rename
  * would make the step quietly stop.
  */
 export const DEFAULT_MIRROR_BACKLOG_ID = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-34431983";
@@ -85,7 +81,7 @@ export function findMirrorTarget(
   return { backlogId: target.id, treeId: target.treeId };
 }
 
-/** How long the auto-place summary stays on screen. */
+/** How long the import's summary stays on screen. */
 export const AUTO_PLACE_TOAST_MS = 10_000;
 
 /**
@@ -95,6 +91,17 @@ export const AUTO_PLACE_TOAST_MS = 10_000;
  * The title date is the one that always holds: it needs no request, so it
  * covers the boards that will not answer one.
  */
+/**
+ * Whether a job ad has a closing date at all: its deadline, or — where the
+ * organization keeps none — the date its name starts with.
+ */
+export function hasClosingDate(
+  item: Pick<WorkItem, "title" | "deadline">,
+  now: Date | string | number = Date.now(),
+): boolean {
+  return !!(item.deadline ?? titleDeadline(item.title, now));
+}
+
 export function countOpenAds(
   items: Pick<WorkItem, "id" | "title" | "deadline">[],
   closedIds: ReadonlySet<string>,

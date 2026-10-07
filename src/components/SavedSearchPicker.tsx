@@ -38,13 +38,19 @@ import {
 import { explainGmailError } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
 import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import { AUTO_PLACE_TOAST_MS, countOpenAds, findAutoPlaceTargets, findMirrorTarget, splitByDeadline } from "@/lib/autoPlace";
+import {
+  AUTO_PLACE_TOAST_MS,
+  countOpenAds,
+  findImportList,
+  findMirrorTarget,
+  hasClosingDate,
+  importListOrder,
+} from "@/lib/autoPlace";
 import { supabase } from "@/integrations/supabase/client";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
 import { currentListSortContext } from "@/store/listSortStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
-import { compareDeadlines } from "@/lib/deadlineFormat";
 import { waitForItems } from "@/lib/waitForItems";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
@@ -80,12 +86,12 @@ export function SavedSearchPicker({
 }) {
   const reloadData = useAppStore((s) => s.loadFromSupabase);
   const backlogs = useAppStore((s) => s.backlogs);
-  // Where "Import & auto-place" files postings, by backlog id, as saved on the
-  // search. Read here rather than taken from the caller, whose copy of the
-  // search may predate a change made in an earlier run of this picker.
-  const [placeInto, setPlaceInto] = useState<{ dated: string | null; undated: string | null; mirror: string | null }>({
-    dated: null,
-    undated: null,
+  // The list the picker imports into and the one it mirrors to, by backlog id,
+  // as saved on the search. Read here rather than taken from the caller, whose
+  // copy of the search may predate a change made in an earlier run of this
+  // picker.
+  const [placeInto, setPlaceInto] = useState<{ list: string | null; mirror: string | null }>({
+    list: null,
     mirror: null,
   });
   useEffect(() => {
@@ -93,14 +99,13 @@ export function SavedSearchPicker({
     let cancelled = false;
     void supabase
       .from("gmail_import_queries")
-      .select("auto_place_dated_backlog_id, auto_place_undated_backlog_id, auto_place_mirror_backlog_id")
+      .select("auto_place_backlog_id, auto_place_mirror_backlog_id")
       .eq("id", search.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled || !data) return;
         setPlaceInto({
-          dated: data.auto_place_dated_backlog_id,
-          undated: data.auto_place_undated_backlog_id,
+          list: data.auto_place_backlog_id ?? null,
           mirror: data.auto_place_mirror_backlog_id ?? null,
         });
       });
@@ -108,18 +113,15 @@ export function SavedSearchPicker({
       cancelled = true;
     };
   }, [mode, search.id]);
-  const autoPlace = useMemo(
+  /** The one list every chosen posting goes into, or null until one is chosen. */
+  const importList = useMemo(
     () =>
       mode === "jobs"
-        ? findAutoPlaceTargets(backlogs, {
-            tree_id: search.tree_id,
-            auto_place_dated_backlog_id: placeInto.dated,
-            auto_place_undated_backlog_id: placeInto.undated,
-          })
+        ? findImportList(backlogs, { tree_id: search.tree_id, auto_place_backlog_id: placeInto.list })
         : null,
-    [backlogs, mode, search.tree_id, placeInto],
+    [backlogs, mode, search.tree_id, placeInto.list],
   );
-  /** The lists a posting can be placed into: this search's tree, by name. */
+  /** The lists a posting can be imported into: this search's tree, by name. */
   const treeBacklogs = useMemo(
     () =>
       Object.values(backlogs ?? {})
@@ -152,16 +154,10 @@ export function SavedSearchPicker({
   );
 
   /** Choosing a list saves it on the search straight away; a failure puts it back. */
-  const choosePlaceInto = async (which: "dated" | "undated" | "mirror", id: string | null) => {
+  const choosePlaceInto = async (which: "list" | "mirror", id: string | null) => {
     const before = placeInto;
     setPlaceInto({ ...before, [which]: id });
-    const column = (
-      {
-        dated: "auto_place_dated_backlog_id",
-        undated: "auto_place_undated_backlog_id",
-        mirror: "auto_place_mirror_backlog_id",
-      } as const
-    )[which];
+    const column = ({ list: "auto_place_backlog_id", mirror: "auto_place_mirror_backlog_id" } as const)[which];
     const { error } = await supabase
       .from("gmail_import_queries")
       .update({ [column]: id })
@@ -469,11 +465,7 @@ export function SavedSearchPicker({
         return rating ? { ...l, rating } : l;
       });
 
-  const importInto = (
-    backlogId: string,
-    links: PreviewLink[],
-    autoPlaceTargets?: { datedBacklogId: string; undatedBacklogId: string },
-  ) =>
+  const importInto = (backlogId: string, links: PreviewLink[]) =>
     callGmail<{
       created: number;
       skipped: number;
@@ -481,8 +473,6 @@ export function SavedSearchPicker({
       createdIds?: string[];
       /** The item made from each posting, by URL; absent from an older server. */
       createdByUrl?: Record<string, string>;
-      dated?: number;
-      undated?: number;
     }>({
       action: "import",
       mode,
@@ -491,10 +481,6 @@ export function SavedSearchPicker({
       backlogId,
       queryId: search.id,
       links,
-      // When given, the import itself decides which of the two lists each
-      // posting goes to — after reading the closing dates, which is the only
-      // moment they are all known.
-      ...(autoPlaceTargets ? { autoPlace: autoPlaceTargets } : {}),
     });
 
   /**
@@ -508,7 +494,7 @@ export function SavedSearchPicker({
     backlogIds: string[],
     createdIds: string[],
     /**
-     * Auto-place only. Only one toast shows at a time, so the check's report
+     * The import into the chosen list only. Only one toast shows at a time, so the check's report
      * waits until `notBefore` rather than cutting the import summary short, and
      * then restates the open-ad totals with whatever the check found closed.
      */
@@ -634,30 +620,22 @@ export function SavedSearchPicker({
   };
 
   /**
-   * Import each posting into the list its closing date decides, then put both
-   * lists in name order and keep that order as their rank. An imported title
-   * starts with its closing date, so name order is closing-date order.
+   * Import every chosen posting into the one list the search names, then leave
+   * that list in its order — the jobs with a deadline first, soonest at the
+   * top, then the jobs without one by name — and keep that order as its rank.
    */
-  const importAndAutoPlace = async () => {
+  const importIntoList = async () => {
     const links = pickedLinks();
     if (links.length === 0) {
       toast({ title: "Nothing selected", variant: "destructive" });
       return;
     }
-    if (!autoPlace) return;
+    if (!importList) return;
     setImporting(true);
     try {
-      // The import does the splitting: a posting whose closing date it reads
-      // while importing must land in the list that date belongs to, and only
-      // the import knows all the dates. Falls back to what the picker knows if
-      // an older server answers without the counts.
-      const local = splitByDeadline(links);
-      const res = await importInto(autoPlace.withDeadline, links, {
-        datedBacklogId: autoPlace.withDeadline,
-        undatedBacklogId: autoPlace.withoutDeadline,
-      });
-      const dated = { length: res.dated ?? local.dated.length };
-      const undated = { length: res.undated ?? local.undated.length };
+      // The import reads the closing dates the picker does not know yet, so
+      // the new items arrive with them and the ordering below can use them.
+      const res = await importInto(importList, links);
       const created = res.created ?? 0;
       const createdIds = res.createdIds ?? [];
 
@@ -677,7 +655,7 @@ export function SavedSearchPicker({
       const pagesRemembered = (await markSeen(onThosePages)) >= 0;
 
       onClose();
-      // The new items have to be in the store before the lists are ranked, or
+      // The new items have to be in the store before the list is ranked, or
       // the ranking covers only what was there before and the new ones land at
       // the end. A reload does not guarantee that: with cached data on screen
       // it returns at once and fetches in the background. So wait until the
@@ -685,7 +663,7 @@ export function SavedSearchPicker({
       await reloadData();
       const arrived = await waitForItems(createdIds, reloadData);
 
-      // Ranking covers what was already in each list as well as what has just
+      // Ranking covers what was already in the list as well as what has just
       // arrived.
       const app = useAppStore.getState();
       // The rows switched on, turned into the items the import made of them.
@@ -702,50 +680,40 @@ export function SavedSearchPicker({
           ]
         : [];
       /**
-       * Job ads still open in both lists, read at the moment of asking: the
-       * toast asks once the lists are filled, the closed check again once it
+       * Job ads still open in the list, read at the moment of asking: the
+       * toast asks once the list is filled, the closed check again once it
        * knows more. Closed = closing date passed, or marked closed by a check.
        */
       const openTotals = () => {
         const { workItems } = useAppStore.getState();
         const { closed } = useClosedPostingsStore.getState();
-        const open = (backlogId: string) =>
-          countOpenAds(topLevelItems(workItems, search.tree_id, new Set([backlogId])), closed);
-        const dated = open(autoPlace.withDeadline);
-        const undated = open(autoPlace.withoutDeadline);
+        const items = topLevelItems(workItems, search.tree_id, new Set([importList]));
+        const open = (dated: boolean) => countOpenAds(items.filter((item) => hasClosingDate(item) === dated), closed);
         return (
-          `Open ads now: ${dated + undated} in total — ${dated} with a deadline, ` +
-          `${undated} without (closed ones not counted).`
+          `Open ads now: ${open(true) + open(false)} in total — ${open(true)} with a deadline, ` +
+          `${open(false)} without (closed ones not counted).`
         );
       };
       let mirrored = 0;
       app.runBulk(() => {
-        // The dated list in closing-date order. Where the organization keeps
-        // deadlines, names no longer start with the date, so name order would
-        // be company order: sort by deadline, ties by name as before. Without
-        // deadlines the date is still in the name and name order does it.
+        // The list's order: the jobs with a deadline first, soonest at the top,
+        // then the jobs without one, by name.
         const deadlinesAsField =
           useOrgSettingsStore.getState().settings[organizationId]?.deadlinesEnabled ?? false;
-        for (const backlogId of [autoPlace.withDeadline, autoPlace.withoutDeadline]) {
-          const byName = sortTopLevel(
-            topLevelItems(useAppStore.getState().workItems, search.tree_id, new Set([backlogId])),
-            "name-asc",
-            search.tree_id,
-            currentListSortContext(search.tree_id),
-          );
-          const ordered =
-            deadlinesAsField && backlogId === autoPlace.withDeadline
-              ? [...byName].sort(compareDeadlines)
-              : byName;
-          if (ordered.length === 0) continue;
+        const byName = sortTopLevel(
+          topLevelItems(useAppStore.getState().workItems, search.tree_id, new Set([importList])),
+          "name-asc",
+          search.tree_id,
+          currentListSortContext(search.tree_id),
+        );
+        const ordered = importListOrder(byName, deadlinesAsField);
+        if (ordered.length > 0) {
           app.applySiblingOrder(
             null,
             search.tree_id,
-            [backlogId],
+            [importList],
             ordered.map((item) => item.id),
-            `Auto-placed import: ${ordered.length} items in ${
-              deadlinesAsField && backlogId === autoPlace.withDeadline ? "deadline" : "name"
-            } order`,
+            `Job import: ${ordered.length} items, deadlines first then by name`,
           );
         }
 
@@ -759,13 +727,11 @@ export function SavedSearchPicker({
       });
 
       toast({
-        title: `Imported ${created} work item${created === 1 ? "" : "s"}`,
+        title: `Imported ${created} work item${created === 1 ? "" : "s"} into ${backlogName(importList)}`,
         description:
-          `${dated.length} with a deadline into ${backlogName(autoPlace.withDeadline)}, ` +
-          `${undated.length} without into ${backlogName(autoPlace.withoutDeadline)}. ` +
           (arrived
-            ? `Both lists sorted by name and saved as rank.`
-            : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
+            ? `The list is in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order is saved as its rank.`
+            : `The new items took too long to load, so the list may not be fully in order.`) +
           (mirrored > 0 && mirrorTarget ? ` ${mirrored} also mirrored to ${backlogName(mirrorTarget.backlogId)}.` : "") +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : "") +
           (pagesRemembered && leftOnPages > 0
@@ -774,7 +740,7 @@ export function SavedSearchPicker({
           ` ${openTotals()}`,
         duration: AUTO_PLACE_TOAST_MS,
       });
-      void checkExistingForClosed([autoPlace.withDeadline, autoPlace.withoutDeadline], createdIds, {
+      void checkExistingForClosed([importList], createdIds, {
         notBefore: Date.now() + AUTO_PLACE_TOAST_MS,
         totals: openTotals,
       });
@@ -1035,7 +1001,7 @@ export function SavedSearchPicker({
                               disabled={importing}
                               label={l.title || l.url}
                             />
-                            {/* Whether "Import & auto-place" also mirrors this
+                            {/* Whether the import into the chosen list also mirrors this
                                 one. Independent of the rating, which travels
                                 with the item the import creates. */}
                             {mirrorTarget && (
@@ -1062,30 +1028,26 @@ export function SavedSearchPicker({
       </div>
       {mode === "jobs" && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Auto-place into:</span>
-          {(
-            [
-              ["dated", "With a deadline"],
-              ["undated", "Without"],
-            ] as const
-          ).map(([which, label]) => (
-            <label key={which} className="flex min-w-0 items-center gap-1.5">
-              {label}
-              <select
-                value={placeInto[which] ?? ""}
-                onChange={(e) => void choosePlaceInto(which, e.target.value || null)}
-                disabled={importing}
-                className="h-7 max-w-[12rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
-              >
-                <option value="">Choose a list…</option>
-                {treeBacklogs.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+          {/* The one list every chosen posting goes into. Saved on the search
+              by id, so renaming the list changes what this shows and nothing
+              else. */}
+          <label className="flex min-w-0 items-center gap-1.5">
+            <span className="font-medium text-foreground">Import into</span>
+            <select
+              value={importList ?? ""}
+              onChange={(e) => void choosePlaceInto("list", e.target.value || null)}
+              disabled={importing}
+              aria-label="Import into"
+              className="h-7 max-w-[16rem] truncate rounded-md border border-input bg-background px-1.5 text-xs text-foreground"
+            >
+              {!importList && <option value="">Choose a list…</option>}
+              {treeBacklogs.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
           {/* Where the rows switched to mirror go as well. Shows the default
               until the search chooses another; only lists in other trees,
               since an item holds one list per tree. */}
@@ -1113,19 +1075,29 @@ export function SavedSearchPicker({
           <Button
             size="sm"
             variant="destructive"
-            onClick={importAndAutoPlace}
-            disabled={importing || !autoPlace}
+            onClick={importIntoList}
+            disabled={importing || !importList}
             title={
-              autoPlace
-                ? `Postings with a closing date go to ${backlogName(autoPlace.withDeadline)}, the rest to ${backlogName(autoPlace.withoutDeadline)}. Both lists are then sorted by name and that order saved as rank.` +
+              importList
+                ? `Every ticked posting goes into ${backlogName(importList)}. The list is then put in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order saved as its rank. The emails are marked as read.` +
                   (mirrorTarget ? ` Rows switched to mirror also appear in ${backlogName(mirrorTarget.backlogId)}.` : "")
-                : "Choose both lists above first."
+                : "Choose the list above first."
             }
           >
-            Import selected &amp; auto-place
+            {importList ? `Import selected into ${backlogName(importList)}` : "Import selected into…"}
           </Button>
         )}
-        <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={importSelected}
+          disabled={importing}
+          title={
+            mode === "jobs"
+              ? `Into ${backlogName(search.backlog_id)}, the list this search was saved with, and nothing else: no ordering, and the emails stay unread.`
+              : undefined
+          }
+        >
           {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
           Import selected
         </Button>

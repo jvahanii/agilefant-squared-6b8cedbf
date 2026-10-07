@@ -359,32 +359,32 @@ export default function JobAdsGuide() {
           <Dl
             items={[
               [
-                "Import selected",
-                "Creates the ticked postings in the list the saved search names.",
+                "Import selected into …",
+                "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
               ],
               [
-                "Import & auto-place",
-                "Files them by closing date instead: postings with one go to the list chosen under Auto-place into → With a deadline, the rest to the one under Without. The list with deadlines is then put in closing-date order and the other in name order, and that order is saved as their rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
+                "Import selected",
+                "Creates the ticked postings in the list the saved search was saved with, and does nothing else: the list is not reordered and the emails stay unread.",
               ],
               [
                 "Do not import anything, mark N emails read",
-                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import & auto-place marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
+                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import selected into … marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
               ],
             ]}
           />
           <P>
-            Choose the two <Em>Auto-place into</Em> lists in the picker, above the buttons; the button stays unavailable
-            until both are chosen. The choice is saved on the search, so it is there next time, and renaming a list
-            does not undo it.
+            Choose the <Em>Import into</Em> list in the picker, above the buttons; the button stays unavailable until
+            one is chosen. The choice is saved on the search, so it is there next time, and it is kept by the list
+            itself rather than its name: rename the list and the import follows it.
           </P>
           <P>
             Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
-            ones you mean to pursue, and <Em>Import &amp; auto-place</Em> also puts them in the <Em>Mirror to</Em> list —
-            any list in another tree, saved on the search like the other two. The status plays no part in this: it only
+            ones you mean to pursue, and <Em>Import selected into …</Em> also puts them in the <Em>Mirror to</Em> list —
+            any list in another tree, saved on the search like the first. The status plays no part in this: it only
             sets how the new item starts.
           </P>
           <P>
-            After an import, superusers also get a check of the ads that were already in the lists it filled: any that
+            After an import, superusers also get a check of the ads that were already in the list it filled: any that
             have closed since are marked, and a message reports the result — see{" "}
             <a href="#closed-ads" className="text-primary underline-offset-2 hover:underline">
               Checking for closed ads
@@ -459,7 +459,7 @@ export default function JobAdsGuide() {
           <Ul>
             <li>A position that is already an item anywhere in the tree is never listed.</li>
             <li>
-              <Em>Import &amp; auto-place</Em> remembers every position listed from a page you took at least one job
+              <Em>Import selected into …</Em> remembers every position listed from a page you took at least one job
               from: the ones you left were left on purpose. A page you took nothing from is offered again next time.
             </li>
             <li>
@@ -557,8 +557,8 @@ export default function JobAdsGuide() {
             in the list you are looking at, and reloading the page clears them all.
           </P>
           <P>
-            The check also runs by itself after a job import, on the ads that were already in the lists the import
-            filled — both lists after <Em>Import &amp; auto-place</Em>, the search&apos;s own list after{" "}
+            The check also runs by itself after a job import, on the ads that were already in the list the import
+            filled — the chosen list after <Em>Import selected into …</Em>, the search&apos;s own list after{" "}
             <Em>Import selected</Em>. The newly imported ads are left out, since their postings were just read. A
             message reports the result when it finishes.
           </P>

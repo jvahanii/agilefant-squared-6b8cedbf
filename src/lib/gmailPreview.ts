@@ -268,7 +268,7 @@ export const rowKey = (link: { messageId: string; url: string }) => `${link.mess
 /**
  * The one row that stands for each posting: the first copy that states a
  * closing date, since that date becomes part of the item's name and decides
- * where auto-place files it; otherwise simply the first. `links` is in display
+ * where the list's ordering puts it; otherwise simply the first. `links` is in display
  * order, newest email first, so "first" means "most recent".
  *
  * Both the unticking and the folding below hang off this one rule, so it lives

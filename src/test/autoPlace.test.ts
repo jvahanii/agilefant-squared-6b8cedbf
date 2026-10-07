@@ -1,9 +1,16 @@
 /**
- * "Import & auto-place": postings with a closing date go to one list, the rest
- * to another — both chosen on the saved search.
+ * Where the job picker imports to — one list, chosen on the saved search and
+ * kept by id — and the order the list is left in.
  */
 import { describe, it, expect } from "vitest";
-import { DEFAULT_MIRROR_BACKLOG_ID, countOpenAds, findAutoPlaceTargets, findMirrorTarget, splitByDeadline } from "@/lib/autoPlace";
+import {
+  DEFAULT_MIRROR_BACKLOG_ID,
+  countOpenAds,
+  findImportList,
+  findMirrorTarget,
+  hasClosingDate,
+  importListOrder,
+} from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
 
 const backlog = (id: string, name: string, treeId: string): Backlog => ({
@@ -13,49 +20,70 @@ const backlog = (id: string, name: string, treeId: string): Backlog => ({
 const TREE = "org::bt-1";
 const OTHER = "org::bt-2";
 
-const search = (dated: string | null, undated: string | null, tree_id = TREE) => ({
-  tree_id,
-  auto_place_dated_backlog_id: dated,
-  auto_place_undated_backlog_id: undated,
-});
+const search = (list: string | null, tree_id = TREE) => ({ tree_id, auto_place_backlog_id: list });
 
-describe("findAutoPlaceTargets", () => {
-  it("uses the lists the saved search names, by id", () => {
-    const backlogs = {
-      a: backlog("a", "Jobs with deadline", TREE),
-      b: backlog("b", "Jobs with no deadline", TREE),
-      c: backlog("c", "Inbox", TREE),
-    };
-    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toEqual({ withDeadline: "a", withoutDeadline: "b" });
+describe("findImportList", () => {
+  it("is the list the saved search names, by id", () => {
+    const backlogs = { a: backlog("a", "Open jobs", TREE), c: backlog("c", "Inbox", TREE) };
+    expect(findImportList(backlogs, search("a"))).toBe("a");
   });
 
-  it("does not care what the lists are called", () => {
-    const backlogs = { a: backlog("a", "Deadlinella", TREE), b: backlog("b", "Renamed again", TREE) };
-    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toEqual({ withDeadline: "a", withoutDeadline: "b" });
+  it("does not care what the list is called", () => {
+    expect(findImportList({ a: backlog("a", "Renamed again", TREE) }, search("a"))).toBe("a");
   });
 
-  it("offers nothing when not set up, or a list is gone or in another tree", () => {
+  it("is nothing when none is chosen, or the list is gone or in another tree", () => {
     const backlogs = { a: backlog("a", "x", TREE), b: backlog("b", "y", OTHER) };
-    expect(findAutoPlaceTargets(backlogs, search(null, null))).toBeNull();
-    expect(findAutoPlaceTargets(backlogs, search("a", null))).toBeNull();
-    expect(findAutoPlaceTargets(backlogs, search("a", "deleted"))).toBeNull();
-    expect(findAutoPlaceTargets(backlogs, search("a", "b"))).toBeNull();
-    expect(findAutoPlaceTargets(backlogs, { tree_id: TREE })).toBeNull();
-    expect(findAutoPlaceTargets(backlogs, null)).toBeNull();
+    expect(findImportList(backlogs, search(null))).toBeNull();
+    expect(findImportList(backlogs, search("deleted"))).toBeNull();
+    expect(findImportList(backlogs, search("b"))).toBeNull();
+    expect(findImportList(backlogs, { tree_id: TREE })).toBeNull();
+    expect(findImportList(backlogs, null)).toBeNull();
   });
 });
 
-describe("splitByDeadline", () => {
-  it("counts only a stated date as a deadline", () => {
-    const links = [
-      { url: "a", deadline: "2026-10-11" },
-      { url: "b" },
-      // Open-ended is an answer, but it is not a date.
-      { url: "c", deadlineOpen: true },
-    ];
-    const { dated, undated } = splitByDeadline(links);
-    expect(dated.map((l) => l.url)).toEqual(["a"]);
-    expect(undated.map((l) => l.url)).toEqual(["b", "c"]);
+describe("the order the list is left in", () => {
+  const job = (title: string, deadline?: string) => ({ title, deadline });
+  // Already by name, as the picker hands it over.
+  const byName = [
+    job("Alma Media - AI", "2026-10-11"),
+    job("Basware - Portfolio Architect"),
+    job("Fennia - Product owner", "2026-09-30"),
+    job("Kesko - Manager", "2026-10-11"),
+    job("Nordea - AI Platform Engineer"),
+  ];
+
+  it("puts the jobs with a deadline first, soonest at the top, then the rest by name", () => {
+    expect(importListOrder(byName, true).map((j) => j.title)).toEqual([
+      "Fennia - Product owner",
+      // Closing the same day: by name.
+      "Alma Media - AI",
+      "Kesko - Manager",
+      // No deadline: after every one that has, by name.
+      "Basware - Portfolio Architect",
+      "Nordea - AI Platform Engineer",
+    ]);
+  });
+
+  it("leaves name order alone where the date is the start of the name", () => {
+    // "0930 …" sorts ahead of "1011 …", and both ahead of any letter.
+    const named = [job("0930 Fennia - Product owner"), job("1011 Alma Media - AI"), job("Nordea - AI Platform Engineer")];
+    expect(importListOrder(named, false)).toEqual(named);
+  });
+
+  it("does not change the list it is given", () => {
+    const before = [...byName];
+    importListOrder(byName, true);
+    expect(byName).toEqual(before);
+  });
+});
+
+describe("hasClosingDate", () => {
+  it("counts a deadline, or the date a name starts with", () => {
+    const now = new Date("2026-09-21T12:00:00Z");
+    expect(hasClosingDate({ title: "Fennia - Product owner", deadline: "2026-09-30" }, now)).toBe(true);
+    expect(hasClosingDate({ title: "0930 Fennia - Product owner" }, now)).toBe(true);
+    expect(hasClosingDate({ title: "Nordea - AI Platform Engineer" }, now)).toBe(false);
   });
 });
 
