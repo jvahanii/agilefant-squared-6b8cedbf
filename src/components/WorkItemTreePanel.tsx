@@ -6,7 +6,7 @@ import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus, CalendarRange } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus, CalendarRange, ChartGantt } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -28,6 +28,7 @@ import { SnoozeDialog } from "./SnoozeDialog";
 import { DeadlineDialog } from "./DeadlineDialog";
 import { CreatedDateDialog } from "./CreatedDateDialog";
 import { StartEndDatesDialog } from "./StartEndDatesDialog";
+import { TimelineView } from "./TimelineView";
 import { describeStartEnd, formatStartEnd, useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { formatCreatedOn, useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { formatDeadline, isDeadlinePassed, useDeadlinesEnabled } from "@/lib/workItemDeadline";
@@ -2936,10 +2937,15 @@ export function WorkItemTreePanel() {
     if (!selectedBacklogId) return "list" as const;
     return s.backlogs[selectedBacklogId]?.viewMode ?? "list";
   });
-  const setViewMode = useCallback((m: "list" | "board") => {
+  const setViewMode = useCallback((m: "list" | "board" | "timeline") => {
     if (!selectedBacklogId) return;
     setBacklogViewMode(selectedBacklogId, m);
   }, [selectedBacklogId, setBacklogViewMode]);
+  // The timeline is drawn from start and end dates, so it is offered where the
+  // organization uses them. A list that prefers it while they are switched
+  // off shows as a list, and goes back to its timeline if they return.
+  const timelineAvailable = useStartEndDatesEnabled();
+  const showTimeline = timelineAvailable && viewMode === "timeline";
 
   // Clear search query when switching backlogs
   useEffect(() => {
@@ -3475,8 +3481,12 @@ export function WorkItemTreePanel() {
   const visibleItemIdsRef = useRef<string[]>(visibleItemIds);
   useEffect(() => {
     visibleItemIdsRef.current = visibleItemIds;
-    visibleWorkItemIdsRef.current = visibleItemIds;
-  }, [visibleItemIds]);
+    // The timeline shows every row with its branches open, and publishes its
+    // own order for the arrow keys; the list's would move the selection onto
+    // rows the timeline does not show in that place.
+    if (!showTimeline) visibleWorkItemIdsRef.current = visibleItemIds;
+  }, [visibleItemIds, showTimeline]);
+  const timelineRootIds = useMemo(() => displayedRootItems.map((r) => r.id), [displayedRootItems]);
 
   // Scroll a work item into view even when it isn't currently rendered by the
   // virtualizer (e.g. navigating from search/label results to an item far
@@ -3916,16 +3926,17 @@ export function WorkItemTreePanel() {
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
-            {!isSearchMode && !isFilterMode && selectedBacklogId && boardsVisible && (
+            {!isSearchMode && !isFilterMode && selectedBacklogId && (boardsVisible || timelineAvailable) && (
               <div className="flex items-center rounded-md border bg-muted/40 mr-1 overflow-hidden">
                 <button
-                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${!(boardsVisible && viewMode === "board") && !showTimeline ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
                   title="List view"
                 >
                   <ListIcon className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">List</span>
                 </button>
+                {boardsVisible && (
                 <button
                   className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={(e) => { e.stopPropagation(); setViewMode("board"); }}
@@ -3934,6 +3945,17 @@ export function WorkItemTreePanel() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Board</span>
                 </button>
+                )}
+                {timelineAvailable && (
+                <button
+                  className={`flex items-center gap-1 h-7 px-2 text-xs font-medium transition-colors ${showTimeline ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={(e) => { e.stopPropagation(); setViewMode("timeline"); }}
+                  title="Timeline view (items by start and end date)"
+                >
+                  <ChartGantt className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Timeline</span>
+                </button>
+                )}
               </div>
             )}
             {!isSearchMode && !isFilterMode && snoozedInBacklog.length > 0 && (
@@ -4015,6 +4037,7 @@ export function WorkItemTreePanel() {
               !isFilterMode &&
               rootWorkItems.length > 1 &&
               !(boardsVisible && viewMode === "board") &&
+              !showTimeline &&
               selectedBacklogId &&
               selectedTreeId && (
                 <DropdownMenu>
@@ -4094,6 +4117,9 @@ export function WorkItemTreePanel() {
                   e.stopPropagation();
                   if (viewMode === "board" && boardsVisible) {
                     window.dispatchEvent(new CustomEvent("board:header-add"));
+                  } else if (showTimeline) {
+                    setViewMode("list");
+                    setIsAdding(true);
                   } else if (isMobile && selectedWorkItemIds.length === 1) {
                     window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
                   } else {
@@ -4150,7 +4176,14 @@ export function WorkItemTreePanel() {
             </div>
           </div>
         )}
-        {!isSearchMode && !isFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
+        {!isSearchMode && !isFilterMode && showTimeline && selectedBacklogId && selectedTreeId ? (
+          <TimelineView
+            treeId={selectedTreeId}
+            rootIds={timelineRootIds}
+            backlogIds={backlogIdSet}
+            isScrambled={isScrambled}
+          />
+        ) : !isSearchMode && !isFilterMode && boardsVisible && viewMode === "board" && selectedBacklogId && selectedTreeId ? (
           <BoardView backlogId={selectedBacklogId} treeId={selectedTreeId} addWorkItem={addWorkItem} setViewMode={setViewMode} />
         ) : isSearchMode ? (
           /* Search results list: flat list of matching items with tree/backlog context */

@@ -257,7 +257,7 @@ export async function loadFromSupabase(
 
   const backlogs: Record<string, Backlog> = {};
   for (const row of cleanBacklogRows) {
-    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, createdDatesEnabled: (row as { created_dates_enabled?: boolean | null }).created_dates_enabled === true, startEndDatesEnabled: (row as { start_end_dates_enabled?: boolean | null }).start_end_dates_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
+    backlogs[row.id] = { id: row.id, name: row.name, parentId: row.parent_id, childrenIds: [], treeId: row.tree_id, rank: row.rank, boardHiddenStatusKeys: (row as any).board_hidden_status_keys ?? [], viewMode: ((row as any).view_mode === 'board' ? 'board' : (row as any).view_mode === 'timeline' ? 'timeline' : 'list'), ratingsEnabled: (row as { ratings_enabled?: boolean | null }).ratings_enabled === true, createdDatesEnabled: (row as { created_dates_enabled?: boolean | null }).created_dates_enabled === true, startEndDatesEnabled: (row as { start_end_dates_enabled?: boolean | null }).start_end_dates_enabled === true, points: (row as { points?: number | null }).points ?? undefined };
   }
   for (const bl of Object.values(backlogs)) {
     if (bl.parentId && backlogs[bl.parentId]) {
@@ -777,7 +777,7 @@ export async function updateBacklogPoints(backlogId: string, points: number | nu
   if (error) console.error('updateBacklogPoints:', error);
 }
 
-export async function updateBacklogViewMode(backlogId: string, mode: 'list' | 'board') {
+export async function updateBacklogViewMode(backlogId: string, mode: 'list' | 'board' | 'timeline') {
   const { error } = await supabase
     .from('backlogs')
     .update({ view_mode: mode } as any)

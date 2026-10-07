@@ -262,7 +262,7 @@ interface AppState extends DataSnapshot {
   deleteBacklog: (backlogId: string, direction?: 'up' | 'down') => void;
   renameBacklog: (backlogId: string, name: string) => void;
   setBacklogHiddenStatusKeys: (backlogId: string, keys: string[]) => void;
-  setBacklogViewMode: (backlogId: string, mode: 'list' | 'board') => void;
+  setBacklogViewMode: (backlogId: string, mode: 'list' | 'board' | 'timeline') => void;
   /** Show stars on this backlog's items, where the organization has ratings on. */
   setBacklogRatingsEnabled: (backlogId: string, enabled: boolean) => void;
   /** Show created dates on this backlog's items, where the organization has them on. */
@@ -4938,7 +4938,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           treeId: row.tree_id as string,
           rank: row.rank as number,
           boardHiddenStatusKeys: (row.board_hidden_status_keys as string[] | null) ?? [],
-          viewMode: ((row.view_mode as string | null) === 'board' ? 'board' : 'list'),
+          viewMode:
+            (row.view_mode as string | null) === 'board'
+              ? 'board'
+              : (row.view_mode as string | null) === 'timeline'
+                ? 'timeline'
+                : 'list',
           // Rebuilt field by field, so a field left out here is wiped by the
           // echo of every save — which is how switching stars on showed them
           // and then took them away. A row without the column says nothing
