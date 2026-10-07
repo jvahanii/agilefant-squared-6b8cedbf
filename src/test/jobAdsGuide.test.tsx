@@ -47,6 +47,13 @@ describe("JobAdsGuide", () => {
     }
   });
 
+  it("says why a job already held under another link starts unticked", () => {
+    renderGuide();
+    expect(screen.getByText("looks like “…”, already in …")).toBeInTheDocument();
+    expect(screen.getByText("same job as “…” from …, listed here too")).toBeInTheDocument();
+    expect(screen.getByText(/A different city tells them apart/)).toBeInTheDocument();
+  });
+
   it("lists the career pages a search can read, and says what is not offered again", () => {
     const { container } = renderGuide();
     const section = within(container.querySelector("section#career-pages") as HTMLElement);

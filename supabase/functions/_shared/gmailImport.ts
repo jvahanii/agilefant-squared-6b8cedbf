@@ -14,6 +14,7 @@ import { deadlinePrefix, wellFormedDeadline } from './deadlines.ts';
 import { withCities } from './cities.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
 import { pageUrlOf } from './careerPages.ts';
+import { rememberName, type NamesInTree } from './jobNames.ts';
 
 /**
  * The service-role client, structurally.
@@ -181,13 +182,29 @@ export async function urlsInTree(
   organizationId: string,
   treeId: string,
 ): Promise<Map<string, string>> {
+  return (await postingsInTree(admin, organizationId, treeId)).urls;
+}
+
+/**
+ * What a tree already holds, both ways a posting can be recognised in it: by
+ * link, as urlsInTree answers, and by name — for the same job arriving from
+ * another board, or re-posted, under a link the tree has never seen. One read
+ * of the tree serves both.
+ */
+export async function postingsInTree(
+  admin: Admin,
+  organizationId: string,
+  treeId: string,
+): Promise<{ urls: Map<string, string>; names: NamesInTree }> {
   const found = new Map<string, string>();
+  const jobNames: NamesInTree = new Map();
 
   // The key is quoted because a real tree id reads "<org>::bt-…", and PostgREST
   // parses an unquoted "::" as a cast: the filter then matched no item at all,
   // and every posting in the tree was offered as new.
   const inTree: Array<{
     id: string;
+    title?: string | null;
     backlog_assignments: Record<string, string>;
     description?: string | null;
   }> = [];
@@ -195,7 +212,7 @@ export async function urlsInTree(
   for (let from = 0; ; from += PAGE) {
     const { data: page, error } = await admin
       .from('work_items')
-      .select('id, backlog_assignments, description')
+      .select('id, title, backlog_assignments, description')
       .eq('organization_id', organizationId)
       .not(`backlog_assignments->>"${treeId}"`, 'is', null)
       .order('id')
@@ -204,7 +221,7 @@ export async function urlsInTree(
     inTree.push(...((page ?? []) as typeof inTree));
     if (!page || page.length < PAGE) break;
   }
-  if (inTree.length === 0) return found;
+  if (inTree.length === 0) return { urls: found, names: jobNames };
 
   const backlogOf = new Map<string, string>();
   for (const item of inTree) backlogOf.set(item.id, item.backlog_assignments?.[treeId] ?? '');
@@ -239,6 +256,7 @@ export async function urlsInTree(
   // is written by the same import and travels with the item.
   for (const item of inTree) {
     for (const url of linksInDescription(item.description)) remember(url, whereIs(item.id));
+    if (item.title) rememberName(jobNames, item.title, whereIs(item.id));
   }
 
   const ids = [...backlogOf.keys()];
@@ -249,7 +267,7 @@ export async function urlsInTree(
       .in('work_item_id', ids.slice(i, i + 200));
     for (const r of urlRows ?? []) remember(r.url as string, whereIs(r.work_item_id as string));
   }
-  return found;
+  return { urls: found, names: jobNames };
 }
 
 /** The URLs on describe()'s "Link: …" lines. */

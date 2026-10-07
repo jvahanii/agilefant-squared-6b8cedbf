@@ -338,8 +338,22 @@ export default function JobAdsGuide() {
                 "also in “…”",
                 "Another email lists the same posting, and that copy is the one ticked — the one that states a closing date if either does, otherwise the most recent. Importing both would still create just one item.",
               ],
+              [
+                "looks like “…”, already in …",
+                "An item with the same employer and role is already in the tree, under a different link: the same job from another job board, or one the board has posted again. It names the item and its list.",
+              ],
+              [
+                "same job as “…” from …, listed here too",
+                "Two postings in this run are the same job under different links — one board each, say. One is ticked: the one that states a closing date if either does, otherwise the first.",
+              ],
             ]}
           />
+
+          <P>
+            Jobs are told to be the same by name — employer and role, whatever the capitals and punctuation — since
+            each board gives a job a link of its own. A different city tells them apart: a role an employer
+            advertises once in Espoo and once in Tampere is two jobs, and both are ticked.
+          </P>
 
           <SubHeading>Importing</SubHeading>
           <Dl

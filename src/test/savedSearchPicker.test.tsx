@@ -1313,3 +1313,77 @@ describe("career pages beside the mail", () => {
     );
   });
 });
+
+describe("the same job under another link", () => {
+  const show = () =>
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+
+  it("starts a posting unticked when it looks like an item already in the tree, and says which", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({
+          url: "https://www.jobly.fi/tyopaikka/manager-1",
+          title: "Kesko - Manager",
+          lookalikes: [{ title: "Kesko - Manager (Helsinki)", list: "Jobs with deadline" }],
+        }),
+        link({ url: "https://x/new", title: "Something new" }),
+      ],
+    });
+    show();
+
+    await screen.findByText("Kesko - Manager");
+    expect(screen.getByRole("checkbox", { name: "Kesko - Manager" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Something new" })).toBeChecked();
+    expect(
+      screen.getByText("Not selected: looks like “Kesko - Manager (Helsinki)”, already in Jobs with deadline. Tick it to import anyway."),
+    ).toBeInTheDocument();
+    // It does not count as new.
+    expect(screen.getByText(/^2 jobs, out of which 1 seems new,/)).toBeInTheDocument();
+  });
+
+  it("ticks it after all when the posting turns out to be in another city", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({
+          url: "https://www.linkedin.com/jobs/view/77",
+          title: "Basware - Portfolio Architect",
+          lookalikes: [{ title: "Basware - Portfolio Architect (Espoo)", list: "Jobs with no deadline" }],
+        }),
+      ],
+    });
+    postingFacts.mockResolvedValue({
+      facts: [{ url: "https://www.linkedin.com/jobs/view/77", deadline: null, applicationsClosed: false, cities: ["Pori"] }],
+    });
+    show();
+
+    await screen.findByText("Basware - Portfolio Architect");
+    expect(screen.getByRole("checkbox", { name: "Basware - Portfolio Architect" })).toBeChecked();
+  });
+
+  it("ticks one copy of a job that two boards list in the same run, and says so on the other", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://thehub.io/jobs/1", title: "ICEYE - Staff Mechanical Design Engineer", messageId: "m-1", subject: "The Hub" }),
+        link({
+          url: "https://duunitori.fi/tyopaikat/tyo/staff-1",
+          title: "Iceye - Staff Mechanical Design Engineer",
+          messageId: "m-2",
+          subject: "Duunitori",
+          deadline: "2026-11-30",
+        }),
+      ],
+    });
+    show();
+
+    await screen.findByText("Iceye - Staff Mechanical Design Engineer");
+    // The copy that states a closing date is the one kept.
+    expect(screen.getByRole("checkbox", { name: "Iceye - Staff Mechanical Design Engineer" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "ICEYE - Staff Mechanical Design Engineer" })).not.toBeChecked();
+    expect(
+      screen.getByText(
+        "Not selected: same job as “Iceye - Staff Mechanical Design Engineer” from duunitori.fi, listed here too. Tick it to import anyway.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^2 jobs, out of which 1 seems new,/)).toBeInTheDocument();
+  });
+});

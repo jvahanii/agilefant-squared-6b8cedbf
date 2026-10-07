@@ -41,7 +41,8 @@ import {
   signState,
   verifyState,
 } from '../_shared/googleOAuth.ts';
-import { importLinksAsWorkItems, urlsInBacklog, urlsInTree } from '../_shared/gmailImport.ts';
+import { importLinksAsWorkItems, postingsInTree, urlsInBacklog } from '../_shared/gmailImport.ts';
+import { lookalikesFor, type NamesInTree } from '../_shared/jobNames.ts';
 import { fetchPosting, fillDeadlines } from '../_shared/fetchDeadline.ts';
 import { careerPageFor, MAX_CAREER_PAGES, pageMessageId, positionsAsLinks } from '../_shared/careerPages.ts';
 import { wellFormedDeadline } from '../_shared/deadlines.ts';
@@ -98,6 +99,12 @@ function callbackUri(returnUrl: string): string {
     throw new Error('bad_request: returnUrl must be the app callback page');
   }
   return `${u.origin}${u.pathname}`;
+}
+
+/** The items in the tree a posting's name matches, as the field the picker reads — or nothing. */
+function lookalikesOf(names: NamesInTree, title: string) {
+  const found = lookalikesFor(names, title);
+  return found.length > 0 ? { lookalikes: found } : {};
 }
 
 /** The saved search, if it is one of this organization's. */
@@ -357,7 +364,10 @@ Deno.serve(async (req) => {
         // The tree, not the backlog, is the unit that matters: the same posting
         // filed into another list a week ago is still one you have seen. Falls
         // back on the backlog alone for a caller that names no tree.
-        const inTree = treeId ? await urlsInTree(admin, organizationId, treeId) : new Map<string, string>();
+        const tree = treeId
+          ? await postingsInTree(admin, organizationId, treeId)
+          : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
+        const inTree = tree.urls;
         const present = backlogId && !treeId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
         // The same fetch the import does, so the picker can show a deadline and
         // say when a posting has stopped taking applications -- LinkedIn leaves
@@ -373,6 +383,11 @@ Deno.serve(async (req) => {
             // Which list it is already in, so the picker can say where rather
             // than leaving the reader to go and find it.
             alreadyIn: inTree.get(l.url) ?? null,
+            // The same job under another link — from another board, or
+            // re-posted — is known by its name instead. Offered as candidates:
+            // whether a same-named item in another city is the same job is for
+            // the picker to say, once it knows where this one is.
+            ...(inTree.has(l.url) || present.has(l.url) ? {} : lookalikesOf(tree.names, l.title)),
           })),
         });
       }
@@ -430,7 +445,10 @@ Deno.serve(async (req) => {
       const urls = (saved.career_pages ?? []).slice(0, MAX_CAREER_PAGES);
       if (urls.length === 0) return json({ pages: [], links: [] });
 
-      const inTree = treeId ? await urlsInTree(admin, organizationId, treeId) : new Map<string, string>();
+      const tree = treeId
+        ? await postingsInTree(admin, organizationId, treeId)
+        : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
+      const inTree = tree.urls;
       const { data: seenRows, error: seenError } = await admin
         .from('career_page_seen_postings')
         .select('url')
@@ -479,7 +497,9 @@ Deno.serve(async (req) => {
           // layout looks like, and silence would hide that.
           error: all.length === 0 ? 'No open positions were found on the page. If it lists some, its layout has changed.' : null,
         });
-        links.push(...fresh.map((l) => ({ ...l, alreadyImported: false, alreadyIn: null })));
+        links.push(
+          ...fresh.map((l) => ({ ...l, alreadyImported: false, alreadyIn: null, ...lookalikesOf(tree.names, l.title) })),
+        );
       }
       return json({ pages, links });
     }

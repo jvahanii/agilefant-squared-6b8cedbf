@@ -3,6 +3,7 @@
 
 import { deadlinePassed } from "../../supabase/functions/_shared/deadlines";
 import { isPageMessageId } from "../../supabase/functions/_shared/careerPages";
+import { citiesApart, looksLikeSameJob, nameKey, type Lookalike } from "../../supabase/functions/_shared/jobNames";
 
 export interface PreviewLink {
   url: string;
@@ -27,6 +28,12 @@ export interface PreviewLink {
   cities?: string[];
   /** Star rating the created item should carry; absent means unrated. */
   rating?: number;
+  /**
+   * Items already in the tree whose name this posting's matches, though no
+   * link of theirs does: the same job from another board, or re-posted. Not
+   * yet judged for city — see lookalikeInTree.
+   */
+  lookalikes?: Lookalike[];
 }
 
 /**
@@ -215,13 +222,34 @@ export function uncheckedReason(
     applicationsClosed?: boolean;
     alreadyImported?: boolean;
     alreadyIn?: string | null;
+    title?: string;
+    cities?: string[];
+    lookalikes?: Lookalike[];
   },
   now: Date | number = Date.now(),
 ): string | null {
   if (link.alreadyImported) return link.alreadyIn ? `already in ${link.alreadyIn}` : "already imported";
   if (link.applicationsClosed) return "no longer accepting applications";
   if (deadlinePassed(link.deadline, now)) return "the closing date has passed";
+  const twin = lookalikeInTree(link);
+  if (twin) return `looks like “${twin.title}”, already in ${twin.list}`;
   return null;
+}
+
+/**
+ * The item already in the tree that this posting looks like, if any: one of the
+ * candidates the search sent, less those the posting's cities rule out. A role
+ * an employer posts once per city is as many jobs as cities, so a same-named
+ * item somewhere else entirely is not this one.
+ */
+export function lookalikeInTree(link: {
+  title?: string;
+  cities?: string[];
+  lookalikes?: Lookalike[];
+}): Lookalike | null {
+  if (!link.title || !link.lookalikes?.length) return null;
+  const posting = { title: link.title, cities: link.cities };
+  return link.lookalikes.find((item) => looksLikeSameJob(posting, item.title)) ?? null;
 }
 
 /**
@@ -317,6 +345,44 @@ export function repeatedRows(links: PreviewLink[]): Map<string, string> {
     repeats.set(rowKey(link), `also in "${keeper.subject}"`);
   }
   return repeats;
+}
+
+/** "duunitori.fi" out of a posting's address. */
+function siteOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Rows that are the same job as another row under a different link, with what
+ * to say about each.
+ *
+ * repeatedRows catches one link carried by several emails. This catches what
+ * that cannot: one job advertised on two boards, or twice on one, each time
+ * under a link of its own — which is how most duplicates got into the lists.
+ * Told by name, and told apart by city, like a posting against the tree.
+ *
+ * The copy that stays ticked is the first that states a closing date, else the
+ * first; `links` is in display order. Keyed like repeatedRows, so the two can
+ * share a map.
+ */
+export function sameJobRows(links: PreviewLink[]): Map<string, string> {
+  const out = new Map<string, string>();
+  // One row per link first: copies of a link are repeatedRows' business.
+  const rows = [...new Set(keptCopies(links).values())];
+  const keepers = new Map<string, PreviewLink[]>();
+  for (const link of [...rows.filter((l) => l.deadline), ...rows.filter((l) => !l.deadline)]) {
+    const key = nameKey(link.title);
+    if (!key) continue;
+    const known = keepers.get(key) ?? [];
+    const twin = known.find((k) => !citiesApart(k.cities, link.cities));
+    if (twin) out.set(rowKey(link), `same job as “${twin.title}” from ${siteOf(twin.url)}, listed here too`);
+    else keepers.set(key, [...known, link]);
+  }
+  return out;
 }
 
 /** Why a row starts unticked — its own reason first, then being a repeat. */

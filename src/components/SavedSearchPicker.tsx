@@ -27,6 +27,7 @@ import {
   repeatedElsewhere,
   repeatedRows,
   rowKey,
+  sameJobRows,
   senderAddress,
   senderName,
   startingReason,
@@ -339,7 +340,7 @@ export function SavedSearchPicker({
         // no longer accepting applications, past its closing date, or a repeat
         // of a posting another email already lists. They stay importable on
         // purpose, and the row says which it is.
-        const repeats = repeatedRows(sorted);
+        const repeats = new Map([...sameJobRows(sorted), ...repeatedRows(sorted)]);
         setSelected(Object.fromEntries(sorted.map((l) => [rowKey(l), startingReason(l, repeats) === null])));
         setLoading(false);
 
@@ -448,7 +449,9 @@ export function SavedSearchPicker({
   const pageByMessageId = useMemo(() => new Map(pages.map((p) => [p.messageId, p])), [pages]);
   // Over the whole list, not the filtered one: a row is a repeat because of an
   // earlier email, whether or not the filter happens to show that email.
-  const repeats = useMemo(() => repeatedRows(preview), [preview]);
+  // And with them the rows that are another row's job under a different link —
+  // the same ad on two boards. A row that is both says it is a repeat.
+  const repeats = useMemo(() => new Map([...sameJobRows(preview), ...repeatedRows(preview)]), [preview]);
   const emailCount = useMemo(() => emailCountOf(preview), [preview]);
   /** Jobs listed from career pages — what "skip" on the decline button covers. */
   const pageJobCount = useMemo(() => distinctJobs(preview.filter(isCareerPageRow)), [preview]);
