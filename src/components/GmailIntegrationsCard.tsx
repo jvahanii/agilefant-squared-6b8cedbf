@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { Mail, Trash2, Plus, Play, Loader2, Unplug } from "lucide-react";
 import { GoogleOAuthClientSection } from "@/components/GoogleOAuthClientSection";
 import { SavedSearchPicker } from "@/components/SavedSearchPicker";
+import { CareerPagesEditor } from "@/components/CareerPagesEditor";
 import { canConnectGmail, explainGmailError, type OAuthStatus } from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode } from "@/lib/gmailConnector";
 import {
@@ -79,6 +80,8 @@ interface SavedQuery {
   /** Hour of day a daily run should happen; null means "whenever a day has passed". */
   run_at_hour: number | null;
   run_at_timezone: string | null;
+  /** Company career pages a job search reads beside the mail. */
+  career_pages?: string[] | null;
 }
 
 /** The zone the browser is in, which is the one the chosen hour is meant in. */
@@ -581,6 +584,10 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
                     : `Runs daily at ${String(q.run_at_hour).padStart(2, "0")}:07 ${q.run_at_timezone ?? browserTimezone()}.`}{" "}
                   Run now only opens the picker; it never moves the schedule.
                 </p>
+              )}
+
+              {mode === "jobs" && (
+                <CareerPagesEditor queryId={q.id} pages={q.career_pages ?? []} onChanged={loadQueries} />
               )}
 
               {previewFor?.id === q.id && activeOrgId && (

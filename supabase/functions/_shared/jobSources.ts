@@ -364,7 +364,7 @@ function contextFor(occ: LinkOccurrence[], url: URL, subject: string, from: stri
  * filters, and nobody has an em dash on their keyboard. Em dashes the posting's
  * own title carries are turned into hyphens too, so a name never mixes the two.
  */
-function composeTitle(company: string, title: string): string {
+export function composeTitle(company: string, title: string): string {
   const plain = (text: string) => text.replace(/\u2014/g, "-");
   if (!title) return plain(company);
   if (title.toLowerCase().startsWith(company.toLowerCase())) return plain(title);

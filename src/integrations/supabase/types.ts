@@ -368,6 +368,7 @@ export type Database = {
           auto_place_mirror_backlog_id: string | null
           auto_place_undated_backlog_id: string | null
           backlog_id: string
+          career_pages: string[]
           created_at: string
           frequency: string
           id: string
@@ -389,6 +390,7 @@ export type Database = {
           auto_place_mirror_backlog_id?: string | null
           auto_place_undated_backlog_id?: string | null
           backlog_id: string
+          career_pages?: string[]
           created_at?: string
           frequency?: string
           id?: string
@@ -410,6 +412,7 @@ export type Database = {
           auto_place_mirror_backlog_id?: string | null
           auto_place_undated_backlog_id?: string | null
           backlog_id?: string
+          career_pages?: string[]
           created_at?: string
           frequency?: string
           id?: string

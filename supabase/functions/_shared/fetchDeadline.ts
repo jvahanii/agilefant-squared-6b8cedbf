@@ -162,7 +162,7 @@ export interface PostingFacts {
 }
 
 /** Fetch once, and once more after a pause if the board is waving us off. */
-async function fetchPosting(target: string): Promise<Response | { error: number }> {
+export async function fetchPosting(target: string): Promise<Response | { error: number }> {
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
     const controller = new AbortController();
@@ -306,7 +306,10 @@ export async function fillDeadlines<
       // A date the mail stated stands: the page is read here for its city.
       ...(!out[i].deadline && facts.deadline ? { deadline: facts.deadline } : {}),
       ...(facts.closed ? { applicationsClosed: true } : {}),
-      ...(facts.cities ? { cities: facts.cities } : {}),
+      // A city already known stands — the mail named it, or the career page
+      // the posting was listed on did, and either knows better than a guess
+      // from the posting's own markup.
+      ...(facts.cities && out[i].cities === undefined ? { cities: facts.cities } : {}),
     };
   });
   return out;

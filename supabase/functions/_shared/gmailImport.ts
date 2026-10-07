@@ -13,6 +13,7 @@ import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
 import { deadlinePrefix, wellFormedDeadline } from './deadlines.ts';
 import { withCities } from './cities.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
+import { pageUrlOf } from './careerPages.ts';
 
 /**
  * The service-role client, structurally.
@@ -79,6 +80,9 @@ function workItemTitle(link: ExtractedLink, datePrefix: boolean): string {
 }
 
 function describe(link: ExtractedLink): string {
+  // A posting read off a company's career page came from no email: say which
+  // page instead of a subject and a sender that were made up to carry it.
+  const page = pageUrlOf(link.messageId);
   const parts = [
     link.deadline
       ? `Applications close: ${link.deadline}`
@@ -87,9 +91,10 @@ function describe(link: ExtractedLink): string {
         : '',
     // Every city, where the name shows two and a count.
     link.cities?.length ? `Location: ${link.cities.join(', ')}` : '',
-    link.subject ? `From email: ${link.subject}` : '',
-    link.from ? `Sender: ${link.from}` : '',
-    link.date ? `Received: ${link.date}` : '',
+    page ? `Career page: ${page}` : '',
+    !page && link.subject ? `From email: ${link.subject}` : '',
+    !page && link.from ? `Sender: ${link.from}` : '',
+    link.date ? `${page ? 'Found' : 'Received'}: ${link.date}` : '',
     `Link: ${link.url}`,
   ].filter(Boolean);
   return parts.join('\n');

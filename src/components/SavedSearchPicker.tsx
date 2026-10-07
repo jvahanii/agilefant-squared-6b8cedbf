@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LinkIcon, Loader2, Mail, MailCheck, MapPin } from "lucide-react";
+import { Globe, LinkIcon, Loader2, Mail, MailCheck, MapPin } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,15 @@ import { StarRating } from "@/components/StarRating";
 import { toast } from "@/hooks/use-toast";
 import {
   alreadyInSummary,
+  careerPageLine,
   cityLine,
+  declineLabel,
+  declinedSummary,
   deadlineLabel,
+  emailCountOf,
+  foundWhere,
+  isCareerPageRow,
+  pageCountOf,
   gmailMessageUrl,
   groupBySourceEmail,
   alsoInLabel,
@@ -24,6 +31,7 @@ import {
   senderName,
   startingReason,
   uncheckedReason,
+  type CareerPageNote,
   type PreviewLink,
 } from "@/lib/gmailPreview";
 import { explainGmailError } from "@/lib/gmailOAuth";
@@ -48,6 +56,10 @@ const MAX_POSTINGS_READ = 40;
 
 /**
  * Run a saved Gmail search and choose what to import from it.
+ *
+ * A job search also reads the company career pages it names, and offers the
+ * positions on them that are new to it beside what the mail brought — each
+ * page under a heading of its own, as each email is.
  *
  * Starts the search as soon as it is shown. Used inline under a saved search in
  * Bells & Whistles, and in a dialog from the app header — one component, so the
@@ -164,6 +176,8 @@ export function SavedSearchPicker({
   /** What the wait is doing, for the line shown until the list is ready. */
   const [stage, setStage] = useState("Searching Gmail…");
   const [preview, setPreview] = useState<PreviewLink[]>([]);
+  /** The career pages this run read, with what each had to say. */
+  const [pages, setPages] = useState<CareerPageNote[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   /** Star rating chosen per row, by row key; rows without an entry import unrated. */
   const [ratingByKey, setRatingByKey] = useState<Record<string, number | undefined>>({});
@@ -226,6 +240,34 @@ export function SavedSearchPicker({
         let sorted = [...res.links].sort(
           (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
         );
+
+        // The career pages the search names, after the mail: the positions on
+        // them that are neither in the tree nor left by an earlier run. An
+        // extra — if the pages cannot be read, the mail is still worth showing.
+        if (mode === "jobs") {
+          setStage("Checking career pages…");
+          try {
+            const fromPages = await callGmail<{ pages?: CareerPageNote[]; links?: PreviewLink[] }>({
+              action: "career_pages",
+              organizationId,
+              queryId: search.id,
+              treeId: search.tree_id,
+            });
+            if (cancelled) return;
+            setPages(fromPages?.pages ?? []);
+            sorted = [...sorted, ...(fromPages?.links ?? [])];
+          } catch (e) {
+            if (cancelled) return;
+            // A server that does not know the action yet has no pages to read.
+            if (!/unknown action/i.test((e as Error).message)) {
+              toast({
+                title: "The career pages could not be read",
+                description: `${(e as Error).message} The emails are listed as usual.`,
+                variant: "destructive",
+              });
+            }
+          }
+        }
         if (sorted.length === 0) {
           // Nothing to pick — usually because every alert has been read. Said
           // in place, with a way out, rather than by closing on a small toast:
@@ -240,9 +282,10 @@ export function SavedSearchPicker({
           // reading the server used to do inside the search, and to the same
           // limit. Jobly always refuses the server, so it is left to the
           // browser reader below rather than waited on here.
-          const found = `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} in ${
-            new Set(sorted.map((l) => l.messageId)).size
-          } email${new Set(sorted.map((l) => l.messageId)).size === 1 ? "" : "s"}.`;
+          const found = `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} ${foundWhere(
+            emailCountOf(sorted),
+            pageCountOf(sorted),
+          )}.`;
           // Read while the deadline or the city is unknown: a mail that states
           // the date still leaves the page as the only place that says where,
           // and the dialog shows it. A city the mail gave (Työmarkkinatori)
@@ -282,8 +325,10 @@ export function SavedSearchPicker({
                 ...l,
                 ...(!l.deadline && f.deadline ? { deadline: f.deadline } : {}),
                 ...(f.applicationsClosed ? { applicationsClosed: true } : {}),
-                // Carried to the import, so it need not read the page again.
-                ...(Array.isArray(f.cities) ? { cities: f.cities } : {}),
+                // Carried to the import, so it need not read the page again. A
+                // city already known stands: the mail named it, or the career
+                // page the posting is listed on did.
+                ...(Array.isArray(f.cities) && l.cities === undefined ? { cities: f.cities } : {}),
               };
             });
           }
@@ -398,14 +443,15 @@ export function SavedSearchPicker({
   // Counted before folding: an email whose every posting folded away still
   // carried those postings, and is still one of the emails "mark read" covers.
   // Counting the cards instead would contradict that button.
-  const visibleEmailCount = useMemo(
-    () => new Set(visiblePreview.map((l) => l.messageId)).size,
-    [visiblePreview],
-  );
+  const visibleEmailCount = useMemo(() => emailCountOf(visiblePreview), [visiblePreview]);
+  const visiblePageCount = useMemo(() => pageCountOf(visiblePreview), [visiblePreview]);
+  const pageByMessageId = useMemo(() => new Map(pages.map((p) => [p.messageId, p])), [pages]);
   // Over the whole list, not the filtered one: a row is a repeat because of an
   // earlier email, whether or not the filter happens to show that email.
   const repeats = useMemo(() => repeatedRows(preview), [preview]);
-  const emailCount = useMemo(() => new Set(preview.map((l) => l.messageId)).size, [preview]);
+  const emailCount = useMemo(() => emailCountOf(preview), [preview]);
+  /** Jobs listed from career pages — what "skip" on the decline button covers. */
+  const pageJobCount = useMemo(() => distinctJobs(preview.filter(isCareerPageRow)), [preview]);
   // Nothing ticked means there is no new job to import — mark-as-read then
   // becomes the only meaningful action and stands out for it.
   const noNewJobs = useMemo(() => preview.every((l) => !selected[`${l.messageId}|${l.url}`]), [preview, selected]);
@@ -488,7 +534,11 @@ export function SavedSearchPicker({
    * it is made again.
    */
   const markRead = async (links: PreviewLink[]): Promise<number> => {
-    const messageIds = [...new Set(links.map((l) => l.messageId).filter(Boolean))];
+    // A career page's rows carry the page where an email's carry the email;
+    // there is no message there to mark.
+    const messageIds = [
+      ...new Set(links.filter((l) => !isCareerPageRow(l)).map((l) => l.messageId).filter(Boolean)),
+    ];
     if (messageIds.length === 0) return 0;
     try {
       const marked = await callGmail<{ marked: number }>({ action: "mark_read", organizationId, messageIds });
@@ -507,15 +557,46 @@ export function SavedSearchPicker({
   };
 
   /**
+   * What marking read is to an email, for the jobs among these rows that came
+   * from a career page: remember them on the search, so the next run does not
+   * offer them again. A page lists the same positions every day, and has no
+   * "read" of its own to mark. Returns how many, or -1 on a failure it has
+   * already reported.
+   */
+  const markSeen = async (links: PreviewLink[]): Promise<number> => {
+    const urls = [...new Set(links.filter(isCareerPageRow).map((l) => l.url))];
+    if (urls.length === 0) return 0;
+    try {
+      const res = await callGmail<{ marked: number }>({
+        action: "mark_pages_seen",
+        organizationId,
+        queryId: search.id,
+        urls,
+      });
+      return res.marked ?? 0;
+    } catch (e) {
+      toast({
+        title: "Could not remember the career page jobs",
+        description: `${(e as Error).message} They will be offered again next time.`,
+        variant: "destructive",
+      });
+      return -1;
+    }
+  };
+
+  /**
    * Nothing worth importing, but the alerts are still unread: mark every email
-   * the search listed as read, so an "only unread" search stops offering them.
+   * the search listed as read, so an "only unread" search stops offering them —
+   * and skip every career page job listed, for the same reason.
    */
   const markAllRead = async () => {
     setImporting(true);
     try {
       const marked = await markRead(preview);
       if (marked < 0) return;
-      toast({ title: `${marked} email${marked === 1 ? "" : "s"} marked as read`, description: "Nothing was imported." });
+      const skipped = await markSeen(preview);
+      if (skipped < 0) return;
+      toast({ title: declinedSummary(marked, skipped), description: "Nothing was imported." });
       onClose();
     } finally {
       setImporting(false);
@@ -583,6 +664,14 @@ export function SavedSearchPicker({
       // succeeded, and a connection made before the app asked for permission to
       // change labels cannot do this until it is made again.
       const markedRead = await markRead(links);
+      // A career page jobs were chosen from is done with in the same way: what
+      // was left on it was left on purpose, so none of its rows comes back.
+      // A page nothing was taken from stays, as an email nothing was taken
+      // from stays unread.
+      const pagesChosenFrom = new Set(links.filter(isCareerPageRow).map((l) => l.messageId));
+      const onThosePages = preview.filter((l) => pagesChosenFrom.has(l.messageId));
+      const leftOnPages = distinctJobs(onThosePages) - distinctJobs(links.filter(isCareerPageRow));
+      const pagesRemembered = (await markSeen(onThosePages)) >= 0;
 
       onClose();
       // The new items have to be in the store before the lists are ranked, or
@@ -676,6 +765,9 @@ export function SavedSearchPicker({
             : `The new items took too long to load, so the lists may not be fully sorted — sort them by name and save as rank.`) +
           (mirrored > 0 && mirrorTarget ? ` ${mirrored} also mirrored to ${backlogName(mirrorTarget.backlogId)}.` : "") +
           (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : "") +
+          (pagesRemembered && leftOnPages > 0
+            ? ` ${leftOnPages} career page job${leftOnPages === 1 ? "" : "s"} left out will not be offered again.`
+            : "") +
           ` ${openTotals()}`,
         duration: AUTO_PLACE_TOAST_MS,
       });
@@ -700,6 +792,7 @@ export function SavedSearchPicker({
   if (nothingFound) {
     const unreadOnly = /(^|\s)is:unread(\s|$)/i.test(search.query);
     const noun = mode === "jobs" ? "job ads" : "links";
+    const readPages = pages.filter((p) => !p.error);
     return (
       <div className="space-y-3 py-2" role="status">
         <p className="flex items-start gap-2 text-sm">
@@ -709,8 +802,13 @@ export function SavedSearchPicker({
             {unreadOnly
               ? `There are no unread emails with ${noun} matching this search. New alerts will show up here when they arrive.`
               : `None of the emails this search matches contain ${noun}. Check the search in Gmail itself, or widen how far back it looks.`}
+            {readPages.length > 0 &&
+              ` Nothing new on the career page${readPages.length === 1 ? "" : "s"} it reads either (${readPages
+                .map((p) => p.name)
+                .join(", ")}).`}
           </span>
         </p>
+        <CareerPageNotes pages={pages} />
         <Button size="sm" variant="outline" onClick={onClose}>
           Close
         </Button>
@@ -743,6 +841,7 @@ export function SavedSearchPicker({
         {previewSummary({
           shown: distinctJobs(foldedPreview),
           emails: visibleEmailCount,
+          pages: visiblePageCount,
           // Over the rows actually listed, so the count and the list agree now
           // that the folded-away copies are not on screen to be counted.
           fresh: foldedPreview.filter((l) => startingReason(l, repeats) === null).length,
@@ -750,6 +849,10 @@ export function SavedSearchPicker({
           total: filterKeyword ? distinctJobs(preview) : undefined,
         })}
       </p>
+      {/* Pages with no heading of their own below, because they brought no row:
+          nothing new on them, or they could not be read. A page that was
+          checked should not look like one that was forgotten. */}
+      <CareerPageNotes pages={pages.filter((p) => !preview.some((l) => l.messageId === p.messageId))} />
       {reading && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -763,6 +866,9 @@ export function SavedSearchPicker({
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);
           const alreadyIn = alreadyInSummary(group.links);
+          // Set when the rows came from a career page rather than an email.
+          const page = pageByMessageId.get(group.messageId);
+          const fromPage = isCareerPageRow(group);
           return (
             <div key={group.messageId} className="border rounded-md overflow-hidden">
               {/* The source email, above the jobs it produced. It reads as a
@@ -777,30 +883,57 @@ export function SavedSearchPicker({
                   className="mt-0.5"
                   aria-label={`Select all ${group.links.length} from ${group.subject}`}
                 />
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                {fromPage ? (
+                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                )}
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="text-sm font-semibold leading-snug break-words">{group.subject}</p>
-                  <p className="text-xs text-muted-foreground break-words">
-                    {senderName(group.from)}
-                    {senderAddress(group.from) && (
-                      <span className="break-all"> &lt;{senderAddress(group.from)}&gt;</span>
-                    )}
-                    {group.date && ` · ${new Date(group.date).toLocaleString()}`}
-                  </p>
+                  {fromPage ? (
+                    <p className="text-xs text-muted-foreground break-all">Career page · {page?.url ?? group.from}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground break-words">
+                      {senderName(group.from)}
+                      {senderAddress(group.from) && (
+                        <span className="break-all"> &lt;{senderAddress(group.from)}&gt;</span>
+                      )}
+                      {group.date && ` · ${new Date(group.date).toLocaleString()}`}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    {group.links.length} job{group.links.length === 1 ? "" : "s"} in this email
-                    {alreadyIn && ` · ${alreadyIn}`}
+                    {fromPage
+                      ? `${group.links.length} new job${group.links.length === 1 ? "" : "s"} from this page${
+                          page ? ` · ${careerPageLine(page)}` : ""
+                        }`
+                      : `${group.links.length} job${group.links.length === 1 ? "" : "s"} in this email${
+                          alreadyIn ? ` · ${alreadyIn}` : ""
+                        }`}
                   </p>
                 </div>
-                <a
-                  href={gmailMessageUrl(group.messageId)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
-                  title="Open this email in Gmail"
-                >
-                  Open in Gmail
-                </a>
+                {fromPage ? (
+                  page && (
+                    <a
+                      href={page.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
+                      title="Open this career page"
+                    >
+                      Open page
+                    </a>
+                  )
+                ) : (
+                  <a
+                    href={gmailMessageUrl(group.messageId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
+                    title="Open this email in Gmail"
+                  >
+                    Open in Gmail
+                  </a>
+                )}
               </div>
 
               <div className="px-2 py-1.5 pl-4 space-y-1.5">
@@ -999,10 +1132,15 @@ export function SavedSearchPicker({
             variant={noNewJobs ? "destructive" : "secondary"}
             onClick={markAllRead}
             disabled={importing}
-            title={`Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.`}
+            title={
+              `Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.` +
+              (pageJobCount > 0
+                ? ` The ${pageJobCount} job${pageJobCount === 1 ? "" : "s"} listed from career pages will not be offered again.`
+                : "")
+            }
           >
             <MailCheck className="w-3.5 h-3.5 mr-1" />
-            Do not import anything, mark {emailCount} email{emailCount === 1 ? "" : "s"} read
+            {declineLabel(emailCount, pageJobCount)}
           </Button>
         )}
         <Button size="sm" variant="ghost" onClick={onClose} disabled={importing}>
@@ -1010,5 +1148,29 @@ export function SavedSearchPicker({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * A line for each career page that has no heading in the list: one that could
+ * not be read says why, and one with nothing new says so and what it holds.
+ */
+function CareerPageNotes({ pages }: { pages: CareerPageNote[] }) {
+  if (pages.length === 0) return null;
+  return (
+    <ul className="space-y-0.5 text-xs text-muted-foreground">
+      {pages.map((page) => (
+        <li key={page.messageId} className="flex items-start gap-1.5">
+          <Globe className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className={page.error ? "text-destructive" : undefined}>
+            <a href={page.url} target="_blank" rel="noreferrer" className="underline">
+              {page.name}
+              {page.error ? "" : "'s career page"}
+            </a>
+            {page.error ? `: ${page.error}` : `: nothing new · ${careerPageLine(page)}`}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

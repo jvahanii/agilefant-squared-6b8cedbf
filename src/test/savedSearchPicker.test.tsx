@@ -20,8 +20,15 @@ vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
 const callGmail = vi.fn();
 /** The picker reads postings batch by batch; by default they state nothing. */
 const postingFacts = vi.fn();
+/** The career pages a job search reads after the mail; by default it names none. */
+const careerPages = vi.fn();
 vi.mock("@/lib/gmailConnector", () => ({
-  callGmail: (body: { action: string }) => (body.action === "posting_facts" ? postingFacts(body) : callGmail(body)),
+  callGmail: (body: { action: string }) =>
+    body.action === "posting_facts"
+      ? postingFacts(body)
+      : body.action === "career_pages"
+        ? careerPages(body)
+        : callGmail(body),
 }));
 const toast = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...args) }));
@@ -118,6 +125,8 @@ beforeEach(() => {
   callGmail.mockReset();
   postingFacts.mockReset();
   postingFacts.mockResolvedValue({ facts: [] });
+  careerPages.mockReset();
+  careerPages.mockResolvedValue({ pages: [], links: [] });
   toast.mockReset();
   loadFromSupabase.mockClear();
   superuser = true;
@@ -1094,5 +1103,213 @@ describe("Import & auto-place: the summary", () => {
     await waitFor(() => expect(existingAdsToast()).toBeDefined());
     expect(existingAdsToast()![0].description).toContain("Open ads now: 0 in total — 0 with a deadline, 0 without");
     readerInstalled = false;
+  });
+});
+
+describe("career pages beside the mail", () => {
+  const PAGE = "https://www.reaktor.com/careers/all-open-positions";
+  const pageNote = (over: Record<string, unknown> = {}) => ({
+    url: PAGE,
+    messageId: `page:${PAGE}`,
+    name: "Reaktor",
+    total: 19,
+    inLists: 15,
+    skipped: 2,
+    error: null,
+    ...over,
+  });
+  const pageJob = (slug: string, title: string) =>
+    link({
+      url: `https://www.reaktor.com/careers/${slug}`,
+      title: `Reaktor - ${title}`,
+      messageId: `page:${PAGE}`,
+      subject: "Reaktor: open positions",
+      from: "Reaktor career page",
+      cities: ["Helsinki"],
+    });
+  const twoPageJobs = () =>
+    careerPages.mockResolvedValue({
+      pages: [pageNote()],
+      links: [pageJob("ai-developer", "AI Developer"), pageJob("lead-developer", "Lead Developer")],
+    });
+  const show = (onClose = vi.fn()) =>
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={onClose} />);
+
+  it("asks for the pages of this search, and lists what is new on them under the page", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "From the mail" })] });
+    twoPageJobs();
+    show();
+
+    await screen.findByText("Reaktor - AI Developer");
+    expect(careerPages).toHaveBeenCalledWith({
+      action: "career_pages",
+      organizationId: "org-1",
+      queryId: "q-1",
+      treeId: "tree-1",
+    });
+    expect(screen.getByText("From the mail")).toBeInTheDocument();
+    expect(screen.getByText(/^3 jobs, out of which 3 seem new, found in 1 email and on 1 career page/)).toBeInTheDocument();
+    // The page has a heading of its own, saying what else it holds.
+    expect(screen.getByText("Reaktor: open positions")).toBeInTheDocument();
+    expect(
+      screen.getByText("2 new jobs from this page · 19 open positions on the page · 15 already in your lists · 2 skipped earlier"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open page" })).toHaveAttribute("href", PAGE);
+    // And its jobs start ticked, like any new posting.
+    expect(screen.getByRole("checkbox", { name: "Reaktor - AI Developer" })).toBeChecked();
+  });
+
+  it("does not ask for pages on a link import", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "A link" })] });
+    render(<SavedSearchPicker search={SEARCH} mode="links" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("A link");
+    expect(careerPages).not.toHaveBeenCalled();
+  });
+
+  it("declines both at once: the emails marked read, the page jobs remembered as skipped", async () => {
+    callGmail
+      .mockResolvedValueOnce({ links: [link({ title: "From the mail" })] })
+      .mockResolvedValueOnce({ marked: 1 })
+      .mockResolvedValueOnce({ marked: 2 });
+    twoPageJobs();
+    const onClose = vi.fn();
+    show(onClose);
+
+    await screen.findByText("Reaktor - AI Developer");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Do not import anything, mark 1 email read, skip 2 career page jobs" }),
+    );
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    // The page is no email: only the real message is marked read.
+    expect(callGmail.mock.calls[1][0]).toEqual({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1"] });
+    expect(callGmail.mock.calls[2][0]).toEqual({
+      action: "mark_pages_seen",
+      organizationId: "org-1",
+      queryId: "q-1",
+      urls: ["https://www.reaktor.com/careers/ai-developer", "https://www.reaktor.com/careers/lead-developer"],
+    });
+    expect(toast.mock.calls.map((c) => c[0].title)).toContain("1 email marked as read, 2 career page jobs skipped");
+  });
+
+  it("lists a page's jobs when there is no mail at all, and only skips them when declined", async () => {
+    callGmail.mockResolvedValueOnce({ links: [] }).mockResolvedValueOnce({ marked: 2 });
+    twoPageJobs();
+    const onClose = vi.fn();
+    show(onClose);
+
+    await screen.findByText("Reaktor - Lead Developer");
+    expect(screen.getByText(/^2 jobs, out of which 2 seem new, found on 1 career page/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Do not import anything, skip 2 career page jobs" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(callGmail.mock.calls.some((c) => c[0].action === "mark_read")).toBe(false);
+    expect(callGmail.mock.calls[1][0]).toMatchObject({ action: "mark_pages_seen" });
+    expect(toast.mock.calls.map((c) => c[0].title)).toContain("2 career page jobs skipped");
+  });
+
+  it("stays open when the page jobs cannot be remembered", async () => {
+    callGmail.mockResolvedValueOnce({ links: [] }).mockRejectedValueOnce(new Error("boom."));
+    twoPageJobs();
+    const onClose = vi.fn();
+    show(onClose);
+
+    await screen.findByText("Reaktor - Lead Developer");
+    fireEvent.click(screen.getByRole("button", { name: "Do not import anything, skip 2 career page jobs" }));
+    await waitFor(() =>
+      expect(toast.mock.calls.map((c) => c[0].title)).toContain("Could not remember the career page jobs"),
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("says a page was checked when it had nothing new, with or without mail", async () => {
+    callGmail.mockResolvedValueOnce({ links: [] });
+    careerPages.mockResolvedValue({ pages: [pageNote({ inLists: 17 })], links: [] });
+    const first = show();
+    await screen.findByText("All caught up.");
+    expect(screen.getByText(/Nothing new on the career page it reads either \(Reaktor\)/)).toBeInTheDocument();
+    first.unmount();
+
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "From the mail" })] });
+    show();
+    await screen.findByText("From the mail");
+    expect(
+      screen.getByText(/nothing new · 19 open positions on the page · 17 already in your lists · 2 skipped earlier/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/found in 1 email — pick/)).toBeInTheDocument();
+  });
+
+  it("says why when a page could not be read, and lists the mail as usual", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "From the mail" })] });
+    careerPages.mockResolvedValue({
+      pages: [pageNote({ total: 0, inLists: 0, skipped: 0, error: "The page answered 403." })],
+      links: [],
+    });
+    show();
+    await screen.findByText("From the mail");
+    expect(screen.getByText(/The page answered 403\./)).toBeInTheDocument();
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("lists the mail when the pages cannot be asked about at all, and says so", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "From the mail" })] });
+    careerPages.mockRejectedValue(new Error("boom."));
+    show();
+    await screen.findByText("From the mail");
+    expect(toast.mock.calls.map((c) => c[0].title)).toContain("The career pages could not be read");
+  });
+
+  it("says nothing when the server is too old to know about pages", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ title: "From the mail" })] });
+    careerPages.mockRejectedValue(new Error('{"error":"unknown action: career_pages"}'));
+    show();
+    await screen.findByText("From the mail");
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("keeps the city the page gave when the posting itself names none", async () => {
+    callGmail.mockResolvedValueOnce({ links: [] });
+    twoPageJobs();
+    postingFacts.mockResolvedValue({
+      facts: [{ url: "https://www.reaktor.com/careers/ai-developer", deadline: null, applicationsClosed: false, cities: [] }],
+    });
+    show();
+    const row = (await screen.findByText("Reaktor - AI Developer")).closest("div")!;
+    expect(within(row).getByText("Helsinki")).toBeInTheDocument();
+  });
+
+  it("auto-place: a page chosen from is done with, so what was left on it is not offered again", async () => {
+    autoPlaceRow = { auto_place_dated_backlog_id: "dl", auto_place_undated_backlog_id: "open" };
+    const backlog = (id: string, name: string) => ({ id, name, parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 });
+    storeState = { backlogs: { dl: backlog("dl", "Jobs with deadline"), open: backlog("open", "Jobs with no deadline") } };
+    callGmail
+      .mockResolvedValueOnce({ links: [] })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, dated: 0, undated: 1 })
+      .mockResolvedValueOnce({ marked: 2 });
+    twoPageJobs();
+    const onClose = vi.fn();
+    show(onClose);
+
+    await screen.findByText("Reaktor - AI Developer");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Reaktor - Lead Developer" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected & auto-place/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected & auto-place/ }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 8000 });
+    const imported = callGmail.mock.calls[1][0];
+    expect(imported.links.map((l: { url: string }) => l.url)).toEqual(["https://www.reaktor.com/careers/ai-developer"]);
+    // Both of the page's jobs are remembered: the one taken and the one left.
+    expect(callGmail.mock.calls[2][0]).toEqual({
+      action: "mark_pages_seen",
+      organizationId: "org-1",
+      queryId: "q-1",
+      urls: ["https://www.reaktor.com/careers/ai-developer", "https://www.reaktor.com/careers/lead-developer"],
+    });
+    expect(callGmail.mock.calls.some((c) => c[0].action === "mark_read")).toBe(false);
+    await waitFor(() =>
+      expect(toast.mock.calls.map((c) => String(c[0].description))).toEqual(
+        expect.arrayContaining([expect.stringContaining("1 career page job left out will not be offered again.")]),
+      ),
+    );
   });
 });

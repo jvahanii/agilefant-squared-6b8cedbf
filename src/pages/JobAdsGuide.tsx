@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
+import { CAREER_PAGE_SOURCES } from "../../supabase/functions/_shared/careerPages";
 
 /**
  * A public guide to job ad import, readable without an account.
@@ -16,6 +17,7 @@ const SECTIONS = [
   { id: "google-oauth", title: "Your organization's Google OAuth client" },
   { id: "getting-started", title: "Getting started" },
   { id: "importing", title: "Importing postings" },
+  { id: "career-pages", title: "Company career pages" },
   { id: "deadlines", title: "Application deadlines" },
   { id: "scheduling", title: "Scheduled imports" },
   { id: "closed-ads", title: "Checking for closed ads" },
@@ -264,6 +266,13 @@ export default function JobAdsGuide() {
               <Code>Searching Gmail…</Code> while it finds the emails and reads them.
             </li>
             <li>
+              <Code>Checking career pages…</Code> while it reads any{" "}
+              <a href="#career-pages" className="text-primary underline-offset-2 hover:underline">
+                company career pages
+              </a>{" "}
+              the search names.
+            </li>
+            <li>
               <Code>Found 40 jobs in 14 emails. Reading job postings for deadlines… 12/34</Code> while it opens the
               postings whose email gave no deadline, up to 40 of them. This is usually the longest part.
             </li>
@@ -291,7 +300,8 @@ export default function JobAdsGuide() {
           </P>
           <Ul>
             <li>
-              Postings are grouped under the email they came from, with its subject, sender and date.{" "}
+              Postings are grouped under the email — or the career page — they came from, with its subject, sender
+              and date.{" "}
               <Em>Open in Gmail</Em> opens that email. Under the heading it says how many jobs the email holds and
               where any of them already are, for example <Code>2 already in Jobs with no deadline</Code>.
             </li>
@@ -344,7 +354,7 @@ export default function JobAdsGuide() {
               ],
               [
                 "Do not import anything, mark N emails read",
-                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import & auto-place marks the emails read as well, so after an import there is no need for this.",
+                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import & auto-place marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
               ],
             ]}
           />
@@ -370,6 +380,84 @@ export default function JobAdsGuide() {
           <Callout>
             Marking emails as read needs permission to change your Gmail labels. A connection made before that was
             asked for keeps working for everything else; choose <Em>Connect Gmail</Em> again to grant it.
+          </Callout>
+        </Section>
+
+        <Section id="career-pages" title="Company career pages">
+          <P>
+            A job alert is a board&apos;s selection, mailed when the board gets round to it. A company&apos;s own list of
+            open positions is all of them, as of now. A saved search can read such pages as well: each run then offers
+            the positions on them beside the jobs from email.
+          </P>
+          <P>
+            Under a saved search, <Em>Career pages</Em> lists the pages it reads. Paste a page&apos;s address and choose{" "}
+            <Em>Add page</Em>; the <Em>×</Em> beside a page stops reading it. Each page is read by rules written for
+            that site, so only these can be added:
+          </P>
+          <div className="mt-4 overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <thead className="border-b bg-muted/40">
+                <tr>
+                  <th scope="col" className="px-4 py-2 font-medium">Company</th>
+                  <th scope="col" className="px-4 py-2 font-medium">Page</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {CAREER_PAGE_SOURCES.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-4 py-2 font-medium">{s.company}</td>
+                    <td className="px-4 py-2 break-all text-muted-foreground">{s.example}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <SubHeading>In the picker</SubHeading>
+          <Ul>
+            <li>
+              A page&apos;s jobs sit under a heading of their own, like an email&apos;s, named for example{" "}
+              <Code>Reaktor: open positions</Code>. <Em>Open page</Em> opens the page.
+            </li>
+            <li>
+              Only positions that are new to the search are listed. Under the heading it says what else the page
+              holds, for example{" "}
+              <Code>2 new jobs from this page · 19 open positions on the page · 15 already in your lists · 2 skipped earlier</Code>
+              .
+            </li>
+            <li>
+              The line above the list counts the pages with the emails:{" "}
+              <Code>12 jobs, out of which 5 seem new, found in 3 emails and on 1 career page</Code>.
+            </li>
+            <li>
+              A page with nothing new, or one that could not be read, gets a line saying so above the list rather than
+              a heading.
+            </li>
+            <li>
+              Items are named like any other posting — <Code>Reaktor - Lead Developer (Helsinki)</Code> — with the
+              city the page gives, and their description names the career page they were found on.
+            </li>
+          </Ul>
+          <SubHeading>What is not offered again</SubHeading>
+          <P>
+            An email that has been dealt with is marked read. A page lists the same positions every day, so Agilefant
+            remembers instead which of them a search has already shown you:
+          </P>
+          <Ul>
+            <li>A position that is already an item anywhere in the tree is never listed.</li>
+            <li>
+              <Em>Import &amp; auto-place</Em> remembers every position listed from a page you took at least one job
+              from: the ones you left were left on purpose. A page you took nothing from is offered again next time.
+            </li>
+            <li>
+              <Em>Do not import anything, … skip N career page jobs</Em> remembers all of them.
+            </li>
+            <li>
+              <Em>Import selected</Em> remembers nothing, as it leaves emails unread: what you did not import comes
+              back on the next run.
+            </li>
+          </Ul>
+          <Callout>
+            Career pages are read when you run a search yourself. A scheduled run reads the mail only.
           </Callout>
         </Section>
 

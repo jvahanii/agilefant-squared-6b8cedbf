@@ -9,6 +9,9 @@
 //                 mode 'jobs' narrows the result to job postings
 //   import      → creates one work item per selected link
 //   mark_read   → removes the UNREAD label from the given messages
+//   career_pages     → reads the career pages a job search names and returns
+//                      the positions on them that are new to it (no writes)
+//   mark_pages_seen  → remembers positions a search need not offer again
 
 import {
   adminClient,
@@ -39,7 +42,8 @@ import {
   verifyState,
 } from '../_shared/googleOAuth.ts';
 import { importLinksAsWorkItems, urlsInBacklog, urlsInTree } from '../_shared/gmailImport.ts';
-import { fillDeadlines } from '../_shared/fetchDeadline.ts';
+import { fetchPosting, fillDeadlines } from '../_shared/fetchDeadline.ts';
+import { careerPageFor, MAX_CAREER_PAGES, pageMessageId, positionsAsLinks } from '../_shared/careerPages.ts';
 import { wellFormedDeadline } from '../_shared/deadlines.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 
@@ -94,6 +98,20 @@ function callbackUri(returnUrl: string): string {
     throw new Error('bad_request: returnUrl must be the app callback page');
   }
   return `${u.origin}${u.pathname}`;
+}
+
+/** The saved search, if it is one of this organization's. */
+async function savedSearch(admin: ReturnType<typeof adminClient>, organizationId: string, queryId: string) {
+  if (!queryId) throw new Error('bad_request: queryId is required');
+  const { data, error } = await admin
+    .from('gmail_import_queries')
+    .select('id, career_pages')
+    .eq('id', queryId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('forbidden: no such saved search in this organization');
+  return data as { id: string; career_pages: string[] | null };
 }
 
 /** Remove every connection made through an organization's own client. */
@@ -397,6 +415,92 @@ Deno.serve(async (req) => {
           cities: (l as { cities?: string[] }).cities ?? null,
         })),
       });
+    }
+
+    // The career pages a job search names: every position on each, less the
+    // ones already in the tree and the ones an earlier run listed and left.
+    // What mail does by being read, a page cannot — it shows the same list
+    // every day — so only what is new to this search is worth a row.
+    if (action === 'career_pages') {
+      const organizationId = organizationIdFor();
+      await assertOrgMember(user.id, organizationId);
+      const queryId = String(body.queryId ?? '');
+      const treeId = String(body.treeId ?? '');
+      const saved = await savedSearch(admin, organizationId, queryId);
+      const urls = (saved.career_pages ?? []).slice(0, MAX_CAREER_PAGES);
+      if (urls.length === 0) return json({ pages: [], links: [] });
+
+      const inTree = treeId ? await urlsInTree(admin, organizationId, treeId) : new Map<string, string>();
+      const { data: seenRows, error: seenError } = await admin
+        .from('career_page_seen_postings')
+        .select('url')
+        .eq('query_id', queryId);
+      if (seenError) throw seenError;
+      const seen = new Set((seenRows ?? []).map((r) => r.url as string));
+
+      const now = new Date().toISOString();
+      const pages: Array<{
+        url: string;
+        messageId: string;
+        name: string;
+        /** Positions the page lists. */
+        total: number;
+        /** Of those, already in the tree. */
+        inLists: number;
+        /** Of the rest, listed by an earlier run and left. */
+        skipped: number;
+        /** Why the page told us nothing, when it did not. */
+        error: string | null;
+      }> = [];
+      const links: unknown[] = [];
+      for (const url of urls) {
+        const source = careerPageFor(url);
+        const page = { url, messageId: pageMessageId(url), name: source?.company ?? url, total: 0, inLists: 0, skipped: 0 };
+        if (!source) {
+          pages.push({ ...page, error: 'This page is not one Agilefant knows how to read.' });
+          continue;
+        }
+        const res = await fetchPosting(url);
+        if ('error' in res || !res.ok) {
+          const status = 'error' in res ? res.error : res.status;
+          pages.push({ ...page, error: status ? `The page answered ${status}.` : 'The page did not answer.' });
+          continue;
+        }
+        const all = positionsAsLinks(source, url, await res.text(), now);
+        const known = all.filter((l) => inTree.has(l.url));
+        const left = all.filter((l) => !inTree.has(l.url) && seen.has(l.url));
+        const fresh = all.filter((l) => !inTree.has(l.url) && !seen.has(l.url));
+        pages.push({
+          ...page,
+          total: all.length,
+          inLists: known.length,
+          skipped: left.length,
+          // Not an error to have nothing open — but it is also what a changed
+          // layout looks like, and silence would hide that.
+          error: all.length === 0 ? 'No open positions were found on the page. If it lists some, its layout has changed.' : null,
+        });
+        links.push(...fresh.map((l) => ({ ...l, alreadyImported: false, alreadyIn: null })));
+      }
+      return json({ pages, links });
+    }
+
+    if (action === 'mark_pages_seen') {
+      const organizationId = organizationIdFor();
+      await assertOrgMember(user.id, organizationId);
+      const queryId = String(body.queryId ?? '');
+      await savedSearch(admin, organizationId, queryId);
+      const raw: unknown[] = Array.isArray(body.urls) ? body.urls : [];
+      const urls = [...new Set(raw.filter((u): u is string => typeof u === 'string' && /^https?:\/\//i.test(u)))];
+      if (urls.length === 0) return json({ marked: 0 });
+      if (urls.length > 500) return json({ error: 'too many positions at once' }, 400);
+      const { error } = await admin
+        .from('career_page_seen_postings')
+        .upsert(
+          urls.map((url) => ({ query_id: queryId, organization_id: organizationId, url })),
+          { onConflict: 'query_id,url', ignoreDuplicates: true },
+        );
+      if (error) throw error;
+      return json({ marked: urls.length });
     }
 
     if (action === 'mark_read') {

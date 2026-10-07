@@ -40,10 +40,20 @@ describe("JobAdsGuide", () => {
   });
 
   it("lists the supported job boards", () => {
-    renderGuide();
-    const table = screen.getByRole("table");
+    const { container } = renderGuide();
+    const table = within(container.querySelector("section#job-boards") as HTMLElement).getByRole("table");
     for (const board of ["LinkedIn", "Duunitori", "Jobly", "The Hub", "Työmarkkinatori", "Teamtailor"]) {
       expect(within(table).getByText(board)).toBeInTheDocument();
     }
+  });
+
+  it("lists the career pages a search can read, and says what is not offered again", () => {
+    const { container } = renderGuide();
+    const section = within(container.querySelector("section#career-pages") as HTMLElement);
+    const table = section.getByRole("table");
+    expect(within(table).getByText("Reaktor")).toBeInTheDocument();
+    expect(within(table).getByText("https://www.reaktor.com/careers/all-open-positions")).toBeInTheDocument();
+    expect(section.getByText(/A scheduled run reads the mail only/)).toBeInTheDocument();
+    expect(section.getByText(/A page you took nothing from is offered again next time/)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@
 // Fast Refresh keeps working there, and so the grouping can be unit-tested.
 
 import { deadlinePassed } from "../../supabase/functions/_shared/deadlines";
+import { isPageMessageId } from "../../supabase/functions/_shared/careerPages";
 
 export interface PreviewLink {
   url: string;
@@ -26,6 +27,84 @@ export interface PreviewLink {
   cities?: string[];
   /** Star rating the created item should carry; absent means unrated. */
   rating?: number;
+}
+
+/**
+ * A career page a job search read, as the server reports it. Its rows reach
+ * the picker as links like any other, carrying `messageId` where an email's
+ * rows carry the email's.
+ */
+export interface CareerPageNote {
+  url: string;
+  messageId: string;
+  /** The employer, or the address when the page is not one that can be read. */
+  name: string;
+  /** Positions the page lists. */
+  total: number;
+  /** Of those, already in the tree — not offered. */
+  inLists: number;
+  /** Of the rest, listed by an earlier run and left — not offered either. */
+  skipped: number;
+  /** Why the page told us nothing, when it did not. */
+  error: string | null;
+}
+
+/** A row read off a career page rather than out of an email. */
+export const isCareerPageRow = (link: { messageId: string }) => isPageMessageId(link.messageId);
+
+/** The emails these rows came from. A career page is not one. */
+export const emailCountOf = (links: { messageId: string }[]) =>
+  new Set(links.filter((l) => !isCareerPageRow(l)).map((l) => l.messageId)).size;
+
+/** The career pages these rows came from. */
+export const pageCountOf = (links: { messageId: string }[]) =>
+  new Set(links.filter(isCareerPageRow).map((l) => l.messageId)).size;
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Where a run's jobs were found: "in 3 emails", "on 1 career page", or "in 3
+ * emails and on 1 career page". With neither it is still "in 0 emails" — the
+ * search is a mail search first.
+ */
+export function foundWhere(emails: number, pages: number): string {
+  if (pages === 0) return `in ${plural(emails, "email")}`;
+  const onPages = `on ${plural(pages, "career page")}`;
+  return emails === 0 ? onPages : `in ${plural(emails, "email")} and ${onPages}`;
+}
+
+/**
+ * What a career page's heading says about the rest of the page: how many
+ * positions it lists, and why most of them are not rows here.
+ */
+export function careerPageLine(page: Pick<CareerPageNote, "total" | "inLists" | "skipped">): string {
+  return [
+    `${plural(page.total, "open position")} on the page`,
+    page.inLists ? `${page.inLists} already in your lists` : "",
+    page.skipped ? `${page.skipped} skipped earlier` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * The button that imports nothing and clears the run away: emails are marked
+ * read, and career page jobs — which have no "read" to mark — are remembered
+ * as skipped. It names what it will do to how many of each.
+ */
+export function declineLabel(emails: number, pageJobs: number): string {
+  const read = `mark ${plural(emails, "email")} read`;
+  const skip = `skip ${plural(pageJobs, "career page job")}`;
+  if (pageJobs === 0) return `Do not import anything, ${read}`;
+  return `Do not import anything, ${emails === 0 ? skip : `${read}, ${skip}`}`;
+}
+
+/** What that button reports having done. */
+export function declinedSummary(emailsMarked: number, pageJobsSkipped: number): string {
+  const read = `${plural(emailsMarked, "email")} marked as read`;
+  const skipped = `${plural(pageJobsSkipped, "career page job")} skipped`;
+  if (pageJobsSkipped === 0) return read;
+  return emailsMarked === 0 ? skipped : `${read}, ${skipped}`;
 }
 
 export interface SourceEmailGroup {
@@ -92,6 +171,8 @@ export function previewSummary(opts: {
   shown: number;
   /** Source emails those rows came from. */
   emails: number;
+  /** Career pages those rows came from, when the search reads any. */
+  pages?: number;
   mode: "links" | "jobs";
   /** Distinct postings before the keyword filter, when one is active. */
   total?: number;
@@ -108,10 +189,9 @@ export function previewSummary(opts: {
     opts.fresh !== undefined && opts.shown > 0
       ? `, out of which ${opts.fresh} seem${opts.fresh === 1 ? "s" : ""} new,`
       : "";
-  const emails = `${opts.emails} email${opts.emails === 1 ? "" : "s"}`;
   const filtered =
     opts.total !== undefined && opts.total !== opts.shown ? ` (filtered from ${opts.total})` : "";
-  return `${items}${fresh} found in ${emails}${filtered} — pick what to import`;
+  return `${items}${fresh} found ${foundWhere(opts.emails, opts.pages ?? 0)}${filtered} — pick what to import`;
 }
 
 /**
