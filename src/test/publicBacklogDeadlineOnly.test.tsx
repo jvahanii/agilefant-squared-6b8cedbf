@@ -163,6 +163,7 @@ describe("on the page", () => {
     renderPage();
     await screen.findByText("Fortum - Architect");
     expect(toggle()).toHaveAttribute("aria-checked", "false");
+    expect(toggle().querySelector("[data-state]")).toHaveAttribute("data-state", "off");
     // The group is folded, so its children are not on screen yet.
     expect(rows()).toEqual(["Fortum - Architect", "Open application", "Nordea - Architect", "Group"]);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -174,6 +175,8 @@ describe("on the page", () => {
     fireEvent.click(toggle());
 
     expect(toggle()).toHaveAttribute("aria-checked", "true");
+    // Drawn as an on/off switch, whose knob has moved across.
+    expect(toggle().querySelector("[data-state]")).toHaveAttribute("data-state", "on");
     // The group opens by itself: the dated row inside it is why it is still here.
     expect(rows()).toEqual(["Fortum - Architect", "Nordea - Architect", "Group", "Elisa - Lead"]);
     expect(screen.getByRole("status")).toHaveTextContent("Showing 3 of 6 rows — those with a deadline.");

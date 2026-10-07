@@ -516,12 +516,28 @@ export default function PublicBacklog() {
                         aria-label="Only rows with a deadline"
                         title={deadlineOnly ? "Showing only rows with a deadline. Click to show all rows." : "Hide rows without a deadline"}
                         onClick={() => setDeadlineOnly((on) => !on)}
-                        className={`flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium ${
-                          deadlineOnly ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                        className={`flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs font-medium ${
+                          deadlineOnly ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
                         <span className="hidden sm:inline">With deadline</span>
+                        {/* Drawn as the on/off switch it is — a track and a knob
+                            that slides — so its state reads at a glance rather
+                            than from a tint. */}
+                        <span
+                          aria-hidden="true"
+                          data-state={deadlineOnly ? "on" : "off"}
+                          className={`inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+                            deadlineOnly ? "bg-primary" : "bg-input"
+                          }`}
+                        >
+                          <span
+                            className={`h-3 w-3 rounded-full bg-background shadow transition-transform ${
+                              deadlineOnly ? "translate-x-3.5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
                       </button>
                     )}
                     {/* Date spans sit behind this, so the bar stays one line
