@@ -390,3 +390,54 @@ describe('LinkedIn job alert digest names each employer', () => {
     expect(links[1].title).toBe('Alibaba Cloud - Data Center IT Manager-Helsinki, Finland');
   });
 });
+
+describe("Tieto's own job alerts", () => {
+  // Cards as the mail carries them: the title link, the place under it, then
+  // Apply — whose tracking is joined on with "&" where a "?" belongs — and
+  // "Send to a friend". Around them the logo, the browse link and the footer.
+  const card = (slug: string, id: number, title: string, place: string) =>
+    `<td><div style="font-size:22px"><a class="link" href="https://careers.tieto.com/job/${slug}-jid-${id}?utm_source=attraxjobalerts&utm_medium=email" style="color:#000">${title}</a></div>` +
+    `<!--[if mso | IE]><tr><td style="width:600px"><![endif]--><div style="font-size:1px;line-height:10px"></div>` +
+    `<!--[if mso | IE]><tr><td style="width:600px"><![endif]--><div style="font-size:16px">Location: ${place}<br></div>` +
+    `<!--[if mso | IE]><tr><td style="width:600px"><![endif]-->` +
+    `<table><tbody><tr><td class="button"><p><a href="https://careers.tieto.com/job/${slug}-jid-${id}&utm_source=attraxjobalerts&utm_medium=email">Apply</a></p></td>` +
+    `<td class="button"><p><a href="https://careers.tieto.com/EmailToFriend?id=${id}&pagetype=job&utm_source=attraxjobalerts&utm_medium=email">Send to a friend</a></p></td></tr></tbody></table></td>`;
+  const MAIL =
+    `<a href="https://careers.tieto.com"><img src="https://careers.tieto.com/Blob/images/logo.svg" alt=""></a>` +
+    `<div>We have 3 jobs that could be just what you&#8217re looking for.</div>` +
+    card('senior-dynamics-consultant-tieto-tech-consulting-m-f-d-in-espoo-finland', 3004, 'Senior Dynamics Consultant – Tieto Tech Consulting (m/f/d) ', 'Espoo, Finland') +
+    card('ai-developer-microsoft-tieto-tech-consulting-m-f-d-in-espoo-finland', 2990, 'AI Developer (Microsoft) - Tieto Tech Consulting (m/f/d)', 'Espoo, Finland') +
+    card('projektipaeaellikkoe-turvasektori-tieto-tech-consulting-m-f-d-in-espoo-finland', 2991, 'Projektipäällikkö (turvasektori) - Tieto Tech Consulting (m/f/d)', 'Helsinki, Tampere, Finland') +
+    `<p>Alternatively,<a class="link" href="https://careers.tieto.com/jobs?utm_source=attraxjobalerts&utm_medium=email">see our current job opportunities.</a></p>` +
+    `<a href="https://www.linkedin.com/company/tieto/"><img alt="Linkedin"></a>` +
+    `<p>You can unsubscribe <a href="http://azextranet.service.4matnetworks.com/MailerTools/Unsubscribe.aspx?c=1">here</a> from these alerts.</p>`;
+  const FROM_TIETO = 'Tietoevry <careers@tietoevry.com>';
+  const links = () => extractLinks(message(FROM_TIETO, MAIL, 'Good news! We have 3 jobs waiting for you..'), 'jobs');
+
+  it('keeps one link per posting — not Apply as a second one, nor the furniture', () => {
+    expect(links().map((l) => l.url)).toEqual([
+      'https://careers.tieto.com/job/senior-dynamics-consultant-tieto-tech-consulting-m-f-d-in-espoo-finland-jid-3004',
+      'https://careers.tieto.com/job/ai-developer-microsoft-tieto-tech-consulting-m-f-d-in-espoo-finland-jid-2990',
+      'https://careers.tieto.com/job/projektipaeaellikkoe-turvasektori-tieto-tech-consulting-m-f-d-in-espoo-finland-jid-2991',
+    ]);
+  });
+
+  it('names each after Tieto and the role, never "Apply" or the line under the title', () => {
+    expect(links().map((l) => l.title)).toEqual([
+      'Tieto - Senior Dynamics Consultant – Tieto Tech Consulting (m/f/d)',
+      'Tieto - AI Developer (Microsoft) - Tieto Tech Consulting (m/f/d)',
+      'Tieto - Projektipäällikkö (turvasektori) - Tieto Tech Consulting (m/f/d)',
+    ]);
+    expect(links().map((l) => l.company)).toEqual(['Tieto', 'Tieto', 'Tieto']);
+  });
+
+  it('takes the cities from the mail, leaving the country out', () => {
+    expect(links().map((l) => l.cities)).toEqual([['Espoo'], ['Espoo'], ['Helsinki', 'Tampere']]);
+  });
+
+  it('is left alone by the generic import, like any other sender', () => {
+    const all = extractLinks(message(FROM_TIETO, MAIL, 'Good news!'));
+    expect(all.some((l) => l.title === 'Apply')).toBe(true);
+    expect(all.length).toBeGreaterThan(3);
+  });
+});

@@ -239,6 +239,38 @@ export const JOB_SOURCES: JobSource[] = [
     isJobUrl: (u) =>
       /(^|\.)baronacareers\.com$/i.test(u.hostname) && /^\/(?:[a-z]{2}\/[a-z]{2}\/)?jobs\/[^/]+\/?$/i.test(u.pathname),
   },
+  {
+    // Tieto's own job alerts ("Good news! We have 4 jobs waiting for you.."),
+    // sent by its career site, which runs on Attrax. Each posting is a card:
+    //
+    //   <a class="link" href="https://careers.tieto.com/job/<slug>-jid-3004?utm_…">Title</a>
+    //   <div>Location: Espoo, Finland<br></div>
+    //   <a href="https://careers.tieto.com/job/<slug>-jid-3004&utm_…">Apply</a>
+    //   <a href="https://careers.tieto.com/EmailToFriend?id=3004…">Send to a friend</a>
+    //
+    // The mail still arrives from tietoevry.com, the company's name until
+    // 2026; the site, the logo and the mail's own text all say Tieto.
+    id: 'tieto',
+    senders: /@tieto(?:evry)?\.com/i,
+    alertSenders: ['careers@tietoevry.com'],
+    // One employer, whatever the card says: read from the markup beside the
+    // title, the "employer" would be the line under it — "Location: Espoo".
+    company: () => 'Tieto',
+    // "/job/<slug>-jid-<number>". Not "/jobs" (all of them), nor EmailToFriend.
+    isJobUrl: (u) => /(^|\.)tieto(?:evry)?\.com$/i.test(u.hostname) && /^\/job\/[^/]*-jid-\d+/i.test(u.pathname),
+    // The Apply link joins its tracking on with "&" where a "?" belongs, so the
+    // parameters arrive as part of the path. Cut there, and Apply is the same
+    // posting as its title link instead of a second one named "Apply".
+    canonicalPath: (u) => u.pathname.replace(/&.*$/, '').replace(/\/+$/, ''),
+    // The mail says where: "Location: Espoo, Finland", under the title.
+    cities: ({ afters }) => {
+      for (const after of afters) {
+        const place = stripTags(after.split(/<a\b/i)[0] ?? '').match(/\bLocation:\s*(.+)$/i)?.[1];
+        if (place) return citiesFromList(place);
+      }
+      return undefined;
+    },
+  },
 ];
 
 /**
