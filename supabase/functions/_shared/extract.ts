@@ -182,13 +182,17 @@ export function extractLinks(msg: GmailMessage, mode: LinkMode = 'links'): Extra
   const occurrences = new Map<string, LinkOccurrence[]>();
 
   const push = (rawUrl: string, rawLabel: string, after = '', before = '') => {
+    // The markup inside the link is kept beside its text: Valtiolle.fi puts the
+    // employer, the role and the closing date all inside one link, told apart
+    // only by their classes. Capped, like the windows either side.
+    const inner = rawLabel.slice(0, AFTER_WINDOW);
     const url = normalizeUrl(decodeEntities(rawUrl));
     if (!url) return;
     const label = decodeEntities(rawLabel).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (looksLikeNoise(url, label)) return;
     const existing = occurrences.get(url);
-    if (existing) existing.push({ label, after, before });
-    else occurrences.set(url, [{ label, after, before }]);
+    if (existing) existing.push({ label, after, before, inner });
+    else occurrences.set(url, [{ label, after, before, inner }]);
   };
 
   for (const html of bodies.html) {

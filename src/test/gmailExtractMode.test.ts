@@ -441,3 +441,71 @@ describe("Tieto's own job alerts", () => {
     expect(all.length).toBeGreaterThan(3);
   });
 });
+
+describe("Valtiolle.fi's job alerts", () => {
+  // Every link in the mail is a Mailjet tracker whose last part is the
+  // destination in base64. A posting is one link holding the employer, the role
+  // and the closing date; the mail ends with two more trackers for the first
+  // posting, around nothing and around a one-pixel image, to count opens.
+  const tracked = (n: number, destination: string, query = '') =>
+    `https://s0olo.mjt.lu/lnk/CAAACX-L9ooAAchl6nIAA9s-99IAAYCuEIIAAAAAACYObQBqx6bAKm2ub1hQTAKUZ0iSGCQSTwAMr0w/${n}/dhrzrm2oxxAfeOd5Pd26vQ/${Buffer.from(destination, 'utf8').toString('base64url')}${query}`;
+  const utm = '?utm_source=alert&utm_medium=email&utm_campaign=valtiolle';
+  const job = (n: number, slug: string, employer: string, title: string, closes: string) =>
+    `<tr><td><div><a style="color: #000C9E; text-decoration: none;" href="${tracked(n, `https://valtiolle.fi/fi/tyopaikat/${slug}/${utm}`)}">` +
+    `<h3 class="job" style="color: #2E434D;"><span class="job__sub" style="font-size: 80%; display: block;">${employer}</span> ` +
+    `<span class="job__title" style="font-weight: 400; display: block;">${title}</span> ` +
+    `<span class="job__sub" style="font-size: 80%; display: block;">Hakuaika päättyy ${closes}</span></h3></a></div></td></tr>`;
+  const MAIL =
+    `<p>Valtiolle.fi:n hakuvahti on löytänyt <b>3</b> uutta avointa työpaikkaa hakuvahdillasi <b>Valtiolle.fi työpaikat</b>.</p>` +
+    job(1, 'talousasiantuntija-40.14.02-25549', 'Itä-Uudenmaan poliisilaitos', 'Talousasiantuntija 40.14.02', '23.10.2026 16:15') +
+    // This one's address as the real mail carried it, to the letter.
+    `<tr><td><div><a href="https://s0olo.mjt.lu/lnk/CAAACX-L9ooAAchl6nIAA9s-99IAAYCuEIIAAAAAACYObQBqx6bAKm2ub1hQTAKUZ0iSGCQSTwAMr0w/2/HmTGd_zzjSGaqCwct8ToiQ/aHR0cHM6Ly92YWx0aW9sbGUuZmkvZmkvdHlvcGFpa2F0L3R1cnZhbGxpc3V1c3Zhc3RhYXZhLTI1NTExLz91bXRfc291cmNlPWFsZXJ0JnV0bV9tZWRpdW09ZW1haWwmdXRtX2NhbXBhaWduPXZhbHRpb2xsZQ">` +
+    `<h3 class="job"><span class="job__sub">Museovirasto</span> <span class="job__title">Turvallisuusvastaava</span> <span class="job__sub">Hakuaika päättyy 29.10.2026 15:00</span></h3></a></div></td></tr>` +
+    job(3, 'ylijohtaja-25541', 'Maanmittauslaitos', 'Ylijohtaja', '23.10.2026 16:15') +
+    `<p><a href="${tracked(6, `https://valtiolle.fi/fi/tyopaikat/?type=268880&profession=278989,279000${utm.replace('?', '&')}`)}">Näytä kaikki hakuvahdin työpaikat</a></p>` +
+    `<p><a href="${tracked(7, 'http://valtiolle.fi/fi/hakuvahti/?sg_id=c72f&sg_type=delete')}">Peruuta hakuvahdin tilaus</a></p>` +
+    `<a href="${tracked(8, `https://valtiolle.fi/fi/tutustu-tyonantajiin/${utm}`)}">Tutustu virastoihin</a>` +
+    `<a href="${tracked(11, `https://fi-fi.facebook.com/people/Valtiollefi/100057269267431/${utm}`)}"><img alt height="25" src="https://www.mailjet.com/images/facebook.png"></a>` +
+    `<br/><a href="${tracked(0, `https://valtiolle.fi/fi/tyopaikat/talousasiantuntija-40.14.02-25549/${utm}`, '?b=1')}">&#8203;</a>` +
+    `<a href="${tracked(0, `https://valtiolle.fi/fi/tyopaikat/talousasiantuntija-40.14.02-25549/${utm}`, '?b=3')}">\r\n<img src="https://s0olo.mjt.lu/oo/CAAACX/c1ea4744/e.gif" height="1" width="1" alt=""/>\r\n</a>`;
+  const FROM_VALTIOLLE = 'Valtiolle.fi <hakuvahti@valtiolle.fi>';
+  const links = () => extractLinks(message(FROM_VALTIOLLE, MAIL, 'Valtiolle.fi - Hakuvahtitulos'), 'jobs');
+
+  it('finds each posting behind its tracker, once, and nothing else in the mail', () => {
+    expect(links().map((l) => l.url)).toEqual([
+      'https://valtiolle.fi/fi/tyopaikat/talousasiantuntija-40.14.02-25549/',
+      'https://valtiolle.fi/fi/tyopaikat/turvallisuusvastaava-25511/',
+      'https://valtiolle.fi/fi/tyopaikat/ylijohtaja-25541/',
+    ]);
+  });
+
+  it('names each after its employer and its role, read from inside the link', () => {
+    expect(links().map((l) => l.title)).toEqual([
+      'Itä-Uudenmaan poliisilaitos - Talousasiantuntija 40.14.02',
+      'Museovirasto - Turvallisuusvastaava',
+      'Maanmittauslaitos - Ylijohtaja',
+    ]);
+    expect(links().map((l) => l.company)).toEqual(['Itä-Uudenmaan poliisilaitos', 'Museovirasto', 'Maanmittauslaitos']);
+  });
+
+  it('takes the closing date the mail states', () => {
+    expect(links().map((l) => l.deadline)).toEqual(['2026-10-23', '2026-10-29', '2026-10-23']);
+  });
+
+  it('leaves the city to the posting page, which the mail does not give', () => {
+    expect(links().map((l) => l.cities)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('gives a generic import the real addresses too, not the trackers', () => {
+    const all = extractLinks(message(FROM_VALTIOLLE, MAIL, 'Valtiolle.fi - Hakuvahtitulos'));
+    expect(all.some((l) => l.url.includes('mjt.lu'))).toBe(false);
+    expect(all.map((l) => l.url)).toContain('https://valtiolle.fi/fi/tutustu-tyonantajiin/');
+  });
+
+  it('does not take the mail about an application already made for a list of postings', () => {
+    const html = `<a href="https://valtiolle.fi/fi/tyopaikat/johtaja-24118/">Johtaja, Strateginen tilannekuva</a><a href="https://valtiolle.fi/fi/omat-hakemukset/">Omat hakemukset</a>`;
+    const out = extractLinks(message('Valtiolle.fi <noreply@valtiolle.fi>', html, 'Hakemuksesi on vastaanotettu'), 'jobs');
+    // An unknown sender in jobs mode passes through as it always has: both links.
+    expect(out).toHaveLength(2);
+  });
+});

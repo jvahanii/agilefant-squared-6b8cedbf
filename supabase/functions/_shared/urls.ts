@@ -86,6 +86,26 @@ function unwrapCustomerIo(u: URL): string | null {
   }
 }
 
+/**
+ * Mailjet wraps every link as /lnk/<message>/<n>/<signature>/<base64 URL>, the
+ * last part being the destination itself. Valtiolle.fi's job alerts go out
+ * through it, so without this each posting was an opaque tracker on mjt.lu —
+ * a different one in every mail, for the same job. Decoded rather than
+ * followed, for the same reason as Mandrill.
+ */
+function unwrapMailjet(u: URL): string | null {
+  if (!/(^|\.)mjt\.lu$/i.test(u.hostname)) return null;
+  if (!u.pathname.startsWith('/lnk/')) return null;
+  const payload = u.pathname.split('/').filter(Boolean).pop() ?? '';
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(payload)) return null;
+  try {
+    const target = b64decode(payload);
+    return /^https?:\/\//i.test(target) ? target : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Unwrap redirect wrappers and strip tracking query params. */
 export function normalizeUrl(raw: string): string | null {
   let candidate = raw.trim();
@@ -99,7 +119,7 @@ export function normalizeUrl(raw: string): string | null {
     }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
 
-    const mandrill = unwrapMandrill(u) ?? unwrapCustomerIo(u);
+    const mandrill = unwrapMandrill(u) ?? unwrapCustomerIo(u) ?? unwrapMailjet(u);
     if (mandrill) {
       candidate = mandrill;
       continue;

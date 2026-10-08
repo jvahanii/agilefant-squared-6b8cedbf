@@ -41,6 +41,11 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
     note: "Weekly “Your latest job suggestions” emails.",
   },
   {
+    name: "Valtiolle.fi",
+    searched: "Yes",
+    note: "Hakuvahti alerts for Finnish government jobs, sent from hakuvahti@valtiolle.fi.",
+  },
+  {
     name: "Tieto",
     searched: "Yes",
     note: "Job alerts from Tieto's own career site, sent from careers@tietoevry.com.",

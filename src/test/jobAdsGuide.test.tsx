@@ -42,7 +42,7 @@ describe("JobAdsGuide", () => {
   it("lists the supported job boards", () => {
     const { container } = renderGuide();
     const table = within(container.querySelector("section#job-boards") as HTMLElement).getByRole("table");
-    for (const board of ["LinkedIn", "Duunitori", "Jobly", "The Hub", "Työmarkkinatori", "Teamtailor", "Tieto"]) {
+    for (const board of ["LinkedIn", "Duunitori", "Jobly", "The Hub", "Työmarkkinatori", "Teamtailor", "Tieto", "Valtiolle.fi"]) {
       expect(within(table).getByText(board)).toBeInTheDocument();
     }
   });

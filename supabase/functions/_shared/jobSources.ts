@@ -21,6 +21,8 @@ export interface LinkOccurrence {
   after: string;
   /** Markup before the anchor. Optional: most sources never need it. */
   before?: string;
+  /** Markup inside the anchor, of which `label` is the text. Optional likewise. */
+  inner?: string;
 }
 
 /** What a source gets to work from when naming the employer. */
@@ -31,6 +33,8 @@ export interface CompanyContext {
   afters: string[];
   /** Markup preceding each anchor, in the same order. */
   befores: string[];
+  /** Markup inside each anchor, in the same order. */
+  inners: string[];
   url: URL;
   subject: string;
   from: string;
@@ -73,6 +77,11 @@ export interface JobSource {
    * it said nothing, and the posting page is read instead.
    */
   cities?(ctx: CompanyContext): string[] | undefined;
+  /**
+   * The text the mail states the closing date in, when that is not the markup
+   * beside the posting's link — Valtiolle.fi writes it inside the link.
+   */
+  deadlineText?(ctx: CompanyContext): string | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
 }
@@ -271,6 +280,35 @@ export const JOB_SOURCES: JobSource[] = [
       return undefined;
     },
   },
+  {
+    // Valtiolle.fi, the Finnish state's job site: its "Hakuvahtitulos" alerts.
+    // A posting is one link holding everything the mail says about it:
+    //
+    //   <a href="…mjt.lu/lnk/…/<base64 of the posting's address>">
+    //     <h3 class="job">
+    //       <span class="job__sub">Museovirasto</span>
+    //       <span class="job__title">Turvallisuusvastaava</span>
+    //       <span class="job__sub">Hakuaika päättyy 29.10.2026 15:00</span>
+    //     </h3>
+    //   </a>
+    //
+    // So the employer, the role and the closing date are all read from inside
+    // the link, where every other board keeps them beside it.
+    id: 'valtiolle',
+    // The alerts only. noreply@valtiolle.fi writes about applications already
+    // made — "Hakemuksesi on vastaanotettu" — and is no list of postings.
+    senders: /hakuvahti@valtiolle\.fi/i,
+    alertSenders: ['hakuvahti@valtiolle.fi'],
+    title: ({ inners }) => valtiolleCard(inners)?.title,
+    company: ({ inners }) => valtiolleCard(inners)?.company,
+    deadlineText: ({ inners }) => valtiolleCard(inners)?.closes,
+    // /fi/tyopaikat/<slug>-<id>/. Not /fi/tyopaikat/?type=… (the whole search),
+    // nor the pages about employers and working life that share the site.
+    isJobUrl: (u) =>
+      /(^|\.)valtiolle\.fi$/i.test(u.hostname) && /^\/[a-z]{2}\/tyopaikat\/[^/]+-\d+\/?$/i.test(u.pathname),
+    // The site's own form ends in a slash, and answers the other with a redirect.
+    canonicalPath: (u) => u.pathname.replace(/\/*$/, '/'),
+  },
 ];
 
 /**
@@ -302,6 +340,25 @@ function baronaCard(befores: string[]): { title?: string; company?: string } | u
         ? rawTitle.slice(0, -(company.length + 2)).trim()
         : rawTitle;
     return { title, company };
+  }
+  return undefined;
+}
+
+/**
+ * A Valtiolle.fi posting, read from the markup inside its link: the role is
+ * the span classed job__title, and of the spans classed job__sub the first is
+ * the employer and the one that speaks of the application period, when it closes.
+ */
+function valtiolleCard(inners: string[]): { title?: string; company?: string; closes?: string } | undefined {
+  for (const inner of inners) {
+    const title = stripTags(inner.match(/class="[^"]*\bjob__title\b[^"]*"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? '');
+    if (!title) continue;
+    const subs = [...inner.matchAll(/class="[^"]*\bjob__sub\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi)]
+      .map((m) => stripTags(m[1]))
+      .filter(Boolean);
+    const closes = subs.find((text) => /hakuaika|ansökningstid|application period/i.test(text));
+    const company = subs.find((text) => text !== closes);
+    return { title, company, closes };
   }
   return undefined;
 }
@@ -383,6 +440,7 @@ function contextFor(occ: LinkOccurrence[], url: URL, subject: string, from: stri
     labels: occ.map((o) => o.label).filter((l) => l.length > 0),
     afters: occ.map((o) => o.after),
     befores: occ.map((o) => o.before ?? ''),
+    inners: occ.map((o) => o.inner ?? ''),
     url,
     subject,
     from,
@@ -451,9 +509,11 @@ export function filterJobLinks<
       // Only the Finnish boards state a deadline in the mail. Elsewhere it is
       // left absent rather than guessed at, and filled in at import time by
       // fetching the posting.
-      const deadline = parseDeadline(beside, l.date ?? Date.now());
+      const stated =
+        (parsed ? source.deadlineText?.(contextFor(occ, parsed, l.subject ?? '', from)) : undefined) ?? beside;
+      const deadline = parseDeadline(stated, l.date ?? Date.now());
       if (deadline) next = { ...next, deadline };
-      else if (parseOpenEnded(beside)) next = { ...next, deadlineOpen: true };
+      else if (parseOpenEnded(stated)) next = { ...next, deadlineOpen: true };
     }
     out.set(canonical, next);
   }
