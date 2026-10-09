@@ -93,6 +93,23 @@ export function buildVisibleRows(
   return { ids, depths };
 }
 
+/**
+ * The rows Tab and Shift+Tab go by: "the item above" is the row above on
+ * screen, so it is the timeline's rows while the timeline is shown and the
+ * list's otherwise.
+ *
+ * The two differ. The timeline opens every branch and can leave undated rows
+ * out, so a row it shows may be folded away in the list, and the row above an
+ * item there is often not the row above it here.
+ */
+export function rowsForReparenting(
+  showingTimeline: boolean,
+  listRows: readonly string[],
+  timelineRows: readonly string[],
+): readonly string[] {
+  return showingTimeline ? timelineRows : listRows;
+}
+
 /** The ancestors of an item in this tree, root first, by effective parent. For
  *  the breadcrumb of an item whose parent lies outside the backlog in view. */
 export function effectiveAncestors(

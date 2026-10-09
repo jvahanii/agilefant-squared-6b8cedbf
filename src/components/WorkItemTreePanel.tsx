@@ -55,6 +55,7 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
+import { rowsForReparenting } from "@/lib/workItemRows";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
@@ -3474,6 +3475,9 @@ export function WorkItemTreePanel() {
     if (!showTimeline) visibleWorkItemIdsRef.current = visibleItemIds;
   }, [visibleItemIds, showTimeline]);
   const timelineRootIds = useMemo(() => displayedRootItems.map((r) => r.id), [displayedRootItems]);
+  // Read by the Tab handler below, which is registered once.
+  const showTimelineRef = useRef(showTimeline);
+  showTimelineRef.current = showTimeline;
 
   // Scroll a work item into view even when it isn't currently rendered by the
   // virtualizer (e.g. navigating from search/label results to an item far
@@ -3527,7 +3531,11 @@ export function WorkItemTreePanel() {
 
       const treeId = state.selectedTreeId;
       const backlogId = state.selectedBacklogIds[0];
-      const currentIds = visibleItemIdsRef.current;
+      // The rows on screen: the timeline's own while it is shown. Judged by
+      // the list's, a row the list keeps folded away was not there to act on,
+      // the key went unhandled, and the browser moved focus instead — which
+      // scrolls the calendar to wherever focus landed, the bars out of sight.
+      const currentIds = rowsForReparenting(showTimelineRef.current, visibleItemIdsRef.current, visibleWorkItemIdsRef.current);
       const selectedSet = new Set(state.selectedWorkItemIds);
       // Process in visible (top-to-bottom) order, restricted to currently visible items.
       const orderedSelected = currentIds.filter((id) => selectedSet.has(id));

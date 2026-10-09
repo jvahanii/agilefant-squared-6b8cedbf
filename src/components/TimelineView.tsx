@@ -3,6 +3,8 @@ import { ZoomIn, ZoomOut } from "lucide-react";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { StartEndDatesDialog } from "@/components/StartEndDatesDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "@/hooks/use-toast";
+import { peekCurrentUser } from "@/lib/currentUser";
 import { scrambleName } from "@/lib/scramble";
 import {
   barFor,
@@ -25,6 +27,7 @@ import { describeStartEnd, formatStartEnd } from "@/lib/workItemStartEnd";
 import { useAppStore } from "@/store/appStore";
 import { getEffectiveStatuses, useBacklogStatusesStore } from "@/store/backlogStatusesStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { getEffectiveParentId, type WorkItem } from "@/types/models";
 
 interface TimelineViewProps {
@@ -66,6 +69,8 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * make it longer or shorter. The dates follow the pointer a day at a time and
  * are saved when it is let go — one step to undo.
  *
+ * Double-clicking a name renames the item in place, as in the list.
+ *
  * The scale is chosen from the span of the dates — days readable for a few
  * weeks, squeezed for years — until the reader zooms in or out, which is then
  * kept for every list until they hand the choice back.
@@ -78,6 +83,34 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState<string | null>(null);
+  // The row whose name is being typed over, and what has been typed.
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null);
+  const startRenaming = (item: WorkItem) => {
+    // While names are shown scrambled there is no name on screen to edit.
+    if (isScrambled) return;
+    // A name scrambled in the database cannot be changed: it keeps the
+    // scramble whatever is sent. Said, as the list says it, rather than
+    // letting someone type into a field whose result is quietly dropped.
+    const scrambled = useScrambledItemsStore.getState().byItem;
+    if (scrambled.has(item.id)) {
+      toast({
+        title: "This name is scrambled",
+        description:
+          scrambled.get(item.id) === (peekCurrentUser()?.id ?? null)
+            ? "Unscramble it before renaming it."
+            : "Only the person who scrambled it can change it.",
+      });
+      return;
+    }
+    setRenaming({ id: item.id, title: item.title });
+  };
+  const commitRename = () => {
+    if (!renaming) return;
+    const title = renaming.title.trim();
+    const item = useAppStore.getState().workItems[renaming.id];
+    if (item && title && title !== item.title) useAppStore.getState().renameWorkItem(renaming.id, title);
+    setRenaming(null);
+  };
   // The bar being dragged, and how many days the pointer has carried it. The
   // store is not touched until the drag ends; the row draws from this.
   const [drag, setDrag] = useState<{ id: string; mode: DragMode; days: number } | null>(null);
@@ -403,11 +436,33 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                       selected ? "bg-accent" : "bg-background"
                     }`}
                     style={{ width: leftWidth, paddingLeft: 8 + depth * 12 }}
-                    title={isScrambled ? undefined : item.title}
+                    title={isScrambled || renaming?.id === id ? undefined : item.title}
+                    onDoubleClick={() => startRenaming(item)}
                   >
-                    <span className="truncate">
-                      {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
-                    </span>
+                    {renaming?.id === id ? (
+                      <input
+                        autoFocus
+                        value={renaming.title}
+                        aria-label={`Rename ${item.title}`}
+                        onChange={(e) => setRenaming({ id, title: e.target.value })}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={commitRename}
+                        // The row's own click selects it; a click to place the
+                        // cursor is not that. Keys stay in the field too.
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") commitRename();
+                          else if (e.key === "Escape") setRenaming(null);
+                        }}
+                        className="h-5 w-full min-w-0 rounded border border-input bg-background px-1 text-xs outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    ) : (
+                      <span className="truncate">
+                        {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
+                      </span>
+                    )}
                   </div>
                   <div className="relative" style={{ width: trackWidth }}>
                     {bar ? (
