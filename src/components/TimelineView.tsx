@@ -24,6 +24,7 @@ import {
   widthToCloseIn,
   widthToShow,
   validZoom,
+  yearLabel,
   yearTicks,
   zoomStep,
   type ZoomChoice,
@@ -71,7 +72,9 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * no bar — and can be left out altogether, which is how the view starts once
  * any row has a date, since a list is usually mostly undated.
  *
- * Clicking a row selects it, as in the list, so the keyboard works the same;
+ * Clicking a row selects it, as in the list, so the keyboard works the same —
+ * with Ctrl or ⌘ to add a row to the selection, and Shift for every row from
+ * the last one clicked to this one;
  * clicking its bar (or, on an undated row, the track) sets its dates. A bar
  * can also be dragged: by its middle to move the work in time, by an end to
  * make it longer or shorter. The dates follow the pointer a day at a time and
@@ -93,6 +96,8 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   const workItems = useAppStore((s) => s.workItems);
   const selectedWorkItemIds = useAppStore((s) => s.selectedWorkItemIds);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
+  // The row a Shift-click ranges from: the last one clicked without Shift.
+  const rangeAnchor = useRef<string | null>(null);
   // Bars take their item's status colour; subscribed so a status edit repaints.
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const isMobile = useIsMobile();
@@ -285,6 +290,29 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on a change of selection only
   }, [selectionKey]);
 
+  // Selecting, as the list does it: a click selects the row alone, with Ctrl
+  // or ⌘ it adds or removes the row, and with Shift it takes every row from
+  // the last one clicked to this one — added to the selection when Ctrl or ⌘
+  // is held as well, in place of it otherwise.
+  const selectRow = (id: string, e: React.MouseEvent) => {
+    const multi = e.ctrlKey || e.metaKey;
+    const anchor = rangeAnchor.current;
+    if (!e.shiftKey || !anchor || !rowIds.includes(anchor)) {
+      selectWorkItem(id, multi);
+      rangeAnchor.current = id;
+      return;
+    }
+    const from = rowIds.indexOf(anchor);
+    const to = rowIds.indexOf(id);
+    const rows = rowIds.slice(Math.min(from, to), Math.max(from, to) + 1);
+    const store = useAppStore.getState();
+    if (!multi) store.clearWorkItemSelection();
+    for (const row of rows) {
+      // Adding toggles: a row already selected is left as it is.
+      if (!useAppStore.getState().selectedWorkItemIds.includes(row)) store.selectWorkItem(row, true);
+    }
+  };
+
   const daysCarried = (clientX: number) =>
     dragStart.current ? Math.round((clientX - dragStart.current.x) / width) : 0;
   const beginDrag = (id: string, mode: DragMode, e: React.PointerEvent) => {
@@ -419,23 +447,35 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
             </label>
           </div>
           <div className="relative" style={{ width: trackWidth }}>
-            {(monthsNamed ? months : years).map((month) => (
-              <div
-                key={month.from}
-                data-axis={monthsNamed ? "month" : "year"}
-                className="absolute top-0 flex h-6 items-center whitespace-nowrap border-l text-xs font-medium text-muted-foreground"
-                style={{ left: (month.from - range.start) * width, width: month.days * width }}
-              >
-                {/* The name follows the scroll along its month, so a month whose
-                    first days are off to the left still says which it is. A
-                    year's name needs less room than a month's. */}
-                {month.days * width >= (monthsNamed ? 44 : 30) && (
-                  <span className="sticky bg-background px-1.5" style={{ left: leftWidth }}>
-                    {month.label}
-                  </span>
-                )}
-              </div>
-            ))}
+            {(monthsNamed ? months : years).map((month) => {
+              // A name is written only where it fits its column. A year's is
+              // shortened, then thinned out, as the columns narrow: written
+              // wider than its column it ran under the next year's and lost
+              // its last figure.
+              const name = monthsNamed
+                ? month.days * width >= 44
+                  ? month.label
+                  : null
+                : yearLabel(Number(month.label), month.days * width, 365.25 * width);
+              return (
+                <div
+                  key={month.from}
+                  data-axis={monthsNamed ? "month" : "year"}
+                  className={`absolute top-0 flex h-6 items-center whitespace-nowrap font-medium text-muted-foreground ${
+                    monthsNamed ? "border-l text-xs" : "text-[11px] tabular-nums"
+                  } ${!monthsNamed && name ? "border-l" : ""}`}
+                  style={{ left: (month.from - range.start) * width, width: month.days * width }}
+                >
+                  {/* The name follows the scroll along its month, so a month whose
+                      first days are off to the left still says which it is. */}
+                  {name && (
+                    <span className={`sticky bg-background ${monthsNamed ? "px-1.5" : "pl-1"}`} style={{ left: leftWidth }}>
+                      {name}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
             {/* Day numbers when a day is wide enough to hold one; otherwise the
                 day each week begins on; nothing at all once weeks are slivers. */}
             {width >= 24
@@ -481,7 +521,9 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                     style={{ left: (day - range.start) * width, width }}
                   />
                 ))}
-            {(width >= 10 ? weeks : months.map((m) => m.from)).map((day) => (
+            {/* A line a week, a month, or — once months are slivers and a line
+                each would shade the whole calendar — a year. */}
+            {(width >= 10 ? weeks : (monthsNamed ? months : years).map((m) => m.from)).map((day) => (
               <div
                 key={day}
                 className="absolute inset-y-0 w-px bg-border/60"
@@ -514,7 +556,11 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                   key={id}
                   data-timeline-row={id}
                   aria-selected={selected}
-                  onClick={(e) => selectWorkItem(id, e.ctrlKey || e.metaKey)}
+                  onClick={(e) => selectRow(id, e)}
+                  // A Shift-click selects rows, not the text between them.
+                  onMouseDown={(e) => {
+                    if (e.shiftKey) e.preventDefault();
+                  }}
                   className={`group flex border-b border-border/40 ${selected ? "bg-accent/60" : "hover:bg-accent/30"}`}
                   style={{ height: ROW_HEIGHT }}
                 >

@@ -21,6 +21,7 @@ import {
   validZoom,
   widthToCloseIn,
   widthToShow,
+  yearLabel,
   yearTicks,
   zoomStep,
   ZOOM_WIDTHS,
@@ -84,6 +85,36 @@ describe("fitting the whole span to the screen", () => {
       { from: dayNumber("2025-01-01"), days: 365, label: "2025" },
       { from: dayNumber("2026-01-01"), days: 41, label: "2026" },
     ]);
+  });
+});
+
+describe("naming years on the axis", () => {
+  it("writes a year in full where its column has room", () => {
+    expect(yearLabel(1996, 47, 47)).toBe("1996");
+    expect(yearLabel(2026, 355, 355)).toBe("2026");
+  });
+
+  it("never writes a name wider than its column — it used to lose its last figure to the next year", () => {
+    // Thirty-odd years across a wide screen: the full name with a pixel or two to spare.
+    expect(yearLabel(1996, 34.5, 34.5)).toBe("1996");
+    // A little narrower and it is written short instead of cut.
+    expect(yearLabel(1996, 28, 28)).toBe("'96");
+    expect(yearLabel(2005, 24, 24)).toBe("'05");
+  });
+
+  it("leaves a year at the edge of the span unnamed when only a sliver of it shows", () => {
+    expect(yearLabel(1995, 6, 47)).toBeNull();
+    // Enough of it for the short name.
+    expect(yearLabel(1995, 24, 47)).toBe("'95");
+  });
+
+  it("names every fifth year, then every tenth, once years are too narrow for one each", () => {
+    const named = (yearPx: number) =>
+      Array.from({ length: 21 }, (_, i) => 1990 + i).filter((y) => yearLabel(y, yearPx, yearPx) !== null);
+    expect(named(12)).toEqual([1990, 1995, 2000, 2005, 2010]);
+    expect(yearLabel(1995, 12, 12)).toBe("1995");
+    expect(named(4)).toEqual([1990, 2000, 2010]);
+    expect(yearLabel(2000, 4, 4)).toBe("2000");
   });
 });
 
@@ -278,6 +309,29 @@ describe("fit all, on the timeline", () => {
     const axis = [...document.querySelectorAll("[data-axis]")];
     expect(new Set(axis.map((el) => el.getAttribute("data-axis")))).toEqual(new Set(["year"]));
     expect(axis.map((el) => el.textContent)).toEqual(["2024", "2025", "2026"]);
+  });
+
+  it("names thirty years without cutting any short, and draws a line a year rather than a month", () => {
+    useAppStore.setState((s) => ({
+      workItems: { ...s.workItems, old: { ...s.workItems.old, startedOn: "1996-03-01", endedOn: "1996-06-01" } },
+    }));
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "Fit all" }));
+    const axis = [...document.querySelectorAll("[data-axis]")] as HTMLElement[];
+    // 1996 to 2026: thirty-one columns of about 32 pixels.
+    expect(axis).toHaveLength(31);
+    for (const column of axis) {
+      const name = column.textContent ?? "";
+      const room = parseFloat(column.style.width);
+      // Nothing is written that its column cannot hold.
+      if (name.length === 4) expect(room).toBeGreaterThanOrEqual(34);
+      if (name.length === 3) expect(room).toBeGreaterThanOrEqual(21);
+      expect([0, 3, 4]).toContain(name.length);
+    }
+    expect(axis.filter((c) => c.textContent).length).toBeGreaterThan(25);
+    // One line a year behind the rows, not one a month.
+    const lines = document.querySelectorAll('[aria-hidden="true"] > .w-px');
+    expect(lines.length).toBe(31);
   });
 
   it("is kept for the next visit, and handed back with Reset zoom", () => {
@@ -503,6 +557,31 @@ describe("bringing a selection into view", () => {
       expect(inView("old")).toBe(true);
       expect(inView("now")).toBe(true);
       expect(dayPixels()).toBeLessThan(before);
+    });
+
+    it("selects every row from the last one clicked to a Shift-clicked one, and shows them all", () => {
+      show();
+      fireEvent.click(row("old"));
+      fireEvent.click(row("undated"), { shiftKey: true });
+      expect(useAppStore.getState().selectedWorkItemIds).toEqual(["old", "now", "undated"]);
+      expect(inView("old")).toBe(true);
+      expect(inView("now")).toBe(true);
+    });
+
+    it("ranges from the row last clicked plainly, and replaces the selection unless Ctrl is held too", () => {
+      show();
+      fireEvent.click(row("undated"));
+      fireEvent.click(row("now"), { shiftKey: true });
+      expect(useAppStore.getState().selectedWorkItemIds).toEqual(["now", "undated"]);
+      // Shift again ranges from the same row, the other way.
+      fireEvent.click(row("old"), { shiftKey: true });
+      expect(useAppStore.getState().selectedWorkItemIds).toEqual(["old", "now", "undated"]);
+
+      // With Ctrl as well, the range is added to what is selected.
+      fireEvent.click(row("old"));
+      fireEvent.click(row("undated"), { ctrlKey: true });
+      fireEvent.click(row("now"), { ctrlKey: true, shiftKey: true });
+      expect([...useAppStore.getState().selectedWorkItemIds].sort()).toEqual(["now", "old", "undated"]);
     });
 
     it("zooms back in when the selection shrinks to one short item", () => {

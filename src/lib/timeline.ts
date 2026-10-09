@@ -320,6 +320,30 @@ export function yearTicks(range: TimelineRange): MonthTick[] {
   return ticks;
 }
 
+/** The room a year written in full takes on the axis — "2026" — and written short — "'26". */
+export const YEAR_LABEL_PX = 34;
+export const SHORT_YEAR_LABEL_PX = 21;
+
+/**
+ * How a year is named on the axis, given how wide a year is drawn — or null
+ * for a year that goes unnamed.
+ *
+ * A name is only written where it fits. Written wider than its column it ran
+ * under the next year's, and a row of years read "199 199 200 200". So as the
+ * columns narrow the year is first written short, and then only every fifth
+ * year is named, and every tenth, each with the columns after it to run into.
+ * `columnPx` is the room the year's own column has — the first and the last
+ * of a span are seldom whole — and `yearPx` what a whole year takes.
+ */
+export function yearLabel(year: number, columnPx: number, yearPx: number): string | null {
+  const every = yearPx >= SHORT_YEAR_LABEL_PX ? 1 : yearPx * 5 >= YEAR_LABEL_PX ? 5 : 10;
+  if (year % every !== 0) return null;
+  const room = columnPx + (every - 1) * yearPx;
+  if (room >= YEAR_LABEL_PX) return String(year);
+  if (room >= SHORT_YEAR_LABEL_PX) return `'${String(year % 100).padStart(2, "0")}`;
+  return null;
+}
+
 /** The Mondays in the range, for week lines. */
 export function weekStarts(range: TimelineRange): number[] {
   const out: number[] = [];
