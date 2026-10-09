@@ -14,6 +14,7 @@ import { BacklogContextMenuItems } from "@/components/BacklogContextMenuItems";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useLabelsStore } from "@/store/labelsStore";
 
 // The switches in this menu save straight to the database; here they must not.
 vi.mock("@/store/supabaseSync", async (importOriginal) => ({
@@ -134,6 +135,72 @@ describe("a list's right-click menu", () => {
     expect(useAppStore.getState().backlogs[BL].startEndDatesEnabled ?? false).toBe(false);
     fireEvent.click(screen.getByText("Start and end dates"));
     expect(useAppStore.getState().backlogs[BL].startEndDatesEnabled).toBe(true);
+  });
+});
+
+describe("labels on a list", () => {
+  const assignLabel = vi.fn();
+  const unassignLabel = vi.fn();
+  const label = (id: string, name: string, organizationId = ORG) => ({ id, name, color: "#16a34a", organizationId });
+  const withLabels = (assigned: string[] = []) =>
+    useLabelsStore.setState({
+      labels: { urgent: label("urgent", "Urgent"), applied: label("applied", "Applied"), theirs: label("theirs", "Another org's", "other") },
+      byEntity: assigned.length ? { [`backlog:${BL}`]: assigned } : {},
+      assignLabel,
+      unassignLabel,
+    });
+  const openLabels = () => fireEvent.click(screen.getByText("Labels"));
+
+  beforeEach(() => {
+    assignLabel.mockReset();
+    unassignLabel.mockReset();
+    withLabels();
+  });
+
+  it("are offered only where the organization has labels on", () => {
+    openMenu();
+    expect(screen.queryByText("Labels")).not.toBeInTheDocument();
+    cleanup();
+
+    settings({ labelsEnabled: true });
+    openMenu();
+    expect(screen.getByText("Labels")).toBeInTheDocument();
+  });
+
+  it("lists the organization's labels by name, and gives the one chosen to the list", () => {
+    settings({ labelsEnabled: true });
+    openMenu();
+    openLabels();
+    expect(screen.getAllByRole("menuitemcheckbox").map((el) => el.textContent)).toEqual(
+      expect.arrayContaining(["Applied", "Urgent"]),
+    );
+    expect(screen.queryByText("Another org's")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Urgent" }));
+    expect(assignLabel).toHaveBeenCalledWith("urgent", "backlog", BL, ORG);
+    // Still open, for the next label.
+    expect(screen.getByRole("menuitemcheckbox", { name: "Applied" })).toBeInTheDocument();
+  });
+
+  it("shows which labels the list has, counts them, and takes one off", () => {
+    settings({ labelsEnabled: true });
+    withLabels(["applied"]);
+    openMenu();
+    expect(screen.getByText("(1)")).toBeInTheDocument();
+    openLabels();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Applied" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemcheckbox", { name: "Urgent" })).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Applied" }));
+    expect(unassignLabel).toHaveBeenCalledWith("applied", "backlog", BL);
+  });
+
+  it("says where to make labels when there are none", () => {
+    settings({ labelsEnabled: true });
+    useLabelsStore.setState({ labels: {}, byEntity: {} });
+    openMenu();
+    openLabels();
+    expect(screen.getByText(/No labels yet/)).toBeInTheDocument();
   });
 });
 

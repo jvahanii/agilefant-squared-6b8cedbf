@@ -1,4 +1,4 @@
-import { CalendarPlus, CalendarRange, Globe, Hash, Settings2, SlidersHorizontal, Star, Trash2, TrendingUp } from "lucide-react";
+import { CalendarPlus, CalendarRange, Globe, Hash, Settings2, SlidersHorizontal, Star, Tag, Trash2, TrendingUp } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -12,6 +12,7 @@ import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
+import { useLabelsStore } from "@/store/labelsStore";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
 import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
@@ -69,6 +70,17 @@ export function BacklogContextMenuItems({
   const createdDatesEnabled = useCreatedDatesEnabled();
   const startEndDatesEnabled = useStartEndDatesEnabled();
   const publicLinksEnabled = usePublicLinksEnabled();
+  // Labels on the list itself. They could already be given from the small tag
+  // button a list's row shows on hover; here they are where everything else
+  // about a list is, and where a touch screen can reach them.
+  const labelsEnabled = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
+  const allLabels = useLabelsStore((s) => s.labels);
+  const assignedLabelIds = useLabelsStore((s) => s.byEntity[`backlog:${backlogId}`]);
+  const assignLabel = useLabelsStore((s) => s.assignLabel);
+  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
+  const orgLabels = Object.values(allLabels)
+    .filter((label) => label.organizationId === activeOrgId)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (!backlog) return null;
   const name = isScrambled ? scrambleName(backlog.name) : backlog.name;
@@ -160,6 +172,41 @@ export function BacklogContextMenuItems({
           <CalendarRange className="w-3 h-3 mr-2" />
           Start and end dates
         </ContextMenuCheckboxItem>
+      )}
+      {labelsEnabled && (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="text-xs">
+            <Tag className="w-3 h-3 mr-2" />
+            Labels
+            {(assignedLabelIds?.length ?? 0) > 0 && (
+              <span className="ml-1 tabular-nums text-muted-foreground">({assignedLabelIds!.length})</span>
+            )}
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="max-h-72 w-56 max-w-[calc(100vw-1.5rem)] overflow-y-auto" collisionPadding={8}>
+            {orgLabels.length === 0 ? (
+              <ContextMenuItem disabled className="text-xs">
+                No labels yet. Create them under Bells &amp; Whistles → Labels.
+              </ContextMenuItem>
+            ) : (
+              orgLabels.map((label) => (
+                <ContextMenuCheckboxItem
+                  key={label.id}
+                  className="text-xs"
+                  checked={assignedLabelIds?.includes(label.id) ?? false}
+                  // Stays open: a list often takes more than one label.
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={(checked) => {
+                    if (checked) void assignLabel(label.id, "backlog", backlogId, label.organizationId);
+                    else void unassignLabel(label.id, "backlog", backlogId);
+                  }}
+                >
+                  <span className="mr-1.5 inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
+                  <span className="min-w-0 flex-1 truncate">{label.name}</span>
+                </ContextMenuCheckboxItem>
+              ))
+            )}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
       )}
       {publicLinksEnabled && (
         <ContextMenuItem className="text-xs" onSelect={onPublish}>
