@@ -41,6 +41,11 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
     note: "Weekly “Your latest job suggestions” emails.",
   },
   {
+    name: "Indeed",
+    searched: "Yes",
+    note: "Job alert emails. Their links do not say where they lead, so each is asked once — to Indeed, as if you had opened every job in the alert.",
+  },
+  {
     name: "Valtiolle.fi",
     searched: "Yes",
     note: "Hakuvahti alerts for Finnish government jobs, sent from hakuvahti@valtiolle.fi.",

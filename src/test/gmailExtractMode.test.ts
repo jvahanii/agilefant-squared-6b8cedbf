@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { extractLinks, type GmailMessage } from '../../supabase/functions/_shared/extract';
+import { canonicalizeByHost } from '../../supabase/functions/_shared/jobSources';
+import { resolveJobLinks } from '../../supabase/functions/_shared/resolveJobLinks';
 
 /**
  * The job-ad import and the generic link import share one extractor, separated
@@ -507,5 +509,120 @@ describe("Valtiolle.fi's job alerts", () => {
     const out = extractLinks(message('Valtiolle.fi <noreply@valtiolle.fi>', html, 'Hakemuksesi on vastaanotettu'), 'jobs');
     // An unknown sender in jobs mode passes through as it always has: both links.
     expect(out).toHaveLength(2);
+  });
+});
+
+describe("Indeed's job alerts", () => {
+  // Every link in the mail is the same kind of tracker; what it leads to is
+  // encrypted into it. A posting is a card — and the card's whole table is
+  // itself wrapped in a link to the same address as its title.
+  const T = (id: string) => `https://engage.indeed.com/f/a/${id}~~/AAR9hBA~/6JIWa0_O9r3R9uCxmTcSS5FOVRX0kq7_dOT1vDksM2${id}`;
+  const card = (id: string, title: string, employer: string, place: string, rating = '') =>
+    `<tr><td style="padding:0" class="r-d" align="left"><a href="${T(id)}" style="text-decoration:none">` +
+    `<table width="100%" role="presentation"><tr><td class="r-e" style="font-size:16px" align="left"><a href="${T(id)}" style="color:#2557a7">${title}</a></td></tr>` +
+    `<tr><td class="r-h" align="left" style="font-size:14px"><span class="r-i" style="color:#2d2d2d">${employer} </span>${rating}<span class="r-j" style="color:#2d2d2d">- ${place}</span></td></tr>` +
+    `<tr><td class="r-l" align="left">Tärkeää on vain, että todella nautit asiakkaiden kanssa työskentelystä.</td></tr>` +
+    `<tr><td class="r-m">1 päivä sitten</td></tr></table></a></td></tr>`;
+  const MAIL =
+    `<table><tbody><tr><td><a href="${T('logo')}"><img alt="Indeed homepage" src="https://d3fw5vlhllyvee.cloudfront.net/logo.png"></a></td></tr></tbody></table>` +
+    `<table><tr><td class="jecl-Disclaimer-text">Jos et enää halua vastaanottaa tämän tyyppisiä sähköposteja, voit <a href="${T('unsub1')}" target="_blank">lopettaa tilauksen</a>.</td></tr></table>` +
+    `<table><tr><td class="job-list-container"><h1 class="r-c">3 uutta työpaikkaa: Suomi</h1><table>` +
+    card('job1', 'Jouluapulainen – 3906 Lempäälä Ideapark | 0-37,5h', 'Rituals', 'Lempäälä') +
+    card('job2', 'Toimistosihteeri', 'Puolustusvoimat', 'Suomi', '<span class="jecl-jc-companyRating" style="white-space:nowrap">3,9 <img alt="" src="https://x/star.png"></span>') +
+    card('job3', 'Kokki - Ravintola Emo', 'Olo Collection', 'Helsinki') +
+    `</table><table><tr><td><a href="${T('all')}">&emsp;&#8203; Näytä kaikki työpaikat &emsp;&#8203;</a></td></tr></table></td></tr>` +
+    `<tr><td class="r-n"><p align="center">Tarkastele työpaikkoja: <a href="${T('since')}">Eilisen jälkeen</a> - <a href="${T('week')}">Viimeisen 7 päivän aikana</a></p></td></tr></table>` +
+    `<table><tr><td><a href="${T('cv')}">&emsp;&#8203; Luo oma Indeed-ansioluettelosi &emsp;&#8203;</a></td></tr></table>` +
+    `<span role="listitem"><a href="${T('privacy')}" title="Tietosuojakäytäntö">Tietosuojakäytäntö</a><span class="r-7"> | </span></span>` +
+    `<span role="listitem"><a href="${T('manage')}">Hallinnoi työpaikkahälytyksiä</a></span>` +
+    `<span role="listitem"><a href="${T('unsub2')}">Peruuta tämän työpaikkahälytyksen tilaus</a></span>`;
+  const FROM_INDEED = 'Indeed <donotreply@jobalert.indeed.com>';
+  const links = () => extractLinks(message(FROM_INDEED, MAIL, '3 uutta työpaikkaa: Suomi'), 'jobs');
+
+  it('keeps the cards and nothing else, though every link in the mail looks alike', () => {
+    expect(links().map((l) => l.url)).toEqual([T('job1'), T('job2'), T('job3')]);
+  });
+
+  it('names each after the employer and the role on its card', () => {
+    expect(links().map((l) => l.title)).toEqual([
+      'Rituals - Jouluapulainen – 3906 Lempäälä Ideapark | 0-37,5h',
+      'Puolustusvoimat - Toimistosihteeri',
+      'Olo Collection - Kokki - Ravintola Emo',
+    ]);
+  });
+
+  it('takes the place from the card: a city, or none when it only says Suomi', () => {
+    expect(links().map((l) => l.cities)).toEqual([['Lempäälä'], [], ['Helsinki']]);
+  });
+
+  describe('finding where the links lead', () => {
+    const leadsTo: Record<string, string> = {
+      [T('job1')]: 'https://fi.indeed.com/rc/clk/dl?jk=202929c48192ae56&from=ja&qd=abc&rd=def&tk=1k4dal5fk&alid=6ac7&bb=xyz&g1tAS=true',
+      [T('job2')]: 'https://fi.indeed.com/rc/clk/dl?jk=AAAA29c48192ae57&from=ja&tk=1k4dal5fk',
+      // A sponsored card's link hands over to an advert redirect, which names no posting.
+      [T('job3')]: 'https://fi.indeed.com/pagead/clk/dl?mo=r&ad=-6NYlbfkN0D&xkcb=SoB',
+    };
+    const asked: string[] = [];
+    const fetcher = async (url: string, init: RequestInit) => {
+      asked.push(`${init.redirect}:${url}`);
+      const location = leadsTo[url];
+      return new Response(null, { status: location ? 302 : 404, headers: location ? { location } : {} });
+    };
+
+    it('replaces each tracker with its posting — the job key and nothing personal', async () => {
+      asked.length = 0;
+      const out = await resolveJobLinks(links(), fetcher);
+      expect(out.map((l) => l.url)).toEqual([
+        'https://fi.indeed.com/viewjob?jk=202929c48192ae56',
+        'https://fi.indeed.com/viewjob?jk=aaaa29c48192ae57',
+      ]);
+      // Names, places and the email they came from travel with them.
+      expect(out[0]).toMatchObject({ title: 'Rituals - Jouluapulainen – 3906 Lempäälä Ideapark | 0-37,5h', cities: ['Lempäälä'], messageId: 'msg-1' });
+    });
+
+    it('asks only the trackers, and never follows them onto the site', async () => {
+      asked.length = 0;
+      await resolveJobLinks(links(), fetcher);
+      expect(asked.sort()).toEqual([`manual:${T('job1')}`, `manual:${T('job2')}`, `manual:${T('job3')}`].sort());
+    });
+
+    it('drops a link that leads to no posting, or does not answer', async () => {
+      const failing = async (url: string, init: RequestInit) => {
+        if (url === T('job1')) throw new Error('timed out');
+        return fetcher(url, init);
+      };
+      const out = await resolveJobLinks(links(), failing);
+      expect(out.map((l) => l.url)).toEqual(['https://fi.indeed.com/viewjob?jk=aaaa29c48192ae57']);
+    });
+
+    it('keeps one row when two links in a mail lead to the same posting', async () => {
+      const same = async () => new Response(null, { status: 302, headers: { location: leadsTo[T('job1')] } });
+      expect(await resolveJobLinks(links(), same)).toHaveLength(1);
+    });
+
+    it('stops at its limit, leaving the rest for the next search', async () => {
+      asked.length = 0;
+      const out = await resolveJobLinks(links(), fetcher, 1);
+      expect(asked).toHaveLength(1);
+      expect(out.map((l) => l.url)).toEqual(['https://fi.indeed.com/viewjob?jk=202929c48192ae56']);
+    });
+
+    it('leaves every other sender alone, without a request', async () => {
+      asked.length = 0;
+      const others = extractLinks(message(FROM, DIGEST), 'jobs');
+      expect(await resolveJobLinks(others, fetcher)).toBe(others);
+      expect(asked).toEqual([]);
+    });
+  });
+
+  it('knows a posting by its job key, so two postings are never one', () => {
+    expect(canonicalizeByHost('https://fi.indeed.com/viewjob?jk=202929c48192ae56&from=serp&vjs=3')).toBe(
+      'https://fi.indeed.com/viewjob?jk=202929c48192ae56',
+    );
+    expect(canonicalizeByHost('https://fi.indeed.com/viewjob?jk=aaaa29c48192ae57')).toBe(
+      'https://fi.indeed.com/viewjob?jk=aaaa29c48192ae57',
+    );
+    // Not a posting: the site's own pages have no job key.
+    expect(canonicalizeByHost('https://fi.indeed.com/jobs?q=product+owner')).toBeNull();
   });
 });

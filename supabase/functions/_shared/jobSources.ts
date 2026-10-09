@@ -84,6 +84,23 @@ export interface JobSource {
   deadlineText?(ctx: CompanyContext): string | undefined;
   /** Optional path rewrite so one posting is one URL across mail templates. */
   canonicalPath?(u: URL): string;
+  /**
+   * The posting's whole address, for a site that names a posting in a query
+   * parameter rather than its path. Takes the place of the path-only rule.
+   */
+  canonicalUrl?(u: URL): string;
+  /**
+   * Is this link a posting, judged by the markup around it? For a mail whose
+   * links cannot be told apart by address — every one the same kind of tracker.
+   */
+  isPosting?(ctx: CompanyContext): boolean;
+  /**
+   * Is this address a tracker that has to be asked where it leads, because the
+   * destination cannot be read out of it? See resolveJobLinks.
+   */
+  unresolved?(u: URL): boolean;
+  /** The posting's address, given where such a tracker leads — or null if not to a posting. */
+  fromRedirect?(to: URL): string | null;
 }
 
 export const JOB_SOURCES: JobSource[] = [
@@ -309,6 +326,44 @@ export const JOB_SOURCES: JobSource[] = [
     // The site's own form ends in a slash, and answers the other with a redirect.
     canonicalPath: (u) => u.pathname.replace(/\/*$/, '/'),
   },
+  {
+    // Indeed's job alerts. A posting is a card: its title a link, and under it
+    // a row naming the employer and the place.
+    //
+    //   <a href="https://engage.indeed.com/f/a/…">Siivooja</a></td></tr>
+    //   <tr><td><span>N-Clean </span><span>- Jyväskylä</span></td></tr>
+    //   <tr><td>N-Clean Oy on vuonna 2004 perustettu…</td></tr><tr><td>1 päivä sitten</td></tr>
+    //
+    // Every link in the mail — postings, the logo, "unsubscribe", the footer —
+    // is the same kind of tracker, and what it leads to is encrypted into it.
+    // So a posting is told from the rest by the card around it, never by its
+    // address, and its real address is learnt afterwards by asking the tracker
+    // where it leads (see resolveJobLinks). The classes on the card are
+    // generated and change, so the card is read by its shape.
+    id: 'indeed',
+    senders: /@(?:[\w-]+\.)*indeed\.com/i,
+    alertSenders: ['donotreply@jobalert.indeed.com'],
+    isJobUrl: (u) => isIndeedTracker(u) || indeedJobKey(u) !== null,
+    isPosting: ({ afters }) => indeedCard(afters) !== undefined,
+    company: ({ afters }) => indeedCard(afters)?.company,
+    // The place the card gives: a city, or "Suomi" — which is no city, and
+    // comes out as none.
+    cities: ({ afters }) => {
+      const place = indeedCard(afters)?.place;
+      return place === undefined ? undefined : citiesFromList(place);
+    },
+    // A posting is its job key, which is a query parameter: the path alone is
+    // "/viewjob" for every posting on the site.
+    canonicalUrl: (u) => {
+      const jk = indeedJobKey(u);
+      return jk ? `https://${u.hostname}/viewjob?jk=${jk}` : u.toString();
+    },
+    unresolved: isIndeedTracker,
+    fromRedirect: (to) => {
+      const jk = indeedJobKey(to);
+      return jk ? `https://${to.hostname}/viewjob?jk=${jk}` : null;
+    },
+  },
 ];
 
 /**
@@ -363,6 +418,37 @@ function valtiolleCard(inners: string[]): { title?: string; company?: string; cl
   return undefined;
 }
 
+/** An Indeed mail's link before it is known where it leads. */
+function isIndeedTracker(u: URL): boolean {
+  return /^engage\.indeed\.com$/i.test(u.hostname) && u.pathname.startsWith('/f/a/');
+}
+
+/** The job key of an address on Indeed that names one posting, or null. */
+function indeedJobKey(u: URL): string | null {
+  if (!/(^|\.)indeed\.com$/i.test(u.hostname)) return null;
+  const jk = u.searchParams.get('jk');
+  return jk && /^[0-9a-f]{16}$/i.test(jk) ? jk.toLowerCase() : null;
+}
+
+/**
+ * An Indeed card, read from the markup after its title link: the title's cell
+ * closes, and the next row's cell holds the employer in its first span and the
+ * place in the span that starts with a dash — "- Jyväskylä". (A span between
+ * them may hold the employer's star rating.) Anything else in the mail that is
+ * a link is followed by something of another shape, and is no card.
+ */
+function indeedCard(afters: string[]): { company: string; place: string } | undefined {
+  for (const after of afters) {
+    const cell = after.match(/^\s*<\/td>\s*<\/tr>\s*<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>/i)?.[1];
+    if (!cell) continue;
+    const spans = [...cell.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/gi)].map((m) => stripTags(m[1]));
+    const company = spans.find((text) => text && !/^[-–]/.test(text));
+    const place = spans.find((text) => /^[-–]\s*\S/.test(text));
+    if (company && place) return { company, place: place.replace(/^[-–]\s*/, '') };
+  }
+  return undefined;
+}
+
 export function jobSourceFor(from: string): JobSource | null {
   return JOB_SOURCES.find((s) => s.senders.test(from)) ?? null;
 }
@@ -380,6 +466,7 @@ export function canonicalJobUrl(source: JobSource, rawUrl: string): string | nul
     return null;
   }
   if (!source.isJobUrl(u)) return null;
+  if (source.canonicalUrl) return source.canonicalUrl(u);
   const path = source.canonicalPath ? source.canonicalPath(u) : u.pathname.replace(/\/+$/, '');
   return `${u.origin}${path}`;
 }
@@ -492,6 +579,9 @@ export function filterJobLinks<
       } catch {
         parsed = null;
       }
+      // A mail whose every link is the same kind of tracker says which are
+      // postings only by what surrounds them.
+      if (parsed && source.isPosting && !source.isPosting(contextFor(occ, parsed, l.subject ?? '', from))) continue;
       const beside = markupBesidePosting(occ);
       const company = parsed
         ? resolveCompany(source, occ, beside, parsed, l.subject ?? '', from)

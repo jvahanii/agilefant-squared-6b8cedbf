@@ -9,6 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { normalizeUrl } from './urls.ts';
 import { extractLinks, header, type ExtractedLink, type GmailMessage, type LinkMode } from './extract.ts';
 import { GMAIL_API_BASE, accessTokenSource, type OAuthClient } from './googleOAuth.ts';
+import { resolveJobLinks } from './resolveJobLinks.ts';
 import { needsReconnect } from './gmailAuthErrors.ts';
 
 // Re-exported so existing importers of this module keep working.
@@ -331,5 +332,7 @@ export async function searchLinks(
     );
     for (const msg of messages) links.push(...extractLinks(msg, mode));
   }
-  return links;
+  // Postings whose address the mail hides behind a tracker that cannot be
+  // decoded — Indeed's — are asked for it here, once the mail has been read.
+  return mode === 'jobs' ? await resolveJobLinks(links) : links;
 }
