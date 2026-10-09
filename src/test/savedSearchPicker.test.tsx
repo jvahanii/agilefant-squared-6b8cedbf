@@ -411,16 +411,32 @@ describe("SavedSearchPicker", () => {
     };
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" })] })
-      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["fresh"] });
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["fresh"] })
+      .mockResolvedValueOnce({ marked: 1 });
+    // The check's report waits ten seconds for the import's summary to clear.
+    // Left to real time it would arrive in the middle of whichever test was
+    // running by then — so the check itself takes those seconds, on a clock
+    // only this test moves.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    checkClosed.mockImplementationOnce(async () => {
+      vi.setSystemTime(Date.now() + 11_000);
+      return { closed: 1, checked: 2, unknown: 0, fromTitle: 0 };
+    });
 
-    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
-    await screen.findByText("A");
-    fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
+    try {
+      render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+      await screen.findByText("A");
+      fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
 
-    // Only what was there before, in the list imported into, with a link. Its
-    // report waits for the import's summary to clear — see the summary tests.
-    await waitFor(() => expect(checkClosed).toHaveBeenCalled());
-    expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
+      // Only what was there before, in the list imported into, with a link.
+      await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+      expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
+      await waitFor(() =>
+        expect(toast.mock.calls.map((c) => c[0].title)).toContain("Existing ads: 1 closed ad"),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("marks every listed email read without importing, when nothing is worth it", async () => {
