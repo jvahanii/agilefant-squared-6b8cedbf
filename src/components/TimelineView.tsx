@@ -15,11 +15,13 @@ import {
   dragDates,
   isWeekend,
   monthTicks,
+  scrollToCentre,
   scrollToShow,
   spanOf,
   timelineRange,
   todayNumber,
   weekStarts,
+  widthToCloseIn,
   widthToShow,
   validZoom,
   yearTicks,
@@ -78,8 +80,9 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * Double-clicking a name renames the item in place, as in the list.
  *
  * Selecting rows brings their bars into view: the calendar scrolls to them,
- * and zooms out if that is what it takes to show them — and everything between
- * the first and the last — at once.
+ * zooms out if that is what it takes to show them — and everything between
+ * the first and the last — at once, and zooms in on a selection drawn too
+ * small to work with.
  *
  * The scale is chosen from the span of the dates — days readable for a few
  * weeks, squeezed for years — until the reader zooms in or out, or asks for
@@ -227,7 +230,7 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   // dragged does not jump away and zooming closes in on what was being looked at.
   const drawn = useRef<{ start: number; width: number } | null>(null);
   // The days a new selection covers, until the calendar has been moved to them.
-  const pendingReveal = useRef<{ from: number; to: number } | null>(null);
+  const pendingReveal = useRef<{ from: number; to: number; centre: boolean } | null>(null);
   const [revealRequest, setRevealRequest] = useState(0);
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -245,7 +248,11 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     const span = pendingReveal.current;
     if (span) {
       pendingReveal.current = null;
-      const to = scrollToShow(span, range, width, el.scrollLeft, el.clientWidth - leftWidth);
+      const available = el.clientWidth - leftWidth;
+      // Zoomed for it: put it in the middle. Otherwise move no further than it takes.
+      const to = span.centre
+        ? scrollToCentre(span, range, width, available)
+        : scrollToShow(span, range, width, el.scrollLeft, available);
       if (to !== null) el.scrollLeft = to;
     }
     scrolledTo.current = el.scrollLeft;
@@ -254,10 +261,11 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
 
   // Selecting rows brings their bars into view — the whole stretch from the
   // earliest to the latest, so what lies between two selected items is seen
-  // too. The calendar zooms out only as far as that takes, and never in: a
-  // selection that already fits is just scrolled to, and one already on
-  // screen changes nothing. Only a change of selection does this, so zooming
-  // or scrolling away from the selection afterwards is left alone.
+  // too. The calendar zooms out as far as that takes, and zooms in on a
+  // selection drawn as a sliver; one that already fits at a scale that suits
+  // it is just scrolled to, and one already on screen changes nothing. Only a
+  // change of selection does this, so zooming or scrolling away from the
+  // selection afterwards is left alone.
   const selectionKey = selectedWorkItemIds.join("|");
   useEffect(() => {
     const el = scrollRef.current;
@@ -267,11 +275,12 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
       today,
     );
     if (!span) return;
-    const available = el.clientWidth - leftWidth;
     // With a little air either side, so a bar does not end on the very edge.
-    const next = zoom === "fit" ? null : widthToShow(span.to - span.from + 1, available - 32, width);
+    const room = el.clientWidth - leftWidth - 32;
+    const days = span.to - span.from + 1;
+    const next = widthToShow(days, room, width) ?? widthToCloseIn(days, room, width);
     if (next !== null) chooseZoom(next);
-    pendingReveal.current = span;
+    pendingReveal.current = { ...span, centre: next !== null };
     setRevealRequest((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on a change of selection only
   }, [selectionKey]);

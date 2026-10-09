@@ -15,9 +15,11 @@ import {
   dayNumber,
   fitWidth,
   MIN_FIT_WIDTH,
+  scrollToCentre,
   scrollToShow,
   spanOf,
   validZoom,
+  widthToCloseIn,
   widthToShow,
   yearTicks,
   zoomStep,
@@ -347,6 +349,40 @@ describe("bringing a selection into view", () => {
     });
   });
 
+  describe("the zoom it is worth", () => {
+    it("brings a sliver up to a scale its days can be read at, and no further", () => {
+      // Five days at 2 pixels a day are 10 pixels of a 1000-pixel view.
+      expect(widthToCloseIn(5, 1000, 2)).toBe(24);
+      expect(widthToCloseIn(1, 1000, 2)).toBe(24);
+    });
+
+    it("leaves a longer selection its surroundings", () => {
+      // 54 days fill no more than seven tenths of the view: 10 pixels a day, not 16.
+      expect(widthToCloseIn(54, 1000, 2)).toBe(10);
+      expect(widthToCloseIn(300, 1000, 0.7)).toBe(2);
+    });
+
+    it("leaves a scale that already serves alone — it has to at least double", () => {
+      expect(widthToCloseIn(5, 1000, 16)).toBeNull();
+      expect(widthToCloseIn(5, 1000, 24)).toBeNull();
+      expect(widthToCloseIn(54, 1000, 6)).toBeNull();
+      // Already zoomed in further than it would choose.
+      expect(widthToCloseIn(5, 1000, 64)).toBeNull();
+    });
+
+    it("has no answer for a span too long for any step, or without room to measure", () => {
+      expect(widthToCloseIn(2000, 1000, 0.3)).toBeNull();
+      expect(widthToCloseIn(5, 0, 2)).toBeNull();
+    });
+
+    it("puts what it zoomed for in the middle of the view", () => {
+      const range = { start: 1000, end: 1999 };
+      // Days 100–109 at 10 pixels: 1000–1100, middle 1050; a view 500 wide starts at 800.
+      expect(scrollToCentre({ from: 1100, to: 1109 }, range, 10, 500)).toBe(800);
+      expect(scrollToCentre({ from: 1000, to: 1002 }, range, 10, 500)).toBe(0);
+    });
+  });
+
   describe("where the calendar is scrolled to", () => {
     const range = { start: 1000, end: 1999 };
     const days = (from: number, to: number) => ({ from: 1000 + from, to: 1000 + to });
@@ -439,18 +475,29 @@ describe("bringing a selection into view", () => {
       expect(inView("old")).toBe(false);
     });
 
-    it("scrolls to an item's bar when its row is selected, at the scale it was", () => {
+    it("zooms in on a bar drawn too small to work with, and shows it", () => {
       show();
-      const before = dayPixels();
+      // Nearly three years on screen: two pixels a day, the old work a sliver far to the left.
+      expect(dayPixels()).toBe(2);
+      fireEvent.click(row("old"));
+      expect(dayPixels()).toBe(10);
+      expect(inView("old")).toBe(true);
+    });
+
+    it("only scrolls to it when the scale already serves", () => {
+      show();
+      const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+      for (let i = 0; i < 4; i++) fireEvent.click(zoomIn); // 4, 6, 10, 16
+      expect(dayPixels()).toBe(16);
       fireEvent.click(row("old"));
       expect(inView("old")).toBe(true);
-      expect(dayPixels()).toBe(before);
+      expect(dayPixels()).toBe(16);
     });
 
     it("zooms out to show two selected items and everything between them", () => {
       show();
-      const before = dayPixels();
       fireEvent.click(row("old"));
+      const before = dayPixels();
       fireEvent.click(row("now"), { ctrlKey: true });
       expect(useAppStore.getState().selectedWorkItemIds.sort()).toEqual(["now", "old"]);
       expect(inView("old")).toBe(true);
@@ -458,8 +505,20 @@ describe("bringing a selection into view", () => {
       expect(dayPixels()).toBeLessThan(before);
     });
 
-    it("changes nothing for a selection already on screen", () => {
+    it("zooms back in when the selection shrinks to one short item", () => {
       show();
+      fireEvent.click(row("old"));
+      fireEvent.click(row("now"), { ctrlKey: true });
+      expect(dayPixels()).toBeLessThan(2);
+      fireEvent.click(row("now"));
+      expect(dayPixels()).toBe(24);
+      expect(inView("now")).toBe(true);
+    });
+
+    it("changes nothing for a selection already on screen at a scale that serves", () => {
+      show();
+      fireEvent.click(row("now"));
+      fireEvent.click(row("undated"));
       const scrolled = region().scrollLeft;
       const before = dayPixels();
       fireEvent.click(row("now"));
@@ -467,23 +526,21 @@ describe("bringing a selection into view", () => {
       expect(dayPixels()).toBe(before);
     });
 
+    it("leaves a zoom made by hand afterwards alone", () => {
+      show();
+      fireEvent.click(row("now"));
+      expect(dayPixels()).toBe(24);
+      // The selection is still there; zooming out by hand is not undone by it.
+      fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+      fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+      expect(dayPixels()).toBe(10);
+    });
+
     it("changes nothing for a row with no dates", () => {
       show();
       const scrolled = region().scrollLeft;
       fireEvent.click(row("undated"));
       expect(region().scrollLeft).toBe(scrolled);
-    });
-
-    it("does not zoom back in for a smaller selection, and leaves a zoom made afterwards alone", () => {
-      show();
-      fireEvent.click(row("old"));
-      fireEvent.click(row("now"), { ctrlKey: true });
-      const zoomedOut = dayPixels();
-      fireEvent.click(row("now"));
-      expect(dayPixels()).toBe(zoomedOut);
-      // Zooming in by hand is not undone by the selection still being there.
-      fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
-      expect(dayPixels()).toBeGreaterThan(zoomedOut);
     });
   });
 });

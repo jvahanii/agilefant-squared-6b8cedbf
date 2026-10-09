@@ -249,6 +249,39 @@ export function widthToShow(days: number, available: number, current: number): n
   return step ?? Math.max(MIN_FIT_WIDTH, available / days);
 }
 
+/** The width at which each day can be read; a selection is never zoomed in past it. */
+const COMFORTABLE_WIDTH = 24;
+/** How much of the view a selection is zoomed in to fill, the rest left as surroundings. */
+const CLOSE_IN_SHARE = 0.7;
+
+/**
+ * The width to zoom in to for so many days to be worth looking at — or null
+ * when the current width already serves. A selection drawn as a sliver is
+ * brought up to the widest step at which it still leaves its surroundings in
+ * view, and no wider than days can be read at.
+ *
+ * Only when that at least doubles the scale: stepping through rows of much
+ * the same length must not nudge the zoom in and out at every one.
+ */
+export function widthToCloseIn(days: number, available: number, current: number): number | null {
+  if (!(available > 0)) return null;
+  const step = [...ZOOM_WIDTHS]
+    .reverse()
+    .find((w) => w <= COMFORTABLE_WIDTH && days * w <= available * CLOSE_IN_SHARE);
+  return step !== undefined && step >= current * 2 ? step : null;
+}
+
+/** Where to scroll the calendar so a span of days sits in the middle of the view. */
+export function scrollToCentre(
+  span: { from: number; to: number },
+  range: TimelineRange,
+  width: number,
+  available: number,
+): number {
+  const middle = ((span.from + span.to + 1) / 2 - range.start) * width;
+  return Math.max(0, middle - available / 2);
+}
+
 /**
  * Where to scroll the calendar so a span of days is in view, or null when it
  * already is. Moved no further than it takes: a span off to the left comes in
