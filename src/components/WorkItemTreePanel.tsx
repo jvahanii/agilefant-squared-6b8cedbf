@@ -35,7 +35,7 @@ import { formatDeadline, isDeadlinePassed, useDeadlinesEnabled } from "@/lib/wor
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
-import { releaseOverlayLock } from "@/lib/overlayLock";
+import { overlayOpen, releaseOverlayLock } from "@/lib/overlayLock";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -3530,6 +3530,11 @@ export function WorkItemTreePanel() {
       const isInput =
         target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
       if (isInput) return;
+      // An open dialog keeps its Tab. Checking for a field alone was not
+      // enough: from the date field the key moves to the calendar button
+      // beside it, and from there the next press reparented the selected
+      // item behind the dialog instead of moving on to the other date.
+      if (overlayOpen()) return;
 
       const state = useAppStore.getState();
       if (state.selectedWorkItemIds.length === 0) return;

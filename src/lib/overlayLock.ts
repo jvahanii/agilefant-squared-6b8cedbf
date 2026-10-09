@@ -10,6 +10,16 @@
  * `releaseOverlayLock()` clears that stray lock once no Radix modal layer is
  * left in the DOM.  It is safe to call unconditionally after closing a dialog.
  */
+/**
+ * Whether a dialog, popover or menu is open. While one is, the keyboard is
+ * its: Tab moves between its fields and buttons, and the shortcuts of the page
+ * beneath — Tab to indent among them — must leave the key alone. Focus resting
+ * on a button rather than in a field is still inside the dialog.
+ */
+export function overlayOpen(doc: Document | undefined = typeof document === "undefined" ? undefined : document): boolean {
+  return !!doc?.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]');
+}
+
 export function releaseOverlayLock(): void {
   if (typeof document === "undefined") return;
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { StartEndDatesDialog } from "@/components/StartEndDatesDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,14 +11,20 @@ import {
   barPixels,
   dayIso,
   dayWidth,
+  fitWidth,
   dragDates,
   isWeekend,
   monthTicks,
+  scrollToShow,
+  spanOf,
   timelineRange,
   todayNumber,
   weekStarts,
+  widthToShow,
   validZoom,
+  yearTicks,
   zoomStep,
+  type ZoomChoice,
   type DragMode,
   type TimelineBar,
 } from "@/lib/timeline";
@@ -43,7 +49,7 @@ interface TimelineViewProps {
 const ROW_HEIGHT = 28;
 /** Where the zoom chosen is kept, so it is still there on the next visit. */
 const ZOOM_KEY = "timeline-day-width-v1";
-const storedZoom = (): number | null => {
+const storedZoom = (): ZoomChoice | null => {
   try {
     return validZoom(localStorage.getItem(ZOOM_KEY));
   } catch {
@@ -71,9 +77,14 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  *
  * Double-clicking a name renames the item in place, as in the list.
  *
+ * Selecting rows brings their bars into view: the calendar scrolls to them,
+ * and zooms out if that is what it takes to show them — and everything between
+ * the first and the last — at once.
+ *
  * The scale is chosen from the span of the dates — days readable for a few
- * weeks, squeezed for years — until the reader zooms in or out, which is then
- * kept for every list until they hand the choice back.
+ * weeks, squeezed for years — until the reader zooms in or out, or asks for
+ * the whole span on the screen at once, which is then kept for every list
+ * until they hand the choice back.
  */
 export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: TimelineViewProps) {
   const workItems = useAppStore((s) => s.workItems);
@@ -163,9 +174,26 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     if (scrollRef.current) scrolledTo.current = scrollRef.current.scrollLeft;
   };
   // Null while the scale is left to the span of the dates.
-  const [zoom, setZoom] = useState<number | null>(storedZoom);
-  const width = zoom ?? dayWidth(range);
-  const chooseZoom = (next: number | null) => {
+  const [zoom, setZoom] = useState<ZoomChoice | null>(storedZoom);
+  const leftWidth = isMobile ? 150 : 280;
+  // How wide the view is, for fitting the whole span into it. Measured, and
+  // again whenever the view changes size.
+  const [viewport, setViewport] = useState(0);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setViewport(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  // Fitted: every bar on the screen at once. A pixel is held back so rounding
+  // cannot bring a scrollbar; with nothing measured yet the automatic scale does.
+  const width =
+    zoom === "fit" ? (fitWidth(range, viewport - leftWidth - 1) ?? dayWidth(range)) : (zoom ?? dayWidth(range));
+  const chooseZoom = (next: ZoomChoice | null) => {
     noteScroll();
     setZoom(next);
     try {
@@ -179,8 +207,11 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   const zoomOut = zoomStep(width, -1);
   const totalDays = range.end - range.start + 1;
   const trackWidth = totalDays * width;
-  const leftWidth = isMobile ? 150 : 280;
   const months = useMemo(() => monthTicks(range), [range]);
+  // Once a month is too narrow to carry its name the axis names years instead,
+  // so a span of several years fitted to the screen still says when.
+  const monthsNamed = width * 28 >= 44;
+  const years = useMemo(() => yearTicks(range), [range]);
   const weeks = useMemo(() => weekStarts(range), [range]);
   const todayLeft = (today - range.start) * width;
 
@@ -195,6 +226,9 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   // zooming — the day in the middle of the screen is kept there, so a bar just
   // dragged does not jump away and zooming closes in on what was being looked at.
   const drawn = useRef<{ start: number; width: number } | null>(null);
+  // The days a new selection covers, until the calendar has been moved to them.
+  const pendingReveal = useRef<{ from: number; to: number } | null>(null);
+  const [revealRequest, setRevealRequest] = useState(0);
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -207,8 +241,40 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
       const middleDay = before.start + (scrolledTo.current + half) / before.width;
       el.scrollLeft = Math.max(0, (middleDay - range.start) * width - half);
     }
+    // A selection waiting to be shown is shown last, at the scale just set.
+    const span = pendingReveal.current;
+    if (span) {
+      pendingReveal.current = null;
+      const to = scrollToShow(span, range, width, el.scrollLeft, el.clientWidth - leftWidth);
+      if (to !== null) el.scrollLeft = to;
+    }
     scrolledTo.current = el.scrollLeft;
-  }, [range.start, width, todayLeft, leftWidth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- range.end plays no part in where a day is drawn
+  }, [range.start, width, todayLeft, leftWidth, revealRequest]);
+
+  // Selecting rows brings their bars into view — the whole stretch from the
+  // earliest to the latest, so what lies between two selected items is seen
+  // too. The calendar zooms out only as far as that takes, and never in: a
+  // selection that already fits is just scrolled to, and one already on
+  // screen changes nothing. Only a change of selection does this, so zooming
+  // or scrolling away from the selection afterwards is left alone.
+  const selectionKey = selectedWorkItemIds.join("|");
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const span = spanOf(
+      selectedWorkItemIds.filter((id) => rowIds.includes(id)).map((id) => workItems[id]).filter(Boolean),
+      today,
+    );
+    if (!span) return;
+    const available = el.clientWidth - leftWidth;
+    // With a little air either side, so a bar does not end on the very edge.
+    const next = zoom === "fit" ? null : widthToShow(span.to - span.from + 1, available - 32, width);
+    if (next !== null) chooseZoom(next);
+    pendingReveal.current = span;
+    setRevealRequest((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on a change of selection only
+  }, [selectionKey]);
 
   const daysCarried = (clientX: number) =>
     dragStart.current ? Math.round((clientX - dragStart.current.x) / width) : 0;
@@ -310,6 +376,16 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
               >
                 <ZoomIn className="h-3.5 w-3.5" />
               </button>
+              <button
+                type="button"
+                onClick={() => chooseZoom("fit")}
+                aria-label="Fit all"
+                aria-pressed={zoom === "fit"}
+                title="Zoom out until every bar is on the screen"
+                className={`rounded p-0.5 hover:bg-accent hover:text-foreground ${zoom === "fit" ? "bg-accent text-foreground" : ""}`}
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
               {/* Only once a zoom has been chosen: until then the scale already
                   is the automatic one, and the button would do nothing. */}
               {zoom !== null && (
@@ -334,15 +410,17 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
             </label>
           </div>
           <div className="relative" style={{ width: trackWidth }}>
-            {months.map((month) => (
+            {(monthsNamed ? months : years).map((month) => (
               <div
                 key={month.from}
+                data-axis={monthsNamed ? "month" : "year"}
                 className="absolute top-0 flex h-6 items-center whitespace-nowrap border-l text-xs font-medium text-muted-foreground"
                 style={{ left: (month.from - range.start) * width, width: month.days * width }}
               >
                 {/* The name follows the scroll along its month, so a month whose
-                    first days are off to the left still says which it is. */}
-                {month.days * width >= 44 && (
+                    first days are off to the left still says which it is. A
+                    year's name needs less room than a month's. */}
+                {month.days * width >= (monthsNamed ? 44 : 30) && (
                   <span className="sticky bg-background px-1.5" style={{ left: leftWidth }}>
                     {month.label}
                   </span>

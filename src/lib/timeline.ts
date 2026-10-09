@@ -88,10 +88,32 @@ export function zoomStep(width: number, direction: 1 | -1): number | null {
   return [...ZOOM_WIDTHS].reverse().find((w) => w < width) ?? null;
 }
 
-/** A stored zoom, if it is one of the widths on offer; otherwise none chosen. */
-export function validZoom(value: unknown): number | null {
+/**
+ * A zoom the reader chose: one of the widths, or "fit" — the whole span on the
+ * screen at once, whatever width that takes.
+ */
+export type ZoomChoice = number | "fit";
+
+/** A stored zoom, if it is one that can be chosen; otherwise none chosen. */
+export function validZoom(value: unknown): ZoomChoice | null {
+  if (value === "fit") return "fit";
   const n = Number(value);
   return (ZOOM_WIDTHS as readonly number[]).includes(n) ? n : null;
+}
+
+/** The narrowest a day is drawn, however long the span being fitted. */
+export const MIN_FIT_WIDTH = 0.05;
+
+/**
+ * The width a day gets for the whole span to fit in so many pixels, so that
+ * every bar is on the screen at once. No wider than the widest zoom — a few
+ * days are not stretched across a whole screen — and null where there is no
+ * room to measure, when the caller falls back on the automatic scale.
+ */
+export function fitWidth(range: TimelineRange, available: number): number | null {
+  if (!(available > 0)) return null;
+  const days = range.end - range.start + 1;
+  return Math.min(ZOOM_WIDTHS[ZOOM_WIDTHS.length - 1], Math.max(MIN_FIT_WIDTH, available / days));
 }
 
 export type BarKind =
@@ -195,6 +217,71 @@ export function monthTicks(range: TimelineRange, locale?: string): MonthTick[] {
         timeZone: "UTC",
       }),
     });
+    day = last + 1;
+  }
+  return ticks;
+}
+
+/**
+ * The days the bars of these items cover between them — from the first day of
+ * the earliest to the last day of the latest, and so everything in between —
+ * or null when none of them has a bar.
+ */
+export function spanOf(items: Dated[], today: number): { from: number; to: number } | null {
+  let span: { from: number; to: number } | null = null;
+  for (const item of items) {
+    const bar = barFor(item, today);
+    if (!bar) continue;
+    span = span ? { from: Math.min(span.from, bar.from), to: Math.max(span.to, bar.to) } : { from: bar.from, to: bar.to };
+  }
+  return span;
+}
+
+/**
+ * The width to zoom out to for so many days to fit the room there is — or null
+ * when they fit at the current width, and nothing need change. The widest step
+ * that fits, so the scale stays one the zoom buttons know; narrower than every
+ * step only for a span no step can hold.
+ */
+export function widthToShow(days: number, available: number, current: number): number | null {
+  if (!(available > 0) || days * current <= available) return null;
+  const step = [...ZOOM_WIDTHS].reverse().find((w) => w < current && days * w <= available);
+  return step ?? Math.max(MIN_FIT_WIDTH, available / days);
+}
+
+/**
+ * Where to scroll the calendar so a span of days is in view, or null when it
+ * already is. Moved no further than it takes: a span off to the left comes in
+ * at the left edge, one off to the right at the right, each with a little air.
+ */
+export function scrollToShow(
+  span: { from: number; to: number },
+  range: TimelineRange,
+  width: number,
+  scrollLeft: number,
+  available: number,
+  air = 16,
+): number | null {
+  const left = (span.from - range.start) * width;
+  const right = (span.to + 1 - range.start) * width;
+  if (left >= scrollLeft && right <= scrollLeft + available) return null;
+  // Wider than the view even now: show where it starts.
+  if (right - left > available || left < scrollLeft) return Math.max(0, left - air);
+  return Math.max(0, right - available + air);
+}
+
+/**
+ * The years the range covers, each with the part of it that is shown — for the
+ * axis once the scale is too small for a month to carry its name.
+ */
+export function yearTicks(range: TimelineRange): MonthTick[] {
+  const ticks: MonthTick[] = [];
+  let day = range.start;
+  while (day <= range.end) {
+    const year = new Date(day * DAY_MS).getUTCFullYear();
+    const nextYear = Math.round(Date.UTC(year + 1, 0, 1) / DAY_MS);
+    const last = Math.min(nextYear - 1, range.end);
+    ticks.push({ from: day, days: last - day + 1, label: String(year) });
     day = last + 1;
   }
   return ticks;
