@@ -207,6 +207,10 @@ function buildSections(): Section[] {
                 how: "Right-click an item and choose Scramble name (on mobile, open the attributes sheet and tap Scramble on the Name row). The name is replaced by Moomin words for everyone in the organisation, and a padlock marks the row. Select several items first to scramble them together.",
               },
               {
+                action: "Scramble a list",
+                how: "Right-click a list and choose Scramble list. Its name, the lists under it and every item in them are replaced by Moomin words for everyone, and a padlock marks the list. Items added afterwards are not scrambled by themselves: the list's menu then offers Scramble what was added. Show real name and Unscramble list are in the same menu, for the person who scrambled it.",
+              },
+              {
                 action: "Read a scrambled name",
                 how: "Only the person who scrambled it can. Choose Show real name and enter your PIN: the name is shown to you and stays scrambled for everyone. Unscramble name puts it back for good.",
               },
@@ -300,8 +304,8 @@ function buildSections(): Section[] {
               <p className="font-medium">The scramble PIN</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 You choose a four-digit PIN the first time you scramble something in an organisation. After that,
-                scrambling more names does not ask for it — only reading one back does. When you unscramble your last
-                item the PIN is forgotten, and the next scramble asks for a new one. It cannot be recovered, and nobody
+                scrambling more names does not ask for it — only reading one back does. When you unscramble the last
+                thing you scrambled the PIN is forgotten, and the next scramble asks for a new one. It cannot be recovered, and nobody
                 else can read your scrambled names, not even an owner.
               </p>
             </div>

@@ -38,6 +38,7 @@ export function ScramblePinDialog({
   onOpenChange,
   mode,
   action,
+  heading,
   itemTitle,
   onConfirm,
 }: {
@@ -46,7 +47,10 @@ export function ScramblePinDialog({
   mode: ScramblePinMode;
   /** The button's label, e.g. "Scramble" or "Unscramble". */
   action: string;
-  /** The item being acted on, as it currently reads. */
+  /** The dialog's title when entering a PIN, where "<action> this item" would
+   *  not do — for a list, say. */
+  heading?: string;
+  /** The item or list being acted on, as it currently reads. */
   itemTitle: string;
   onConfirm: (pin: string) => Promise<ScramblePinResult>;
 }) {
@@ -94,7 +98,7 @@ export function ScramblePinDialog({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-base">
-            {revealed !== null ? "The real name" : mode === "set" ? "Choose a PIN" : `${action} this item`}
+            {revealed !== null ? "The real name" : mode === "set" ? "Choose a PIN" : (heading ?? `${action} this item`)}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {revealed !== null ? (

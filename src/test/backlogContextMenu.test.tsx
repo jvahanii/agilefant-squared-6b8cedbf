@@ -15,6 +15,11 @@ import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { useLabelsStore } from "@/store/labelsStore";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useScrambledListsStore } from "@/store/scrambledListsStore";
+import { useListScrambleStore } from "@/store/listScrambleStore";
+import { setCurrentUser } from "@/lib/currentUser";
+import type { WorkItem } from "@/types/models";
 
 // The switches in this menu save straight to the database; here they must not.
 vi.mock("@/store/supabaseSync", async (importOriginal) => ({
@@ -201,6 +206,76 @@ describe("labels on a list", () => {
     openMenu();
     openLabels();
     expect(screen.getByText(/No labels yet/)).toBeInTheDocument();
+  });
+});
+
+describe("scrambling a list from its menu", () => {
+  const ME = "me";
+  const scramble = vi.fn();
+  const askReveal = vi.fn();
+  const askUnscramble = vi.fn();
+  const inList = (id: string): WorkItem =>
+    ({ id, title: id, parentId: null, backlogAssignments: { [TREE]: BL }, ranks: {} }) as unknown as WorkItem;
+
+  beforeEach(() => {
+    scramble.mockReset();
+    askReveal.mockReset();
+    askUnscramble.mockReset();
+    setCurrentUser({ id: ME, email: null, fullName: null, avatarUrl: null });
+    useListScrambleStore.setState({ scramble, askReveal, askUnscramble });
+    useScrambledListsStore.setState({ byList: new Map() });
+    useScrambledItemsStore.setState({ byItem: new Map() });
+    useAppStore.setState({ workItems: { a: inList("a"), b: inList("b") } });
+  });
+
+  it("offers to scramble a list that is not", () => {
+    openMenu();
+    fireEvent.click(screen.getByText("Scramble list…"));
+    expect(scramble).toHaveBeenCalledWith(BL);
+    for (const item of ["Show real name…", "Unscramble list…", "Scrambled by someone else"]) {
+      expect(screen.queryByText(item)).not.toBeInTheDocument();
+    }
+  });
+
+  it("offers its real name and to put it back, to the person who scrambled it", () => {
+    useScrambledListsStore.setState({ byList: new Map([[BL, ME]]) });
+    useScrambledItemsStore.setState({ byItem: new Map([["a", ME], ["b", ME]]) });
+    openMenu();
+    expect(screen.queryByText("Scramble list…")).not.toBeInTheDocument();
+    // Everything in it is scrambled: nothing was added since.
+    expect(screen.queryByText(/Scramble what was added/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Show real name…"));
+    expect(askReveal).toHaveBeenCalledWith(BL);
+    cleanup();
+
+    openMenu();
+    fireEvent.click(screen.getByText("Unscramble list…"));
+    expect(askUnscramble).toHaveBeenCalledWith(BL);
+  });
+
+  it("offers to scramble what has been added to a scrambled list since", () => {
+    useScrambledListsStore.setState({ byList: new Map([[BL, ME]]) });
+    useScrambledItemsStore.setState({ byItem: new Map([["a", ME]]) });
+    openMenu();
+    fireEvent.click(screen.getByText("Scramble what was added (1)"));
+    expect(scramble).toHaveBeenCalledWith(BL);
+  });
+
+  it("offers nothing to anyone else", () => {
+    useScrambledListsStore.setState({ byList: new Map([[BL, "someone"]]) });
+    openMenu();
+    expect(screen.getByText("Scrambled by someone else").closest("[role=menuitem]")).toHaveAttribute("data-disabled");
+    for (const item of ["Scramble list…", "Show real name…", "Unscramble list…"]) {
+      expect(screen.queryByText(item)).not.toBeInTheDocument();
+    }
+  });
+
+  it("takes Insert icon away while the name is scrambled: an icon is typed into the name", () => {
+    useScrambledListsStore.setState({ byList: new Map([[BL, ME]]) });
+    openMenu();
+    expect(screen.queryByText("Insert icon")).not.toBeInTheDocument();
+    expect(screen.getByText("Attributes")).toBeInTheDocument();
   });
 });
 

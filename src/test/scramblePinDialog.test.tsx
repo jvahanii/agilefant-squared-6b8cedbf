@@ -19,6 +19,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ScramblePinDial
       onOpenChange={onOpenChange}
       mode={props.mode ?? "enter"}
       action={props.action ?? "Unscramble"}
+      heading={props.heading}
       itemTitle={props.itemTitle ?? "Snufkin Hemulen"}
       onConfirm={onConfirm}
     />,
@@ -27,6 +28,16 @@ function renderDialog(props: Partial<React.ComponentProps<typeof ScramblePinDial
 }
 
 describe("scramble PIN dialog", () => {
+  it("is headed for an item unless told what it is for", () => {
+    renderDialog();
+    expect(screen.getByRole("heading", { name: "Unscramble this item" })).toBeInTheDocument();
+  });
+
+  it("can be headed for a list", () => {
+    renderDialog({ heading: "Unscramble this list" });
+    expect(screen.getByRole("heading", { name: "Unscramble this list" })).toBeInTheDocument();
+  });
+
   it("hides the PIN as it is typed, and sends it on submit", async () => {
     const { onConfirm, onOpenChange } = renderDialog();
 

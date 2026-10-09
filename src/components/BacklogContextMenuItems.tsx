@@ -1,4 +1,4 @@
-import { CalendarPlus, CalendarRange, Globe, Hash, Settings2, SlidersHorizontal, Star, Tag, Trash2, TrendingUp } from "lucide-react";
+import { CalendarPlus, CalendarRange, Eye, Globe, Hash, Lock, LockOpen, Settings2, SlidersHorizontal, Star, Tag, Trash2, TrendingUp } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -18,6 +18,11 @@ import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
 import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { scrambleName } from "@/lib/scramble";
+import { planListScramble } from "@/lib/listScramble";
+import { peekCurrentUser } from "@/lib/currentUser";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useScrambledListsStore } from "@/store/scrambledListsStore";
+import { useListScrambleStore } from "@/store/listScrambleStore";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 
 interface BacklogContextMenuItemsProps {
@@ -82,13 +87,33 @@ export function BacklogContextMenuItems({
     .filter((label) => label.organizationId === activeOrgId)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Scrambling the list: its name, the lists under it and every item in them,
+  // for everyone, until the person who did it puts them back. (Not the
+  // `isScrambled` above, which only changes what this screen shows.)
+  const scrambledLists = useScrambledListsStore((s) => s.byList);
+  const scrambledItems = useScrambledItemsStore((s) => s.byItem);
+  const backlogs = useAppStore((s) => s.backlogs);
+  const workItems = useAppStore((s) => s.workItems);
+
   if (!backlog) return null;
   const name = isScrambled ? scrambleName(backlog.name) : backlog.name;
+  const nameScrambled = scrambledLists.has(backlogId);
+  const me = peekCurrentUser()?.id ?? null;
+  const scrambledByMe = me !== null && scrambledLists.get(backlogId) === me;
+  // What has been added to a list since it was scrambled, and is still readable.
+  const addedSince = scrambledByMe
+    ? (() => {
+        const plan = planListScramble(backlogId, backlogs, workItems, scrambledLists, scrambledItems);
+        return plan.lists.length + plan.items.length;
+      })()
+    : 0;
 
   return (
     <>
       <ContextMenuLabel className="text-xs truncate">{name}</ContextMenuLabel>
       <ContextMenuSeparator />
+      {/* An icon is typed into the name, and a scrambled name cannot be edited. */}
+      {!nameScrambled && (
       <ContextMenuSub>
         <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
         <ContextMenuSubContent className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]" collisionPadding={8}>
@@ -109,6 +134,7 @@ export function BacklogContextMenuItems({
           </div>
         </ContextMenuSubContent>
       </ContextMenuSub>
+      )}
       <ContextMenuItem className="text-xs" onSelect={onAttributes}>
         <SlidersHorizontal className="w-3 h-3 mr-2" />
         Attributes
@@ -207,6 +233,36 @@ export function BacklogContextMenuItems({
             )}
           </ContextMenuSubContent>
         </ContextMenuSub>
+      )}
+      {!nameScrambled ? (
+        <ContextMenuItem className="text-xs" onSelect={() => void useListScrambleStore.getState().scramble(backlogId)}>
+          <Lock className="w-3 h-3 mr-2" />
+          Scramble list…
+        </ContextMenuItem>
+      ) : scrambledByMe ? (
+        <>
+          {/* Reading it back does not unscramble it: the list stays hidden
+              from everyone else until it is explicitly unscrambled. */}
+          <ContextMenuItem className="text-xs" onSelect={() => useListScrambleStore.getState().askReveal(backlogId)}>
+            <Eye className="w-3 h-3 mr-2" />
+            Show real name…
+          </ContextMenuItem>
+          {addedSince > 0 && (
+            <ContextMenuItem className="text-xs" onSelect={() => void useListScrambleStore.getState().scramble(backlogId)}>
+              <Lock className="w-3 h-3 mr-2" />
+              Scramble what was added ({addedSince})
+            </ContextMenuItem>
+          )}
+          <ContextMenuItem className="text-xs" onSelect={() => useListScrambleStore.getState().askUnscramble(backlogId)}>
+            <LockOpen className="w-3 h-3 mr-2" />
+            Unscramble list…
+          </ContextMenuItem>
+        </>
+      ) : (
+        <ContextMenuItem className="text-xs" disabled>
+          <Lock className="w-3 h-3 mr-2" />
+          Scrambled by someone else
+        </ContextMenuItem>
       )}
       {publicLinksEnabled && (
         <ContextMenuItem className="text-xs" onSelect={onPublish}>

@@ -116,6 +116,52 @@ export type Database = {
           },
         ]
       }
+      backlog_scrambles: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          organization_id: string
+          original_name: string
+          scrambled_by: string | null
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          organization_id: string
+          original_name: string
+          scrambled_by?: string | null
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          organization_id?: string
+          original_name?: string
+          scrambled_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlog_scrambles_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: true
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_scrambles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_scrambles_scrambled_by_fkey"
+            columns: ["scrambled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlogs: {
         Row: {
           created_dates_enabled: boolean
@@ -1799,6 +1845,10 @@ export type Database = {
         Args: { _tree_id: string; _user_id: string }
         Returns: boolean
       }
+      is_backlog_accessible: {
+        Args: { _backlog_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_work_item_accessible: {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
@@ -1844,9 +1894,17 @@ export type Database = {
         Args: { _backup_id: string; _mode?: string; _scope?: Json }
         Returns: Json
       }
+      reveal_scrambled_backlog_name: {
+        Args: { _backlog_id: string; _pin: string }
+        Returns: string
+      }
       reveal_scrambled_title: {
         Args: { _pin: string; _work_item_id: string }
         Returns: string
+      }
+      scramble_names: {
+        Args: { _items: Json; _lists: Json; _pin?: string | null }
+        Returns: Json
       }
       scramble_work_item: {
         Args: { _pin?: string; _scrambled_title: string; _work_item_id: string }
@@ -1873,6 +1931,10 @@ export type Database = {
       unpublish_backlog_link: {
         Args: { _backlog_id?: string; _tree_id: string }
         Returns: undefined
+      }
+      unscramble_names: {
+        Args: { _item_ids: string[]; _list_ids: string[]; _pin: string }
+        Returns: Json
       }
       unscramble_work_item: {
         Args: { _pin: string; _work_item_id: string }

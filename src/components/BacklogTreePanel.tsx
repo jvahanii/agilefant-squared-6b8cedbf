@@ -1,5 +1,5 @@
 import { useAppStore } from "@/store/appStore";
-import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, TrendingUp, Globe } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, TrendingUp, Globe, Lock } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
   ContextMenu,
@@ -35,6 +35,8 @@ import { backlogPoints, type BacklogPoints as BacklogPointsBreakdown } from "@/l
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
+import { useScrambledListsStore } from "@/store/scrambledListsStore";
+import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { useLabelsStore } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
@@ -275,6 +277,9 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const deleteBacklog = useAppStore((s) => s.deleteBacklog);
   const guardedDelete = useDeleteWithTimeGuard();
   const renameBacklog = useAppStore((s) => s.renameBacklog);
+  // Scrambled for everyone from the list's menu — its stored name is the
+  // scramble, and this only marks it and keeps it from being edited.
+  const isNameScrambled = useScrambledListsStore((s) => s.byList.has(backlogId));
   const isMobile = useIsMobile();
   const [isAdding, setIsAdding] = useState(false);
   const [isAddingSibling, setIsAddingSibling] = useState(false);
@@ -389,6 +394,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const hasChildren = backlog.childrenIds.length > 0;
 
   const startEditing = () => {
+    if (refuseRenameOfScrambledList(backlogId)) return;
     setEditValue(backlog.name);
     setIsEditing(true);
   };
@@ -492,6 +498,12 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
               startEditing();
             }}
           >
+            {isNameScrambled && (
+              <Lock
+                className="mr-1 inline-block h-3 w-3 align-[-1px] text-muted-foreground"
+                aria-label="This list is scrambled"
+              />
+            )}
             {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
           </span>
         )}
@@ -633,7 +645,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
                 const pos = start + shortcode.length;
                 inp.setSelectionRange(pos, pos);
               });
-            } else {
+            } else if (!refuseRenameOfScrambledList(backlogId)) {
               setEditValue(backlog.name + shortcode);
               setIsEditing(true);
             }

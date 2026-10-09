@@ -24,6 +24,7 @@ import {
 } from '@/lib/realtimeHealth';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
+import { useScrambledListsStore } from '@/store/scrambledListsStore';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -556,6 +557,12 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'work_item_scrambles' },
         () => useScrambledItemsStore.getState().scheduleLoad(),
+      )
+      // And scrambled lists.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'backlog_scrambles' },
+        () => useScrambledListsStore.getState().scheduleLoad(),
       )
       // Per-tree yearly financial targets, filtered to accessible trees here.
       .on(

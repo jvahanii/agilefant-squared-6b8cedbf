@@ -37,6 +37,7 @@ import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
+import { ListScrambleDialogHost } from "@/components/ListScrambleDialogHost";
 import {
   Undo2,
   Redo2,
@@ -124,6 +125,7 @@ export default function AppLayout() {
       <DeleteGuardHost />
       <RerankGuardHost />
       <BurnupDialogHost />
+      <ListScrambleDialogHost />
     </ScrambleProvider>
   );
 }

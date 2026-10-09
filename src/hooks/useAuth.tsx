@@ -15,6 +15,7 @@ import {
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { forgetRememberedProfiles, rememberProfileFor, rememberedProfileFor } from '@/lib/profileMapping';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
+import { useScrambledListsStore } from '@/store/scrambledListsStore';
 
 /**
  * The shape consumers read. It kept `user_metadata` when Clerk replaced Supabase
@@ -82,6 +83,7 @@ function resetClientStoresAfterSignOut() {
   useSnoozeStore.setState({ snoozes: {}, isLoading: false });
   usePublishedLinksStore.setState({ trees: new Set(), backlogs: new Set() });
   useScrambledItemsStore.setState({ byItem: new Map() });
+  useScrambledListsStore.setState({ byList: new Map() });
 }
 
 /** A resolved (or failed) Clerk-subject to profiles.id lookup. */

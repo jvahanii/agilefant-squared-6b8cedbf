@@ -54,6 +54,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useScrambledListsStore } from "@/store/scrambledListsStore";
+import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { rowsForReparenting } from "@/lib/workItemRows";
 import { searchFilter } from "@/lib/searchFilters";
@@ -170,6 +172,8 @@ type SearchResult = SearchResultItem | SearchResultBacklog;
 function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; isScrambled: boolean }) {
   const backlog = useAppStore((s) => s.backlogs[backlogId]);
   const renameBacklog = useAppStore((s) => s.renameBacklog);
+  // Scrambled for everyone from the list's menu: marked, and not editable.
+  const isNameScrambled = useScrambledListsStore((s) => s.byList.has(backlogId));
   const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -180,6 +184,7 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
   }, [isEditing, isMobile]);
 
   const startEditing = () => {
+    if (refuseRenameOfScrambledList(backlogId)) return;
     setEditValue(backlog?.name ?? "");
     setIsEditing(true);
   };
@@ -205,7 +210,7 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
           inp.focus();
           inp.setSelectionRange(start + shortcode.length, start + shortcode.length);
         });
-      } else {
+      } else if (!refuseRenameOfScrambledList(backlogId)) {
         setEditValue((backlog?.name ?? "") + shortcode);
         setIsEditing(true);
       }
@@ -242,6 +247,12 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
         startEditing();
       }}
     >
+      {isNameScrambled && (
+        <Lock
+          className="mr-1.5 inline-block h-3.5 w-3.5 align-[-1px] text-muted-foreground"
+          aria-label="This list is scrambled"
+        />
+      )}
       {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
     </h2>
   );
