@@ -827,6 +827,10 @@ function buildSections(): Section[] {
                 how: "Type any part of the work item title. Results update as you type and are sorted alphabetically.",
               },
               {
+                action: "Find what is due today",
+                how: 'Type "/due today" to list every item whose deadline is today, in any tree.',
+              },
+              {
                 action: "Result context",
                 how: "Each result shows the matching title with the search term highlighted, the tree and full list hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
               },

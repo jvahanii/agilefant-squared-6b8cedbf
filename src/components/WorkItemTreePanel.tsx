@@ -56,6 +56,7 @@ import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { rowsForReparenting } from "@/lib/workItemRows";
+import { searchFilter } from "@/lib/searchFilters";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
@@ -3041,12 +3042,16 @@ export function WorkItemTreePanel() {
 
   type SearchResult = SearchResultItem | SearchResultBacklog;
 
+  // A command typed into the search box — "/due today" — rather than words
+  // to look for in a title.
+  const activeSearchFilter = useMemo(() => searchFilter(searchQuery), [searchQuery]);
+
   const searchResults = useMemo((): SearchResult[] | null => {
     const q = searchQuery.trim().toLowerCase();
     if (q.length < 3) return null;
 
     const itemResults: SearchResultItem[] = Object.values(workItems)
-      .filter((wi) => wi.title.toLowerCase().includes(q))
+      .filter((wi) => (activeSearchFilter ? activeSearchFilter.matches(wi) : wi.title.toLowerCase().includes(q)))
       .flatMap((wi) => {
         // Emit one result per backlog tree this item is assigned to,
         // so items present in multiple trees show all occurrences.
@@ -3099,7 +3104,8 @@ export function WorkItemTreePanel() {
         return a.treeName.localeCompare(b.treeName);
       });
 
-    const backlogResults: SearchResultBacklog[] = Object.values(backlogs)
+    // A filter is about items: a list has no deadline to be due by.
+    const backlogResults: SearchResultBacklog[] = (activeSearchFilter ? [] : Object.values(backlogs))
       .filter((bl) => bl.name.toLowerCase().includes(q))
       .map((bl) => {
         const tree = backlogTrees[bl.treeId];
@@ -3128,7 +3134,7 @@ export function WorkItemTreePanel() {
       });
 
     return [...itemResults, ...backlogResults];
-  }, [searchQuery, workItems, backlogTrees, backlogs]);
+  }, [searchQuery, activeSearchFilter, workItems, backlogTrees, backlogs]);
 
   // Filter results: items from ALL trees that match the active label and/or
   // team filters, shown as a flat list. Returns null when no filter is active.
@@ -4300,7 +4306,7 @@ export function WorkItemTreePanel() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                No items match &ldquo;{searchQuery}&rdquo;
+                {activeSearchFilter ? activeSearchFilter.nothingFound : <>No items match &ldquo;{searchQuery}&rdquo;</>}
               </div>
             )}
           </div>
