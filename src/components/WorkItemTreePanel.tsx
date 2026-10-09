@@ -81,6 +81,7 @@ import { buildVisibleRows, effectiveAncestors, effectiveChildren, topLevelItems 
 import { observeWidthForRemeasure } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
+import { LabelNames, ListHeadingLabels } from "./LabelNames";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
@@ -254,6 +255,7 @@ function EditableBacklogName({ backlogId, isScrambled }: { backlogId: string; is
         />
       )}
       {isScrambled ? scrambleName(backlog.name) : <IconizedTitle title={backlog.name} />}
+      <ListHeadingLabels backlogId={backlogId} />
     </h2>
   );
 }
@@ -1128,24 +1130,7 @@ function WorkItemNodeContent({
                 )}
                 {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
               </span>
-              {labelsVisible && itemLabels.length > 0 && (
-                <span className="ml-1">
-                  {itemLabels.length === 1 ? (
-                    <span style={{ color: itemLabels[0].color }}>{itemLabels[0].name}</span>
-                  ) : (
-                    <>
-                      {"["}
-                      {itemLabels.map((label, i) => (
-                        <span key={label.id}>
-                          {i > 0 && ", "}
-                          <span style={{ color: label.color }}>{label.name}</span>
-                        </span>
-                      ))}
-                      {"]"}
-                    </>
-                  )}
-                </span>
-              )}
+              {labelsVisible && <LabelNames labels={itemLabels} />}
               {teams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
                   <DropdownMenu open={teamDropdownOpen} onOpenChange={(open) => {
@@ -3055,7 +3040,11 @@ export function WorkItemTreePanel() {
 
   // A command typed into the search box — "/due today" — rather than words
   // to look for in a title.
-  const activeSearchFilter = useMemo(() => searchFilter(searchQuery), [searchQuery]);
+  const scrambledItemNames = useScrambledItemsStore((s) => s.byItem);
+  const activeSearchFilter = useMemo(
+    () => searchFilter(searchQuery, undefined, scrambledItemNames),
+    [searchQuery, scrambledItemNames],
+  );
 
   const searchResults = useMemo((): SearchResult[] | null => {
     const q = searchQuery.trim().toLowerCase();

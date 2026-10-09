@@ -82,8 +82,8 @@ function resetClientStoresAfterSignOut() {
   useTimeEntryStore.setState({ timeEntries: {}, isLoading: false });
   useSnoozeStore.setState({ snoozes: {}, isLoading: false });
   usePublishedLinksStore.setState({ trees: new Set(), backlogs: new Set() });
-  useScrambledItemsStore.setState({ byItem: new Map() });
-  useScrambledListsStore.setState({ byList: new Map() });
+  useScrambledItemsStore.setState({ byItem: new Map(), withList: new Map() });
+  useScrambledListsStore.setState({ byList: new Map(), withList: new Map() });
 }
 
 /** A resolved (or failed) Clerk-subject to profiles.id lookup. */

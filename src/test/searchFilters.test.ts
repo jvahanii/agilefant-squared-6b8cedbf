@@ -13,6 +13,23 @@ import { dueDay, searchFilter } from "@/lib/searchFilters";
 const NOW = new Date(2026, 9, 9, 12);
 const item = (title: string, deadline?: string) => ({ title, deadline });
 
+describe("/scrambled", () => {
+  const scrambled = new Set(["wi-2"]);
+  const filter = searchFilter("/Scrambled ", NOW, scrambled)!;
+
+  it("finds the items whose name is scrambled, by what they are rather than how they read", () => {
+    expect(filter).not.toBeNull();
+    expect(filter.matches({ id: "wi-1", title: "Snorkmaiden" })).toBe(false);
+    expect(filter.matches({ id: "wi-2", title: "SNORKMAIDEN" })).toBe(true);
+  });
+
+  it("finds nothing when nothing is, and says so", () => {
+    const none = searchFilter("/scrambled", NOW)!;
+    expect(none.matches({ id: "wi-2", title: "SNORKMAIDEN" })).toBe(false);
+    expect(none.nothingFound).toBe("No items are scrambled");
+  });
+});
+
 describe("/due today", () => {
   const filter = searchFilter("/due today", NOW)!;
 

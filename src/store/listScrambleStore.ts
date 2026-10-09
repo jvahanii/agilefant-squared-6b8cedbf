@@ -60,9 +60,18 @@ function showNames(lists: readonly { id: string; name: string }[], items: readon
   if (orgId && Object.keys(changed).length > 0) patchCachedWorkItems(orgId, changed);
 }
 
-/** Mark, or with `by` undefined unmark, many at once: one update, not one each. */
-function mark(listIds: readonly string[], itemIds: readonly string[], by: string | null | undefined) {
-  const apply = (from: Map<string, string | null>, ids: readonly string[]) => {
+/**
+ * Mark, or with `by` undefined unmark, many at once: one update, not one
+ * each. `withList` is the list they were scrambled with, which is how
+ * unscrambling that list finds them again once they have moved.
+ */
+function mark(
+  listIds: readonly string[],
+  itemIds: readonly string[],
+  by: string | null | undefined,
+  withList?: string,
+) {
+  const owners = (from: Map<string, string | null>, ids: readonly string[]) => {
     const next = new Map(from);
     for (const id of ids) {
       if (by === undefined) next.delete(id);
@@ -70,8 +79,21 @@ function mark(listIds: readonly string[], itemIds: readonly string[], by: string
     }
     return next;
   };
-  if (listIds.length > 0) useScrambledListsStore.setState((s) => ({ byList: apply(s.byList, listIds) }));
-  if (itemIds.length > 0) useScrambledItemsStore.setState((s) => ({ byItem: apply(s.byItem, itemIds) }));
+  const withs = (from: Map<string, string>, ids: readonly string[]) => {
+    const next = new Map(from);
+    for (const id of ids) {
+      // The list itself does not go "with" itself.
+      if (by === undefined || !withList || id === withList) next.delete(id);
+      else next.set(id, withList);
+    }
+    return next;
+  };
+  if (listIds.length > 0) {
+    useScrambledListsStore.setState((s) => ({ byList: owners(s.byList, listIds), withList: withs(s.withList, listIds) }));
+  }
+  if (itemIds.length > 0) {
+    useScrambledItemsStore.setState((s) => ({ byItem: owners(s.byItem, itemIds), withList: withs(s.withList, itemIds) }));
+  }
 }
 
 interface ScrambleOutcome {
@@ -106,6 +128,9 @@ async function runScramble(backlogId: string, pin: string | null): Promise<Scram
       _lists: sentLists,
       _items: chunks[i],
       _pin: pin,
+      // Recorded on each name, so unscrambling this list brings it back
+      // wherever it has been moved to by then.
+      _with_list: backlogId,
     });
     if (error) {
       // A PIN is asked for only where there is none yet, and the database is
@@ -124,7 +149,7 @@ async function runScramble(backlogId: string, pin: string | null): Promise<Scram
       sentLists.filter((list) => doneLists.has(list.id)),
       chunks[i].filter((item) => doneItems.has(item.id)),
     );
-    mark([...doneLists], [...doneItems], me);
+    mark([...doneLists], [...doneItems], me, backlogId);
     lists += doneLists.size;
     items += doneItems.size;
   }
@@ -154,6 +179,8 @@ async function runUnscramble(backlogId: string, pin: string): Promise<ScramblePi
     useScrambledListsStore.getState().byList,
     useScrambledItemsStore.getState().byItem,
     peekCurrentUser()?.id ?? null,
+    useScrambledListsStore.getState().withList,
+    useScrambledItemsStore.getState().withList,
   );
   if (plan.listIds.length === 0 && plan.itemIds.length === 0) return { error: "Nothing here that you scrambled" };
 

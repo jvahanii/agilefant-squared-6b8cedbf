@@ -119,6 +119,24 @@ describe("unscrambling a list", () => {
     expect([...plan.itemIds].sort()).toEqual(["a", "f"]);
   });
 
+  it("brings back what was scrambled with the list and has since been moved out of it", () => {
+    // "d" was scrambled with Offers and then carried off to another list,
+    // still scrambled; "elsewhere" was a list under it, moved out.
+    const lists = new Map<string, string | null>([["offers", "me"], ["elsewhere", "me"]]);
+    const items = new Map<string, string | null>([["a", "me"], ["d", "me"], ["z", "me"]]);
+    const listsWith = new Map([["elsewhere", "offers"]]);
+    const itemsWith = new Map([["a", "offers"], ["d", "offers"], ["z", "some other list"]]);
+    const plan = planListUnscramble("offers", backlogs, workItems, lists, items, "me", listsWith, itemsWith);
+    expect(plan.listIds).toEqual(["offers", "elsewhere"]);
+    expect([...plan.itemIds].sort()).toEqual(["a", "d"]);
+  });
+
+  it("does not bring back someone else's, moved or not", () => {
+    const items = new Map<string, string | null>([["d", "someone"]]);
+    const plan = planListUnscramble("offers", backlogs, workItems, none, items, "me", new Map(), new Map([["d", "offers"]]));
+    expect(plan).toEqual({ listIds: [], itemIds: [] });
+  });
+
   it("claims nothing for someone who is not signed in — a scramble whose owner is gone stays", () => {
     const items = new Map<string, string | null>([["c", null]]);
     expect(planListUnscramble("offers", backlogs, workItems, none, items, null)).toEqual({ listIds: [], itemIds: [] });

@@ -64,8 +64,8 @@ beforeEach(() => {
   rpc.mockReset();
   toast.mockReset();
   setCurrentUser({ id: ME, email: null, fullName: null, avatarUrl: null });
-  useScrambledListsStore.setState({ byList: new Map() });
-  useScrambledItemsStore.setState({ byItem: new Map() });
+  useScrambledListsStore.setState({ byList: new Map(), withList: new Map() });
+  useScrambledItemsStore.setState({ byItem: new Map(), withList: new Map() });
   useListScrambleStore.setState({ prompt: null });
   useAppStore.setState({
     organizationId: "org",
@@ -96,6 +96,7 @@ describe("scrambling a list", () => {
         { id: "b", title: scrambleName("Answer Nordea") },
       ],
       _pin: null,
+      _with_list: LIST,
     });
     expect(useListScrambleStore.getState().prompt).toBeNull();
   });
@@ -112,6 +113,9 @@ describe("scrambling a list", () => {
     });
     expect([...useScrambledListsStore.getState().byList]).toEqual([[LIST, ME], [SUB, ME]]);
     expect([...useScrambledItemsStore.getState().byItem]).toEqual([["a", ME], ["b", ME]]);
+    // Each remembers the list it was scrambled with; the list itself goes with nothing.
+    expect([...useScrambledItemsStore.getState().withList]).toEqual([["a", LIST], ["b", LIST]]);
+    expect([...useScrambledListsStore.getState().withList]).toEqual([[SUB, LIST]]);
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "List scrambled", description: expect.stringContaining("2 list names and 2 item names") }),
     );
@@ -174,6 +178,7 @@ describe("scrambling a list", () => {
       _lists: [],
       _items: [{ id: "b", title: scrambleName("Answer Nordea") }],
       _pin: null,
+      _with_list: LIST,
     });
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Scrambled" }));
   });
@@ -222,6 +227,31 @@ describe("a scrambled list", () => {
     expect([...useScrambledListsStore.getState().byList]).toEqual([[SUB, "someone"]]);
     expect([...useScrambledItemsStore.getState().byItem]).toEqual([["b", "someone"]]);
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "List restored" }));
+  });
+
+  it("brings back an item scrambled with it that has since been moved to another list", async () => {
+    // "gone" was scrambled with the list, then carried off elsewhere.
+    useAppStore.setState((s) => ({
+      workItems: { ...s.workItems, gone: { ...workItem("gone", "Snorkmaiden", "org::bl-elsewhere") } },
+    }));
+    useScrambledItemsStore.setState({
+      byItem: new Map([["a", ME], ["gone", ME]]),
+      withList: new Map([["a", LIST], ["gone", LIST]]),
+    });
+    useListScrambleStore.getState().askUnscramble(LIST);
+    rpc.mockResolvedValue({
+      data: {
+        lists: [{ id: LIST, name: "Offers to answer" }],
+        items: [{ id: "a", title: "Call the lawyer" }, { id: "gone", title: "PN" }],
+      },
+      error: null,
+    });
+    expect(await useListScrambleStore.getState().confirm("4917")).toEqual({});
+
+    expect(rpc).toHaveBeenCalledWith("unscramble_names", { _list_ids: [LIST], _item_ids: ["a", "gone"], _pin: "4917" });
+    expect(titles().gone).toBe("PN");
+    expect(useScrambledItemsStore.getState().byItem.size).toBe(0);
+    expect(useScrambledItemsStore.getState().withList.size).toBe(0);
   });
 
   it("stays as it is on a wrong PIN, and the dialog is told", async () => {

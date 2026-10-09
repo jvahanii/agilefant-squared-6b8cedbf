@@ -100,7 +100,9 @@ export function BacklogContextMenuItems({
   const nameScrambled = scrambledLists.has(backlogId);
   const me = peekCurrentUser()?.id ?? null;
   const scrambledByMe = me !== null && scrambledLists.get(backlogId) === me;
-  // What has been added to a list since it was scrambled, and is still readable.
+  // What is in a scrambled list and still readable. The database scrambles
+  // what is put into one as it arrives, so this is the exception: a whole
+  // list moved under it, or something that was there before that was so.
   const addedSince = scrambledByMe
     ? (() => {
         const plan = planListScramble(backlogId, backlogs, workItems, scrambledLists, scrambledItems);

@@ -27,20 +27,22 @@ describe("scrambled lists store", () => {
   it("loads who scrambled what, asking only for the columns it may read", async () => {
     select.mockResolvedValue({
       data: [
-        { backlog_id: "bl-1", scrambled_by: "user-a" },
-        { backlog_id: "bl-2", scrambled_by: null },
+        { backlog_id: "bl-1", scrambled_by: "user-a", with_backlog_id: null },
+        { backlog_id: "bl-2", scrambled_by: null, with_backlog_id: "bl-1" },
       ],
       error: null,
     });
 
     await useScrambledListsStore.getState().load();
 
-    expect(select).toHaveBeenCalledWith("backlog_scrambles", "backlog_id, scrambled_by");
+    expect(select).toHaveBeenCalledWith("backlog_scrambles", "backlog_id, scrambled_by, with_backlog_id");
     const { byList } = useScrambledListsStore.getState();
     expect(byList.get("bl-1")).toBe("user-a");
     // A deleted profile leaves the list scrambled, with nobody able to open it.
     expect(byList.has("bl-2")).toBe(true);
     expect(byList.get("bl-2")).toBeNull();
+    // A list under a scrambled one was scrambled with it.
+    expect([...useScrambledListsStore.getState().withList]).toEqual([["bl-2", "bl-1"]]);
   });
 
   it("keeps what it has when the query fails", async () => {

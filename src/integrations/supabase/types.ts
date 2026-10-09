@@ -123,6 +123,7 @@ export type Database = {
           organization_id: string
           original_name: string
           scrambled_by: string | null
+          with_backlog_id: string | null
         }
         Insert: {
           backlog_id: string
@@ -1544,6 +1545,7 @@ export type Database = {
           organization_id: string
           original_title: string
           scrambled_by: string | null
+          with_backlog_id: string | null
           work_item_id: string
         }
         Insert: {
@@ -1903,7 +1905,7 @@ export type Database = {
         Returns: string
       }
       scramble_names: {
-        Args: { _items: Json; _lists: Json; _pin?: string | null }
+        Args: { _items: Json; _lists: Json; _pin?: string | null; _with_list?: string | null }
         Returns: Json
       }
       scramble_work_item: {

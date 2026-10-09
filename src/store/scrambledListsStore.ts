@@ -17,6 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 interface ScrambledListsState {
   /** List id -> the profile that scrambled it, null if that profile is gone. */
   byList: Map<string, string | null>;
+  /** List id -> the list it was scrambled with: a list under a scrambled one. */
+  withList: Map<string, string>;
   /** Reload from the database. RLS returns every scrambled list the user can see. */
   load: () => Promise<void>;
   /** Reload soon, coalescing a burst of change events into one query. */
@@ -32,16 +34,25 @@ let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useScrambledListsStore = create<ScrambledListsState>((set, get) => ({
   byList: new Map(),
+  withList: new Map(),
 
   load: async () => {
     // Columns are listed rather than "*" because original_name is not granted
     // to any client role — asking for it would fail the whole query.
-    const { data, error } = await supabase.from('backlog_scrambles').select('backlog_id, scrambled_by');
+    const { data, error } = await supabase
+      .from('backlog_scrambles')
+      .select('backlog_id, scrambled_by, with_backlog_id');
     if (error) {
       console.error('Could not load scrambled lists:', error.message);
       return;
     }
-    set({ byList: new Map((data ?? []).map((row) => [row.backlog_id, row.scrambled_by])) });
+    const rows = data ?? [];
+    set({
+      byList: new Map(rows.map((row) => [row.backlog_id, row.scrambled_by])),
+      withList: new Map(
+        rows.flatMap((row) => (row.with_backlog_id ? [[row.backlog_id, row.with_backlog_id] as [string, string]] : [])),
+      ),
+    });
   },
 
   scheduleLoad: () => {
@@ -61,6 +72,9 @@ export const useScrambledListsStore = create<ScrambledListsState>((set, get) => 
       const next = new Map(s.byList);
       if (scrambledBy === undefined) next.delete(backlogId);
       else next.set(backlogId, scrambledBy);
-      return { byList: next };
+      if (scrambledBy !== undefined || !s.withList.has(backlogId)) return { byList: next };
+      const withList = new Map(s.withList);
+      withList.delete(backlogId);
+      return { byList: next, withList };
     }),
 }));

@@ -8,13 +8,14 @@ import { titleDeadline } from "../../supabase/functions/_shared/deadlines";
  * also the key that puts the cursor in the box, so the hand is already there.
  *
  *   /due today    the items whose deadline is today
+ *   /scrambled    the items whose name is scrambled, wherever they are
  *
  * A filter answers for items only — a list has no deadline — and across every
  * tree, as a search by title does.
  */
 export interface SearchFilter {
   /** Does this item belong in the results? */
-  matches(item: Pick<WorkItem, "title" | "deadline">): boolean;
+  matches(item: Pick<WorkItem, "title" | "deadline"> & { id?: string }): boolean;
   /** What to say when nothing does: "No items are due today". */
   nothingFound: string;
 }
@@ -30,9 +31,24 @@ export function dueDay(item: Pick<WorkItem, "title" | "deadline">, now: Date = n
 /**
  * The filter a search query names, or null when it is an ordinary search.
  * Case and extra spaces do not matter: "/Due  today" is "/due today".
+ *
+ * `scrambled` is what "/scrambled" looks in: the items whose name is
+ * scrambled. A scrambled item reads as Moomin words, so it cannot be found by
+ * the name it had — and one that was moved after it was scrambled is not
+ * where it was either. This finds them all.
  */
-export function searchFilter(query: string, now: Date = new Date()): SearchFilter | null {
+export function searchFilter(
+  query: string,
+  now: Date = new Date(),
+  scrambled?: { has(id: string): boolean },
+): SearchFilter | null {
   const command = query.trim().toLowerCase().replace(/\s+/g, " ");
+  if (command === "/scrambled") {
+    return {
+      matches: (item) => item.id !== undefined && (scrambled?.has(item.id) ?? false),
+      nothingFound: "No items are scrambled",
+    };
+  }
   if (command === "/due today") {
     const today = toIsoDate(now);
     return {

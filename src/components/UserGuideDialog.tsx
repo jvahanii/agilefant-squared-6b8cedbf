@@ -208,7 +208,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Scramble a list",
-                how: "Right-click a list and choose Scramble list. Its name, the lists under it and every item in them are replaced by Moomin words for everyone, and a padlock marks the list. Items added afterwards are not scrambled by themselves: the list's menu then offers Scramble what was added. Show real name and Unscramble list are in the same menu, for the person who scrambled it.",
+                how: "Right-click a list and choose Scramble list. Its name, the lists under it and every item in them are replaced by Moomin words for everyone, and a padlock marks the list. Whatever is put into a scrambled list afterwards — typed in, moved in, imported, by anyone — is scrambled as it arrives, and so is a new list made under it; those names too belong to the person who scrambled the list, so the one who added an item cannot read it back. Show real name and Unscramble list are in the same menu, for that person; unscrambling the list also brings back what was scrambled with it and has since been moved to another list. Should the menu offer Scramble what was added, something got in unscrambled — a whole list moved under this one, for instance — and that takes it in.",
               },
               {
                 action: "Read a scrambled name",
@@ -833,6 +833,10 @@ function buildSections(): Section[] {
               {
                 action: "Find what is due today",
                 how: 'Type "/due today" to list every item whose deadline is today, in any tree.',
+              },
+              {
+                action: "Find what is scrambled",
+                how: 'Type "/scrambled" to list every item whose name is scrambled, in any tree — a scrambled item cannot be found by the name it had.',
               },
               {
                 action: "Result context",

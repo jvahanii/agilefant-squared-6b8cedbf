@@ -20,6 +20,21 @@ beforeEach(() => {
 });
 
 describe("scrambled items store", () => {
+  it("knows which list an item was scrambled with, and forgets it when the item is unscrambled", async () => {
+    select.mockResolvedValue({
+      data: [
+        { work_item_id: "wi-1", scrambled_by: "user-a", with_backlog_id: "bl-1" },
+        { work_item_id: "wi-2", scrambled_by: "user-a", with_backlog_id: null },
+      ],
+      error: null,
+    });
+    await useScrambledItemsStore.getState().load();
+    expect([...useScrambledItemsStore.getState().withList]).toEqual([["wi-1", "bl-1"]]);
+
+    useScrambledItemsStore.getState().setScrambled("wi-1", undefined);
+    expect(useScrambledItemsStore.getState().withList.size).toBe(0);
+  });
+
   it("loads who scrambled what, asking only for the columns it may read", async () => {
     select.mockResolvedValue({
       data: [
@@ -31,7 +46,7 @@ describe("scrambled items store", () => {
 
     await useScrambledItemsStore.getState().load();
 
-    expect(select).toHaveBeenCalledWith("work_item_scrambles", "work_item_id, scrambled_by");
+    expect(select).toHaveBeenCalledWith("work_item_scrambles", "work_item_id, scrambled_by, with_backlog_id");
     const { byItem } = useScrambledItemsStore.getState();
     expect(byItem.get("wi-1")).toBe("user-a");
     // A deleted profile leaves the item scrambled, with nobody able to open it.

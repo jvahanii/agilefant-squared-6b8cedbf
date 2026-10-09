@@ -1,8 +1,12 @@
 /**
  * Moomin characters and story-themed words used for funny scrambling.
  * Sourced from Tove Jansson's Moomin universe.
+ *
+ * The database has the same list, in the same order, in scramble_name() — it
+ * scrambles what is put into a scrambled list. Change one and change the
+ * other; src/test/scrambleSql.test.ts says so if they part.
  */
-const MOOMIN_WORDS = [
+export const MOOMIN_WORDS = [
   "Moomintroll",
   "Moominmamma",
   "Moominpappa",

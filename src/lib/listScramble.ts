@@ -10,7 +10,11 @@ import { withDescendants } from "@/lib/scrambleScope";
  * everything in it — the lists under it, every item in any of them, and
  * everything beneath those items, as scrambling an item takes its children.
  *
- * Putting it back takes in the same, less what somebody else scrambled.
+ * Putting it back takes in the same, less what somebody else scrambled — and
+ * more: what was scrambled with the list and has since been moved out of it.
+ * An item carried off to another list, still scrambled, reads as a stranger
+ * there; to the person who scrambled the list it has simply gone, unless
+ * unscrambling the list brings it back.
  */
 
 type Lists = Record<string, Pick<Backlog, "id" | "name" | "childrenIds">>;
@@ -57,7 +61,9 @@ export interface ListScramblePlan {
 /**
  * What scrambling this list scrambles: the list, the lists under it and their
  * items, less what is already scrambled — by this person or anyone else. On a
- * list that is scrambled already, that leaves what was added to it since.
+ * list that is scrambled already, that leaves what got into it unscrambled:
+ * the database scrambles what is put into a scrambled list as it arrives, so
+ * that is the odd case — a whole list moved under it, for one.
  */
 export function planListScramble(
   backlogId: string,
@@ -83,10 +89,13 @@ export interface ListUnscramblePlan {
 }
 
 /**
- * What unscrambling this list puts back: of the same lists and items, the
- * ones this person scrambled. The database passes over the rest, and there is
- * no point asking it. A scramble whose owner is gone belongs to nobody — not
- * to someone who happens not to be signed in either.
+ * What unscrambling this list puts back: the list, the lists under it and
+ * their items, as scrambling takes them in — and whatever was scrambled with
+ * any of those lists (`listsWith`, `itemsWith`: id → the list it was
+ * scrambled with), wherever it is now. Of all that, the ones this person
+ * scrambled: the database passes over the rest, and there is no point asking
+ * it. A scramble whose owner is gone belongs to nobody — not to someone who
+ * happens not to be signed in either.
  */
 export function planListUnscramble(
   backlogId: string,
@@ -95,12 +104,29 @@ export function planListUnscramble(
   scrambledLists: Scrambled,
   scrambledItems: Scrambled,
   me: string | null,
+  listsWith: ReadonlyMap<string, string> = new Map(),
+  itemsWith: ReadonlyMap<string, string> = new Map(),
 ): ListUnscramblePlan {
   if (me === null) return { listIds: [], itemIds: [] };
+
   const listIds = listsUnder(backlogId, backlogs);
+  const lists = new Set(listIds);
+  // A list scrambled with one of these and since moved out from under it.
+  for (const [id, withId] of listsWith) {
+    if (lists.has(withId) && !lists.has(id)) listIds.push(id);
+  }
+  for (const id of listIds) lists.add(id);
+
+  const itemIds = itemsInLists(listIds, workItems);
+  const items = new Set(itemIds);
+  // An item scrambled with one of them and since moved to another list.
+  for (const [id, withId] of itemsWith) {
+    if (lists.has(withId) && !items.has(id)) itemIds.push(id);
+  }
+
   return {
     listIds: listIds.filter((id) => scrambledLists.get(id) === me),
-    itemIds: itemsInLists(listIds, workItems).filter((id) => scrambledItems.get(id) === me),
+    itemIds: itemIds.filter((id) => scrambledItems.get(id) === me),
   };
 }
 

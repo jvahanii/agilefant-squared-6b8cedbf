@@ -16,6 +16,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface ScrambledItemsState {
   /** Work item id -> the profile that scrambled it, null if that profile is gone. */
   byItem: Map<string, string | null>;
+  /** Work item id -> the list it was scrambled with, for the items that were
+   *  scrambled as part of one. Unscrambling that list brings them back even
+   *  when they have since been moved out of it. */
+  withList: Map<string, string>;
   /** Reload from the database. RLS returns every scrambled item the user can see. */
   load: () => Promise<void>;
   /** Reload soon, coalescing a burst of change events into one query. */
@@ -31,16 +35,25 @@ let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useScrambledItemsStore = create<ScrambledItemsState>((set, get) => ({
   byItem: new Map(),
+  withList: new Map(),
 
   load: async () => {
     // Columns are listed rather than "*" because original_title is not granted
     // to any client role — asking for it would fail the whole query.
-    const { data, error } = await supabase.from('work_item_scrambles').select('work_item_id, scrambled_by');
+    const { data, error } = await supabase
+      .from('work_item_scrambles')
+      .select('work_item_id, scrambled_by, with_backlog_id');
     if (error) {
       console.error('Could not load scrambled items:', error.message);
       return;
     }
-    set({ byItem: new Map((data ?? []).map((row) => [row.work_item_id, row.scrambled_by])) });
+    const rows = data ?? [];
+    set({
+      byItem: new Map(rows.map((row) => [row.work_item_id, row.scrambled_by])),
+      withList: new Map(
+        rows.flatMap((row) => (row.with_backlog_id ? [[row.work_item_id, row.with_backlog_id] as [string, string]] : [])),
+      ),
+    });
   },
 
   scheduleLoad: () => {
@@ -60,6 +73,10 @@ export const useScrambledItemsStore = create<ScrambledItemsState>((set, get) => 
       const next = new Map(s.byItem);
       if (scrambledBy === undefined) next.delete(workItemId);
       else next.set(workItemId, scrambledBy);
-      return { byItem: next };
+      if (scrambledBy !== undefined || !s.withList.has(workItemId)) return { byItem: next };
+      // Unscrambled: it no longer goes with any list.
+      const withList = new Map(s.withList);
+      withList.delete(workItemId);
+      return { byItem: next, withList };
     }),
 }));
