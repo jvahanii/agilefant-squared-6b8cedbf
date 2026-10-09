@@ -54,6 +54,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
@@ -724,15 +725,18 @@ function WorkItemNodeContent({
 
   const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
 
-  /** The rows a scramble action applies to: the selection when this row is part
-   *  of it, otherwise this row alone — as the other bulk actions here work. */
+  /** The rows a scramble action starts from: the selection when this row is part
+   *  of it, otherwise this row alone — as the other bulk actions here work.
+   *  Either action then takes in everything under those rows as well. */
   const scrambleTargets = (): string[] =>
     isSelected && isMultiSelected ? useAppStore.getState().selectedWorkItemIds : [workItemId];
 
   const runScramble = async (pin: string): Promise<ScramblePinResult> => {
     const scrambled = useScrambledItemsStore.getState().byItem;
     const items = useAppStore.getState().workItems;
-    const ids = scrambleTargets().filter((id) => items[id] && !scrambled.has(id));
+    // The rows and everything under them: a hidden name with its work
+    // readable beneath it has hidden nothing.
+    const ids = idsToScramble(scrambleTargets(), items, scrambled);
     const me = peekCurrentUser()?.id ?? null;
     const needPin = orgsNeedingPinRef.current;
     let done = 0;
@@ -775,8 +779,7 @@ function WorkItemNodeContent({
     const scrambledNow = useScrambledItemsStore.getState().byItem;
     const orgIds = [
       ...new Set(
-        scrambleTargets()
-          .filter((id) => items[id] && !scrambledNow.has(id))
+        idsToScramble(scrambleTargets(), items, scrambledNow)
           .map((id) => items[id].organizationId ?? activeOrgId)
           .filter((org): org is string => !!org),
       ),
@@ -813,26 +816,10 @@ function WorkItemNodeContent({
   const runUnscramble = async (pin: string): Promise<ScramblePinResult> => {
     const scrambled = useScrambledItemsStore.getState().byItem;
     const me = peekCurrentUser()?.id ?? null;
-    // Only the ones this person scrambled: the database refuses the rest, and
+    // The rows and everything under them, as a scramble takes them in — but
+    // only the ones this person scrambled: the database refuses the rest, and
     // there is no point asking it.
-    // Unscrambling a parent also restores every descendant.
-    const all = useAppStore.getState().workItems;
-    const childrenOf = new Map<string, string[]>();
-    for (const wi of Object.values(all)) {
-      if (!wi.parentId) continue;
-      const list = childrenOf.get(wi.parentId) ?? [];
-      list.push(wi.id);
-      childrenOf.set(wi.parentId, list);
-    }
-    const expanded = new Set<string>();
-    const stack = [...scrambleTargets()];
-    while (stack.length) {
-      const id = stack.pop()!;
-      if (expanded.has(id)) continue;
-      expanded.add(id);
-      for (const c of childrenOf.get(id) ?? []) stack.push(c);
-    }
-    const ids = [...expanded].filter((id) => scrambled.has(id) && scrambled.get(id) === me);
+    const ids = idsToUnscramble(scrambleTargets(), useAppStore.getState().workItems, scrambled, me);
     if (ids.length === 0) return { error: "Nothing here that you scrambled" };
     let done = 0;
     for (const id of ids) {
