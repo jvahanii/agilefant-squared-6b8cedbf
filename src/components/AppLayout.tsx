@@ -38,6 +38,7 @@ import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { ListScrambleDialogHost } from "@/components/ListScrambleDialogHost";
+import { CatchingUpGuard } from "@/components/CatchingUpGuard";
 import {
   Undo2,
   Redo2,
@@ -126,12 +127,18 @@ export default function AppLayout() {
       <RerankGuardHost />
       <BurnupDialogHost />
       <ListScrambleDialogHost />
+      <CatchingUpGuard />
     </ScrambleProvider>
   );
 }
 
 function BurnupDialogHost() {
   const { scope, open, close } = useBurnupDialogStore();
+  // Mounted only once a chart has been asked for. Rendered from the start —
+  // closed, but rendered — it fetched its lazy chunk, and the charting library
+  // with it, on every start: some 370 KB of script for a dialog nobody had
+  // opened, read and compiled on a phone while the items were waiting.
+  if (!scope) return null;
   return (
     <Suspense fallback={null}>
       <BurnupChartDialog

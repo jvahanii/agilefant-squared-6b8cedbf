@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
@@ -10,11 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SavedSearchPicker } from "@/components/SavedSearchPicker";
 import { scrollListWithArrows } from "@/lib/scrollListWithArrows";
 import { JOB_ADS_TREE_ID, countItemsInTree } from "@/lib/jobAdsTree";
 import { useAppStore } from "@/store/appStore";
 import type { RunnableSearch } from "@/lib/gmailConnector";
+
+// Fetched when a search is run, not at start-up: the picker is the largest
+// thing behind this button, and most starts never press it.
+const SavedSearchPicker = lazy(() =>
+  import("@/components/SavedSearchPicker").then((m) => ({ default: m.SavedSearchPicker })),
+);
 
 type JobSearch = RunnableSearch & { name: string | null };
 
@@ -118,13 +123,15 @@ export function JobSearchRunButton() {
             <DialogDescription className="break-all text-xs">{running?.query}</DialogDescription>
           </DialogHeader>
           {running && (
-            <SavedSearchPicker
-              key={runToken}
-              search={running}
-              mode="jobs"
-              organizationId={activeOrgId}
-              onClose={() => setRunning(null)}
-            />
+            <Suspense fallback={<p className="py-6 text-sm text-muted-foreground">Loading…</p>}>
+              <SavedSearchPicker
+                key={runToken}
+                search={running}
+                mode="jobs"
+                organizationId={activeOrgId}
+                onClose={() => setRunning(null)}
+              />
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>

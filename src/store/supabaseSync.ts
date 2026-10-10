@@ -99,43 +99,74 @@ type SupabaseReadResult<T = any> = { data: T[] | null; error: any };
 const RANK_COLUMNS = 'work_item_id,backlog_id,rank';
 const HYPERLINK_COLUMNS = 'id,work_item_id,url,alt_text,rank';
 
-async function loadAllRows(table: string, column: string, value: string): Promise<SupabaseReadResult> {
-  const PAGE = 1000;
-  const rows: any[] = [];
-  let from = 0;
-  for (;;) {
-    const { data, error } = await supabase
-      .from(table as any)
-      .select('*')
-      .eq(column, value)
-      .order('id', { ascending: true })
-      .range(from, from + PAGE - 1);
-    if (error) return { data: null, error };
-    rows.push(...((data ?? []) as any[]));
-    if ((data ?? []).length < PAGE) break;
+type PageResult = { data: any[] | null; error: any; count?: number | null };
+
+/**
+ * Every row of a query the server hands out a thousand at a time.
+ *
+ * The pages used to be asked for one after another: an organization of a few
+ * thousand items waited four round trips in a row before it had its items,
+ * which on a phone is most of what a start costs. The first page now asks how
+ * many rows there are in all, and the rest are fetched side by side.
+ *
+ * `page(from, to, counted)` runs the query for those rows, with the total
+ * asked for when `counted`. Where no total comes back the pages are read in
+ * turn, as before; and a last page that still comes back full — the table
+ * grew while it was being read — is followed until one does not.
+ */
+export async function loadPagesSideBySide(
+  page: (from: number, to: number, counted: boolean) => PromiseLike<PageResult>,
+  PAGE = 1000,
+): Promise<SupabaseReadResult> {
+  const first = await page(0, PAGE - 1, true);
+  if (first.error) return { data: null, error: first.error };
+  const rows: any[] = [...(first.data ?? [])];
+  let last = first.data ?? [];
+  let from = PAGE;
+
+  if (last.length === PAGE && typeof first.count === 'number' && first.count > PAGE) {
+    const starts: number[] = [];
+    for (let start = PAGE; start < first.count; start += PAGE) starts.push(start);
+    const rest = await Promise.all(starts.map((start) => page(start, start + PAGE - 1, false)));
+    for (const result of rest) {
+      if (result.error) return { data: null, error: result.error };
+      rows.push(...(result.data ?? []));
+    }
+    last = rest[rest.length - 1].data ?? [];
+    from = PAGE + starts.length * PAGE;
+  }
+
+  while (last.length === PAGE) {
+    const next = await page(from, from + PAGE - 1, false);
+    if (next.error) return { data: null, error: next.error };
+    last = next.data ?? [];
+    rows.push(...last);
     from += PAGE;
   }
   return { data: rows, error: null };
 }
 
+async function loadAllRows(table: string, column: string, value: string): Promise<SupabaseReadResult> {
+  return loadPagesSideBySide((from, to, counted) =>
+    supabase
+      .from(table as any)
+      .select('*', counted ? { count: 'exact' } : undefined)
+      .eq(column, value)
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+}
+
 async function loadAllRowsIn(table: string, column: string, values: string[]): Promise<SupabaseReadResult> {
   if (values.length === 0) return { data: [], error: null };
-  const PAGE = 1000;
-  const rows: any[] = [];
-  let from = 0;
-  for (;;) {
-    const { data, error } = await supabase
+  return loadPagesSideBySide((from, to, counted) =>
+    supabase
       .from(table as any)
-      .select('*')
+      .select('*', counted ? { count: 'exact' } : undefined)
       .in(column, values)
       .order('id', { ascending: true })
-      .range(from, from + PAGE - 1);
-    if (error) return { data: null, error };
-    rows.push(...((data ?? []) as any[]));
-    if ((data ?? []).length < PAGE) break;
-    from += PAGE;
-  }
-  return { data: rows, error: null };
+      .range(from, to),
+  );
 }
 
 // ─── Load all data from Supabase (filtered by org) ────────────────────────

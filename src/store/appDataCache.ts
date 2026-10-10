@@ -32,7 +32,25 @@ const DB_NAME = "agilefant-app-cache";
 const STORE = "orgSnapshots";
 const LEGACY_KEY_PREFIX = "cached_app_data_";
 
-export const DATA_CACHE_TTL_MS = 30 * 60 * 1000; // stale-while-revalidate
+/**
+ * How long a kept copy is still worth starting from. It was thirty minutes,
+ * which on a phone is almost never: the app is opened a few times a day, so
+ * nearly every start found its copy too old, threw it away, and showed
+ * nothing until every item had been downloaded again.
+ *
+ * A copy is shown however old it is, within this, and replaced as soon as the
+ * fresh data lands. What an old copy may not do is be edited — see
+ * DATA_CACHE_FRESH_MS.
+ */
+export const DATA_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * A copy newer than this is used as it always was. An older one is shown, but
+ * nothing in it can be changed until the refresh has landed: a save writes a
+ * whole item, and one made from an old copy would write old values back over
+ * what has changed since on another device.
+ */
+export const DATA_CACHE_FRESH_MS = 30 * 60 * 1000;
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 

@@ -39,6 +39,7 @@ import {
   readCachedAppData,
   writeCachedAppData,
   patchCachedWorkItems,
+  DATA_CACHE_FRESH_MS,
   type CachedAppData,
 } from "./appDataCache";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
@@ -186,6 +187,11 @@ interface AppState extends DataSnapshot {
    * "loading" rather than "no items" while this is true.
    */
   workItemsRefreshing: boolean;
+  /** The screen shows a copy kept from an earlier visit, old enough that it
+   *  must not be edited, and the fresh data is on its way. Nothing can be
+   *  changed until it lands (CatchingUpGuard) — or until a while has passed,
+   *  so that being offline does not lock the app. */
+  catchingUp: boolean;
   loadingProgress: number;
   organizationId: string | null;
   userId: string | null;
@@ -519,6 +525,28 @@ let localMutationVersion = 0;
 
 function bumpMutationVersion() {
   localMutationVersion++;
+}
+
+/** How long edits wait on the refresh of an old copy before they are let through anyway. */
+export const CATCH_UP_MAX_MS = 8000;
+
+/**
+ * A refresh that comes back while the user is editing is not applied — it
+ * would undo what they just did — which leaves the screen on the older data.
+ * That was thirty minutes old at most; now that a start can be from a copy
+ * days old, it must not be where things stay. So another refresh is asked for
+ * a few seconds later, when the edit has been saved and will be in it. A few
+ * times at most: someone editing without pause is refreshed when they stop,
+ * or on the next wake.
+ */
+export const REFRESH_AFTER_EDIT_MS = 4000;
+const MAX_REFRESHES_AFTER_EDIT = 3;
+let refreshesAfterEdit = 0;
+
+function refreshAgainAfterEdit(refresh: () => void) {
+  if (refreshesAfterEdit >= MAX_REFRESHES_AFTER_EDIT) return;
+  refreshesAfterEdit += 1;
+  setTimeout(refresh, REFRESH_AFTER_EDIT_MS);
 }
 
 /**
@@ -1508,6 +1536,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     isLoading: true,
     workItemsLoading: false,
     workItemsRefreshing: false,
+    catchingUp: false,
     loadingProgress: 0,
     organizationId: null,
     userId: null,
@@ -1585,6 +1614,8 @@ export const useAppStore = create<AppState>()((set, get) => {
             currentState.organizationId === orgId &&
             Object.keys(currentState.backlogTrees).length > 0 &&
             !currentState.isLoading);
+        // Old enough that it is only for looking at until the refresh lands.
+        const cachedIsOld = Date.now() - cached.timestamp > DATA_CACHE_FRESH_MS;
         if (!canSkipCachedApply) {
           lastAppliedCachedSnapshotKey = cachedSnapshotKey;
           set((state) => {
@@ -1619,8 +1650,16 @@ export const useAppStore = create<AppState>()((set, get) => {
               redoStack: [],
               expandedWorkItems: new Set<string>(),
               expandedBacklogs: new Set<string>(),
+              catchingUp: cachedIsOld,
             };
           });
+          if (cachedIsOld) {
+            // Not for ever: offline, or on a connection that never answers,
+            // the copy is all there is, and it has to be usable.
+            setTimeout(() => {
+              if (get().catchingUp) set({ catchingUp: false });
+            }, CATCH_UP_MAX_MS);
+          }
         }
 
         // Refresh in the background so the cache stays fresh.
@@ -1660,8 +1699,10 @@ export const useAppStore = create<AppState>()((set, get) => {
                 selectedTreeId: get().selectedTreeId,
                 selectedWorkItemIds: get().selectedWorkItemIds,
               });
+              refreshAgainAfterEdit(() => void get().loadFromSupabase());
               return;
             }
+            refreshesAfterEdit = 0;
             const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
 
         // Bug fix: if sanitizeData dropped ALL backlog assignments for an
@@ -1722,7 +1763,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
               appDataBackgroundRefreshInFlight = null;
             }
-            if (get().workItemsRefreshing) set({ workItemsRefreshing: false });
+            if (get().workItemsRefreshing || get().catchingUp) set({ workItemsRefreshing: false, catchingUp: false });
           });
           appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
           void backgroundPromise;
