@@ -39,11 +39,15 @@ export interface TimelineRange {
 export interface Dated {
   startedOn?: string;
   endedOn?: string;
+  /** The day the work is due. Given only where deadlines are shown: an
+   *  organization that keeps none has none on its calendar either. */
+  deadline?: string;
 }
 
 /**
  * The days the timeline spans: from a week before the earliest date to a week
- * after the latest, always taking in today so "now" is on the chart. With no
+ * after the latest — a deadline is a date like the others — always taking in
+ * today so "now" is on the chart. With no
  * dated item at all it is the month around today, so there is somewhere to
  * point at when the first date is set.
  */
@@ -52,7 +56,7 @@ export function timelineRange(items: Dated[], today: number): TimelineRange {
   let max = today;
   let any = false;
   for (const item of items) {
-    for (const day of [dayNumber(item.startedOn), dayNumber(item.endedOn)]) {
+    for (const day of [dayNumber(item.startedOn), dayNumber(item.endedOn), dayNumber(item.deadline)]) {
       if (day === null) continue;
       any = true;
       if (day < min) min = day;
@@ -149,6 +153,60 @@ export function barFor(item: Dated, today: number): TimelineBar | null {
   return { kind: "end-only", from: end!, to: end! };
 }
 
+/**
+ * How an item stands against its deadline:
+ *   ahead   it is still to come, and the work has not ended
+ *   met     the work ended on or before it
+ *   missed  the work ended after it — or has not ended, and it has gone by
+ */
+export type DeadlineState = "ahead" | "met" | "missed";
+
+export interface DeadlineMark {
+  /** The day the work is due. */
+  day: number;
+  state: DeadlineState;
+  /**
+   * The days between the work and its deadline, first and last included:
+   *   left  from where unfinished work has got to, up to the deadline — the
+   *         time there still is
+   *   over  from the day after the deadline to where the work ended, or to
+   *         today if it has not — how late it is
+   * Null when there is neither: work that ended in time, or work with no bar
+   * whose deadline is still ahead.
+   */
+  stretch: { kind: "left" | "over"; from: number; to: number } | null;
+}
+
+/**
+ * An item's deadline on the calendar, or null when it has none. The day it
+ * falls on, whether it was kept, and the stretch between it and the work —
+ * so that "due the 12th" can be read against the bar, not only beside it.
+ */
+export function deadlineMark(item: Dated, today: number): DeadlineMark | null {
+  const day = dayNumber(item.deadline);
+  if (day === null) return null;
+  const end = dayNumber(item.endedOn);
+  const bar = barFor(item, today);
+  const state: DeadlineState = end !== null ? (end <= day ? "met" : "missed") : day < today ? "missed" : "ahead";
+  // Where the work has got to: the end of its bar, or today for work that is
+  // late without ever having been given a start.
+  const reached = bar ? bar.to : state === "missed" ? today : null;
+  if (reached !== null && reached > day) return { day, state, stretch: { kind: "over", from: day + 1, to: reached } };
+  if (bar && end === null && bar.to < day) return { day, state, stretch: { kind: "left", from: bar.to + 1, to: day } };
+  return { day, state, stretch: null };
+}
+
+/** The same in words, for a tooltip and for screen readers. */
+export function describeDeadline(item: Dated, mark: DeadlineMark): string {
+  const base = `Deadline ${item.deadline}`;
+  if (mark.state === "ahead") return base;
+  if (mark.state === "met") return `${base} — met`;
+  const end = dayNumber(item.endedOn);
+  if (end === null) return `${base} — passed`;
+  const late = end - mark.day;
+  return `${base} — ended ${late} day${late === 1 ? "" : "s"} late`;
+}
+
 /** What is being dragged: the whole bar, or one of its ends. */
 export type DragMode = "move" | "start" | "end";
 
@@ -225,14 +283,18 @@ export function monthTicks(range: TimelineRange, locale?: string): MonthTick[] {
 /**
  * The days the bars of these items cover between them — from the first day of
  * the earliest to the last day of the latest, and so everything in between —
- * or null when none of them has a bar.
+ * with their deadlines, which are as much to be seen as the bars. Null when
+ * none of them has either.
  */
 export function spanOf(items: Dated[], today: number): { from: number; to: number } | null {
   let span: { from: number; to: number } | null = null;
   for (const item of items) {
     const bar = barFor(item, today);
-    if (!bar) continue;
-    span = span ? { from: Math.min(span.from, bar.from), to: Math.max(span.to, bar.to) } : { from: bar.from, to: bar.to };
+    const days = [bar?.from, bar?.to, dayNumber(item.deadline)].filter((d): d is number => typeof d === "number");
+    if (days.length === 0) continue;
+    const from = Math.min(...days);
+    const to = Math.max(...days);
+    span = span ? { from: Math.min(span.from, from), to: Math.max(span.to, to) } : { from, to };
   }
   return span;
 }

@@ -25,6 +25,7 @@ import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock,
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useScramblingEnabled } from "@/store/orgSettingsStore";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 import { peekCurrentUser } from "@/lib/currentUser";
 
@@ -72,6 +73,9 @@ export function MobileWorkItemAttributesSheet({
   const scrambledBy = useScrambledItemsStore((s) => s.byItem.get(workItemId));
   const isNameScrambled = useScrambledItemsStore((s) => s.byItem.has(workItemId));
   const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
+  // The Name row is there where scrambling is on — and for a name that is
+  // scrambled already, whatever the setting, so it can always be put back.
+  const scramblingEnabled = useScramblingEnabled();
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
@@ -341,6 +345,7 @@ export function MobileWorkItemAttributesSheet({
             </Button>
           </div>
 
+          {(isNameScrambled || scramblingEnabled) && (
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Name</span>
             {!isNameScrambled ? (
@@ -380,6 +385,7 @@ export function MobileWorkItemAttributesSheet({
               </span>
             )}
           </div>
+          )}
 
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Duplicate</span>

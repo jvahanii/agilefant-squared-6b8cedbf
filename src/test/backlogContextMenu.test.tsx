@@ -56,7 +56,7 @@ const settings = (over: Record<string, boolean> = {}) =>
       [ORG]: {
         timeLoggingEnabled: false, pointsEnabled: true, labelsEnabled: false, customStatusesEnabled: true,
         savingsIncomeEnabled: false, boardsEnabled: false, burnupsEnabled: true, persistNotificationsEnabled: false,
-        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, createdDatesEnabled: false, startEndDatesEnabled: false, ...over,
+        publicLinksEnabled: true, ratingsEnabled: true, deadlinesEnabled: false, createdDatesEnabled: false, startEndDatesEnabled: false, scramblingEnabled: false, ...over,
       },
     },
   });
@@ -222,6 +222,7 @@ describe("scrambling a list from its menu", () => {
     askReveal.mockReset();
     askUnscramble.mockReset();
     setCurrentUser({ id: ME, email: null, fullName: null, avatarUrl: null });
+    settings({ scramblingEnabled: true });
     useListScrambleStore.setState({ scramble, askReveal, askUnscramble });
     useScrambledListsStore.setState({ byList: new Map() });
     useScrambledItemsStore.setState({ byItem: new Map() });
@@ -235,6 +236,22 @@ describe("scrambling a list from its menu", () => {
     for (const item of ["Show real name…", "Unscramble list…", "Scrambled by someone else"]) {
       expect(screen.queryByText(item)).not.toBeInTheDocument();
     }
+  });
+
+  it("does not offer it where the organization has scrambling off — which is where it starts", () => {
+    settings();
+    openMenu();
+    expect(screen.queryByText("Scramble list…")).not.toBeInTheDocument();
+    expect(screen.getByText("Attributes")).toBeInTheDocument();
+  });
+
+  it("still lets a scrambled list be read and put back with scrambling switched off", () => {
+    settings();
+    useScrambledListsStore.setState({ byList: new Map([[BL, ME]]) });
+    useScrambledItemsStore.setState({ byItem: new Map([["a", ME], ["b", ME]]) });
+    openMenu();
+    expect(screen.getByText("Show real name…")).toBeInTheDocument();
+    expect(screen.getByText("Unscramble list…")).toBeInTheDocument();
   });
 
   it("offers its real name and to put it back, to the person who scrambled it", () => {
@@ -276,6 +293,26 @@ describe("scrambling a list from its menu", () => {
     openMenu();
     expect(screen.queryByText("Insert icon")).not.toBeInTheDocument();
     expect(screen.getByText("Attributes")).toBeInTheDocument();
+  });
+});
+
+describe("scrambling an item, where the organization has it off", () => {
+  // The item's menu and its sheet on a phone are too large to stand up here;
+  // what is pinned is that each asks the setting before offering to scramble,
+  // and offers what a scrambled name needs without asking it.
+  const source = (file: string) => readFileSync(join(process.cwd(), "src", "components", file), "utf8");
+
+  it("is not offered in the item's menu, but a scrambled name keeps its entries", () => {
+    // Spacing aside, so reformatting the file does not fail this.
+    const menu = source("WorkItemTreePanel.tsx").replace(/\s+/g, " ");
+    expect(menu).toContain("{!isNameScrambled ? ( scramblingEnabled && ( <ContextMenuItem className=\"text-xs\" onSelect={() => void startScramble()}>");
+    const mine = menu.slice(menu.indexOf(") : scrambledByMe ? ( <>"));
+    expect(mine.slice(0, 900)).toContain("Show real name…");
+    expect(mine.slice(0, 900)).toContain("Unscramble {isSelected && isMultiSelected");
+  });
+
+  it("is not offered in the item's sheet on a phone, but a scrambled name keeps its row", () => {
+    expect(source("MobileAttributesSheet.tsx")).toContain("{(isNameScrambled || scramblingEnabled) && (");
   });
 });
 

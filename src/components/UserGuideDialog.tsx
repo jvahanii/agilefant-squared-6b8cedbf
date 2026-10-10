@@ -204,7 +204,7 @@ function buildSections(): Section[] {
               { action: "Rename an item", how: "Double-click the item title to edit it directly in-place. A scrambled name cannot be renamed until it is unscrambled." },
               {
                 action: "Scramble a name",
-                how: "Right-click an item and choose Scramble name (on mobile, open the attributes sheet and tap Scramble on the Name row). The name is replaced by Moomin words for everyone in the organisation, and a padlock marks the row. Select several items first to scramble them together.",
+                how: "Scrambling is switched on for an organisation under Bells & Whistles; until it is, none of this is offered. Right-click an item and choose Scramble name (on mobile, open the attributes sheet and tap Scramble on the Name row). The name is replaced by Moomin words for everyone in the organisation, and a padlock marks the row. Select several items first to scramble them together.",
               },
               {
                 action: "Scramble a list",

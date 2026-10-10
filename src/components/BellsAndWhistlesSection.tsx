@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock, CalendarPlus, CalendarRange } from "lucide-react";
+import { Hash, Clock, Settings2, Tag, TrendingUp, FlaskConical, Star, CalendarClock, CalendarPlus, CalendarRange, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -39,6 +39,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const setCreatedDatesEnabledSetting = useOrgSettingsStore((s) => s.setCreatedDatesEnabled);
   const createdDatesEnabled = (orgSettings as { createdDatesEnabled?: boolean }).createdDatesEnabled ?? false;
   const setStartEndDatesEnabledSetting = useOrgSettingsStore((s) => s.setStartEndDatesEnabled);
+  const setScramblingEnabledSetting = useOrgSettingsStore((s) => s.setScramblingEnabled);
+  const scramblingEnabled = (orgSettings as { scramblingEnabled?: boolean }).scramblingEnabled ?? false;
   const startEndDatesEnabled = (orgSettings as { startEndDatesEnabled?: boolean }).startEndDatesEnabled ?? false;
   const setTimeLoggingEnabledSetting = useOrgSettingsStore((s) => s.setTimeLoggingEnabled);
   const setCustomStatusesEnabledSetting = useOrgSettingsStore((s) => s.setCustomStatusesEnabled);
@@ -224,6 +226,36 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
                 if (activeOrgId) {
                   setStartEndDatesEnabledSetting(activeOrgId, checked);
                   toast({ title: checked ? "Start and end dates enabled" : "Start and end dates disabled" });
+                }
+              }}
+              disabled={!canManage}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="w-4 h-4" /> Scrambling
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Enable scrambling</p>
+              <p className="text-xs text-muted-foreground">
+                Let members hide the name of an item or a list behind made-up words, for everyone. Only the person who
+                scrambled a name can read it back, with a PIN. Switching this off hides the option; names already
+                scrambled stay scrambled, and can still be unscrambled by whoever scrambled them.
+              </p>
+            </div>
+            <Switch
+              checked={scramblingEnabled}
+              onCheckedChange={(checked) => {
+                if (activeOrgId) {
+                  setScramblingEnabledSetting(activeOrgId, checked);
+                  toast({ title: checked ? "Scrambling enabled" : "Scrambling disabled" });
                 }
               }}
               disabled={!canManage}

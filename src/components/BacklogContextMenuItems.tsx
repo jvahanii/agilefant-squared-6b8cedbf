@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
-import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore, usePublicLinksEnabled, useScramblingEnabled } from "@/store/orgSettingsStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { useLabelsStore } from "@/store/labelsStore";
 import { useRatingsEnabled } from "@/lib/ratingsVisibility";
@@ -90,6 +90,9 @@ export function BacklogContextMenuItems({
   // Scrambling the list: its name, the lists under it and every item in them,
   // for everyone, until the person who did it puts them back. (Not the
   // `isScrambled` above, which only changes what this screen shows.)
+  // Offered where the organization has scrambling on; a list that is scrambled
+  // already keeps its entries either way, so it can always be put back.
+  const scramblingEnabled = useScramblingEnabled();
   const scrambledLists = useScrambledListsStore((s) => s.byList);
   const scrambledItems = useScrambledItemsStore((s) => s.byItem);
   const backlogs = useAppStore((s) => s.backlogs);
@@ -237,10 +240,12 @@ export function BacklogContextMenuItems({
         </ContextMenuSub>
       )}
       {!nameScrambled ? (
-        <ContextMenuItem className="text-xs" onSelect={() => void useListScrambleStore.getState().scramble(backlogId)}>
-          <Lock className="w-3 h-3 mr-2" />
-          Scramble list…
-        </ContextMenuItem>
+        scramblingEnabled && (
+          <ContextMenuItem className="text-xs" onSelect={() => void useListScrambleStore.getState().scramble(backlogId)}>
+            <Lock className="w-3 h-3 mr-2" />
+            Scramble list…
+          </ContextMenuItem>
+        )
       ) : scrambledByMe ? (
         <>
           {/* Reading it back does not unscramble it: the list stays hidden

@@ -816,6 +816,7 @@ export type Database = {
           public_links_enabled: boolean
           ratings_enabled: boolean
           savings_income_enabled: boolean
+          scrambling_enabled: boolean
           time_logging_enabled: boolean
           updated_at: string
         }
@@ -835,6 +836,7 @@ export type Database = {
           public_links_enabled?: boolean
           ratings_enabled?: boolean
           savings_income_enabled?: boolean
+          scrambling_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }
@@ -854,6 +856,7 @@ export type Database = {
           public_links_enabled?: boolean
           ratings_enabled?: boolean
           savings_income_enabled?: boolean
+          scrambling_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }

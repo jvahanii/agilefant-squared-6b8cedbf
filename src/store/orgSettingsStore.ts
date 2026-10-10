@@ -23,6 +23,10 @@ interface OrgSettings {
   createdDatesEnabled: boolean;
   /** Work items can be given the days their work started and ended. */
   startEndDatesEnabled: boolean;
+  /** The app offers scrambling of item and list names. What is offered, not
+   *  what protects a name: names already scrambled stay so with this off, and
+   *  whoever scrambled them can still read them back and unscramble them. */
+  scramblingEnabled: boolean;
 }
 
 interface OrgSettingsState {
@@ -43,6 +47,7 @@ interface OrgSettingsState {
   setDeadlinesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setCreatedDatesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setStartEndDatesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  setScramblingEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -60,6 +65,7 @@ const defaults: OrgSettings = {
   deadlinesEnabled: false,
   createdDatesEnabled: false,
   startEndDatesEnabled: false,
+  scramblingEnabled: false,
 };
 
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
@@ -70,7 +76,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
     set({ loading: true });
     const { data } = await supabase
       .from('organization_settings')
-      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled, deadlines_enabled, created_dates_enabled, start_end_dates_enabled')
+      .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled, deadlines_enabled, created_dates_enabled, start_end_dates_enabled, scrambling_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
@@ -101,6 +107,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
                 (data as { created_dates_enabled?: boolean }).created_dates_enabled ?? false,
               startEndDatesEnabled:
                 (data as { start_end_dates_enabled?: boolean }).start_end_dates_enabled ?? false,
+              scramblingEnabled: (data as { scrambling_enabled?: boolean }).scrambling_enabled ?? false,
             }
           : { ...defaults },
       },
@@ -168,6 +175,22 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
       .from("organization_settings")
       .upsert(
         { organization_id: orgId, start_end_dates_enabled: enabled, updated_at: new Date().toISOString() },
+        { onConflict: "organization_id" },
+      );
+  },
+
+  setScramblingEnabled: async (orgId, enabled) => {
+    set((s) => ({
+      settings: {
+        ...s.settings,
+        [orgId]: { ...(s.settings[orgId] ?? defaults), scramblingEnabled: enabled },
+      },
+    }));
+
+    await supabase
+      .from("organization_settings")
+      .upsert(
+        { organization_id: orgId, scrambling_enabled: enabled, updated_at: new Date().toISOString() },
         { onConflict: "organization_id" },
       );
   },
@@ -350,6 +373,7 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           deadlinesEnabled: row.deadlines_enabled ?? false,
           createdDatesEnabled: row.created_dates_enabled ?? false,
           startEndDatesEnabled: row.start_end_dates_enabled ?? false,
+          scramblingEnabled: row.scrambling_enabled ?? false,
         },
       },
     }));
@@ -408,4 +432,16 @@ export function isPersistNotificationsEnabled(orgId: string | null): boolean {
 export function usePublicLinksEnabled(): boolean {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   return useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId]?.publicLinksEnabled ?? false : false));
+}
+
+/**
+ * Whether the active organization offers scrambling: "Scramble name…" on an
+ * item, "Scramble list…" on a list. Off by default. It decides what is
+ * offered, so a name that is already scrambled keeps its padlock and its
+ * owner's "Show real name…" and "Unscramble…" either way — switching this off
+ * must not leave anyone unable to get a name back.
+ */
+export function useScramblingEnabled(): boolean {
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  return useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId]?.scramblingEnabled ?? false : false));
 }

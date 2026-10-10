@@ -23,13 +23,18 @@ import {
   dayIso,
   dayNumber,
   dayWidth,
+  deadlineMark,
+  describeDeadline,
   isWeekend,
   monthTicks,
+  spanOf,
   timelineRange,
   todayNumber,
   weekStarts,
 } from "@/lib/timeline";
 import { useAppStore } from "@/store/appStore";
+import { useOrgStore } from "@/store/orgStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import type { WorkItem } from "@/types/models";
 
@@ -152,6 +157,75 @@ describe("an item's bar", () => {
   });
 });
 
+describe("an item's deadline", () => {
+  const today = day("2026-10-07");
+  const mark = (item: Parameters<typeof deadlineMark>[0]) => deadlineMark(item, today)!;
+  const stretch = (item: Parameters<typeof deadlineMark>[0]) => {
+    const s = mark(item).stretch;
+    return s ? [s.kind, dayIso(s.from), dayIso(s.to)] : null;
+  };
+
+  it("is nothing for an item without one", () => {
+    expect(deadlineMark({ startedOn: "2026-10-01" }, today)).toBeNull();
+    expect(deadlineMark({ deadline: "soon" }, today)).toBeNull();
+  });
+
+  it("is ahead while it is still to come and the work has not ended — today included", () => {
+    expect(mark({ deadline: "2026-10-12" }).state).toBe("ahead");
+    expect(mark({ deadline: "2026-10-07" }).state).toBe("ahead");
+    expect(dayIso(mark({ deadline: "2026-10-12" }).day)).toBe("2026-10-12");
+  });
+
+  it("is met when the work ended on or before it", () => {
+    expect(mark({ startedOn: "2026-09-01", endedOn: "2026-09-10", deadline: "2026-09-10" }).state).toBe("met");
+    expect(mark({ endedOn: "2026-09-01", deadline: "2026-09-10" }).state).toBe("met");
+    // Met is met, however long ago: nothing left to draw between them.
+    expect(stretch({ startedOn: "2026-09-01", endedOn: "2026-09-05", deadline: "2026-09-10" })).toBeNull();
+  });
+
+  it("is missed when the work ended after it, or has not ended and it has gone by", () => {
+    expect(mark({ startedOn: "2026-09-01", endedOn: "2026-09-14", deadline: "2026-09-10" }).state).toBe("missed");
+    expect(mark({ startedOn: "2026-09-01", deadline: "2026-10-06" }).state).toBe("missed");
+    expect(mark({ deadline: "2026-10-06" }).state).toBe("missed");
+  });
+
+  it("shows the time unfinished work still has, from where it has got to up to the deadline", () => {
+    // Started, still going: its bar runs to today.
+    expect(stretch({ startedOn: "2026-10-01", deadline: "2026-10-12" })).toEqual(["left", "2026-10-08", "2026-10-12"]);
+    // Not begun yet: from the day it is to begin.
+    expect(stretch({ startedOn: "2026-10-09", deadline: "2026-10-12" })).toEqual(["left", "2026-10-10", "2026-10-12"]);
+    // Nothing to measure from: the flag alone.
+    expect(stretch({ deadline: "2026-10-12" })).toBeNull();
+    // Due today, and at it today: no days between.
+    expect(stretch({ startedOn: "2026-10-01", deadline: "2026-10-07" })).toBeNull();
+  });
+
+  it("shows how late the work is, from the day after the deadline", () => {
+    expect(stretch({ startedOn: "2026-09-01", endedOn: "2026-09-14", deadline: "2026-09-10" })).toEqual(["over", "2026-09-11", "2026-09-14"]);
+    // Still going past it: late up to today.
+    expect(stretch({ startedOn: "2026-09-01", deadline: "2026-10-01" })).toEqual(["over", "2026-10-02", "2026-10-07"]);
+    // Never given a start, and late all the same.
+    expect(stretch({ deadline: "2026-10-01" })).toEqual(["over", "2026-10-02", "2026-10-07"]);
+  });
+
+  it("is said in words", () => {
+    const say = (item: Parameters<typeof deadlineMark>[0]) => describeDeadline(item, mark(item));
+    expect(say({ deadline: "2026-10-12" })).toBe("Deadline 2026-10-12");
+    expect(say({ endedOn: "2026-09-01", deadline: "2026-09-10" })).toBe("Deadline 2026-09-10 — met");
+    expect(say({ deadline: "2026-10-01" })).toBe("Deadline 2026-10-01 — passed");
+    expect(say({ endedOn: "2026-09-11", deadline: "2026-09-10" })).toBe("Deadline 2026-09-10 — ended 1 day late");
+    expect(say({ endedOn: "2026-09-14", deadline: "2026-09-10" })).toBe("Deadline 2026-09-10 — ended 4 days late");
+  });
+
+  it("is a date like the others: the calendar reaches it, and so does a selection", () => {
+    const range = timelineRange([{ startedOn: "2026-10-01" }, { deadline: "2026-12-24" }], today);
+    expect(dayIso(range.end)).toBe("2026-12-31");
+    expect(spanOf([{ deadline: "2026-12-24" }], today)).toEqual({ from: day("2026-12-24"), to: day("2026-12-24") });
+    const both = spanOf([{ startedOn: "2026-10-01", endedOn: "2026-10-03", deadline: "2026-10-20" }], today)!;
+    expect([dayIso(both.from), dayIso(both.to)]).toEqual(["2026-10-01", "2026-10-20"]);
+  });
+});
+
 describe("the view", () => {
   const ORG = "test-org";
   const TREE = `${ORG}::bt-1`;
@@ -265,6 +339,76 @@ describe("the view", () => {
     seed([]);
     show([]);
     expect(screen.getByText("Nothing in this list yet.")).toBeInTheDocument();
+  });
+
+  describe("where the organization keeps deadlines", () => {
+    const deadlines = (on: boolean) => {
+      useOrgStore.setState({ activeOrgId: ORG });
+      useOrgSettingsStore.setState({ settings: { [ORG]: { deadlinesEnabled: on } } } as never);
+    };
+    const flag = (id: string) => row(id).querySelector("[data-timeline-deadline]") as HTMLElement | null;
+    const stretchKind = (id: string) =>
+      row(id).querySelector("[data-deadline-stretch]")?.getAttribute("data-deadline-stretch") ?? null;
+
+    beforeEach(() => {
+      deadlines(true);
+      return () => useOrgSettingsStore.setState({ settings: {} });
+    });
+
+    it("flags each item's deadline on its row, for what has become of it", () => {
+      seed([
+        item("ahead", 1, { startedOn: "2026-10-01", deadline: "2026-10-12" }),
+        item("met", 2, { startedOn: "2026-09-01", endedOn: "2026-09-08", deadline: "2026-09-10" }),
+        item("late", 3, { startedOn: "2026-09-20", deadline: "2026-10-01" }),
+        item("none", 4, { startedOn: "2026-10-01" }),
+      ]);
+      show(["ahead", "met", "late", "none"]);
+      expect(flag("ahead")).toHaveAttribute("data-timeline-deadline", "ahead");
+      expect(flag("met")).toHaveAttribute("data-timeline-deadline", "met");
+      expect(flag("late")).toHaveAttribute("data-timeline-deadline", "missed");
+      expect(flag("late")).toHaveAccessibleName("Deadline 2026-10-01 — passed. Change");
+      expect(flag("none")).toBeNull();
+      // The time there still is, and how late it is.
+      expect(stretchKind("ahead")).toBe("left");
+      expect(stretchKind("met")).toBeNull();
+      expect(stretchKind("late")).toBe("over");
+    });
+
+    it("stands the flag's pole at the end of the day the work is due, where a bar ending that day ends", () => {
+      seed([item("a", 1, { startedOn: "2026-10-01", endedOn: "2026-10-12", deadline: "2026-10-12" })]);
+      show(["a"]);
+      const bar = row("a").querySelector("[data-bar-kind]") as HTMLElement;
+      const barEnd = parseFloat(bar.style.left) + parseFloat(bar.style.width);
+      // The icon's pole is three pixels in from the button's left edge.
+      expect(parseFloat(flag("a")!.style.left) + 3).toBe(barEnd);
+    });
+
+    it("counts a row with a deadline and nothing else as dated, and draws the flag alone", () => {
+      seed([item("due", 1, { deadline: "2026-10-20" }), item("undated", 2)]);
+      show(["due", "undated"]);
+      expect(rows()).toEqual(["due"]);
+      expect(barKind("due")).toBeNull();
+      expect(flag("due")).toHaveAttribute("data-timeline-deadline", "ahead");
+      // Its track still offers the start and end dates it does not have.
+      expect(screen.getByRole("button", { name: "Set start and end dates for due" })).toBeInTheDocument();
+    });
+
+    it("changes the deadline from the flag, without selecting the row or opening its dates", () => {
+      seed([item("a", 1, { startedOn: "2026-10-01", deadline: "2026-10-12" })]);
+      show(["a"]);
+      fireEvent.click(flag("a")!);
+      expect(screen.getByLabelText("Due on")).toHaveValue("2026-10-12");
+      expect(screen.queryByLabelText("Started on")).not.toBeInTheDocument();
+      expect(useAppStore.getState().selectedWorkItemIds).toEqual([]);
+    });
+
+    it("draws no deadline, and counts none as a date, where the organization keeps none", () => {
+      deadlines(false);
+      seed([item("due", 1, { deadline: "2026-10-20" }), item("dated", 2, { startedOn: "2026-10-01", deadline: "2026-10-09" })]);
+      show(["due", "dated"]);
+      expect(rows()).toEqual(["dated"]);
+      expect(flag("dated")).toBeNull();
+    });
   });
 });
 

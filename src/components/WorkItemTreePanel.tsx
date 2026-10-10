@@ -54,6 +54,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useScramblingEnabled } from "@/store/orgSettingsStore";
 import { useScrambledListsStore } from "@/store/scrambledListsStore";
 import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
@@ -467,6 +468,9 @@ function WorkItemNodeContent({
   // only whoever scrambled it can read it back, with their PIN.
   const scrambledBy = useScrambledItemsStore((s) => s.byItem.get(workItemId));
   const isNameScrambled = useScrambledItemsStore((s) => s.byItem.has(workItemId));
+  // Offered where the organization has scrambling on. A name that is already
+  // scrambled keeps its entries either way, so it can always be put back.
+  const scramblingEnabled = useScramblingEnabled();
   const [scramblePrompt, setScramblePrompt] = useState<
     null | { kind: "scramble" | "reveal" | "unscramble"; mode: "set" | "enter" }
   >(null);
@@ -1725,9 +1729,11 @@ function WorkItemNodeContent({
             </ContextMenuItem>
           )}
           {!isNameScrambled ? (
-            <ContextMenuItem className="text-xs" onSelect={() => void startScramble()}>
-              Scramble {isSelected && isMultiSelected ? "names" : "name"}…
-            </ContextMenuItem>
+            scramblingEnabled && (
+              <ContextMenuItem className="text-xs" onSelect={() => void startScramble()}>
+                Scramble {isSelected && isMultiSelected ? "names" : "name"}…
+              </ContextMenuItem>
+            )
           ) : scrambledByMe ? (
             <>
               {/* Revealing is always about this one row; a dialog cannot show

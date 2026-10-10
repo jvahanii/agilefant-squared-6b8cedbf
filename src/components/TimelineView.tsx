@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Flag, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { DeadlineDialog } from "@/components/DeadlineDialog";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { StartEndDatesDialog } from "@/components/StartEndDatesDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,6 +12,8 @@ import {
   barPixels,
   dayIso,
   dayWidth,
+  deadlineMark,
+  describeDeadline,
   fitWidth,
   dragDates,
   isWeekend,
@@ -28,9 +31,12 @@ import {
   yearTicks,
   zoomStep,
   type ZoomChoice,
+  type DeadlineMark,
   type DragMode,
   type TimelineBar,
+  type TimelineRange,
 } from "@/lib/timeline";
+import { useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { buildVisibleRows } from "@/lib/workItemRows";
 import { describeStartEnd, formatStartEnd } from "@/lib/workItemStartEnd";
 import { useAppStore } from "@/store/appStore";
@@ -72,6 +78,14 @@ const ALL_EXPANDED = { has: () => true } as unknown as ReadonlySet<string>;
  * no bar — and can be left out altogether, which is how the view starts once
  * any row has a date, since a list is usually mostly undated.
  *
+ * Where the organization keeps deadlines, an item's deadline is a flag on its
+ * row, its pole at the end of the day the work is due — so a bar that ends on
+ * that day ends at the pole. Red once it is missed, grey once it is met. A
+ * dashed line runs from unfinished work to the flag: the time there still is;
+ * a red one from the flag to where late work has got to: how late. A row with
+ * a deadline and nothing else is a dated row, and the flag alone is on it.
+ * Clicking the flag changes the deadline.
+ *
  * Clicking a row selects it, as in the list, so the keyboard works the same —
  * with Ctrl or ⌘ to add a row to the selection, and Shift for every row from
  * the last one clicked to this one;
@@ -102,6 +116,12 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState<string | null>(null);
+  // The row whose deadline is being set, from its flag.
+  const [settingDeadline, setSettingDeadline] = useState<string | null>(null);
+  // A deadline is drawn, and counts as a date, only where deadlines are kept:
+  // switched off they are hidden everywhere else, and so here.
+  const deadlinesOn = useDeadlinesEnabled();
+  const dated = (item: WorkItem): WorkItem => (deadlinesOn || !item.deadline ? item : { ...item, deadline: undefined });
   // The row whose name is being typed over, and what has been typed.
   const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null);
   const startRenaming = (item: WorkItem) => {
@@ -145,8 +165,10 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     () => buildVisibleRows(rootIds, ALL_EXPANDED, workItems, treeId, backlogIds),
     [rootIds, workItems, treeId, backlogIds],
   );
-  const hasDates = (item: WorkItem | undefined) => !!(item?.startedOn || item?.endedOn);
-  const anyDated = useMemo(() => allRows.ids.some((id) => hasDates(workItems[id])), [allRows, workItems]);
+  const hasDates = (item: WorkItem | undefined) =>
+    !!(item?.startedOn || item?.endedOn || (deadlinesOn && item?.deadline));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- hasDates changes only with deadlinesOn
+  const anyDated = useMemo(() => allRows.ids.some((id) => hasDates(workItems[id])), [allRows, workItems, deadlinesOn]);
   const datedOnly = datedOnlyChoice ?? anyDated;
 
   // With dates only: the dated rows, and the rows above them that say where
@@ -164,12 +186,14 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
       }
     }
     return allRows.ids.filter((id) => keep.has(id));
-  }, [allRows, datedOnly, workItems, treeId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasDates changes only with deadlinesOn
+  }, [allRows, datedOnly, workItems, treeId, deadlinesOn]);
 
   const today = todayNumber();
   const range = useMemo(
-    () => timelineRange(rowIds.map((id) => workItems[id]).filter(Boolean), today),
-    [rowIds, workItems, today],
+    () => timelineRange(rowIds.map((id) => workItems[id]).filter(Boolean).map(dated), today),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dated changes only with deadlinesOn
+    [rowIds, workItems, today, deadlinesOn],
   );
   // Where the calendar was scrolled to, as the reader left it. Not read off
   // the element once the scale has changed: a calendar that has just got
@@ -276,7 +300,7 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
     const el = scrollRef.current;
     if (!el) return;
     const span = spanOf(
-      selectedWorkItemIds.filter((id) => rowIds.includes(id)).map((id) => workItems[id]).filter(Boolean),
+      selectedWorkItemIds.filter((id) => rowIds.includes(id)).map((id) => workItems[id]).filter(Boolean).map(dated),
       today,
     );
     if (!span) return;
@@ -549,6 +573,7 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
               const dragging = drag?.id === id;
               const shown = dragging ? { ...item, ...dragDates(item, drag.mode, drag.days, today) } : item;
               const bar = barFor(shown, today);
+              const due = deadlineMark(dated(shown), today);
               const selected = selectedWorkItemIds.includes(id);
               const depth = allRows.depths.get(id) ?? 0;
               return (
@@ -648,6 +673,15 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                         </span>
                       </button>
                     )}
+                    {due && (
+                      <DeadlineFlag
+                        mark={due}
+                        range={range}
+                        width={width}
+                        label={describeDeadline(shown, due)}
+                        onEdit={() => setSettingDeadline(id)}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -665,7 +699,84 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
           onOpenChange={(open) => !open && setEditing(null)}
         />
       )}
+      {settingDeadline && (
+        <DeadlineDialog
+          workItemIds={
+            selectedWorkItemIds.length > 1 && selectedWorkItemIds.includes(settingDeadline)
+              ? selectedWorkItemIds
+              : [settingDeadline]
+          }
+          open
+          onOpenChange={(open) => !open && setSettingDeadline(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * An item's deadline on its row: a flag whose pole stands at the end of the
+ * day the work is due, with the stretch between it and the work drawn in —
+ * dashed for the time unfinished work still has, red for how far late work
+ * has run past it. Clicking the flag changes the deadline.
+ */
+function DeadlineFlag({
+  mark,
+  range,
+  width,
+  label,
+  onEdit,
+}: {
+  mark: DeadlineMark;
+  range: TimelineRange;
+  width: number;
+  label: string;
+  onEdit: () => void;
+}) {
+  const pole = (mark.day - range.start + 1) * width;
+  const stretch = mark.stretch && {
+    left: (mark.stretch.from - range.start) * width,
+    width: (mark.stretch.to - mark.stretch.from + 1) * width,
+  };
+  const tone =
+    mark.state === "missed" ? "text-destructive" : mark.state === "met" ? "text-muted-foreground" : "text-foreground";
+  return (
+    <>
+      {stretch && mark.stretch?.kind === "left" && (
+        <span
+          data-deadline-stretch="left"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 border-t border-dashed border-muted-foreground/70"
+          style={stretch}
+        />
+      )}
+      {/* Under the bar rather than on it: the bar is still the work, and its
+          colour still its status. */}
+      {stretch && mark.stretch?.kind === "over" && (
+        <span
+          data-deadline-stretch="over"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 mt-[9px] h-0.5 rounded-full bg-destructive"
+          style={stretch}
+        />
+      )}
+      <button
+        type="button"
+        data-timeline-deadline={mark.state}
+        title={`${label}. Click to change`}
+        aria-label={`${label}. Change`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+        // Above the bar it may sit on, below the names it scrolls under.
+        className={`absolute top-1/2 z-[5] -translate-y-1/2 rounded-sm p-px hover:bg-accent ${tone}`}
+        // The icon's pole is a little in from its left edge.
+        style={{ left: pole - 3 }}
+      >
+        <Flag className="h-3.5 w-3.5" fill="currentColor" fillOpacity={0.25} />
+      </button>
+    </>
   );
 }
 
