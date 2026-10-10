@@ -54,7 +54,10 @@ vi.mock("@/lib/persistDebug", () => ({ notifyPersistDebug: vi.fn() }));
 import {
   upsertWorkItemBacklogRankRowsDetailed,
   upsertWorkItemBoardRankRowsDetailed,
+  upsertWorkItems,
+  withDeadlockRetry,
 } from "@/store/supabaseSync";
+import type { WorkItem } from "@/types/models";
 
 const FK_ERROR = {
   code: "23503",
@@ -63,6 +66,9 @@ const FK_ERROR = {
 };
 
 const row = (workItemId: string, rank: number) => ({ workItemId, backlogId: "bl-1", rank, organizationId: "org-1" });
+
+// What Postgres answers the write it stops to break a deadlock.
+const DEADLOCK = { code: "40P01", message: "deadlock detected" };
 
 beforeEach(() => {
   upsertCalls.length = 0;
@@ -145,5 +151,87 @@ describe("every other failure is still a failure", () => {
     const result = await upsertWorkItemBacklogRankRowsDetailed([row("alive", 0)]);
     expect(result).toEqual({ ok: true, missingWorkItemIds: [] });
     expect(upsertCalls).toHaveLength(1);
+  });
+});
+
+/**
+ * "Failed to save board ranking — deadlock detected", after moving two items
+ * to another list.
+ *
+ * The move writes the items and, alongside, their ranks in the new list. Each
+ * rank row looks at its item while the other write is changing it; with two
+ * items, each write can hold one and wait for the other. Postgres lets one
+ * through and refuses the other. Nothing of the refused write was done, so it
+ * is simply sent again — and the two are written in the same item order, so
+ * that it happens less.
+ */
+describe("a write that loses a deadlock", () => {
+  it("is sent again, and nobody is told", async () => {
+    upsertResults = [{ error: DEADLOCK }, { error: null }];
+    const result = await upsertWorkItemBoardRankRowsDetailed([row("wi-1", 0), row("wi-2", 1)]);
+    expect(result.ok).toBe(true);
+    expect(upsertCalls.map((c) => c.table)).toEqual(["work_item_board_ranks", "work_item_board_ranks"]);
+    // The same rows, whole: nothing of the first attempt was kept.
+    expect(upsertCalls[1].rows).toEqual(upsertCalls[0].rows);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("is sent again for the list's own ranks too", async () => {
+    upsertResults = [{ error: DEADLOCK }, { error: DEADLOCK }, { error: null }];
+    const result = await upsertWorkItemBacklogRankRowsDetailed([row("wi-1", 0)]);
+    expect(result.ok).toBe(true);
+    expect(upsertCalls).toHaveLength(3);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("gives up after a few attempts, and then says so", async () => {
+    upsertResults = Array.from({ length: 10 }, () => ({ error: DEADLOCK }));
+    const result = await upsertWorkItemBoardRankRowsDetailed([row("wi-1", 0)]);
+    expect(result.ok).toBe(false);
+    expect(upsertCalls).toHaveLength(4);
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Failed to save board ranking" }));
+  }, 15000);
+
+  it("is recognised by its message where no code comes with it", async () => {
+    let calls = 0;
+    const result = await withDeadlockRetry(async () => {
+      calls += 1;
+      return { error: calls === 1 ? { message: "deadlock detected" } : null };
+    });
+    expect(result.error).toBeNull();
+    expect(calls).toBe(2);
+  });
+
+  it("leaves every other failure alone: once, and reported", async () => {
+    let calls = 0;
+    const result = await withDeadlockRetry(async () => {
+      calls += 1;
+      return { error: { code: "23505", message: "duplicate key value" } };
+    });
+    expect(result.error?.code).toBe("23505");
+    expect(calls).toBe(1);
+  });
+});
+
+describe("the items of a move", () => {
+  const item = (id: string): WorkItem =>
+    ({
+      id, title: id, status: "not_started", parentId: null, childrenIds: [],
+      backlogAssignments: { "tree-1": "bl-1" }, ranks: { "bl-1": 0 }, boardRanks: {}, organizationId: "org-1",
+    }) as unknown as WorkItem;
+
+  it("are written in the order their ranks are, so the two writes take them the same way round", async () => {
+    await upsertWorkItems([item("org-1::wi-9"), item("org-1::wi-2"), item("org-1::wi-5")], "org-1");
+    const items = upsertCalls.find((c) => c.table === "work_items")!;
+    expect((items.rows as unknown as Array<{ id: string }>).map((r) => r.id)).toEqual(["org-1::wi-2", "org-1::wi-5", "org-1::wi-9"]);
+    const ranks = upsertCalls.find((c) => c.table === "work_item_backlog_ranks")!;
+    expect(ranks.rows.map((r) => r.work_item_id)).toEqual(["org-1::wi-2", "org-1::wi-5", "org-1::wi-9"]);
+  });
+
+  it("are sent again too when it is their write that is refused", async () => {
+    upsertResults = [{ error: DEADLOCK }, { error: null }, { error: null }];
+    expect(await upsertWorkItems([item("org-1::wi-1")], "org-1")).toBe(true);
+    expect(upsertCalls.map((c) => c.table)).toEqual(["work_items", "work_items", "work_item_backlog_ranks"]);
+    expect(toast).not.toHaveBeenCalled();
   });
 });

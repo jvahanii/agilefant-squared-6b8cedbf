@@ -581,6 +581,40 @@ export async function withSessionRetry(
   return operation();
 }
 
+/** How long a write that lost a deadlock waits before its first new attempt. */
+export const DEADLOCK_RETRY_MS = 150;
+
+function isDeadlock(error: { message?: string; code?: string } | null): boolean {
+  return !!error && (error.code === '40P01' || /deadlock detected/i.test(error.message ?? ''));
+}
+
+/**
+ * Run a write again when the database stopped it to break a deadlock.
+ *
+ * Moving items between lists sends two writes at once: the items themselves,
+ * and their ranks in the list they land in. Each rank row has to look at the
+ * item it belongs to while the other write is changing that item, and when two
+ * items are involved the two writes can each end up holding one and waiting
+ * for the other. Postgres notices, lets one through, and refuses the other
+ * with "deadlock detected" — which used to be shown as a failure to save.
+ *
+ * Nothing of the refused write has been done, and by the time it is told so
+ * the other has finished: sending it again is the whole remedy, and what the
+ * database expects. A few times, a little further apart each time and not in
+ * step with anyone else doing the same.
+ */
+export async function withDeadlockRetry<T extends { error: { message?: string; code?: string } | null }>(
+  operation: () => PromiseLike<T>,
+  attempts = 4,
+): Promise<T> {
+  let result = await operation();
+  for (let attempt = 1; attempt < attempts && isDeadlock(result.error); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, DEADLOCK_RETRY_MS * attempt + Math.random() * DEADLOCK_RETRY_MS));
+    result = await operation();
+  }
+  return result;
+}
+
 export async function upsertWorkItem(item: WorkItem, organizationId: string): Promise<boolean> {
   return enqueueWorkItemMutation(async () => upsertWorkItemImmediate(item, organizationId));
 }
@@ -618,7 +652,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
   row.parent_id_overrides = item.parentIds ?? {};
   if (item.createdOn) row.created_on = item.createdOn;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => supabase.from('work_items').upsert(row as any));
+  const { error } = await withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(row as any)));
   if (error) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
@@ -895,7 +929,10 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
   // with "ON CONFLICT DO UPDATE command cannot affect row a second time".
   const dedupedById = new Map<string, WorkItemUpsertRow>();
   for (const row of rows) dedupedById.set(row.id, row);
-  const dedupedRows = Array.from(dedupedById.values());
+  // In id order, which is the order the rank rows for the same items are
+  // written in (upsertRankRowsSkippingMissing): two writes that take the same
+  // items in the same order cannot each end up waiting for the other.
+  const dedupedRows = Array.from(dedupedById.values()).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   // Rows that name created_on and rows that leave it out go in separate
   // requests. In one request PostgREST fills a column some rows omit with
   // NULL for those rows, which is exactly the wipe leaving it out is for.
@@ -906,7 +943,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
   ]) {
     if (group.length === 0) continue;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ error } = await withSessionRetry(() => supabase.from('work_items').upsert(group as any)));
+    ({ error } = await withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(group as any))));
     if (error) break;
   }
   if (error) {
@@ -1372,9 +1409,10 @@ async function upsertRankRowsSkippingMissing(
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
 
+  // Tried again when it loses a deadlock to the write of the items it ranks.
   const write = async (payload: RankRow[]) =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (await supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' })).error;
+    (await withDeadlockRetry(() => supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' }))).error;
 
   let error = await write(rows);
   let missing: string[] = recentlyDeleted;
