@@ -12,7 +12,17 @@
 import type { WorkItem } from "@/types/models";
 import { byRank } from "@/lib/workItemRows";
 
-export type ListSortMode = "rank" | "name-asc" | "name-desc" | "status" | "team" | "rating-desc" | "deadline-asc" | "created-desc" | "created-asc";
+export type ListSortMode =
+  | "rank"
+  | "name-asc"
+  | "name-desc"
+  | "status"
+  | "team"
+  | "rating-desc"
+  | "deadline-asc"
+  | "deadline-rating"
+  | "created-desc"
+  | "created-asc";
 
 export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rank", label: "Rank" },
@@ -24,6 +34,9 @@ export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
   { mode: "rating-desc", label: "Rating ★ best first" },
   // Offered only where the organization has deadlines on.
   { mode: "deadline-asc", label: "Deadline, soonest first" },
+  // Offered only where it has both: what is due first, and of the things due
+  // the same day, the best first.
+  { mode: "deadline-rating", label: "Deadline, then rating ★" },
   // Offered only where the organization has created dates on.
   { mode: "created-desc", label: "Created, newest first" },
   { mode: "created-asc", label: "Created, oldest first" },
@@ -31,7 +44,8 @@ export const LIST_SORT_MODES: { mode: ListSortMode; label: string }[] = [
 
 /**
  * Modes worth offering: rating only where the organization rates its items,
- * deadline only where it uses deadlines, created only where it shows them.
+ * deadline only where it uses deadlines — deadline-then-rating only where it
+ * does both — and created only where it shows them.
  */
 export function listSortModes(
   ratingsEnabled: boolean,
@@ -42,6 +56,7 @@ export function listSortModes(
     (m) =>
       (ratingsEnabled || m.mode !== "rating-desc") &&
       (deadlinesEnabled || m.mode !== "deadline-asc") &&
+      ((deadlinesEnabled && ratingsEnabled) || m.mode !== "deadline-rating") &&
       (createdDatesEnabled || !isCreatedSort(m.mode)),
   );
 }
@@ -102,6 +117,15 @@ export function atTopFirst<T extends { id: string }>(items: readonly T[], atTop:
   return [...items.filter((item) => atTop.has(item.id)), ...items.filter((item) => !atTop.has(item.id))];
 }
 
+// Soonest first — gone-by ones lead, still to be dealt with — and items with
+// no deadline after every one that has one.
+const byDeadline = (a: WorkItem, b: WorkItem) =>
+  nullsLast(a.deadline ?? null, b.deadline ?? null, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
+
+// Five stars first, unrated last — an unrated item is one nobody has judged,
+// not one judged worthless.
+const byRating = (a: WorkItem, b: WorkItem) => nullsLast(a.rating ?? null, b.rating ?? null, (x, y) => y - x);
+
 /** The top-level items in the order the mode puts them. Returns a new array. */
 export function sortTopLevel(
   items: readonly WorkItem[],
@@ -121,13 +145,13 @@ export function sortTopLevel(
         return (a, b) => nullsLast(positions.get(a.id) ?? null, positions.get(b.id) ?? null, (x, y) => x - y);
       }
       case "rating-desc":
-        // Five stars first, unrated last — an unrated item is one nobody has
-        // judged, not one judged worthless.
-        return (a, b) => nullsLast(a.rating ?? null, b.rating ?? null, (x, y) => y - x);
+        return byRating;
       case "deadline-asc":
-        // Soonest first — gone-by ones lead, still to be dealt with — and items
-        // with no deadline after every one that has one.
-        return (a, b) => nullsLast(a.deadline ?? null, b.deadline ?? null, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
+        return byDeadline;
+      case "deadline-rating":
+        // What is due first; among the things due the same day — and among
+        // those with no deadline at all — the best rated first.
+        return (a, b) => byDeadline(a, b) || byRating(a, b);
       case "created-desc":
         // Newest first. Items whose day was never recorded come last either
         // way: unknown is not "oldest", and not "newest" either.

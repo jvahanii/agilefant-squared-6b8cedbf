@@ -71,6 +71,13 @@ function effectiveMode(
   if (mode === "deadline-asc" && !deadlinesOn) return "rank";
   if (isCreatedSort(mode) && !createdDatesOn) return "rank";
   if (mode === "rating-desc" && !ratingsOn) return "rank";
+  // Two things to sort by: with the stars off it is still an order by
+  // deadline, which is what is left of it and what can be seen; with the
+  // deadlines off, by the stars.
+  if (mode === "deadline-rating") {
+    if (deadlinesOn && ratingsOn) return mode;
+    return deadlinesOn ? "deadline-asc" : ratingsOn ? "rating-desc" : "rank";
+  }
   return mode;
 }
 

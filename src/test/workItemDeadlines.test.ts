@@ -113,6 +113,32 @@ describe("sorting by deadline", () => {
     deadlines(true);
     expect(listSortModeFor(BL)).toBe("deadline-asc");
   });
+
+  it("sorts by what is left of deadline-then-rating when one of the two is switched off", () => {
+    const stars = (org: boolean, list: boolean) => {
+      useOrgSettingsStore.setState((s) => ({
+        settings: { ...s.settings, [ORG]: { ...(s.settings[ORG] ?? ({} as never)), ratingsEnabled: org } },
+      }));
+      useAppStore.setState((s) => ({ backlogs: { ...s.backlogs, [BL]: { ...s.backlogs[BL], ratingsEnabled: list } } }));
+    };
+    useListSortStore.setState({ modeByBacklog: { [BL]: "deadline-rating" } });
+    stars(true, true);
+    expect(listSortModeFor(BL)).toBe("deadline-rating");
+    // The list's own stars off: still by deadline, which is what can be seen.
+    stars(true, false);
+    expect(listSortModeFor(BL)).toBe("deadline-asc");
+    // Deadlines off, stars on: by the stars.
+    stars(true, true);
+    deadlines(false);
+    expect(listSortModeFor(BL)).toBe("rating-desc");
+    // Neither: the stored order.
+    stars(false, false);
+    expect(listSortModeFor(BL)).toBe("rank");
+    // And back, with both.
+    stars(true, true);
+    deadlines(true);
+    expect(listSortModeFor(BL)).toBe("deadline-rating");
+  });
 });
 
 describe("setting a deadline", () => {

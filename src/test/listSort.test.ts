@@ -126,6 +126,47 @@ describe("rating ★ best first", () => {
   });
 });
 
+describe("deadline, then rating ★", () => {
+  const due = (id: string, rank: number, deadline?: string, rating?: number): WorkItem =>
+    ({ ...item(id, id, rank), deadline, rating }) as WorkItem;
+  const order = (items: WorkItem[]) => sortTopLevel(items, "deadline-rating", T, ctx()).map((i) => i.id);
+
+  it("puts what is due first, first — whatever its stars", () => {
+    expect(order([due("later-5", 1, "2026-10-20", 5), due("sooner-1", 2, "2026-10-12", 1)])).toEqual(["sooner-1", "later-5"]);
+  });
+
+  it("orders the things due the same day by rating, best first and unrated last", () => {
+    expect(
+      order([
+        due("same-2", 1, "2026-10-12", 2),
+        due("same-unrated", 2, "2026-10-12"),
+        due("same-5", 3, "2026-10-12", 5),
+        due("earlier-1", 4, "2026-10-11", 1),
+      ]),
+    ).toEqual(["earlier-1", "same-5", "same-2", "same-unrated"]);
+  });
+
+  it("puts items with no deadline after every one that has one, and those by rating too", () => {
+    expect(
+      order([due("none-3", 1, undefined, 3), due("none-5", 2, undefined, 5), due("none", 3), due("due-1", 4, "2027-01-01", 1)]),
+    ).toEqual(["due-1", "none-5", "none-3", "none"]);
+  });
+
+  it("keeps rank order where deadline and rating are both the same", () => {
+    expect(order([due("b", 2, "2026-10-12", 4), due("a", 1, "2026-10-12", 4)])).toEqual(["a", "b"]);
+  });
+
+  it("is offered only where the organization has both deadlines and ratings", async () => {
+    const { listSortModes, listSortLabel } = await import("@/lib/listSort");
+    const offered = (ratings: boolean, deadlines: boolean) => listSortModes(ratings, deadlines).map((m) => m.mode);
+    expect(offered(true, true)).toContain("deadline-rating");
+    expect(offered(true, false)).not.toContain("deadline-rating");
+    expect(offered(false, true)).not.toContain("deadline-rating");
+    expect(isListSortMode("deadline-rating")).toBe(true);
+    expect(listSortLabel("deadline-rating")).toBe("Deadline, then rating ★");
+  });
+});
+
 describe("offering the rating mode", () => {
   it("is offered only where the organization rates its items", async () => {
     const { listSortModes } = await import("@/lib/listSort");

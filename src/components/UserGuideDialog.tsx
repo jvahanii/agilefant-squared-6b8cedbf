@@ -228,7 +228,7 @@ function buildSections(): Section[] {
               },
               { action: "Set story points", how: "Click the story-points value on the item row. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically." },
               { action: "Estimate a whole list", how: "Right-click a list in the tree and choose Set points… to give a release or a sprint an estimate before its work is broken into items. The list then counts as the larger of that estimate and what its contents add up to — in its own total, in its parents' roll-ups, and in its burnup, where the estimate becomes the target line and the contents a dashed scope line. Hover the list's points to see both numbers." },
-              { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A list can then be sorted by Rating ★ best first, which puts the unrated last. Offered only when the organisation has ratings on." },
+              { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A list can then be sorted by Rating ★ best first, which puts the unrated last — or, where deadlines are on too, by Deadline, then rating ★: what is due first, and of the things due the same day the best rated first. Offered only when the organisation has ratings on." },
               {
                 action: "Paste items",
                 how: "Copy a list of titles (one per line) then click the clipboard icon in the panel header to bulk-add.",
