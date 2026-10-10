@@ -340,6 +340,20 @@ export const JOB_SOURCES: JobSource[] = [
     // address, and its real address is learnt afterwards by asking the tracker
     // where it leads (see resolveJobLinks). The classes on the card are
     // generated and change, so the card is read by its shape.
+    //
+    // That is the mail that says an alert has been switched on. The alert
+    // itself, mailed daily, is laid out differently: the title is a heading,
+    // its link goes straight to the posting — job key in plain sight, nothing
+    // to resolve — and the employer and the place are the two paragraphs
+    // after it, each wrapped in tables of its own.
+    //
+    //   <h2><a href="https://fi.indeed.com/rc/clk/dl?jk=…&from=ja&…">3D Artist</a></h2></td></tr>
+    //   <tr><td><table>…<p>Paradox Interactive</p>…</table></td></tr><tr><td><p>Tampere</p></td></tr>
+    //   … <p>Hae tätä työpaikkaa helposti</p> … <p>Juuri julkaistu</p>
+    //
+    // Read by its shape too, and still only as a card: the mail's other links
+    // to Indeed — "all jobs since yesterday" — carry no job key and sit in no
+    // card.
     id: 'indeed',
     senders: /@(?:[\w-]+\.)*indeed\.com/i,
     alertSenders: ['donotreply@jobalert.indeed.com'],
@@ -431,14 +445,31 @@ function indeedJobKey(u: URL): string | null {
 }
 
 /**
- * An Indeed card, read from the markup after its title link: the title's cell
- * closes, and the next row's cell holds the employer in its first span and the
- * place in the span that starts with a dash — "- Jyväskylä". (A span between
- * them may hold the employer's star rating.) Anything else in the mail that is
- * a link is followed by something of another shape, and is no card.
+ * An Indeed card, read from the markup after its title link. Two layouts.
+ *
+ * The daily alert: the title is a heading, so the heading closes first, and
+ * the paragraphs that follow — up to the next link, which is the next card's —
+ * are the employer, the place, and then whatever else the card says ("easy to
+ * apply", how long ago). A paragraph that is only a star rating is passed over.
+ *
+ * The mail that says an alert is on: the title's cell closes, and the next
+ * row's cell holds the employer in its first span and the place in the span
+ * that starts with a dash — "- Jyväskylä". (A span between them may hold the
+ * employer's star rating.)
+ *
+ * Anything else in either mail that is a link is followed by something of
+ * another shape, and is no card.
  */
 function indeedCard(afters: string[]): { company: string; place: string } | undefined {
   for (const after of afters) {
+    if (/^\s*<\/h[1-6]\s*>/i.test(after)) {
+      const own = after.split(/<a\b/i)[0];
+      const paragraphs = [...own.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+        .map((m) => stripTags(m[1]))
+        .filter((text) => text && !/^\d(?:[.,]\d)?$/.test(text));
+      if (paragraphs.length >= 2) return { company: paragraphs[0], place: paragraphs[1] };
+      continue;
+    }
     const cell = after.match(/^\s*<\/td>\s*<\/tr>\s*<tr\b[^>]*>\s*<td\b[^>]*>([\s\S]*?)<\/td>/i)?.[1];
     if (!cell) continue;
     const spans = [...cell.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/gi)].map((m) => stripTags(m[1]));

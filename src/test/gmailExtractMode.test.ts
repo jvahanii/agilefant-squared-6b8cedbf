@@ -555,6 +555,65 @@ describe("Indeed's job alerts", () => {
     expect(links().map((l) => l.cities)).toEqual([['Lempäälä'], [], ['Helsinki']]);
   });
 
+  describe('the alert itself, mailed daily', () => {
+    // Laid out differently from the mail above: the title is a heading whose
+    // link goes straight to the posting, and the employer and the place are
+    // paragraphs under it, each in tables of its own. Taken from a real one.
+    const J = (jk: string) =>
+      `https://fi.indeed.com/rc/clk/dl?jk=${jk}&from=ja&qd=abc123&rd=def456&tk=1k4dal5fk&alid=6ac7&bb=xyz&tmtk=1k4dal`;
+    const P = (text: string) => `<p style="margin:0;font-size:14px;line-height:21px;color:#2d2d2d">${text}</p>`;
+    const TABLE = '<table cellpadding="0" cellspacing="0" border="0" align="left" width="100%" role="presentation">';
+    const daily = (jk: string, title: string, employer: string, place: string, extra = '', rating = '') =>
+      `<tr><td style="padding:16px 0">${TABLE}<tbody><tr><td>${TABLE}<tbody><tr><td>${TABLE}<tbody>` +
+      `<tr><td><h2 style="margin:0;font-size:18px"><a href="${J(jk)}" style="color:#2d2d2d">${title}</a></h2></td></tr>` +
+      `<tr><td align="center" valign="top">${TABLE}<tbody><tr><td>${TABLE}<tbody><tr><td align="left" valign="top">` +
+      `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tbody><tr><td style="padding-right:8px">${P(employer)}</td>${rating}</tr></tbody></table>` +
+      `</td></tr><tr><td align="left" valign="top">${P(place)}</td></tr></tbody></table></td></tr></tbody></table></td></tr>` +
+      `</tbody></table></td></tr>${extra}<tr><td align="left" valign="top" style="padding-top:8px">${P('Juuri julkaistu')}</td></tr></tbody></table></td></tr></tbody></table></td></tr>`;
+    const DAILY =
+      `<table><tr><td><a href="https://clk.indeed.com/hp?co=FI&utm_campaign=job_alerts&from=ja&tk=1k4dal"><img alt="Indeed" src="https://x/logo.png"></a></td>` +
+      `<td><a href="https://cts.indeed.com/v3/H4sIAAAAAAAA_abcdefghijklmnop/qrstuvwxyz0123456789">Etsi työpaikkoja</a></td></tr></table>` +
+      `<h2>3 uutta työpaikkaa: Agile, projektipäällikkö - Suomi</h2><table>` +
+      daily('202929c48192ae56', '3D Artist', 'Paradox Interactive', 'Tampere') +
+      daily('AAAA29c48192ae57', 'Data Scientist', 'Quadcode', 'etätyö', `<tr><td>${P('Hae tätä työpaikkaa helposti')}</td></tr>`) +
+      daily('bbbb29c48192ae58', 'Junior Talent Acquisition Specialist (m/f/d)', 'Amer Sports', 'Suomi', '', `<td>${P('3,9')}</td>`) +
+      `</table><p>Tarkastele työpaikkoja: <a href="https://fi.indeed.com/jobs?q=agile&hl=fi&from=ja&l=Suomi&radius=25&alid=6ac7&tmtk=1k4&utm_campaign=job_alerts">Eilisen jälkeen</a></p>` +
+      `<p><a href="https://subscriptions.indeed.com/alerts/cancel?token=abc&co=FI&hl=fi">Peruuta tilaus</a> <a href="https://fi.indeed.com/legal?hl=fi">Ehdot</a></p>`;
+    const dailyLinks = () =>
+      extractLinks(message(FROM_INDEED, DAILY, '3D Artist yrityksessä Paradox Interactive. 2 muuta työpaikkaa: Agile sijainnissa Suomi'), 'jobs');
+
+    it('finds each posting by its card, as its job key and nothing personal', () => {
+      expect(dailyLinks().map((l) => l.url)).toEqual([
+        'https://fi.indeed.com/viewjob?jk=202929c48192ae56',
+        'https://fi.indeed.com/viewjob?jk=aaaa29c48192ae57',
+        'https://fi.indeed.com/viewjob?jk=bbbb29c48192ae58',
+      ]);
+    });
+
+    it('names each after the employer and the role, not after the one the subject line mentions', () => {
+      expect(dailyLinks().map((l) => l.title)).toEqual([
+        'Paradox Interactive - 3D Artist',
+        'Quadcode - Data Scientist',
+        // The employer's star rating sits beside its name; it is not the place.
+        'Amer Sports - Junior Talent Acquisition Specialist (m/f/d)',
+      ]);
+    });
+
+    it('takes the place from the card: a city, or none for remote work or all of Finland', () => {
+      expect(dailyLinks().map((l) => l.cities)).toEqual([['Tampere'], [], []]);
+    });
+
+    it('needs no asking: these links already say where they lead', async () => {
+      const asked: string[] = [];
+      const out = await resolveJobLinks(dailyLinks(), async (url: string) => {
+        asked.push(url);
+        return new Response(null, { status: 404 });
+      });
+      expect(asked).toEqual([]);
+      expect(out).toHaveLength(3);
+    });
+  });
+
   describe('finding where the links lead', () => {
     const leadsTo: Record<string, string> = {
       [T('job1')]: 'https://fi.indeed.com/rc/clk/dl?jk=202929c48192ae56&from=ja&qd=abc&rd=def&tk=1k4dal5fk&alid=6ac7&bb=xyz&g1tAS=true',

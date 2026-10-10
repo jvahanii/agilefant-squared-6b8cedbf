@@ -43,7 +43,7 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
   {
     name: "Indeed",
     searched: "Yes",
-    note: "Job alert emails. Their links do not say where they lead, so each is asked once — to Indeed, as if you had opened every job in the alert.",
+    note: "Job alert emails, in both their layouts. The daily alert's links go straight to each job. The email that says an alert is switched on hides where its links lead, so each of those is asked once — to Indeed, as if you had opened every job in it.",
   },
   {
     name: "Valtiolle.fi",
