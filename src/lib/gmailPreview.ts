@@ -15,6 +15,12 @@ export interface PreviewLink {
   alreadyImported: boolean;
   /** The backlog it is already in, when the tree was searched. */
   alreadyIn?: string | null;
+  /**
+   * The list it is already in outside the tree being imported into: the one
+   * the picker mirrors to — the shortlist of jobs to apply for next. Worked
+   * out in the picker from the items on screen, not sent by the search.
+   */
+  alsoIn?: string | null;
   /** yyyy-mm-dd, when the mail stated an application deadline. */
   deadline?: string;
   /** The mail said applications stay open, as opposed to saying nothing. */
@@ -222,6 +228,7 @@ export function uncheckedReason(
     applicationsClosed?: boolean;
     alreadyImported?: boolean;
     alreadyIn?: string | null;
+    alsoIn?: string | null;
     title?: string;
     cities?: string[];
     lookalikes?: Lookalike[];
@@ -229,6 +236,9 @@ export function uncheckedReason(
   now: Date | number = Date.now(),
 ): string | null {
   if (link.alreadyImported) return link.alreadyIn ? `already in ${link.alreadyIn}` : "already imported";
+  // On the shortlist though no longer in the tree imported into — moved out of
+  // it, say. Importing it would make a second item for a job already chosen.
+  if (link.alsoIn) return `already in ${link.alsoIn}`;
   if (link.applicationsClosed) return "no longer accepting applications";
   if (deadlinePassed(link.deadline, now)) return "the closing date has passed";
   const twin = lookalikeInTree(link);

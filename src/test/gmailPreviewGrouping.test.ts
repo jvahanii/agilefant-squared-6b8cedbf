@@ -193,6 +193,12 @@ describe('uncheckedReason', () => {
       'already in Ei ehtinyt hakea',
     );
     expect(uncheckedReason({ alreadyImported: true }, NOW)).toBe('already imported');
+    // On the shortlist, in another tree, though not in the tree imported into.
+    expect(uncheckedReason({ alsoIn: 'Hae näitä seuraavaksi' }, NOW)).toBe('already in Hae näitä seuraavaksi');
+    // In both: the tree's own list is the one named.
+    expect(uncheckedReason({ alreadyImported: true, alreadyIn: 'Open jobs', alsoIn: 'Hae näitä seuraavaksi' }, NOW)).toBe(
+      'already in Open jobs',
+    );
     expect(uncheckedReason({ applicationsClosed: true }, NOW)).toBe('no longer accepting applications');
     expect(uncheckedReason({ deadline: '2026-09-16' }, NOW)).toBe('the closing date has passed');
   });

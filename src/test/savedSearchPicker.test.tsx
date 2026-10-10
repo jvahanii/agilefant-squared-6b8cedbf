@@ -1002,6 +1002,72 @@ describe("Import into the chosen list: mirroring the rows switched on", () => {
     );
   });
 
+  describe("a posting already in the list mirrored to", () => {
+    const onShortlist = (treeOneList: string | null) => ({
+      id: "alma-old", title: "Alma Media — AI", status: "not_started", parentId: null, childrenIds: [],
+      backlogAssignments: { ...(treeOneList ? { "tree-1": treeOneList } : {}), [NEXT_TREE]: SHORTLIST },
+      ranks: {},
+    });
+    /** Two postings found; Alma's is already an item, on the shortlist. */
+    const open = async (opts: { inTreeToo: boolean; mirrorColumn?: string | null; lists?: Record<string, unknown> }) => {
+      autoPlaceRow = { auto_place_backlog_id: "dl", auto_place_mirror_backlog_id: opts.mirrorColumn ?? null };
+      storeState = {
+        backlogs: { dl: backlog("dl", "Open jobs"), ...(opts.lists ?? { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) }) },
+        backlogTrees: { [NEXT_TREE]: { id: NEXT_TREE, name: "MWB uuden työn saaminen" } },
+        workItems: { "alma-old": onShortlist(opts.inTreeToo ? "dl" : null) },
+        hyperlinks: { "alma-old": [{ url: "https://x/alma" }] },
+      };
+      callGmail.mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30", cities: [] }),
+          link({
+            url: "https://x/alma", title: "Alma", deadline: "2026-10-11", cities: [],
+            ...(opts.inTreeToo ? { alreadyImported: true, alreadyIn: "Open jobs" } : {}),
+          }),
+        ],
+      });
+      render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+      await screen.findByText("Metsä");
+    };
+    // The first tick box is the email's own; the rows' follow, in the order listed.
+    const rowTicks = () => screen.getAllByRole("checkbox").slice(1).map((box) => box.getAttribute("data-state"));
+
+    it("says so on its row, beside where it is in this tree", async () => {
+      await open({ inTreeToo: true });
+      await screen.findByText("also in Hae näitä seuraavaksi");
+      expect(screen.getByText("already in Open jobs")).toBeInTheDocument();
+      // The other posting is on no list, and says nothing of the kind.
+      expect(screen.getAllByText(/in Hae näitä seuraavaksi/)).toHaveLength(1);
+    });
+
+    it("starts unticked when the shortlist is the only place it is, and says why", async () => {
+      await open({ inTreeToo: false });
+      await screen.findByText("already in Hae näitä seuraavaksi", { selector: "span.uppercase" });
+      // Metsä, new, stays ticked; Alma, already chosen, does not.
+      await waitFor(() => expect(rowTicks()).toEqual(["checked", "unchecked"]));
+      expect(screen.getByText(/Not selected: already in Hae näitä seuraavaksi\./)).toBeInTheDocument();
+    });
+
+    it("goes by the list's id: renamed, the row carries the new name", async () => {
+      await open({ inTreeToo: true, lists: { [SHORTLIST]: backlog(SHORTLIST, "Apply to these next", NEXT_TREE) } });
+      await screen.findByText("also in Apply to these next");
+    });
+
+    it("follows the list chosen under Mirror to, and says nothing of a list the item is not in", async () => {
+      await open({
+        inTreeToo: true,
+        mirrorColumn: "applied",
+        lists: {
+          [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE),
+          applied: backlog("applied", "Haettu", NEXT_TREE),
+        },
+      });
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Mirror to" })).toHaveValue("applied"));
+      // The item is on the shortlist, not in Haettu.
+      expect(screen.queryByText(/also in/)).not.toBeInTheDocument();
+    });
+  });
+
   it("starts every row switched off, and mirrors nothing then", async () => {
     await openPicker(null, { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) });
     expect(screen.getAllByRole("switch").map((s) => s.getAttribute("aria-checked"))).toEqual(["false", "false"]);

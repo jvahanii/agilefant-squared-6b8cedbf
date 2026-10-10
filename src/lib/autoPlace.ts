@@ -1,4 +1,4 @@
-import type { Backlog, WorkItem } from "@/types/models";
+import type { Backlog, Hyperlink, WorkItem } from "@/types/models";
 import { deadlinePassed, titleDeadline } from "../../supabase/functions/_shared/deadlines";
 
 /**
@@ -79,6 +79,29 @@ export function findMirrorTarget(
   const target = backlogs?.[chosenBacklogId || DEFAULT_MIRROR_BACKLOG_ID];
   if (!target || target.treeId === importTreeId) return null;
   return { backlogId: target.id, treeId: target.treeId };
+}
+
+/**
+ * The addresses of the postings already in a list: the links of every item
+ * filed there. A job ad is known by its link, which is what the picker's rows
+ * carry too — so this says which of the rows are already in that list.
+ *
+ * The list is named by id and by the tree it is in, as findMirrorTarget hands
+ * it over: an item holds one list per tree, and it is in this one when that is
+ * the list it holds for this tree.
+ */
+export function postingUrlsIn(
+  workItems: Record<string, Pick<WorkItem, "id" | "backlogAssignments">> | undefined,
+  hyperlinks: Record<string, Pick<Hyperlink, "url">[]> | undefined,
+  list: { backlogId: string; treeId: string } | null,
+): Set<string> {
+  const urls = new Set<string>();
+  if (!list || !workItems || !hyperlinks) return urls;
+  for (const item of Object.values(workItems)) {
+    if (item.backlogAssignments?.[list.treeId] !== list.backlogId) continue;
+    for (const link of hyperlinks[item.id] ?? []) urls.add(link.url);
+  }
+  return urls;
 }
 
 /** How long the import's summary stays on screen. */

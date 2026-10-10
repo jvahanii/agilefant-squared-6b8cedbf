@@ -10,6 +10,7 @@ import {
   findMirrorTarget,
   hasClosingDate,
   importListOrder,
+  postingUrlsIn,
 } from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
 
@@ -137,5 +138,39 @@ describe("countOpenAds", () => {
 
   it("counts an ad with no date in its title as open unless marked closed", () => {
     expect(countOpenAds([ad("a", "Nordea — AI Platform Engineer")], new Set(), NOW)).toBe(1);
+  });
+});
+
+describe("the postings a list already holds", () => {
+  const item = (id: string, assignments: Record<string, string>) => ({ id, backlogAssignments: assignments });
+  const items = {
+    a: item("a", { jobs: "open", next: "shortlist" }),
+    b: item("b", { jobs: "open" }),
+    c: item("c", { next: "skipped" }),
+    d: item("d", { other: "shortlist" }),
+  };
+  const links = {
+    a: [{ url: "https://x/a" }, { url: "https://x/a-second" }],
+    b: [{ url: "https://x/b" }],
+    c: [{ url: "https://x/c" }],
+    d: [{ url: "https://x/d" }],
+  };
+
+  it("are the links of the items filed in it — every link of each", () => {
+    expect([...postingUrlsIn(items, links, { backlogId: "shortlist", treeId: "next" })].sort()).toEqual([
+      "https://x/a",
+      "https://x/a-second",
+    ]);
+  });
+
+  it("go by the list an item holds for that tree, not by the id turning up anywhere", () => {
+    // "d" names "shortlist" for another tree altogether.
+    expect(postingUrlsIn(items, links, { backlogId: "shortlist", treeId: "next" }).has("https://x/d")).toBe(false);
+  });
+
+  it("are none where there is no list, or nothing is loaded", () => {
+    expect(postingUrlsIn(items, links, null).size).toBe(0);
+    expect(postingUrlsIn(undefined, links, { backlogId: "shortlist", treeId: "next" }).size).toBe(0);
+    expect(postingUrlsIn(items, undefined, { backlogId: "shortlist", treeId: "next" }).size).toBe(0);
   });
 });
