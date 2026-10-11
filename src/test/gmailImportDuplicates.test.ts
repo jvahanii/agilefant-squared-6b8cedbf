@@ -40,6 +40,7 @@ function makeAdmin(state: StubState = {}) {
       in: () => self,
       order: () => self,
       limit: () => self,
+      range: () => self,
       /** The first row the query would return, or null — as supabase-js does. */
       maybeSingle() {
         return Promise.resolve(result()).then((r) => {
@@ -87,12 +88,13 @@ function makeAdmin(state: StubState = {}) {
           error: null,
         };
       }
+      if (table === 'backlogs') return { data: [{ tree_id: 'tree' }], error: null };
       if (table === 'work_items') {
         // Deleted ids never come back. Moved ones do, but assigned elsewhere.
         return {
           data: [
-            ...(state.existingItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl' } })),
-            ...(state.movedItemIds ?? []).map((id) => ({ id, backlog_assignments: { tree: 'bl-other' } })),
+            ...(state.existingItemIds ?? []).map((id) => ({ id, organization_id: 'org', backlog_assignments: { tree: 'bl' } })),
+            ...(state.movedItemIds ?? []).map((id) => ({ id, organization_id: 'org', backlog_assignments: { tree: 'bl-other' } })),
           ],
           error: null,
         };
@@ -104,7 +106,10 @@ function makeAdmin(state: StubState = {}) {
         };
       }
       if (table === 'work_item_hyperlinks') {
-        return { data: (state.existingUrls ?? []).map((url) => ({ url })), error: null };
+        // The links belong to the first item the test names: one still in the
+        // backlog if there is one, else the moved or the deleted one.
+        const owner = [...(state.existingItemIds ?? []), ...(state.movedItemIds ?? []), ...(state.orphanedItemIds ?? [])][0];
+        return { data: (state.existingUrls ?? []).map((url) => ({ work_item_id: owner, url })), error: null };
       }
       return { data: [], error: null };
     }

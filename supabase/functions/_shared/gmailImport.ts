@@ -102,6 +102,38 @@ function describe(link: ExtractedLink): string {
 }
 
 /**
+ * Every link row of an organization's items, a thousand at a time.
+ *
+ * The links of particular items used to be asked for by item id, two hundred
+ * ids to a request. An id is some seventy characters, so each request's
+ * address ran to eighteen thousand — and each took nine seconds to come back,
+ * five of them in a row for a tree of eight hundred items. That was forty-seven
+ * of the forty-nine seconds a job search took; reading Gmail was under one.
+ *
+ * An organization's links are a page or two, asked for by one short filter the
+ * table is indexed on. The caller keeps the rows of the items it wants.
+ */
+async function linksOfOrganization(
+  admin: Admin,
+  organizationId: string,
+): Promise<Array<{ work_item_id: string; url: string }>> {
+  const rows: Array<{ work_item_id: string; url: string }> = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .from('work_item_hyperlinks')
+      .select('work_item_id, url')
+      .eq('organization_id', organizationId)
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as typeof rows));
+    if (!data || data.length < PAGE) break;
+  }
+  return rows;
+}
+
+/**
  * Every URL already attached to an item in this backlog, in each form it might
  * be compared against: as stored, normalised, and canonicalised. Items imported
  * before canonicalisation hold raw trackers, so without unwrapping them a
@@ -113,41 +145,38 @@ function describe(link: ExtractedLink): string {
  */
 export async function urlsInBacklog(admin: Admin, backlogId: string): Promise<Set<string>> {
   const present = new Set<string>();
-  const { data: rankRows } = await admin
-    .from('work_item_backlog_ranks')
-    .select('work_item_id')
-    .eq('backlog_id', backlogId);
-  const rankedIds = (rankRows ?? []).map((r) => r.work_item_id as string);
-  if (rankedIds.length === 0) return present;
+  const { data: backlog } = await admin.from('backlogs').select('tree_id').eq('id', backlogId).maybeSingle();
+  const treeId = (backlog as { tree_id?: string } | null)?.tree_id;
+  if (!treeId) return present;
 
-  // A rank row is not evidence that the item is in this backlog: an item
-  // carries one assignment per tree, and moving it leaves the old backlog's
-  // rank row behind. (A delete no longer does — since 20260914220000 the rank
-  // and hyperlink rows cascade with the item.)
-  //
-  // So require the item to still name this backlog among its assignments.
-  // Reading it from work_items also covers a rank row that outlives its item
-  // for a moment, such as one written by a save racing a delete.
-  const itemIds: string[] = [];
-  for (let i = 0; i < rankedIds.length; i += 200) {
-    const { data: liveRows } = await admin
+  // The items that name this backlog as their list in its tree. Asked of the
+  // items rather than of the rank rows: an item carries one assignment per
+  // tree, and moving it leaves the old backlog's rank row behind — so a rank
+  // row is not evidence that the item is still here, and an assignment is.
+  // (It was rank rows first and then the items by id, two hundred ids to a
+  // request; see linksOfOrganization for what that cost.)
+  const owners = new Map<string, string>();
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error } = await admin
       .from('work_items')
-      .select('id, backlog_assignments')
-      .in('id', rankedIds.slice(i, i + 200));
-    for (const r of liveRows ?? []) {
+      .select('id, organization_id, backlog_assignments')
+      .eq(`backlog_assignments->>"${treeId}"`, backlogId)
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const r of page ?? []) {
       const assignments = (r.backlog_assignments ?? {}) as Record<string, string>;
-      if (Object.values(assignments).includes(backlogId)) itemIds.push(r.id as string);
+      if (assignments[treeId] === backlogId && r.organization_id) owners.set(r.id as string, r.organization_id as string);
     }
+    if (!page || page.length < PAGE) break;
   }
-  if (itemIds.length === 0) return present;
+  if (owners.size === 0) return present;
 
-  for (let i = 0; i < itemIds.length; i += 200) {
-    const { data: urlRows } = await admin
-      .from('work_item_hyperlinks')
-      .select('url')
-      .in('work_item_id', itemIds.slice(i, i + 200));
-    for (const r of urlRows ?? []) {
-      const raw = r.url as string;
+  for (const organizationId of new Set(owners.values())) {
+    for (const r of await linksOfOrganization(admin, organizationId)) {
+      if (!owners.has(r.work_item_id)) continue;
+      const raw = r.url;
       present.add(raw);
       const normalized = normalizeUrl(raw);
       if (normalized) {
@@ -272,16 +301,13 @@ export async function postingsInTree(
   }
   mark('treeNames');
 
-  const ids = [...backlogOf.keys()];
-  for (let i = 0; i < ids.length; i += 200) {
-    const { data: urlRows } = await admin
-      .from('work_item_hyperlinks')
-      .select('work_item_id, url')
-      .in('work_item_id', ids.slice(i, i + 200));
-    mark('treeLinksFetch');
-    for (const r of urlRows ?? []) remember(r.url as string, whereIs(r.work_item_id as string));
-    mark('treeLinksRead');
+  // The organization's links, and of them the ones on this tree's items.
+  const linkRows = await linksOfOrganization(admin, organizationId);
+  mark('treeLinksFetch');
+  for (const r of linkRows) {
+    if (backlogOf.has(r.work_item_id)) remember(r.url, whereIs(r.work_item_id));
   }
+  mark('treeLinksRead');
   return { urls: found, names: jobNames };
 }
 

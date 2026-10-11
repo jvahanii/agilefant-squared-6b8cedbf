@@ -28,12 +28,20 @@ interface Item {
  */
 function makeAdmin(items: Item[], backlogs: Record<string, string>, links: Record<string, string[]>) {
   const calls: string[] = [];
+  /** Each filter asked for, as "table.op:column". */
+  const filters: string[] = [];
   const from = (table: string) => {
     let notNullKey: string | null = null;
     const self = {
       select: () => self,
-      eq: () => self,
-      in: () => self,
+      eq(column: string) {
+        filters.push(`${table}.eq:${column}`);
+        return self;
+      },
+      in(column: string) {
+        filters.push(`${table}.in:${column}`);
+        return self;
+      },
       order: () => self,
       range: () => self,
       not(column: string) {
@@ -63,7 +71,7 @@ function makeAdmin(items: Item[], backlogs: Record<string, string>, links: Recor
     };
     return self;
   };
-  return { admin: { from }, calls };
+  return { admin: { from }, calls, filters };
 }
 
 const LINKEDIN = 'https://www.linkedin.com/jobs/view/4458065583/';
@@ -81,6 +89,27 @@ describe('urlsInTree', () => {
     expect(found.has(LINKEDIN)).toBe(true);
     // Named, so the picker can say where rather than only that.
     expect(found.get(LINKEDIN)).toBe('Applied');
+  });
+
+  it("asks for the organization's links in plain pages, never by a list of item ids", async () => {
+    // Asked by item id, two hundred ids to a request, each request's address
+    // ran to eighteen thousand characters and took nine seconds: forty-seven
+    // of the forty-nine a job search took.
+    const { admin, filters } = makeAdmin(
+      [
+        { id: 'wi-1', backlog_assignments: { [TREE]: 'bl' } },
+        { id: 'wi-other', backlog_assignments: { [OTHER_TREE]: 'bl-elsewhere' } },
+      ],
+      { bl: 'Open jobs' },
+      { 'wi-1': [LINKEDIN], 'wi-other': ['https://duunitori.fi/tyopaikat/tyo/elsewhere-1'] },
+    );
+
+    const found = await urlsInTree(admin, 'org', TREE);
+
+    expect(filters.filter((f) => f.startsWith('work_item_hyperlinks.'))).toEqual(['work_item_hyperlinks.eq:organization_id']);
+    // Every link of the organization comes back; only this tree's items' count.
+    expect(found.has(LINKEDIN)).toBe(true);
+    expect(found.has('https://duunitori.fi/tyopaikat/tyo/elsewhere-1')).toBe(false);
   });
 
   it('ignores an item that lives in another tree entirely', async () => {
