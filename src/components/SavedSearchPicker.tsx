@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe, LinkIcon, Loader2, Mail, MailCheck, MapPin } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -199,8 +200,15 @@ export function SavedSearchPicker({
   const [loading, setLoading] = useState(true);
   /** The search came back empty — said in place of the list. */
   const [nothingFound, setNothingFound] = useState(false);
-  /** What the wait is doing, for the line shown until the list is ready. */
+  /** What the search is doing, for the line shown while any of it is under way. */
   const [stage, setStage] = useState("Searching Gmail…");
+  /**
+   * How far the search has got, out of a hundred — or null once all of it is
+   * done. The list is on screen from the moment the mail has been read; the
+   * career pages and the postings fill it in after that, and until they have
+   * the bar says how much is left and nothing can be imported.
+   */
+  const [progress, setProgress] = useState<number | null>(SEARCH_PROGRESS.gmail);
   const [preview, setPreview] = useState<PreviewLink[]>([]);
   /** The career pages this run read, with what each had to say. */
   const [pages, setPages] = useState<CareerPageNote[]>([]);
@@ -267,11 +275,43 @@ export function SavedSearchPicker({
           (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
         );
 
+        // The rows go on screen as soon as there are any, and again each time
+        // something is learnt about them: first as the mail gave them, then
+        // with the career pages' jobs, then with what each posting says. They
+        // used to wait for all of it — which is most of the wait, and none of
+        // it needed to read the list.
+        //
+        // Anything startingReason names starts unchecked — already in the
+        // tree, no longer accepting applications, past its closing date, or a
+        // repeat of a posting another email already lists. They stay
+        // importable on purpose, and the row says which it is. A row the
+        // reader has ticked or unticked by hand keeps what they chose.
+        const show = (rows: PreviewLink[]) => {
+          const repeats = new Map([...sameJobRows(rows), ...repeatedRows(rows)]);
+          setPreview(rows);
+          setSelected((prev) =>
+            Object.fromEntries(
+              rows.map((l) => {
+                const key = rowKey(l);
+                return [key, touched.current.has(key) ? !!prev[key] : startingReason(l, repeats) === null];
+              }),
+            ),
+          );
+          setLoading(false);
+        };
+        const foundSoFar = () =>
+          `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} ${foundWhere(
+            emailCountOf(sorted),
+            pageCountOf(sorted),
+          )}.`;
+        if (sorted.length > 0) show(sorted);
+        setProgress(SEARCH_PROGRESS.pages);
+
         // The career pages the search names, after the mail: the positions on
         // them that are neither in the tree nor left by an earlier run. An
         // extra — if the pages cannot be read, the mail is still worth showing.
         if (mode === "jobs") {
-          setStage("Checking career pages…");
+          setStage(sorted.length > 0 ? `${foundSoFar()} Checking career pages…` : "Checking career pages…");
           try {
             const fromPages = await callGmail<{ pages?: CareerPageNote[]; links?: PreviewLink[] }>({
               action: "career_pages",
@@ -282,6 +322,7 @@ export function SavedSearchPicker({
             if (cancelled) return;
             setPages(fromPages?.pages ?? []);
             sorted = [...sorted, ...(fromPages?.links ?? [])];
+            if (sorted.length > 0) show(sorted);
           } catch (e) {
             if (cancelled) return;
             // A server that does not know the action yet has no pages to read.
@@ -299,19 +340,18 @@ export function SavedSearchPicker({
           // in place, with a way out, rather than by closing on a small toast:
           // a dialog that vanishes looks like one that failed.
           setNothingFound(true);
+          setProgress(null);
           setLoading(false);
           return;
         }
+        setProgress(SEARCH_PROGRESS.postings);
 
         if (mode === "jobs") {
           // Deadline and closed, from each posting the mail left undated — the
           // reading the server used to do inside the search, and to the same
           // limit. Jobly always refuses the server, so it is left to the
           // browser reader below rather than waited on here.
-          const found = `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} ${foundWhere(
-            emailCountOf(sorted),
-            pageCountOf(sorted),
-          )}.`;
+          const found = foundSoFar();
           // Read while the deadline or the city is unknown: a mail that states
           // the date still leaves the page as the only place that says where,
           // and the dialog shows it. A city the mail gave (Työmarkkinatori)
@@ -331,6 +371,7 @@ export function SavedSearchPicker({
           ].slice(0, MAX_POSTINGS_READ);
           for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {
             setStage(`${found} Reading job postings for deadlines and cities… ${at}/${toRead.length}`);
+            setProgress(SEARCH_PROGRESS.postings + ((100 - SEARCH_PROGRESS.postings) * at) / toRead.length);
             let facts: { url: string; deadline: string | null; applicationsClosed: boolean; cities?: string[] | null }[];
             try {
               ({ facts } = await callGmail<{ facts: typeof facts }>({
@@ -357,17 +398,13 @@ export function SavedSearchPicker({
                 ...(Array.isArray(f.cities) && l.cities === undefined ? { cities: f.cities } : {}),
               };
             });
+            // What these postings said, on their rows now rather than at the end.
+            show(sorted);
           }
           if (cancelled) return;
         }
-        setPreview(sorted);
-        // Anything startingReason names starts unchecked — already in the tree,
-        // no longer accepting applications, past its closing date, or a repeat
-        // of a posting another email already lists. They stay importable on
-        // purpose, and the row says which it is.
-        const repeats = new Map([...sameJobRows(sorted), ...repeatedRows(sorted)]);
-        setSelected(Object.fromEntries(sorted.map((l) => [rowKey(l), startingReason(l, repeats) === null])));
-        setLoading(false);
+        show(sorted);
+        setProgress(null);
 
         // Postings the server was refused (Jobly) are read through the browser,
         // when the posting reader extension is there. The list is already
@@ -429,7 +466,10 @@ export function SavedSearchPicker({
         });
         onClose();
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setProgress(null);
+        }
       }
     })();
     return () => {
@@ -810,13 +850,7 @@ export function SavedSearchPicker({
     }
   };
 
-  if (loading) {
-    return (
-      <p className="flex items-center gap-2 py-2 text-xs text-muted-foreground" role="status">
-        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> {stage}
-      </p>
-    );
-  }
+  if (loading) return <SearchProgress stage={stage} value={progress} />;
   if (nothingFound) {
     const unreadOnly = /(^|\s)is:unread(\s|$)/i.test(search.query);
     const noun = mode === "jobs" ? "job ads" : "links";
@@ -852,6 +886,8 @@ export function SavedSearchPicker({
     // dialog box — where the dialog blocks scrolling, so it looked as if the
     // list would not scroll at all.
     <div className="min-w-0 space-y-2">
+      {/* The list is already here; this is what is still being added to it. */}
+      {progress !== null && <SearchProgress stage={stage} value={progress} />}
       <div className="flex items-center gap-2">
         <Input
           placeholder="Filter by keyword…"
@@ -1149,7 +1185,7 @@ export function SavedSearchPicker({
             size="sm"
             variant="destructive"
             onClick={importIntoList}
-            disabled={importing}
+            disabled={importing || progress !== null}
             title={
               `Every ticked posting goes into ${backlogName(importList)}. The list is then put in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order saved as its rank. The emails are marked as read.` +
               (mirrorTarget ? ` Rows switched to mirror also appear in ${backlogName(mirrorTarget.backlogId)}.` : "")
@@ -1159,7 +1195,7 @@ export function SavedSearchPicker({
             Import selected into {backlogName(importList)}
           </Button>
         ) : (
-          <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing}>
+          <Button size="sm" variant="secondary" onClick={importSelected} disabled={importing || progress !== null}>
             {importing && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
             Import selected
           </Button>
@@ -1169,7 +1205,7 @@ export function SavedSearchPicker({
             size="sm"
             variant={noNewJobs ? "destructive" : "secondary"}
             onClick={markAllRead}
-            disabled={importing}
+            disabled={importing || progress !== null}
             title={
               `Import nothing, and mark the ${emailCount} email${emailCount === 1 ? "" : "s"} listed here as read — for when none of the jobs are worth importing.` +
               (pageJobCount > 0
@@ -1185,6 +1221,27 @@ export function SavedSearchPicker({
           Cancel
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * How far along the search is, out of a hundred, when each part begins.
+ * Reading Gmail and the career pages take a few seconds between them and say
+ * nothing of how far they have got, so they are given a small fixed share;
+ * the postings are read a few at a time and move the bar the rest of the way.
+ */
+const SEARCH_PROGRESS = { gmail: 8, pages: 22, postings: 30 } as const;
+
+/** What the search is doing and how far it has got — while it waits for the
+ *  first rows, and above the list while the rest is filled in. */
+function SearchProgress({ stage, value }: { stage: string; value: number | null }) {
+  return (
+    <div className="space-y-1.5 py-1" role="status">
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> {stage}
+      </p>
+      <Progress value={value ?? 0} className="h-1.5" aria-label="How far the search has got" />
     </div>
   );
 }

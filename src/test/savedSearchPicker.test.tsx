@@ -200,11 +200,65 @@ describe("SavedSearchPicker", () => {
     release();
 
     await screen.findByText("Job 0");
-    expect(postingFacts).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(postingFacts).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
     expect(postingFacts.mock.calls[1][0].links.map((l: { url: string }) => l.url)).toEqual(["https://x/6", "https://x/7"]);
     // What the postings said is on the rows, and the closed one starts unticked.
     expect(screen.getAllByText(/^closes /)).toHaveLength(1);
     expect(screen.getByText("Not selected: no longer accepting applications. Tick it to import anyway.")).toBeInTheDocument();
+  });
+
+  it("lists the jobs as soon as the mail has been read, and shows how far the rest has got", async () => {
+    // The list used to wait for every posting to be read — most of the wait,
+    // and none of it needed to start reading the list.
+    autoPlaceRow = { auto_place_backlog_id: "dl" };
+    storeState = {
+      backlogs: { dl: { id: "dl", name: "Open jobs", parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 } },
+      workItems: {},
+    };
+    callGmail.mockResolvedValueOnce({
+      links: Array.from({ length: 8 }, (_, i) => link({ url: `https://x/${i}`, title: `Job ${i}`, messageId: "m-1" })),
+    });
+    const gates: Array<() => void> = [];
+    postingFacts.mockImplementation(
+      ({ links }: { links: { url: string }[] }) =>
+        new Promise((resolve) =>
+          gates.push(() =>
+            resolve({ facts: links.map((l) => ({ url: l.url, deadline: null, applicationsClosed: l.url === "https://x/1" })) }),
+          ),
+        ),
+    );
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+
+    // Rows are there while the first batch of postings is still out …
+    await screen.findByText("Job 0");
+    await waitFor(() => expect(gates).toHaveLength(1));
+    expect(screen.getByRole("status")).toHaveTextContent("Reading job postings for deadlines and cities… 0/8");
+    const bar = screen.getByRole("progressbar", { name: "How far the search has got" });
+    const startedAt = Number(bar.getAttribute("aria-valuenow") ?? bar.getAttribute("data-value") ?? 0);
+    // … and nothing can be imported, or declined, from a list still being filled in.
+    expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Do not import anything/ })).toBeDisabled();
+
+    // A row ticked off by hand meanwhile keeps what the reader chose.
+    const rowTicks = () => screen.getAllByRole("checkbox").slice(1).map((box) => box.getAttribute("data-state"));
+    fireEvent.click(screen.getAllByRole("checkbox")[1]);
+    expect(rowTicks()[0]).toBe("unchecked");
+
+    gates[0]();
+    await waitFor(() => expect(gates).toHaveLength(2));
+    // What the first six said is on their rows already: the closed one is unticked.
+    await waitFor(() => expect(rowTicks().slice(0, 3)).toEqual(["unchecked", "unchecked", "checked"]));
+    expect(screen.getByRole("status")).toHaveTextContent("6/8");
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuenow") ?? 100)).toBeGreaterThanOrEqual(startedAt);
+
+    gates[1]();
+    // Done: the bar goes, and the list can be imported.
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled();
+    expect(rowTicks()[0]).toBe("unchecked");
+    postingFacts.mockReset();
   });
 
   it("reads a posting the mail dated for its cities, shows them, and imports them", async () => {
@@ -952,6 +1006,23 @@ describe("JobSearchRunButton", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByText("From the header")).toBeInTheDocument();
   });
+  it("wakes the search up when the button is pointed at, once", async () => {
+    // The function behind the search sleeps when unused, and its first answer
+    // after that takes some ten seconds longer than its second.
+    savedSearches = [{ ...SEARCH, name: "Only unread" }];
+    callGmail.mockResolvedValue({ connected: true });
+    render(<JobSearchRunButton />);
+    const button = await screen.findByTitle('Run "Only unread"');
+    expect(callGmail).not.toHaveBeenCalled();
+
+    fireEvent.pointerEnter(button);
+    fireEvent.pointerEnter(button);
+    fireEvent.focus(button);
+    expect(callGmail.mock.calls.filter((c) => c[0].action === "status")).toHaveLength(1);
+    expect(callGmail.mock.calls[0][0]).toMatchObject({ action: "status" });
+    callGmail.mockReset();
+  });
+
   it("scrolls its list of job ads with the up and down arrows, wherever focus is", async () => {
     // Focus sits on a checkbox or the filter, never on the list, which is its
     // own scrolling box: the arrows went nowhere.

@@ -349,9 +349,13 @@ Deno.serve(async (req) => {
       const organizationId = String(body.organizationId ?? '');
       if (!query) return json({ error: 'query is required' }, 400);
       if (!organizationId) return json({ error: 'organizationId is required' }, 400);
-      await assertOrgMember(user.id, organizationId);
-
-      const { auth } = await getConnection(admin, user.id, organizationId);
+      // Side by side: both are questions to the database, and the search waits
+      // on both either way. A caller who is no member is refused before the
+      // connection read alongside is put to any use.
+      const [, { auth }] = await Promise.all([
+        assertOrgMember(user.id, organizationId),
+        getConnection(admin, user.id, organizationId),
+      ]);
       const max = Math.min(Number(body.maxMessages ?? 25) || 25, MAX_MESSAGES);
       const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
       // How long each part of the search took, sent back with the answer: the

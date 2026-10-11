@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { BriefcaseBusiness } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
@@ -13,7 +13,7 @@ import {
 import { scrollListWithArrows } from "@/lib/scrollListWithArrows";
 import { JOB_ADS_TREE_ID, countItemsInTree } from "@/lib/jobAdsTree";
 import { useAppStore } from "@/store/appStore";
-import type { RunnableSearch } from "@/lib/gmailConnector";
+import { callGmail, type RunnableSearch } from "@/lib/gmailConnector";
 
 // Fetched when a search is run, not at start-up: the picker is the largest
 // thing behind this button, and most starts never press it.
@@ -40,6 +40,7 @@ export function JobSearchRunButton() {
   const [searches, setSearches] = useState<JobSearch[]>([]);
   const [running, setRunning] = useState<JobSearch | null>(null);
   const [runToken, setRunToken] = useState(0);
+  const warmed = useRef(false);
 
   // While previewing another role, a superuser sees what that role sees.
   const allowed = isSuperuser && !roleOverride;
@@ -76,6 +77,18 @@ export function JobSearchRunButton() {
     setRunToken((n) => n + 1);
   };
 
+  // The function that searches Gmail goes to sleep when nobody has used it for
+  // a while, and its first answer after that takes some ten seconds longer
+  // than its second. Pointing at the button is as good a sign as any that it
+  // is about to be needed: a small question is put to it then, once, so that
+  // it is awake — and the picker's own code fetched — by the time of the click.
+  const warm = () => {
+    if (warmed.current || !activeOrgId) return;
+    warmed.current = true;
+    void callGmail({ action: "status", organizationId: activeOrgId }).catch(() => undefined);
+    void import("@/components/SavedSearchPicker").catch(() => undefined);
+  };
+
   const buttonClass =
     "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors";
   const label = (
@@ -93,13 +106,19 @@ export function JobSearchRunButton() {
   return (
     <>
       {searches.length === 1 ? (
-        <button className={buttonClass} onClick={() => run(searches[0])} title={`Run "${searches[0].name ?? "job search"}"`}>
+        <button
+          className={buttonClass}
+          onClick={() => run(searches[0])}
+          onPointerEnter={warm}
+          onFocus={warm}
+          title={`Run "${searches[0].name ?? "job search"}"`}
+        >
           {label}
         </button>
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className={buttonClass} title="Run a saved job search">
+            <button className={buttonClass} title="Run a saved job search" onPointerEnter={warm} onFocus={warm}>
               {label}
             </button>
           </DropdownMenuTrigger>
