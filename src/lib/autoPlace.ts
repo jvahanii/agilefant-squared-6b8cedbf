@@ -82,6 +82,36 @@ export function findMirrorTarget(
 }
 
 /**
+ * "Lanka vetämässä" — the jobs applied for and waiting on an answer, in the
+ * same tree as the shortlist. The picker says when a posting it has found is
+ * already there, as it does for the shortlist: a job applied for is as much
+ * one not to import again as a job about to be.
+ *
+ * By id, like the shortlist: found by name, a rename would quietly stop it.
+ */
+export const APPLIED_BACKLOG_ID = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-68b369f2";
+
+/**
+ * The lists outside the import tree that the picker says a posting is already
+ * in: the one it mirrors to, then the applied-for list. Each only if it is in
+ * this organisation's data and not in the tree being imported into — where a
+ * posting is in that tree, the search itself says. An item holds one list per
+ * tree, so where two of these share a tree a posting is in at most one.
+ */
+export function listsShownInPicker(
+  backlogs: Record<string, Backlog>,
+  importTreeId: string,
+  mirror: { backlogId: string; treeId: string } | null,
+): { backlogId: string; treeId: string }[] {
+  const lists = mirror ? [mirror] : [];
+  const applied = backlogs?.[APPLIED_BACKLOG_ID];
+  if (applied && applied.treeId !== importTreeId && applied.id !== mirror?.backlogId) {
+    lists.push({ backlogId: applied.id, treeId: applied.treeId });
+  }
+  return lists;
+}
+
+/**
  * The addresses of the postings already in a list: the links of every item
  * filed there. A job ad is known by its link, which is what the picker's rows
  * carry too — so this says which of the rows are already in that list.

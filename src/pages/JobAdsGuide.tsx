@@ -390,8 +390,9 @@ export default function JobAdsGuide() {
             rather than its name: rename the list and the import follows it.
           </P>
           <P>
-            A posting that is already in the <Em>Mirror to</Em> list says so on its row, in green — <Em>also in</Em> when
-            it is in this tree as well, <Em>already in</Em> when it is only there, in which case it starts unticked.
+            A posting that is already in the <Em>Mirror to</Em> list — or in the list of jobs already applied for — says so
+            on its row, in green: <Em>also in</Em> when it is in this tree as well, <Em>already in</Em> when it is only
+            there, in which case it starts unticked.
             Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
             ones you mean to pursue, and <Em>Import selected into …</Em> also puts them in the <Em>Mirror to</Em> list —
             any list in another tree, saved on the search like the first. The status plays no part in this: it only

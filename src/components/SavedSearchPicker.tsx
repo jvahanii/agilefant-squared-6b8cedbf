@@ -43,6 +43,7 @@ import {
   countOpenAds,
   findImportList,
   findMirrorTarget,
+  listsShownInPicker,
   postingUrlsIn,
   hasClosingDate,
   importListOrder,
@@ -147,15 +148,23 @@ export function SavedSearchPicker({
   );
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   // Which postings are already in the list mirrored to — the shortlist of
-  // jobs to apply for next. The search says where in its own tree a posting
-  // already is; the shortlist is in another tree, and whether a job found
-  // again is already on it is the thing to know before reading it again. The
-  // list is the one chosen under "Mirror to", known by its id; its name is
-  // only ever read off it for showing.
+  // jobs to apply for next — or in the list of jobs applied for. The search
+  // says where in its own tree a posting already is; these are in another
+  // tree, and whether a job found again is already on one of them is the
+  // thing to know before reading it again. The lists are known by their ids;
+  // a name is only ever read off one for showing.
   const itemsNow = useAppStore((s) => s.workItems);
   const linksNow = useAppStore((s) => s.hyperlinks);
-  const mirrorUrls = useMemo(() => postingUrlsIn(itemsNow, linksNow, mirrorTarget), [itemsNow, linksNow, mirrorTarget]);
-  const mirrorName = mirrorTarget ? (backlogs[mirrorTarget.backlogId]?.name ?? null) : null;
+  const alsoInByUrl = useMemo(() => {
+    const byUrl = new Map<string, string>();
+    if (mode !== "jobs") return byUrl;
+    for (const list of listsShownInPicker(backlogs, search.tree_id, mirrorTarget)) {
+      const name = backlogs[list.backlogId]?.name;
+      if (!name) continue;
+      for (const url of postingUrlsIn(itemsNow, linksNow, list)) if (!byUrl.has(url)) byUrl.set(url, name);
+    }
+    return byUrl;
+  }, [mode, backlogs, search.tree_id, mirrorTarget, itemsNow, linksNow]);
   /**
    * The lists a posting can be mirrored into: any outside this search's tree,
    * since an item holds one list per tree. Named with their tree, which is what
@@ -469,14 +478,14 @@ export function SavedSearchPicker({
   // the same ad on two boards. A row that is both says it is a repeat.
   const repeats = useMemo(() => new Map([...sameJobRows(preview), ...repeatedRows(preview)]), [preview]);
 
-  // Each row is told whether its posting is in the mirror list, and kept told:
-  // the list is on screen behind this dialog and can change while it is open.
+  // Each row is told whether its posting is in one of those lists, and kept
+  // told: they are on screen behind this dialog and can change while it is open.
   // A row found to be there that is not in the import tree any more would be
   // imported as a second item, so it is unticked — unless the reader has
   // already ticked or unticked it by hand.
   useEffect(() => {
     if (mode !== "jobs") return;
-    const where = (l: PreviewLink) => (mirrorName && mirrorUrls.has(l.url) ? mirrorName : null);
+    const where = (l: PreviewLink) => alsoInByUrl.get(l.url) ?? null;
     const stale = preview.filter((l) => (l.alsoIn ?? null) !== where(l));
     if (stale.length === 0) return;
     setPreview((prev) => prev.map((l) => ((l.alsoIn ?? null) === where(l) ? l : { ...l, alsoIn: where(l) })));
@@ -487,7 +496,7 @@ export function SavedSearchPicker({
       for (const key of found) if (!touched.current.has(key)) next[key] = false;
       return next;
     });
-  }, [mode, preview, mirrorUrls, mirrorName]);
+  }, [mode, preview, alsoInByUrl]);
   const emailCount = useMemo(() => emailCountOf(preview), [preview]);
   /** Jobs listed from career pages — what "skip" on the decline button covers. */
   const pageJobCount = useMemo(() => distinctJobs(preview.filter(isCareerPageRow)), [preview]);
@@ -999,8 +1008,9 @@ export function SavedSearchPicker({
                               </span>
                             )}
                             {l.alsoIn && (
-                              // A colour of its own again: on the shortlist is
-                              // not the same news as filed somewhere in the tree.
+                              // A colour of its own again: on the shortlist, or
+                              // applied for, is not the same news as filed
+                              // somewhere in the tree.
                               <span className="align-middle text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 border border-emerald-600/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                                 {l.alreadyImported ? "also in" : "already in"} {l.alsoIn}
                               </span>

@@ -1048,6 +1048,39 @@ describe("Import into the chosen list: mirroring the rows switched on", () => {
       expect(screen.getByText(/Not selected: already in Hae näitä seuraavaksi\./)).toBeInTheDocument();
     });
 
+    it("says so too for a job already applied for, in the list beside the shortlist", async () => {
+      const APPLIED = "227ff1d1-36df-4f46-b97e-483ada92ccfb::bl-68b369f2";
+      autoPlaceRow = { auto_place_backlog_id: "dl", auto_place_mirror_backlog_id: null };
+      storeState = {
+        backlogs: {
+          dl: backlog("dl", "Open jobs"),
+          [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE),
+          [APPLIED]: backlog(APPLIED, "Lanka vetämässä", NEXT_TREE),
+        },
+        backlogTrees: { [NEXT_TREE]: { id: NEXT_TREE, name: "MWB uuden työn saaminen" } },
+        workItems: {
+          // Applied for, and still in the job tree; and one applied for that has left it.
+          "alma-old": { ...onShortlist("dl"), backlogAssignments: { "tree-1": "dl", [NEXT_TREE]: APPLIED } },
+          "metsa-old": { ...onShortlist(null), id: "metsa-old", backlogAssignments: { [NEXT_TREE]: APPLIED } },
+        },
+        hyperlinks: { "alma-old": [{ url: "https://x/alma" }], "metsa-old": [{ url: "https://x/metsa" }] },
+      };
+      callGmail.mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30", cities: [] }),
+          link({ url: "https://x/alma", title: "Alma", deadline: "2026-10-11", cities: [], alreadyImported: true, alreadyIn: "Open jobs" }),
+        ],
+      });
+      render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+      await screen.findByText("Metsä");
+
+      await screen.findByText("also in Lanka vetämässä");
+      await screen.findByText("already in Lanka vetämässä", { selector: "span.uppercase" });
+      // The one that is only there starts unticked, like one only on the shortlist.
+      await waitFor(() => expect(rowTicks()).toEqual(["unchecked", "unchecked"]));
+      expect(screen.queryByText(/in Hae näitä seuraavaksi/)).not.toBeInTheDocument();
+    });
+
     it("goes by the list's id: renamed, the row carries the new name", async () => {
       await open({ inTreeToo: true, lists: { [SHORTLIST]: backlog(SHORTLIST, "Apply to these next", NEXT_TREE) } });
       await screen.findByText("also in Apply to these next");

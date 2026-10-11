@@ -9,7 +9,9 @@ import {
   findImportList,
   findMirrorTarget,
   hasClosingDate,
+  APPLIED_BACKLOG_ID,
   importListOrder,
+  listsShownInPicker,
   postingUrlsIn,
 } from "@/lib/autoPlace";
 import type { Backlog } from "@/types/models";
@@ -172,5 +174,37 @@ describe("the postings a list already holds", () => {
     expect(postingUrlsIn(items, links, null).size).toBe(0);
     expect(postingUrlsIn(undefined, links, { backlogId: "shortlist", treeId: "next" }).size).toBe(0);
     expect(postingUrlsIn(items, undefined, { backlogId: "shortlist", treeId: "next" }).size).toBe(0);
+  });
+});
+
+describe("the lists the picker says a posting is already in", () => {
+  const NEXT = "org::bt-next";
+  const mirror = { backlogId: "shortlist", treeId: NEXT };
+  const lists = (over: Record<string, Backlog> = {}) => ({
+    shortlist: backlog("shortlist", "Hae näitä seuraavaksi", NEXT),
+    [APPLIED_BACKLOG_ID]: backlog(APPLIED_BACKLOG_ID, "Lanka vetämässä", NEXT),
+    ...over,
+  });
+
+  it("are the list mirrored to, then the list of jobs applied for — each by its id", () => {
+    expect(listsShownInPicker(lists(), TREE, mirror)).toEqual([mirror, { backlogId: APPLIED_BACKLOG_ID, treeId: NEXT }]);
+    // Renamed, it is still the same list.
+    const renamed = lists({ [APPLIED_BACKLOG_ID]: backlog(APPLIED_BACKLOG_ID, "Waiting to hear", NEXT) });
+    expect(listsShownInPicker(renamed, TREE, mirror)[1]).toEqual({ backlogId: APPLIED_BACKLOG_ID, treeId: NEXT });
+  });
+
+  it("leave out the applied-for list where the organisation has no such list", () => {
+    expect(listsShownInPicker({ shortlist: backlog("shortlist", "Shortlist", NEXT) }, TREE, mirror)).toEqual([mirror]);
+  });
+
+  it("leave it out when it sits in the tree imported into, where the search already says", () => {
+    const inImportTree = lists({ [APPLIED_BACKLOG_ID]: backlog(APPLIED_BACKLOG_ID, "Lanka vetämässä", TREE) });
+    expect(listsShownInPicker(inImportTree, TREE, mirror)).toEqual([mirror]);
+  });
+
+  it("name it once when it is itself the list mirrored to, and alone when nothing is mirrored", () => {
+    const itself = { backlogId: APPLIED_BACKLOG_ID, treeId: NEXT };
+    expect(listsShownInPicker(lists(), TREE, itself)).toEqual([itself]);
+    expect(listsShownInPicker(lists(), TREE, null)).toEqual([itself]);
   });
 });

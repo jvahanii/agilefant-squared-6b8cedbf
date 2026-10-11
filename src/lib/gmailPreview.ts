@@ -17,8 +17,9 @@ export interface PreviewLink {
   alreadyIn?: string | null;
   /**
    * The list it is already in outside the tree being imported into: the one
-   * the picker mirrors to — the shortlist of jobs to apply for next. Worked
-   * out in the picker from the items on screen, not sent by the search.
+   * the picker mirrors to — the shortlist of jobs to apply for next — or the
+   * list of jobs applied for. Worked out in the picker from the items on
+   * screen, not sent by the search.
    */
   alsoIn?: string | null;
   /** yyyy-mm-dd, when the mail stated an application deadline. */
