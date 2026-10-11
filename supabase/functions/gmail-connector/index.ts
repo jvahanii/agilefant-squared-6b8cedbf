@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    const startedAt = Date.now();
     // Was auth.getUser(), which resolves against auth.users and so rejected
     // every Clerk session. requireAppUser goes via current_user_id() instead.
     const user = await requireAppUser(req);
@@ -353,7 +354,12 @@ Deno.serve(async (req) => {
       const { auth } = await getConnection(admin, user.id, organizationId);
       const max = Math.min(Number(body.maxMessages ?? 25) || 25, MAX_MESSAGES);
       const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
+      // How long each part of the search took, sent back with the answer: the
+      // search has been slow without anything saying where.
+      const timings: Record<string, number> = { signIn: Date.now() - startedAt };
+      const searchStarted = Date.now();
       const links = await searchLinks(auth, query, max, mode);
+      timings.gmail = Date.now() - searchStarted;
 
       if (mode === 'jobs') {
         // Job ad import keeps no ledger, so "already imported" is answered from
@@ -365,7 +371,7 @@ Deno.serve(async (req) => {
         // filed into another list a week ago is still one you have seen. Falls
         // back on the backlog alone for a caller that names no tree.
         const tree = treeId
-          ? await postingsInTree(admin, organizationId, treeId)
+          ? await postingsInTree(admin, organizationId, treeId, timings)
           : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
         const inTree = tree.urls;
         const present = backlogId && !treeId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
@@ -375,8 +381,12 @@ Deno.serve(async (req) => {
         // fillDeadlines; a posting that will not load simply tells us nothing.
         // A caller that reads the postings itself, batch by batch through
         // posting_facts so it can show how far it has got, says so.
+        const detailStarted = Date.now();
         const detailed = body.readPostings === false ? links : await fillDeadlines(links);
+        timings.postings = Date.now() - detailStarted;
+        timings.total = Date.now() - startedAt;
         return json({
+          timings,
           links: detailed.map((l) => ({
             ...l,
             alreadyImported: inTree.has(l.url) || present.has(l.url),

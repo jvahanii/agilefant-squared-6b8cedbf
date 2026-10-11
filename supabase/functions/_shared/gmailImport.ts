@@ -195,9 +195,18 @@ export async function postingsInTree(
   admin: Admin,
   organizationId: string,
   treeId: string,
+  /** Filled with how long each part took, in milliseconds, when given. */
+  timings?: Record<string, number>,
 ): Promise<{ urls: Map<string, string>; names: NamesInTree }> {
   const found = new Map<string, string>();
   const jobNames: NamesInTree = new Map();
+  let lap = Date.now();
+  const mark = (part: string) => {
+    if (!timings) return;
+    const now = Date.now();
+    timings[part] = (timings[part] ?? 0) + (now - lap);
+    lap = now;
+  };
 
   // The key is quoted because a real tree id reads "<org>::bt-…", and PostgREST
   // parses an unquoted "::" as a cast: the filter then matched no item at all,
@@ -221,6 +230,8 @@ export async function postingsInTree(
     inTree.push(...((page ?? []) as typeof inTree));
     if (!page || page.length < PAGE) break;
   }
+  mark('treeItems');
+  if (timings) timings.treeItemCount = inTree.length;
   if (inTree.length === 0) return { urls: found, names: jobNames };
 
   const backlogOf = new Map<string, string>();
@@ -235,6 +246,7 @@ export async function postingsInTree(
       .in('id', backlogIds.slice(i, i + 200));
     for (const r of rows ?? []) names.set(r.id as string, r.name as string);
   }
+  mark('treeLists');
 
   const whereIs = (workItemId: string) => names.get(backlogOf.get(workItemId) ?? '') ?? 'this tree';
   // Every form the URL might be compared against, for the same reason
@@ -258,6 +270,7 @@ export async function postingsInTree(
     for (const url of linksInDescription(item.description)) remember(url, whereIs(item.id));
     if (item.title) rememberName(jobNames, item.title, whereIs(item.id));
   }
+  mark('treeNames');
 
   const ids = [...backlogOf.keys()];
   for (let i = 0; i < ids.length; i += 200) {
@@ -265,7 +278,9 @@ export async function postingsInTree(
       .from('work_item_hyperlinks')
       .select('work_item_id, url')
       .in('work_item_id', ids.slice(i, i + 200));
+    mark('treeLinksFetch');
     for (const r of urlRows ?? []) remember(r.url as string, whereIs(r.work_item_id as string));
+    mark('treeLinksRead');
   }
   return { urls: found, names: jobNames };
 }
