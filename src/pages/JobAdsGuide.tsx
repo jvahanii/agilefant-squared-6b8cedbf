@@ -375,7 +375,7 @@ export default function JobAdsGuide() {
             items={[
               [
                 "Import selected into …",
-                "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. The emails the postings came from are marked as read, so a search for unread mail offers only what has arrived since.",
+                "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. Every email listed is marked as read — also one nothing was taken from, because its jobs were all in your lists already — so a search for unread mail offers only what has arrived since. Emails a keyword filter is hiding are left as they are.",
               ],
               [
                 "Do not import anything, mark N emails read",

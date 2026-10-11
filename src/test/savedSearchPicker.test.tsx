@@ -637,6 +637,59 @@ describe("Import into the chosen list", () => {
     expect(callGmail).toHaveBeenLastCalledWith({ action: "mark_read", organizationId: "org-1", messageIds: ["m-1"] });
   });
 
+  it("marks every email listed as read, also the ones nothing was taken from", async () => {
+    // Two alerts. Everything in the second is in the lists already, so nothing
+    // in it is ticked — and marked only when something was taken from it, it
+    // stayed unread and came back in every "only unread" search.
+    withTheList();
+    callGmail
+      .mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/new", title: "New job", messageId: "m-new" }),
+          link({ url: "https://x/old-1", title: "Seen before", messageId: "m-old", alreadyImported: true, alreadyIn: "Open jobs" }),
+          link({ url: "https://x/old-2", title: "Seen before too", messageId: "m-old", alreadyImported: true, alreadyIn: "Open jobs" }),
+        ],
+      })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
+      .mockResolvedValueOnce({ marked: 2 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("New job");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
+
+    await waitFor(() => expect(callGmail.mock.calls.some((c) => c[0].action === "mark_read")).toBe(true), { timeout: 8000 });
+    // Only the new job is imported …
+    expect(callGmail.mock.calls[1][0].links.map((l: { url: string }) => l.url)).toEqual(["https://x/new"]);
+    // … and both emails are marked read.
+    const marked = callGmail.mock.calls.find((c) => c[0].action === "mark_read")![0];
+    expect([...marked.messageIds].sort()).toEqual(["m-new", "m-old"]);
+  });
+
+  it("leaves an email a keyword filter is hiding unread: it has not been gone through", async () => {
+    withTheList();
+    callGmail
+      .mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/shown", title: "Fortum analyst", messageId: "m-shown", subject: "Fortum" }),
+          link({ url: "https://x/hidden", title: "Seen before", messageId: "m-hidden", subject: "Other", alreadyImported: true, alreadyIn: "Open jobs" }),
+        ],
+      })
+      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0 })
+      .mockResolvedValueOnce({ marked: 1 });
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Fortum analyst");
+    fireEvent.change(screen.getByPlaceholderText("Filter by keyword…"), { target: { value: "fortum" } });
+    await waitFor(() => expect(screen.queryByText("Seen before")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Import selected into Open jobs/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /Import selected into Open jobs/ }));
+
+    await waitFor(() => expect(callGmail.mock.calls.some((c) => c[0].action === "mark_read")).toBe(true), { timeout: 8000 });
+    const marked = callGmail.mock.calls.find((c) => c[0].action === "mark_read")![0];
+    expect(marked.messageIds).toEqual(["m-shown"]);
+  });
+
   it("ranks the new items too, once they have loaded — not only what was there before", async () => {
     withTheList();
     // This one is about the waiting, so it does it for real.

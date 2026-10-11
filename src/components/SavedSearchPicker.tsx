@@ -688,16 +688,26 @@ export function SavedSearchPicker({
       const created = res.created ?? 0;
       const createdIds = res.createdIds ?? [];
 
-      // The alerts these postings came from are done with: marking them read
-      // takes them out of an "only unread" search, so the next run offers what
-      // has arrived since. Best-effort — the import itself has already
-      // succeeded, and a connection made before the app asked for permission to
-      // change labels cannot do this until it is made again.
-      const markedRead = await markRead(links);
+      // Every alert listed is done with: marking them read takes them out of
+      // an "only unread" search, so the next run offers what has arrived since.
+      //
+      // Every one listed, not only the ones something was taken from. An
+      // alert whose jobs are all in the lists already has nothing ticked, so
+      // nothing was ever taken from it — and marked by that rule it stayed
+      // unread and came back in every search, with nothing new in it, for
+      // good. Importing is the end of going through what was listed: what was
+      // not ticked was left out on purpose, by the picker or by the reader.
+      // What a keyword filter is hiding has not been gone through, and stays —
+      // unless something ticked in it was imported all the same.
+      //
+      // Best-effort — the import itself has already succeeded, and a
+      // connection made before the app asked for permission to change labels
+      // cannot do this until it is made again.
+      const markedRead = await markRead([...links, ...visiblePreview]);
       // A career page jobs were chosen from is done with in the same way: what
       // was left on it was left on purpose, so none of its rows comes back.
-      // A page nothing was taken from stays, as an email nothing was taken
-      // from stays unread.
+      // A page nothing was taken from stays: it is no alert to be rid of, and
+      // lists the same jobs tomorrow.
       const pagesChosenFrom = new Set(links.filter(isCareerPageRow).map((l) => l.messageId));
       const onThosePages = preview.filter((l) => pagesChosenFrom.has(l.messageId));
       const leftOnPages = distinctJobs(onThosePages) - distinctJobs(links.filter(isCareerPageRow));
