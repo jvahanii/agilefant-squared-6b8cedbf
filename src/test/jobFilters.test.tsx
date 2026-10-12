@@ -202,7 +202,7 @@ describe("whether a job asks for Finnish", () => {
 describe("the chips", () => {
   it("are these, in this order", () => {
     expect(JOB_CHIPS.map((c) => c.label)).toEqual([
-      "Requires Finnish", "Trainee/Junior", "New this week", "Not expired",
+      "Requires Finnish", "Trainee/Junior", "Found in last 7 days", "Not expired",
     ]);
   });
 });

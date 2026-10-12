@@ -51,7 +51,10 @@ export type JobChip =
 export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string }[] = [
   { id: "requiresFinnish", label: "Requires Finnish", hint: "Only jobs whose ad asks for Finnish" },
   { id: "trainee", label: "Trainee/Junior", hint: "Only trainee, intern and junior roles" },
-  { id: "newThisWeek", label: "New this week", hint: "Only jobs added in the last seven days" },
+  // Seven days back from today, not the calendar week: on a Monday "this
+  // week" would be one day, and the chip never meant that. (The id keeps its
+  // first name, so a browser that stored the chip as on still finds it on.)
+  { id: "newThisWeek", label: "Found in last 7 days", hint: "Only jobs added to the list today or in the six days before" },
   { id: "notExpired", label: "Not expired", hint: "Leave out jobs whose deadline has passed" },
 ];
 
