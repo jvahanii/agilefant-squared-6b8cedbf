@@ -198,7 +198,9 @@ describe("what the picker says", () => {
     const reasons = sameJobRows([jobly, duunitori]);
     expect([...reasons.keys()]).toEqual(["m-2|https://www.jobly.fi/tyopaikka/manager-1"]);
     expect(startingReason(jobly, reasons)).toBe("same job as “Kesko - Manager” from duunitori.fi, listed here too");
-    expect(startingReason(duunitori, reasons)).toBeNull();
+    // On a day before it closes: asked of the real calendar, the dated copy
+    // is a closed posting from 12 October 2026 on, and unticked for that.
+    expect(startingReason(duunitori, reasons, new Date("2026-09-21T12:00:00Z"))).toBeNull();
   });
 
   it("keeps the first of them when neither is dated", () => {

@@ -945,6 +945,7 @@ export type Database = {
           backlog_id: string | null
           hidden_attributes: string[]
           id: string
+          job_filters: boolean
           tree_id: string
           updated_at: string
           updated_by: string | null
@@ -953,6 +954,7 @@ export type Database = {
           backlog_id?: string | null
           hidden_attributes?: string[]
           id?: string
+          job_filters?: boolean
           tree_id: string
           updated_at?: string
           updated_by?: string | null
@@ -961,6 +963,7 @@ export type Database = {
           backlog_id?: string | null
           hidden_attributes?: string[]
           id?: string
+          job_filters?: boolean
           tree_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -1786,6 +1789,7 @@ export type Database = {
         Args: { _token: string }
         Returns: Json
       }
+      get_published_link_features: { Args: { _token: string }; Returns: Json }
       get_published_link_options: {
         Args: { _backlog_id: string; _tree_id: string }
         Returns: Json
@@ -1914,6 +1918,10 @@ export type Database = {
       scramble_work_item: {
         Args: { _pin?: string; _scrambled_title: string; _work_item_id: string }
         Returns: undefined
+      }
+      set_published_link_job_filters: {
+        Args: { _backlog_id: string | null; _on: boolean; _tree_id: string }
+        Returns: boolean
       }
       set_published_link_hidden_attributes: {
         Args: { _backlog_id: string; _hidden: string[]; _tree_id: string }

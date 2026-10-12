@@ -121,6 +121,19 @@ const link = (over: Record<string, unknown>) => ({
   ...over,
 });
 
+// The postings in these tests close in late September and in October 2026.
+// Read against the real calendar, each of them is a closed posting from the day
+// after its date — unticked, without its rating and mirror controls — and
+// every test that imports one starts failing that morning, as seven did on 12
+// October. So the whole file reads one fixed day, before any of them closes.
+// Only Date is faked: the timers the picker waits on still run. A test that
+// needs another day sets it itself.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-21T12:00:00Z"));
+});
+afterEach(() => vi.useRealTimers());
+
 beforeEach(() => {
   callGmail.mockReset();
   postingFacts.mockReset();

@@ -43,6 +43,9 @@ export function PublicLinkControls({
 }) {
   const [token, setToken] = useState<string | null>(null);
   const [options, setOptions] = useState<LinkOptions | null>(null);
+  // Whether this target's public page carries the job-ad filters. Like what
+  // the link shows, it belongs to the target and outlives the link itself.
+  const [jobFilters, setJobFilters] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const createRef = useRef<HTMLButtonElement>(null);
@@ -50,10 +53,14 @@ export function PublicLinkControls({
   const load = useCallback(async () => {
     let query = supabase.from("published_links").select("token").eq("tree_id", treeId);
     query = backlogId ? query.eq("backlog_id", backlogId) : query.is("backlog_id", null);
-    const [link, opts] = await Promise.all([
+    let chosen = supabase.from("published_link_settings").select("job_filters").eq("tree_id", treeId);
+    chosen = backlogId ? chosen.eq("backlog_id", backlogId) : chosen.is("backlog_id", null);
+    const [link, opts, settings] = await Promise.all([
       query.maybeSingle(),
       supabase.rpc("get_published_link_options", { _tree_id: treeId, _backlog_id: backlogId }),
+      chosen.maybeSingle(),
     ]);
+    setJobFilters((settings.data as { job_filters?: boolean } | null)?.job_filters === true);
     if (link.error) {
       console.error("Could not load the public link:", link.error.message);
     } else {
@@ -126,6 +133,21 @@ export function PublicLinkControls({
     setOptions((o) => (o ? { ...o, hidden: (data ?? hidden) as PublishableAttribute[] } : o));
   };
 
+  const toggleJobFilters = async (on: boolean) => {
+    // Optimistic, like the attributes: the box follows the click, and goes
+    // back if the choice could not be saved.
+    setJobFilters(on);
+    const { error } = await supabase.rpc("set_published_link_job_filters", {
+      _tree_id: treeId,
+      _backlog_id: backlogId,
+      _on: on,
+    });
+    if (error) {
+      setJobFilters(!on);
+      toast({ title: "Could not save", description: error.message, variant: "destructive" });
+    }
+  };
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -168,6 +190,24 @@ export function PublicLinkControls({
           })}
         </fieldset>
       )}
+      {/* Not one of the attributes above: it adds something to the page rather
+          than deciding what of an item is shown. For a list of imported job
+          ads, whose names read "Employer - Role" — on any other list the
+          chips would be filtering by words that mean nothing there. */}
+      <div className="flex items-start gap-2 py-1">
+        <Checkbox
+          id="publish-job-filters"
+          className="mt-0.5"
+          checked={jobFilters}
+          onCheckedChange={(v) => void toggleJobFilters(v === true)}
+        />
+        <Label htmlFor="publish-job-filters" className="text-xs font-normal leading-snug">
+          Job-ad filters
+          <span className="block text-muted-foreground">
+            For a list of imported job ads: chips such as “No senior” and “Not expired”, and where each job was found.
+          </span>
+        </Label>
+      </div>
       {token ? (
         <>
           <div className="flex gap-2">

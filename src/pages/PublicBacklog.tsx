@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { JobFilterPanel } from "@/components/JobFilterPanel";
+import { passesJobFilters, sourceCounts, startingChips, type JobChip } from "@/lib/jobFilters";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,11 +95,21 @@ interface Lookups {
 export default function PublicBacklog() {
   const { token = "" } = useParams<{ token: string }>();
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  // Whether this link's page carries the job-ad filters. Asked of the link
+  // itself: they are made for a list of imported job ads, and are switched on
+  // for the links they suit rather than shown on every public page.
+  const [jobFiltersOn, setJobFiltersOn] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc("get_published_backlog", { _token: token });
+    const [{ data, error }, features] = await Promise.all([
+      supabase.rpc("get_published_backlog", { _token: token }),
+      // Alongside, and never in the way: a page whose answer to this does not
+      // come is the plain page.
+      Promise.resolve(supabase.rpc("get_published_link_features", { _token: token })).catch(() => ({ data: null })),
+    ]);
+    setJobFiltersOn((features?.data as { jobFilters?: boolean } | null)?.jobFilters === true);
     if (error) {
       setState({ status: "error", message: error.message });
     } else if (!data) {
@@ -163,11 +175,48 @@ export default function PublicBacklog() {
   const deadlineOnly = deadlinesShown && deadlineOnlyChosen;
   const setRange = (which: "deadline" | "created", end: "from" | "to", value: string) =>
     setDateRanges((current) => ({ ...current, [which]: { ...current[which], [end]: value || undefined } }));
-  const { nodes: items, matched: matchedRows } = useMemo(
-    () => filterItemNodes(allItems, terms, searchIndex, filterMatch, dates, deadlineOnly),
-    [allItems, terms, searchIndex, filterMatch, dates, deadlineOnly],
+  // The job-ad filters, on a page that has them: chips that leave kinds of
+  // job out or narrow the list to one, and the sites the jobs were found on.
+  // They are applied first, to the list's own rows — a job is a row at the
+  // top level, and what is beneath it goes with it — and the visitor's words
+  // and dates then filter what is left.
+  const [chips, setChips] = useState<Set<JobChip>>(startingChips);
+  const [jobSources, setJobSources] = useState<Set<string>>(new Set());
+  const today = useMemo(() => new Date(), []);
+  const jobItems = useMemo(
+    () => (jobFiltersOn ? allItems.filter((node) => passesJobFilters(node.item, chips, jobSources, today)) : allItems),
+    [jobFiltersOn, allItems, chips, jobSources, today],
   );
-  const totalRows = useMemo(() => countItemNodes(allItems), [allItems]);
+  const sourcesOffered = useMemo(() => {
+    if (!jobFiltersOn) return [];
+    const counted = sourceCounts(allItems.map((node) => node.item), chips, today);
+    // A ticked source the chips now leave nothing of is still listed, at
+    // nought: a tick that vanished could not be taken off.
+    const missing = [...jobSources].filter((source) => !counted.some((c) => c.source === source));
+    return [...counted, ...missing.map((source) => ({ source, count: 0 }))];
+  }, [jobFiltersOn, allItems, chips, jobSources, today]);
+  const toggleChip = (chip: JobChip) =>
+    setChips((current) => {
+      const next = new Set(current);
+      if (!next.delete(chip)) next.add(chip);
+      return next;
+    });
+  const toggleSource = (source: string) =>
+    setJobSources((current) => {
+      const next = new Set(current);
+      if (!next.delete(source)) next.add(source);
+      return next;
+    });
+  const jobFiltersChanged = useMemo(() => {
+    const starting = startingChips();
+    return jobSources.size > 0 || chips.size !== starting.size || [...chips].some((chip) => !starting.has(chip));
+  }, [chips, jobSources]);
+
+  const { nodes: items, matched: matchedRows } = useMemo(
+    () => filterItemNodes(jobItems, terms, searchIndex, filterMatch, dates, deadlineOnly),
+    [jobItems, terms, searchIndex, filterMatch, dates, deadlineOnly],
+  );
+  const totalRows = useMemo(() => countItemNodes(jobItems), [jobItems]);
   const filtering = terms.length > 0 || filteringByDate || deadlineOnly;
 
   // Which rows are open, held here rather than in each row, so the numbering
@@ -418,6 +467,23 @@ export default function PublicBacklog() {
             </nav>
           )}
 
+          {jobFiltersOn && allItems.length > 0 && (
+            <JobFilterPanel
+              chips={chips}
+              onToggleChip={toggleChip}
+              sources={sourcesOffered}
+              selectedSources={jobSources}
+              onToggleSource={toggleSource}
+              shown={jobItems.length}
+              total={allItems.length}
+              changed={jobFiltersChanged}
+              onReset={() => {
+                setChips(startingChips());
+                setJobSources(new Set());
+              }}
+            />
+          )}
+
           <section className="min-w-0 flex-1" aria-labelledby="backlog-heading">
             {selected && (
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-2">
@@ -613,6 +679,9 @@ export default function PublicBacklog() {
                     </p>
                   )}
                 </div>
+                {jobFiltersOn && jobItems.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No jobs match these filters.</p>
+                )}
                 {items.length > 0 && (
                 <>
                 {/* Headings for the dates the page shows, each a way to sort by

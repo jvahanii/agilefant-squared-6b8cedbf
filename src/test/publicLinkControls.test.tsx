@@ -106,3 +106,34 @@ describe("public link attribute choices", () => {
     await waitFor(() => expect(screen.getByLabelText("Statuses").getAttribute("data-state")).toBe("checked"));
   });
 });
+
+describe("job-ad filters on a link's page", () => {
+  it("are off unless the target has them, and are switched through their own RPC", async () => {
+    rpc.mockImplementation(options([], ["status"]));
+    render(<PublicLinkControls treeId="t" backlogId="b" />);
+
+    const box = await screen.findByLabelText(/^Job-ad filters/);
+    expect(box.getAttribute("data-state")).toBe("unchecked");
+
+    fireEvent.click(box);
+    expect(box.getAttribute("data-state")).toBe("checked");
+    expect(rpc).toHaveBeenCalledWith("set_published_link_job_filters", { _tree_id: "t", _backlog_id: "b", _on: true });
+    // The attributes the link shows are a separate choice, and were not sent.
+    expect(rpc.mock.calls.some((c) => c[0] === "set_published_link_hidden_attributes")).toBe(false);
+  });
+
+  it("show a stored choice, and go back when the change cannot be saved", async () => {
+    maybeSingle.mockResolvedValue({ data: { token: "tok", job_filters: true }, error: null });
+    rpc.mockImplementation((name: string) =>
+      name === "set_published_link_job_filters"
+        ? Promise.resolve({ data: null, error: { message: "no access" } })
+        : options([], ["status"])(name),
+    );
+    render(<PublicLinkControls treeId="t" backlogId="b" />);
+
+    const box = await screen.findByLabelText(/^Job-ad filters/);
+    expect(box.getAttribute("data-state")).toBe("checked");
+    fireEvent.click(box);
+    await waitFor(() => expect(box.getAttribute("data-state")).toBe("checked"));
+  });
+});
