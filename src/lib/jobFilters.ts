@@ -7,9 +7,8 @@
  *
  * Nearly everything is judged from what the page already has — an item's
  * name, its dates and its first link. An item imported as a job ad is named
- * "Employer - Role (cities)", and it is the role the name filters read: an
- * employer called "Senior Living Oy" is not a senior role, and a job in
- * "Staffanstorp" is not a staff one.
+ * "Employer - Role (cities)", and it is the role the name filters read: a
+ * coordinator at "Junior Achievement Finland" is not a junior.
  *
  * The exception is whether a job asks for Finnish, which a name cannot say:
  * ads written in English ask for fluent Finnish, and ads written in Finnish
@@ -36,11 +35,7 @@ export interface JobLike {
 
 export type JobChip =
   | "requiresFinnish"
-  | "noSenior"
-  | "noStaff"
-  | "noManager"
   | "trainee"
-  | "developer"
   | "newThisWeek"
   | "notExpired";
 
@@ -55,11 +50,7 @@ export type JobChip =
  */
 export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string }[] = [
   { id: "requiresFinnish", label: "Requires Finnish", hint: "Only jobs whose ad asks for Finnish" },
-  { id: "noSenior", label: "No senior", hint: "Leave out senior roles" },
-  { id: "noStaff", label: "No staff", hint: "Leave out staff-level roles" },
-  { id: "noManager", label: "No manager", hint: "Leave out manager roles" },
-  { id: "trainee", label: "Trainee", hint: "Only trainee and intern roles" },
-  { id: "developer", label: "Developer", hint: "Only developer roles" },
+  { id: "trainee", label: "Trainee/Junior", hint: "Only trainee, intern and junior roles" },
   { id: "newThisWeek", label: "New this week", hint: "Only jobs added in the last seven days" },
   { id: "notExpired", label: "Not expired", hint: "Leave out jobs whose deadline has passed" },
 ];
@@ -202,12 +193,9 @@ export function asksForFinnish(item: JobLike): boolean {
   return looksFinnish(roleOf(item.title));
 }
 
-const SENIOR = /\b(?:senior|seniori|sr)\b/i;
-const STAFF = /\bstaff\b/i;
-const MANAGER = /manager|päällikkö/i;
-const TRAINEE = /trainee|harjoittelij|\bintern(?:ship)?\b|kesätyö|summer (?:job|worker|employee)/i;
-// A business developer develops business, not software.
-const DEVELOPER = /(?<!business )developer|ohjelmistokehittäjä|sovelluskehittäjä|ohjelmoija|programmer|software engineer|ohjelmistosuunnittelija/i;
+// A job to start in: a trainee, an intern, a summer worker — or a junior,
+// which Finnish also runs into the word after it ("Junioriohjelmistokehittäjä").
+const TRAINEE = /trainee|harjoittelij|\bintern(?:ship)?\b|kesätyö|summer (?:job|worker|employee)|junior|\bjr\b/i;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 /** A day on the reader's own calendar, as yyyy-mm-dd. */
@@ -221,16 +209,8 @@ export function passesChip(chip: JobChip, item: JobLike, now: Date = new Date())
   switch (chip) {
     case "requiresFinnish":
       return asksForFinnish(item);
-    case "noSenior":
-      return !SENIOR.test(role);
-    case "noStaff":
-      return !STAFF.test(role);
-    case "noManager":
-      return !MANAGER.test(role);
     case "trainee":
       return TRAINEE.test(role);
-    case "developer":
-      return DEVELOPER.test(role);
     case "newThisWeek": {
       // Today and the six days before it. An item whose day was never
       // recorded cannot be shown to be new.

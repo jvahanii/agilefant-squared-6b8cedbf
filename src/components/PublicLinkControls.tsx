@@ -204,7 +204,7 @@ export function PublicLinkControls({
         <Label htmlFor="publish-job-filters" className="text-xs font-normal leading-snug">
           Job-ad filters
           <span className="block text-muted-foreground">
-            For a list of imported job ads: chips such as “No senior” and “Not expired”, and where each job was found.
+            For a list of imported job ads: chips such as “Requires Finnish” and “Not expired”, and where each job was found.
           </span>
         </Label>
       </div>

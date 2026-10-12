@@ -101,15 +101,9 @@ describe("a role named in Finnish", () => {
 describe("what each chip keeps", () => {
   const keeps = (chip: JobChip, title: string) => passesChip(chip, job(title), NOW);
 
-  it("leaves out by the role, not by the employer or the cities", () => {
-    expect(keeps("noSenior", "Fortum - Senior Analyst (Espoo)")).toBe(false);
-    expect(keeps("noSenior", "Fortum - Sr. Analyst")).toBe(false);
-    expect(keeps("noSenior", "Senior Living Oy - Analyst")).toBe(true);
-    expect(keeps("noStaff", "Wolt - Staff Engineer")).toBe(false);
-    expect(keeps("noStaff", "Staffgate - Engineer (Staffanstorp)")).toBe(true);
-    expect(keeps("noManager", "KONE - Senior Manager, Organizational Development")).toBe(false);
-    expect(keeps("noManager", "Kesko - Projektipäällikkö")).toBe(false);
-    expect(keeps("noManager", "Kesko - Analyst")).toBe(true);
+  it("reads the role, not the employer or the cities", () => {
+    expect(keeps("trainee", "Junior Achievement Finland - Coordinator (Helsinki)")).toBe(false);
+    expect(keeps("trainee", "Trainee Factory Oy - Analyst")).toBe(false);
   });
 
   it("narrows to the jobs that ask for Finnish — by the role's name, where no ad has been read", () => {
@@ -118,18 +112,18 @@ describe("what each chip keeps", () => {
     expect(keeps("requiresFinnish", "Asianajotoimisto Krogerus - Legal Counsel (Helsinki)")).toBe(false);
   });
 
-  it("narrows to a kind of job", () => {
+  it("narrows to the jobs to start in: trainees, interns and juniors", () => {
     expect(keeps("trainee", "Bird & Bird - Assistant Trainee")).toBe(true);
     expect(keeps("trainee", "Nokia - Summer Intern, R&D")).toBe(true);
     expect(keeps("trainee", "Elisa - Harjoittelija, viestintä")).toBe(true);
+    expect(keeps("trainee", "Ready Solutions Oy - Junior AI-Engineer")).toBe(true);
+    expect(keeps("trainee", "StaffMill Oy - Junior Software developer, Suomi (Espoo)")).toBe(true);
+    // Finnish runs it into the next word, and brackets it.
+    expect(keeps("trainee", "Advaun Oy - Junioriohjelmistokehittäjä, harjoittelija tai opinnäytetyöntekijä")).toBe(true);
+    expect(keeps("trainee", "Academic Work Finland Oy - (Junior) Konsultti")).toBe(true);
+    expect(keeps("trainee", "Vincit - Jr. Developer")).toBe(true);
     expect(keeps("trainee", "International Paper - Analyst")).toBe(false);
-    expect(keeps("developer", "Reaktor - AI Developer")).toBe(true);
-    expect(keeps("developer", "Vincit - Ohjelmistokehittäjä")).toBe(true);
-    expect(keeps("developer", "Wolt - Software Engineer, Payments")).toBe(true);
-    // A business developer develops business, not software.
-    expect(keeps("developer", "Fortum - Business Developer Lead")).toBe(false);
-    expect(keeps("developer", "Kela - Liiketoiminnan kehittäjä")).toBe(false);
-    expect(keeps("developer", "Fortum - Analyst")).toBe(false);
+    expect(keeps("trainee", "Fortum - Senior Analyst (Espoo)")).toBe(false);
   });
 
   it("counts a job as new for today and the six days before", () => {
@@ -160,7 +154,7 @@ describe("where a job was found", () => {
 
   const JOBS = [
     job("A - Analyst", { url: "https://duunitori.fi/tyopaikat/tyo/a" }),
-    job("B - Senior Analyst", { url: "https://duunitori.fi/tyopaikat/tyo/b" }),
+    job("B - Junior Analyst", { url: "https://duunitori.fi/tyopaikat/tyo/b" }),
     job("C - Developer", { url: "https://www.jobly.fi/tyopaikka/c" }),
     job("D - Designer", { url: "https://www.jobly.fi/tyopaikka/d" }),
     job("E - Designer", { url: "https://www.jobly.fi/tyopaikka/e" }),
@@ -172,10 +166,8 @@ describe("where a job was found", () => {
       { source: "jobly.fi", count: 3 },
       { source: "duunitori.fi", count: 2 },
     ]);
-    expect(sourceCounts(JOBS, new Set<JobChip>(["noSenior"]), NOW)).toEqual([
-      { source: "jobly.fi", count: 3 },
-      { source: "duunitori.fi", count: 1 },
-    ]);
+    // Only what the chips leave is counted, and a source left with nothing is not listed.
+    expect(sourceCounts(JOBS, new Set<JobChip>(["trainee"]), NOW)).toEqual([{ source: "duunitori.fi", count: 1 }]);
   });
 
   it("narrows to the sources ticked — any one of them — on top of the chips", () => {
@@ -183,7 +175,7 @@ describe("where a job was found", () => {
       JOBS.filter((j) => passesJobFilters(j, new Set(chips), new Set(sources), NOW)).map((j) => j.title[0]);
     expect(left([], [])).toEqual(["A", "B", "C", "D", "E", "F"]);
     expect(left([], ["duunitori.fi"])).toEqual(["A", "B"]);
-    expect(left(["noSenior"], ["duunitori.fi"])).toEqual(["A"]);
+    expect(left(["trainee"], ["duunitori.fi"])).toEqual(["B"]);
     expect(left([], ["duunitori.fi", "jobly.fi"])).toEqual(["A", "B", "C", "D", "E"]);
   });
 });
@@ -210,7 +202,7 @@ describe("whether a job asks for Finnish", () => {
 describe("the chips", () => {
   it("are these, in this order", () => {
     expect(JOB_CHIPS.map((c) => c.label)).toEqual([
-      "Requires Finnish", "No senior", "No staff", "No manager", "Trainee", "Developer", "New this week", "Not expired",
+      "Requires Finnish", "Trainee/Junior", "New this week", "Not expired",
     ]);
   });
 });
@@ -226,14 +218,14 @@ describe("what a visitor chose, kept in their browser", () => {
   });
 
   it("comes back as it was stored, for the link it was stored on and no other", () => {
-    storeJobFilters("one-link", new Set<JobChip>(["noSenior", "developer"]), new Set(["jobly.fi"]));
-    expect([...storedJobFilters("one-link").chips]).toEqual(["noSenior", "developer"]);
+    storeJobFilters("one-link", new Set<JobChip>(["trainee", "notExpired"]), new Set(["jobly.fi"]));
+    expect([...storedJobFilters("one-link").chips]).toEqual(["trainee", "notExpired"]);
     expect([...storedJobFilters("one-link").sources]).toEqual(["jobly.fi"]);
     expect(storedJobFilters("another-link").chips.size).toBe(0);
   });
 
   it("keeps nothing once everything is off again", () => {
-    storeJobFilters("one-link", new Set<JobChip>(["noSenior"]), new Set());
+    storeJobFilters("one-link", new Set<JobChip>(["trainee"]), new Set());
     expect(window.localStorage.getItem(KEY)).not.toBeNull();
     storeJobFilters("one-link", new Set(), new Set());
     expect(window.localStorage.getItem(KEY)).toBeNull();
@@ -242,8 +234,9 @@ describe("what a visitor chose, kept in their browser", () => {
   it("reads what it cannot make sense of as nothing chosen, and drops a chip that no longer exists", () => {
     window.localStorage.setItem(KEY, "not json");
     expect(storedJobFilters("one-link").chips.size).toBe(0);
-    window.localStorage.setItem(KEY, JSON.stringify({ chips: ["noSenior", "maxFourYears", 7], sources: "jobly.fi" }));
-    expect([...storedJobFilters("one-link").chips]).toEqual(["noSenior"]);
+    // "noSenior" was a chip once; a browser may still hold it.
+    window.localStorage.setItem(KEY, JSON.stringify({ chips: ["trainee", "noSenior", 7], sources: "jobly.fi" }));
+    expect([...storedJobFilters("one-link").chips]).toEqual(["trainee"]);
     expect(storedJobFilters("one-link").sources.size).toBe(0);
   });
 });
@@ -260,7 +253,7 @@ describe("on the public page", () => {
     item("HUS - Ohjelmistoasiantuntija (Helsinki)", 3, link("https://duunitori.fi/tyopaikat/tyo/3")),
     item("KONE - Project Manager (Espoo)", 4, link("https://www.linkedin.com/jobs/view/4")),
     item("Wolt - Data Analyst (Helsinki)", 5, { ...link("https://www.linkedin.com/jobs/view/5"), deadline: "2020-01-01" }),
-    item("Nokia - Designer (Espoo)", 6, link("https://duunitori.fi/tyopaikat/tyo/6")),
+    item("Nokia - Junior Designer (Espoo)", 6, link("https://duunitori.fi/tyopaikat/tyo/6")),
   ];
   const payload = (): PublishedPayload =>
     ({
@@ -321,23 +314,16 @@ describe("on the public page", () => {
     expect(JOB_CHIPS.map((c) => pressed(c.label))).toEqual(Array(JOB_CHIPS.length).fill("false"));
   });
 
-  it("leaves a kind of job out when its chip is switched on, and narrows to one kind with that kind's chip", async () => {
+  it("leaves the expired out with their chip, and narrows to a kind of job with that kind's chip", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    chip("No senior");
-    expect(titles()).not.toContain("Fortum - Senior Analyst (Espoo)");
+    chip("Not expired");
+    expect(titles()).not.toContain("Wolt - Data Analyst (Helsinki)");
     expect(within(panel()).getByRole("status")).toHaveTextContent("5 of 6 jobs");
 
-    for (const label of ["No manager", "Not expired"]) chip(label);
-    // Senior, manager and expired are out.
-    expect(titles()).toEqual([
-      "Reaktor - AI Developer (Helsinki)",
-      "HUS - Ohjelmistoasiantuntija (Helsinki)",
-      "Nokia - Designer (Espoo)",
-    ]);
-
-    chip("Developer");
-    expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)"]);
+    chip("Trainee/Junior");
+    expect(titles()).toEqual(["Nokia - Junior Designer (Espoo)"]);
+    expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
   });
 
   it("lists where the remaining jobs were found, with counts, and narrows to the ones ticked", async () => {
@@ -345,15 +331,16 @@ describe("on the public page", () => {
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
     openSources();
     expect(within(panel()).getByLabelText(/linkedin\.com/)).not.toBeChecked();
-    for (const label of ["No senior", "No manager", "Not expired"]) chip(label);
-    // Of the three jobs left, none is from LinkedIn.
+    chip("Trainee/Junior");
+    // The one job left is not from LinkedIn.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).not.toBeChecked();
     expect(within(panel()).queryByLabelText(/linkedin\.com/)).not.toBeInTheDocument();
 
-    chip("No senior");
+    chip("Trainee/Junior");
+    chip("Not expired");
     fireEvent.click(within(panel()).getByLabelText(/linkedin\.com/));
-    expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)"]);
-    expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
+    expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)", "KONE - Project Manager (Espoo)"]);
+    expect(within(panel()).getByRole("status")).toHaveTextContent("2 of 6 jobs");
     // The other source is still offered, with what ticking it would add.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeInTheDocument();
   });
@@ -394,7 +381,7 @@ describe("on the public page", () => {
     await screen.findByText("KONE - Project Manager (Espoo)");
     expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)", "KONE - Project Manager (Espoo)"]);
     expect(pressed("Not expired")).toBe("true");
-    expect(pressed("No senior")).toBe("false");
+    expect(pressed("Trainee/Junior")).toBe("false");
     openSources();
     expect(within(panel()).getByLabelText(/linkedin\.com/)).toBeChecked();
   });
@@ -429,13 +416,14 @@ describe("on the public page", () => {
   it("says so when nothing is left, and filters by word within what the chips leave", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    chip("No senior");
     chip("Not expired");
-    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "analyst" } });
-    // The analysts are senior or expired: the chips leave neither.
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "wolt" } });
+    // Wolt's ad has expired: the chip has left nothing for the word to find.
     expect(titles()).toEqual([]);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
-    fireEvent.click(within(panel()).getByRole("button", { name: "Trainee" }));
+    // The one junior job is not one that asks for Finnish.
+    chip("Trainee/Junior");
+    chip("Requires Finnish");
     expect(screen.getByText("No jobs match these filters.")).toBeInTheDocument();
     expect(within(panel()).getByRole("status")).toHaveTextContent("0 of 6 jobs");
   });
