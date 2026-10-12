@@ -4,11 +4,12 @@
  * Made for one kind of list — imported job ads, named "Employer - Role
  * (cities)" — and switched on per link, so most public pages never show them.
  * Pinned here: what each chip keeps, read from the role and not from the
- * employer or the cities; which chips a page opens with; where a job counts
- * as found; and that the panel is on the page only where the link has it.
+ * employer or the cities; that a page opens with none of them on and keeps
+ * what a visitor chooses in their browser; where a job counts as found; and
+ * that the panel is on the page only where the link has it.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, cleanup } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const rpc = vi.fn();
@@ -25,7 +26,8 @@ import {
   roleOf,
   sourceCounts,
   sourceOf,
-  startingChips,
+  storedJobFilters,
+  storeJobFilters,
   type JobChip,
 } from "@/lib/jobFilters";
 import type { PublishedItem, PublishedPayload } from "@/lib/publicBacklog";
@@ -181,12 +183,44 @@ describe("where a job was found", () => {
   });
 });
 
-describe("the chips a page opens with", () => {
-  it("are the ones that leave things out; the ones that narrow to a kind start off", () => {
-    expect([...startingChips()]).toEqual(["noFinnish", "noSenior", "noStaff", "noManager", "notExpired"]);
+describe("the chips", () => {
+  it("are these, in this order", () => {
     expect(JOB_CHIPS.map((c) => c.label)).toEqual([
       "No Finnish", "No senior", "No staff", "No manager", "Trainee", "Developer", "New this week", "Not expired",
     ]);
+  });
+});
+
+describe("what a visitor chose, kept in their browser", () => {
+  const KEY = "agilefant:job-filters:one-link";
+  beforeEach(() => window.localStorage.clear());
+
+  it("is nothing where nothing was chosen", () => {
+    const { chips, sources } = storedJobFilters("one-link");
+    expect([...chips]).toEqual([]);
+    expect([...sources]).toEqual([]);
+  });
+
+  it("comes back as it was stored, for the link it was stored on and no other", () => {
+    storeJobFilters("one-link", new Set<JobChip>(["noSenior", "developer"]), new Set(["jobly.fi"]));
+    expect([...storedJobFilters("one-link").chips]).toEqual(["noSenior", "developer"]);
+    expect([...storedJobFilters("one-link").sources]).toEqual(["jobly.fi"]);
+    expect(storedJobFilters("another-link").chips.size).toBe(0);
+  });
+
+  it("keeps nothing once everything is off again", () => {
+    storeJobFilters("one-link", new Set<JobChip>(["noSenior"]), new Set());
+    expect(window.localStorage.getItem(KEY)).not.toBeNull();
+    storeJobFilters("one-link", new Set(), new Set());
+    expect(window.localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("reads what it cannot make sense of as nothing chosen, and drops a chip that no longer exists", () => {
+    window.localStorage.setItem(KEY, "not json");
+    expect(storedJobFilters("one-link").chips.size).toBe(0);
+    window.localStorage.setItem(KEY, JSON.stringify({ chips: ["noSenior", "maxFourYears", 7], sources: "jobly.fi" }));
+    expect([...storedJobFilters("one-link").chips]).toEqual(["noSenior"]);
+    expect(storedJobFilters("one-link").sources.size).toBe(0);
   });
 });
 
@@ -235,7 +269,12 @@ describe("on the public page", () => {
     if (toggle.getAttribute("aria-expanded") === "false") fireEvent.click(toggle);
   };
 
-  beforeEach(() => rpc.mockReset());
+  beforeEach(() => {
+    rpc.mockReset();
+    window.localStorage.clear();
+  });
+  const pressed = (label: string) => within(panel()).getByRole("button", { name: label }).getAttribute("aria-pressed");
+  const chip = (label: string) => fireEvent.click(within(panel()).getByRole("button", { name: label }));
 
   it("has no filters where the link does not have them — which is every link but the ones they are switched on for", async () => {
     open(false);
@@ -250,25 +289,26 @@ describe("on the public page", () => {
     expect(screen.queryByRole("complementary", { name: "Filters" })).not.toBeInTheDocument();
   });
 
-  it("opens with the leaving-out chips on, and says how many jobs that leaves", async () => {
+  it("opens with every chip off and every job listed", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    // Senior, Finnish-titled, manager and expired are out.
-    expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)", "Nokia - Designer (Espoo)"]);
-    expect(within(panel()).getByRole("status")).toHaveTextContent("2 of 6 jobs");
-    const pressed = (label: string) => within(panel()).getByRole("button", { name: label }).getAttribute("aria-pressed");
-    expect(["No Finnish", "No senior", "No staff", "No manager", "Not expired"].map(pressed)).toEqual(Array(5).fill("true"));
-    expect(["Trainee", "Developer", "New this week"].map(pressed)).toEqual(Array(3).fill("false"));
+    expect(titles()).toHaveLength(6);
+    expect(within(panel()).getByRole("status")).toHaveTextContent("6 of 6 jobs");
+    expect(JOB_CHIPS.map((c) => pressed(c.label))).toEqual(Array(JOB_CHIPS.length).fill("false"));
   });
 
-  it("brings a kind of job back when its chip is switched off, and narrows to one when that chip is switched on", async () => {
+  it("leaves a kind of job out when its chip is switched on, and narrows to one kind with that kind's chip", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    fireEvent.click(within(panel()).getByRole("button", { name: "No senior" }));
-    expect(titles()).toContain("Fortum - Senior Analyst (Espoo)");
-    expect(within(panel()).getByRole("status")).toHaveTextContent("3 of 6 jobs");
+    chip("No senior");
+    expect(titles()).not.toContain("Fortum - Senior Analyst (Espoo)");
+    expect(within(panel()).getByRole("status")).toHaveTextContent("5 of 6 jobs");
 
-    fireEvent.click(within(panel()).getByRole("button", { name: "Developer" }));
+    for (const label of ["No Finnish", "No manager", "Not expired"]) chip(label);
+    // Senior, Finnish-titled, manager and expired are out.
+    expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)", "Nokia - Designer (Espoo)"]);
+
+    chip("Developer");
     expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)"]);
   });
 
@@ -276,16 +316,36 @@ describe("on the public page", () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
     openSources();
-    // Of the two jobs left: one from each.
+    expect(within(panel()).getByLabelText(/linkedin\.com/)).not.toBeChecked();
+    for (const label of ["No Finnish", "No senior", "No manager", "Not expired"]) chip(label);
+    // Of the two jobs left, none is from LinkedIn.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).not.toBeChecked();
     expect(within(panel()).queryByLabelText(/linkedin\.com/)).not.toBeInTheDocument();
 
-    fireEvent.click(within(panel()).getByRole("button", { name: "No senior" }));
+    chip("No senior");
     fireEvent.click(within(panel()).getByLabelText(/linkedin\.com/));
     expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)"]);
     expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
     // The other source is still offered, with what ticking it would add.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeInTheDocument();
+  });
+
+  it("finds a visitor's chips and sources as they left them, on coming back to the link", async () => {
+    open(true);
+    await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    chip("No Finnish");
+    openSources();
+    fireEvent.click(within(panel()).getByLabelText(/duunitori\.fi/));
+    expect(titles()).toEqual(["Nokia - Designer (Espoo)"]);
+
+    cleanup();
+    open(true);
+    await screen.findByText("Nokia - Designer (Espoo)");
+    expect(titles()).toEqual(["Nokia - Designer (Espoo)"]);
+    expect(pressed("No Finnish")).toBe("true");
+    expect(pressed("No senior")).toBe("false");
+    openSources();
+    expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeChecked();
   });
 
   it("folds the sources away on a narrow screen, where the panel sits above the list, and opens them beside it", async () => {
@@ -301,21 +361,27 @@ describe("on the public page", () => {
     narrow.mockRestore();
   });
 
-  it("goes back to how it opened", async () => {
+  it("switches everything off again on Reset, and keeps nothing in the browser then", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
     expect(within(panel()).queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
-    fireEvent.click(within(panel()).getByRole("button", { name: "No Finnish" }));
-    expect(titles()).toContain("HUS - Ohjelmistoasiantuntija (Helsinki)");
+    chip("No Finnish");
+    expect(titles()).not.toContain("HUS - Ohjelmistoasiantuntija (Helsinki)");
+    expect(window.localStorage.length).toBe(1);
     fireEvent.click(within(panel()).getByRole("button", { name: "Reset" }));
-    expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)", "Nokia - Designer (Espoo)"]);
+    expect(titles()).toHaveLength(6);
+    expect(pressed("No Finnish")).toBe("false");
+    expect(within(panel()).queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
+    expect(window.localStorage.length).toBe(0);
   });
 
   it("says so when nothing is left, and filters by word within what the chips leave", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    chip("No senior");
+    chip("Not expired");
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "analyst" } });
-    // The analysts are senior or expired: none of the chips' two is one.
+    // The analysts are senior or expired: the chips leave neither.
     expect(titles()).toEqual([]);
     fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
     fireEvent.click(within(panel()).getByRole("button", { name: "Trainee" }));

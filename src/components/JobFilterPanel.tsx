@@ -33,9 +33,9 @@ export function JobFilterPanel({
   /** Jobs left by the chips and the sources together, and how many there are in all. */
   shown: number;
   total: number;
-  /** Back to the filters the page opened with. */
+  /** Every filter off again, as the page first opens. */
   onReset: () => void;
-  /** The filters are not as the page opened with them. */
+  /** Some filter is on. */
   changed: boolean;
 }) {
   // Open beside the list, where there is room for it; folded on a phone,

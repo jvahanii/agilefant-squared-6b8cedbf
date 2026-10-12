@@ -34,24 +34,71 @@ export type JobChip =
   | "notExpired";
 
 /**
- * The chips, in the order shown. The ones that start on are the ones that
- * leave things out — and leave in what is still open; the ones that narrow
- * the list to a kind of job start off, for the visitor to choose.
+ * The chips, in the order shown. All of them start off: a page opens on the
+ * whole list, and what is left out of it is what the visitor chose to leave
+ * out — and finds chosen still on coming back (see storedJobFilters).
  */
-export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string; startsOn: boolean }[] = [
-  { id: "noFinnish", label: "No Finnish", hint: "Leave out jobs whose title is in Finnish", startsOn: true },
-  { id: "noSenior", label: "No senior", hint: "Leave out senior roles", startsOn: true },
-  { id: "noStaff", label: "No staff", hint: "Leave out staff-level roles", startsOn: true },
-  { id: "noManager", label: "No manager", hint: "Leave out manager roles", startsOn: true },
-  { id: "trainee", label: "Trainee", hint: "Only trainee and intern roles", startsOn: false },
-  { id: "developer", label: "Developer", hint: "Only developer roles", startsOn: false },
-  { id: "newThisWeek", label: "New this week", hint: "Only jobs added in the last seven days", startsOn: false },
-  { id: "notExpired", label: "Not expired", hint: "Leave out jobs whose deadline has passed", startsOn: true },
+export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string }[] = [
+  { id: "noFinnish", label: "No Finnish", hint: "Leave out jobs whose title is in Finnish" },
+  { id: "noSenior", label: "No senior", hint: "Leave out senior roles" },
+  { id: "noStaff", label: "No staff", hint: "Leave out staff-level roles" },
+  { id: "noManager", label: "No manager", hint: "Leave out manager roles" },
+  { id: "trainee", label: "Trainee", hint: "Only trainee and intern roles" },
+  { id: "developer", label: "Developer", hint: "Only developer roles" },
+  { id: "newThisWeek", label: "New this week", hint: "Only jobs added in the last seven days" },
+  { id: "notExpired", label: "Not expired", hint: "Leave out jobs whose deadline has passed" },
 ];
 
-/** The chips a page opens with. */
-export function startingChips(): Set<JobChip> {
-  return new Set(JOB_CHIPS.filter((chip) => chip.startsOn).map((chip) => chip.id));
+/** What a visitor has chosen: the chips that are on, and the sources ticked. */
+export interface JobFilterChoice {
+  chips: Set<JobChip>;
+  sources: Set<string>;
+}
+
+/**
+ * Where a visitor's choice is kept: in their own browser, under the link it
+ * was made on. A public page has no account to keep it with, and two lists of
+ * jobs are two sets of choices.
+ */
+const jobFilterStoreKey = (token: string) => `agilefant:job-filters:${token}`;
+
+/**
+ * The choice this browser made on this link before, or nothing chosen. What
+ * cannot be read — storage switched off, or something else under the key — is
+ * nothing chosen, and a chip that no longer exists is dropped.
+ */
+export function storedJobFilters(token: string): JobFilterChoice {
+  const none: JobFilterChoice = { chips: new Set(), sources: new Set() };
+  try {
+    const raw = window.localStorage.getItem(jobFilterStoreKey(token));
+    if (!raw) return none;
+    const stored = JSON.parse(raw) as { chips?: unknown; sources?: unknown };
+    const known = new Set<string>(JOB_CHIPS.map((chip) => chip.id));
+    const strings = (value: unknown) =>
+      Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+    return {
+      chips: new Set(strings(stored.chips).filter((id) => known.has(id)) as JobChip[]),
+      sources: new Set(strings(stored.sources)),
+    };
+  } catch {
+    return none;
+  }
+}
+
+/** Keeps the choice for next time; with nothing chosen, keeps nothing. */
+export function storeJobFilters(token: string, chips: ReadonlySet<JobChip>, sources: ReadonlySet<string>): void {
+  try {
+    if (chips.size === 0 && sources.size === 0) {
+      window.localStorage.removeItem(jobFilterStoreKey(token));
+    } else {
+      window.localStorage.setItem(
+        jobFilterStoreKey(token),
+        JSON.stringify({ chips: [...chips], sources: [...sources] }),
+      );
+    }
+  } catch {
+    // A browser that will not store it still filters; it only forgets.
+  }
 }
 
 /**

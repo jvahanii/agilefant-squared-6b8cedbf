@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { JobFilterPanel } from "@/components/JobFilterPanel";
-import { passesJobFilters, sourceCounts, startingChips, type JobChip } from "@/lib/jobFilters";
+import { passesJobFilters, sourceCounts, storedJobFilters, storeJobFilters, type JobChip } from "@/lib/jobFilters";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -196,8 +196,16 @@ export default function PublicBacklog() {
   // They are applied first, to the list's own rows — a job is a row at the
   // top level, and what is beneath it goes with it — and the visitor's words
   // and dates then filter what is left.
-  const [chips, setChips] = useState<Set<JobChip>>(startingChips);
-  const [jobSources, setJobSources] = useState<Set<string>>(new Set());
+  //
+  // Nothing is on until the visitor switches it on, and what they switch on
+  // is kept in their browser for this link: the same person comes back to the
+  // same list, and should not have to make the same choices each time.
+  const [chips, setChips] = useState<Set<JobChip>>(() => storedJobFilters(token).chips);
+  const [jobSources, setJobSources] = useState<Set<string>>(() => storedJobFilters(token).sources);
+  useEffect(() => {
+    // Only on a page that has the filters: any other has nothing to keep.
+    if (jobFiltersOn) storeJobFilters(token, chips, jobSources);
+  }, [jobFiltersOn, token, chips, jobSources]);
   const today = useMemo(() => new Date(), []);
   const jobItems = useMemo(
     () => (jobFiltersOn ? allItems.filter((node) => passesJobFilters(node.item, chips, jobSources, today)) : allItems),
@@ -223,10 +231,7 @@ export default function PublicBacklog() {
       if (!next.delete(source)) next.add(source);
       return next;
     });
-  const jobFiltersChanged = useMemo(() => {
-    const starting = startingChips();
-    return jobSources.size > 0 || chips.size !== starting.size || [...chips].some((chip) => !starting.has(chip));
-  }, [chips, jobSources]);
+  const jobFiltersChanged = chips.size > 0 || jobSources.size > 0;
 
   const { nodes: items, matched: matchedRows } = useMemo(
     () => filterItemNodes(jobItems, terms, searchIndex, filterMatch, dates, deadlineOnly),
@@ -523,7 +528,7 @@ export default function PublicBacklog() {
               total={allItems.length}
               changed={jobFiltersChanged}
               onReset={() => {
-                setChips(startingChips());
+                setChips(new Set());
                 setJobSources(new Set());
               }}
             />
