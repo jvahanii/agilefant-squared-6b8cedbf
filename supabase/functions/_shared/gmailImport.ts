@@ -13,6 +13,7 @@ import { canonicalizeByHost, jobSourceFor } from './jobSources.ts';
 import { deadlinePrefix, wellFormedDeadline } from './deadlines.ts';
 import { withCities } from './cities.ts';
 import { fillDeadlines } from './fetchDeadline.ts';
+import { rememberLanguage } from './postingLanguage.ts';
 import { pageUrlOf } from './careerPages.ts';
 import { rememberName, type NamesInTree } from './jobNames.ts';
 
@@ -363,6 +364,8 @@ export async function importLinksAsWorkItems(
   if (target.fetchDeadlines) {
     // Best-effort and capped; a posting that will not load simply keeps no date.
     candidates = await fillDeadlines(candidates);
+    // What each ad said about needing Finnish, for the public page's filter.
+    await rememberLanguage(admin, candidates);
   }
 
   let items: Array<{ id: string; claimId: string | null; link: ExtractedLink }>;

@@ -101,6 +101,10 @@ export default function PublicBacklog() {
   // itself: they are made for a list of imported job ads, and are switched on
   // for the links they suit rather than shown on every public page.
   const [jobFiltersOn, setJobFiltersOn] = useState(false);
+  // What each job's ad says about needing Finnish, by item, for the jobs
+  // whose ads have been read. It comes with the filters, not with the list:
+  // only a page that filters by it has any use for it.
+  const [finnishByItem, setFinnishByItem] = useState<Record<string, "required" | "not_required">>({});
   const [refreshing, setRefreshing] = useState(false);
   // A Refresh whose answer did not come. The list stays as it was — an old
   // list is worth more to a reader than an apology in its place.
@@ -119,7 +123,9 @@ export default function PublicBacklog() {
       ).catch(() => null),
     ]);
     if (features && !features.error) {
-      setJobFiltersOn((features.data as { jobFilters?: boolean } | null)?.jobFilters === true);
+      const answer = features.data as { jobFilters?: boolean; finnish?: Record<string, "required" | "not_required"> } | null;
+      setJobFiltersOn(answer?.jobFilters === true);
+      setFinnishByItem(answer?.finnish ?? {});
     }
     if (error) {
       // Said where it can be read: the page itself only says that it failed.
@@ -207,18 +213,24 @@ export default function PublicBacklog() {
     if (jobFiltersOn) storeJobFilters(token, chips, jobSources);
   }, [jobFiltersOn, token, chips, jobSources]);
   const today = useMemo(() => new Date(), []);
+  // A job as the filters see it: the row, and what its ad said.
+  const asJob = useCallback(
+    (item: (typeof allItems)[number]["item"]) => ({ ...item, finnish: finnishByItem[item.id] }),
+    [finnishByItem],
+  );
   const jobItems = useMemo(
-    () => (jobFiltersOn ? allItems.filter((node) => passesJobFilters(node.item, chips, jobSources, today)) : allItems),
-    [jobFiltersOn, allItems, chips, jobSources, today],
+    () =>
+      jobFiltersOn ? allItems.filter((node) => passesJobFilters(asJob(node.item), chips, jobSources, today)) : allItems,
+    [jobFiltersOn, allItems, asJob, chips, jobSources, today],
   );
   const sourcesOffered = useMemo(() => {
     if (!jobFiltersOn) return [];
-    const counted = sourceCounts(allItems.map((node) => node.item), chips, today);
+    const counted = sourceCounts(allItems.map((node) => asJob(node.item)), chips, today);
     // A ticked source the chips now leave nothing of is still listed, at
     // nought: a tick that vanished could not be taken off.
     const missing = [...jobSources].filter((source) => !counted.some((c) => c.source === source));
     return [...counted, ...missing.map((source) => ({ source, count: 0 }))];
-  }, [jobFiltersOn, allItems, chips, jobSources, today]);
+  }, [jobFiltersOn, allItems, asJob, chips, jobSources, today]);
   const toggleChip = (chip: JobChip) =>
     setChips((current) => {
       const next = new Set(current);

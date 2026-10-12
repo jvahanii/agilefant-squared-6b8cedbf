@@ -20,6 +20,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 import PublicBacklog from "@/pages/PublicBacklog";
 import {
   JOB_CHIPS,
+  asksForFinnish,
   looksFinnish,
   passesChip,
   passesJobFilters,
@@ -183,6 +184,25 @@ describe("where a job was found", () => {
   });
 });
 
+describe("whether a job asks for Finnish", () => {
+  it("is what its ad says, whatever language its name is in", () => {
+    // Written in English, and asking for fluent Finnish.
+    expect(asksForFinnish({ title: "Fortum - Senior Analyst (Espoo)", finnish: "required" })).toBe(true);
+    // Written in Finnish, and saying Finnish is not needed.
+    expect(asksForFinnish({ title: "HUS - Ohjelmistoasiantuntija (Helsinki)", finnish: "not_required" })).toBe(false);
+  });
+
+  it("is a guess from the name only for an ad nobody has read", () => {
+    expect(asksForFinnish({ title: "HUS - Ohjelmistoasiantuntija (Helsinki)" })).toBe(true);
+    expect(asksForFinnish({ title: "Fortum - Senior Analyst (Espoo)", finnish: null })).toBe(false);
+  });
+
+  it("decides the No Finnish chip", () => {
+    expect(passesChip("noFinnish", { title: "Fortum - Senior Analyst (Espoo)", finnish: "required" }, NOW)).toBe(false);
+    expect(passesChip("noFinnish", { title: "HUS - Ohjelmistoasiantuntija (Helsinki)", finnish: "not_required" }, NOW)).toBe(true);
+  });
+});
+
 describe("the chips", () => {
   it("are these, in this order", () => {
     expect(JOB_CHIPS.map((c) => c.label)).toEqual([
@@ -247,10 +267,10 @@ describe("on the public page", () => {
       statusesByBacklog: {}, teams: [], labels: [], items: ITEMS,
     }) as PublishedPayload;
 
-  const open = (jobFilters: boolean | null) => {
+  const open = (jobFilters: boolean | null, finnish?: Record<string, string>) => {
     rpc.mockImplementation((name: string) =>
       name === "get_published_link_features"
-        ? Promise.resolve({ data: jobFilters === null ? null : { jobFilters }, error: null })
+        ? Promise.resolve({ data: jobFilters === null ? null : { jobFilters, ...(finnish ? { finnish } : {}) }, error: null })
         : Promise.resolve({ data: payload(), error: null }),
     );
     render(
@@ -328,6 +348,26 @@ describe("on the public page", () => {
     expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
     // The other source is still offered, with what ticking it would add.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeInTheDocument();
+  });
+
+  it("leaves out by what each ad says about Finnish, and by the name only where no ad was read", async () => {
+    // Items are keyed by id, which in this list is the title.
+    open(true, {
+      "Fortum - Senior Analyst (Espoo)": "required",
+      "HUS - Ohjelmistoasiantuntija (Helsinki)": "not_required",
+    });
+    await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    chip("No Finnish");
+    // Fortum's ad, in English, asks for Finnish: out. HUS's, in Finnish, says
+    // it is not needed: in. The rest have no verdict and go by their names.
+    expect(titles()).toEqual([
+      "Reaktor - AI Developer (Helsinki)",
+      "HUS - Ohjelmistoasiantuntija (Helsinki)",
+      "KONE - Project Manager (Espoo)",
+      "Wolt - Data Analyst (Helsinki)",
+      "Nokia - Designer (Espoo)",
+    ]);
+    expect(within(panel()).getByRole("status")).toHaveTextContent("5 of 6 jobs");
   });
 
   it("finds a visitor's chips and sources as they left them, on coming back to the link", async () => {

@@ -44,6 +44,7 @@ import {
 import { importLinksAsWorkItems, postingsInTree, urlsInBacklog } from '../_shared/gmailImport.ts';
 import { lookalikesFor, type NamesInTree } from '../_shared/jobNames.ts';
 import { fetchPosting, fillDeadlines } from '../_shared/fetchDeadline.ts';
+import { rememberLanguage } from '../_shared/postingLanguage.ts';
 import { careerPageFor, MAX_CAREER_PAGES, pageMessageId, positionsAsLinks } from '../_shared/careerPages.ts';
 import { wellFormedDeadline } from '../_shared/deadlines.ts';
 import { requireAppUser } from '../_shared/auth.ts';
@@ -387,6 +388,10 @@ Deno.serve(async (req) => {
         // posting_facts so it can show how far it has got, says so.
         const detailStarted = Date.now();
         const detailed = body.readPostings === false ? links : await fillDeadlines(links);
+        // What each ad read said about needing Finnish, kept under the ad's
+        // address for the public page's filter. It costs no request: the
+        // pages have just been read.
+        if (body.readPostings !== false) await rememberLanguage(adminClient(), detailed);
         timings.postings = Date.now() - detailStarted;
         timings.total = Date.now() - startedAt;
         return json({
@@ -436,6 +441,7 @@ Deno.serve(async (req) => {
         .filter((l) => typeof l.url === 'string' && /^https?:\/\//i.test(l.url))
         .map((l) => ({ url: l.url as string, date: typeof l.date === 'string' ? l.date : undefined }));
       const read = await fillDeadlines(links);
+      await rememberLanguage(adminClient(), read);
       return json({
         facts: read.map((l) => ({
           url: l.url,
@@ -601,6 +607,7 @@ Deno.serve(async (req) => {
       const undatedBacklogId = String(auto?.undatedBacklogId ?? '');
       if (datedBacklogId && undatedBacklogId) {
         const read = body.mode === 'jobs' ? await fillDeadlines(mapped) : mapped;
+        if (body.mode === 'jobs') await rememberLanguage(adminClient(), read);
         const dated = read.filter((l) => (l as { deadline?: string }).deadline);
         const undated = read.filter((l) => !(l as { deadline?: string }).deadline);
         const base = {

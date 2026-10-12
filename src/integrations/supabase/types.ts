@@ -910,6 +910,30 @@ export type Database = {
         }
         Relationships: []
       }
+      posting_language: {
+        Row: {
+          basis: string | null
+          evidence: string | null
+          finnish: string | null
+          read_at: string
+          url_hash: string
+        }
+        Insert: {
+          basis?: string | null
+          evidence?: string | null
+          finnish?: string | null
+          read_at?: string
+          url_hash: string
+        }
+        Update: {
+          basis?: string | null
+          evidence?: string | null
+          finnish?: string | null
+          read_at?: string
+          url_hash?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

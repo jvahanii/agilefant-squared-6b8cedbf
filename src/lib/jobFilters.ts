@@ -5,11 +5,17 @@
  * job ads: these filters are switched on per link (published_link_settings.
  * job_filters), for the one page they make sense on.
  *
- * Everything is judged from what the page already has — an item's name, its
- * dates and its first link — because that is all a public page is sent. An
- * item imported as a job ad is named "Employer - Role (cities)", and it is the
- * role the name filters read: an employer called "Senior Living Oy" is not a
- * senior role, and a job in "Staffanstorp" is not a staff one.
+ * Nearly everything is judged from what the page already has — an item's
+ * name, its dates and its first link. An item imported as a job ad is named
+ * "Employer - Role (cities)", and it is the role the name filters read: an
+ * employer called "Senior Living Oy" is not a senior role, and a job in
+ * "Staffanstorp" is not a staff one.
+ *
+ * The exception is whether a job asks for Finnish, which a name cannot say:
+ * ads written in English ask for fluent Finnish, and ads written in Finnish
+ * say it is not needed. That is read from the ad itself when the ad is
+ * imported or checked (languageRequirement.ts) and sent with the page; the
+ * name is the fallback for an ad nobody has been able to read.
  *
  * Pure, so the rules can be tested and tuned without a page.
  */
@@ -21,6 +27,11 @@ export interface JobLike {
   /** yyyy-mm-dd, or nothing. */
   createdOn?: string | null;
   links?: readonly { url: string }[];
+  /**
+   * What the job's ad says about needing Finnish, where the ad has been read
+   * and says. Nothing for an ad that has not, or does not.
+   */
+  finnish?: "required" | "not_required" | null;
 }
 
 export type JobChip =
@@ -39,7 +50,7 @@ export type JobChip =
  * out — and finds chosen still on coming back (see storedJobFilters).
  */
 export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string }[] = [
-  { id: "noFinnish", label: "No Finnish", hint: "Leave out jobs whose title is in Finnish" },
+  { id: "noFinnish", label: "No Finnish", hint: "Leave out jobs whose ad asks for Finnish" },
   { id: "noSenior", label: "No senior", hint: "Leave out senior roles" },
   { id: "noStaff", label: "No staff", hint: "Leave out staff-level roles" },
   { id: "noManager", label: "No manager", hint: "Leave out manager roles" },
@@ -161,9 +172,10 @@ const NOT_FINNISH = new Set([
 /**
  * Is this role named in Finnish? Judged a word at a time: a Nordic letter, a
  * word Finnish titles are made of, or a long word with a Finnish ending and no
- * English reading. A proxy for "this job wants Finnish" — the ad itself is not
- * on the page to read — and deliberately one that needs evidence: a role with
- * nothing Finnish about its name counts as not Finnish.
+ * English reading. A proxy for "this job wants Finnish", used only for a job
+ * whose ad has not been read (see asksForFinnish) — and deliberately one that
+ * needs evidence: a role with nothing Finnish about its name counts as not
+ * Finnish.
  */
 export function looksFinnish(role: string): boolean {
   if (NORDIC_LETTER.test(role)) return true;
@@ -174,6 +186,16 @@ export function looksFinnish(role: string): boolean {
       FINNISH_STEMS.some((stem) => word.includes(stem)) ||
       (word.length >= MIN_ENDING_WORD && FINNISH_ENDING.test(word) && !NOT_FINNISH.has(word)),
   );
+}
+
+/**
+ * Does this job ask for Finnish? What its ad says, where that is known; a
+ * guess from the language of its name where it is not.
+ */
+export function asksForFinnish(item: JobLike): boolean {
+  if (item.finnish === "required") return true;
+  if (item.finnish === "not_required") return false;
+  return looksFinnish(roleOf(item.title));
 }
 
 const SENIOR = /\b(?:senior|seniori|sr)\b/i;
@@ -194,7 +216,7 @@ export function passesChip(chip: JobChip, item: JobLike, now: Date = new Date())
   const role = roleOf(item.title);
   switch (chip) {
     case "noFinnish":
-      return !looksFinnish(role);
+      return !asksForFinnish(item);
     case "noSenior":
       return !SENIOR.test(role);
     case "noStaff":

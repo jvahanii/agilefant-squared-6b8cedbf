@@ -37,6 +37,12 @@ describe("factsFromPage", () => {
       closed: false,
       // Where the job is, from the same page: the posting is open in both.
       cities: ["Helsinki", "Tampere"],
+      // And what the ad says about Finnish — this one, in so many words.
+      language: {
+        finnish: "not_required",
+        basis: "stated",
+        evidence: expect.stringContaining("Finnish is not a requirement at Alma"),
+      },
     });
   });
 
@@ -50,7 +56,8 @@ describe("factsFromPage", () => {
   });
 
   it("still reads a 404 as a posting that is gone", () => {
-    expect(factsFromPage(URL_ALMA, 404, "text/html", "", "2026-09-17")).toEqual({ closed: true });
+    // Gone, and with it anything it said about languages: read, nothing to tell.
+    expect(factsFromPage(URL_ALMA, 404, "text/html", "", "2026-09-17")).toEqual({ closed: true, language: null });
   });
 });
 
@@ -118,7 +125,12 @@ describe("the extension bridge", () => {
 
     const facts = await readPostingFacts("https://jobly.fi/tyopaikka/senior-ai-solutions-engineer-2760006", "2026-09-17");
 
-    expect(facts).toEqual({ deadline: "2026-10-11", closed: false, cities: ["Helsinki", "Tampere"] });
+    expect(facts).toEqual({
+      deadline: "2026-10-11",
+      closed: false,
+      cities: ["Helsinki", "Tampere"],
+      language: expect.objectContaining({ finnish: "not_required", basis: "stated" }),
+    });
     // A bare jobly.fi link is fetched as www.jobly.fi, the host the extension allows.
     expect(requests).toEqual(["https://www.jobly.fi/tyopaikka/senior-ai-solutions-engineer-2760006"]);
     vi.useRealTimers();

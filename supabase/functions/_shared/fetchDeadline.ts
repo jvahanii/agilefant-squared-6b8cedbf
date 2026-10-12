@@ -10,6 +10,7 @@
 
 import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadlines.ts';
 import { citiesFromPage } from './cities.ts';
+import { finnishRequirement, type LanguageVerdict } from './languageRequirement.ts';
 
 /** Per request. Long enough for a slow board, short enough not to stall a preview. */
 const TIMEOUT_MS = 6_000;
@@ -149,6 +150,13 @@ export interface PostingFacts {
    */
   cities?: string[];
   /**
+   * Whether the ad asks for Finnish, read from its text. Null when the page
+   * was read and does not say — a board that draws its ads with script, an ad
+   * that has been taken down; absent when the page was never read. The
+   * difference is what tells a caller whether asking again could help.
+   */
+  language?: LanguageVerdict | null;
+  /**
    * The page never arrived, so nothing at all is known about this posting --
    * as opposed to it being open.
    *
@@ -218,7 +226,9 @@ export function factsFromPage(
 ): PostingFacts {
   if (isChallengePage(html)) return { unreachable: status || 403 };
   if (status < 200 || status >= 300) {
-    return closedByStatus(status) ? { closed: true } : { unreachable: status };
+    // An ad that is gone has no text left to read a language from, and never
+    // will have: that is an answer, not a failure to get one.
+    return closedByStatus(status) ? { closed: true, language: null } : { unreachable: status };
   }
   if (!contentType.includes('html') && !contentType.includes('text')) return { unreachable: status };
 
@@ -233,7 +243,7 @@ export function factsFromPage(
     // today, while the reference only decides which year a bare "9.9." meant.
     deadlinePassed(deadline) ||
     (isLinkedInGuest(target) && linkedInApplyWithdrawn(html));
-  return { deadline, closed, cities: citiesFromPage(html) };
+  return { deadline, closed, cities: citiesFromPage(html), language: finnishRequirement(text) ?? null };
 }
 
 async function factsFor(rawUrl: string, reference: string): Promise<PostingFacts> {
@@ -274,7 +284,14 @@ async function pool<T>(items: T[], job: (item: T) => Promise<void>, width = CONC
  * broad query cannot turn a preview into a crawl.
  */
 export async function fillDeadlines<
-  T extends { url: string; date?: string; deadline?: string; applicationsClosed?: boolean; cities?: string[] },
+  T extends {
+    url: string;
+    date?: string;
+    deadline?: string;
+    applicationsClosed?: boolean;
+    cities?: string[];
+    language?: LanguageVerdict | null;
+  },
 >(links: T[]): Promise<T[]> {
   // A deadline from the mail used to settle a posting. The page is now read
   // for its cities as well, so it is skipped only once both are known: a
@@ -310,6 +327,10 @@ export async function fillDeadlines<
       // the posting was listed on did, and either knows better than a guess
       // from the posting's own markup.
       ...(facts.cities && out[i].cities === undefined ? { cities: facts.cities } : {}),
+      // What the ad says about needing Finnish rides along for whoever keeps
+      // it (postingLanguage.ts): the page has been read, and reading it again
+      // for this alone would be a second request for one answer.
+      ...(facts.language !== undefined ? { language: facts.language } : {}),
     };
   });
   return out;

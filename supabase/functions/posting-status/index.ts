@@ -10,11 +10,18 @@
 // about a closed ad is the reader's decision, made in the backlog. The one thing
 // it does write is its own memory of what each posting last said, so that asking
 // twice costs one request -- see postingCache.ts and posting_checks.
+//
+// The same reading answers a second question, kept for the public page of job
+// ads: does the ad ask for Finnish? (languageRequirement.ts, posting_language.)
+// An ad nobody has been asked that about is read once more even where its
+// closed-or-open verdict is remembered, which is how a list imported before
+// the question existed gets its answers: by checking it.
 
 import { adminClient, corsHeaders, json } from '../_shared/gmail.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 import { factsForUrls, postingTextUrl } from '../_shared/fetchDeadline.ts';
 import { hashTarget, usable, type Verdict } from '../_shared/postingCache.ts';
+import { rememberLanguage, urlsReadForLanguage } from '../_shared/postingLanguage.ts';
 
 // Structural, for the same reason gmailImport.ts uses one: the client's type
 // comes from a Deno URL import that the app's typecheck cannot follow.
@@ -59,6 +66,7 @@ async function remember(
   targets: Map<string, string>,
   hashes: Map<string, string>,
   facts: Record<string, { closed?: boolean; deadline?: string; unreachable?: number }>,
+  remembered: Map<string, Verdict>,
 ): Promise<void> {
   const rows = [];
   const written = new Set<string>();
@@ -69,11 +77,15 @@ async function remember(
     if (!fact || fact.unreachable !== undefined || !hash || !target) continue;
     if (written.has(hash)) continue;
     written.add(hash);
+    // An ad once seen closed stays closed: it is read again here only for
+    // its language, and LinkedIn's page for a withdrawn ad does not always
+    // say so twice.
+    const before = remembered.get(hash);
     rows.push({
       target_hash: hash,
       target,
-      closed: fact.closed ?? false,
-      deadline: fact.deadline ?? null,
+      closed: (fact.closed ?? false) || before?.closed === true,
+      deadline: fact.deadline ?? before?.deadline ?? null,
       checked_at: new Date().toISOString(),
     });
   }
@@ -120,23 +132,33 @@ Deno.serve(async (req) => {
 
     const remembered = await recall(admin, [...new Set(hashes.values())]);
 
+    // An ad whose verdict is remembered is still worth one request if it has
+    // never been read for its language.
+    const readForLanguage = await urlsReadForLanguage(admin, urls);
+
     const stale: string[] = [];
     for (const url of urls) {
       const hit = remembered.get(hashes.get(url) ?? '');
-      if (!hit || !usable(hit)) stale.push(url);
+      if (!hit || !usable(hit) || !readForLanguage.has(url)) stale.push(url);
     }
 
     const facts = stale.length > 0 ? await factsForUrls(stale) : {};
-    await remember(admin, stale, targets, hashes, facts);
+    await remember(admin, stale, targets, hashes, facts, remembered);
+    await rememberLanguage(admin, stale.map((url) => ({ url, language: facts[url]?.language })));
 
     const results = urls.map((url: string) => {
       const fresh = facts[url];
       // A fetch that came back with nothing falls back on what was remembered:
       // an old answer beats no answer, and it is the one the board gave.
-      if (fresh && fresh.unreachable === undefined) {
-        return { url, closed: fresh.closed ?? false, deadline: fresh.deadline ?? null, unreachable: null };
-      }
       const hit = remembered.get(hashes.get(url) ?? '');
+      if (fresh && fresh.unreachable === undefined) {
+        return {
+          url,
+          closed: (fresh.closed ?? false) || hit?.closed === true,
+          deadline: fresh.deadline ?? hit?.deadline ?? null,
+          unreachable: null,
+        };
+      }
       if (hit) return { url, closed: hit.closed, deadline: hit.deadline, unreachable: null };
       return {
         url,

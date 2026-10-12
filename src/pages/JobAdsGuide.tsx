@@ -572,6 +572,13 @@ export default function JobAdsGuide() {
             filled. The newly imported ads are left out, since their postings were just read. A
             message reports the result when it finishes.
           </P>
+          <P>
+            Reading an ad — at import or in this check — also notes whether it asks for Finnish. That is what the{" "}
+            <Em>No Finnish</Em> filter on a public page of job ads goes by: an ad written in English that wants
+            &ldquo;fluent Finnish&rdquo; is left out, and one written in Finnish that says Finnish is not needed is
+            kept. An ad that says nothing about languages is judged by the language it is written in, and an ad that
+            could not be read by the language of its name.
+          </P>
         </Section>
 
         <Section id="troubleshooting" title="Troubleshooting">
