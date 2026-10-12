@@ -229,6 +229,11 @@ describe("on the public page", () => {
   };
   const panel = () => screen.getByRole("complementary", { name: "Filters" });
   const titles = () => ITEMS.map((i) => i.title).filter((t) => screen.queryByText(t));
+  /** The sources are folded on a narrow screen — which is what the test window says it is. */
+  const openSources = () => {
+    const toggle = within(panel()).getByRole("button", { name: "Source" });
+    if (toggle.getAttribute("aria-expanded") === "false") fireEvent.click(toggle);
+  };
 
   beforeEach(() => rpc.mockReset());
 
@@ -270,6 +275,7 @@ describe("on the public page", () => {
   it("lists where the remaining jobs were found, with counts, and narrows to the ones ticked", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    openSources();
     // Of the two jobs left: one from each.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).not.toBeChecked();
     expect(within(panel()).queryByLabelText(/linkedin\.com/)).not.toBeInTheDocument();
@@ -280,6 +286,19 @@ describe("on the public page", () => {
     expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
     // The other source is still offered, with what ticking it would add.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeInTheDocument();
+  });
+
+  it("folds the sources away on a narrow screen, where the panel sits above the list, and opens them beside it", async () => {
+    const narrow = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    open(true);
+    await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    expect(within(panel()).getByRole("button", { name: "Source" })).toHaveAttribute("aria-expanded", "false");
+    expect(within(panel()).queryByLabelText(/duunitori.fi/)).not.toBeInTheDocument();
+    fireEvent.click(within(panel()).getByRole("button", { name: "Source" }));
+    expect(within(panel()).getByLabelText(/duunitori.fi/)).toBeInTheDocument();
+    narrow.mockRestore();
   });
 
   it("goes back to how it opened", async () => {
