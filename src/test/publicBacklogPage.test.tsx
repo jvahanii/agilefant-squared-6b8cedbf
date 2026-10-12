@@ -15,6 +15,13 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: (...args: unknown[]) => rpc(...args) },
 }));
 
+// The waits between tries, cut to nothing: what is tested is that the page
+// asks again, not how long it holds off.
+vi.mock("@/lib/publicBacklog", async (original) => ({
+  ...(await original<typeof import("@/lib/publicBacklog")>()),
+  PUBLIC_LOAD_RETRY_MS: [1, 1, 1],
+}));
+
 import PublicBacklog from "@/pages/PublicBacklog";
 
 const TOKEN = "test-token-000000000000000000000";
@@ -421,5 +428,50 @@ describe("public list page", () => {
     renderPage();
     expect(await screen.findByText("This link isn't available")).toBeTruthy();
     expect(screen.getByText(/may have been unpublished/)).toBeTruthy();
+  });
+});
+
+describe("public list page: a list that does not come", () => {
+  const failed = { data: null, error: { message: "canceling statement due to statement timeout" } };
+  const listCalls = () => rpc.mock.calls.filter(([name]) => name === "get_published_backlog").length;
+  const answering = (lists: unknown[]) => {
+    let asked = 0;
+    rpc.mockImplementation((name: string) =>
+      Promise.resolve(
+        name === "get_published_backlog"
+          ? lists[Math.min(asked++, lists.length - 1)]
+          : { data: { jobFilters: false }, error: null },
+      ),
+    );
+  };
+
+  it("asks again by itself, and shows the list once it comes", async () => {
+    answering([failed, failed, { data: fixture(), error: null }]);
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "Product tree" })).toBeTruthy();
+    expect(screen.queryByText("This link isn't available")).toBeNull();
+    expect(listCalls()).toBe(3);
+  });
+
+  it("gives up after four tries, says why, and tries again when asked", async () => {
+    answering([failed, failed, failed, failed, { data: fixture(), error: null }]);
+    renderPage();
+    expect(await screen.findByText("This link isn't available")).toBeTruthy();
+    expect(screen.getByText(/statement timeout/)).toBeTruthy();
+    expect(listCalls()).toBe(4);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Product tree" })).toBeTruthy();
+  });
+
+  it("keeps the list on the page when a Refresh fails", async () => {
+    answering([{ data: fixture(), error: null }, failed]);
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Product tree" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText(/Couldn't refresh/)).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Product tree" })).toBeTruthy();
+    expect(screen.queryByText("This link isn't available")).toBeNull();
   });
 });

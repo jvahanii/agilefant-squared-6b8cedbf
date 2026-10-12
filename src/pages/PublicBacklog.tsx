@@ -10,6 +10,7 @@ import { StarRating } from "@/components/StarRating";
 import { formatDeadline, isDeadlinePassed } from "@/lib/deadlineFormat";
 import { formatDuration } from "@/lib/formatDuration";
 import {
+  askPatiently,
   backlogScope,
   buildBacklogTree,
   buildItemTree,
@@ -22,6 +23,7 @@ import {
   highlightSegments,
   linkifySegments,
   nextPublicSort,
+  PUBLIC_LOAD_RETRY_MS,
   safeLinkHref,
   scopeMinutes,
   sortItemNodes,
@@ -100,23 +102,37 @@ export default function PublicBacklog() {
   // for the links they suit rather than shown on every public page.
   const [jobFiltersOn, setJobFiltersOn] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // A Refresh whose answer did not come. The list stays as it was — an old
+  // list is worth more to a reader than an apology in its place.
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  /** Whether the list came. A list that did not leaves one already shown where it is. */
+  const load = useCallback(async (): Promise<boolean> => {
     const [{ data, error }, features] = await Promise.all([
-      supabase.rpc("get_published_backlog", { _token: token }),
-      // Alongside, and never in the way: a page whose answer to this does not
-      // come is the plain page.
-      Promise.resolve(supabase.rpc("get_published_link_features", { _token: token })).catch(() => ({ data: null })),
+      askPatiently(() => supabase.rpc("get_published_backlog", { _token: token }), PUBLIC_LOAD_RETRY_MS),
+      // Alongside, and never long in the way: a page whose answer to this does
+      // not come is the plain page, so it is asked for once more and no more.
+      askPatiently(
+        () => supabase.rpc("get_published_link_features", { _token: token }),
+        PUBLIC_LOAD_RETRY_MS.slice(0, 1),
+      ).catch(() => null),
     ]);
-    setJobFiltersOn((features?.data as { jobFilters?: boolean } | null)?.jobFilters === true);
+    if (features && !features.error) {
+      setJobFiltersOn((features.data as { jobFilters?: boolean } | null)?.jobFilters === true);
+    }
     if (error) {
-      setState({ status: "error", message: error.message });
-    } else if (!data) {
+      // Said where it can be read: the page itself only says that it failed.
+      console.warn("Public page: the list did not load —", error.message);
+      setState((was) => (was.status === "ready" ? was : { status: "error", message: error.message }));
+      return false;
+    }
+    if (!data) {
       setState({ status: "missing" });
     } else {
       setState({ status: "ready", payload: data as unknown as PublishedPayload });
     }
+    return true;
   }, [token]);
 
   useEffect(() => {
@@ -379,8 +395,15 @@ export default function PublicBacklog() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await load();
+    setRefreshFailed(false);
+    const came = await load();
+    setRefreshFailed(!came);
     setRefreshing(false);
+  };
+
+  const tryAgain = () => {
+    setState({ status: "loading" });
+    void load();
   };
 
   if (state.status === "loading") {
@@ -401,6 +424,21 @@ export default function PublicBacklog() {
               ? "It may have been unpublished, or the address is incomplete."
               : "Something went wrong loading it. Try again in a moment."}
           </p>
+          {state.status === "error" && (
+            <>
+              <button
+                type="button"
+                onClick={tryAgain}
+                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                Try again
+              </button>
+              {/* What the database said, small: it is what someone asked
+                  about the failure will want to be told. */}
+              {state.message && <p className="text-xs text-muted-foreground/70">Reason: {state.message}</p>}
+            </>
+          )}
         </div>
       </Shell>
     );
@@ -417,15 +455,22 @@ export default function PublicBacklog() {
   return (
     <Shell
       actions={
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {refreshFailed && (
+            <span className="text-xs text-muted-foreground" role="status">
+              Couldn&apos;t refresh — showing what was loaded before.
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+            Refresh
+          </button>
+        </div>
       }
     >
       <header className="mb-6 space-y-1">

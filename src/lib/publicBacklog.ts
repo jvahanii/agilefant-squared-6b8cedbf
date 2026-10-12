@@ -546,3 +546,35 @@ export function safeLinkHref(raw: string): string | null {
   if (parsed.protocol === "mailto:") return parsed.href;
   return null;
 }
+
+/**
+ * How long the page waits before asking again for a list that did not come.
+ *
+ * The database behind the page is a small one. The list is answered in a
+ * fifth of a second when it is idle, and cancelled for taking too long
+ * ("statement timeout") while the app is loading somebody's whole
+ * organization — which is exactly when the link is opened from the app. A
+ * visitor has no way to know that, and was told the link was not available.
+ *
+ * Longer each time: a busy stretch lasts seconds, and asking again at once
+ * only adds to it.
+ */
+export const PUBLIC_LOAD_RETRY_MS: readonly number[] = [1200, 3000, 6000];
+
+/**
+ * Asks, and asks again after each wait for as long as the answer is an error.
+ * The last answer is returned whatever it is, error included: the caller
+ * decides what a failure means, this only makes one less likely.
+ */
+export async function askPatiently<T extends { error: unknown }>(
+  ask: () => PromiseLike<T>,
+  waits: readonly number[],
+): Promise<T> {
+  let answer = await ask();
+  for (const wait of waits) {
+    if (!answer.error) break;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    answer = await ask();
+  }
+  return answer;
+}
