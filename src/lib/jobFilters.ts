@@ -35,7 +35,7 @@ export interface JobLike {
 }
 
 export type JobChip =
-  | "noFinnish"
+  | "requiresFinnish"
   | "noSenior"
   | "noStaff"
   | "noManager"
@@ -48,9 +48,13 @@ export type JobChip =
  * The chips, in the order shown. All of them start off: a page opens on the
  * whole list, and what is left out of it is what the visitor chose to leave
  * out — and finds chosen still on coming back (see storedJobFilters).
+ *
+ * "Requires Finnish" was "No Finnish" for its first day, and left those jobs
+ * out where it now shows only them. It has an id of its own for that reason:
+ * a browser that stored the old chip as on must not find its opposite on.
  */
 export const JOB_CHIPS: readonly { id: JobChip; label: string; hint: string }[] = [
-  { id: "noFinnish", label: "No Finnish", hint: "Leave out jobs whose ad asks for Finnish" },
+  { id: "requiresFinnish", label: "Requires Finnish", hint: "Only jobs whose ad asks for Finnish" },
   { id: "noSenior", label: "No senior", hint: "Leave out senior roles" },
   { id: "noStaff", label: "No staff", hint: "Leave out staff-level roles" },
   { id: "noManager", label: "No manager", hint: "Leave out manager roles" },
@@ -215,8 +219,8 @@ export function isoDay(date: Date): string {
 export function passesChip(chip: JobChip, item: JobLike, now: Date = new Date()): boolean {
   const role = roleOf(item.title);
   switch (chip) {
-    case "noFinnish":
-      return !asksForFinnish(item);
+    case "requiresFinnish":
+      return asksForFinnish(item);
     case "noSenior":
       return !SENIOR.test(role);
     case "noStaff":

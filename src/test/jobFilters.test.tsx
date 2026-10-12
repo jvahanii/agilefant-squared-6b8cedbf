@@ -110,8 +110,12 @@ describe("what each chip keeps", () => {
     expect(keeps("noManager", "KONE - Senior Manager, Organizational Development")).toBe(false);
     expect(keeps("noManager", "Kesko - Projektipäällikkö")).toBe(false);
     expect(keeps("noManager", "Kesko - Analyst")).toBe(true);
-    expect(keeps("noFinnish", "HUS - Ohjelmistoasiantuntija (Helsinki)")).toBe(false);
-    expect(keeps("noFinnish", "Asianajotoimisto Krogerus - Legal Counsel (Helsinki)")).toBe(true);
+  });
+
+  it("narrows to the jobs that ask for Finnish — by the role's name, where no ad has been read", () => {
+    expect(keeps("requiresFinnish", "HUS - Ohjelmistoasiantuntija (Helsinki)")).toBe(true);
+    // The employer's name is Finnish; the role is not.
+    expect(keeps("requiresFinnish", "Asianajotoimisto Krogerus - Legal Counsel (Helsinki)")).toBe(false);
   });
 
   it("narrows to a kind of job", () => {
@@ -197,16 +201,16 @@ describe("whether a job asks for Finnish", () => {
     expect(asksForFinnish({ title: "Fortum - Senior Analyst (Espoo)", finnish: null })).toBe(false);
   });
 
-  it("decides the No Finnish chip", () => {
-    expect(passesChip("noFinnish", { title: "Fortum - Senior Analyst (Espoo)", finnish: "required" }, NOW)).toBe(false);
-    expect(passesChip("noFinnish", { title: "HUS - Ohjelmistoasiantuntija (Helsinki)", finnish: "not_required" }, NOW)).toBe(true);
+  it("decides the Requires Finnish chip", () => {
+    expect(passesChip("requiresFinnish", { title: "Fortum - Senior Analyst (Espoo)", finnish: "required" }, NOW)).toBe(true);
+    expect(passesChip("requiresFinnish", { title: "HUS - Ohjelmistoasiantuntija (Helsinki)", finnish: "not_required" }, NOW)).toBe(false);
   });
 });
 
 describe("the chips", () => {
   it("are these, in this order", () => {
     expect(JOB_CHIPS.map((c) => c.label)).toEqual([
-      "No Finnish", "No senior", "No staff", "No manager", "Trainee", "Developer", "New this week", "Not expired",
+      "Requires Finnish", "No senior", "No staff", "No manager", "Trainee", "Developer", "New this week", "Not expired",
     ]);
   });
 });
@@ -324,9 +328,13 @@ describe("on the public page", () => {
     expect(titles()).not.toContain("Fortum - Senior Analyst (Espoo)");
     expect(within(panel()).getByRole("status")).toHaveTextContent("5 of 6 jobs");
 
-    for (const label of ["No Finnish", "No manager", "Not expired"]) chip(label);
-    // Senior, Finnish-titled, manager and expired are out.
-    expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)", "Nokia - Designer (Espoo)"]);
+    for (const label of ["No manager", "Not expired"]) chip(label);
+    // Senior, manager and expired are out.
+    expect(titles()).toEqual([
+      "Reaktor - AI Developer (Helsinki)",
+      "HUS - Ohjelmistoasiantuntija (Helsinki)",
+      "Nokia - Designer (Espoo)",
+    ]);
 
     chip("Developer");
     expect(titles()).toEqual(["Reaktor - AI Developer (Helsinki)"]);
@@ -337,8 +345,8 @@ describe("on the public page", () => {
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
     openSources();
     expect(within(panel()).getByLabelText(/linkedin\.com/)).not.toBeChecked();
-    for (const label of ["No Finnish", "No senior", "No manager", "Not expired"]) chip(label);
-    // Of the two jobs left, none is from LinkedIn.
+    for (const label of ["No senior", "No manager", "Not expired"]) chip(label);
+    // Of the three jobs left, none is from LinkedIn.
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).not.toBeChecked();
     expect(within(panel()).queryByLabelText(/linkedin\.com/)).not.toBeInTheDocument();
 
@@ -350,42 +358,45 @@ describe("on the public page", () => {
     expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeInTheDocument();
   });
 
-  it("leaves out by what each ad says about Finnish, and by the name only where no ad was read", async () => {
+  it("narrows to the jobs whose ads ask for Finnish, and goes by the name only where no ad was read", async () => {
     // Items are keyed by id, which in this list is the title.
     open(true, {
       "Fortum - Senior Analyst (Espoo)": "required",
       "HUS - Ohjelmistoasiantuntija (Helsinki)": "not_required",
     });
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    chip("No Finnish");
-    // Fortum's ad, in English, asks for Finnish: out. HUS's, in Finnish, says
-    // it is not needed: in. The rest have no verdict and go by their names.
-    expect(titles()).toEqual([
-      "Reaktor - AI Developer (Helsinki)",
-      "HUS - Ohjelmistoasiantuntija (Helsinki)",
-      "KONE - Project Manager (Espoo)",
-      "Wolt - Data Analyst (Helsinki)",
-      "Nokia - Designer (Espoo)",
-    ]);
-    expect(within(panel()).getByRole("status")).toHaveTextContent("5 of 6 jobs");
+    chip("Requires Finnish");
+    // Fortum's ad, in English, asks for Finnish: in. HUS's, in Finnish, says
+    // it is not needed: out. The rest have no verdict, and none of their
+    // names is Finnish.
+    expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)"]);
+    expect(within(panel()).getByRole("status")).toHaveTextContent("1 of 6 jobs");
+  });
+
+  it("goes by the names alone on a list none of whose ads has been read", async () => {
+    open(true);
+    await screen.findByText("Reaktor - AI Developer (Helsinki)");
+    chip("Requires Finnish");
+    expect(titles()).toEqual(["HUS - Ohjelmistoasiantuntija (Helsinki)"]);
   });
 
   it("finds a visitor's chips and sources as they left them, on coming back to the link", async () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
-    chip("No Finnish");
+    chip("Not expired");
     openSources();
-    fireEvent.click(within(panel()).getByLabelText(/duunitori\.fi/));
-    expect(titles()).toEqual(["Nokia - Designer (Espoo)"]);
+    fireEvent.click(within(panel()).getByLabelText(/linkedin\.com/));
+    // Of LinkedIn's three, the one whose deadline has passed is out.
+    expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)", "KONE - Project Manager (Espoo)"]);
 
     cleanup();
     open(true);
-    await screen.findByText("Nokia - Designer (Espoo)");
-    expect(titles()).toEqual(["Nokia - Designer (Espoo)"]);
-    expect(pressed("No Finnish")).toBe("true");
+    await screen.findByText("KONE - Project Manager (Espoo)");
+    expect(titles()).toEqual(["Fortum - Senior Analyst (Espoo)", "KONE - Project Manager (Espoo)"]);
+    expect(pressed("Not expired")).toBe("true");
     expect(pressed("No senior")).toBe("false");
     openSources();
-    expect(within(panel()).getByLabelText(/duunitori\.fi/)).toBeChecked();
+    expect(within(panel()).getByLabelText(/linkedin\.com/)).toBeChecked();
   });
 
   it("folds the sources away on a narrow screen, where the panel sits above the list, and opens them beside it", async () => {
@@ -405,12 +416,12 @@ describe("on the public page", () => {
     open(true);
     await screen.findByText("Reaktor - AI Developer (Helsinki)");
     expect(within(panel()).queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
-    chip("No Finnish");
-    expect(titles()).not.toContain("HUS - Ohjelmistoasiantuntija (Helsinki)");
+    chip("Requires Finnish");
+    expect(titles()).toEqual(["HUS - Ohjelmistoasiantuntija (Helsinki)"]);
     expect(window.localStorage.length).toBe(1);
     fireEvent.click(within(panel()).getByRole("button", { name: "Reset" }));
     expect(titles()).toHaveLength(6);
-    expect(pressed("No Finnish")).toBe("false");
+    expect(pressed("Requires Finnish")).toBe("false");
     expect(within(panel()).queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
   });

@@ -574,10 +574,10 @@ export default function JobAdsGuide() {
           </P>
           <P>
             Reading an ad — at import or in this check — also notes whether it asks for Finnish. That is what the{" "}
-            <Em>No Finnish</Em> filter on a public page of job ads goes by: an ad written in English that wants
-            &ldquo;fluent Finnish&rdquo; is left out, and one written in Finnish that says Finnish is not needed is
-            kept. An ad that says nothing about languages is judged by the language it is written in, and an ad that
-            could not be read by the language of its name.
+            <Em>Requires Finnish</Em> filter on a public page of job ads goes by: an ad written in English that wants
+            &ldquo;fluent Finnish&rdquo; is among the jobs it shows, and one written in Finnish that says Finnish is
+            not needed is not. An ad that says nothing about languages is judged by the language it is written in,
+            and an ad that could not be read by the language of its name.
           </P>
         </Section>
 
