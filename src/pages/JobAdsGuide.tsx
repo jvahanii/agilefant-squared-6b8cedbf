@@ -46,6 +46,11 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
     note: "Job alert emails, in both their layouts. The daily alert's links go straight to each job. The email that says an alert is switched on hides where its links lead, so each of those is asked once — to Indeed, as if you had opened every job in it.",
   },
   {
+    name: "Thermo Fisher Scientific",
+    searched: "Yes",
+    note: "The company's recruiting newsletter names no job, only worldwide searches by trade. Finding one, the import reads the company's own list of jobs open in Finland and offers those.",
+  },
+  {
     name: "Valtiolle.fi",
     searched: "Yes",
     note: "Hakuvahti alerts for Finnish government jobs, sent from hakuvahti@valtiolle.fi.",

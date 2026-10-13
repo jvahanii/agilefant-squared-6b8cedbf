@@ -11,6 +11,7 @@
 import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadlines.ts';
 import { citiesFromPage } from './cities.ts';
 import { finnishRequirement, type LanguageVerdict } from './languageRequirement.ts';
+import { decodeEntities } from './urls.ts';
 
 /** Per request. Long enough for a slow board, short enough not to stall a preview. */
 const TIMEOUT_MS = 6_000;
@@ -108,6 +109,36 @@ export function textFromHtml(html: string): string {
     .replace(/&#(\d+);/g, (_m, c) => String.fromCodePoint(Number(c)))
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * The ad's text, where the page carries it only as schema.org JobPosting data.
+ *
+ * A career site that draws its pages with script — Thermo Fisher's, and the
+ * rest built on Phenom — serves a page whose visible text is the site's menus
+ * and whose ad is in a script block: a description of several thousand
+ * characters, as markup with its angle brackets written as entities. Read as
+ * text alone such a page says nothing about deadlines or languages.
+ */
+export function structuredDescription(html: string): string {
+  const parts: string[] = [];
+  const blocks = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const [, block] of blocks) {
+    let data: unknown;
+    try {
+      data = JSON.parse(block);
+    } catch {
+      continue;
+    }
+    const nodes = ([] as unknown[]).concat((data as { '@graph'?: unknown })?.['@graph'] ?? data);
+    for (const node of nodes) {
+      const posting = node as { '@type'?: unknown; description?: unknown };
+      const type = ([] as unknown[]).concat(posting?.['@type'] ?? []);
+      if (!type.includes('JobPosting') || typeof posting.description !== 'string') continue;
+      parts.push(textFromHtml(decodeEntities(posting.description)));
+    }
+  }
+  return parts.filter(Boolean).join(' ');
 }
 
 /**
@@ -235,7 +266,9 @@ export function factsFromPage(
   // One fetch answers every question, so a closed posting costs no extra
   // request. The markup is kept as well as the text: what LinkedIn will not
   // say in words, it says by leaving the apply button out.
-  const text = textFromHtml(html);
+  // The visible text, and after it the ad as structured data carries it — for
+  // the sites whose visible text is not the ad.
+  const text = [textFromHtml(html), structuredDescription(html)].filter(Boolean).join(' ');
   const deadline = parseDeadline(text, reference);
   const closed =
     parseApplicationsClosed(text) ||

@@ -14,6 +14,7 @@
 import { decodeEntities } from './urls.ts';
 import { parseDeadline, parseOpenEnded } from './deadlines.ts';
 import { citiesFromList } from './cities.ts';
+import { THERMO_FISHER_FINLAND } from './phenom.ts';
 
 /** One appearance of a URL in a message: its anchor text, and the markup after it. */
 export interface LinkOccurrence {
@@ -38,6 +39,24 @@ export interface CompanyContext {
   url: URL;
   subject: string;
   from: string;
+}
+
+/**
+ * A page that lists an employer's open jobs, read in place of mail that
+ * advertises them without listing any. See jobListings.ts.
+ */
+export interface JobListing {
+  /** The page to read. */
+  url: string;
+  /** The employer its jobs are named after. */
+  company: string;
+  /**
+   * The jobs on a page of it, as served. `cities` is left out for a job the
+   * list places only in a country, so that the job's own page is asked.
+   */
+  positions(html: string, pageUrl: string): { url: string; title: string; cities?: string[] }[];
+  /** The address of the page after this one, where the list runs on. */
+  nextPage?(html: string, pageUrl: string): string | null;
 }
 
 export interface JobSource {
@@ -101,6 +120,11 @@ export interface JobSource {
   unresolved?(u: URL): boolean;
   /** The posting's address, given where such a tracker leads — or null if not to a posting. */
   fromRedirect?(to: URL): string | null;
+  /**
+   * Where this sender's jobs are listed, for mail that names none of them. A
+   * mail with no posting in it then stands for the jobs on this page.
+   */
+  listing?: JobListing;
 }
 
 export const JOB_SOURCES: JobSource[] = [
@@ -378,6 +402,22 @@ export const JOB_SOURCES: JobSource[] = [
       return jk ? `https://${to.hostname}/viewjob?jk=${jk}` : null;
     },
   },
+  {
+    // Thermo Fisher Scientific's own recruiting newsletter, "Explore Careers
+    // at Thermo Fisher Scientific". It names no job: six links to worldwide
+    // searches by trade ("Software Engineers", "Scientists"), each behind a
+    // click tracker, between stories about the company. So the mail is read
+    // as word that they are hiring, and the jobs come from the company's list
+    // of what it has open in Finland — see THERMO_FISHER_FINLAND.
+    id: 'thermofisher',
+    senders: /@(?:[\w-]+\.)*thermofisher\.com/i,
+    alertSenders: ['opportunities@campaign.thermofisher.com'],
+    // A job on its career site: /global/en/job/R-01369408/Business-Analyst.
+    isJobUrl: (u) => /^jobs\.thermofisher\.com$/i.test(u.hostname) && /^\/[a-z]+\/[a-z]{2}\/job\/[^/]+/i.test(u.pathname),
+    // The id is the job; the title after it is decoration, and can change.
+    canonicalPath: (u) => u.pathname.match(/^\/[a-z]+\/[a-z]{2}\/job\/[^/]+/i)?.[0] ?? u.pathname,
+    listing: THERMO_FISHER_FINLAND,
+  },
 ];
 
 /**
@@ -597,6 +637,13 @@ export function filterJobLinks<
 >(from: string, links: T[], occurrences?: Map<string, LinkOccurrence[]>): T[] {
   const source = jobSourceFor(from);
   if (!source) return links;
+  // A mail that names no posting, from a sender whose jobs are listed on a
+  // page: one link to that page stands in for the mail, to be turned into the
+  // page's jobs once it has been read (jobListings.ts). It is never offered
+  // as it is — a list of jobs is not a job.
+  if (source.listing && links.length > 0 && !links.some((l) => canonicalJobUrl(source, l.url))) {
+    return [{ ...links[0], url: source.listing.url, title: `${source.listing.company}: open positions` }];
+  }
   const out = new Map<string, T>();
   for (const l of links) {
     const canonical = canonicalJobUrl(source, l.url);

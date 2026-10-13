@@ -10,6 +10,7 @@ import { normalizeUrl } from './urls.ts';
 import { extractLinks, header, type ExtractedLink, type GmailMessage, type LinkMode } from './extract.ts';
 import { GMAIL_API_BASE, accessTokenSource, type OAuthClient } from './googleOAuth.ts';
 import { resolveJobLinks } from './resolveJobLinks.ts';
+import { expandListings } from './jobListings.ts';
 import { needsReconnect } from './gmailAuthErrors.ts';
 
 // Re-exported so existing importers of this module keep working.
@@ -334,5 +335,7 @@ export async function searchLinks(
   }
   // Postings whose address the mail hides behind a tracker that cannot be
   // decoded — Indeed's — are asked for it here, once the mail has been read.
-  return mode === 'jobs' ? await resolveJobLinks(links) : links;
+  // And mail that names no posting at all, from an employer whose own list
+  // can be read — Thermo Fisher's newsletter — becomes the jobs on that list.
+  return mode === 'jobs' ? await expandListings(await resolveJobLinks(links)) : links;
 }
