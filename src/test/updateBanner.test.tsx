@@ -47,8 +47,10 @@ const nav = () => {
 /** Lets the mount-time check finish before asserting on what it found. */
 const settle = async () => {
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    // A macrotask: the check runs through `fetch` and then `json`, so a couple
+    // of microtasks would leave it half done and the assertions would pass for
+    // the wrong reason.
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 };
 
