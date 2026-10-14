@@ -20,6 +20,7 @@ import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
+import { Switch } from "@/components/ui/switch";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
