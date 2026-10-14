@@ -6,7 +6,7 @@ import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
 import { WorkItem, WORK_ITEM_STATUSES, WorkItemStatus, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, DEFAULT_STATUSES, getEffectiveStatuses, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus, CalendarRange, ChartGantt } from "lucide-react";
+import { ChevronRight, ChevronDown, GripVertical, FileText, Plus, Trash2, ClipboardPaste, RotateCcw, Link2, Clock, Tag, X, BellOff, Bell, Search, ArrowDownAZ, FolderInput, List as ListIcon, LayoutGrid, Users, Lock, Ban, CalendarClock, CalendarPlus, CalendarRange, ChartGantt, SlidersHorizontal } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
@@ -1481,8 +1481,22 @@ function WorkItemNodeContent({
             )}
 
 
-            {/* Mobile actions: Plus only — other actions via context menu (long-press) */}
+            {/* Mobile actions: add a child, or open the item's attributes
+                (deadline, dates, points and the rest). The long-press context
+                menu is unreliable on touch — the row is user-select:none,
+                which suppresses the contextmenu event on Android Chrome — so
+                the sheet is the dependable way to everything else. */}
             <div className={`flex md:hidden items-center gap-0.5 shrink-0 ${!isSelected ? "invisible" : ""}`}>
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                aria-label={`Edit attributes of ${item.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMobileAttributesSheet(true);
+                }}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
               <button
                 className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onClick={(e) => {
