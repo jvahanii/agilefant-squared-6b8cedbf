@@ -37,9 +37,10 @@ const loadFromSupabase = vi.fn().mockResolvedValue(undefined);
 const applySiblingOrder = vi.fn();
 const runBulk = vi.fn((fn: () => void) => fn());
 const moveWorkItemsToBacklog = vi.fn();
+const setWorkItemRating = vi.fn();
 /** The slice of the store the picker reads; backlogs decide auto-placing. */
 let storeState: Record<string, unknown> = {};
-const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, moveWorkItemsToBacklog, workItems: {}, backlogs: {}, ...storeState });
+const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, moveWorkItemsToBacklog, setWorkItemRating, workItems: {}, backlogs: {}, ...storeState });
 vi.mock("@/store/appStore", () => ({
   useAppStore: Object.assign(
     (select: (s: ReturnType<typeof appStoreState>) => unknown) => select(appStoreState()),
