@@ -156,6 +156,21 @@ export function SavedSearchPicker({
   // a name is only ever read off one for showing.
   const itemsNow = useAppStore((s) => s.workItems);
   const linksNow = useAppStore((s) => s.hyperlinks);
+  const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
+  /**
+   * The item a posting already in this search's tree is filed as, by the
+   * posting's address. An unticked "already in …" row acts on that item —
+   * rating and mirroring it — rather than importing a second one.
+   */
+  const existingItemByUrl = useMemo(() => {
+    const byUrl = new Map<string, string>();
+    if (mode !== "jobs") return byUrl;
+    for (const item of Object.values(itemsNow)) {
+      if (!item.backlogAssignments?.[search.tree_id]) continue;
+      for (const link of linksNow[item.id] ?? []) if (!byUrl.has(link.url)) byUrl.set(link.url, item.id);
+    }
+    return byUrl;
+  }, [mode, itemsNow, linksNow, search.tree_id]);
   const alsoInByUrl = useMemo(() => {
     const byUrl = new Map<string, string>();
     if (mode !== "jobs") return byUrl;
