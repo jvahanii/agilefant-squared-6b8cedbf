@@ -8,6 +8,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import Auth from "./pages/Auth";
 import { clerkEnabled } from "@/lib/clerkBridge";
 import { looksSignedIn } from "@/lib/storedSession";
@@ -217,6 +218,8 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          {/* Outside the router, so a public backlog link raises it too. */}
+          <UpdateBanner />
           <BrowserRouter>
             <Routes>
               {/* Public links sit above AppRoutes rather than inside it, so a
