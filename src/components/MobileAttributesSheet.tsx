@@ -20,6 +20,7 @@ import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
 import { useLabelsStore } from "@/store/labelsStore";
 import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
+import { Switch } from "@/components/ui/switch";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
@@ -486,6 +487,9 @@ export function MobileBacklogAttributesSheet({
   const pointsVisible = usePointsVisibleForTree(backlog?.treeId ?? null);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
+  // Whether this list's rows show created dates — the organization has to have
+  // them on, the same gate the context menu's checkbox sits behind.
+  const createdDatesEnabled = useCreatedDatesEnabled();
 
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
@@ -566,6 +570,23 @@ export function MobileBacklogAttributesSheet({
                   )}
                 </button>
               </LabelPicker>
+            </div>
+          )}
+
+          {/* Hiding a list's created dates, where the context menu also
+              offers it: the switch here is the same toggle. */}
+          {createdDatesEnabled && (
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="sheet-backlog-created-dates" className="text-sm font-medium">
+                Created dates
+              </label>
+              <Switch
+                id="sheet-backlog-created-dates"
+                checked={backlog.createdDatesEnabled ?? false}
+                onCheckedChange={(checked) =>
+                  useAppStore.getState().setBacklogCreatedDatesEnabled(backlogId, checked)
+                }
+              />
             </div>
           )}
 

@@ -5,7 +5,7 @@
  * turned created dates off still showed them on a phone.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
@@ -13,10 +13,11 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   updateBacklogCreatedDatesEnabled: vi.fn(),
 }));
 
-import { MobileWorkItemAttributesSheet } from "@/components/MobileAttributesSheet";
+import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "@/components/MobileAttributesSheet";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { updateBacklogCreatedDatesEnabled } from "@/store/supabaseSync";
 
 const ORG = "test-org";
 const TREE = `${ORG}::bt-1`;
@@ -92,5 +93,46 @@ describe("the created date on the phone's attributes sheet", () => {
     setUp(false, true);
     openSheet();
     expect(screen.queryByLabelText("Created")).not.toBeInTheDocument();
+  });
+});
+
+describe("the created dates switch in the list attributes sheet", () => {
+  const openBacklogSheet = () => {
+    const noop = vi.fn();
+    render(
+      <MobileBacklogAttributesSheet
+        backlogId={BL}
+        totalPoints={0}
+        open
+        onOpenChange={noop}
+        onOpenTimeLog={noop}
+        onOpenPublicLink={noop}
+      />,
+    );
+  };
+
+  beforeEach(() => {
+    vi.mocked(updateBacklogCreatedDatesEnabled).mockClear();
+  });
+
+  it("shows the list's switch when the organization has created dates on, reflecting the list", () => {
+    setUp(true, true);
+    openBacklogSheet();
+    const sw = screen.getByLabelText("Created dates");
+    expect(sw.getAttribute("data-state")).toBe("checked");
+  });
+
+  it("toggles the list's created dates and saves the change", () => {
+    setUp(true, true);
+    openBacklogSheet();
+    fireEvent.click(screen.getByLabelText("Created dates"));
+    expect(useAppStore.getState().backlogs[BL].createdDatesEnabled).toBe(false);
+    expect(updateBacklogCreatedDatesEnabled).toHaveBeenCalledWith(BL, false);
+  });
+
+  it("is left out where the organization has created dates off", () => {
+    setUp(false, true);
+    openBacklogSheet();
+    expect(screen.queryByLabelText("Created dates")).not.toBeInTheDocument();
   });
 });
