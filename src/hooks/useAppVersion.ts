@@ -16,12 +16,18 @@ export function useAppVersion(current: BuildInfo = APP_BUILD): BuildInfo | null 
   const [live, setLive] = useState<BuildInfo | null>(null);
 
   useEffect(() => {
-    stripBuildMarker();
     let cancelled = false;
 
     const check = async () => {
       const fetched = await fetchLiveBuild();
-      if (!cancelled && fetched && isNewerBuild(fetched, current)) setLive(fetched);
+      if (cancelled) return;
+      if (fetched && isNewerBuild(fetched, current)) {
+        setLive(fetched);
+        // The address keeps its marker while the app is still behind: it is the
+        // one thing stopping a forced reload from repeating forever.
+        return;
+      }
+      stripBuildMarker();
     };
 
     void check();

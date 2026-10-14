@@ -123,7 +123,7 @@ export function reloadIntoNewBuild(live: BuildInfo, nav: BuildNavigator = browse
 export function stripBuildMarker(): void {
   try {
     const url = new URL(window.location.href);
-    if (url.searchParams.delete(BUILD_MARKER)) window.history.replaceState(null, "", url);
+    if (url.searchParams.delete(BUILD_MARKER)) window.history.replaceState(null, "", url.toString());
   } catch {
     // An address we cannot rewrite is not worth failing over.
   }
