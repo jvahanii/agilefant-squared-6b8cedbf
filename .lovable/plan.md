@@ -1,25 +1,19 @@
-# Make deadlines a per-tree switch, like points
+# Fix: cannot set a deadline for a selected item on mobile
 
-## Why
+## What we know
 
-Deadlines are today an organization-wide switch only (Bells & Whistles → Deadlines). The "JARNO" tree lives in an organization where that switch is off, so the mobile item sheet hides the Deadline row and the desktop menu hides "Set deadline…". Points already have a per-tree switch (`points_enabled` on `backlog_trees`, defaulting to the organization's setting); deadlines should work the same way.
+- Deadlines are an organization-level switch (Bells & Whistles → Deadlines), and it is **on** for the Agilefant organization, which owns both the JARNO and Työpaikkalistaukset trees. So the switch is not the blocker.
+- Two mobile paths should offer a deadline, and both exist in code:
+  - the long-press context menu on an item row has "Set deadline…" (`WorkItemTreePanel.tsx`, gated on the org switch)
+  - the mobile attributes sheet has a Deadline date field (`MobileAttributesSheet.tsx`, same gate)
+- Since the user still can't set one, the failure is in how these paths behave on a phone: either the long-press menu never opens (drag/scroll gestures intercept it), or the sheet's Deadline row is not reached (below the fold in the 80vh sheet, or the sheet isn't what opens for a selected item).
 
-## What changes
+## Plan
 
-1. **Database**: add a `deadlines_enabled` boolean column to `backlog_trees` (nullable; null means "inherit the organization's setting", matching how `points_enabled` behaves).
-2. **Visibility helper**: replace `useDeadlinesEnabled()` (org-only, in `src/lib/workItemDeadline.ts`) with a tree-aware version modeled on `src/lib/pointsVisibility.ts`: a tree shows deadlines when its own switch is on, or when it is unset and the organization's switch is on.
-3. **Call sites**: everywhere deadlines are shown or offered now resolves the tree being viewed instead of only the organization:
-   - item rows and the item context menu in `WorkItemTreePanel.tsx` (deadline chip, "Set deadline…", deadline sort modes)
-   - the mobile item attributes sheet (`MobileAttributesSheet.tsx` Deadline row)
-   - `TimelineView.tsx`
-   - `listSortStore.ts` / `listSort.ts` deadline sort modes
-   - `SavedSearchPicker.tsx` (import preview deadline display)
-4. **Tree settings UI**: a "Deadlines" on/off control per tree, next to the existing per-tree points control, shown only when the organization has deadlines on.
-5. **Tests**: extend the deadline tests for the inheritance rule (org off + tree on → shown; org on + tree off → hidden; tree unset → follows org).
-
-## Technical notes
-
-- Migration: `ALTER TABLE public.backlog_trees ADD COLUMN deadlines_enabled boolean;` — no new table, so no GRANTs needed.
-- `src/lib/pointsVisibility.ts` is the template for the inheritance logic.
-- Existing data is unaffected: with the column null everywhere, every tree keeps following the organization's switch, so nothing changes until someone flips a tree's switch.
-- After the migration, `src/integrations/supabase/types.ts` regenerates; the tree type gains `deadlines_enabled`.
+1. **Reproduce** with Playwright at a phone viewport against the preview: open the JARNO tree, select an item, then try both paths — long-press the row, and open the attributes sheet — capturing screenshots and console errors to see exactly where the deadline action is missing or unreachable.
+2. **Fix the failing path**, whichever it turns out to be:
+   - If the long-press menu doesn't open on mobile: make the item's mobile actions (the button that opens the attributes sheet) the reliable entry point, and ensure the sheet is complete.
+   - If the sheet's Deadline row is missing or buried: ensure it renders for the selected item and is visible without hunting (move date fields up, or section the sheet).
+   - If the deadline dialog opens but can't save on mobile: fix that interaction.
+3. **Regression test**: add/extend a mobile-viewport test covering "open item actions on mobile → set a deadline → it saves", alongside the existing `mobileCreatedDate.test.tsx` pattern.
+4. Verify the fix on the preview at a phone viewport before reporting back.
