@@ -573,6 +573,20 @@ export function MobileBacklogAttributesSheet({
             </div>
           )}
 
+          {/* Hiding a list's created dates, where the context menu also
+              offers it: the switch here is the same toggle. */}
+          {createdDatesEnabled && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Created dates</span>
+              <Switch
+                checked={backlog.createdDatesEnabled ?? false}
+                onCheckedChange={(checked) =>
+                  useAppStore.getState().setBacklogCreatedDatesEnabled(backlogId, checked)
+                }
+              />
+            </div>
+          )}
+
           {timeLoggingVisible && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Time logged</span>
