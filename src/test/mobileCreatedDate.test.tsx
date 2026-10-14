@@ -5,7 +5,7 @@
  * turned created dates off still showed them on a phone.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
@@ -13,10 +13,11 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   updateBacklogCreatedDatesEnabled: vi.fn(),
 }));
 
-import { MobileWorkItemAttributesSheet } from "@/components/MobileAttributesSheet";
+import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "@/components/MobileAttributesSheet";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { updateBacklogCreatedDatesEnabled } from "@/store/supabaseSync";
 
 const ORG = "test-org";
 const TREE = `${ORG}::bt-1`;
