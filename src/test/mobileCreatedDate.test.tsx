@@ -96,6 +96,30 @@ describe("the created date on the phone's attributes sheet", () => {
   });
 });
 
+describe("the deadline on the phone's attributes sheet", () => {
+  const setDeadlines = (on: boolean) => {
+    useOrgSettingsStore.setState((s) => ({
+      settings: { ...s.settings, [ORG]: { ...(s.settings[ORG] ?? ({} as never)), deadlinesEnabled: on } },
+    }));
+  };
+
+  it("shows the deadline field where the organization has deadlines on, and saves a change", () => {
+    setUp(true, true);
+    setDeadlines(true);
+    openSheet();
+    const field = screen.getByLabelText("Deadline");
+    fireEvent.change(field, { target: { value: "2026-10-31" } });
+    expect(useAppStore.getState().workItems[ID].deadline).toBe("2026-10-31");
+  });
+
+  it("is left out where the organization has deadlines off", () => {
+    setUp(true, true);
+    setDeadlines(false);
+    openSheet();
+    expect(screen.queryByLabelText("Deadline")).not.toBeInTheDocument();
+  });
+});
+
 describe("the created dates switch in the list attributes sheet", () => {
   const openBacklogSheet = () => {
     const noop = vi.fn();
