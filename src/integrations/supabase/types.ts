@@ -10,10 +10,66 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
+      backlog_scrambles: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          organization_id: string
+          original_name: string
+          scrambled_by: string | null
+          with_backlog_id: string | null
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          organization_id: string
+          original_name: string
+          scrambled_by?: string | null
+          with_backlog_id?: string | null
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          organization_id?: string
+          original_name?: string
+          scrambled_by?: string | null
+          with_backlog_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlog_scrambles_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: true
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_scrambles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_scrambles_scrambled_by_fkey"
+            columns: ["scrambled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_scrambles_with_backlog_id_fkey"
+            columns: ["with_backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlog_statuses: {
         Row: {
           backlog_id: string
@@ -116,57 +172,9 @@ export type Database = {
           },
         ]
       }
-      backlog_scrambles: {
-        Row: {
-          backlog_id: string
-          created_at: string
-          organization_id: string
-          original_name: string
-          scrambled_by: string | null
-          with_backlog_id: string | null
-        }
-        Insert: {
-          backlog_id: string
-          created_at?: string
-          organization_id: string
-          original_name: string
-          scrambled_by?: string | null
-        }
-        Update: {
-          backlog_id?: string
-          created_at?: string
-          organization_id?: string
-          original_name?: string
-          scrambled_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "backlog_scrambles_backlog_id_fkey"
-            columns: ["backlog_id"]
-            isOneToOne: true
-            referencedRelation: "backlogs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "backlog_scrambles_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "backlog_scrambles_scrambled_by_fkey"
-            columns: ["scrambled_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       backlogs: {
         Row: {
           created_dates_enabled: boolean
-          start_end_dates_enabled: boolean
           id: string
           name: string
           organization_id: string | null
@@ -174,12 +182,12 @@ export type Database = {
           points: number | null
           rank: number
           ratings_enabled: boolean
+          start_end_dates_enabled: boolean
           tree_id: string
           view_mode: string
         }
         Insert: {
           created_dates_enabled?: boolean
-          start_end_dates_enabled?: boolean
           id: string
           name: string
           organization_id?: string | null
@@ -187,12 +195,12 @@ export type Database = {
           points?: number | null
           rank?: number
           ratings_enabled?: boolean
+          start_end_dates_enabled?: boolean
           tree_id: string
           view_mode?: string
         }
         Update: {
           created_dates_enabled?: boolean
-          start_end_dates_enabled?: boolean
           id?: string
           name?: string
           organization_id?: string | null
@@ -200,6 +208,7 @@ export type Database = {
           points?: number | null
           rank?: number
           ratings_enabled?: boolean
+          start_end_dates_enabled?: boolean
           tree_id?: string
           view_mode?: string
         }
@@ -223,6 +232,42 @@ export type Database = {
             columns: ["tree_id"]
             isOneToOne: false
             referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_page_seen_postings: {
+        Row: {
+          organization_id: string
+          query_id: string
+          seen_at: string
+          url: string
+        }
+        Insert: {
+          organization_id: string
+          query_id: string
+          seen_at?: string
+          url: string
+        }
+        Update: {
+          organization_id?: string
+          query_id?: string
+          seen_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_page_seen_postings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_page_seen_postings_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_import_queries"
             referencedColumns: ["id"]
           },
         ]
@@ -805,7 +850,6 @@ export type Database = {
           burnups_enabled: boolean
           created_at: string
           created_dates_enabled: boolean
-          start_end_dates_enabled: boolean
           custom_statuses_enabled: boolean
           deadlines_enabled: boolean
           id: string
@@ -817,6 +861,7 @@ export type Database = {
           ratings_enabled: boolean
           savings_income_enabled: boolean
           scrambling_enabled: boolean
+          start_end_dates_enabled: boolean
           time_logging_enabled: boolean
           updated_at: string
         }
@@ -825,7 +870,6 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           created_dates_enabled?: boolean
-          start_end_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -837,6 +881,7 @@ export type Database = {
           ratings_enabled?: boolean
           savings_income_enabled?: boolean
           scrambling_enabled?: boolean
+          start_end_dates_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }
@@ -845,7 +890,6 @@ export type Database = {
           burnups_enabled?: boolean
           created_at?: string
           created_dates_enabled?: boolean
-          start_end_dates_enabled?: boolean
           custom_statuses_enabled?: boolean
           deadlines_enabled?: boolean
           id?: string
@@ -857,6 +901,7 @@ export type Database = {
           ratings_enabled?: boolean
           savings_income_enabled?: boolean
           scrambling_enabled?: boolean
+          start_end_dates_enabled?: boolean
           time_logging_enabled?: boolean
           updated_at?: string
         }
@@ -1583,6 +1628,7 @@ export type Database = {
           organization_id: string
           original_title: string
           scrambled_by?: string | null
+          with_backlog_id?: string | null
           work_item_id: string
         }
         Update: {
@@ -1590,6 +1636,7 @@ export type Database = {
           organization_id?: string
           original_title?: string
           scrambled_by?: string | null
+          with_backlog_id?: string | null
           work_item_id?: string
         }
         Relationships: [
@@ -1605,6 +1652,13 @@ export type Database = {
             columns: ["scrambled_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_item_scrambles_with_backlog_id_fkey"
+            columns: ["with_backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
             referencedColumns: ["id"]
           },
           {
@@ -1707,10 +1761,9 @@ export type Database = {
         Row: {
           backlog_assignments: Json
           created_on: string | null
-          ended_on: string | null
-          started_on: string | null
           deadline: string | null
           description: string | null
+          ended_on: string | null
           id: string
           organization_id: string | null
           parent_id: string | null
@@ -1723,16 +1776,16 @@ export type Database = {
           respawn_interval_days: number | null
           respawn_last_triggered_at: string | null
           respawn_minute: number | null
+          started_on: string | null
           status: string
           title: string
         }
         Insert: {
           backlog_assignments?: Json
           created_on?: string | null
-          ended_on?: string | null
-          started_on?: string | null
           deadline?: string | null
           description?: string | null
+          ended_on?: string | null
           id: string
           organization_id?: string | null
           parent_id?: string | null
@@ -1745,16 +1798,16 @@ export type Database = {
           respawn_interval_days?: number | null
           respawn_last_triggered_at?: string | null
           respawn_minute?: number | null
+          started_on?: string | null
           status?: string
           title: string
         }
         Update: {
           backlog_assignments?: Json
           created_on?: string | null
-          ended_on?: string | null
-          started_on?: string | null
           deadline?: string | null
           description?: string | null
+          ended_on?: string | null
           id?: string
           organization_id?: string | null
           parent_id?: string | null
@@ -1767,6 +1820,7 @@ export type Database = {
           respawn_interval_days?: number | null
           respawn_last_triggered_at?: string | null
           respawn_minute?: number | null
+          started_on?: string | null
           status?: string
           title?: string
         }
@@ -1853,6 +1907,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_backlog_accessible: {
+        Args: { _backlog_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_label_entity_accessible: {
         Args: { _entity_id: string; _entity_type: string; _user_id: string }
         Returns: boolean
@@ -1876,10 +1934,6 @@ export type Database = {
       }
       is_tree_shared_with_user: {
         Args: { _tree_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_backlog_accessible: {
-        Args: { _backlog_id: string; _user_id: string }
         Returns: boolean
       }
       is_work_item_accessible: {
@@ -1935,21 +1989,43 @@ export type Database = {
         Args: { _pin: string; _work_item_id: string }
         Returns: string
       }
+      scramble_name: { Args: { _name: string }; Returns: string }
       scramble_names: {
-        Args: { _items: Json; _lists: Json; _pin?: string | null; _with_list?: string | null }
+        Args: { _items: Json; _lists: Json; _pin?: string; _with_list?: string }
         Returns: Json
+      }
+      scramble_pin_matches: {
+        Args: { _organization_id: string; _pin: string; _user_id: string }
+        Returns: boolean
       }
       scramble_work_item: {
         Args: { _pin?: string; _scrambled_title: string; _work_item_id: string }
         Returns: undefined
       }
-      set_published_link_job_filters: {
-        Args: { _backlog_id: string | null; _on: boolean; _tree_id: string }
-        Returns: boolean
+      scrambled_list_among: {
+        Args: { _assignments: Json; _before?: Json }
+        Returns: {
+          backlog_id: string
+          created_at: string
+          organization_id: string
+          original_name: string
+          scrambled_by: string | null
+          with_backlog_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "backlog_scrambles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       set_published_link_hidden_attributes: {
         Args: { _backlog_id: string; _hidden: string[]; _tree_id: string }
         Returns: string[]
+      }
+      set_published_link_job_filters: {
+        Args: { _backlog_id: string; _on: boolean; _tree_id: string }
+        Returns: boolean
       }
       superuser_user_overview: {
         Args: never
