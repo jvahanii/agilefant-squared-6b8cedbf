@@ -5,7 +5,7 @@
 In the job import picker, rows that are unticked **because the posting is already imported** (the "already in …" label) get the same stars and mirror switch that ticked rows have — but they act on the existing work item instead of a future import:
 
 - **Stars** show the existing item's current rating. Clicking sets or clears that item's rating right away, the same as rating it on its row in the list. No new item is created.
-- **Mirror switch** shows whether the existing item is already in the mirror list, and switching it mirrors the existing item there (or removes the mirror when switched off), again without importing anything.
+- **Mirror switch** shows whether the existing item is already in the mirror list, and switching it mirrors the existing item there (never removes the existing mirror even when switched off), again without importing anything.
 - Rows unticked for any other reason — closed, past deadline, a repeat, or unticked by hand — stay as they are: there is no item to act on.
 - Ticked rows are unchanged: their stars and mirror switch still apply to the item the import will create.
 

@@ -37,9 +37,10 @@ const loadFromSupabase = vi.fn().mockResolvedValue(undefined);
 const applySiblingOrder = vi.fn();
 const runBulk = vi.fn((fn: () => void) => fn());
 const moveWorkItemsToBacklog = vi.fn();
+const setWorkItemRating = vi.fn();
 /** The slice of the store the picker reads; backlogs decide auto-placing. */
 let storeState: Record<string, unknown> = {};
-const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, moveWorkItemsToBacklog, workItems: {}, backlogs: {}, ...storeState });
+const appStoreState = () => ({ loadFromSupabase, applySiblingOrder, runBulk, moveWorkItemsToBacklog, setWorkItemRating, workItems: {}, backlogs: {}, ...storeState });
 vi.mock("@/store/appStore", () => ({
   useAppStore: Object.assign(
     (select: (s: ReturnType<typeof appStoreState>) => unknown) => select(appStoreState()),
@@ -151,6 +152,7 @@ beforeEach(() => {
   applySiblingOrder.mockReset();
   runBulk.mockClear();
   moveWorkItemsToBacklog.mockReset();
+  setWorkItemRating.mockReset();
   storeState = {};
   checkClosed.mockClear();
   closedIds = new Set();
@@ -1235,6 +1237,67 @@ describe("Import into the chosen list: mirroring the rows switched on", () => {
       await waitFor(() => expect(screen.getByRole("combobox", { name: "Mirror to" })).toHaveValue("applied"));
       // The item is on the shortlist, not in Haettu.
       expect(screen.queryByText(/also in/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("an unticked row whose posting is already imported", () => {
+    /** Alma's posting is already an item in "Open jobs"; the row is unticked. */
+    const open = async (opts: { rating?: number; mirrored?: boolean } = {}) => {
+      autoPlaceRow = { auto_place_backlog_id: "dl", auto_place_mirror_backlog_id: null };
+      storeState = {
+        backlogs: { dl: backlog("dl", "Open jobs"), [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) },
+        backlogTrees: { [NEXT_TREE]: { id: NEXT_TREE, name: "MWB uuden työn saaminen" } },
+        workItems: {
+          "alma-old": {
+            id: "alma-old", title: "Alma Media — AI", status: "not_started", parentId: null, childrenIds: [],
+            rating: opts.rating,
+            backlogAssignments: { "tree-1": "dl", ...(opts.mirrored ? { [NEXT_TREE]: SHORTLIST } : {}) },
+            ranks: {},
+          },
+        },
+        hyperlinks: { "alma-old": [{ url: "https://x/alma" }] },
+      };
+      callGmail.mockResolvedValueOnce({
+        links: [
+          link({ url: "https://x/metsa", title: "Metsä", deadline: "2026-09-30", cities: [] }),
+          link({ url: "https://x/alma", title: "Alma", deadline: "2026-10-11", cities: [], alreadyImported: true, alreadyIn: "Open jobs" }),
+        ],
+      });
+      render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+      await screen.findByText("Alma");
+    };
+    const almaStars = () => screen.getByRole("group", { name: /Rating for Alma/ });
+
+    it("shows the existing item's rating, and rates that item rather than importing", async () => {
+      await open({ rating: 3 });
+      expect(almaStars()).toHaveAccessibleName("Rating for Alma: 3 of 5");
+      fireEvent.click(within(almaStars()).getByRole("button", { name: "5 stars" }));
+      expect(setWorkItemRating).toHaveBeenCalledWith("alma-old", 5);
+    });
+
+    it("mirrors the existing item when its switch is turned on", async () => {
+      await open();
+      const sw = screen.getByRole("switch", { name: "Mirror Alma to Hae näitä seuraavaksi" });
+      expect(sw).toHaveAttribute("aria-checked", "false");
+      fireEvent.click(sw);
+      expect(moveWorkItemsToBacklog).toHaveBeenCalledWith(["alma-old"], SHORTLIST, NEXT_TREE, "mirror", "tree-1");
+    });
+
+    it("shows an already-mirrored item as switched on, and does not take the mirror back", async () => {
+      await open({ mirrored: true });
+      const sw = screen.getByRole("switch", { name: "Mirror Alma to Hae näitä seuraavaksi" });
+      expect(sw).toHaveAttribute("aria-checked", "true");
+      expect(sw).toBeDisabled();
+    });
+
+    it("offers neither stars nor a switch on a row unticked by hand", async () => {
+      callGmail.mockResolvedValueOnce({ links: [link({ url: "https://x/new", title: "Brand new", deadline: "2026-10-11" })] });
+      render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+      await screen.findByText("Brand new");
+      fireEvent.click(screen.getByRole("checkbox", { name: "Brand new" }));
+      await screen.findByText(/you unticked it/);
+      expect(screen.queryByRole("group", { name: /Rating for Brand new/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("switch", { name: /Mirror Brand new/ })).not.toBeInTheDocument();
     });
   });
 

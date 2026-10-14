@@ -156,6 +156,21 @@ export function SavedSearchPicker({
   // a name is only ever read off one for showing.
   const itemsNow = useAppStore((s) => s.workItems);
   const linksNow = useAppStore((s) => s.hyperlinks);
+  const setWorkItemRating = useAppStore((s) => s.setWorkItemRating);
+  /**
+   * The item a posting already in this search's tree is filed as, by the
+   * posting's address. An unticked "already in …" row acts on that item —
+   * rating and mirroring it — rather than importing a second one.
+   */
+  const existingItemByUrl = useMemo(() => {
+    const byUrl = new Map<string, string>();
+    if (mode !== "jobs") return byUrl;
+    for (const item of Object.values(itemsNow)) {
+      if (!item.backlogAssignments?.[search.tree_id]) continue;
+      for (const link of linksNow?.[item.id] ?? []) if (!byUrl.has(link.url)) byUrl.set(link.url, item.id);
+    }
+    return byUrl;
+  }, [mode, itemsNow, linksNow, search.tree_id]);
   const alsoInByUrl = useMemo(() => {
     const byUrl = new Map<string, string>();
     if (mode !== "jobs") return byUrl;
@@ -1096,30 +1111,65 @@ export function SavedSearchPicker({
                             {alsoInLabel(alsoIn.get(key)!.count)}
                           </span>
                         )}
-                        {selected[key] && (
-                          <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <StarRating
-                              rating={ratingByKey[key]}
-                              onRate={(r) => setRatingByKey((prev) => ({ ...prev, [key]: r }))}
-                              disabled={importing}
-                              label={l.title || l.url}
-                            />
-                            {/* Whether the import into the chosen list also mirrors this
-                                one. Independent of the rating, which travels
-                                with the item the import creates. */}
-                            {mirrorTarget && (
-                              <span className="ml-2 flex items-center gap-1.5">
-                                <Switch
-                                  checked={!!mirrorByKey[key]}
-                                  onCheckedChange={(on) => setMirrorByKey((prev) => ({ ...prev, [key]: on }))}
-                                  disabled={importing}
-                                  aria-label={`Mirror ${l.title || l.url} to ${backlogName(mirrorTarget.backlogId)}`}
-                                />
-                                <span className="truncate">Mirror to {backlogName(mirrorTarget.backlogId)}</span>
-                              </span>
-                            )}
-                          </span>
-                        )}
+                        {(() => {
+                          // A ticked row rates and mirrors the item the import
+                          // will create. An unticked row whose posting is
+                          // already in the tree acts on that existing item
+                          // instead — no second item is made of it.
+                          const existingId = !selected[key] && l.alreadyImported ? existingItemByUrl.get(l.url) : undefined;
+                          const existing = existingId ? itemsNow[existingId] : undefined;
+                          if (!selected[key] && !existing) return null;
+                          const mirroredAlready =
+                            !!existing &&
+                            !!mirrorTarget &&
+                            existing.backlogAssignments?.[mirrorTarget.treeId] === mirrorTarget.backlogId;
+                          return (
+                            <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <StarRating
+                                rating={existing ? existing.rating : ratingByKey[key]}
+                                onRate={(r) =>
+                                  existing
+                                    ? setWorkItemRating(existing.id, r)
+                                    : setRatingByKey((prev) => ({ ...prev, [key]: r }))
+                                }
+                                disabled={importing}
+                                label={l.title || l.url}
+                              />
+                              {/* Whether the import into the chosen list also mirrors this
+                                  one. Independent of the rating, which travels
+                                  with the item the import creates. For an
+                                  existing item the switch mirrors it directly;
+                                  a mirror once made is not taken back here. */}
+                              {mirrorTarget && (
+                                <span className="ml-2 flex items-center gap-1.5">
+                                  <Switch
+                                    checked={existing ? mirroredAlready : !!mirrorByKey[key]}
+                                    onCheckedChange={(on) => {
+                                      if (existing) {
+                                        if (on && !mirroredAlready) {
+                                          useAppStore
+                                            .getState()
+                                            .moveWorkItemsToBacklog(
+                                              [existing.id],
+                                              mirrorTarget.backlogId,
+                                              mirrorTarget.treeId,
+                                              "mirror",
+                                              search.tree_id,
+                                            );
+                                        }
+                                      } else {
+                                        setMirrorByKey((prev) => ({ ...prev, [key]: on }));
+                                      }
+                                    }}
+                                    disabled={importing || mirroredAlready}
+                                    aria-label={`Mirror ${l.title || l.url} to ${backlogName(mirrorTarget.backlogId)}`}
+                                  />
+                                  <span className="truncate">Mirror to {backlogName(mirrorTarget.backlogId)}</span>
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </span>
                     </div>
                   );
