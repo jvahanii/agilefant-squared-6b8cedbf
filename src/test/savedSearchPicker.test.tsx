@@ -152,6 +152,7 @@ beforeEach(() => {
   applySiblingOrder.mockReset();
   runBulk.mockClear();
   moveWorkItemsToBacklog.mockReset();
+  setWorkItemRating.mockReset();
   storeState = {};
   checkClosed.mockClear();
   closedIds = new Set();
