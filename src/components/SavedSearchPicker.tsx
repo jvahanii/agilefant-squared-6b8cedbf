@@ -167,7 +167,7 @@ export function SavedSearchPicker({
     if (mode !== "jobs") return byUrl;
     for (const item of Object.values(itemsNow)) {
       if (!item.backlogAssignments?.[search.tree_id]) continue;
-      for (const link of linksNow[item.id] ?? []) if (!byUrl.has(link.url)) byUrl.set(link.url, item.id);
+      for (const link of linksNow?.[item.id] ?? []) if (!byUrl.has(link.url)) byUrl.set(link.url, item.id);
     }
     return byUrl;
   }, [mode, itemsNow, linksNow, search.tree_id]);
