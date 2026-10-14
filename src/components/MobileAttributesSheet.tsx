@@ -487,6 +487,9 @@ export function MobileBacklogAttributesSheet({
   const pointsVisible = usePointsVisibleForTree(backlog?.treeId ?? null);
   const timeLoggingVisible = orgSettings.timeLoggingEnabled;
   const labelsVisible = orgSettings.labelsEnabled ?? false;
+  // Whether this list's rows show created dates — the organization has to have
+  // them on, the same gate the context menu's checkbox sits behind.
+  const createdDatesEnabled = useCreatedDatesEnabled();
 
   const timeEntries = useTimeEntryStore((s) => s.timeEntries);
   const backlogTotalMinutes = useMemo(() => {
