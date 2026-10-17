@@ -276,7 +276,7 @@ export default function Landing() {
               </h1>
               <p className="mt-5 max-w-xl text-lg text-muted-foreground">
                 Agilefant scales from one person's to-do list to an enterprise's whole portfolio of initiatives, products, projects and backlogs.
-                Nest lists as deep as your work needs, keep item in multiple lists, share lists with
+                Nest lists as deep as your work needs, have the same item on multiple lists, share lists with
                 other organizations and the public, and do nearly all of it from the keyboard.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
