@@ -28,7 +28,7 @@ function settings(on: (key: string) => boolean): Settings {
     publicLinksEnabled: true, ratingsEnabled: false, deadlinesEnabled: false, createdDatesEnabled: false,
     startEndDatesEnabled: false, scramblingEnabled: false,
   } as Settings;
-  for (const f of BELLS_AND_WHISTLES) (base as Record<string, boolean>)[f.key] = on(f.key);
+  for (const f of BELLS_AND_WHISTLES) base[f.key] = on(f.key);
   return base;
 }
 
