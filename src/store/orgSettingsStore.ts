@@ -29,6 +29,29 @@ interface OrgSettings {
   scramblingEnabled: boolean;
 }
 
+/**
+ * The features the Bells & Whistles page switches, in the order it shows them,
+ * with the column each is kept in. What the page's one switch for all of them
+ * moves. Public links and boards are not among them: neither has a switch on
+ * that page, and public links decide what strangers can see.
+ */
+export const BELLS_AND_WHISTLES = [
+  { key: "pointsEnabled", column: "points_enabled", label: "Points" },
+  { key: "ratingsEnabled", column: "ratings_enabled", label: "Ratings" },
+  { key: "deadlinesEnabled", column: "deadlines_enabled", label: "Deadlines" },
+  { key: "createdDatesEnabled", column: "created_dates_enabled", label: "Created dates" },
+  { key: "startEndDatesEnabled", column: "start_end_dates_enabled", label: "Start and end dates" },
+  { key: "scramblingEnabled", column: "scrambling_enabled", label: "Scrambling" },
+  { key: "timeLoggingEnabled", column: "time_logging_enabled", label: "Time logging" },
+  { key: "customStatusesEnabled", column: "custom_statuses_enabled", label: "Custom statuses" },
+  { key: "labelsEnabled", column: "labels_enabled", label: "Labels" },
+  { key: "savingsIncomeEnabled", column: "savings_income_enabled", label: "Savings & Income" },
+  { key: "burnupsEnabled", column: "burnups_enabled", label: "Burnups" },
+  { key: "persistNotificationsEnabled", column: "persist_notifications_enabled", label: "Persist notifications" },
+] as const satisfies readonly { key: keyof OrgSettings; column: string; label: string }[];
+
+export type BellOrWhistle = (typeof BELLS_AND_WHISTLES)[number];
+
 interface OrgSettingsState {
   settings: Record<string, OrgSettings>; // keyed by orgId
   loading: boolean;
@@ -48,6 +71,12 @@ interface OrgSettingsState {
   setCreatedDatesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setStartEndDatesEnabled: (orgId: string, enabled: boolean) => Promise<void>;
   setScramblingEnabled: (orgId: string, enabled: boolean) => Promise<void>;
+  /**
+   * Every feature in BELLS_AND_WHISTLES on, or every one off, in one write.
+   * Resolves to the database's complaint, or null; a failed write puts the
+   * settings back as they were.
+   */
+  setAllBellsAndWhistles: (orgId: string, enabled: boolean) => Promise<string | null>;
   applyRealtimeSettings: (payload: { eventType: string; new: any; old: any }) => void;
 }
 
@@ -112,6 +141,27 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
           : { ...defaults },
       },
     }));
+  },
+
+  setAllBellsAndWhistles: async (orgId, enabled) => {
+    const before = get().settings[orgId] ?? defaults;
+    const after = { ...before };
+    const row: Record<string, unknown> = { organization_id: orgId, updated_at: new Date().toISOString() };
+    for (const feature of BELLS_AND_WHISTLES) {
+      after[feature.key] = enabled;
+      row[feature.column] = enabled;
+    }
+    set((s) => ({ settings: { ...s.settings, [orgId]: after } }));
+
+    const { error } = await supabase
+      .from('organization_settings')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert(row as any, { onConflict: 'organization_id' });
+    if (error) {
+      set((s) => ({ settings: { ...s.settings, [orgId]: before } }));
+      return error.message;
+    }
+    return null;
   },
 
   setTimeLoggingEnabled: async (orgId, enabled) => {

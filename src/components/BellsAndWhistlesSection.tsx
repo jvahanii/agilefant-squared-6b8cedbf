@@ -13,6 +13,7 @@ import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { GmailIntegrationsCard, JobAdImportCard } from "@/components/GmailIntegrationsCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
+import { AllBellsAndWhistlesToggle } from "@/components/AllBellsAndWhistlesToggle";
 
 const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false, savingsIncomeEnabled: false };
 
@@ -74,6 +75,8 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
           </p>
         </div>
       )}
+
+      <AllBellsAndWhistlesToggle orgId={activeOrgId} canManage={canManage} />
 
       <TeamManagement />
 
