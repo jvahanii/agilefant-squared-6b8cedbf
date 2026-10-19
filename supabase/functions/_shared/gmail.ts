@@ -55,6 +55,26 @@ export function json(body: unknown, status = 200): Response {
 }
 
 /** Throws with a `[status]: body` message so the top-level catch can relay it. */
+/**
+ * How long a call to the connector gateway may take while someone waits on a
+ * button. Its sign-in calls answer in a few seconds; one that has not in this
+ * long is not going to, and the function would otherwise sit out its own
+ * deadline with the button spinning.
+ */
+const GATEWAY_TIMEOUT_MS = 20_000;
+
+/** A gateway request that gives up after GATEWAY_TIMEOUT_MS, as 'gateway_timeout'. */
+async function gatewayFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS) });
+  } catch (e) {
+    if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      throw new Error('gateway_timeout');
+    }
+    throw e;
+  }
+}
+
 async function relay(res: Response, label: string): Promise<never> {
   const text = await res.text();
   console.error(`${label} failed [${res.status}]: ${text}`);
@@ -110,7 +130,7 @@ export async function decryptKey(stored: string): Promise<string> {
  * first connect.
  */
 export async function startAuthorize(appUserId: string, returnUrl: string, existingKey?: string | null): Promise<string> {
-  const res = await fetch(`${GATEWAY}/api/v1/app-users/oauth2/authorize`, {
+  const res = await gatewayFetch(`${GATEWAY}/api/v1/app-users/oauth2/authorize`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,
@@ -131,7 +151,7 @@ export async function startAuthorize(appUserId: string, returnUrl: string, exist
 }
 
 export async function exchangeCode(code: string): Promise<string> {
-  const res = await fetch(`${GATEWAY}/api/v1/app-users/oauth2/exchange`, {
+  const res = await gatewayFetch(`${GATEWAY}/api/v1/app-users/oauth2/exchange`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env('LOVABLE_API_KEY')}`,

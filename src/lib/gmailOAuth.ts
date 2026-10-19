@@ -17,6 +17,11 @@ export type OAuthStatus =
       canManage: boolean;
     };
 
+/** How long the app waits for the Google sign-in window to answer before it stops waiting. */
+export const GMAIL_POPUP_TIMEOUT_MS = 5 * 60_000;
+/** After that window closes, how long an answer it sent on its way out may take to arrive. */
+export const GMAIL_POPUP_GRACE_MS = 2_000;
+
 /** The path Google must be allowed to redirect to, on whatever host the app is. */
 export const GMAIL_CALLBACK_PATH = "/gmail-callback.html";
 
@@ -39,6 +44,7 @@ const MESSAGES: Record<string, string> = {
     "That sign-in could not be verified as the one you started. Choose Connect Gmail and try again.",
   oauth_state_expired: "That sign-in took too long to finish. Choose Connect Gmail and try again.",
   gmail_not_connected: "Gmail is not connected, or the connection has expired. Connect Gmail again.",
+  gateway_timeout: "Google's sign-in service did not answer in time. Try again in a moment.",
 };
 
 /**

@@ -30,20 +30,36 @@
         // server signed it, and checks it proves who started this connection.
         var state = params.get('state');
         var payload = { source: 'gmail-oauth', code: code, state: state, error: error };
+        var told = false;
+        // Two ways back to the app. The window that opened this one, if it is
+        // still known — a page on the way here can make a browser forget it —
+        // and a channel every Agilefant page on this browser hears, which the
+        // page that started the connection listens on. The app finishes a
+        // given sign-in once, whichever way it arrives first.
         try {
           if (window.opener) {
             window.opener.postMessage(payload, window.location.origin);
-            document.getElementById('msg').textContent = error
-              ? 'Connection failed. You can close this window.'
-              : 'Connected. You can close this window.';
-            setTimeout(function () { window.close(); }, 800);
-          } else {
-            document.getElementById('msg').textContent =
-              'Please return to the app tab to finish connecting.';
+            told = true;
           }
         } catch (e) {
-          document.getElementById('msg').textContent = 'Could not finish connecting: ' + e.message;
+          /* fall through to the channel */
         }
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            var channel = new BroadcastChannel('gmail-oauth');
+            channel.postMessage(payload);
+            channel.close();
+            told = true;
+          }
+        } catch (e) {
+          /* nothing more to try */
+        }
+        document.getElementById('msg').textContent = !told
+          ? 'Could not reach Agilefant from this window. Close it and choose Connect Gmail again.'
+          : error
+            ? 'Connection failed. You can close this window.'
+            : 'Finishing in Agilefant. You can close this window.';
+        if (told) setTimeout(function () { window.close(); }, 800);
       })();
     </script>
   </body>

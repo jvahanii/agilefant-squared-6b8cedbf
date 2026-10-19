@@ -663,6 +663,7 @@ Deno.serve(async (req) => {
     if (message === 'gmail_permission_missing') return json({ error: 'gmail_permission_missing' }, 403);
     if (message === 'oauth_client_not_configured') return json({ error: 'oauth_client_not_configured' }, 409);
     if (message === 'oauth_client_rejected') return json({ error: 'oauth_client_rejected' }, 400);
+    if (message === 'gateway_timeout') return json({ error: 'gateway_timeout' }, 504);
     if (message === 'oauth_state_invalid' || message === 'oauth_state_expired') return json({ error: message }, 400);
     if (message.startsWith('bad_request:')) return json({ error: message.slice('bad_request:'.length).trim() }, 400);
     if (message.startsWith('forbidden')) return json({ error: message }, 403);

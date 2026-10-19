@@ -16,7 +16,13 @@ import { Mail, Trash2, Plus, Play, Loader2, Unplug } from "lucide-react";
 import { GoogleOAuthClientSection } from "@/components/GoogleOAuthClientSection";
 import { SavedSearchPicker } from "@/components/SavedSearchPicker";
 import { CareerPagesEditor } from "@/components/CareerPagesEditor";
-import { canConnectGmail, explainGmailError, type OAuthStatus } from "@/lib/gmailOAuth";
+import {
+  canConnectGmail,
+  explainGmailError,
+  GMAIL_POPUP_GRACE_MS,
+  GMAIL_POPUP_TIMEOUT_MS,
+  type OAuthStatus,
+} from "@/lib/gmailOAuth";
 import { callGmail, type ImportMode } from "@/lib/gmailConnector";
 import {
   defaultJobQuery,
@@ -120,6 +126,13 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
   const [runToken, setRunToken] = useState(0);
 
   const popupRef = useRef<Window | null>(null);
+  // A connection this page started and has not yet finished, and the sign-ins
+  // it has already finished — the callback page answers both through the
+  // window that opened it and through a broadcast channel, and a code can be
+  // exchanged only once.
+  const pendingRef = useRef(false);
+  const handledCodes = useRef(new Set<string>());
+  const stopWatchingRef = useRef<() => void>(() => {});
 
   const trees = Object.values(backlogTrees);
   const backlogsForTree = (treeId: string) => Object.values(backlogs).filter((b) => b.treeId === treeId);
@@ -167,12 +180,18 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
     loadQueries();
   }, [loadQueries]);
 
-  // Receive the OAuth code from the popup callback page.
+  // Receive the OAuth code from the popup callback page: through the window
+  // that opened it, or — when the sign-in pages on the way have made the popup
+  // forget its opener — through a broadcast channel. Only the page that
+  // started the connection answers the channel, so a second Agilefant tab does
+  // not try to spend the same code.
   useEffect(() => {
-    const onMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const payload = event.data as { source?: string; code?: string; state?: string; error?: string } | null;
+    const finish = async (payload: { source?: string; code?: string | null; state?: string | null; error?: string | null } | null) => {
       if (!payload || payload.source !== "gmail-oauth") return;
+      if (payload.code && handledCodes.current.has(payload.code)) return;
+      if (payload.code) handledCodes.current.add(payload.code);
+      pendingRef.current = false;
+      stopWatchingRef.current();
       popupRef.current?.close();
       if (payload.error || !payload.code) {
         setConnecting(false);
@@ -200,9 +219,72 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
         setConnecting(false);
       }
     };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      void finish(event.data);
+    };
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("gmail-oauth");
+      channel.onmessage = (event: MessageEvent) => {
+        if (pendingRef.current) void finish(event.data);
+      };
+    } catch {
+      // No BroadcastChannel: the opener's message is the only way back.
+    }
+    return () => {
+      window.removeEventListener("message", onMessage);
+      channel?.close();
+    };
   }, [activeOrgId]);
+
+  useEffect(() => () => stopWatchingRef.current(), []);
+
+  /**
+   * Stop waiting when the Google window is closed without an answer — closed
+   * by hand, or left on an error page of Google's or the connector's and then
+   * closed — and in any case after a few minutes. Waiting for a message that
+   * can no longer come is what left the button spinning for good. A late
+   * answer still finishes the connection: the listeners stay.
+   */
+  const watchPopup = (popup: Window) => {
+    stopWatchingRef.current();
+    const giveUp = (reason: string) => {
+      stop();
+      if (!pendingRef.current) return;
+      pendingRef.current = false;
+      setConnecting(false);
+      toast({ title: "Gmail is not connected", description: reason, variant: "destructive" });
+      // The connection may have been made all the same; ask rather than guess.
+      void loadStatus();
+    };
+    const closedCheck = window.setInterval(() => {
+      let closed = false;
+      try {
+        closed = popup.closed;
+      } catch {
+        closed = false;
+      }
+      // A moment's grace: the answer is sent just before the window closes itself.
+      if (closed) {
+        window.clearInterval(closedCheck);
+        window.setTimeout(
+          () => giveUp("The Google window closed before the connection was finished. Choose Connect Gmail to try again."),
+          GMAIL_POPUP_GRACE_MS,
+        );
+      }
+    }, 700);
+    const timeout = window.setTimeout(
+      () => giveUp("Signing in to Google took too long. Close the Google window and choose Connect Gmail to try again."),
+      GMAIL_POPUP_TIMEOUT_MS,
+    );
+    const stop = () => {
+      window.clearInterval(closedCheck);
+      window.clearTimeout(timeout);
+    };
+    stopWatchingRef.current = stop;
+  };
 
   const connect = async () => {
     if (!activeOrgId) return;
@@ -218,7 +300,10 @@ export function GmailIntegrationsCard({ mode = "links" }: { mode?: ImportMode })
       if (!popupRef.current) {
         setConnecting(false);
         toast({ title: "Popup blocked", description: "Allow popups and try again.", variant: "destructive" });
+        return;
       }
+      pendingRef.current = true;
+      watchPopup(popupRef.current);
     } catch (e) {
       setConnecting(false);
       toast({
