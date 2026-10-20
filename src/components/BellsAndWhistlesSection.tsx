@@ -31,6 +31,10 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
   const canManage = role === "owner" || role === "admin";
 
   const orgSettingsRaw = useOrgSettingsStore((s) => (activeOrgId ? s.settings[activeOrgId] : undefined));
+  const loadFailure = useOrgSettingsStore((s) => (activeOrgId ? s.failed[activeOrgId] : undefined));
+  // Until the settings have been read, the switches say nothing: shown as off,
+  // they would claim every feature is off.
+  const settingsKnown = !!orgSettingsRaw;
   const orgSettings = orgSettingsRaw ?? DEFAULT_ORG_SETTINGS;
   const customStatusesEnabled = (orgSettings as { customStatusesEnabled?: boolean }).customStatusesEnabled ?? false;
   const loadSettings = useOrgSettingsStore((s) => s.loadSettings);
@@ -149,6 +153,25 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         <JobAdImportCard />
       </div>
 
+      {!settingsKnown && activeOrgId && (
+        <Card className="border-destructive/40">
+          <CardContent className="pt-6 flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground" role="status">
+              {loadFailure
+                ? `Could not read this organization's settings (${loadFailure}). The switches below are not showing what is on until they load.`
+                : "Reading this organization's settings…"}
+            </p>
+            {loadFailure && (
+              <Button variant="outline" size="sm" onClick={() => loadSettings(activeOrgId)}>
+                Try again
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* The feature switches, disabled while the settings are unknown. */}
+      <fieldset disabled={!settingsKnown} className="m-0 min-w-0 border-0 p-0 space-y-6" aria-busy={!settingsKnown}>
       <Card id="points" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -504,6 +527,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
           </div>
         </CardContent>
       </Card>
+      </fieldset>
 
       <TimesheetBrowserDialog
         open={timesheetBrowserOpen}

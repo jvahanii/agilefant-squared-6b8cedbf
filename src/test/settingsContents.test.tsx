@@ -10,10 +10,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 
+/** What every read answers: by default no settings row, which means every feature off. */
+let answer: { data: unknown; error: unknown } = { data: null, error: null };
 vi.mock("@/integrations/supabase/client", () => {
   const chain: Record<string, unknown> = {};
   for (const name of ["select", "eq", "in", "order", "maybeSingle", "upsert"]) chain[name] = () => chain;
-  (chain as { then: unknown }).then = (resolve: (v: unknown) => void) => resolve({ data: null, error: null });
+  (chain as { then: unknown }).then = (resolve: (v: unknown) => void) => resolve(answer);
   return { supabase: { from: () => chain } };
 });
 // The cards the page borrows from elsewhere, as stand-ins: each is tested on its own.
@@ -33,7 +35,7 @@ vi.mock("@/store/labelsStore", () => ({
 
 import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 import { useOrgStore } from "@/store/orgStore";
-import { BELLS_AND_WHISTLES } from "@/store/orgSettingsStore";
+import { BELLS_AND_WHISTLES, useOrgSettingsStore } from "@/store/orgSettingsStore";
 
 function asMember(role: "owner" | "member", slug = "agilefant") {
   useOrgStore.setState({
@@ -53,6 +55,8 @@ const linksLeadSomewhere = () => {
 };
 
 beforeEach(() => {
+  answer = { data: null, error: null };
+  useOrgSettingsStore.setState({ settings: {}, failed: {} });
   window.history.replaceState(null, "", "/settings/bells-whistles");
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -105,5 +109,42 @@ describe("the contents of Bells & Whistles", () => {
     asMember("owner");
     render(<BellsAndWhistlesSection showHeader={false} />);
     await vi.waitFor(() => expect(document.getElementById("scrambling")!.scrollIntoView).toHaveBeenCalled());
+  });
+});
+
+describe("settings that could not be read", () => {
+  const TIMEOUT = { message: "canceling statement due to statement timeout", code: "57014" };
+
+  it("are not shown as off: the page says it could not read them, and its switches wait", async () => {
+    answer = { data: null, error: TIMEOUT };
+    asMember("owner");
+    render(<BellsAndWhistlesSection showHeader={false} />);
+    expect(await screen.findByText(/Could not read this organization's settings/)).toBeInTheDocument();
+    expect(screen.getByText(/statement timeout/)).toBeInTheDocument();
+    const points = within(document.getElementById("points")!).getByRole("switch");
+    expect(points).toBeDisabled();
+    // Nothing stored as "off" in their place.
+    expect(useOrgSettingsStore.getState().settings["org-1"]).toBeUndefined();
+  });
+
+  it("are read again on Try again, and the switches then show what is on", async () => {
+    answer = { data: null, error: TIMEOUT };
+    asMember("owner");
+    render(<BellsAndWhistlesSection showHeader={false} />);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    answer = { data: { organization_id: "org-1", points_enabled: true, time_logging_enabled: false }, error: null };
+    fireEvent.click(retry);
+    await vi.waitFor(() => expect(screen.queryByText(/Could not read/)).not.toBeInTheDocument());
+    const points = within(document.getElementById("points")!).getByRole("switch");
+    expect(points).toBeEnabled();
+    expect(points).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("leave what was already known as it was", async () => {
+    useOrgSettingsStore.setState({ settings: { "org-1": { pointsEnabled: true } as never }, failed: {} });
+    answer = { data: null, error: TIMEOUT };
+    await useOrgSettingsStore.getState().loadSettings("org-1");
+    expect(useOrgSettingsStore.getState().settings["org-1"].pointsEnabled).toBe(true);
+    expect(useOrgSettingsStore.getState().failed["org-1"]).toMatch(/statement timeout/);
   });
 });

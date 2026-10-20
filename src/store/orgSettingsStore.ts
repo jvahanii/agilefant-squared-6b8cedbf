@@ -55,6 +55,13 @@ export type BellOrWhistle = (typeof BELLS_AND_WHISTLES)[number];
 interface OrgSettingsState {
   settings: Record<string, OrgSettings>; // keyed by orgId
   loading: boolean;
+  /**
+   * Why an organization's settings could not be read, by orgId. Kept apart
+   * from `settings`: a request that failed says nothing about what is on, and
+   * storing the defaults in its place showed every feature as off — as on
+   * 2026-10-20, when the data API was down and Bells & Whistles read "all off".
+   */
+  failed: Record<string, string>;
 
   loadSettings: (orgId: string) => Promise<void>;
   setTimeLoggingEnabled: (orgId: string, enabled: boolean) => Promise<void>;
@@ -100,17 +107,25 @@ const defaults: OrgSettings = {
 export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
   settings: {},
   loading: false,
+  failed: {},
 
   loadSettings: async (orgId: string) => {
     set({ loading: true });
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('organization_settings')
       .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled, deadlines_enabled, created_dates_enabled, start_end_dates_enabled, scrambling_enabled')
       .eq('organization_id', orgId)
       .maybeSingle();
 
+    if (error) {
+      // What was known stays known; what was not stays unknown.
+      set((s) => ({ loading: false, failed: { ...s.failed, [orgId]: error.message || 'unknown error' } }));
+      return;
+    }
+
     set((s) => ({
       loading: false,
+      failed: Object.fromEntries(Object.entries(s.failed).filter(([id]) => id !== orgId)),
       settings: {
         ...s.settings,
         [orgId]: data
