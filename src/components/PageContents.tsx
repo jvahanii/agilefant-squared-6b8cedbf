@@ -48,9 +48,11 @@ export function PageContents({ items, title = "On this page" }: { items: PageCon
           <p className="text-sm font-medium flex items-center gap-2 mb-2">
             <ListTree className="w-4 h-4" /> {title}
           </p>
-          <ol className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+          {/* Down the first column and then the second, in the page's order —
+              a grid would read across, zig-zagging between the two. */}
+          <ol className="sm:columns-2 gap-x-6 text-sm">
             {items.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} className="mb-1 break-inside-avoid">
                 <a
                   href={`#${item.id}`}
                   onClick={(event) => {
