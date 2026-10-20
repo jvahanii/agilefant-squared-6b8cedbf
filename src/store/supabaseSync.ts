@@ -615,6 +615,25 @@ export async function withDeadlockRetry<T extends { error: { message?: string; c
   return result;
 }
 
+/**
+ * How many rank rows go in one write.
+ *
+ * Re-ordering a list rewrites the rank of every item in it, and the "Open jobs"
+ * list holds over a thousand. Sent as one statement, that write usually takes
+ * a fraction of a second — and while the database is busy, as it is straight
+ * after an import, it ran past the eight seconds a signed-in request is allowed
+ * and came back "canceling statement due to statement timeout". In batches of
+ * this size each statement stays far inside the limit however busy it gets.
+ */
+export const RANK_WRITE_CHUNK = 200;
+
+/** How long to wait before sending once more a write the database stopped for taking too long. */
+export const STATEMENT_TIMEOUT_RETRY_MS = 1_500;
+
+function isStatementTimeout(error: { message?: string; code?: string } | null): boolean {
+  return !!error && (error.code === '57014' || /statement timeout/i.test(error.message ?? ''));
+}
+
 export async function upsertWorkItem(item: WorkItem, organizationId: string): Promise<boolean> {
   return enqueueWorkItemMutation(async () => upsertWorkItemImmediate(item, organizationId));
 }
@@ -1409,10 +1428,29 @@ async function upsertRankRowsSkippingMissing(
   // row locks in the same order, preventing PostgreSQL deadlocks.
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
 
-  // Tried again when it loses a deadlock to the write of the items it ranks.
-  const write = async (payload: RankRow[]) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (await withDeadlockRetry(() => supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' }))).error;
+  // Tried again when it loses a deadlock to the write of the items it ranks,
+  // and once more, after a pause, when a busy database stopped it for taking
+  // too long. Nothing of a stopped write has been done, so sending it again
+  // is safe.
+  const writeBatch = async (payload: RankRow[]) => {
+    const send = () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      withDeadlockRetry(() => supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' }));
+    let result = await send();
+    if (isStatementTimeout(result.error)) {
+      await new Promise((resolve) => setTimeout(resolve, STATEMENT_TIMEOUT_RETRY_MS));
+      result = await send();
+    }
+    return result.error;
+  };
+  // A batch at a time, so no one statement carries a whole long list.
+  const write = async (payload: RankRow[]) => {
+    for (let at = 0; at < payload.length; at += RANK_WRITE_CHUNK) {
+      const error = await writeBatch(payload.slice(at, at + RANK_WRITE_CHUNK));
+      if (error) return error;
+    }
+    return null;
+  };
 
   let error = await write(rows);
   let missing: string[] = recentlyDeleted;
@@ -1484,20 +1522,9 @@ async function upsertWorkItemBacklogRanksBatch(
   // second time"). Last write wins.
   const dedup = new Map<string, typeof rows[number]>();
   for (const r of rows) dedup.set(`${r.work_item_id}::${r.backlog_id}`, r);
-  const deduped = Array.from(dedup.values());
-  // Sort by (work_item_id, backlog_id) so concurrent upserts always acquire
-  // row locks in the same order, preventing PostgreSQL deadlocks.
-  deduped.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase
-    .from('work_item_backlog_ranks' as any)
-    .upsert(deduped, { onConflict: 'work_item_id,backlog_id' });
-  if (error) {
-    console.error('upsertWorkItemBacklogRanksBatch:', error);
-    toast({ title: 'Failed to save ranking', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
-    return false;
-  }
-  return true;
+  // Written the way every other rank write is: sorted, in batches, and once
+  // more after a deadlock or a statement timeout.
+  return (await upsertRankRowsSkippingMissing('work_item_backlog_ranks', Array.from(dedup.values()), 'Failed to save ranking')).ok;
 }
 
 // ─── Work Item Board Ranks CRUD (independent from list ranks) ─────────────

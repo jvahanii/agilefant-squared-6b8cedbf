@@ -2299,16 +2299,23 @@ export const useAppStore = create<AppState>()((set, get) => {
         updatedItems[id] = { ...wi, boardRanks: { ...(wi.boardRanks ?? {}), [blId]: rank } };
         sortedBoardRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
       }
-      if (sortedBoardRows.length > 0) persistBoardRankUpserts(sortedBoardRows);
-
-
+      // Only the ranks that changed are written. Saving a list's shown order
+      // after an import moves the new items in and shifts the rest — but a
+      // re-sort that leaves most of a long list where it was has no need to
+      // rewrite all of it.
+      const changedBoardRows = sortedBoardRows.filter(
+        (row) => state.workItems[row.workItemId]?.boardRanks?.[row.backlogId] !== row.rank,
+      );
+      if (changedBoardRows.length > 0) persistBoardRankUpserts(changedBoardRows);
 
       persistRankUpserts(
         siblings.flatMap((s) => {
           const updated = updatedItems[s.id];
           const blId = updated.backlogAssignments[treeId];
           if (!blId) return [];
-          return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
+          const rank = updated.ranks[blId] ?? 0;
+          if (state.workItems[s.id]?.ranks[blId] === rank) return [];
+          return { workItemId: updated.id, backlogId: blId, rank, organizationId: updated.organizationId ?? orgId };
         }),
       );
       const contextName = parentId ? (state.workItems[parentId]?.title ?? "Unknown Item") : "backlog";
