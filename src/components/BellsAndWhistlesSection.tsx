@@ -14,6 +14,7 @@ import { GmailIntegrationsCard, JobAdImportCard } from "@/components/GmailIntegr
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 import { AllBellsAndWhistlesToggle } from "@/components/AllBellsAndWhistlesToggle";
+import { PageContents, type PageContentsItem } from "@/components/PageContents";
 
 const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false, savingsIncomeEnabled: false };
 
@@ -57,6 +58,29 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
 
   const [timesheetBrowserOpen, setTimesheetBrowserOpen] = useState(false);
 
+  // The page's sections, in the order it shows them, for its table of
+  // contents — each only where the page shows it.
+  const showLinkImport = activeOrg?.organization_slug === "agilefant";
+  const contents: PageContentsItem[] = [
+    { id: "all-bells-and-whistles", label: "All bells & whistles" },
+    { id: "teams", label: "Teams" },
+    { id: "backups", label: "Backups & Restore" },
+    { id: "github", label: "GitHub repositories" },
+    ...(showLinkImport ? [{ id: "gmail-link-import", label: "Gmail link import" }] : []),
+    { id: "job-ad-import", label: "Job ad import" },
+    { id: "points", label: "Points" },
+    { id: "ratings", label: "Ratings" },
+    { id: "deadlines", label: "Deadlines" },
+    { id: "created-dates", label: "Created dates" },
+    { id: "start-end-dates", label: "Start and end dates" },
+    { id: "scrambling", label: "Scrambling" },
+    { id: "time-logging", label: "Time Logging" },
+    ...(canManage ? [{ id: "custom-statuses", label: "Custom Statuses" }] : []),
+    { id: "labels", label: "Labels" },
+    { id: "savings-income", label: "Savings & Income" },
+    { id: "labs", label: "Labs" },
+  ];
+
   useEffect(() => {
     if (activeOrgId) {
       loadSettings(activeOrgId);
@@ -76,20 +100,36 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </div>
       )}
 
-      <AllBellsAndWhistlesToggle orgId={activeOrgId} canManage={canManage} />
+      <PageContents items={contents} />
 
-      <TeamManagement />
+      <div id="all-bells-and-whistles" className="scroll-mt-6">
+        <AllBellsAndWhistlesToggle orgId={activeOrgId} canManage={canManage} />
+      </div>
 
-      <BackupsCard />
+      <div id="teams" className="scroll-mt-6">
+        <TeamManagement />
+      </div>
 
-      <GithubIntegrationsCard />
+      <div id="backups" className="scroll-mt-6">
+        <BackupsCard />
+      </div>
+
+      <div id="github" className="scroll-mt-6">
+        <GithubIntegrationsCard />
+      </div>
 
       {/* Job ad import is open to every organization. The general link import
           beside it is not: that one still only shows in Agilefant's own. */}
-      {activeOrg?.organization_slug === "agilefant" && <GmailIntegrationsCard />}
-      <JobAdImportCard />
+      {showLinkImport && (
+        <div id="gmail-link-import" className="scroll-mt-6">
+          <GmailIntegrationsCard />
+        </div>
+      )}
+      <div id="job-ad-import" className="scroll-mt-6">
+        <JobAdImportCard />
+      </div>
 
-      <Card>
+      <Card id="points" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Hash className="w-4 h-4" /> Points
@@ -114,7 +154,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="ratings" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Star className="w-4 h-4" /> Ratings
@@ -144,7 +184,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="deadlines" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarClock className="w-4 h-4" /> Deadlines
@@ -174,7 +214,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="created-dates" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="w-4 h-4" /> Created dates
@@ -205,7 +245,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="start-end-dates" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarRange className="w-4 h-4" /> Start and end dates
@@ -237,7 +277,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="scrambling" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Lock className="w-4 h-4" /> Scrambling
@@ -267,7 +307,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="time-logging" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Clock className="w-4 h-4" /> Time Logging
@@ -310,7 +350,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
       </Card>
 
       {canManage && (
-        <Card>
+        <Card id="custom-statuses" className="scroll-mt-6">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Settings2 className="w-4 h-4" /> Custom Statuses
@@ -338,7 +378,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </Card>
       )}
 
-      <Card>
+      <Card id="labels" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Tag className="w-4 h-4" /> Labels
@@ -371,7 +411,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="savings-income" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="w-4 h-4" /> Savings &amp; Income
@@ -399,7 +439,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="labs" className="scroll-mt-6">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <FlaskConical className="w-4 h-4" /> Labs
