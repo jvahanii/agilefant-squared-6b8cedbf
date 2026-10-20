@@ -14,7 +14,8 @@ import { GmailIntegrationsCard, JobAdImportCard } from "@/components/GmailIntegr
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 import { AllBellsAndWhistlesToggle } from "@/components/AllBellsAndWhistlesToggle";
-import { PageContents, type PageContentsItem } from "@/components/PageContents";
+import { PageContents, type PageContentsGroup } from "@/components/PageContents";
+import { BELLS_AND_WHISTLES, type BellOrWhistle } from "@/store/orgSettingsStore";
 
 const DEFAULT_ORG_SETTINGS = { timeLoggingEnabled: false, pointsEnabled: false, labelsEnabled: false, customStatusesEnabled: false, savingsIncomeEnabled: false };
 
@@ -58,27 +59,46 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
 
   const [timesheetBrowserOpen, setTimesheetBrowserOpen] = useState(false);
 
-  // The page's sections, in the order it shows them, for its table of
-  // contents — each only where the page shows it.
+  // The page's table of contents, in two groups. The features are exactly
+  // the ones the all-features switch moves, by the names its confirmation
+  // uses, so the switch's "n of 12" and the list beside it count the same
+  // things. Custom statuses is listed for everyone but only a link for those
+  // who are shown its section.
   const showLinkImport = activeOrg?.organization_slug === "agilefant";
-  const contents: PageContentsItem[] = [
-    { id: "all-bells-and-whistles", label: "All bells & whistles" },
-    { id: "teams", label: "Teams" },
-    { id: "backups", label: "Backups & Restore" },
-    { id: "github", label: "GitHub repositories" },
-    ...(showLinkImport ? [{ id: "gmail-link-import", label: "Gmail link import" }] : []),
-    { id: "job-ad-import", label: "Job ad import" },
-    { id: "points", label: "Points" },
-    { id: "ratings", label: "Ratings" },
-    { id: "deadlines", label: "Deadlines" },
-    { id: "created-dates", label: "Created dates" },
-    { id: "start-end-dates", label: "Start and end dates" },
-    { id: "scrambling", label: "Scrambling" },
-    { id: "time-logging", label: "Time Logging" },
-    ...(canManage ? [{ id: "custom-statuses", label: "Custom Statuses" }] : []),
-    { id: "labels", label: "Labels" },
-    { id: "savings-income", label: "Savings & Income" },
-    { id: "labs", label: "Labs" },
+  const FEATURE_SECTION: Record<BellOrWhistle["key"], string> = {
+    pointsEnabled: "points",
+    ratingsEnabled: "ratings",
+    deadlinesEnabled: "deadlines",
+    createdDatesEnabled: "created-dates",
+    startEndDatesEnabled: "start-end-dates",
+    scramblingEnabled: "scrambling",
+    timeLoggingEnabled: "time-logging",
+    customStatusesEnabled: "custom-statuses",
+    labelsEnabled: "labels",
+    savingsIncomeEnabled: "savings-income",
+    burnupsEnabled: "labs",
+    persistNotificationsEnabled: "persist-notifications",
+  };
+  const contents: PageContentsGroup[] = [
+    {
+      title: "General",
+      items: [
+        { id: "all-bells-and-whistles", label: "All bells & whistles" },
+        { id: "teams", label: "Teams" },
+        { id: "backups", label: "Backups & Restore" },
+        { id: "github", label: "GitHub repositories" },
+        ...(showLinkImport ? [{ id: "gmail-link-import", label: "Gmail link import" }] : []),
+        { id: "job-ad-import", label: "Job ad import" },
+      ],
+    },
+    {
+      title: `Features (${BELLS_AND_WHISTLES.length})`,
+      items: BELLS_AND_WHISTLES.map((feature) =>
+        feature.key === "customStatusesEnabled" && !canManage
+          ? { label: feature.label, note: "owners and admins" }
+          : { id: FEATURE_SECTION[feature.key], label: feature.label },
+      ),
+    },
   ];
 
   useEffect(() => {
@@ -100,7 +120,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         </div>
       )}
 
-      <PageContents items={contents} />
+      <PageContents groups={contents} />
 
       <div id="all-bells-and-whistles" className="scroll-mt-6">
         <AllBellsAndWhistlesToggle orgId={activeOrgId} canManage={canManage} />
@@ -465,7 +485,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
             />
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <div id="persist-notifications" className="flex items-center justify-between mt-4 pt-4 border-t border-border scroll-mt-6">
             <div>
               <p className="text-sm font-medium">Persist notifications</p>
               <p className="text-xs text-muted-foreground">

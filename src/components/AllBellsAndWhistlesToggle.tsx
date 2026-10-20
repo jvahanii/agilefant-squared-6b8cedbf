@@ -61,7 +61,7 @@ export function AllBellsAndWhistlesToggle({ orgId, canManage }: { orgId: string 
               <Sparkles className="w-4 h-4" /> All bells &amp; whistles
             </p>
             <p className="text-xs text-muted-foreground">
-              Switch every feature below on or off at once.{" "}
+              Switch the {BELLS_AND_WHISTLES.length} features listed under Features above on or off at once.{" "}
               {settings ? `${on.length} of ${BELLS_AND_WHISTLES.length} are on now.` : ""}
               {!canManage && " Only an owner or admin can use this."}
             </p>

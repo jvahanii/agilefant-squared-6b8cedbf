@@ -1,10 +1,11 @@
 /**
  * The table of contents at the top of Bells & Whistles.
  *
- * What matters is that it never points at nothing: every entry leads to a
- * section the page actually shows, and a section the page leaves out for
- * someone — custom statuses for a member, the link import outside Agilefant's
- * own organization — is left out of the contents too.
+ * It never points at nothing — every link leads to a section the page shows —
+ * and its Features group is exactly the twelve the all-features switch moves,
+ * by the names that switch uses, so "12 of 12 are on" and the list beside it
+ * count the same things. (A first version listed every section in one list,
+ * seventeen of them, beside a switch that said twelve.)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
@@ -32,6 +33,7 @@ vi.mock("@/store/labelsStore", () => ({
 
 import { BellsAndWhistlesSection } from "@/components/BellsAndWhistlesSection";
 import { useOrgStore } from "@/store/orgStore";
+import { BELLS_AND_WHISTLES } from "@/store/orgSettingsStore";
 
 function asMember(role: "owner" | "member", slug = "agilefant") {
   useOrgStore.setState({
@@ -42,7 +44,13 @@ function asMember(role: "owner" | "member", slug = "agilefant") {
 }
 
 const contents = () => screen.getByRole("navigation", { name: "On this page" });
-const entries = () => within(contents()).getAllByRole("link");
+const group = (name: string | RegExp) => within(contents()).getByRole("region", { name });
+const texts = (el: HTMLElement) => within(el).getAllByRole("listitem").map((li) => li.textContent);
+const linksLeadSomewhere = () => {
+  for (const a of within(contents()).getAllByRole("link")) {
+    expect(document.getElementById(a.getAttribute("href")!.slice(1)), a.textContent ?? "").not.toBeNull();
+  }
+};
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/settings/bells-whistles");
@@ -50,29 +58,36 @@ beforeEach(() => {
 });
 
 describe("the contents of Bells & Whistles", () => {
-  it("comes first, and every entry leads to a section that is on the page", () => {
+  it("comes first, in two groups, and every link leads to a section on the page", () => {
     asMember("owner");
     render(<BellsAndWhistlesSection showHeader={false} />);
-    // Before the first section on the page.
     expect(contents().compareDocumentPosition(screen.getByText("All switch")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const ids = entries().map((a) => a.getAttribute("href")!.slice(1));
-    expect(ids).toHaveLength(17);
-    for (const id of ids) expect(document.getElementById(id), id).not.toBeNull();
-    expect(entries().map((a) => a.textContent)).toEqual([
+    expect(texts(group("General"))).toEqual([
       "All bells & whistles", "Teams", "Backups & Restore", "GitHub repositories", "Gmail link import", "Job ad import",
-      "Points", "Ratings", "Deadlines", "Created dates", "Start and end dates", "Scrambling", "Time Logging",
-      "Custom Statuses", "Labels", "Savings & Income", "Labs",
     ]);
+    linksLeadSomewhere();
   });
 
-  it("leaves out what the page leaves out: custom statuses for a member, the link import elsewhere", () => {
+  it("lists as features exactly the twelve the switch moves, by its names, Labs' two among them", () => {
+    asMember("owner");
+    render(<BellsAndWhistlesSection showHeader={false} />);
+    const features = group(`Features (${BELLS_AND_WHISTLES.length})`);
+    expect(texts(features)).toEqual(BELLS_AND_WHISTLES.map((f) => f.label));
+    expect(texts(features)).toHaveLength(12);
+    expect(within(features).getByRole("link", { name: "Burnups" })).toHaveAttribute("href", "#labs");
+    expect(within(features).getByRole("link", { name: "Persist notifications" })).toHaveAttribute("href", "#persist-notifications");
+  });
+
+  it("still counts twelve for a member, naming custom statuses without a link to a section they are not shown", () => {
     asMember("member", "another-org");
     render(<BellsAndWhistlesSection showHeader={false} />);
-    const labels = entries().map((a) => a.textContent);
-    expect(labels).not.toContain("Custom Statuses");
-    expect(labels).not.toContain("Gmail link import");
-    expect(labels).toHaveLength(15);
-    for (const a of entries()) expect(document.getElementById(a.getAttribute("href")!.slice(1))).not.toBeNull();
+    expect(texts(group("General"))).not.toContain("Gmail link import");
+    const features = group("Features (12)");
+    expect(texts(features)).toHaveLength(12);
+    expect(within(features).queryByRole("link", { name: "Custom statuses" })).toBeNull();
+    expect(within(features).getByText("Custom statuses")).toBeInTheDocument();
+    expect(within(features).getByText(/owners and admins/)).toBeInTheDocument();
+    linksLeadSomewhere();
   });
 
   it("brings the section into view, gives it focus, and leaves its address to link to", () => {
