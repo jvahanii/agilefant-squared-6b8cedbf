@@ -37,3 +37,14 @@ declare module 'https://esm.sh/stripe@18.5.0' {
   const Stripe: any;
   export default Stripe;
 }
+
+// AI SDK, used by jira-diagnose through Lovable AI Gateway.
+declare module 'npm:ai@5' {
+  export type ModelMessage = { role: 'user' | 'assistant' | 'system'; content: string };
+  // deno-lint-ignore no-explicit-any
+  export function streamText(options: any): any;
+}
+declare module 'npm:@ai-sdk/openai@2' {
+  // deno-lint-ignore no-explicit-any
+  export function createOpenAI(options: any): any;
+}
