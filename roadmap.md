@@ -1,1 +1,1 @@
-- [ ] Jira: AI diagnosis for admins (deploy jira-diagnose via push to main)
+- [x] Jira: AI diagnosis for admins
