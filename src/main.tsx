@@ -3,6 +3,11 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { ClerkBridge } from "./lib/clerkBridge";
 import App from "./App.tsx";
 import "./index.css";
+import { supabase } from "@/integrations/supabase/client";
+import { keepRealtimeAuthFresh } from "@/integrations/supabase/realtimeAuth";
+
+// Live updates stop a minute after loading without this: see realtimeAuth.ts.
+keepRealtimeAuthFresh(supabase.realtime);
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 
