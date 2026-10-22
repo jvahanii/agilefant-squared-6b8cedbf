@@ -48,6 +48,8 @@ import { useBacklogTotalMinutesCached, useTreeTotalMinutesCached } from "@/lib/t
 import { visibleBacklogIdsRef } from "@/store/navigationRefs";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
+import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
+import { TRexIcon } from "@/components/TRexIcon";
 
 // Lazy-loaded so recharts (via CumulativeFlowChart) is not part of the initial
 // cold-start payload; it's only fetched when a tree's financial chart mounts.
@@ -342,6 +344,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   // sharing being switched off, and a marker for it would claim a backlog is
   // public that no longer is.
   const isPublished = usePublishedLinksStore((s) => s.backlogs.has(backlogId)) && publicLinksEnabled;
+  const jiraProject = useJiraIssuesStore((s) => s.byList.get(backlogId));
 
   // Labels
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
@@ -520,6 +523,19 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
           >
             <Globe className="w-3 h-3" />
           </button>
+        )}
+        {jiraProject && (
+          <a
+            href={jiraProject.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+            title={`Kept in step with Jira project ${jiraProject.projectKey}`}
+            aria-label={`Synced with Jira project ${jiraProject.projectKey}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TRexIcon className="w-3.5 h-3.5" />
+          </a>
         )}
         {labelsVisible && backlogLabels.length > 0 && (
           <div className="flex items-center gap-0.5 shrink-0 flex-wrap">

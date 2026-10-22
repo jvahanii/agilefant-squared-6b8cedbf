@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { callJira, type JiraStatus } from "@/lib/jiraSync";
+import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 
 /**
  * One Agilefant list kept in step with one Jira Cloud project, both ways:
@@ -69,6 +70,8 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
     setBusy("connect");
     try {
       const next = await callJira({ action: "configure", organizationId: activeOrgId, baseUrl, email, projectKey, backlogId });
+      // The sidebar marks the list that is now kept in step.
+      void useJiraIssuesStore.getState().load();
       setStatus(next);
       setEditing(false);
       toast(
@@ -124,6 +127,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
     setBusy("disconnect");
     try {
       setStatus(await callJira({ action: "disconnect", organizationId: activeOrgId }));
+      void useJiraIssuesStore.getState().load();
       toast({ title: "Jira disconnected" });
     } catch (e) {
       toast({ title: "Could not disconnect", description: (e as Error).message, variant: "destructive" });

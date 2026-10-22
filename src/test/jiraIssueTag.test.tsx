@@ -8,7 +8,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 const rows = vi.hoisted(() => ({
   links: [] as Array<Record<string, string>>,
-  connections: [] as Array<Record<string, string>>,
+  connections: [] as Array<Record<string, string | boolean>>,
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -24,8 +24,10 @@ import { JiraIssueTag } from "@/components/JiraIssueTag";
 
 beforeEach(() => {
   rows.links = [{ work_item_id: "org::wi-1", organization_id: "org", jira_key: "INT-8", jira_type: "Subtask" }];
-  rows.connections = [{ organization_id: "org", base_url: "https://example.atlassian.net" }];
-  useJiraIssuesStore.setState({ byItem: new Map() });
+  rows.connections = [
+    { organization_id: "org", base_url: "https://example.atlassian.net", project_key: "INT", backlog_id: "org::bl-1", enabled: true },
+  ];
+  useJiraIssuesStore.setState({ byItem: new Map(), byList: new Map() });
 });
 
 describe("the Jira issue after an item's name", () => {
@@ -56,5 +58,21 @@ describe("the Jira issue after an item's name", () => {
     render(<JiraIssueTag workItemId="org::wi-1" />);
     expect(screen.getByText("INT-8 · Subtask")).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("the list kept in step with Jira", () => {
+  it("is known with its project, to mark it in the sidebar", async () => {
+    await useJiraIssuesStore.getState().load();
+    expect(useJiraIssuesStore.getState().byList.get("org::bl-1")).toEqual({
+      projectKey: "INT",
+      url: "https://example.atlassian.net/browse/INT",
+    });
+  });
+
+  it("is not marked while the sync is switched off", async () => {
+    rows.connections[0].enabled = false;
+    await useJiraIssuesStore.getState().load();
+    expect(useJiraIssuesStore.getState().byList.size).toBe(0);
   });
 });
