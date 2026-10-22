@@ -12,6 +12,7 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
+  jiraTypeUnder,
   normalizeText,
   reconcile,
   textToAdf,
@@ -100,6 +101,20 @@ describe("the issue type of a new item", () => {
   });
 });
 
+describe("the issue type after a move", () => {
+  it("is what Jira allows under the new parent: under a task a subtask, under an epic a task, at the top no subtask", () => {
+    expect(jiraTypeUnder("Task", "Task")).toBe("Subtask");
+    expect(jiraTypeUnder("Story", "Epic")).toBe("Subtask");
+    expect(jiraTypeUnder("Epic", "Story")).toBe("Story");
+    expect(jiraTypeUnder("Epic", "Subtask")).toBe("Task");
+    expect(jiraTypeUnder("Epic", "Epic")).toBe("Task");
+    expect(jiraTypeUnder(null, "Subtask")).toBe("Task");
+    expect(jiraTypeUnder(null, "Epic")).toBe("Epic");
+    expect(jiraTypeUnder(null, "Task")).toBe("Task");
+    expect(jiraTypeUnder("Subtask", "Task")).toBeNull();
+  });
+});
+
 describe("which side wins, field by field", () => {
   const base: SyncState = { title: "A", description: "", status: "To Do", points: 1, parent: null };
 
@@ -166,6 +181,8 @@ class FakeJira implements JiraPort {
   }
   async updateIssue(id: string, fields: SyncedField[], state: SyncState) {
     if (this.failUpdates) throw new Error("Jira answered 400: nope");
+    // As Jira does: a parent of the wrong kind for the issue's type is refused.
+    if (fields.includes("parent")) this.mustFit(this.issues.get(id)!.type, state.parent);
     this.calls.push(`update ${this.issues.get(id)!.key} ${fields.join(",")}`);
     const change: Partial<SyncState> = {};
     for (const f of fields) (change as Record<string, unknown>)[f] = state[f];
@@ -174,6 +191,17 @@ class FakeJira implements JiraPort {
   async deleteIssue(id: string) {
     this.calls.push(`delete ${this.issues.get(id)?.key}`);
     this.issues.delete(id);
+  }
+  async changeType(id: string, type: string, parent: string | null) {
+    const issue = this.issues.get(id)!;
+    const target = type === "Subtask" ? parent : null;
+    this.mustFit(type, target);
+    this.calls.push(`retype ${issue.key} ${type}`);
+    this.issues.set(id, { ...issue, type, state: { ...issue.state, parent: target }, updatedAt: this.clock++ });
+  }
+  private mustFit(type: string, parent: string | null) {
+    const parentType = parent ? this.issues.get(parent)?.type : null;
+    if (jiraTypeUnder(parentType, type) !== type) throw new Error("Jira answered 400: pid: Issues with this Issue Type must be created in the same project as the parent.");
   }
 }
 
@@ -227,6 +255,12 @@ let jira: FakeJira;
 let af: FakeAgilefant;
 /** A fresh engine, as each call to the edge function makes. */
 const engine = () => new JiraSync(jira, af);
+/** One item synced, and what that sync reported. */
+async function syncItemReport(id: string) {
+  const sync = engine();
+  await sync.syncItem(id);
+  return sync.report;
+}
 
 beforeEach(() => {
   jira = new FakeJira();
@@ -399,5 +433,91 @@ describe("Sync now, after both sides changed", () => {
 
     expect(af.items.get(item.id)).toMatchObject({ title: "Jira's title", points: 13, status: "pending" });
     expect(jira.issues.get(issue.id)!.state).toMatchObject({ title: "Jira's title", points: 13, status: "In Review" });
+  });
+});
+
+describe("a move in Agilefant that Jira needs another issue type for", () => {
+  /** An epic with two tasks under it, synced. */
+  async function synced() {
+    const epic = jira.add("INT-1", "Epic", { title: "Epic" });
+    const one = jira.add("INT-2", "Task", { title: "Task one", parent: epic.id });
+    const two = jira.add("INT-3", "Task", { title: "Task two", parent: epic.id });
+    await engine().fullSync();
+    jira.calls = [];
+    return { epic, one, two, item: (title: string) => af.byTitle(title)! };
+  }
+
+  it("makes a task moved under another task a subtask", async () => {
+    const { one, two, item } = await synced();
+    await af.updateItem(item("Task two").id, { parentId: item("Task one").id });
+    const report = await syncItemReport(item("Task two").id);
+
+    expect(report.errors).toEqual([]);
+    expect(jira.issues.get(two.id)).toMatchObject({ type: "Subtask", state: { parent: one.id } });
+    expect(jira.calls).toEqual(["retype INT-3 Subtask"]);
+    expect(af.linkRows.get(item("Task two").id)).toMatchObject({ jiraType: "Subtask", error: null });
+    // Synced again, nothing more to do.
+    await engine().fullSync();
+    expect(jira.calls).toEqual(["retype INT-3 Subtask"]);
+  });
+
+  it("makes a subtask moved back under the epic a task again, then gives it its parent", async () => {
+    const { epic, two, item } = await synced();
+    await af.updateItem(item("Task two").id, { parentId: item("Task one").id });
+    await engine().syncItem(item("Task two").id);
+    await af.updateItem(item("Task two").id, { parentId: item("Epic").id });
+    const report = await syncItemReport(item("Task two").id);
+
+    expect(report.errors).toEqual([]);
+    expect(jira.issues.get(two.id)).toMatchObject({ type: "Task", state: { parent: epic.id } });
+    expect(jira.calls.slice(1)).toEqual(["retype INT-3 Task", "update INT-3 parent"]);
+  });
+
+  it("makes a subtask moved to the top level a task", async () => {
+    const { two, item } = await synced();
+    await af.updateItem(item("Task two").id, { parentId: item("Task one").id });
+    await engine().syncItem(item("Task two").id);
+    await af.updateItem(item("Task two").id, { parentId: null });
+    await engine().syncItem(item("Task two").id);
+
+    expect(jira.issues.get(two.id)).toMatchObject({ type: "Task", state: { parent: null } });
+  });
+
+  it("says why, in plain words, when Jira has no place for it — and tries again next time", async () => {
+    const { one, two, item } = await synced();
+    await af.updateItem(item("Task two").id, { parentId: item("Task one").id });
+    await engine().syncItem(item("Task two").id);
+    // Task one has a subtask now, so it cannot become a subtask under another task.
+    const three = jira.add("INT-4", "Task", { title: "Task three", parent: null });
+    await engine().fullSync();
+    jira.calls = [];
+    await af.updateItem(item("Task one").id, { parentId: item("Task three").id });
+    const report = await syncItemReport(item("Task one").id);
+
+    expect(report.errors).toEqual([expect.stringMatching(/^INT-2: it has 1 item\(s\) under it, and a subtask cannot have any/)]);
+    expect(jira.issues.get(one.id)).toMatchObject({ type: "Task", state: { parent: jira.issues.get(one.id)!.state.parent } });
+    expect(jira.issues.get(one.id)!.state.parent).not.toBe(three.id);
+    expect(jira.calls).toEqual([]);
+    expect(af.linkRows.get(item("Task one").id)!.error).toMatch(/move them first/);
+
+    // Its subtask moved away first, the move goes through.
+    await af.updateItem(item("Task two").id, { parentId: item("Epic").id });
+    await engine().syncItem(item("Task two").id);
+    const again = await engine().fullSync();
+    expect(again.errors).toEqual([]);
+    expect(jira.issues.get(one.id)).toMatchObject({ type: "Subtask", state: { parent: three.id } });
+    expect(jira.issues.get(two.id)!.type).toBe("Task");
+  });
+
+  it("refuses a move under a subtask, which Jira has no level for", async () => {
+    const { item } = await synced();
+    await af.updateItem(item("Task two").id, { parentId: item("Task one").id });
+    await engine().syncItem(item("Task two").id);
+    const sub = af.add("Below a subtask", { parentId: item("Task one").id });
+    await engine().syncItem(sub.id);
+    await af.updateItem(sub.id, { parentId: item("Task two").id });
+    const report = await syncItemReport(sub.id);
+
+    expect(report.errors).toEqual([expect.stringMatching(/nothing below a subtask/)]);
   });
 });

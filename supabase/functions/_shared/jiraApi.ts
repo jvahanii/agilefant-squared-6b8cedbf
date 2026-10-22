@@ -82,6 +82,7 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
   findPointsField(): Promise<string | null>;
   registerWebhook(url: string): Promise<string>;
   removeWebhook(self: string): Promise<void>;
+  changeType(id: string, type: string, parent: string | null): Promise<void>;
 } {
   const call = jiraRequester(config, fetcher);
   const fields = ['summary', 'description', 'status', 'issuetype', 'parent', 'updated', ...(config.pointsField ? [config.pointsField] : [])];
@@ -137,7 +138,55 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     return values;
   };
 
+  // The project's issue types, read once: a move names its target type by id.
+  let issueTypes: Promise<Array<{ id: string; name: string }>> | null = null;
+  const typeId = async (name: string) => {
+    issueTypes ??= call<{ issueTypes: Array<{ id: string; name: string }> }>(
+      `/rest/api/3/project/${encodeURIComponent(config.projectKey)}`,
+    ).then((p) => p.issueTypes);
+    const found = (await issueTypes).find((t) => t.name === name);
+    if (!found) throw new Error(`the project has no issue type "${name}"`);
+    return found.id;
+  };
+
   return {
+    /**
+     * Jira's bulk move, for one issue: the only way to turn a task into a
+     * subtask or back. It runs as a task, which is waited for.
+     */
+    async changeType(id, type, parent) {
+      // Jira takes the parent in the target only for a subtask; any other is given one by an edit after.
+      const target = [config.projectKey, await typeId(type), ...(type === 'Subtask' && parent ? [parent] : [])].join(',');
+      const { taskId } = await call<{ taskId: string }>('/rest/api/3/bulk/issues/move', {
+        method: 'POST',
+        body: {
+          sendBulkNotification: false,
+          targetToSourcesMapping: {
+            [target]: {
+              issueIdsOrKeys: [id],
+              inferFieldDefaults: true,
+              inferStatusDefaults: true,
+              inferClassificationDefaults: true,
+              inferSubtaskTypeDefault: true,
+            },
+          },
+        },
+      });
+      for (let attempt = 0; attempt < 30; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        const progress = await call<{ status: string; failedAccessibleIssues?: Record<string, string[]> }>(
+          `/rest/api/3/bulk/queue/${taskId}`,
+        );
+        const failed = Object.values(progress.failedAccessibleIssues ?? {}).flat();
+        if (failed.length > 0) throw new Error(`Jira could not make it a ${type}: ${failed.join('; ')}`);
+        if (progress.status === 'COMPLETE') return;
+        if (['FAILED', 'CANCELLED', 'DEAD'].includes(progress.status)) {
+          throw new Error(`Jira could not make it a ${type} (move ${progress.status.toLowerCase()})`);
+        }
+      }
+      throw new Error(`Jira did not finish making it a ${type} in time`);
+    },
+
     async listIssues() {
       const out: JiraIssue[] = [];
       let nextPageToken: string | undefined;

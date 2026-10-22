@@ -14,6 +14,7 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
+  jiraTypeUnder,
   normalizeText,
   reconcile,
   toSummary,
@@ -39,6 +40,11 @@ export interface JiraPort {
   /** Give the issue these fields of `state`: the status by a transition, the rest by an edit. */
   updateIssue(id: string, fields: SyncedField[], state: SyncState): Promise<void>;
   deleteIssue(id: string): Promise<void>;
+  /**
+   * Make the issue of another type, under this parent (null for none) — Jira's
+   * move, the only way a task becomes a subtask or back.
+   */
+  changeType(id: string, type: string, parent: string | null): Promise<void>;
 }
 
 export interface AgilefantItem {
@@ -269,24 +275,68 @@ export class JiraSync {
     const { state, toAgilefant, toJira } = reconcile(link.agreed, mine, issue.state, agilefantChangedAt, jiraChangedAt);
     let error: string | null = null;
 
-    if (toJira.length > 0) {
+    let jiraType = issue.type;
+    let retyped = false;
+    let fieldsForJira = toJira;
+    // A new parent may need a new issue type: Jira's move, before the edit.
+    if (toJira.includes('parent')) {
       try {
-        await this.jira.updateIssue(issue.id, toJira, state);
+        const moved = await this.retypeForParent(issue, state.parent);
+        if (moved) {
+          jiraType = moved.type;
+          retyped = true;
+          // A move to a subtask sets the parent itself.
+          if (moved.parentSet) fieldsForJira = toJira.filter((f) => f !== 'parent');
+        }
+      } catch (e) {
+        error = `${issue.key}: ${message(e)}`;
+        this.report.errors.push(error);
+        // Tried again next time, as a refused edit is.
+        state.parent = link.agreed?.parent ?? issue.state.parent;
+        fieldsForJira = toJira.filter((f) => f !== 'parent');
+      }
+    }
+    if (fieldsForJira.length > 0) {
+      try {
+        await this.jira.updateIssue(issue.id, fieldsForJira, state);
         this.report.updatedInJira += 1;
       } catch (e) {
         error = `${issue.key}: ${message(e)}`;
         this.report.errors.push(error);
         // What could not be sent stays as Jira has it, so it is tried again next time.
-        for (const field of toJira) (state as Record<SyncedField, unknown>)[field] = link.agreed?.[field] ?? issue.state[field];
+        for (const field of fieldsForJira) (state as Record<SyncedField, unknown>)[field] = link.agreed?.[field] ?? issue.state[field];
       }
+    } else if (retyped) {
+      this.report.updatedInJira += 1;
     }
     if (toAgilefant.length > 0) {
       await this.agilefant.updateItem(item.id, this.itemFields(toAgilefant, state, item));
       this.report.updatedInAgilefant += 1;
     }
-    const next: Link = { ...link, agreed: state, error };
+    const next: Link = { ...link, jiraType, agreed: state, error };
     this.remember(next);
     await this.agilefant.saveLink(next);
+  }
+
+  /**
+   * Change the issue's type when its new parent asks for another, and say what
+   * was done; null when the type can stay. Throws, with words a person can act
+   * on, where Jira has no place for the issue there.
+   */
+  private async retypeForParent(issue: JiraIssue, parent: string | null) {
+    const parentType = parent ? this.linksByIssue.get(parent)?.jiraType ?? null : null;
+    const wanted = jiraTypeUnder(parentType, issue.type);
+    if (!wanted) throw new Error('Jira has nothing below a subtask, so it cannot go there');
+    if (wanted === issue.type) return null;
+    const children = [...this.linksByIssue.values()].filter((l) => l.agreed?.parent === issue.id);
+    if (children.length > 0 && wanted === 'Subtask') {
+      throw new Error(`it has ${children.length} item(s) under it, and a subtask cannot have any — move them first`);
+    }
+    if (children.length > 0 && issue.type === 'Epic') {
+      throw new Error(`it is an epic with ${children.length} item(s) under it — move them first`);
+    }
+    await this.jira.changeType(issue.id, wanted, parent);
+    return { type: wanted, parentSet: wanted === 'Subtask' };
   }
 
   /** The Agilefant values for these fields of a state. */

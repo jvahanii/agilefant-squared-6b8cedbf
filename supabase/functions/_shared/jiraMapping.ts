@@ -195,6 +195,21 @@ export function jiraTypeForNewItem(parentType: string | null | undefined): strin
   return null;
 }
 
+/**
+ * The issue type an issue must have to sit under this parent, given the type
+ * it has now. Agilefant has no types, so a move in its hierarchy can ask for
+ * something Jira only allows of another type: a task under a task must be a
+ * subtask, a subtask at the top level a task. Null where Jira has no place
+ * for it at all — under a subtask.
+ */
+export function jiraTypeUnder(parentType: string | null | undefined, currentType: string): string | null {
+  const standard = (type: string) => type === 'Task' || type === 'Story' || type === 'Bug';
+  if (!parentType) return currentType === 'Subtask' ? 'Task' : currentType;
+  if (parentType === 'Epic') return standard(currentType) ? currentType : 'Task';
+  if (standard(parentType)) return 'Subtask';
+  return null;
+}
+
 // ─── Deciding ────────────────────────────────────────────────────────────────
 
 /** Two states equal, field by field. */
