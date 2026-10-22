@@ -609,6 +609,173 @@ export type Database = {
           },
         ]
       }
+      jira_connections: {
+        Row: {
+          backlog_id: string
+          base_url: string
+          created_at: string
+          created_by: string | null
+          drain_until: string | null
+          email: string
+          enabled: boolean
+          function_url: string | null
+          last_error: string | null
+          last_synced_at: string | null
+          organization_id: string
+          points_field: string | null
+          project_id: string | null
+          project_key: string
+          tree_id: string
+          updated_at: string
+          webhook_secret: string
+          webhook_url: string | null
+        }
+        Insert: {
+          backlog_id: string
+          base_url: string
+          created_at?: string
+          created_by?: string | null
+          drain_until?: string | null
+          email: string
+          enabled?: boolean
+          function_url?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          organization_id: string
+          points_field?: string | null
+          project_id?: string | null
+          project_key: string
+          tree_id: string
+          updated_at?: string
+          webhook_secret?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          backlog_id?: string
+          base_url?: string
+          created_at?: string
+          created_by?: string | null
+          drain_until?: string | null
+          email?: string
+          enabled?: boolean
+          function_url?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          organization_id?: string
+          points_field?: string | null
+          project_id?: string | null
+          project_key?: string
+          tree_id?: string
+          updated_at?: string
+          webhook_secret?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jira_connections_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jira_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jira_connections_tree_id_fkey"
+            columns: ["tree_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_trees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jira_issue_links: {
+        Row: {
+          agreed: Json | null
+          jira_issue_id: string
+          jira_key: string
+          jira_type: string
+          last_error: string | null
+          organization_id: string
+          synced_at: string
+          work_item_id: string
+        }
+        Insert: {
+          agreed?: Json | null
+          jira_issue_id: string
+          jira_key: string
+          jira_type: string
+          last_error?: string | null
+          organization_id: string
+          synced_at?: string
+          work_item_id: string
+        }
+        Update: {
+          agreed?: Json | null
+          jira_issue_id?: string
+          jira_key?: string
+          jira_type?: string
+          last_error?: string | null
+          organization_id?: string
+          synced_at?: string
+          work_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jira_issue_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jira_sync_queue: {
+        Row: {
+          attempts: number
+          done_at: string | null
+          error: string | null
+          id: number
+          kind: string
+          organization_id: string
+          queued_at: string
+          ref: string | null
+        }
+        Insert: {
+          attempts?: number
+          done_at?: string | null
+          error?: string | null
+          id?: number
+          kind: string
+          organization_id: string
+          queued_at?: string
+          ref?: string | null
+        }
+        Update: {
+          attempts?: number
+          done_at?: string | null
+          error?: string | null
+          id?: number
+          kind?: string
+          organization_id?: string
+          queued_at?: string
+          ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jira_sync_queue_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       label_assignments: {
         Row: {
           created_at: string
@@ -1940,6 +2107,23 @@ export type Database = {
         Args: { _user_id: string; _work_item_id: string }
         Returns: boolean
       }
+      jira_kick: { Args: never; Returns: undefined }
+      jira_list_items: {
+        Args: { _org: string }
+        Returns: {
+          description: string
+          id: string
+          parent_id: string
+          points: number
+          status: string
+          title: string
+        }[]
+      }
+      jira_try_lock: {
+        Args: { _org: string; _seconds?: number }
+        Returns: boolean
+      }
+      jira_unlock: { Args: { _org: string }; Returns: undefined }
       link_clerk_identity: { Args: never; Returns: string }
       lookup_org_by_slug: {
         Args: { _slug: string }
