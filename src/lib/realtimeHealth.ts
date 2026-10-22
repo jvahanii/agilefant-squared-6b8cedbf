@@ -27,6 +27,7 @@ import { useSnoozeStore } from '@/store/snoozeStore';
 import { useOrgSettingsStore, isTimeLoggingEnabled } from '@/store/orgSettingsStore';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
+import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 
 export type ChannelStatus = string;
@@ -184,6 +185,7 @@ async function runResync(full: boolean): Promise<void> {
     useLabelsStore.getState().loadLabels(orgIdList),
     usePublishedLinksStore.getState().load(),
     useScrambledItemsStore.getState().load(),
+    useJiraIssuesStore.getState().load(),
     useScrambledListsStore.getState().load(),
     useBacklogStatusesStore.getState().loadStatusesForOrgs(orgIdList),
     useSnoozeStore.getState().loadSnoozes(),

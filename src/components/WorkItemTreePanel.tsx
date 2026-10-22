@@ -83,6 +83,7 @@ import { observeWidthForRemeasure } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { LabelNames, ListHeadingLabels } from "./LabelNames";
+import { JiraIssueTag } from "./JiraIssueTag";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
@@ -1135,6 +1136,7 @@ function WorkItemNodeContent({
                 {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
               </span>
               {labelsVisible && <LabelNames labels={itemLabels} />}
+              <JiraIssueTag workItemId={workItemId} />
               {teams.length > 0 && (
                 <span className="ml-1 text-muted-foreground inline-flex items-center gap-0.5">
                   <DropdownMenu open={teamDropdownOpen} onOpenChange={(open) => {

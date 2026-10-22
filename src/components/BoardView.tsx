@@ -11,6 +11,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { IconizedTitle } from "@/components/IconizedTitle";
+import { JiraIssueTag } from "@/components/JiraIssueTag";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
@@ -1471,7 +1472,10 @@ function BoardCard({
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <div className="font-medium leading-snug break-words flex-1">{title}</div>
+                <div className="font-medium leading-snug break-words flex-1">
+                  {title}
+                  <JiraIssueTag workItemId={item.id} className="ml-1.5 font-normal" />
+                </div>
               )}
               {isMobile && (
                 <div

@@ -17,6 +17,7 @@ import { useSnoozeStore, startSnoozeExpiryWatcher } from '@/store/snoozeStore';
 import { AppShellSkeleton } from '@/components/AppShellSkeleton';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
+import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 
 const Index = () => {
@@ -116,6 +117,8 @@ const Index = () => {
     // Which item names are scrambled, and by whom — and which lists.
     useScrambledItemsStore.getState().load();
     useScrambledListsStore.getState().load();
+    // Which items are synced with Jira, as which issue.
+    useJiraIssuesStore.getState().load();
     // Load savings/income financials for the active + partner orgs.
     import('@/store/financialsStore').then(({ useFinancialsStore }) =>
       useFinancialsStore.getState().load([...orgIds]),

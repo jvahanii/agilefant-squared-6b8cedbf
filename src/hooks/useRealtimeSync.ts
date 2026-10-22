@@ -24,6 +24,7 @@ import {
 } from '@/lib/realtimeHealth';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
+import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 
 /**
@@ -557,6 +558,12 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'work_item_scrambles' },
         () => useScrambledItemsStore.getState().scheduleLoad(),
+      )
+      // Which Jira issue each item is: same shape, same reason.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jira_issue_links' },
+        () => useJiraIssuesStore.getState().scheduleLoad(),
       )
       // And scrambled lists.
       .on(
