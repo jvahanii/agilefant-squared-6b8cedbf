@@ -88,6 +88,18 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
     inList,
   });
 
+  /** The nearest list, the connected one or a parent, that has statuses of its own. */
+  const statusOwner = async (): Promise<string | null> => {
+    let id: string | null = conn.backlog_id;
+    for (let i = 0; id && i < 20; i++) {
+      const { count } = await admin.from('backlog_statuses').select('id', { count: 'exact', head: true }).eq('backlog_id', id);
+      if ((count ?? 0) > 0) return id;
+      const { data } = await admin.from('backlogs').select('parent_id').eq('id', id).maybeSingle();
+      id = (data?.parent_id as string | null) ?? null;
+    }
+    return null;
+  };
+
   return {
     async listItems() {
       const { data, error } = await admin.rpc('jira_list_items', { _org: org });
@@ -202,6 +214,30 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         { onConflict: 'work_item_id' },
       );
       if (error) throw error;
+    },
+
+    async statuses() {
+      const owner = await statusOwner();
+      if (!owner) return [];
+      const { data, error } = await admin.from('backlog_statuses').select('key, label').eq('backlog_id', owner);
+      if (error) throw error;
+      return (data ?? []) as { key: string; label: string }[];
+    },
+
+    async createStatus(label, category) {
+      // Added where the list's statuses live: the list itself or the parent it inherits them from.
+      const owner = (await statusOwner()) ?? conn.backlog_id;
+      const { data: rows, error } = await admin.from('backlog_statuses').select('key, rank').eq('backlog_id', owner);
+      if (error) throw error;
+      const base = label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'status';
+      const taken = new Set((rows ?? []).map((r: { key: string }) => r.key));
+      let key = `jira_${base}`;
+      for (let n = 2; taken.has(key); n++) key = `jira_${base}_${n}`;
+      const rank = Math.max(-1, ...(rows ?? []).map((r: { rank: number }) => r.rank)) + 1;
+      const color = category === 'done' ? '#22c55e' : category === 'indeterminate' ? '#f97316' : '#94a3b8';
+      const { error: insertError } = await admin.from('backlog_statuses').insert({ backlog_id: owner, key, label, color, rank });
+      if (insertError) throw insertError;
+      return key;
     },
 
     async dropLink(workItemId) {
