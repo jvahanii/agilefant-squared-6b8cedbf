@@ -89,7 +89,14 @@ export interface AgilefantPort {
   links(): Promise<Link[]>;
   saveLink(link: Link): Promise<void>;
   dropLink(workItemId: string): Promise<void>;
+  /** The connected list's statuses, as its items see them. */
+  statuses?(): Promise<{ key: string; label: string }[]>;
+  /** Add a status to the connected list's set; returns its key. */
+  createStatus?(label: string, category: string | null): Promise<string>;
 }
+
+const BUILT_IN_STATUSES = new Set(['not_started', 'in_progress', 'pending', 'blocked', 'done', 'no_go']);
+const MAPPED_JIRA_STATUSES = new Set(['to do', 'in progress', 'in review', 'done']);
 
 export interface SyncReport {
   createdInAgilefant: number;
@@ -120,6 +127,7 @@ export class JiraSync {
   private linksByItem = new Map<string, Link>();
   private linksByIssue = new Map<string, Link>();
   private loaded = false;
+  private statuses: { key: string; label: string }[] = [];
   readonly report = emptyReport();
 
   constructor(
@@ -130,7 +138,38 @@ export class JiraSync {
   private async loadLinks() {
     if (this.loaded) return;
     for (const link of await this.agilefant.links()) this.remember(link);
+    this.statuses = (await this.agilefant.statuses?.()) ?? [];
     this.loaded = true;
+  }
+
+  /** The Jira status an item's status stands for: a list's own status by its name. */
+  private toJiraStatus(key: string): string {
+    if (!BUILT_IN_STATUSES.has(key)) {
+      const own = this.statuses.find((s) => s.key === key);
+      if (own) return own.label;
+    }
+    return jiraStatusFor(key);
+  }
+
+  /**
+   * The Agilefant status for a Jira status. One Agilefant does not have is
+   * added to the list's statuses under Jira's name.
+   */
+  private async toAgilefantStatus(jiraStatus: string, category: string | null, current: string | null | undefined): Promise<string> {
+    if (current && this.toJiraStatus(current) === jiraStatus) return current;
+    const name = jiraStatus.trim().toLowerCase();
+    if (MAPPED_JIRA_STATUSES.has(name)) return agilefantStatusFor(jiraStatus, category, current);
+    const own = this.statuses.find((s) => s.label.trim().toLowerCase() === name);
+    if (own) return own.key;
+    if (!this.agilefant.createStatus) return agilefantStatusFor(jiraStatus, category, current);
+    try {
+      const key = await this.agilefant.createStatus(jiraStatus.trim(), category);
+      this.statuses.push({ key, label: jiraStatus.trim() });
+      return key;
+    } catch (e) {
+      this.report.errors.push(`status "${jiraStatus}": ${message(e)}`);
+      return agilefantStatusFor(jiraStatus, category, current);
+    }
   }
 
   private remember(link: Link) {
@@ -149,7 +188,7 @@ export class JiraSync {
     return {
       title: toSummary(item.title),
       description: normalizeText(item.description),
-      status: jiraStatusFor(item.status),
+      status: this.toJiraStatus(item.status),
       points: item.points ?? null,
       parent: item.parentId ? this.linksByItem.get(item.parentId)?.jiraId ?? null : null,
     };
@@ -324,7 +363,7 @@ export class JiraSync {
       this.report.updatedInJira += 1;
     }
     if (toAgilefant.length > 0) {
-      await this.agilefant.updateItem(item.id, this.itemFields(toAgilefant, state, item));
+      await this.agilefant.updateItem(item.id, await this.itemFields(toAgilefant, state, item, issue.statusCategory));
       this.report.updatedInAgilefant += 1;
     }
     const next: Link = { ...link, jiraType, agreed: state, error };
@@ -413,13 +452,13 @@ export class JiraSync {
   }
 
   /** The Agilefant values for these fields of a state. */
-  private itemFields(fields: SyncedField[], state: SyncState, current: AgilefantItem | null): ItemFields {
+  private async itemFields(fields: SyncedField[], state: SyncState, current: AgilefantItem | null, category: string | null): Promise<ItemFields> {
     const out: ItemFields = {};
     for (const field of fields) {
       if (field === 'title') out.title = state.title;
       if (field === 'description') out.description = state.description;
       if (field === 'points') out.points = state.points;
-      if (field === 'status') out.status = agilefantStatusFor(state.status, null, current?.status);
+      if (field === 'status') out.status = await this.toAgilefantStatus(state.status, category, current?.status);
       if (field === 'parent') out.parentId = state.parent ? this.linksByIssue.get(state.parent)?.workItemId ?? null : null;
     }
     return out;
@@ -494,7 +533,7 @@ export class JiraSync {
     const workItemId = await this.agilefant.createItem({
       title: issue.state.title,
       description: issue.state.description,
-      status: agilefantStatusFor(issue.state.status, issue.statusCategory, null),
+      status: await this.toAgilefantStatus(issue.state.status, issue.statusCategory, null),
       points: issue.state.points,
       parentId,
     });
