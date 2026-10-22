@@ -25,3 +25,7 @@ verify_jwt = false
 # requireAppUser inside.
 [functions.jira-sync]
 verify_jwt = false
+
+# Checks the caller with requireAppUser inside.
+[functions.jira-diagnose]
+verify_jwt = false
