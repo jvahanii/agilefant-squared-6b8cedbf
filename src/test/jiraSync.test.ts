@@ -256,6 +256,20 @@ class FakeAgilefant implements AgilefantPort {
   async dropLink(workItemId: string) {
     this.linkRows.delete(workItemId);
   }
+  statusRows = [
+    { key: "not_started", label: "Not Started" },
+    { key: "in_progress", label: "In Progress" },
+    { key: "done", label: "Done" },
+  ];
+  async statuses() {
+    return [...this.statusRows];
+  }
+  async createStatus(label: string) {
+    const key = `jira_${label.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+    this.statusRows.push({ key, label });
+    this.writes.push(`status ${label}`);
+    return key;
+  }
 }
 
 let jira: FakeJira;
@@ -631,5 +645,24 @@ describe("Jira's refusals, in words", () => {
   it("reads the bulk move's objects as well as plain messages", () => {
     const body = JSON.stringify({ errors: { "0": { message: "Subtask needs a parent" } }, errorMessages: ["Not allowed"] });
     expect(new JiraError(400, body).message).toBe(`Jira answered 400: Not allowed; 0: {"message":"Subtask needs a parent"}`);
+  });
+});
+
+describe("a Jira status Agilefant does not have", () => {
+  it("is added to the list's statuses and given to the item", async () => {
+    jira.add("INT-7", "Epic", { title: "Waiting", status: "Waiting for customer" });
+    await engine().fullSync();
+    expect(af.statusRows.at(-1)).toEqual({ key: "jira_waiting_for_customer", label: "Waiting for customer" });
+    expect(af.byTitle("Waiting")!.status).toBe("jira_waiting_for_customer");
+  });
+
+  it("is added once, and goes back to Jira under its own name", async () => {
+    jira.add("INT-7", "Epic", { title: "A", status: "QA" });
+    jira.add("INT-8", "Epic", { title: "B", status: "QA" });
+    await engine().fullSync();
+    expect(af.writes.filter((w) => w.startsWith("status"))).toEqual(["status QA"]);
+    const mine = af.add("Mine", { status: "jira_qa" });
+    await engine().syncItem(mine.id);
+    expect(jira.byTitle("Mine")!.state.status).toBe("QA");
   });
 });
