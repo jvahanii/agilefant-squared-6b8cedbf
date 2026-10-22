@@ -220,13 +220,24 @@ async function withLock<T>(admin: Admin, org: string, waitMs: number, work: () =
     if (error) throw error;
     if (data === true) break;
     if (Date.now() >= until) return 'busy';
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    // Short steps: a change queued while another drain runs starts as soon as it ends.
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
+  let result: T;
   try {
-    return await work();
+    result = await work();
   } finally {
     await admin.rpc('jira_unlock', { _org: org });
   }
+  // Something queued between the drain's last read and the unlock would otherwise wait for the minute job.
+  const { count } = await admin
+    .from('jira_sync_queue')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', org)
+    .is('done_at', null)
+    .lt('attempts', 3);
+  if ((count ?? 0) > 0) await withLock(admin, org, 0, work);
+  return result;
 }
 
 /** Work through what is queued for one organization, oldest first, each item once. */
