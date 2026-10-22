@@ -7,8 +7,12 @@ let loadInFlight = false;
 /** Whether the realtime socket reports itself open, and reopen attempts. */
 let socketConnected = true;
 const connectSocket = vi.fn();
+const removeChannel = vi.fn(async (_channel: unknown) => 'ok');
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { realtime: { isConnected: () => socketConnected, connect: () => connectSocket() } },
+  supabase: {
+    realtime: { isConnected: () => socketConnected, connect: () => connectSocket() },
+    removeChannel: (channel: unknown) => removeChannel(channel),
+  },
 }));
 vi.mock('@/store/appStore', () => ({
   useAppStore: { getState: () => ({ loadFromSupabase, backlogTrees: {} }) },
@@ -53,6 +57,8 @@ import {
   __resetRealtimeHealth,
   isRealtimeHealthy,
   noteVisibilityChange,
+  subscribeWithHealth,
+  SUBSCRIBE_RETRY_MAX_MS,
   RESYNC_MIN_INTERVAL_MS,
   HIDDEN_RESYNC_MS,
   HIDDEN_FULL_RESYNC_MS,
@@ -250,5 +256,142 @@ describe('coming back to a hidden tab', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(loadFromSupabase).not.toHaveBeenCalled();
     expect(connectSocket).not.toHaveBeenCalled();
+  });
+});
+describe('subscribeWithHealth', () => {
+  // After the socket was closed on agilefant.org, every retry called
+  // subscribe() again on the same channel, and realtime-js threw "tried to
+  // join multiple times" for each one: it joins an instance only once.
+  type Status = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED';
+  type FakeChannel = {
+    topic: string;
+    subscribeCalls: number;
+    emit: (status: Status) => void;
+    subscribe: (callback: (status: Status) => void) => FakeChannel;
+  };
+
+  let built: FakeChannel[];
+  let visibility: DocumentVisibilityState;
+
+  function build(): FakeChannel {
+    let callback: ((status: Status) => void) | null = null;
+    const channel: FakeChannel = {
+      topic: 'realtime:entity-realtime-org-1',
+      subscribeCalls: 0,
+      emit: (status) => callback?.(status),
+      subscribe(cb) {
+        channel.subscribeCalls += 1;
+        if (channel.subscribeCalls > 1) {
+          throw new Error("tried to join multiple times. 'join' can only be called a single time per channel instance");
+        }
+        callback = cb;
+        return channel;
+      },
+    };
+    built.push(channel);
+    return channel;
+  }
+
+  const start = () =>
+    subscribeWithHealth(build as unknown as Parameters<typeof subscribeWithHealth>[0]);
+  const latest = () => built[built.length - 1];
+  const setVisibility = (state: DocumentVisibilityState) => {
+    visibility = state;
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    loadFromSupabase.mockClear();
+    loadLabels.mockClear();
+    loadInFlight = false;
+    __resetRealtimeHealth();
+    built = [];
+    visibility = 'visible';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
+    // Like realtime-js, removing a channel that cannot reach the server closes it at once.
+    removeChannel.mockReset();
+    removeChannel.mockImplementation(async (channel) => {
+      (channel as FakeChannel).emit('CLOSED');
+      return 'ok';
+    });
+  });
+
+  afterEach(() => {
+    delete (document as unknown as { visibilityState?: string }).visibilityState;
+    vi.useRealTimers();
+  });
+
+  it('replaces a closed channel with a fresh one instead of subscribing it again', async () => {
+    start();
+    latest().emit('SUBSCRIBED');
+
+    for (let round = 0; round < 3; round += 1) {
+      latest().emit('CLOSED');
+      await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+    }
+
+    expect(built).toHaveLength(4);
+    for (const channel of built) expect(channel.subscribeCalls).toBe(1);
+    expect(removeChannel.mock.calls.map(([channel]) => channel)).toEqual(built.slice(0, 3));
+  });
+
+  it('catches up once the replacement channel subscribes', async () => {
+    start();
+    latest().emit('SUBSCRIBED');
+    latest().emit('CLOSED');
+    expect(isRealtimeHealthy()).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+    latest().emit('SUBSCRIBED');
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(isRealtimeHealthy()).toBe(true);
+    expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves an errored or timed-out channel for realtime-js to rejoin', async () => {
+    start();
+    latest().emit('SUBSCRIBED');
+    latest().emit('CHANNEL_ERROR');
+    latest().emit('TIMED_OUT');
+    await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+
+    expect(built).toHaveLength(1);
+    expect(built[0].subscribeCalls).toBe(1);
+    expect(removeChannel).not.toHaveBeenCalled();
+    expect(isRealtimeHealthy()).toBe(false);
+
+    // realtime-js rejoins it on the same instance; that is the recovery.
+    built[0].emit('SUBSCRIBED');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(isRealtimeHealthy()).toBe(true);
+    expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the tab to be visible before replacing a channel closed while hidden', async () => {
+    start();
+    latest().emit('SUBSCRIBED');
+    setVisibility('hidden');
+    latest().emit('CLOSED');
+    await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+    expect(built).toHaveLength(1);
+
+    setVisibility('visible');
+    await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+    expect(built).toHaveLength(2);
+    expect(built[1].subscribeCalls).toBe(1);
+  });
+
+  it('stops replacing the channel once it is removed', async () => {
+    const remove = start();
+    latest().emit('SUBSCRIBED');
+    latest().emit('CLOSED');
+    remove();
+    await vi.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_MAX_MS * 1.25);
+
+    expect(built).toHaveLength(1);
+    expect(removeChannel).toHaveBeenCalledTimes(1);
+    expect(loadFromSupabase).not.toHaveBeenCalled();
   });
 });

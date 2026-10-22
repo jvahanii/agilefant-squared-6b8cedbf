@@ -11,17 +11,7 @@ import { useBacklogStatusesStore } from '@/store/backlogStatusesStore';
 import { useSnoozeStore } from '@/store/snoozeStore';
 import { useFinancialsStore } from '@/store/financialsStore';
 import { useTargetsStore } from '@/store/targetsStore';
-import {
-  ensureSocketConnected,
-  forgetChannel,
-  getOutageDurationMs,
-  markChannelIntentionalClose,
-  markChannelStatus,
-  noteVisibilityChange,
-  requestResync,
-  subscribeRetryDelayMs,
-  FULL_RESYNC_OUTAGE_MS,
-} from '@/lib/realtimeHealth';
+import { noteVisibilityChange, subscribeWithHealth } from '@/lib/realtimeHealth';
 import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
@@ -116,53 +106,12 @@ export function useRealtimeSync() {
       }
     }
 
-    // All channels are tracked here so the cleanup function can remove them
-    // regardless of whether they were created synchronously or asynchronously.
-    const channels: ReturnType<typeof supabase.channel>[] = [];
+    // Every subscription is tracked here so the cleanup function can remove it
+    // regardless of whether it was created synchronously or asynchronously.
+    // Each one is given a builder rather than a channel: a channel that closes
+    // is replaced by a fresh one, since realtime-js joins an instance only once.
+    const unsubscribers: Array<() => void> = [];
     let destroyed = false;
-    const retryTimers = new Set<ReturnType<typeof setTimeout>>();
-
-    /**
-     * Subscribe a channel while observing its status so a dropped socket is
-     * detected, retried with capped backoff, and followed by a catch-up fetch
-     * of anything broadcast while we were disconnected.
-     */
-    function subscribeWithHealth(channel: ReturnType<typeof supabase.channel>) {
-      let attempt = 0;
-      const topic = channel.topic;
-      const attach = () => {
-        if (destroyed) return;
-        channel.subscribe((status) => {
-          if (destroyed) return;
-          const outage = getOutageDurationMs();
-          const recovered = markChannelStatus(topic, status);
-          if (status === 'SUBSCRIBED') {
-            attempt = 0;
-            // Only a channel that genuinely dropped needs a catch-up; a long
-            // outage additionally refreshes the slow-moving satellite stores.
-            if (recovered) {
-              requestResync('resubscribed', { full: outage >= FULL_RESYNC_OUTAGE_MS });
-            }
-            return;
-          }
-          if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
-          // Never retry while hidden — avoids battery drain and request storms.
-          if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-          const delay = subscribeRetryDelayMs(attempt);
-          attempt += 1;
-          const timer = setTimeout(() => {
-            retryTimers.delete(timer);
-            if (destroyed) return;
-            ensureSocketConnected();
-            attach();
-          }, delay);
-          retryTimers.add(timer);
-        });
-      };
-      attach();
-      return channel;
-    }
-
 
     /**
      * Attaches `labels` and `label_assignments` Postgres CDC listeners to the
@@ -203,10 +152,10 @@ export function useRealtimeSync() {
         );
     }
 
-    // Helper: subscribe a channel that monitors work_items, backlogs, and
+    // Helper: build a channel that monitors work_items, backlogs, and
     // work_item_hyperlinks for a partner org.  A JS-side filter ensures we only
     // apply changes that reference trees the active org can actually access.
-    function subscribePartnerOrg(orgId: string) {
+    function buildPartnerChannel(orgId: string) {
       const channel = supabase
         .channel(`entity-realtime-${activeOrgId}-partner-${orgId}`)
         .on(
@@ -373,243 +322,249 @@ export function useRealtimeSync() {
             applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
           },
         );
-      subscribeWithHealth(addLabelHandlers(channel, orgId));
-      channels.push(channel);
+      return addLabelHandlers(channel, orgId);
+    }
+
+    function subscribePartnerOrg(orgId: string) {
+      unsubscribers.push(subscribeWithHealth(() => buildPartnerChannel(orgId)));
     }
 
     // Own-org channel (includes backlog_trees; partner orgs only ever add
     // work_items / backlogs to shared trees, never new backlog_trees).
-    const ownChannel = supabase
-      .channel(`entity-realtime-${activeOrgId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_items',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeWorkItem(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'backlogs',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeBacklog(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'backlog_trees',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeBacklogTree(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_item_hyperlinks',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeHyperlink(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_item_backlog_ranks',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_item_board_ranks',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeWorkItemBoardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'time_entries',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_item_team_assignments',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeTeamAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'teams',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'work_item_financials',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'organization_settings',
-          filter: `organization_id=eq.${activeOrgId}`,
-        },
-        (payload) => {
-          applyRealtimeSettings(payload as any);
-        },
-      );
-    // Four more tables ride on this same channel rather than opening their own.
-    // A channel takes any number of bindings, and each extra channel costs
-    // Realtime a subscription row plus a publication re-check every time it
-    // subscribes — 100k of those checks were the biggest single consumer of
-    // database time. None of these four needs a filter: RLS already limits
-    // what the subscriber may see.
-    ownChannel
-      // Backlog statuses: RLS restricts to accessible backlogs.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'backlog_statuses' },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const backlogId = row?.backlog_id as string | undefined;
-          if (!backlogId) return;
-          const accessible = useAppStore.getState().backlogs;
-          if (!accessible[backlogId]) return;
-          applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      )
-      // Public links: any change reloads which trees and backlogs are
-      // published. The event's contents are deliberately ignored -- on a table
-      // with RLS a DELETE carries only the primary key, which here is the
-      // token, so it could not say which marker to drop. The reload asks the
-      // database instead, debounced so a cascade costs one query.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'published_links' },
-        () => usePublishedLinksStore.getState().scheduleLoad(),
-      )
-      // Scrambled item names: same shape, same reason.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'work_item_scrambles' },
-        () => useScrambledItemsStore.getState().scheduleLoad(),
-      )
-      // Which Jira issue each item is: same shape, same reason.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jira_issue_links' },
-        () => useJiraIssuesStore.getState().scheduleLoad(),
-      )
-      // And scrambled lists.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'backlog_scrambles' },
-        () => useScrambledListsStore.getState().scheduleLoad(),
-      )
-      // Per-tree yearly financial targets, filtered to accessible trees here.
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tree_financial_targets' },
-        (payload) => {
-          const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-          const treeId = row?.tree_id as string | undefined;
-          if (!treeId) return;
-          const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
-          if (!accessible.has(treeId)) return;
-          applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-        },
-      );
+    function buildOwnChannel() {
+      const ownChannel = supabase
+        .channel(`entity-realtime-${activeOrgId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_items',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeWorkItem(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'backlogs',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeBacklog(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'backlog_trees',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeBacklogTree(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_hyperlinks',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeHyperlink(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_backlog_ranks',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_board_ranks',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeWorkItemBoardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'time_entries',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_team_assignments',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeTeamAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'teams',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'work_item_financials',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'organization_settings',
+            filter: `organization_id=eq.${activeOrgId}`,
+          },
+          (payload) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            applyRealtimeSettings(payload as any);
+          },
+        );
+      // Four more tables ride on this same channel rather than opening their own.
+      // A channel takes any number of bindings, and each extra channel costs
+      // Realtime a subscription row plus a publication re-check every time it
+      // subscribes — 100k of those checks were the biggest single consumer of
+      // database time. None of these four needs a filter: RLS already limits
+      // what the subscriber may see.
+      ownChannel
+        // Backlog statuses: RLS restricts to accessible backlogs.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'backlog_statuses' },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            const backlogId = row?.backlog_id as string | undefined;
+            if (!backlogId) return;
+            const accessible = useAppStore.getState().backlogs;
+            if (!accessible[backlogId]) return;
+            applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        )
+        // Public links: any change reloads which trees and backlogs are
+        // published. The event's contents are deliberately ignored -- on a table
+        // with RLS a DELETE carries only the primary key, which here is the
+        // token, so it could not say which marker to drop. The reload asks the
+        // database instead, debounced so a cascade costs one query.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'published_links' },
+          () => usePublishedLinksStore.getState().scheduleLoad(),
+        )
+        // Scrambled item names: same shape, same reason.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'work_item_scrambles' },
+          () => useScrambledItemsStore.getState().scheduleLoad(),
+        )
+        // Which Jira issue each item is: same shape, same reason.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'jira_issue_links' },
+          () => useJiraIssuesStore.getState().scheduleLoad(),
+        )
+        // And scrambled lists.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'backlog_scrambles' },
+          () => useScrambledListsStore.getState().scheduleLoad(),
+        )
+        // Per-tree yearly financial targets, filtered to accessible trees here.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'tree_financial_targets' },
+          (payload) => {
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+            const treeId = row?.tree_id as string | undefined;
+            if (!treeId) return;
+            const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
+            if (!accessible.has(treeId)) return;
+            applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+          },
+        );
+      return addLabelHandlers(ownChannel, activeOrgId);
+    }
 
-    subscribeWithHealth(addLabelHandlers(ownChannel, activeOrgId));
-    channels.push(ownChannel);
+    unsubscribers.push(subscribeWithHealth(buildOwnChannel));
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
     (async () => {
       const userId = await getCurrentUserId();
       if (!userId || destroyed) return;
-      const snoozeChannel = supabase
-        .channel(`work-item-snoozes-${userId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_snoozes',
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        );
-      subscribeWithHealth(snoozeChannel);
-      channels.push(snoozeChannel);
+      const buildSnoozeChannel = () =>
+        supabase
+          .channel(`work-item-snoozes-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'work_item_snoozes',
+              filter: `user_id=eq.${userId}`,
+            },
+            (payload) => {
+              const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
+              applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
+            },
+          );
+      unsubscribers.push(subscribeWithHealth(buildSnoozeChannel));
     })();
 
     // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
@@ -648,15 +603,7 @@ export function useRealtimeSync() {
 
     return () => {
       destroyed = true;
-      for (const timer of retryTimers) clearTimeout(timer);
-      retryTimers.clear();
-      for (const ch of channels) {
-        // Flag the teardown so the resulting CLOSED status isn't treated as an
-        // outage (which used to trigger a spurious full dataset refetch).
-        markChannelIntentionalClose(ch.topic);
-        supabase.removeChannel(ch);
-        forgetChannel(ch.topic);
-      }
+      for (const unsubscribe of unsubscribers) unsubscribe();
     };
     // applyRealtime* actions are stable Zustand references; omitting them is intentional.
     // partnerOrgsKey re-subscribes when an organization starts or stops sharing

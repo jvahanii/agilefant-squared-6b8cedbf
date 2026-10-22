@@ -274,6 +274,102 @@ export function noteVisibilityChange(state: DocumentVisibilityState | string, no
   requestResync('tab visible again', { full: away >= HIDDEN_FULL_RESYNC_MS });
 }
 
+type RealtimeChannel = ReturnType<typeof supabase.channel>;
+
+/**
+ * Subscribe a channel and keep it subscribed, watching its status so a dropped
+ * socket is detected and followed by a catch-up fetch of anything broadcast
+ * while we were disconnected. Returns a function that removes it for good.
+ *
+ * A channel that errors or times out is rejoined by realtime-js itself — on
+ * its rejoin timer, and as soon as the socket reopens — so those statuses are
+ * only recorded. Calling subscribe() again on the same instance is never the
+ * fix: realtime-js allows one join per instance and throws "tried to join
+ * multiple times", which filled the console on every retry after a network
+ * drop. A CLOSED channel is different: realtime-js has dropped it and will
+ * not rejoin it, so it is removed and a fresh one built from `build`, with
+ * capped backoff. Health is keyed by topic, which the new instance shares, so
+ * its SUBSCRIBED counts as the recovery and brings the catch-up resync.
+ */
+export function subscribeWithHealth(build: () => RealtimeChannel): () => void {
+  let current: RealtimeChannel | null = build();
+  const topic = current.topic;
+  let attempt = 0;
+  let stopped = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let waitingForVisible: (() => void) | null = null;
+
+  const attach = (channel: RealtimeChannel) => {
+    channel.subscribe((status) => {
+      // A replaced instance still reports, not least the CLOSED its removal emits.
+      if (stopped || channel !== current) return;
+      const outage = getOutageDurationMs();
+      const recovered = markChannelStatus(topic, status);
+      if (status === 'SUBSCRIBED') {
+        attempt = 0;
+        // Only a channel that genuinely dropped needs a catch-up; a long
+        // outage additionally refreshes the slow-moving satellite stores.
+        if (recovered) {
+          requestResync('resubscribed', { full: outage >= FULL_RESYNC_OUTAGE_MS });
+        }
+        return;
+      }
+      if (status === 'CLOSED') scheduleRebuild();
+    });
+  };
+
+  const rebuild = () => {
+    const dead = current;
+    current = null;
+    // Remove the dead instance before building its replacement: realtime-js
+    // hands back an existing channel with the same topic instead of a new one,
+    // and forgets channels by topic, so removing it afterwards would drop the
+    // replacement too.
+    if (dead) void supabase.removeChannel(dead);
+    current = build();
+    attach(current);
+  };
+
+  const scheduleRebuild = () => {
+    if (stopped || retryTimer || waitingForVisible) return;
+    // Never retry while hidden — avoids battery drain and request storms. The
+    // rebuild waits for the tab to come back instead.
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      const onVisible = () => {
+        if (document.visibilityState !== 'visible') return;
+        document.removeEventListener('visibilitychange', onVisible);
+        waitingForVisible = null;
+        scheduleRebuild();
+      };
+      waitingForVisible = onVisible;
+      document.addEventListener('visibilitychange', onVisible);
+      return;
+    }
+    const delay = subscribeRetryDelayMs(attempt);
+    attempt += 1;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      if (!stopped) rebuild();
+    }, delay);
+  };
+
+  attach(current);
+
+  return () => {
+    stopped = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = null;
+    if (waitingForVisible) document.removeEventListener('visibilitychange', waitingForVisible);
+    waitingForVisible = null;
+    // Flag the teardown so the resulting CLOSED status isn't treated as an
+    // outage (which used to trigger a spurious full dataset refetch).
+    markChannelIntentionalClose(topic);
+    if (current) void supabase.removeChannel(current);
+    current = null;
+    forgetChannel(topic);
+  };
+}
+
 /** Test/teardown helper. */
 export function __resetRealtimeHealth(): void {
   channelHealth.clear();
