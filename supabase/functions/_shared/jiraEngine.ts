@@ -14,8 +14,10 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
+  Levels,
   normalizeText,
   planMove,
+  type IssueTypeLevel,
   reconcile,
   SYNCED_FIELDS,
   toSummary,
@@ -48,6 +50,8 @@ export interface JiraPort {
   changeType(id: string, type: string, parent: string | null): Promise<void>;
   /** The project's status by this name, added to its workflow when it has none; returns Jira's spelling. */
   ensureStatus?(name: string): Promise<string>;
+  /** The project's issue types and their levels; without it, Jira's three. */
+  issueTypes?(): Promise<IssueTypeLevel[]>;
 }
 
 export interface AgilefantItem {
@@ -394,6 +398,16 @@ export class JiraSync {
     await this.agilefant.saveLink(next);
   }
 
+  private levelsRead: Promise<Levels> | null = null;
+
+  /** The project's hierarchy levels, read once; Jira's three if they cannot be read. */
+  private levels(): Promise<Levels> {
+    this.levelsRead ??= (this.jira.issueTypes?.() ?? Promise.resolve(undefined))
+      .then((types) => new Levels(types && types.length > 0 ? types : undefined))
+      .catch(() => new Levels());
+    return this.levelsRead;
+  }
+
   /** Jira's hierarchy as the pairs know it: each issue's type and parent. */
   private jiraTree() {
     return new Map(
@@ -418,8 +432,10 @@ export class JiraSync {
   private async rehome(issue: JiraIssue, parent: string | null) {
     const tree = this.jiraTree();
     tree.set(issue.id, { type: issue.type, parent: issue.state.parent });
-    const plan = planMove(tree, issue.id, parent);
+    const levels = await this.levels();
+    const plan = planMove(tree, issue.id, parent, levels);
     if ('impossible' in plan) throw new Error(plan.impossible);
+    const lowest = (type: string) => levels.of(type) === levels.bottom;
     const { placements } = plan;
     if (placements.length === 1 && placements[0].type === issue.type) return null;
 
@@ -434,10 +450,11 @@ export class JiraSync {
       for (const p of placements) {
         const at = now.get(p.id)!;
         if (p.type === at.type) continue;
-        if (p.type === 'Subtask' && !(at.parent && retyped.has(at.parent))) continue;
-        if (at.type === 'Subtask') {
-          await this.jira.changeType(p.id, 'Task', null);
-          now.set(p.id, { type: 'Task', parent: null });
+        if (lowest(p.type) && !(at.parent && retyped.has(at.parent))) continue;
+        if (lowest(at.type)) {
+          const task = levels.defaultAt(0);
+          await this.jira.changeType(p.id, task, null);
+          now.set(p.id, { type: task, parent: null });
         } else if (at.parent) {
           await this.jira.updateIssue(p.id, ['parent'], stateFor(p.id, null));
           at.parent = null;
@@ -445,8 +462,8 @@ export class JiraSync {
       }
       for (const p of placements) {
         const at = now.get(p.id)!;
-        if (p.type === 'Subtask') {
-          if (at.type !== 'Subtask' || at.parent !== p.parent) await this.jira.changeType(p.id, 'Subtask', p.parent);
+        if (lowest(p.type)) {
+          if (at.type !== p.type || at.parent !== p.parent) await this.jira.changeType(p.id, p.type, p.parent);
           continue;
         }
         if (at.type !== p.type) await this.jira.changeType(p.id, p.type, null);
@@ -491,7 +508,7 @@ export class JiraSync {
     await this.prepareStatus(item.status);
     const state = this.stateOfItem(item);
     const parentLink = item.parentId ? this.linksByItem.get(item.parentId) : undefined;
-    const type = jiraTypeForNewItem(parentLink?.jiraType ?? null);
+    const type = jiraTypeForNewItem(parentLink?.jiraType ?? null, await this.levels());
     if (!type) {
       await this.createUnderSubtask(item, state);
       return;
@@ -512,9 +529,11 @@ export class JiraSync {
    * tree raised to hold it — or not made at all where it cannot fit.
    */
   private async createUnderSubtask(item: AgilefantItem, state: SyncState) {
+    const levels = await this.levels();
+    const task = levels.defaultAt(0);
     const tree = this.jiraTree();
-    tree.set('', { type: 'Task', parent: null });
-    const plan = planMove(tree, '', state.parent);
+    tree.set('', { type: task, parent: null });
+    const plan = planMove(tree, '', state.parent, levels);
     if ('impossible' in plan) {
       this.report.skipped.push(`"${item.title}": ${plan.impossible}`);
       return;
@@ -522,8 +541,8 @@ export class JiraSync {
     const alone: SyncState = { ...state, parent: null };
     let link: Link;
     try {
-      const created = await this.jira.createIssue('Task', alone);
-      link = { workItemId: item.id, jiraId: created.id, jiraKey: created.key, jiraType: 'Task', agreed: alone };
+      const created = await this.jira.createIssue(task, alone);
+      link = { workItemId: item.id, jiraId: created.id, jiraKey: created.key, jiraType: task, agreed: alone };
       this.remember(link);
       await this.agilefant.saveLink(link);
       this.report.createdInJira += 1;
@@ -531,7 +550,7 @@ export class JiraSync {
       this.report.errors.push(`"${item.title}": ${message(e)}`);
       return;
     }
-    const issue: JiraIssue = { id: link.jiraId, key: link.jiraKey, type: 'Task', state: alone, statusCategory: null, updatedAt: 0 };
+    const issue: JiraIssue = { id: link.jiraId, key: link.jiraKey, type: task, state: alone, statusCategory: null, updatedAt: 0 };
     let error: string | null = null;
     let after: JiraIssue | null = null;
     try {

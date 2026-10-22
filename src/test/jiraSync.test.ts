@@ -12,7 +12,9 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
-  jiraTypeUnder,
+  Levels,
+  DEFAULT_ISSUE_TYPES,
+  type IssueTypeLevel,
   normalizeText,
   reconcile,
   textToAdf,
@@ -98,21 +100,37 @@ describe("statuses", () => {
 
 describe("the issue type of a new item", () => {
   it("follows its parent: none an epic, under an epic a task, under a task a subtask, below that nothing", () => {
-    expect([null, "Epic", "Task", "Story", "Subtask"].map(jiraTypeForNewItem)).toEqual(["Epic", "Task", "Subtask", "Subtask", null]);
+    expect([null, "Epic", "Task", "Story", "Subtask"].map((parent) => jiraTypeForNewItem(parent))).toEqual(["Epic", "Task", "Subtask", "Subtask", null]);
   });
 });
 
-describe("the issue type after a move", () => {
-  it("is what Jira allows under the new parent: under a task a subtask, under an epic a task, at the top no subtask", () => {
-    expect(jiraTypeUnder("Task", "Task")).toBe("Subtask");
-    expect(jiraTypeUnder("Story", "Epic")).toBe("Subtask");
-    expect(jiraTypeUnder("Epic", "Story")).toBe("Story");
-    expect(jiraTypeUnder("Epic", "Subtask")).toBe("Task");
-    expect(jiraTypeUnder("Epic", "Epic")).toBe("Story");
-    expect(jiraTypeUnder(null, "Subtask")).toBe("Task");
-    expect(jiraTypeUnder(null, "Epic")).toBe("Epic");
-    expect(jiraTypeUnder(null, "Task")).toBe("Task");
-    expect(jiraTypeUnder("Subtask", "Task")).toBeNull();
+describe("the levels of Jira's hierarchy", () => {
+  it("are Jira's three where nothing is added above the epic", () => {
+    const levels = new Levels();
+    expect([levels.bottom, levels.top, levels.count]).toEqual([-1, 1, 3]);
+    expect(levels.describe()).toBe("Epic, Story/Task/Bug, Subtask");
+  });
+
+  it("are read from the project's types, levels above the epic included", () => {
+    const levels = new Levels([...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }, { name: "Theme", level: 3 }]);
+    expect(levels.count).toBe(5);
+    expect(levels.describe()).toBe("Theme, Initiative, Epic, Story/Task/Bug, Subtask");
+    expect(jiraTypeForNewItem("Theme", levels)).toBe("Initiative");
+    expect(jiraTypeForNewItem("Initiative", levels)).toBe("Epic");
+  });
+
+  it("name a type for a new level: an epic lowered a story, a subtask raised a task", () => {
+    const levels = new Levels();
+    expect(levels.typeAt(0, "Epic")).toBe("Story");
+    expect(levels.typeAt(0, "Subtask")).toBe("Task");
+    expect(levels.typeAt(-1, "Task")).toBe("Subtask");
+    expect(levels.typeAt(1, "Task")).toBe("Epic");
+    expect(levels.typeAt(0, "Bug")).toBe("Bug");
+  });
+
+  it("take a company-managed project's sub-task type by its own name", () => {
+    const levels = new Levels([{ name: "Epic", level: 1 }, { name: "Task", level: 0 }, { name: "Sub-task", level: -1 }]);
+    expect(jiraTypeForNewItem("Task", levels)).toBe("Sub-task");
   });
 });
 
@@ -142,6 +160,11 @@ describe("which side wins, field by field", () => {
 
 class FakeJira implements JiraPort {
   issues = new Map<string, JiraIssue>();
+  /** The project's issue types, as Jira lists them with their levels. */
+  types: IssueTypeLevel[] = DEFAULT_ISSUE_TYPES;
+  async issueTypes() {
+    return this.types;
+  }
   calls: string[] = [];
   failUpdates = false;
   private next = 100;
@@ -195,11 +218,11 @@ class FakeJira implements JiraPort {
   }
   async changeType(id: string, type: string, parent: string | null) {
     const issue = this.issues.get(id)!;
-    const target = type === "Subtask" ? parent : null;
+    const target = this.levelOf(type) === -1 ? parent : null;
     this.mustFit(type, target);
     // Nor may it change into a type its own children cannot sit under.
     for (const child of this.issues.values()) {
-      if (child.state.parent === id && jiraTypeUnder(type, child.type) !== child.type) {
+      if (child.state.parent === id && this.levelOf(child.type) !== this.levelOf(type) - 1) {
         throw new Error(`Jira answered 400: ${child.key} cannot be under a ${type}`);
       }
     }
@@ -216,9 +239,14 @@ class FakeJira implements JiraPort {
     this.calls.push(`status ${name}`);
     return name;
   }
+  private levelOf(type: string) {
+    return this.types.find((t) => t.name === type)?.level ?? 0;
+  }
+  /** As Jira checks: a child exactly one level below its parent, and nothing without a parent below a task. */
   private mustFit(type: string, parent: string | null) {
     const parentType = parent ? this.issues.get(parent)?.type : null;
-    if (jiraTypeUnder(parentType, type) !== type) throw new Error("Jira answered 400: pid: Issues with this Issue Type must be created in the same project as the parent.");
+    const fits = parentType ? this.levelOf(type) === this.levelOf(parentType) - 1 : this.levelOf(type) >= 0;
+    if (!fits) throw new Error("Jira answered 400: pid: Issues with this Issue Type must be created in the same project as the parent.");
   }
 }
 
@@ -544,7 +572,7 @@ describe("a move in Agilefant that Jira needs another issue type for", () => {
     await af.updateItem(sub.id, { parentId: item("Task two").id });
     const report = await syncItemReport(sub.id);
 
-    expect(report.errors).toEqual([expect.stringMatching(/Jira has three levels .* this would make 4/)]);
+    expect(report.errors).toEqual([expect.stringMatching(/Jira has 3 levels .* this would make 4/)]);
   });
 });
 
@@ -588,7 +616,7 @@ describe("an epic moved under another epic in Agilefant", () => {
     await af.updateItem(moved.id, { parentId: af.byTitle("Target epic")!.id });
     const report = await syncItemReport(moved.id);
 
-    expect(report.errors).toEqual([expect.stringMatching(/^INT-2: Jira has three levels .* this would make 4/)]);
+    expect(report.errors).toEqual([expect.stringMatching(/^INT-2: Jira has 3 levels .* this would make 4/)]);
     expect(jira.calls).toEqual([]);
     expect(jira.issues.get(epic.id)!.type).toBe("Epic");
   });
@@ -645,7 +673,7 @@ describe("an item moved under a subtask in Agilefant", () => {
     await af.updateItem(item("Moved task").id, { parentId: item("Its subtask").id });
     const report = await syncItemReport(item("Moved task").id);
 
-    expect(report.errors).toEqual([expect.stringMatching(/^INT-4: Jira has three levels .* this would make 4/)]);
+    expect(report.errors).toEqual([expect.stringMatching(/^INT-4: Jira has 3 levels .* this would make 4/)]);
     expect(jira.calls).toEqual([]);
     expect(jira.issues.get(epic.id)!.type).toBe("Epic");
   });
@@ -695,5 +723,53 @@ describe("an Agilefant status Jira does not have", () => {
     expect(jira.byTitle("Budget")!.state.status).toBe("In Progress");
     await engine().fullSync();
     expect(af.byTitle("Budget")!.status).toBe("review_by_cfo");
+  });
+});
+
+describe("a site with levels added above the epic", () => {
+  beforeEach(() => {
+    jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }, { name: "Theme", level: 3 }];
+  });
+
+  it("raises the tree into them when a move makes it deeper than three", async () => {
+    // An epic with a story with a subtask: three levels, all Jira's own.
+    const epic = jira.add("INT-1", "Epic", { title: "Epic" });
+    const story = jira.add("INT-2", "Story", { title: "Story", parent: epic.id });
+    const sub = jira.add("INT-3", "Subtask", { title: "Subtask", parent: story.id });
+    const other = jira.add("INT-4", "Task", { title: "Other" });
+    await engine().fullSync();
+    jira.calls = [];
+
+    // A task under the subtask makes four: the epic becomes an initiative.
+    await af.updateItem(af.byTitle("Other")!.id, { parentId: af.byTitle("Subtask")!.id });
+    const report = await syncItemReport(af.byTitle("Other")!.id);
+
+    expect(report.errors).toEqual([]);
+    expect(jira.issues.get(epic.id)).toMatchObject({ type: "Initiative", state: { parent: null } });
+    expect(jira.issues.get(story.id)).toMatchObject({ type: "Epic", state: { parent: epic.id } });
+    expect(jira.issues.get(sub.id)).toMatchObject({ type: "Task", state: { parent: story.id } });
+    expect(jira.issues.get(other.id)).toMatchObject({ type: "Subtask", state: { parent: sub.id } });
+    jira.calls = [];
+    expect((await engine().fullSync()).errors).toEqual([]);
+    expect(jira.calls).toEqual([]);
+  });
+
+  it("takes five levels, and says so naming them all when a sixth is asked for", async () => {
+    const theme = jira.add("INT-1", "Theme", { title: "Theme" });
+    const initiative = jira.add("INT-2", "Initiative", { title: "Initiative", parent: theme.id });
+    const epic = jira.add("INT-3", "Epic", { title: "Epic", parent: initiative.id });
+    const story = jira.add("INT-4", "Story", { title: "Story", parent: epic.id });
+    jira.add("INT-5", "Subtask", { title: "Subtask", parent: story.id });
+    jira.add("INT-6", "Task", { title: "Loose" });
+    await engine().fullSync();
+    jira.calls = [];
+
+    await af.updateItem(af.byTitle("Loose")!.id, { parentId: af.byTitle("Subtask")!.id });
+    const report = await syncItemReport(af.byTitle("Loose")!.id);
+
+    expect(report.errors).toEqual([
+      expect.stringMatching(/^INT-6: Jira has 5 levels — Theme, Initiative, Epic, Story\/Task\/Bug, Subtask — and this would make 6/),
+    ]);
+    expect(jira.calls).toEqual([]);
   });
 });

@@ -201,15 +201,18 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     return values;
   };
 
-  // The project's issue types, read once: a move names its target type by id.
-  let issueTypes: Promise<Array<{ id: string; name: string }>> | null = null;
-  const typeId = async (name: string) => {
-    issueTypes ??= call<{ issueTypes: Array<{ id: string; name: string }> }>(
-      `/rest/api/3/project/${encodeURIComponent(config.projectKey)}`,
-    ).then((p) => p.issueTypes);
-    const found = (await issueTypes).find((t) => t.name === name);
+  // The project's issue types, read once: a move names its target type by
+  // id, and their levels are the hierarchy the sync fits Agilefant's into.
+  type ProjectType = { id: string; name: string; hierarchyLevel: number };
+  let projectTypes: Promise<ProjectType[]> | null = null;
+  const readTypes = () =>
+    (projectTypes ??= call<{ issueTypes: ProjectType[] }>(`/rest/api/3/project/${encodeURIComponent(config.projectKey)}`).then(
+      (p) => p.issueTypes,
+    ));
+  const typeNamed = async (name: string) => {
+    const found = (await readTypes()).find((t) => t.name === name);
     if (!found) throw new Error(`the project has no issue type "${name}"`);
-    return found.id;
+    return found;
   };
 
   return {
@@ -219,13 +222,14 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
      */
     async changeType(id, type, parent) {
       // Jira takes the parent in the target only for a subtask; any other is given one by an edit after.
-      const target = [config.projectKey, await typeId(type), ...(type === 'Subtask' && parent ? [parent] : [])].join(',');
+      const target = await typeNamed(type);
+      const key = [config.projectKey, target.id, ...(target.hierarchyLevel === -1 && parent ? [parent] : [])].join(',');
       const { taskId } = await call<{ taskId: string }>('/rest/api/3/bulk/issues/move', {
         method: 'POST',
         body: {
           sendBulkNotification: false,
           targetToSourcesMapping: {
-            [target]: {
+            [key]: {
               issueIdsOrKeys: [id],
               inferFieldDefaults: true,
               inferStatusDefaults: true,
@@ -248,6 +252,10 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
         }
       }
       throw new Error(`Jira did not finish making it a ${type} in time`);
+    },
+
+    async issueTypes() {
+      return (await readTypes()).map((t) => ({ name: t.name, level: t.hierarchyLevel }));
     },
 
     async listIssues() {

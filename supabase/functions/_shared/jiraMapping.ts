@@ -182,46 +182,93 @@ export function toPoints(value: unknown): number | null {
 
 // ─── Hierarchy ───────────────────────────────────────────────────────────────
 
-/**
- * The Jira issue type a new Agilefant item becomes, by what its parent is in
- * Jira: a top-level item is an epic, a child of an epic a task, a child of a
- * task or story a subtask. Jira has nothing below a subtask, so an item there
- * is not sent (null).
- */
-export function jiraTypeForNewItem(parentType: string | null | undefined): string | null {
-  if (!parentType) return 'Epic';
-  if (parentType === 'Epic') return 'Task';
-  if (parentType === 'Task' || parentType === 'Story' || parentType === 'Bug') return 'Subtask';
-  return null;
+/** An issue type and its level in Jira's hierarchy: -1 a subtask, 0 a task or story, 1 an epic, above that what the site adds. */
+export interface IssueTypeLevel {
+  name: string;
+  level: number;
 }
+
+/** Jira's hierarchy without levels added above the epic. */
+export const DEFAULT_ISSUE_TYPES: IssueTypeLevel[] = [
+  { name: 'Epic', level: 1 },
+  { name: 'Story', level: 0 },
+  { name: 'Task', level: 0 },
+  { name: 'Bug', level: 0 },
+  { name: 'Subtask', level: -1 },
+];
 
 /**
- * The issue type an issue must have to sit under this parent, given the type
- * it has now. Agilefant has no types, so a move in its hierarchy can ask for
- * something Jira only allows of another type: a task under a task must be a
- * subtask, an epic under an epic a story, a subtask at the top level a task.
- * Null where Jira has no place for it at all — under a subtask.
+ * The levels of the project's hierarchy, read from its issue types. Jira has
+ * subtasks at the bottom, tasks and stories over them, epics over those, and
+ * on Premium as many levels above the epic as the site adds — each with one
+ * type. A child is always exactly one level below its parent.
  */
-export function jiraTypeUnder(parentType: string | null | undefined, currentType: string): string | null {
-  const standard = (type: string) => type === 'Task' || type === 'Story' || type === 'Bug';
-  if (!parentType) return currentType === 'Subtask' ? 'Task' : currentType;
-  if (parentType === 'Epic') return standard(currentType) ? currentType : currentType === 'Epic' ? 'Story' : 'Task';
-  if (standard(parentType)) return 'Subtask';
-  return null;
+export class Levels {
+  /** The lowest level: subtasks. */
+  readonly bottom: number;
+  /** The highest level with no gap below it. */
+  readonly top: number;
+  private readonly byName: Map<string, number>;
+
+  constructor(private readonly types: IssueTypeLevel[] = DEFAULT_ISSUE_TYPES) {
+    if (!types.some((t) => t.level === 0)) types = DEFAULT_ISSUE_TYPES;
+    this.types = types;
+    this.byName = new Map(types.map((t) => [t.name, t.level]));
+    this.bottom = types.some((t) => t.level === -1) ? -1 : 0;
+    let top = 0;
+    while (types.some((t) => t.level === top + 1)) top += 1;
+    this.top = top;
+  }
+
+  /** The level of a type; one Jira did not name is taken for a task. */
+  of(type: string): number {
+    return this.byName.get(type) ?? 0;
+  }
+
+  /** How many levels there are. */
+  get count(): number {
+    return this.top - this.bottom + 1;
+  }
+
+  /** The type an issue on this level is, when it has to be made one. */
+  defaultAt(level: number): string {
+    const here = this.types.filter((t) => t.level === level).map((t) => t.name);
+    if (level === 0) return here.includes('Task') ? 'Task' : here[0];
+    return here[0];
+  }
+
+  /**
+   * The type for an issue now on this level: its own where the level is the
+   * same; an epic lowered to a task's level a story, as asked in the workshop,
+   * and anything else the level's own type.
+   */
+  typeAt(level: number, current: string): string {
+    if (level === this.of(current)) return current;
+    if (level === 0 && this.of(current) > 0 && this.types.some((t) => t.name === 'Story' && t.level === 0)) return 'Story';
+    return this.defaultAt(level);
+  }
+
+  /** The levels by name, highest first: "Initiative, Epic, Story/Task/Bug, Subtask". */
+  describe(): string {
+    const names: string[] = [];
+    for (let level = this.top; level >= this.bottom; level--) {
+      names.push(this.types.filter((t) => t.level === level).map((t) => t.name).join('/'));
+    }
+    return names.join(', ');
+  }
 }
 
-/** Jira's three levels: an epic, above a task or story, above a subtask. */
-export function levelOf(type: string): number {
-  return type === 'Epic' ? 2 : type === 'Subtask' ? 0 : 1;
-}
+const DEFAULT_LEVELS = new Levels();
 
-/** The type for a level, keeping the current one where the level is the same. */
-function typeAt(level: number, current: string): string {
-  if (level === levelOf(current)) return current;
-  if (level === 2) return 'Epic';
-  if (level === 0) return 'Subtask';
-  // A lowered epic becomes a story, a raised subtask a task.
-  return current === 'Epic' ? 'Story' : 'Task';
+/**
+ * The issue type a new Agilefant item becomes, by what its parent is in
+ * Jira: a top-level item is an epic, any other one level below its parent.
+ * Null below the lowest level, where it has to be fitted in by planMove.
+ */
+export function jiraTypeForNewItem(parentType: string | null | undefined, levels: Levels = DEFAULT_LEVELS): string | null {
+  if (!parentType) return levels.top >= 1 ? levels.defaultAt(1) : levels.defaultAt(0);
+  const level = levels.of(parentType) - 1;
+  return level < levels.bottom ? null : levels.defaultAt(level);
 }
 
 /** Where an issue ends up after a move: its type and its parent. */
@@ -235,22 +282,24 @@ export type MovePlan = { placements: Placement[] } | { impossible: string };
 
 /**
  * What a move in Agilefant's hierarchy asks of Jira. Agilefant nests as deep
- * as anyone likes and has no types; Jira has three levels, each issue's type
- * saying which, and a child exactly one level below its parent.
+ * as anyone likes and has no types; in Jira each issue's type says its level,
+ * and a child sits exactly one level below its parent.
  *
  * So the tree the issue lands in is levelled again from its top: the top
  * keeps its level if the tree fits under it, and is raised as far as the tree
  * needs; every issue below sits one level under its parent. That raises a
- * task to an epic when a third level appears under it, and lowers an epic to
- * a story when it is put under another epic — its tasks becoming subtasks.
+ * task to an epic when a third level appears under it, an epic to the level
+ * above when a fourth does, and lowers an epic to a story when it is put
+ * under another epic — its tasks becoming subtasks.
  *
  * Returns, top-down, the issues whose type or parent changes; or why the
- * tree cannot fit, when it would need more than three levels.
+ * tree cannot fit, when it needs more levels than Jira has.
  */
 export function planMove(
   issues: ReadonlyMap<string, { type: string; parent: string | null }>,
   moved: string,
   parent: string | null,
+  levels: Levels = DEFAULT_LEVELS,
 ): MovePlan {
   const parentOf = (id: string) => (id === moved ? parent : issues.get(id)?.parent ?? null);
   for (let p = parent, n = 0; p; p = parentOf(p), n++) {
@@ -271,17 +320,17 @@ export function planMove(
     for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
   }
   const height = Math.max(...order.map(([, depth]) => depth));
-  if (height > 2) {
+  if (height + 1 > levels.count) {
     return {
-      impossible: `Jira has three levels — epic, task or story, subtask — and this would make ${height + 1}; move something up first`,
+      impossible: `Jira has ${levels.count} levels — ${levels.describe()} — and this would make ${height + 1}; move something up first`,
     };
   }
-  const typeOf = (id: string) => issues.get(id)?.type ?? 'Task';
+  const typeOf = (id: string) => issues.get(id)?.type ?? levels.defaultAt(0);
   // Never a subtask at the top, never lower than the tree needs.
-  const topLevel = Math.max(levelOf(typeOf(top)), height, 1);
+  const topLevel = Math.max(levels.of(typeOf(top)), levels.bottom + height, 0);
   const placements: Placement[] = [];
   for (const [id, depth] of order) {
-    const type = typeAt(topLevel - depth, typeOf(id));
+    const type = levels.typeAt(topLevel - depth, typeOf(id));
     if (type !== typeOf(id) || id === moved) placements.push({ id, type, parent: parentOf(id) });
   }
   return { placements };
