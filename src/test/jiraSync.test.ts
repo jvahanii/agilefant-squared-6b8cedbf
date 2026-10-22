@@ -206,6 +206,16 @@ class FakeJira implements JiraPort {
     this.calls.push(`retype ${issue.key} ${type}`);
     this.issues.set(id, { ...issue, type, state: { ...issue.state, parent: target }, updatedAt: this.clock++ });
   }
+  projectStatuses = ["To Do", "In Progress", "In Review", "Done"];
+  refuseNewStatuses = false;
+  async ensureStatus(name: string) {
+    const found = this.projectStatuses.find((s) => s.toLowerCase() === name.toLowerCase());
+    if (found) return found;
+    if (this.refuseNewStatuses) throw new Error("Jira answered 403: no permission");
+    this.projectStatuses.push(name);
+    this.calls.push(`status ${name}`);
+    return name;
+  }
   private mustFit(type: string, parent: string | null) {
     const parentType = parent ? this.issues.get(parent)?.type : null;
     if (jiraTypeUnder(parentType, type) !== type) throw new Error("Jira answered 400: pid: Issues with this Issue Type must be created in the same project as the parent.");
@@ -664,5 +674,26 @@ describe("a Jira status Agilefant does not have", () => {
     const mine = af.add("Mine", { status: "jira_qa" });
     await engine().syncItem(mine.id);
     expect(jira.byTitle("Mine")!.state.status).toBe("QA");
+  });
+});
+
+describe("an Agilefant status Jira does not have", () => {
+  it("is added to the Jira project, and the issue gets it", async () => {
+    af.statusRows.push({ key: "review_by_cfo", label: "CFO review" });
+    const mine = af.add("Budget", { status: "review_by_cfo" });
+    await engine().syncItem(mine.id);
+    expect(jira.calls).toContain("status CFO review");
+    expect(jira.byTitle("Budget")!.state.status).toBe("CFO review");
+  });
+
+  it("goes as In Progress where Jira refuses to add it, and stays as it is in Agilefant", async () => {
+    jira.refuseNewStatuses = true;
+    af.statusRows.push({ key: "review_by_cfo", label: "CFO review" });
+    const mine = af.add("Budget", { status: "review_by_cfo" });
+    const report = await syncItemReport(mine.id);
+    expect(report.errors[0]).toContain("CFO review");
+    expect(jira.byTitle("Budget")!.state.status).toBe("In Progress");
+    await engine().fullSync();
+    expect(af.byTitle("Budget")!.status).toBe("review_by_cfo");
   });
 });
