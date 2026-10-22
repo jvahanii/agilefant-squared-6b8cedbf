@@ -333,10 +333,41 @@ export class JiraSync {
       throw new Error(`it has ${children.length} item(s) under it, and a subtask cannot have any — move them first`);
     }
     if (children.length > 0 && issue.type === 'Epic') {
-      throw new Error(`it is an epic with ${children.length} item(s) under it — move them first`);
+      await this.epicToStory(issue, wanted, parent, children);
+      return { type: wanted, parentSet: false };
     }
     await this.jira.changeType(issue.id, wanted, parent);
     return { type: wanted, parentSet: wanted === 'Subtask' };
+  }
+
+  /**
+   * An epic that becomes a story takes its items a level down with it: they
+   * become its subtasks, the only thing Jira allows under a story. They are
+   * let go of first — an epic cannot change type with tasks under it, nor a
+   * task become a subtask of an epic — and taken back if the epic's move
+   * fails, so nothing is left loose.
+   */
+  private async epicToStory(issue: JiraIssue, type: string, parent: string | null, children: Link[]) {
+    const below = children.filter((child) => [...this.linksByIssue.values()].some((l) => l.agreed?.parent === child.jiraId));
+    if (below.length > 0) {
+      throw new Error(
+        `${below.length} of the items under it have items of their own, and a story's subtasks cannot — move those first`,
+      );
+    }
+    const stateOf = (child: Link, parentId: string | null): SyncState => ({ ...child.agreed!, parent: parentId });
+    for (const child of children) await this.jira.updateIssue(child.jiraId, ['parent'], stateOf(child, null));
+    try {
+      await this.jira.changeType(issue.id, type, parent);
+    } catch (e) {
+      for (const child of children) await this.jira.updateIssue(child.jiraId, ['parent'], stateOf(child, issue.id)).catch(() => {});
+      throw e;
+    }
+    for (const child of children) {
+      await this.jira.changeType(child.jiraId, 'Subtask', issue.id);
+      const next: Link = { ...child, jiraType: 'Subtask' };
+      this.remember(next);
+      await this.agilefant.saveLink(next);
+    }
   }
 
   /** The Agilefant values for these fields of a state. */
