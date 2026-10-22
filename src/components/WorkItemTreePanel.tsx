@@ -995,7 +995,12 @@ function WorkItemNodeContent({
             <GripVertical className="w-3.5 h-3.5" />
           </div>
           <button
-            className={`w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/50" : "text-muted-foreground"} hover:text-foreground transition-colors`}
+            /* The chevron is only 16px, too small a target to tap. The
+               ::before layer widens what takes the click to ~28x28 without
+               moving anything: sideways it fills the 6px gaps on each side,
+               and vertically it stays within the row so it can never toggle
+               the row above or below. */
+            className={`relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/50" : "text-muted-foreground"} hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']`}
             onClick={(e) => {
               e.stopPropagation();
               if (hasChildren) toggleExpand(workItemId);
