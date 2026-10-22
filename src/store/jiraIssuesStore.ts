@@ -12,6 +12,8 @@ export interface JiraIssueRef {
   type: string;
   /** The issue in Jira, or null where the connection's address is not visible. */
   url: string | null;
+  /** Why the sync could not send the item's last change to Jira; null while in step. */
+  error: string | null;
 }
 
 /** A list kept in step with a Jira project. */
@@ -44,7 +46,7 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
   load: async () => {
     // Columns are listed: only these are granted to the app.
     const [links, connections] = await Promise.all([
-      supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type'),
+      supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type, last_error'),
       supabase.from('jira_connections').select('organization_id, base_url, project_key, backlog_id, enabled'),
     ]);
     if (links.error) {
@@ -66,7 +68,12 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
           const base = baseUrls.get(row.organization_id);
           return [
             row.work_item_id,
-            { key: row.jira_key, type: row.jira_type, url: base ? `${base}/browse/${encodeURIComponent(row.jira_key)}` : null },
+            {
+              key: row.jira_key,
+              type: row.jira_type,
+              url: base ? `${base}/browse/${encodeURIComponent(row.jira_key)}` : null,
+              error: row.last_error ?? null,
+            },
           ];
         }),
       ),
