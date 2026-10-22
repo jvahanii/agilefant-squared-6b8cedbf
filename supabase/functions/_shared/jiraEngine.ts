@@ -46,6 +46,8 @@ export interface JiraPort {
    * move, the only way a task becomes a subtask or back.
    */
   changeType(id: string, type: string, parent: string | null): Promise<void>;
+  /** The project's status by this name, added to its workflow when it has none; returns Jira's spelling. */
+  ensureStatus?(name: string): Promise<string>;
 }
 
 export interface AgilefantItem {
@@ -128,6 +130,8 @@ export class JiraSync {
   private linksByIssue = new Map<string, Link>();
   private loaded = false;
   private statuses: { key: string; label: string }[] = [];
+  /** Agilefant's own statuses → the Jira status each goes to. */
+  private jiraNames = new Map<string, string>();
   readonly report = emptyReport();
 
   constructor(
@@ -146,9 +150,27 @@ export class JiraSync {
   private toJiraStatus(key: string): string {
     if (!BUILT_IN_STATUSES.has(key)) {
       const own = this.statuses.find((s) => s.key === key);
-      if (own) return own.label;
+      if (own) return this.jiraNames.get(key) ?? own.label;
     }
     return jiraStatusFor(key);
+  }
+
+  /**
+   * Make sure Jira has a list's own status before an item in it is sent: added
+   * to the project when missing; where Jira refuses, the item goes as In Progress.
+   */
+  private async prepareStatus(key: string) {
+    if (BUILT_IN_STATUSES.has(key) || this.jiraNames.has(key)) return;
+    const own = this.statuses.find((s) => s.key === key);
+    if (!own) return;
+    if (MAPPED_JIRA_STATUSES.has(own.label.trim().toLowerCase())) return;
+    if (!this.jira.ensureStatus) return;
+    try {
+      this.jiraNames.set(key, await this.jira.ensureStatus(own.label));
+    } catch (e) {
+      this.jiraNames.set(key, 'In Progress');
+      this.report.errors.push(`status "${own.label}" could not be added to Jira (${message(e)}); sent as In Progress`);
+    }
   }
 
   /**
@@ -311,6 +333,7 @@ export class JiraSync {
     agilefantChangedAt: number | null,
     jiraChangedAt: number | null,
   ) {
+    await this.prepareStatus(item.status);
     const mine = this.stateOfItem(item);
     const { state, toAgilefant, toJira } = reconcile(link.agreed, mine, issue.state, agilefantChangedAt, jiraChangedAt);
     let error: string | null = null;
@@ -465,6 +488,7 @@ export class JiraSync {
   }
 
   private async createInJira(item: AgilefantItem) {
+    await this.prepareStatus(item.status);
     const state = this.stateOfItem(item);
     const parentLink = item.parentId ? this.linksByItem.get(item.parentId) : undefined;
     const type = jiraTypeForNewItem(parentLink?.jiraType ?? null);

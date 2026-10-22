@@ -114,6 +114,67 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     await call(`/rest/api/3/issue/${id}/transitions`, { method: 'POST', body: { transition: { id: transition.id } } });
   };
 
+  // The project's statuses by lower-cased name → Jira's own spelling, read once per call of the function.
+  let knownStatuses: Map<string, string> | null = null;
+  const projectStatuses = async () => {
+    if (knownStatuses) return knownStatuses;
+    const types = await call<Array<{ id: string; statuses: Array<{ name: string }> }>>(`/rest/api/3/project/${config.projectKey}/statuses`);
+    knownStatuses = new Map(types.flatMap((t) => t.statuses.map((st) => [st.name.trim().toLowerCase(), st.name] as [string, string])));
+    return knownStatuses;
+  };
+
+  /**
+   * Add a status to the project's workflows, reachable from every status (a
+   * global transition). Needs the project's admin permission; throws when Jira refuses.
+   */
+  const addStatusToWorkflows = async (name: string) => {
+    const project = await call<{ id: string }>(`/rest/api/3/project/${config.projectKey}`);
+    const types = await call<Array<{ id: string }>>(`/rest/api/3/project/${config.projectKey}/statuses`);
+    type Workflow = {
+      id: string;
+      version: unknown;
+      description?: string;
+      statuses: Array<Record<string, unknown>>;
+      transitions: Array<{ id: string } & Record<string, unknown>>;
+      startPointLayout?: unknown;
+      loopedTransitionContainerLayout?: unknown;
+      scope?: unknown;
+    };
+    const read = await call<{ workflows: Workflow[]; statuses: Array<Record<string, unknown>> }>('/rest/api/3/workflows', {
+      method: 'POST',
+      body: { projectAndIssueTypes: types.map((t) => ({ projectId: project.id, issueTypeId: t.id })) },
+    });
+    if (!read.workflows?.length) throw new Error('found no workflow to add it to');
+    const ref = crypto.randomUUID();
+    const scope = read.workflows[0].scope ?? { type: 'GLOBAL' };
+    await call('/rest/api/3/workflows/update', {
+      method: 'POST',
+      body: {
+        statuses: [...read.statuses, { name, statusCategory: 'IN_PROGRESS', statusReference: ref, scope }],
+        workflows: read.workflows.map((w) => ({
+          id: w.id,
+          version: w.version,
+          description: w.description,
+          startPointLayout: w.startPointLayout,
+          loopedTransitionContainerLayout: w.loopedTransitionContainerLayout,
+          statuses: [...w.statuses, { statusReference: ref, properties: {} }],
+          transitions: [
+            ...w.transitions,
+            {
+              id: String(Math.max(0, ...w.transitions.map((t) => Number(t.id) || 0)) + 1),
+              name,
+              toStatusReference: ref,
+              type: 'GLOBAL',
+              links: [],
+              properties: {},
+            },
+          ],
+        })),
+      },
+    });
+    knownStatuses = null;
+  };
+
   /** Edit fields; a points field the screen will not take is left out rather than failing the rest. */
   const edit = async (id: string, values: Record<string, unknown>) => {
     if (Object.keys(values).length === 0) return;
@@ -237,6 +298,13 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
       }
       if (state.status !== 'To Do') await transitionTo(created.id, state.status);
       return { id: created.id, key: created.key };
+    },
+
+    async ensureStatus(name) {
+      const found = (await projectStatuses()).get(name.trim().toLowerCase());
+      if (found) return found;
+      await addStatusToWorkflows(name.trim());
+      return (await projectStatuses()).get(name.trim().toLowerCase()) ?? name.trim();
     },
 
     async updateIssue(id, names, state) {
