@@ -345,8 +345,13 @@ export function planMove(
  *
  * What the app shows the moment an item is moved in Agilefant, before Jira
  * has made the change: planMove on the tree the item lands in gives the same
- * types, every other tree being levelled already. Issues with no type yet —
- * items not in Jira — count for the depth and get none.
+ * types, every other tree being levelled already.
+ *
+ * An item not in Jira yet (no type) gets the type the sync will make it:
+ * the level under its parent, as jiraTypeForNewItem says — an epic at the
+ * top — and where there is none under its parent, a task the tree is then
+ * raised to hold, as createUnderSubtask does. Levelled with the rest, that is
+ * what the sync's creating and moving come to.
  */
 export function expectedTypes(
   issues: ReadonlyMap<string, { type: string | null; parent: string | null }>,
@@ -366,16 +371,24 @@ export function expectedTypes(
       for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
     }
     const height = Math.max(...order.map(([, depth]) => depth));
-    const typeOf = (id: string) => issues.get(id)?.type ?? null;
     if (height + 1 > levels.count) {
-      for (const [id] of order) if (typeOf(id)) out.set(id, typeOf(id)!);
+      // Too deep for Jira: the sync leaves its types, and makes nothing new in it.
+      for (const [id] of order) {
+        const type = issues.get(id)?.type;
+        if (type) out.set(id, type);
+      }
       continue;
     }
-    const topLevel = Math.max(levels.of(typeOf(top) ?? levels.defaultAt(0)), levels.bottom + height, 0);
-    for (const [id, depth] of order) {
-      const type = typeOf(id);
-      if (type) out.set(id, levels.typeAt(topLevel - depth, type));
+    // Parents before children: a new item's type follows its parent's.
+    const typeOf = new Map<string, string>();
+    for (const [id] of order) {
+      const own = issues.get(id)?.type;
+      const parent = issues.get(id)?.parent;
+      const parentType = parent ? typeOf.get(parent) : undefined;
+      typeOf.set(id, own ?? jiraTypeForNewItem(parentType, levels) ?? levels.defaultAt(0));
     }
+    const topLevel = Math.max(levels.of(typeOf.get(top)!), levels.bottom + height, 0);
+    for (const [id, depth] of order) out.set(id, levels.typeAt(topLevel - depth, typeOf.get(id)!));
   }
   return out;
 }

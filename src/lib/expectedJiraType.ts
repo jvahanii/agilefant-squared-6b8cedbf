@@ -10,16 +10,23 @@ import { expectedTypes, Levels } from "../../supabase/functions/_shared/jiraMapp
  *
  * The sync's own levelling (expectedTypes, beside planMove), run on the list
  * kept in step with Jira: each item under its parent in that list's tree, the
- * same parent the sync reads. Nothing for a list whose project's levels the
+ * same parent the sync reads. Items not in Jira yet are given the type the
+ * sync will create them as. Nothing for a list whose project's levels the
  * sync has not yet recorded.
  */
+export interface ExpectedJiraType {
+  type: string;
+  /** The Jira project, for an item the sync has yet to create there. */
+  projectKey: string;
+}
+
 export function expectedJiraTypes(
   workItems: Record<string, WorkItem>,
   byItem: ReadonlyMap<string, JiraIssueRef>,
   byList: ReadonlyMap<string, JiraListRef>,
-): Map<string, string> {
+): Map<string, ExpectedJiraType> {
   if (cache && cache.workItems === workItems && cache.byItem === byItem && cache.byList === byList) return cache.result;
-  const result = new Map<string, string>();
+  const result = new Map<string, ExpectedJiraType>();
   for (const [backlogId, list] of byList) {
     if (!list.issueTypes) continue;
     const nodes = new Map<string, { type: string | null; parent: string | null }>();
@@ -27,7 +34,7 @@ export function expectedJiraTypes(
       if (item.backlogAssignments?.[list.treeId] !== backlogId) continue;
       nodes.set(item.id, { type: byItem.get(item.id)?.type ?? null, parent: item.parentIds?.[list.treeId] ?? item.parentId });
     }
-    for (const [id, type] of expectedTypes(nodes, new Levels(list.issueTypes))) result.set(id, type);
+    for (const [id, type] of expectedTypes(nodes, new Levels(list.issueTypes))) result.set(id, { type, projectKey: list.projectKey });
   }
   cache = { workItems, byItem, byList, result };
   return result;
@@ -38,11 +45,11 @@ let cache: {
   workItems: Record<string, WorkItem>;
   byItem: ReadonlyMap<string, JiraIssueRef>;
   byList: ReadonlyMap<string, JiraListRef>;
-  result: Map<string, string>;
+  result: Map<string, ExpectedJiraType>;
 } | null = null;
 
 /** The type this item will have in Jira, or undefined where none can be said. */
-export function useExpectedJiraType(workItemId: string): string | undefined {
+export function useExpectedJiraType(workItemId: string): ExpectedJiraType | undefined {
   const byItem = useJiraIssuesStore((s) => s.byItem);
   const byList = useJiraIssuesStore((s) => s.byList);
   return useAppStore((s) => expectedJiraTypes(s.workItems, byItem, byList).get(workItemId));

@@ -844,7 +844,7 @@ describe("the types the app shows at once after a move", () => {
     expect([...expectedTypes(view).values()]).toEqual(["Epic", "Task", "Subtask", "Task"]);
   });
 
-  it("count items not yet in Jira for the depth, and name none for them", () => {
+  it("name the type an item not yet in Jira will be made, raising the tree where it must", () => {
     const view = new Map<string, { type: string | null; parent: string | null }>([
       ["a", { type: "Task", parent: null }],
       ["b", { type: "Subtask", parent: "a" }],
@@ -853,7 +853,33 @@ describe("the types the app shows at once after a move", () => {
     const shown = expectedTypes(view);
     expect(shown.get("a")).toBe("Epic");
     expect(shown.get("b")).toBe("Task");
-    expect(shown.has("new")).toBe(false);
+    expect(shown.get("new")).toBe("Subtask");
+  });
+
+  it("name for new items the types the sync then creates them as, wherever they are put", async () => {
+    jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }];
+    const levels = new Levels(jira.types);
+    const epic = jira.add("INT-1", "Epic", { title: "Epic" });
+    const task = jira.add("INT-2", "Task", { title: "Task", parent: epic.id });
+    jira.add("INT-3", "Subtask", { title: "Subtask", parent: task.id });
+    await engine().fullSync();
+
+    const top = af.add("New at the top");
+    const underTop = af.add("New under the new one", { parentId: top.id });
+    const underEpic = af.add("New under the epic", { parentId: af.byTitle("Epic")!.id });
+    const underSubtask = af.add("New under the subtask", { parentId: af.byTitle("Subtask")!.id });
+    const view = () =>
+      new Map([...af.items.values()].map((item) => [item.id, { type: af.linkRows.get(item.id)?.jiraType ?? null, parent: item.parentId }]));
+    const shown = expectedTypes(view(), levels);
+    expect(shown.get(top.id)).toBe("Epic");
+    expect(shown.get(underTop.id)).toBe("Task");
+    // The new item under the subtask raises that tree, the epic to an initiative: beside its tasks, now epics.
+    expect(shown.get(underEpic.id)).toBe("Epic");
+    expect(shown.get(underSubtask.id)).toBe("Subtask");
+
+    for (const item of [underTop, underEpic, underSubtask]) await engine().syncItem(item.id);
+    const made = new Map([...af.linkRows.values()].map((link) => [link.workItemId, jira.issues.get(link.jiraId)!.type]));
+    expect(made).toEqual(shown);
   });
 });
 

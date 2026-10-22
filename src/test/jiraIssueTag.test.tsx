@@ -124,6 +124,16 @@ describe("the type a move in Agilefant will give the item", () => {
     expect(link).toHaveAttribute("title", "Becoming a Task in Jira (now a Subtask)");
   });
 
+  it("is shown for a new item with its key to come, before the sync has created it", async () => {
+    useAppStore.setState({ workItems: { "org::wi-1": item("org::wi-1", null), "org::wi-new": item("org::wi-new", "org::wi-1") } });
+    await useJiraIssuesStore.getState().load();
+    render(<JiraIssueTag workItemId="org::wi-new" />);
+    // Under a top-level subtask: it is raised to a task, the new item its subtask.
+    const tag = screen.getByText("INT-… · Subtask");
+    expect(tag).toHaveClass("italic");
+    expect(tag).toHaveAttribute("title", "Being created in Jira as a Subtask");
+  });
+
   it("is not shown where it is the type Jira already has", async () => {
     rows.links.push({ work_item_id: "org::wi-0", organization_id: "org", jira_key: "INT-7", jira_type: "Task", last_error: null });
     useAppStore.setState({ workItems: { "org::wi-0": item("org::wi-0", null), "org::wi-1": item("org::wi-1", "org::wi-0") } });

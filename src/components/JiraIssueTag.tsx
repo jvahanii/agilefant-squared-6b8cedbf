@@ -11,7 +11,8 @@ import { useExpectedJiraType } from "@/lib/expectedJiraType";
  *
  * A move in Agilefant changes types in Jira a few seconds later, when the
  * sync has made Jira's moves. The type it will be is shown at once, faded and
- * slanted until Jira has it.
+ * slanted until Jira has it. So is a new item's — with its key to come,
+ * "AF-… · Task" — until the sync has created its issue.
  *
  * Red with a warning sign while the sync could not send the item's last change
  * to Jira — a move into a sixth level, say — with Jira's or the sync's words
@@ -19,8 +20,19 @@ import { useExpectedJiraType } from "@/lib/expectedJiraType";
  */
 export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId: string; className?: string }) {
   const issue = useJiraIssuesStore((s) => s.byItem.get(workItemId));
-  const expected = useExpectedJiraType(workItemId);
-  if (!issue) return null;
+  const expectedRef = useExpectedJiraType(workItemId);
+  const expected = expectedRef?.type;
+  if (!issue) {
+    if (!expectedRef) return null;
+    return (
+      <span
+        className={`${className} whitespace-nowrap text-xs text-muted-foreground italic opacity-60`}
+        title={`Being created in Jira as a ${expectedRef.type}`}
+      >
+        {expectedRef.projectKey}-… · {expectedRef.type}
+      </span>
+    );
+  }
   // The sync starts each error with the issue's key, which the tag already shows.
   const error = issue.error?.replace(new RegExp(`^${issue.key}:\\s*`), "") ?? null;
   const pending = !error && expected !== undefined && expected !== issue.type;
