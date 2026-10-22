@@ -239,8 +239,10 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
           },
         },
       });
-      for (let attempt = 0; attempt < 30; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      // Jira's move of one issue usually ends within a second or two: asked
+      // soon and then less often, about thirty seconds in all.
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, Math.min(300 + attempt * 200, 1_000)));
         const progress = await call<{ status: string; failedAccessibleIssues?: Record<string, string[]> }>(
           `/rest/api/3/bulk/queue/${taskId}`,
         );

@@ -300,7 +300,13 @@ async function drain(admin: Admin, conn: Connection) {
       const key = `${row.kind}:${row.ref ?? ''}`;
       groups.set(key, [...(groups.get(key) ?? []), row.id]);
     }
-    const ordered = [...groups.entries()].sort(([a], [b]) => (a.startsWith('full') ? -1 : b.startsWith('full') ? 1 : 0));
+    // A full sync first; then Agilefant's changes before Jira's. Most of Jira's
+    // are the echoes of what the sync itself just did there — a move in the
+    // hierarchy sends one for every issue it retypes — and a person's next
+    // change should not wait behind them. Safe either way: a field changed on
+    // both sides goes to the later change, whichever is read first.
+    const rank = (key: string) => (key.startsWith('full') ? 0 : key.startsWith('item') ? 1 : 2);
+    const ordered = [...groups.entries()].sort(([a], [b]) => rank(a) - rank(b));
     for (const [key, ids] of ordered) {
       const [kind, ref] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
       try {

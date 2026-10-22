@@ -652,6 +652,22 @@ describe("an item moved under a subtask in Agilefant", () => {
     expect(jira.calls).toEqual([]);
   });
 
+  it("keeps each new type the moment Jira has made it, before the moved item is done", async () => {
+    const { item } = await synced();
+    const saved: string[] = [];
+    const save = af.saveLink.bind(af);
+    af.saveLink = async (link: Link) => {
+      saved.push(`${link.jiraKey} ${link.jiraType}`);
+      return save(link);
+    };
+    await af.updateItem(item("Moved task").id, { parentId: item("Its subtask").id });
+    await syncItemReport(item("Moved task").id);
+
+    // The raised subtasks and the raised task, each as soon as it is made; the moved item last.
+    expect(saved.slice(0, 3).sort()).toEqual(["INT-1 Epic", "INT-2 Task", "INT-3 Task"]);
+    expect(saved.at(-1)).toBe("INT-4 Subtask");
+  });
+
   it("brings a new item made under a subtask to Jira the same way", async () => {
     const { parent, sub, item } = await synced();
     const fresh = af.add("New under subtask", { parentId: item("Its subtask").id });

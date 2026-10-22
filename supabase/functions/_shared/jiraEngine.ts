@@ -445,6 +445,15 @@ export class JiraSync {
       parent: parentId,
     });
     const retyped = new Set(placements.filter((p) => p.type !== tree.get(p.id)?.type).map((p) => p.id));
+    // Each issue's new type is kept the moment Jira has made it, so the app
+    // shows it then rather than when the whole tree is done.
+    const keepType = async (id: string, type: string) => {
+      const link = this.linksByIssue.get(id);
+      if (!link || id === issue.id || link.jiraType === type) return;
+      const next: Link = { ...link, jiraType: type };
+      this.remember(next);
+      await this.agilefant.saveLink(next);
+    };
     let failure: unknown = null;
     try {
       for (const p of placements) {
@@ -455,6 +464,7 @@ export class JiraSync {
           const task = levels.defaultAt(0);
           await this.jira.changeType(p.id, task, null);
           now.set(p.id, { type: task, parent: null });
+          if (p.type === task) await keepType(p.id, task);
         } else if (at.parent) {
           await this.jira.updateIssue(p.id, ['parent'], stateFor(p.id, null));
           at.parent = null;
@@ -463,10 +473,16 @@ export class JiraSync {
       for (const p of placements) {
         const at = now.get(p.id)!;
         if (lowest(p.type)) {
-          if (at.type !== p.type || at.parent !== p.parent) await this.jira.changeType(p.id, p.type, p.parent);
+          if (at.type !== p.type || at.parent !== p.parent) {
+            await this.jira.changeType(p.id, p.type, p.parent);
+            await keepType(p.id, p.type);
+          }
           continue;
         }
-        if (at.type !== p.type) await this.jira.changeType(p.id, p.type, null);
+        if (at.type !== p.type) {
+          await this.jira.changeType(p.id, p.type, null);
+          await keepType(p.id, p.type);
+        }
         if (at.parent !== p.parent) await this.jira.updateIssue(p.id, ['parent'], stateFor(p.id, p.parent));
       }
     } catch (e) {
@@ -474,8 +490,9 @@ export class JiraSync {
     }
 
     let after: JiraIssue | null = null;
-    for (const p of placements) {
-      const read = await this.jira.getIssue(p.id);
+    const reads = await Promise.all(placements.map((p) => this.jira.getIssue(p.id)));
+    for (const [i, p] of placements.entries()) {
+      const read = reads[i];
       if (!read) continue;
       if (p.id === issue.id) {
         after = read;
