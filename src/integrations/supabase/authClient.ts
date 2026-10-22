@@ -13,14 +13,22 @@
  * a signed-out visitor still gets a working client rather than an error, and RLS
  * decides what they can see.
  */
+/** How much life a token handed out must have left; Clerk's tokens last sixty seconds. */
+export const TOKEN_LEEWAY_SECONDS = 30;
+
 export async function getSupabaseAccessToken(): Promise<string | null> {
   // Clerk attaches itself to window once ClerkProvider has loaded. Read it
   // defensively: with a production key on a non-matching origin it never
   // finishes loading, and the app should degrade to signed-out rather than
   // throw on every query.
   try {
-    const clerk = (globalThis as { Clerk?: { session?: { getToken: () => Promise<string | null> } } }).Clerk;
-    return (await clerk?.session?.getToken()) ?? null;
+    const clerk = (
+      globalThis as { Clerk?: { session?: { getToken: (options?: { leewayInSeconds?: number }) => Promise<string | null> } } }
+    ).Clerk;
+    // Renewed while half its sixty seconds are left, not Clerk's usual ten: the
+    // live-updates connection is handed a new token only every few seconds
+    // (realtimeAuth.ts), and Realtime drops a channel whose token has run out.
+    return (await clerk?.session?.getToken({ leewayInSeconds: TOKEN_LEEWAY_SECONDS })) ?? null;
   } catch {
     return null;
   }

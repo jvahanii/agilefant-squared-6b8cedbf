@@ -10,14 +10,18 @@
  * a few seconds after a move, all seen only after a reload.
  *
  * `setAuth()` with no argument asks the callback again, sends the new token
- * to every joined channel when it changed, and clears the by-hand flag, so
- * the heartbeats keep it fresh after that. It is repeated here anyway — the
- * initial explicit call may land after ours — and whenever the tab comes
- * back into view, since a hidden tab's timers are slowed.
+ * to every joined channel when it changed, and clears the by-hand flag. It is
+ * asked here every few seconds rather than left to the heartbeats: they come
+ * every twenty-five, and a token renewed just after one could run out before
+ * the next — watched happening, the channel dropped and rejoined. The token
+ * itself is renewed with half its life left (authClient.ts), so a check this
+ * often always hands it over in time. Also whenever the tab comes back into
+ * view, since a hidden tab's timers are slowed. Asking is cheap: Clerk
+ * answers from its cache until it renews.
  */
 
-/** Often enough that a sixty-second token is always renewed before it runs out. */
-export const REALTIME_AUTH_REFRESH_MS = 20_000;
+/** Well inside the thirty seconds a token is handed out with. */
+export const REALTIME_AUTH_REFRESH_MS = 10_000;
 
 interface RealtimeWithAuth {
   setAuth(token?: string | null): Promise<void>;

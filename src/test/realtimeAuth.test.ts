@@ -6,6 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { keepRealtimeAuthFresh, REALTIME_AUTH_REFRESH_MS } from "@/integrations/supabase/realtimeAuth";
+import { getSupabaseAccessToken, TOKEN_LEEWAY_SECONDS } from "@/integrations/supabase/authClient";
 
 let realtime: { setAuth: ReturnType<typeof vi.fn> };
 let stop: () => void;
@@ -22,8 +23,8 @@ afterEach(() => {
 });
 
 describe("the live-updates token", () => {
-  it("is asked for afresh, well inside a sixty-second token's life", () => {
-    expect(REALTIME_AUTH_REFRESH_MS).toBeLessThan(30_000);
+  it("is asked for afresh well before the life a token is handed out with runs out", () => {
+    expect(REALTIME_AUTH_REFRESH_MS * 2).toBeLessThanOrEqual(TOKEN_LEEWAY_SECONDS * 1000);
     vi.advanceTimersByTime(60_000);
     expect(realtime.setAuth.mock.calls.length).toBeGreaterThanOrEqual(2);
     // With no token of its own: realtime-js then asks the app's callback and stops treating the token as set by hand.
@@ -34,6 +35,17 @@ describe("the live-updates token", () => {
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
     expect(realtime.setAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it("is renewed by Clerk with the leeway, not Clerk's usual ten seconds", async () => {
+    const getToken = vi.fn(async () => "token");
+    (globalThis as { Clerk?: unknown }).Clerk = { session: { getToken } };
+    try {
+      await expect(getSupabaseAccessToken()).resolves.toBe("token");
+      expect(getToken).toHaveBeenCalledWith({ leewayInSeconds: TOKEN_LEEWAY_SECONDS });
+    } finally {
+      delete (globalThis as { Clerk?: unknown }).Clerk;
+    }
   });
 
   it("stops being asked for once stopped", () => {
