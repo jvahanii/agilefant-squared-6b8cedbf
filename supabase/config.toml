@@ -18,3 +18,10 @@ verify_jwt = false
 # uses, and this function then refuses anyone who is not a superuser.
 [functions.posting-status]
 verify_jwt = false
+
+# Called by Jira's webhook (a secret in the URL names the connection) and by
+# the database's queue trigger (which can only start work already queued),
+# neither of which carries a sign-in. The app's own actions are checked with
+# requireAppUser inside.
+[functions.jira-sync]
+verify_jwt = false

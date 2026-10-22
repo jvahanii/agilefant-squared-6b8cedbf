@@ -14,6 +14,7 @@ import { GmailIntegrationsCard, JobAdImportCard } from "@/components/GmailIntegr
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { LabelsManager } from "@/components/LabelsManager";
 import { AllBellsAndWhistlesToggle } from "@/components/AllBellsAndWhistlesToggle";
+import { JiraIntegrationCard } from "@/components/JiraIntegrationCard";
 import { PageContents, type PageContentsGroup } from "@/components/PageContents";
 import { BELLS_AND_WHISTLES, type BellOrWhistle } from "@/store/orgSettingsStore";
 
@@ -93,6 +94,7 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
         { id: "github", label: "GitHub repositories" },
         ...(showLinkImport ? [{ id: "gmail-link-import", label: "Gmail link import" }] : []),
         { id: "job-ad-import", label: "Job ad import" },
+        { id: "jira", label: "Jira" },
       ],
     },
     {
@@ -151,6 +153,10 @@ export function BellsAndWhistlesSection({ showHeader = true }: { showHeader?: bo
       )}
       <div id="job-ad-import" className="scroll-mt-6">
         <JobAdImportCard />
+      </div>
+
+      <div id="jira" className="scroll-mt-6">
+        <JiraIntegrationCard canManage={canManage} />
       </div>
 
       {!settingsKnown && activeOrgId && (

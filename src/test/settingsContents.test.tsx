@@ -29,6 +29,7 @@ vi.mock("@/components/GmailIntegrationsCard", () => ({
 vi.mock("@/components/LabelsManager", () => ({ LabelsManager: () => null }));
 vi.mock("@/components/TimesheetBrowserDialog", () => ({ TimesheetBrowserDialog: () => null }));
 vi.mock("@/components/AllBellsAndWhistlesToggle", () => ({ AllBellsAndWhistlesToggle: () => <div>All switch</div> }));
+vi.mock("@/components/JiraIntegrationCard", () => ({ JiraIntegrationCard: () => <div>Jira card</div> }));
 vi.mock("@/store/labelsStore", () => ({
   useLabelsStore: (select: (s: { loadLabels: () => void }) => unknown) => select({ loadLabels: () => {} }),
 }));
@@ -67,7 +68,7 @@ describe("the contents of Bells & Whistles", () => {
     render(<BellsAndWhistlesSection showHeader={false} />);
     expect(contents().compareDocumentPosition(screen.getByText("All switch")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(texts(group("General"))).toEqual([
-      "All bells & whistles", "Teams", "Backups & Restore", "GitHub repositories", "Gmail link import", "Job ad import",
+      "All bells & whistles", "Teams", "Backups & Restore", "GitHub repositories", "Gmail link import", "Job ad import", "Jira",
     ]);
     linksLeadSomewhere();
   });
