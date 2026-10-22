@@ -8,6 +8,7 @@ import { ArrowLeftRight, Loader2, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
+import { JiraDiagnose } from "@/components/JiraDiagnose";
 import { callJira, type JiraStatus } from "@/lib/jiraSync";
 
 /**
@@ -266,6 +267,8 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
             </div>
           </div>
         )}
+
+        {status?.connected && !editing && canManage && activeOrgId && <JiraDiagnose organizationId={activeOrgId} />}
 
         {status?.connected && editing && form}
       </CardContent>
