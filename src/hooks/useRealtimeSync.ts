@@ -519,6 +519,12 @@ export function useRealtimeSync() {
           { event: '*', schema: 'public', table: 'jira_issue_links' },
           () => useJiraIssuesStore.getState().scheduleLoad(),
         )
+        // And the connection: its hierarchy levels change when Jira's do.
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'jira_connections' },
+          () => useJiraIssuesStore.getState().scheduleLoad(),
+        )
         // And scrambled lists.
         .on(
           'postgres_changes',

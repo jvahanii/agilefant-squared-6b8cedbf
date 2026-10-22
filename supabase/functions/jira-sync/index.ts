@@ -307,12 +307,23 @@ async function drain(admin: Admin, conn: Connection) {
     // hierarchy sends one for every issue it retypes — and a person's next
     // change should not wait behind them. Safe either way: a field changed on
     // both sides goes to the later change, whichever is read first.
-    const rank = (key: string) => (key.startsWith('full') ? 0 : key.startsWith('item') ? 1 : 2);
+    const rank = (key: string) => (key.startsWith('full') || key.startsWith('levels') ? 0 : key.startsWith('item') ? 1 : 2);
     const ordered = [...groups.entries()].sort(([a], [b]) => rank(a) - rank(b));
     for (const [key, ids] of ordered) {
       const [kind, ref] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
       try {
         if (kind === 'full') await engine.fullSync();
+        else if (kind === 'levels') {
+          // Jira's hierarchy changed — a level added or taken away in its
+          // settings, which no webhook announces: keep the new levels and
+          // level every tree to them.
+          const types = await jira.issueTypes();
+          if (JSON.stringify(types) !== JSON.stringify(conn.issue_types)) {
+            await admin.from('jira_connections').update({ issue_types: types }).eq('organization_id', conn.organization_id);
+            conn.issue_types = types;
+            await engine.fullSync();
+          }
+        }
         else if (kind === 'item') await engine.syncItem(ref);
         else if (kind === 'issue') await engine.syncIssue(ref);
         await admin.from('jira_sync_queue').update({ done_at: new Date().toISOString(), error: null }).in('id', ids);

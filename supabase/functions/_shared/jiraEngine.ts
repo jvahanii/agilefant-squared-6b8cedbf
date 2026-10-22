@@ -12,6 +12,7 @@
 
 import {
   agilefantStatusFor,
+  expectedTypes,
   jiraStatusFor,
   jiraTypeForNewItem,
   Levels,
@@ -327,7 +328,46 @@ export class JiraSync {
       const issue = issueById.get(link.jiraId) ?? (await this.jira.getIssue(link.jiraId));
       if (item && item.inList && issue) await this.reconcilePair(link, item, issue, null, issue.updatedAt);
     }
+
+    await this.relevelAll();
     return this.report;
+  }
+
+  /**
+   * Every tree levelled to the hierarchy as Jira has it now. A move levels
+   * the tree it lands in; but when a level is added or taken away in Jira's
+   * settings, trees no move has touched since keep types that no longer fit —
+   * and the app, which shows each item's type as levelling would make it,
+   * would show them changing for good. Each tree whose types differ from
+   * that is levelled from its top, as a move would.
+   */
+  private async relevelAll() {
+    const levels = await this.levels();
+    const tree = this.jiraTree();
+    const wanted = expectedTypes(tree, levels);
+    const tops = new Set<string>();
+    for (const [id, node] of tree) {
+      if (wanted.get(id) === node.type) continue;
+      let top = id;
+      for (let n = 0, p = tree.get(top)?.parent; p && tree.has(p) && n < 50; n++, p = tree.get(top)?.parent) top = p;
+      tops.add(top);
+    }
+    for (const top of tops) {
+      const link = this.linksByIssue.get(top);
+      const issue = await this.jira.getIssue(top);
+      if (!link || !issue) continue;
+      try {
+        const moved = await this.rehome(issue, issue.state.parent);
+        if (moved?.after && moved.after.type !== link.jiraType) {
+          const next: Link = { ...link, jiraType: moved.after.type };
+          this.remember(next);
+          await this.agilefant.saveLink(next);
+        }
+        if (moved?.failure) throw moved.failure;
+      } catch (e) {
+        this.report.errors.push(`${issue.key}: ${message(e)}`);
+      }
+    }
   }
 
   private async reconcilePair(

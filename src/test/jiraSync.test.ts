@@ -856,3 +856,38 @@ describe("the types the app shows at once after a move", () => {
     expect(shown.has("new")).toBe(false);
   });
 });
+
+describe("a change to Jira's hierarchy", () => {
+  it("is followed by a full sync: every tree levelled to the levels as they are now", async () => {
+    jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }];
+    const initiative = jira.add("INT-1", "Initiative", { title: "Initiative" });
+    const epic = jira.add("INT-2", "Epic", { title: "Epic", parent: initiative.id });
+    const task = jira.add("INT-3", "Task", { title: "Task", parent: epic.id });
+    await engine().fullSync();
+
+    // The level above the epic taken away in Jira's settings.
+    jira.types = DEFAULT_ISSUE_TYPES;
+    const report = await engine().fullSync();
+
+    expect(report.errors).toEqual([]);
+    expect(jira.issues.get(initiative.id)).toMatchObject({ type: "Epic", state: { parent: null } });
+    expect(jira.issues.get(epic.id)).toMatchObject({ type: "Story", state: { parent: initiative.id } });
+    expect(jira.issues.get(task.id)).toMatchObject({ type: "Subtask", state: { parent: epic.id } });
+    // What the app shows ahead of Jira is what Jira now has, and a second sync changes nothing.
+    const view = new Map([...af.items.values()].map((item) => [item.id, { type: af.linkRows.get(item.id)!.jiraType, parent: item.parentId }]));
+    expect([...expectedTypes(view).entries()].every(([id, type]) => af.linkRows.get(id)!.jiraType === type)).toBe(true);
+    jira.calls = [];
+    await engine().fullSync();
+    expect(jira.calls).toEqual([]);
+  });
+
+  it("leaves trees alone that already fit", async () => {
+    const epic = jira.add("INT-1", "Epic", { title: "Epic" });
+    jira.add("INT-2", "Task", { title: "Task", parent: epic.id });
+    await engine().fullSync();
+    jira.calls = [];
+    jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }];
+    await engine().fullSync();
+    expect(jira.calls).toEqual([]);
+  });
+});
