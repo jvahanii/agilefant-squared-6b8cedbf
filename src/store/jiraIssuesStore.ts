@@ -16,6 +16,7 @@ export interface JiraIssueRef {
 
 /** A list kept in step with a Jira project. */
 export interface JiraListRef {
+  organizationId: string;
   projectKey: string;
   /** The project in Jira. */
   url: string;
@@ -55,7 +56,10 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
       byList: new Map(
         (connections.data ?? [])
           .filter((c) => c.enabled)
-          .map((c) => [c.backlog_id, { projectKey: c.project_key, url: `${c.base_url}/browse/${encodeURIComponent(c.project_key)}` }]),
+          .map((c) => [
+            c.backlog_id,
+            { organizationId: c.organization_id, projectKey: c.project_key, url: `${c.base_url}/browse/${encodeURIComponent(c.project_key)}` },
+          ]),
       ),
       byItem: new Map(
         (links.data ?? []).map((row) => {

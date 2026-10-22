@@ -34,6 +34,7 @@ import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
 import { RerankGuardHost } from "@/components/RerankGuardHost";
 import { JobSearchRunButton } from "@/components/JobSearchRunButton";
+import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
@@ -1378,6 +1379,8 @@ function AppLayoutInner() {
             <span className="hidden md:inline">Bells &amp; Whistles</span>
           </button>
           <JobSearchRunButton />
+          {/* For the Jira workshop; to come out of the header again after it. */}
+          <JiraSyncHeaderButton />
           <RoleSimulator />
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">

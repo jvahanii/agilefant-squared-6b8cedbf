@@ -10,6 +10,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
 import { callJira, type JiraStatus } from "@/lib/jiraSync";
 import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
+import { syncJiraNow } from "@/lib/jiraSyncNow";
 
 /**
  * One Agilefant list kept in step with one Jira Cloud project, both ways:
@@ -93,32 +94,9 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
   const syncNow = async () => {
     if (!activeOrgId) return;
     setBusy("sync");
-    try {
-      const next = await callJira({ action: "sync", organizationId: activeOrgId });
-      setStatus(next);
-      const r = next.report;
-      const parts = r
-        ? [
-            r.createdInAgilefant && `${r.createdInAgilefant} new in Agilefant`,
-            r.createdInJira && `${r.createdInJira} new in Jira`,
-            r.updatedInAgilefant && `${r.updatedInAgilefant} updated in Agilefant`,
-            r.updatedInJira && `${r.updatedInJira} updated in Jira`,
-            r.deletedInAgilefant && `${r.deletedInAgilefant} deleted in Agilefant`,
-            r.deletedInJira && `${r.deletedInJira} deleted in Jira`,
-          ].filter(Boolean)
-        : [];
-      toast({
-        title: r && r.errors.length > 0 ? `Synced, with ${r.errors.length} error(s)` : "Synced with Jira",
-        description: [parts.length > 0 ? parts.join(", ") : "Nothing needed changing.", ...(r?.errors.slice(0, 3) ?? []), ...(r?.skipped.slice(0, 2) ?? [])].join(" "),
-        variant: r && r.errors.length > 0 ? "destructive" : undefined,
-      });
-      // The items Jira brought in arrive with the next load.
-      void useAppStore.getState().loadFromSupabase?.();
-    } catch (e) {
-      toast({ title: "Sync failed", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setBusy(null);
-    }
+    const next = await syncJiraNow(activeOrgId);
+    if (next) setStatus(next);
+    setBusy(null);
   };
 
   const disconnect = async () => {

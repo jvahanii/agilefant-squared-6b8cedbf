@@ -65,6 +65,7 @@ describe("the list kept in step with Jira", () => {
   it("is known with its project, to mark it in the sidebar", async () => {
     await useJiraIssuesStore.getState().load();
     expect(useJiraIssuesStore.getState().byList.get("org::bl-1")).toEqual({
+      organizationId: "org",
       projectKey: "INT",
       url: "https://example.atlassian.net/browse/INT",
     });
