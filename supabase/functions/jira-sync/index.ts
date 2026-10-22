@@ -298,10 +298,12 @@ async function statusOf(admin: Admin, org: string) {
   const conn = await getConnection(admin, org);
   const tokenConfigured = !!Deno.env.get('JIRA_API_TOKEN');
   if (!conn) return { connected: false, tokenConfigured };
-  const [{ count: linked }, { count: pending }, { data: failed }] = await Promise.all([
+  const [{ count: linked }, { count: pending }, { data: failed }, { count: queueFailed }, { data: lastFailed }] = await Promise.all([
     admin.from('jira_issue_links').select('work_item_id', { count: 'exact', head: true }).eq('organization_id', org),
-    admin.from('jira_sync_queue').select('id', { count: 'exact', head: true }).eq('organization_id', org).is('done_at', null),
+    admin.from('jira_sync_queue').select('id', { count: 'exact', head: true }).eq('organization_id', org).is('done_at', null).lt('attempts', 3),
     admin.from('jira_issue_links').select('jira_key, last_error').eq('organization_id', org).not('last_error', 'is', null).limit(5),
+    admin.from('jira_sync_queue').select('id', { count: 'exact', head: true }).eq('organization_id', org).is('done_at', null).gte('attempts', 3),
+    admin.from('jira_sync_queue').select('error').eq('organization_id', org).is('done_at', null).gte('attempts', 3).order('id', { ascending: false }).limit(1),
   ]);
   return {
     connected: true,
@@ -317,6 +319,8 @@ async function statusOf(admin: Admin, org: string) {
     lastError: conn.last_error,
     linked: linked ?? 0,
     pending: pending ?? 0,
+    queueFailed: queueFailed ?? 0,
+    queueFailedError: (lastFailed?.[0]?.error as string | undefined) ?? null,
     itemErrors: failed ?? [],
   };
 }
@@ -423,6 +427,17 @@ Deno.serve(async (req) => {
         await admin.from('jira_issue_links').delete().eq('organization_id', org);
       }
       return json({ ...(await statusOf(admin, org)), webhookError });
+    }
+
+    // Changes that failed three times are given three fresh tries, now.
+    if (action === 'retry') {
+      await assertMember(admin, user.id, org);
+      const conn = await getConnection(admin, org);
+      if (!conn) return json({ error: 'Jira is not connected' }, 409);
+      await admin.from('jira_sync_queue').update({ attempts: 0 }).eq('organization_id', org).is('done_at', null).gte('attempts', 3);
+      const result = await withLock(admin, org, 30_000, () => drain(admin, conn));
+      if (result === 'busy') return json({ error: 'A sync is already running. Try again in a minute.' }, 409);
+      return json({ ...(await statusOf(admin, org)), report: result.report });
     }
 
     if (action === 'sync') {

@@ -1,0 +1,1 @@
+- [x] Jira: AI diagnosis for admins
