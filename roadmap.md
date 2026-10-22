@@ -1,2 +1,2 @@
 # Roadmap
-- [ ] Jira status missing from Agilefant is created in Agilefant's status set
+- [x] Jira status missing from Agilefant is created in Agilefant's status set
