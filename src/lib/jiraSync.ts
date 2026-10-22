@@ -17,6 +17,9 @@ export interface JiraStatus {
   lastError?: string | null;
   linked?: number;
   pending?: number;
+  /** Queued changes that failed three times and are no longer retried on their own. */
+  queueFailed?: number;
+  queueFailedError?: string | null;
   itemErrors?: { jira_key: string; last_error: string }[];
   webhookError?: string | null;
   report?: {

@@ -26,7 +26,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
   const [status, setStatus] = useState<JiraStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
+  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect" | "retry">(null);
   const [editing, setEditing] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -113,6 +113,24 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
       void useAppStore.getState().loadFromSupabase?.();
     } catch (e) {
       toast({ title: "Sync failed", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const retryFailed = async () => {
+    if (!activeOrgId) return;
+    setBusy("retry");
+    try {
+      const next = await callJira({ action: "retry", organizationId: activeOrgId });
+      setStatus(next);
+      toast({
+        title: next.queueFailed ? `${next.queueFailed} change(s) still failing` : "Failed changes sent",
+        variant: next.queueFailed ? "destructive" : undefined,
+      });
+      void useAppStore.getState().loadFromSupabase?.();
+    } catch (e) {
+      toast({ title: "Retry failed", description: (e as Error).message, variant: "destructive" });
     } finally {
       setBusy(null);
     }
@@ -217,12 +235,24 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                 {status.webhook ? "." : ". Jira's webhook is not registered, so Jira's changes come in only on Sync now."}
               </p>
               {status.lastError && <p className="text-xs text-destructive">Last error: {status.lastError}</p>}
+              {!!status.queueFailed && (
+                <p className="text-xs text-destructive">
+                  {status.queueFailed} change(s) failed three times and are no longer retried
+                  {status.queueFailedError ? `: ${status.queueFailedError}` : "."}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={syncNow} disabled={busy !== null}>
                 {busy === "sync" ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
                 Sync now
               </Button>
+              {!!status.queueFailed && (
+                <Button size="sm" variant="outline" onClick={retryFailed} disabled={busy !== null}>
+                  {busy === "retry" && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+                  Retry failed
+                </Button>
+              )}
               {canManage && (
                 <>
                   <Button size="sm" variant="outline" onClick={() => setEditing(true)} disabled={busy !== null}>
