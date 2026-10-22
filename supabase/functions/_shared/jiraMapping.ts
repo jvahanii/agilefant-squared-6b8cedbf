@@ -210,6 +210,83 @@ export function jiraTypeUnder(parentType: string | null | undefined, currentType
   return null;
 }
 
+/** Jira's three levels: an epic, above a task or story, above a subtask. */
+export function levelOf(type: string): number {
+  return type === 'Epic' ? 2 : type === 'Subtask' ? 0 : 1;
+}
+
+/** The type for a level, keeping the current one where the level is the same. */
+function typeAt(level: number, current: string): string {
+  if (level === levelOf(current)) return current;
+  if (level === 2) return 'Epic';
+  if (level === 0) return 'Subtask';
+  // A lowered epic becomes a story, a raised subtask a task.
+  return current === 'Epic' ? 'Story' : 'Task';
+}
+
+/** Where an issue ends up after a move: its type and its parent. */
+export interface Placement {
+  id: string;
+  type: string;
+  parent: string | null;
+}
+
+export type MovePlan = { placements: Placement[] } | { impossible: string };
+
+/**
+ * What a move in Agilefant's hierarchy asks of Jira. Agilefant nests as deep
+ * as anyone likes and has no types; Jira has three levels, each issue's type
+ * saying which, and a child exactly one level below its parent.
+ *
+ * So the tree the issue lands in is levelled again from its top: the top
+ * keeps its level if the tree fits under it, and is raised as far as the tree
+ * needs; every issue below sits one level under its parent. That raises a
+ * task to an epic when a third level appears under it, and lowers an epic to
+ * a story when it is put under another epic — its tasks becoming subtasks.
+ *
+ * Returns, top-down, the issues whose type or parent changes; or why the
+ * tree cannot fit, when it would need more than three levels.
+ */
+export function planMove(
+  issues: ReadonlyMap<string, { type: string; parent: string | null }>,
+  moved: string,
+  parent: string | null,
+): MovePlan {
+  const parentOf = (id: string) => (id === moved ? parent : issues.get(id)?.parent ?? null);
+  for (let p = parent, n = 0; p; p = parentOf(p), n++) {
+    if (p === moved || n > 50) return { impossible: 'it would be under itself' };
+  }
+  let top = moved;
+  for (let p = parentOf(top); p && issues.has(p); p = parentOf(top)) top = p;
+
+  const children = new Map<string, string[]>();
+  for (const id of new Set([...issues.keys(), moved])) {
+    const p = parentOf(id);
+    if (p) children.set(p, [...(children.get(p) ?? []), id]);
+  }
+  // Top-down, with each issue's depth below the top.
+  const order: Array<[string, number]> = [[top, 0]];
+  for (let i = 0; i < order.length; i++) {
+    const [id, depth] = order[i];
+    for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
+  }
+  const height = Math.max(...order.map(([, depth]) => depth));
+  if (height > 2) {
+    return {
+      impossible: `Jira has three levels — epic, task or story, subtask — and this would make ${height + 1}; move something up first`,
+    };
+  }
+  const typeOf = (id: string) => issues.get(id)?.type ?? 'Task';
+  // Never a subtask at the top, never lower than the tree needs.
+  const topLevel = Math.max(levelOf(typeOf(top)), height, 1);
+  const placements: Placement[] = [];
+  for (const [id, depth] of order) {
+    const type = typeAt(topLevel - depth, typeOf(id));
+    if (type !== typeOf(id) || id === moved) placements.push({ id, type, parent: parentOf(id) });
+  }
+  return { placements };
+}
+
 // ─── Deciding ────────────────────────────────────────────────────────────────
 
 /** Two states equal, field by field. */

@@ -14,9 +14,10 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
-  jiraTypeUnder,
   normalizeText,
+  planMove,
   reconcile,
+  SYNCED_FIELDS,
   toSummary,
   type SyncState,
   type SyncedField,
@@ -278,22 +279,35 @@ export class JiraSync {
     let jiraType = issue.type;
     let retyped = false;
     let fieldsForJira = toJira;
-    // A new parent may need a new issue type: Jira's move, before the edit.
+    // A new parent may need new issue types around it: Jira's moves, before the edit.
     if (toJira.includes('parent')) {
       try {
-        const moved = await this.retypeForParent(issue, state.parent);
+        const moved = await this.rehome(issue, state.parent);
         if (moved) {
-          jiraType = moved.type;
           retyped = true;
-          // A move to a subtask sets the parent itself.
-          if (moved.parentSet) fieldsForJira = toJira.filter((f) => f !== 'parent');
+          fieldsForJira = toJira.filter((f) => f !== 'parent');
+          if (moved.after) {
+            // Agreed on where it really is; anything the moves changed besides goes back.
+            jiraType = moved.after.type;
+            state.parent = moved.after.state.parent;
+            for (const field of SYNCED_FIELDS) {
+              if (field !== 'parent' && moved.after.state[field] !== state[field] && !fieldsForJira.includes(field)) {
+                fieldsForJira.push(field);
+              }
+            }
+          } else {
+            state.parent = link.agreed?.parent ?? issue.state.parent;
+          }
+          if (moved.failure) throw moved.failure;
         }
       } catch (e) {
         error = `${issue.key}: ${message(e)}`;
         this.report.errors.push(error);
-        // Tried again next time, as a refused edit is.
-        state.parent = link.agreed?.parent ?? issue.state.parent;
-        fieldsForJira = toJira.filter((f) => f !== 'parent');
+        if (!retyped) {
+          // Tried again next time, as a refused edit is.
+          state.parent = link.agreed?.parent ?? issue.state.parent;
+          fieldsForJira = toJira.filter((f) => f !== 'parent');
+        }
       }
     }
     if (fieldsForJira.length > 0) {
@@ -318,56 +332,84 @@ export class JiraSync {
     await this.agilefant.saveLink(next);
   }
 
-  /**
-   * Change the issue's type when its new parent asks for another, and say what
-   * was done; null when the type can stay. Throws, with words a person can act
-   * on, where Jira has no place for the issue there.
-   */
-  private async retypeForParent(issue: JiraIssue, parent: string | null) {
-    const parentType = parent ? this.linksByIssue.get(parent)?.jiraType ?? null : null;
-    const wanted = jiraTypeUnder(parentType, issue.type);
-    if (!wanted) throw new Error('Jira has nothing below a subtask, so it cannot go there');
-    if (wanted === issue.type) return null;
-    const children = [...this.linksByIssue.values()].filter((l) => l.agreed?.parent === issue.id);
-    if (children.length > 0 && wanted === 'Subtask') {
-      throw new Error(`it has ${children.length} item(s) under it, and a subtask cannot have any — move them first`);
-    }
-    if (children.length > 0 && issue.type === 'Epic') {
-      await this.epicToStory(issue, wanted, parent, children);
-      return { type: wanted, parentSet: false };
-    }
-    await this.jira.changeType(issue.id, wanted, parent);
-    return { type: wanted, parentSet: wanted === 'Subtask' };
+  /** Jira's hierarchy as the pairs know it: each issue's type and parent. */
+  private jiraTree() {
+    return new Map(
+      [...this.linksByIssue.values()].map((l) => [l.jiraId, { type: l.jiraType, parent: l.agreed?.parent ?? null }]),
+    );
   }
 
   /**
-   * An epic that becomes a story takes its items a level down with it: they
-   * become its subtasks, the only thing Jira allows under a story. They are
-   * let go of first — an epic cannot change type with tasks under it, nor a
-   * task become a subtask of an epic — and taken back if the epic's move
-   * fails, so nothing is left loose.
+   * Put the issue under this parent in Jira, raising or lowering the types of
+   * the tree it lands in as planMove says. Null when only its parent changes,
+   * which the ordinary edit does. Throws, changing nothing, where the tree
+   * cannot fit in Jira's three levels.
+   *
+   * Jira checks every step, so: whatever changes type is let go of first —
+   * a subtask by becoming a task, anything else by losing its parent, unless
+   * it is becoming a subtask of a parent that keeps its type, which Jira's
+   * move does in one — and the tree is then put together from the top, each
+   * parent of its new type before its children come under it. A step that fails stops the rest;
+   * either way each issue touched is read back, and its pair agreed on where
+   * it really is, so the next sync takes up what is left from Agilefant.
    */
-  private async epicToStory(issue: JiraIssue, type: string, parent: string | null, children: Link[]) {
-    const below = children.filter((child) => [...this.linksByIssue.values()].some((l) => l.agreed?.parent === child.jiraId));
-    if (below.length > 0) {
-      throw new Error(
-        `${below.length} of the items under it have items of their own, and a story's subtasks cannot — move those first`,
-      );
-    }
-    const stateOf = (child: Link, parentId: string | null): SyncState => ({ ...child.agreed!, parent: parentId });
-    for (const child of children) await this.jira.updateIssue(child.jiraId, ['parent'], stateOf(child, null));
+  private async rehome(issue: JiraIssue, parent: string | null) {
+    const tree = this.jiraTree();
+    tree.set(issue.id, { type: issue.type, parent: issue.state.parent });
+    const plan = planMove(tree, issue.id, parent);
+    if ('impossible' in plan) throw new Error(plan.impossible);
+    const { placements } = plan;
+    if (placements.length === 1 && placements[0].type === issue.type) return null;
+
+    const now = new Map(placements.map((p) => [p.id, { ...tree.get(p.id)! }]));
+    const stateFor = (id: string, parentId: string | null): SyncState => ({
+      ...(this.linksByIssue.get(id)?.agreed ?? issue.state),
+      parent: parentId,
+    });
+    const retyped = new Set(placements.filter((p) => p.type !== tree.get(p.id)?.type).map((p) => p.id));
+    let failure: unknown = null;
     try {
-      await this.jira.changeType(issue.id, type, parent);
+      for (const p of placements) {
+        const at = now.get(p.id)!;
+        if (p.type === at.type) continue;
+        if (p.type === 'Subtask' && !(at.parent && retyped.has(at.parent))) continue;
+        if (at.type === 'Subtask') {
+          await this.jira.changeType(p.id, 'Task', null);
+          now.set(p.id, { type: 'Task', parent: null });
+        } else if (at.parent) {
+          await this.jira.updateIssue(p.id, ['parent'], stateFor(p.id, null));
+          at.parent = null;
+        }
+      }
+      for (const p of placements) {
+        const at = now.get(p.id)!;
+        if (p.type === 'Subtask') {
+          if (at.type !== 'Subtask' || at.parent !== p.parent) await this.jira.changeType(p.id, 'Subtask', p.parent);
+          continue;
+        }
+        if (at.type !== p.type) await this.jira.changeType(p.id, p.type, null);
+        if (at.parent !== p.parent) await this.jira.updateIssue(p.id, ['parent'], stateFor(p.id, p.parent));
+      }
     } catch (e) {
-      for (const child of children) await this.jira.updateIssue(child.jiraId, ['parent'], stateOf(child, issue.id)).catch(() => {});
-      throw e;
+      failure = e;
     }
-    for (const child of children) {
-      await this.jira.changeType(child.jiraId, 'Subtask', issue.id);
-      const next: Link = { ...child, jiraType: 'Subtask' };
+
+    let after: JiraIssue | null = null;
+    for (const p of placements) {
+      const read = await this.jira.getIssue(p.id);
+      if (!read) continue;
+      if (p.id === issue.id) {
+        after = read;
+        continue;
+      }
+      const link = this.linksByIssue.get(p.id);
+      if (!link) continue;
+      const next: Link = { ...link, jiraType: read.type, agreed: read.state };
       this.remember(next);
       await this.agilefant.saveLink(next);
+      this.report.updatedInJira += 1;
     }
+    return { after, failure };
   }
 
   /** The Agilefant values for these fields of a state. */
@@ -388,7 +430,7 @@ export class JiraSync {
     const parentLink = item.parentId ? this.linksByItem.get(item.parentId) : undefined;
     const type = jiraTypeForNewItem(parentLink?.jiraType ?? null);
     if (!type) {
-      this.report.skipped.push(`"${item.title}" is below a subtask, which Jira cannot hold`);
+      await this.createUnderSubtask(item, state);
       return;
     }
     try {
@@ -400,6 +442,51 @@ export class JiraSync {
     } catch (e) {
       this.report.errors.push(`"${item.title}": ${message(e)}`);
     }
+  }
+
+  /**
+   * A new item under a subtask: made a task on its own, then moved in, the
+   * tree raised to hold it — or not made at all where it cannot fit.
+   */
+  private async createUnderSubtask(item: AgilefantItem, state: SyncState) {
+    const tree = this.jiraTree();
+    tree.set('', { type: 'Task', parent: null });
+    const plan = planMove(tree, '', state.parent);
+    if ('impossible' in plan) {
+      this.report.skipped.push(`"${item.title}": ${plan.impossible}`);
+      return;
+    }
+    const alone: SyncState = { ...state, parent: null };
+    let link: Link;
+    try {
+      const created = await this.jira.createIssue('Task', alone);
+      link = { workItemId: item.id, jiraId: created.id, jiraKey: created.key, jiraType: 'Task', agreed: alone };
+      this.remember(link);
+      await this.agilefant.saveLink(link);
+      this.report.createdInJira += 1;
+    } catch (e) {
+      this.report.errors.push(`"${item.title}": ${message(e)}`);
+      return;
+    }
+    const issue: JiraIssue = { id: link.jiraId, key: link.jiraKey, type: 'Task', state: alone, statusCategory: null, updatedAt: 0 };
+    let error: string | null = null;
+    let after: JiraIssue | null = null;
+    try {
+      const moved = await this.rehome(issue, state.parent);
+      after = moved?.after ?? null;
+      if (moved?.failure) throw moved.failure;
+    } catch (e) {
+      error = `${link.jiraKey}: ${message(e)}`;
+      this.report.errors.push(error);
+    }
+    const next: Link = {
+      ...link,
+      jiraType: after?.type ?? link.jiraType,
+      agreed: { ...alone, parent: after?.state.parent ?? null },
+      error,
+    };
+    this.remember(next);
+    await this.agilefant.saveLink(next);
   }
 
   private async createInAgilefant(issue: JiraIssue) {
