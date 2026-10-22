@@ -35,6 +35,7 @@ interface Connection {
   webhook_url: string | null;
   last_synced_at: string | null;
   last_error: string | null;
+  issue_types: Array<{ name: string; level: number }> | null;
 }
 
 /** How long one call keeps working through a queue before leaving the rest to the next. */
@@ -278,7 +279,8 @@ async function withLock<T>(admin: Admin, org: string, waitMs: number, work: () =
 
 /** Work through what is queued for one organization, oldest first, each item once. */
 async function drain(admin: Admin, conn: Connection) {
-  const engine = new JiraSync(jiraPort(configFor(conn)), agilefantPort(admin, conn));
+  const jira = jiraPort(configFor(conn));
+  const engine = new JiraSync(jira, agilefantPort(admin, conn));
   const started = Date.now();
   let processed = 0;
   let lastError: string | null = null;
@@ -325,9 +327,17 @@ async function drain(admin: Admin, conn: Connection) {
   }
   const report = engine.report;
   if (report.errors.length > 0) lastError = report.errors[report.errors.length - 1];
+  // The project's levels, for the app to show the type a move will give an
+  // item before Jira has made it. Read once per call, usually already read.
+  const issueTypes = await jira.issueTypes().catch(() => null);
+  const typesChanged = issueTypes && JSON.stringify(issueTypes) !== JSON.stringify(conn.issue_types);
   await admin
     .from('jira_connections')
-    .update({ last_synced_at: new Date().toISOString(), last_error: lastError })
+    .update({
+      last_synced_at: new Date().toISOString(),
+      last_error: lastError,
+      ...(typesChanged ? { issue_types: issueTypes } : {}),
+    })
     .eq('organization_id', conn.organization_id);
   return { processed, report };
 }

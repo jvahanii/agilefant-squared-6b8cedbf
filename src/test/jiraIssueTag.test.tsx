@@ -21,11 +21,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { JiraIssueTag } from "@/components/JiraIssueTag";
+import { useAppStore } from "@/store/appStore";
+import type { WorkItem } from "@/types/models";
 
 beforeEach(() => {
   rows.links = [{ work_item_id: "org::wi-1", organization_id: "org", jira_key: "INT-8", jira_type: "Subtask", last_error: null }];
   rows.connections = [
-    { organization_id: "org", base_url: "https://example.atlassian.net", project_key: "INT", backlog_id: "org::bl-1", enabled: true },
+    { organization_id: "org", base_url: "https://example.atlassian.net", project_key: "INT", backlog_id: "org::bl-1", tree_id: "org::tree-1", enabled: true, issue_types: null },
   ];
   useJiraIssuesStore.setState({ byItem: new Map(), byList: new Map() });
 });
@@ -86,6 +88,8 @@ describe("the list kept in step with Jira", () => {
     expect(useJiraIssuesStore.getState().byList.get("org::bl-1")).toEqual({
       organizationId: "org",
       projectKey: "INT",
+      treeId: "org::tree-1",
+      issueTypes: null,
       url: "https://example.atlassian.net/browse/INT",
     });
   });
@@ -94,5 +98,37 @@ describe("the list kept in step with Jira", () => {
     rows.connections[0].enabled = false;
     await useJiraIssuesStore.getState().load();
     expect(useJiraIssuesStore.getState().byList.size).toBe(0);
+  });
+});
+
+describe("the type a move in Agilefant will give the item", () => {
+  const item = (id: string, parentId: string | null) =>
+    ({ id, title: id, status: "not_started", parentId, childrenIds: [], backlogAssignments: { "org::tree-1": "org::bl-1" }, ranks: {} }) as unknown as WorkItem;
+
+  beforeEach(() => {
+    rows.connections[0].issue_types = [
+      { name: "Epic", level: 1 },
+      { name: "Task", level: 0 },
+      { name: "Story", level: 0 },
+      { name: "Subtask", level: -1 },
+    ] as unknown as string;
+  });
+
+  it("is shown at once, faded, until Jira has it", async () => {
+    // A subtask in Jira, moved to the top level in Agilefant: it will be a task.
+    useAppStore.setState({ workItems: { "org::wi-1": item("org::wi-1", null) } });
+    await useJiraIssuesStore.getState().load();
+    render(<JiraIssueTag workItemId="org::wi-1" />);
+    const link = screen.getByRole("link", { name: "INT-8 · Task" });
+    expect(link).toHaveClass("italic");
+    expect(link).toHaveAttribute("title", "Becoming a Task in Jira (now a Subtask)");
+  });
+
+  it("is not shown where it is the type Jira already has", async () => {
+    rows.links.push({ work_item_id: "org::wi-0", organization_id: "org", jira_key: "INT-7", jira_type: "Task", last_error: null });
+    useAppStore.setState({ workItems: { "org::wi-0": item("org::wi-0", null), "org::wi-1": item("org::wi-1", "org::wi-0") } });
+    await useJiraIssuesStore.getState().load();
+    render(<JiraIssueTag workItemId="org::wi-1" />);
+    expect(screen.getByRole("link", { name: "INT-8 · Subtask" })).not.toHaveClass("italic");
   });
 });

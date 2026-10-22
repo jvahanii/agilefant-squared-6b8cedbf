@@ -336,6 +336,50 @@ export function planMove(
   return { placements };
 }
 
+/**
+ * The types every issue of a hierarchy should have, as the sync levels them:
+ * each tree from its top, the top keeping its level if the tree fits under
+ * it and raised as far as it needs, everything else one level under its
+ * parent. A tree too deep for Jira keeps the types it has — the sync refuses
+ * the move that made it so.
+ *
+ * What the app shows the moment an item is moved in Agilefant, before Jira
+ * has made the change: planMove on the tree the item lands in gives the same
+ * types, every other tree being levelled already. Issues with no type yet —
+ * items not in Jira — count for the depth and get none.
+ */
+export function expectedTypes(
+  issues: ReadonlyMap<string, { type: string | null; parent: string | null }>,
+  levels: Levels = DEFAULT_LEVELS,
+): Map<string, string> {
+  const children = new Map<string, string[]>();
+  const tops: string[] = [];
+  for (const [id, issue] of issues) {
+    if (issue.parent && issues.has(issue.parent)) children.set(issue.parent, [...(children.get(issue.parent) ?? []), id]);
+    else tops.push(id);
+  }
+  const out = new Map<string, string>();
+  for (const top of tops) {
+    const order: Array<[string, number]> = [[top, 0]];
+    for (let i = 0; i < order.length && i < 10_000; i++) {
+      const [id, depth] = order[i];
+      for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
+    }
+    const height = Math.max(...order.map(([, depth]) => depth));
+    const typeOf = (id: string) => issues.get(id)?.type ?? null;
+    if (height + 1 > levels.count) {
+      for (const [id] of order) if (typeOf(id)) out.set(id, typeOf(id)!);
+      continue;
+    }
+    const topLevel = Math.max(levels.of(typeOf(top) ?? levels.defaultAt(0)), levels.bottom + height, 0);
+    for (const [id, depth] of order) {
+      const type = typeOf(id);
+      if (type) out.set(id, levels.typeAt(topLevel - depth, type));
+    }
+  }
+  return out;
+}
+
 // ─── Deciding ────────────────────────────────────────────────────────────────
 
 /** Two states equal, field by field. */

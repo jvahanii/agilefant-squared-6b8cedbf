@@ -12,6 +12,7 @@ import {
   agilefantStatusFor,
   jiraStatusFor,
   jiraTypeForNewItem,
+  expectedTypes,
   Levels,
   DEFAULT_ISSUE_TYPES,
   type IssueTypeLevel,
@@ -787,5 +788,71 @@ describe("a site with levels added above the epic", () => {
       expect.stringMatching(/^INT-6: Jira has 5 levels — Theme, Initiative, Epic, Story\/Task\/Bug, Subtask — and this would make 6/),
     ]);
     expect(jira.calls).toEqual([]);
+  });
+});
+
+describe("the types the app shows at once after a move", () => {
+  const levels5 = new Levels([...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }, { name: "Theme", level: 3 }]);
+
+  /** Agilefant's hierarchy with each item's Jira type, as the app sees them. */
+  const appView = () =>
+    new Map(
+      [...af.items.values()].map((item) => [item.id, { type: af.linkRows.get(item.id)?.jiraType ?? null, parent: item.parentId }]),
+    );
+
+  /** Each item's type in Jira after the sync, by item. */
+  const jiraTypes = () =>
+    new Map([...af.linkRows.values()].map((link) => [link.workItemId, jira.issues.get(link.jiraId)!.type]));
+
+  it("are the types the sync then gives them in Jira — a move under a subtask", async () => {
+    const parent = jira.add("INT-1", "Task", { title: "Parent task" });
+    jira.add("INT-2", "Subtask", { title: "Its subtask", parent: parent.id });
+    jira.add("INT-3", "Subtask", { title: "Its other subtask", parent: parent.id });
+    jira.add("INT-4", "Task", { title: "Moved task" });
+    await engine().fullSync();
+
+    await af.updateItem(af.byTitle("Moved task")!.id, { parentId: af.byTitle("Its subtask")!.id });
+    const shown = expectedTypes(appView());
+    await engine().syncItem(af.byTitle("Moved task")!.id);
+    expect(shown).toEqual(jiraTypes());
+    expect(shown.get(af.byTitle("Parent task")!.id)).toBe("Epic");
+  });
+
+  it("are the types the sync then gives them — an epic under an epic, on five levels", async () => {
+    jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }, { name: "Theme", level: 3 }];
+    const top = jira.add("INT-1", "Epic", { title: "Top epic" });
+    jira.add("INT-2", "Task", { title: "Its task", parent: top.id });
+    const moved = jira.add("INT-3", "Epic", { title: "Moved epic" });
+    const story = jira.add("INT-4", "Story", { title: "Its story", parent: moved.id });
+    jira.add("INT-5", "Subtask", { title: "Its subtask", parent: story.id });
+    await engine().fullSync();
+
+    await af.updateItem(af.byTitle("Moved epic")!.id, { parentId: af.byTitle("Top epic")!.id });
+    const shown = expectedTypes(appView(), levels5);
+    await engine().syncItem(af.byTitle("Moved epic")!.id);
+    expect(shown).toEqual(jiraTypes());
+    expect(shown.get(af.byTitle("Top epic")!.id)).toBe("Initiative");
+  });
+
+  it("keep the types a tree too deep for Jira has, as the sync does", () => {
+    const view = new Map<string, { type: string | null; parent: string | null }>([
+      ["a", { type: "Epic", parent: null }],
+      ["b", { type: "Task", parent: "a" }],
+      ["c", { type: "Subtask", parent: "b" }],
+      ["d", { type: "Task", parent: "c" }],
+    ]);
+    expect([...expectedTypes(view).values()]).toEqual(["Epic", "Task", "Subtask", "Task"]);
+  });
+
+  it("count items not yet in Jira for the depth, and name none for them", () => {
+    const view = new Map<string, { type: string | null; parent: string | null }>([
+      ["a", { type: "Task", parent: null }],
+      ["b", { type: "Subtask", parent: "a" }],
+      ["new", { type: null, parent: "b" }],
+    ]);
+    const shown = expectedTypes(view);
+    expect(shown.get("a")).toBe("Epic");
+    expect(shown.get("b")).toBe("Task");
+    expect(shown.has("new")).toBe(false);
   });
 });

@@ -18,7 +18,7 @@ beforeEach(() => {
   useOrgStore.setState({ activeOrgId: "org" });
   useJiraIssuesStore.setState({
     byItem: new Map(),
-    byList: new Map([["org::bl-1", { organizationId: "org", projectKey: "AF", url: "https://example.atlassian.net/browse/AF" }]]),
+    byList: new Map([["org::bl-1", { organizationId: "org", projectKey: "AF", treeId: "org::tree-1", issueTypes: null, url: "https://example.atlassian.net/browse/AF" }]]),
   });
 });
 

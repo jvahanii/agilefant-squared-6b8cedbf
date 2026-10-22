@@ -619,6 +619,7 @@ export type Database = {
           email: string
           enabled: boolean
           function_url: string | null
+          issue_types: Json | null
           last_error: string | null
           last_synced_at: string | null
           organization_id: string
@@ -639,6 +640,7 @@ export type Database = {
           email: string
           enabled?: boolean
           function_url?: string | null
+          issue_types?: Json | null
           last_error?: string | null
           last_synced_at?: string | null
           organization_id: string
@@ -659,6 +661,7 @@ export type Database = {
           email?: string
           enabled?: boolean
           function_url?: string | null
+          issue_types?: Json | null
           last_error?: string | null
           last_synced_at?: string | null
           organization_id?: string

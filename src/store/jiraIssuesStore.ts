@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import type { IssueTypeLevel } from '../../supabase/functions/_shared/jiraMapping';
 
 /**
  * Which Jira issue each synced work item is: its key and type, and where to
@@ -20,6 +21,10 @@ export interface JiraIssueRef {
 export interface JiraListRef {
   organizationId: string;
   projectKey: string;
+  /** The backlog tree the list is in: an item's parent is read in it. */
+  treeId: string;
+  /** The project's issue types and their levels, as the sync last read them; null before it has. */
+  issueTypes: IssueTypeLevel[] | null;
   /** The project in Jira. */
   url: string;
 }
@@ -47,7 +52,7 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
     // Columns are listed: only these are granted to the app.
     const [links, connections] = await Promise.all([
       supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type, last_error'),
-      supabase.from('jira_connections').select('organization_id, base_url, project_key, backlog_id, enabled'),
+      supabase.from('jira_connections').select('organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
     ]);
     if (links.error) {
       console.error('Could not load Jira issues:', links.error.message);
@@ -60,7 +65,13 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
           .filter((c) => c.enabled)
           .map((c) => [
             c.backlog_id,
-            { organizationId: c.organization_id, projectKey: c.project_key, url: `${c.base_url}/browse/${encodeURIComponent(c.project_key)}` },
+            {
+              organizationId: c.organization_id,
+              projectKey: c.project_key,
+              treeId: c.tree_id,
+              issueTypes: Array.isArray(c.issue_types) ? (c.issue_types as unknown as IssueTypeLevel[]) : null,
+              url: `${c.base_url}/browse/${encodeURIComponent(c.project_key)}`,
+            },
           ]),
       ),
       byItem: new Map(
