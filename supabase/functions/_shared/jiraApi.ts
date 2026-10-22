@@ -32,8 +32,10 @@ export class JiraError extends Error {
   /** Jira's own words from an error body, which is JSON with errorMessages and errors. */
   static readable(body: string): string {
     try {
-      const parsed = JSON.parse(body) as { errorMessages?: string[]; errors?: Record<string, string>; message?: string };
-      const parts = [...(parsed.errorMessages ?? []), ...Object.entries(parsed.errors ?? {}).map(([k, v]) => `${k}: ${v}`)];
+      const parsed = JSON.parse(body) as { errorMessages?: unknown[]; errors?: Record<string, unknown>; message?: string };
+      // The bulk move answers with objects where other calls have strings.
+      const text = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
+      const parts = [...(parsed.errorMessages ?? []).map(text), ...Object.entries(parsed.errors ?? {}).map(([k, v]) => `${k}: ${text(v)}`)];
       if (parsed.message) parts.push(parsed.message);
       if (parts.length > 0) return parts.join('; ').slice(0, 400);
     } catch {

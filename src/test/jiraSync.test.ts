@@ -29,6 +29,7 @@ import {
   type JiraPort,
   type Link,
 } from "../../supabase/functions/_shared/jiraEngine";
+import { JiraError } from "../../supabase/functions/_shared/jiraApi";
 
 // ─── The rules ───────────────────────────────────────────────────────────────
 
@@ -623,5 +624,12 @@ describe("an item moved under a subtask in Agilefant", () => {
     expect(report.errors).toEqual([expect.stringMatching(/^INT-4: Jira has three levels .* this would make 4/)]);
     expect(jira.calls).toEqual([]);
     expect(jira.issues.get(epic.id)!.type).toBe("Epic");
+  });
+});
+
+describe("Jira's refusals, in words", () => {
+  it("reads the bulk move's objects as well as plain messages", () => {
+    const body = JSON.stringify({ errors: { "0": { message: "Subtask needs a parent" } }, errorMessages: ["Not allowed"] });
+    expect(new JiraError(400, body).message).toBe(`Jira answered 400: Not allowed; 0: {"message":"Subtask needs a parent"}`);
   });
 });
