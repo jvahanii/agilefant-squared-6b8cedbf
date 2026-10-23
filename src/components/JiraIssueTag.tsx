@@ -44,7 +44,12 @@ export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId:
   );
   const tone = error ? "text-destructive" : pending ? "text-muted-foreground italic opacity-60" : "text-muted-foreground";
   const look = `${className} whitespace-nowrap text-xs ${tone}`;
-  const title = error
+  // A tree deeper than Jira's levels is the one refusal people meet in normal
+  // use, and nothing to fix: Agilefant keeps it as it is. Said so, plainly.
+  const levels = error?.match(/^Jira has (\d+) levels\b/)?.[1];
+  const title = levels
+    ? `There are currently max ${levels} levels in Jira for this list. Agilefant will retain this hierarchy but it won't be reflected in Jira`
+    : error
     ? `Not in step with Jira: ${error}`
     : pending
       ? `Becoming a ${expected} in Jira (now a ${issue.type})`

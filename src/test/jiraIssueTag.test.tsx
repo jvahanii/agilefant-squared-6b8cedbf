@@ -70,7 +70,18 @@ describe("an item the sync could not send to Jira", () => {
     render(<JiraIssueTag workItemId="org::wi-1" />);
     const link = screen.getByRole("link", { name: /INT-8 · Subtask/ });
     expect(link).toHaveClass("text-destructive");
-    expect(link).toHaveAttribute("title", expect.stringMatching(/^Not in step with Jira: Jira has 5 levels/));
+    expect(link).toHaveAttribute(
+      "title",
+      "There are currently max 5 levels in Jira for this list. Agilefant will retain this hierarchy but it won't be reflected in Jira",
+    );
+  });
+
+  it("gives Jira's own words for any other refusal", async () => {
+    rows.links[0].last_error = "INT-8: Jira answered 400: summary: Summary is required.";
+    await useJiraIssuesStore.getState().load();
+    render(<JiraIssueTag workItemId="org::wi-1" />);
+    const link = screen.getByRole("link", { name: /INT-8 · Subtask/ });
+    expect(link).toHaveAttribute("title", "Not in step with Jira: Jira answered 400: summary: Summary is required.");
   });
 
   it("shows it as usual once the sync goes through", async () => {
