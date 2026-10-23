@@ -70,7 +70,11 @@ beforeEach(() => {
     backlogTrees: { "tree-1": { id: "tree-1", name: "Agilefant-Jira integration" }, "tree-2": { id: "tree-2", name: "Ops" } },
     loadFromSupabase: vi.fn(),
   } as never);
-  useJiraIssuesStore.setState({ load: vi.fn(async () => undefined) } as never);
+  // Backlog is kept in step with AF already, as the store would have it.
+  useJiraIssuesStore.setState({
+    load: vi.fn(async () => undefined),
+    byList: new Map([["bl-1", { organizationId: "org-1", projectKey: "AF", treeId: "tree-1", issueTypes: null, url: "" }]]),
+  } as never);
 });
 
 describe("the Jira card", () => {

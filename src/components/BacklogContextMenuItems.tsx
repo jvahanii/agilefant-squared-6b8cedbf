@@ -1,4 +1,4 @@
-import { CalendarPlus, CalendarRange, Eye, Globe, Hash, Lock, LockOpen, Settings2, SlidersHorizontal, Star, Tag, Trash2, TrendingUp } from "lucide-react";
+import { ArrowLeftRight, CalendarPlus, CalendarRange, Eye, Globe, Hash, Lock, LockOpen, Settings2, SlidersHorizontal, Star, Tag, Trash2, TrendingUp } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuItem,
@@ -24,6 +24,8 @@ import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { useScrambledListsStore } from "@/store/scrambledListsStore";
 import { useListScrambleStore } from "@/store/listScrambleStore";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
+import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
+import { useJiraCreateSpaceStore } from "@/store/jiraCreateSpaceStore";
 
 interface BacklogContextMenuItemsProps {
   backlogId: string;
@@ -97,6 +99,16 @@ export function BacklogContextMenuItems({
   const scrambledItems = useScrambledItemsStore((s) => s.byItem);
   const backlogs = useAppStore((s) => s.backlogs);
   const workItems = useAppStore((s) => s.workItems);
+
+  // Moving the list to Jira: for an owner or admin, where the organization keeps a space in step already.
+  const memberships = useOrgStore((s) => s.memberships);
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  const membership = memberships.find((m) => m.organization_id === activeOrgId);
+  const role = membership && roleOverride ? roleOverride : membership?.role;
+  const canManageJira = role === "owner" || role === "admin";
+  const jiraConnected = useJiraIssuesStore((s) => [...s.byList.values()].some((list) => list.organizationId === activeOrgId));
+  const keptInStep = useJiraIssuesStore((s) => s.byList.has(backlogId));
+  const openJira = useJiraCreateSpaceStore((s) => s.open);
 
   if (!backlog) return null;
   const name = isScrambled ? scrambleName(backlog.name) : backlog.name;
@@ -269,6 +281,13 @@ export function BacklogContextMenuItems({
         <ContextMenuItem className="text-xs" disabled>
           <Lock className="w-3 h-3 mr-2" />
           Scrambled by someone else
+        </ContextMenuItem>
+      )}
+      {/* A list not kept in step yet, moved to a Jira space of its own: where the organization uses Jira. */}
+      {canManageJira && jiraConnected && !keptInStep && (
+        <ContextMenuItem className="text-xs" onSelect={() => openJira(backlogId)}>
+          <ArrowLeftRight className="w-3 h-3 mr-2" />
+          Sync with Jira…
         </ContextMenuItem>
       )}
       {publicLinksEnabled && (

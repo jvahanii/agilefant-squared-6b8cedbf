@@ -39,6 +39,7 @@ import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { ListScrambleDialogHost } from "@/components/ListScrambleDialogHost";
+import { JiraCreateSpaceDialogHost } from "@/components/JiraCreateSpaceDialogHost";
 import { CatchingUpGuard } from "@/components/CatchingUpGuard";
 import {
   Undo2,
@@ -128,6 +129,7 @@ export default function AppLayout() {
       <RerankGuardHost />
       <BurnupDialogHost />
       <ListScrambleDialogHost />
+      <JiraCreateSpaceDialogHost />
       <CatchingUpGuard />
     </ScrambleProvider>
   );

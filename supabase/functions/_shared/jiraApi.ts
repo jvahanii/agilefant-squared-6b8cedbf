@@ -82,6 +82,7 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
   myself(): Promise<{ accountId: string; displayName: string; emailAddress?: string }>;
   project(): Promise<{ id: string; key: string; name: string }>;
   listProjects(): Promise<Array<{ id: string; key: string; name: string; style: string | null }>>;
+  createProject(project: { key: string; name: string; leadAccountId: string }): Promise<{ id: string; key: string }>;
   findPointsField(): Promise<string | null>;
   registerWebhook(url: string): Promise<string>;
   removeWebhook(self: string): Promise<void>;
@@ -378,6 +379,33 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
 
     myself: () => call('/rest/api/3/myself'),
     project: () => call(`/rest/api/3/project/${encodeURIComponent(config.projectKey)}`),
+
+    /**
+     * A new company-managed Scrum space — the kind whose hierarchy may have
+     * levels above the epic — led by the account. Takes Jira's Administer
+     * Jira permission.
+     */
+    async createProject({ key, name, leadAccountId }) {
+      try {
+        const created = await call<{ id: number | string; key: string }>('/rest/api/3/project', {
+          method: 'POST',
+          body: {
+            key,
+            name,
+            leadAccountId,
+            projectTypeKey: 'software',
+            projectTemplateKey: 'com.pyxis.greenhopper.jira:gh-simplified-scrum-classic',
+            assigneeType: 'UNASSIGNED',
+          },
+        });
+        return { id: String(created.id), key: created.key };
+      } catch (e) {
+        if (e instanceof JiraError && (e.status === 401 || e.status === 403)) {
+          throw new Error('Jira did not allow making a space: the Jira account the sync uses needs the "Administer Jira" permission');
+        }
+        throw e;
+      }
+    },
 
     /** The site's spaces the account can see, by name: what may be chosen to keep in step. */
     async listProjects() {

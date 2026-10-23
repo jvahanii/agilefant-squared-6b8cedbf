@@ -11,6 +11,7 @@ import { useAppStore } from "@/store/appStore";
 import { callJira, type JiraProject, type JiraSpace, type JiraStatus } from "@/lib/jiraSync";
 import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { syncJiraNow } from "@/lib/jiraSyncNow";
+import { JiraCreateSpaceForm } from "@/components/JiraCreateSpaceForm";
 
 /**
  * Jira Cloud spaces kept in step with Agilefant lists, both ways: names,
@@ -301,6 +302,14 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                     ))}
                   </ul>
                 )}
+                {/* The other way: a list of Agilefant's moved to a Jira space made for it. */}
+                <div className="space-y-2 border-t pt-3">
+                  <p className="text-sm font-medium">Move a list to Jira</p>
+                  <JiraCreateSpaceForm
+                    account={spaces.length === 0 ? { baseUrl, email } : undefined}
+                    onDone={(next) => setStatus(next)}
+                  />
+                </div>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">Only an owner or admin can choose which Jira spaces are synchronised.</p>

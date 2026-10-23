@@ -5,7 +5,8 @@
 // organization's spaces.
 //
 // Who calls this:
-//   the app        status · projects · addSpace · removeSpace · sync (now) ·
+//   the app        status · projects · addSpace · createSpaceFromList ·
+//                  removeSpace · sync (now) ·
 //                  disconnect — signed in, an owner or admin for anything that
 //                  changes which spaces are kept in step
 //   the database   drain — a trigger queued changed items (no sign-in: all it
@@ -22,6 +23,7 @@ import { requireAppUser } from '../_shared/auth.ts';
 import { jiraPort, JiraError, type JiraConfig } from '../_shared/jiraApi.ts';
 import { JiraSync, type AgilefantItem, type AgilefantPort, type Link } from '../_shared/jiraEngine.ts';
 import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_shared/jiraMapping.ts';
+import { PROJECT_KEY, suggestProjectKey, uniqueProjectName } from '../_shared/jiraProjectKey.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Admin = any;
@@ -495,6 +497,62 @@ async function statusOf(admin: Admin, org: string) {
   };
 }
 
+/**
+ * A space kept in step with a list from now on: the connection kept, Jira's
+ * webhook for it registered, and its first sync done before answering. Done
+ * after the answer, the sync raced the app's reload of its data, which could
+ * finish with a copy read before the items were made — a list that looked
+ * empty until the page was loaded again.
+ */
+async function connectSpace(
+  admin: Admin,
+  org: string,
+  userId: string,
+  account: { baseUrl: string; email: string },
+  project: { id: string; key: string; name: string },
+  pointsField: string | null,
+  treeId: string,
+  backlogId: string,
+) {
+  const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/jira-sync`;
+  const { data: inserted, error } = await admin
+    .from('jira_connections')
+    .insert({
+      organization_id: org,
+      base_url: account.baseUrl,
+      email: account.email,
+      project_key: project.key,
+      project_name: project.name,
+      project_id: project.id,
+      tree_id: treeId,
+      backlog_id: backlogId,
+      points_field: pointsField,
+      enabled: true,
+      function_url: functionUrl,
+      created_by: userId,
+      updated_at: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  const conn = inserted as Connection;
+
+  // Its own webhook: Jira's changes to this space come to this connection.
+  let webhookError: string | null = null;
+  try {
+    const self = await jiraPort(configFor(conn)).registerWebhook(`${functionUrl}?action=webhook&secret=${conn.webhook_secret}`);
+    await admin.from('jira_connections').update({ webhook_url: self }).eq('id', conn.id);
+  } catch (e) {
+    webhookError = e instanceof Error ? e.message : String(e);
+    await admin.from('jira_connections').update({ webhook_url: null, last_error: `Webhook: ${webhookError}` }).eq('id', conn.id);
+  }
+
+  // The first sync: the space's issues come in, the list's items go out.
+  await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
+  const first = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
+  return { conn, webhookError, report: first === 'busy' ? undefined : first.report };
+}
+
 /** Sum of several syncs' reports, for "Sync now" over all spaces. */
 function addReports(reports: Array<Awaited<ReturnType<typeof drain>>['report']>) {
   const sum = { createdInAgilefant: 0, createdInJira: 0, updatedInAgilefant: 0, updatedInJira: 0, deletedInAgilefant: 0, deletedInJira: 0, skipped: [] as string[], errors: [] as string[] };
@@ -630,46 +688,42 @@ Deno.serve(async (req) => {
         if (listError) throw listError;
       }
 
-      const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/jira-sync`;
-      const { data: inserted, error } = await admin
-        .from('jira_connections')
-        .insert({
-          organization_id: org,
-          base_url: baseUrl,
-          email,
-          project_key: project.key,
-          project_name: project.name,
-          project_id: project.id,
-          tree_id: treeId,
-          backlog_id: backlogId,
-          points_field: pointsField,
-          enabled: true,
-          function_url: functionUrl,
-          created_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
-        .select('*')
-        .single();
-      if (error) throw error;
-      const conn = inserted as Connection;
+      const { conn, webhookError, report } = await connectSpace(admin, org, user.id, { baseUrl, email }, project, pointsField, treeId, backlogId);
+      return json({ ...(await statusOf(admin, org)), added: conn.id, webhookError, report });
+    }
 
-      // Its own webhook: Jira's changes to this space come to this connection.
-      let webhookError: string | null = null;
-      try {
-        const self = await jiraPort(configFor(conn)).registerWebhook(`${functionUrl}?action=webhook&secret=${conn.webhook_secret}`);
-        await admin.from('jira_connections').update({ webhook_url: self }).eq('id', conn.id);
-      } catch (e) {
-        webhookError = e instanceof Error ? e.message : String(e);
-        await admin.from('jira_connections').update({ webhook_url: null, last_error: `Webhook: ${webhookError}` }).eq('id', conn.id);
+    // A list moved to Jira: a new space made for it, named after it, and kept in step with it.
+    if (action === 'createSpaceFromList') {
+      await assertManager(admin, user.id, org);
+      const existing = await getConnections(admin, org);
+      const { baseUrl, email } = accountFrom(body, existing[0]);
+      const backlogId = String(body.backlogId ?? '');
+      const { data: backlog } = await admin.from('backlogs').select('id, name, tree_id, organization_id').eq('id', backlogId).maybeSingle();
+      if (!backlog || backlog.organization_id !== org) return json({ error: 'That list is not in this organization' }, 400);
+      if (existing.some((c) => c.backlog_id === backlogId)) return json({ error: 'That list is already kept in step with a space' }, 409);
+
+      const probe = jiraPort({ baseUrl, email, token: token(), projectKey: '', pointsField: null });
+      const me = await probe.myself();
+      const onSite = await probe.listProjects();
+      const name = uniqueProjectName(String(body.projectName ?? '').trim() || backlog.name, onSite.map((p) => p.name));
+      let key = String(body.projectKey ?? '').trim().toUpperCase();
+      if (key) {
+        if (!PROJECT_KEY.test(key)) {
+          return json({ error: 'A Jira key is a capital letter and then capitals or digits, at most ten in all, like AGI or TEAM2' }, 400);
+        }
+        if (onSite.some((p) => p.key === key)) return json({ error: `${key} is taken on the Jira site; choose another key` }, 409);
+      } else {
+        key = suggestProjectKey(name, onSite.map((p) => p.key));
       }
 
-      // The first sync, before answering: the space's issues come in, the list's
-      // items go out. Done after the answer, it raced the app's reload of its
-      // data, which could finish with a copy read before the items were made —
-      // a new list that looked empty until the page was loaded again.
-      await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
-      const first = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
-      return json({ ...(await statusOf(admin, org)), added: conn.id, webhookError, report: first === 'busy' ? undefined : first.report });
+      const created = await probe.createProject({ key, name, leadAccountId: me.accountId });
+      const port = jiraPort({ baseUrl, email, token: token(), projectKey: created.key, pointsField: null });
+      const project = await port.project();
+      const pointsField = await port.findPointsField();
+      const { conn, webhookError, report } = await connectSpace(
+        admin, org, user.id, { baseUrl, email }, project, pointsField, backlog.tree_id, backlogId,
+      );
+      return json({ ...(await statusOf(admin, org)), added: conn.id, created: { key: project.key, name: project.name }, webhookError, report });
     }
 
     // A space taken off: its sync stops and its pairs are forgotten; the list and the issues stay.
