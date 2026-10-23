@@ -1,4 +1,5 @@
 import { toIsoDate, wellFormedDeadline } from "@/lib/deadlineFormat";
+import { forgetDeletedContainers, isRecentlyDeletedContainer } from './deletedContainers';
 import { wellFormedPoints } from "@/lib/backlogPoints";
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink, getEffectiveParentId } from "@/types/models";
@@ -902,13 +903,13 @@ function collectReferencedContainers(items: WorkItem[], fallback?: ContainerSnap
   const addTree = (treeId: string | null | undefined) => {
     if (!treeId || backlogTrees[treeId]) return;
     const tree = fallback.backlogTrees[treeId];
-    if (tree) backlogTrees[treeId] = tree;
+    if (tree && !isRecentlyDeletedContainer(treeId)) backlogTrees[treeId] = tree;
   };
 
   const addBacklog = (backlogId: string | null | undefined) => {
     if (!backlogId || backlogs[backlogId]) return;
     const backlog = fallback.backlogs[backlogId];
-    if (!backlog) return;
+    if (!backlog || isRecentlyDeletedContainer(backlogId)) return;
     if (backlog.parentId) addBacklog(backlog.parentId);
     addTree(backlog.treeId);
     backlogs[backlogId] = backlog;
@@ -1130,6 +1131,8 @@ function persistSnapshotSwitch(from: AppState, to: DataSnapshot) {
     return !old || (old !== bl && (old.name !== bl.name || old.parentId !== bl.parentId || old.treeId !== bl.treeId || old.rank !== bl.rank));
   });
   if (treesToSave.length > 0 || backlogsToSave.length > 0) {
+    // Undo bringing a deleted list or tree back is the one save allowed to.
+    forgetDeletedContainers([...treesToSave.map((t) => t.id), ...backlogsToSave.map((b) => b.id)]);
     Promise.resolve(upsertBacklogTrees(treesToSave, orgId))
       .then(() => upsertBacklogs(backlogsToSave, orgId))
       .catch((err) => console.error("Undo: saving backlogs failed", err));
