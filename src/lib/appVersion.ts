@@ -74,22 +74,6 @@ export function isNewerBuild(live: BuildInfo, current: BuildInfo = APP_BUILD): b
 export const BUILD_MARKER = "v";
 const RELOAD_FLAG = "agilefant-update-reload";
 
-function readFlag(): string | null {
-  try {
-    return sessionStorage.getItem(RELOAD_FLAG);
-  } catch {
-    return null;
-  }
-}
-
-function writeFlag(value: string): void {
-  try {
-    sessionStorage.setItem(RELOAD_FLAG, value);
-  } catch {
-    // Private mode can refuse the write; the plain reload below still works.
-  }
-}
-
 export function buildMarkerUrl(build: BuildInfo): string {
   const params = new URLSearchParams(window.location.search);
   params.set(BUILD_MARKER, build.builtAt);
@@ -100,21 +84,19 @@ export function buildMarkerUrl(build: BuildInfo): string {
 /**
  * Leaves the current page for the live build.
  *
- * A plain reload is tried first. It is remembered, because a browser that is
- * set on its cached copy of the page answers a reload with the same old
- * document — if that happens, the second attempt goes to the same address with
- * a throwaway marker on it, which is a different cache key and so has to be
- * fetched. The marker check stops that from repeating forever.
+ * Go straight to a different document cache key: a normal reload can return
+ * the same obsolete HTML. The marker check prevents repeated navigation to a
+ * build the host still cannot serve.
  */
 export function reloadIntoNewBuild(live: BuildInfo, nav: BuildNavigator = browserNavigator): void {
   const params = new URLSearchParams(window.location.search);
   if (params.get(BUILD_MARKER) === live.builtAt) return;
-  if (readFlag() === live.builtAt) {
-    nav.replace(buildMarkerUrl(live));
-    return;
-  }
-  writeFlag(live.builtAt);
-  nav.reload();
+  nav.replace(buildMarkerUrl(live));
+}
+
+/** Recover even when version.json is missing or the current build is unknown. */
+export function reloadFreshPage(nav: BuildNavigator = browserNavigator): void {
+  nav.replace(buildMarkerUrl({ commit: "recovery", builtAt: `recovery-${Date.now()}` }));
 }
 
 /**
