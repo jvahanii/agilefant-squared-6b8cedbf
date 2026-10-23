@@ -116,9 +116,10 @@ describe("the Jira card", () => {
     expect(options).toEqual(["Agilefant-Jira integration", "Ops"]);
   });
 
-  it("adds a space with a new list in the tree chosen for it", async () => {
+  it("adds a space with a new list in the tree chosen for it, saying what its first sync brought", async () => {
+    const report = { createdInAgilefant: 3, createdInJira: 0, updatedInAgilefant: 0, updatedInJira: 0, deletedInAgilefant: 0, deletedInJira: 0, skipped: [], errors: [] };
     callJira.mockImplementation(async (body: { action: string }) =>
-      body.action === "status" ? CONNECTED : body.action === "projects" ? { projects: PROJECTS } : { ...CONNECTED, webhookError: null },
+      body.action === "status" ? CONNECTED : body.action === "projects" ? { projects: PROJECTS } : { ...CONNECTED, webhookError: null, report },
     );
     render(<JiraIntegrationCard canManage />);
     fireEvent.click(await screen.findByRole("button", { name: "Choose more spaces" }));
@@ -135,6 +136,11 @@ describe("the Jira card", () => {
         projectKey: "OPS",
         newListTreeId: "tree-2",
       }),
+    );
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "OPS is kept in step", description: expect.stringContaining("3 issue(s) brought in") }),
+      ),
     );
   });
 

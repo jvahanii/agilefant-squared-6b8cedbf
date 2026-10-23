@@ -647,10 +647,13 @@ Deno.serve(async (req) => {
         await admin.from('jira_connections').update({ webhook_url: null, last_error: `Webhook: ${webhookError}` }).eq('id', conn.id);
       }
 
-      // The first sync, after answering: the space's issues come in, the list's items go out.
+      // The first sync, before answering: the space's issues come in, the list's
+      // items go out. Done after the answer, it raced the app's reload of its
+      // data, which could finish with a copy read before the items were made —
+      // a new list that looked empty until the page was loaded again.
       await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
-      inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn)).catch((e) => console.error('jira-sync first sync:', e)));
-      return json({ ...(await statusOf(admin, org)), added: conn.id, webhookError });
+      const first = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
+      return json({ ...(await statusOf(admin, org)), added: conn.id, webhookError, report: first === 'busy' ? undefined : first.report });
     }
 
     // A space taken off: its sync stops and its pairs are forgotten; the list and the issues stay.

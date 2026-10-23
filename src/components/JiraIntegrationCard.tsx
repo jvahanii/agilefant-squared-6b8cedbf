@@ -119,7 +119,13 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
               description: `Changes in Jira will come in only on Sync now. ${next.webhookError}`,
               variant: "destructive",
             }
-          : { title: `${project.key} is kept in step`, description: `With ${where}. The first sync is under way.` },
+          : {
+              title: `${project.key} is kept in step`,
+              // The first sync is done by now: the space's issues are in the list being reloaded.
+              description: next.report
+                ? `With ${where}: ${next.report.createdInAgilefant} issue(s) brought in, ${next.report.createdInJira} item(s) sent to Jira.`
+                : `With ${where}. The first sync will finish shortly.`,
+            },
       );
     } catch (e) {
       toast({ title: `Could not add ${project.key}`, description: (e as Error).message, variant: "destructive" });
