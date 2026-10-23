@@ -243,6 +243,7 @@ interface AppState extends DataSnapshot {
    *  Returns the new root IDs. The new roots become the selection. */
   duplicateWorkItems: (workItemIds: string[]) => string[];
   renameWorkItem: (workItemId: string, title: string) => void;
+  setWorkItemDescription: (workItemId: string, description: string) => void;
   setWorkItemStatus: (workItemId: string, status: WorkItemStatus) => void;
   setWorkItemPoints: (workItemId: string, points: number | undefined) => void;
   /** One to five stars, or undefined to take the rating away. */
@@ -3141,6 +3142,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       const updated = { ...item, title };
       upsertWorkItem(updated, orgId);
       internalLog({ action: "Rename", entityType: "work_item", entityId: workItemId, entityName: title, details: `"${item.title}" → "${title}"` });
+      set({
+        workItems: { ...state.workItems, [workItemId]: updated },
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+    },
+
+    setWorkItemDescription: (workItemId, description) => {
+      const state = get();
+      const item = state.workItems[workItemId];
+      const orgId = item?.organizationId ?? state.organizationId;
+      if (!item || !orgId) return;
+      const value = description.trim() ? description : undefined;
+      if (item.description === value) return;
+      const updated = { ...item, description: value };
+      upsertWorkItem(updated, orgId);
+      internalLog({ action: "Description Change", entityType: "work_item", entityId: workItemId, entityName: item.title });
       set({
         workItems: { ...state.workItems, [workItemId]: updated },
         undoStack: pushUndoEntry(state),

@@ -23,6 +23,7 @@ import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { toast } from "@/hooks/use-toast";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
 import { SnoozeDialog } from "./SnoozeDialog";
@@ -1786,6 +1787,7 @@ function BoardCard({
             <RotateCcw className="w-3 h-3 mr-2" />
             Respawn settings
           </ContextMenuItem>
+          <WorkItemDescriptionMenuItem workItemId={item.id} />
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             <Link2 className="w-3 h-3 mr-2" />
             Hyperlinks

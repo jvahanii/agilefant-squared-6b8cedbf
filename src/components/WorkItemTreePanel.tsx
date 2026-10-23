@@ -18,6 +18,7 @@ import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { MoveTimeDialog } from "./MoveTimeDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
@@ -1767,6 +1768,7 @@ function WorkItemNodeContent({
           {/* A scrambled name cannot be edited — the database refuses it, since
               a rename would be lost when the original is put back, and would
               let anyone replace a name they cannot read. */}
+          <WorkItemDescriptionMenuItem workItemId={workItemId} />
           {!isNameScrambled && (
             <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
               Rename
@@ -2623,6 +2625,7 @@ function SearchResultItem({
                 </ContextMenuRadioGroup>
               </ContextMenuSubContent>
             </ContextMenuSub>
+            <WorkItemDescriptionMenuItem workItemId={item.id} />
             <ContextMenuItem className="text-xs" onSelect={() => setShowMoveToParentDialog(true)}>
               Reparent…
             </ContextMenuItem>

@@ -29,6 +29,7 @@ import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import { useScramblingEnabled } from "@/store/orgSettingsStore";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 import { peekCurrentUser } from "@/lib/currentUser";
+import { WorkItemDescriptionDialog } from "./WorkItemDescriptionDialog";
 
 const DEFAULT_MOBILE_ORG_SETTINGS = {
   pointsEnabled: false,
@@ -136,6 +137,7 @@ export function MobileWorkItemAttributesSheet({
   const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
 
   const [isEditingPoints, setIsEditingPoints] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
   const [editPoints, setEditPoints] = useState("");
   const pointsRef = useRef<HTMLInputElement>(null);
 
@@ -172,13 +174,18 @@ export function MobileWorkItemAttributesSheet({
   const isRolledUp = directChildrenSum > 0 && directChildrenSum > (item.points ?? 0);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+    <Sheet open={open && !showDescription} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="px-4 pb-8 pt-4 rounded-t-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <SheetHeader className="mb-4">
           <SheetTitle className="text-base truncate text-left"><IconizedTitle title={item.title} /></SheetTitle>
         </SheetHeader>
 
         <div className="space-y-3">
+          <Button variant="ghost" className="w-full justify-between px-0" onClick={() => setShowDescription(true)}>
+            <span>Description</span>
+            <span className="text-muted-foreground">{item.description ? "View / edit" : "Add"}</span>
+          </Button>
           {pointsVisible && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Story points</span>
@@ -454,6 +461,8 @@ export function MobileWorkItemAttributesSheet({
         </div>
       </SheetContent>
     </Sheet>
+    {showDescription && <WorkItemDescriptionDialog workItemId={workItemId} open onOpenChange={setShowDescription} />}
+    </>
   );
 }
 
