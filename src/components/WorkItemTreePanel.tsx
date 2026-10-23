@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { patchCachedWorkItems } from "@/store/appDataCache";
 import { backlogPoints, childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
 import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
