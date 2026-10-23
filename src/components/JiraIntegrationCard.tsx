@@ -120,7 +120,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
               variant: "destructive",
             }
           : {
-              title: `${project.key} is kept in step`,
+              title: `${project.key} is synchronised`,
               // The first sync is done by now: the space's issues are in the list being reloaded.
               description: next.report
                 ? `With ${where}: ${next.report.createdInAgilefant} issue(s) brought in, ${next.report.createdInJira} item(s) sent to Jira.`
@@ -136,12 +136,12 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
   const removeSpace = async (space: JiraSpace) => {
     if (!activeOrgId) return;
-    if (!confirm(`Stop keeping ${space.projectKey} in step? The list and its items stay in Agilefant, and the issues in Jira.`)) return;
+    if (!confirm(`Stop synchronising ${space.projectKey}? The list and its items stay in Agilefant, and the issues in Jira.`)) return;
     setBusy(`remove:${space.id}`);
     try {
       setStatus(await callJira({ action: "removeSpace", organizationId: activeOrgId, connectionId: space.id }));
       refreshAround();
-      toast({ title: `${space.projectKey} is no longer kept in step` });
+      toast({ title: `${space.projectKey} is no longer synchronised` });
     } catch (e) {
       toast({ title: `Could not take ${space.projectKey} off`, description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -159,7 +159,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
   const disconnect = async () => {
     if (!activeOrgId) return;
-    if (!confirm("Stop keeping every space in step? Lists, items and issues stay as they are on both sides.")) return;
+    if (!confirm("Stop synchronising every space? Lists, items and issues stay as they are on both sides.")) return;
     setBusy("disconnect");
     try {
       setStatus(await callJira({ action: "disconnect", organizationId: activeOrgId }));
@@ -184,7 +184,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Keep Jira Cloud spaces in step with lists, both ways: names, descriptions, statuses, points, and the hierarchy.
+          Synchronise Jira Cloud spaces with lists, both ways: names, descriptions, statuses, points, and the hierarchy.
           Choose the spaces, and for each the backlog tree its new list goes in. Changes travel at once in either direction;
           a change made on both sides keeps the later one, and deleting on one side deletes on the other.
         </p>
@@ -220,7 +220,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
             {spaces.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Spaces kept in step</p>
+                <p className="text-sm font-medium">Spaces synchronised</p>
                 <ul className="space-y-2">
                   {spaces.map((space) => (
                     <li key={space.id} className="rounded-md border p-2 text-sm space-y-1">
@@ -232,7 +232,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                         {canManage && (
                           <Button size="sm" variant="ghost" onClick={() => removeSpace(space)} disabled={busy !== null}>
                             {busy === `remove:${space.id}` ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Unplug className="w-3.5 h-3.5 mr-1" />}
-                            Stop syncing
+                            Disconnect
                           </Button>
                         )}
                       </div>
@@ -267,7 +267,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                   {spaces.length > 0 ? "Choose more spaces" : "Choose spaces"}
                 </Button>
                 {projects && available.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Every space on the site the account can see is kept in step already.</p>
+                  <p className="text-xs text-muted-foreground">Every space on the site the account can see is synchronised already.</p>
                 )}
                 {projects && available.length > 0 && (
                   <ul className="space-y-2" aria-label="Jira spaces">
@@ -303,7 +303,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Only an owner or admin can choose which Jira spaces are kept in step.</p>
+              <p className="text-xs text-muted-foreground">Only an owner or admin can choose which Jira spaces are synchronised.</p>
             )}
           </>
         )}
