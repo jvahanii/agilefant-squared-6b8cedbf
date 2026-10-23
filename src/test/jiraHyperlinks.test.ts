@@ -1,5 +1,4 @@
-// @vitest-environment node
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { jiraPort } from '../../supabase/functions/_shared/jiraApi';
 import { normalizeHyperlinks, reconcile, type SyncState } from '../../supabase/functions/_shared/jiraMapping';
 import { JiraSync, type AgilefantPort, type JiraPort, type Link, type AgilefantItem } from '../../supabase/functions/_shared/jiraEngine';
@@ -8,6 +7,10 @@ const a = { url: 'https://example.com/a', title: 'A' };
 const b = { url: 'https://example.com/b', title: 'B' };
 const base: SyncState = { title: 'Item', description: '', status: 'To Do', points: null, parent: null, hyperlinks: [] };
 const config = { baseUrl: 'https://example.atlassian.net', email: 'test@example.com', token: 'test', projectKey: 'AF', pointsField: null };
+beforeAll(() => {
+  vi.stubGlobal('AbortSignal', { timeout: () => new AbortController().signal });
+});
+afterAll(() => vi.unstubAllGlobals());
 
 describe('external web links', () => {
   it('accepts only http and https URLs', () => {
