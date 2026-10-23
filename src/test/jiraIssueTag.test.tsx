@@ -160,13 +160,33 @@ describe("the type a move in Agilefant will give the item", () => {
     });
     rows.links[0].jira_type = "Subtask";
     await useJiraIssuesStore.getState().load();
-    render(<JiraIssueTag workItemId="org::wi-1" />);
+    const { container } = render(<JiraIssueTag workItemId="org::wi-1" />);
     const link = screen.getByRole("link", { name: "INT-8 · Subtask" });
     expect(link).not.toHaveClass("italic");
     expect(link).toHaveAttribute(
       "title",
       "There are currently max 3 levels in Jira for this list. Agilefant will retain this hierarchy but it won't be reflected in Jira",
     );
+    expect(container.querySelector("svg")).toHaveClass("lucide-triangle-alert", "text-destructive");
+  });
+
+  it("warns the same way for an item the sync has not created in Jira yet", async () => {
+    rows.links.push({ work_item_id: "org::wi-0", organization_id: "org", jira_key: "INT-7", jira_type: "Epic", last_error: null });
+    rows.links.push({ work_item_id: "org::wi-2", organization_id: "org", jira_key: "INT-9", jira_type: "Task", last_error: null });
+    rows.links.push({ work_item_id: "org::wi-3", organization_id: "org", jira_key: "INT-10", jira_type: "Subtask", last_error: null });
+    useAppStore.setState({
+      workItems: {
+        "org::wi-0": item("org::wi-0", null),
+        "org::wi-2": item("org::wi-2", "org::wi-0"),
+        "org::wi-3": item("org::wi-3", "org::wi-2"),
+        "org::wi-1": item("org::wi-1", "org::wi-3"),
+        "org::wi-new": item("org::wi-new", "org::wi-1"),
+      },
+    });
+    await useJiraIssuesStore.getState().load();
+    const { container } = render(<JiraIssueTag workItemId="org::wi-new" />);
+    expect(screen.getByTitle(/won't be reflected in Jira/)).toHaveTextContent("INT-… · ");
+    expect(container.querySelector("svg")).toHaveClass("lucide-triangle-alert", "text-destructive");
   });
 
   it("is not shown where it is the type Jira already has", async () => {

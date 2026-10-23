@@ -1,4 +1,4 @@
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { useExpectedJiraType } from "@/lib/expectedJiraType";
 
@@ -16,7 +16,7 @@ import { useExpectedJiraType } from "@/lib/expectedJiraType";
  *
  * An item deeper in Agilefant than the project's levels goes to Jira one
  * level flatter — a subtask beside its parent — and Agilefant keeps its own
- * hierarchy. Its tag carries an info sign saying so on hovering.
+ * hierarchy. Its tag carries a red warning triangle saying so on hovering.
  *
  * Red with a warning sign while the sync could not send the item's last change
  * to Jira — a change Jira refused, say — with Jira's or the sync's words
@@ -34,7 +34,7 @@ export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId:
         className={`${className} whitespace-nowrap text-xs text-muted-foreground italic opacity-60`}
         title={[`Being created in Jira as a ${expectedRef.type}`, flatNote].filter(Boolean).join(". ")}
       >
-        {flatNote && <Info className="mr-0.5 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />}
+        {flatNote && <AlertTriangle className="mr-0.5 inline-block h-3 w-3 align-[-1px] text-destructive" aria-hidden="true" />}
         {expectedRef.projectKey}-… · {expectedRef.type}
       </span>
     );
@@ -45,7 +45,7 @@ export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId:
   const text = (
     <>
       {error && <AlertTriangle className="mr-0.5 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />}
-      {!error && flatNote && <Info className="mr-0.5 inline-block h-3 w-3 align-[-1px]" aria-hidden="true" />}
+      {!error && flatNote && <AlertTriangle className="mr-0.5 inline-block h-3 w-3 align-[-1px] text-destructive" aria-hidden="true" />}
       {issue.key} · {pending ? expected : issue.type}
     </>
   );
