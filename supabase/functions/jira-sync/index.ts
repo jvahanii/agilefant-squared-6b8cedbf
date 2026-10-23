@@ -268,7 +268,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
     async links() {
       const { data, error } = await admin
         .from('jira_issue_links')
-        .select('work_item_id, jira_issue_id, jira_key, jira_type, agreed, last_error')
+        .select('work_item_id, jira_issue_id, jira_key, jira_type, agreed, last_error, stopped')
         .eq('connection_id', conn.id);
       if (error) throw error;
       return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -278,6 +278,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         jiraType: row.jira_type as string,
         agreed: (row.agreed as SyncState | null) ?? null,
         error: (row.last_error as string | null) ?? null,
+        stopped: (row.stopped as boolean | null) ?? false,
       }));
     },
 
@@ -774,6 +775,36 @@ Deno.serve(async (req) => {
         reports.push(result.report);
       }
       return json({ ...(await statusOf(admin, org)), report: addReports(reports) });
+    }
+
+    // One item's sync stopped, or resumed, from its menu: the pair kept either way.
+    if (action === 'stopItem') {
+      await assertMember(admin, user.id, org);
+      const workItemId = String(body.workItemId ?? '');
+      const stopped = body.stopped !== false;
+      const { data: link } = await admin
+        .from('jira_issue_links')
+        .select('connection_id, jira_key')
+        .eq('work_item_id', workItemId)
+        .eq('organization_id', org)
+        .maybeSingle();
+      if (!link) return json({ error: 'That item is not synced with Jira here' }, 404);
+      const { error } = await admin
+        .from('jira_issue_links')
+        .update({ stopped, ...(stopped ? {} : { last_error: null }) })
+        .eq('connection_id', link.connection_id)
+        .eq('work_item_id', workItemId);
+      if (error) throw error;
+      if (!stopped) {
+        // Resumed: brought up to date at once, from where the two last agreed.
+        const conn = await getConnection(admin, org, link.connection_id);
+        if (conn) {
+          await withLock(admin, conn.id, 30_000, () =>
+            new JiraSync(jiraPort(configFor(conn)), agilefantPort(admin, conn)).resumeItem(workItemId),
+          );
+        }
+      }
+      return json({ stopped, jiraKey: link.jira_key });
     }
 
     // Every space taken off.

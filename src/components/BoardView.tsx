@@ -12,6 +12,7 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { JiraIssueTag } from "@/components/JiraIssueTag";
+import { JiraItemMenuItems } from "@/components/JiraItemMenuItems";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
@@ -1528,6 +1529,7 @@ function BoardCard({
         <ContextMenuContent className="w-52">
           <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
           <ContextMenuSeparator />
+          <JiraItemMenuItems workItemId={item.id} />
           <ContextMenuSub>
             <ContextMenuSubTrigger className="text-xs">
               <span

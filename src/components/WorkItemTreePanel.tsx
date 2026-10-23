@@ -87,6 +87,7 @@ import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { LabelPicker } from "./LabelPicker";
 import { LabelNames, ListHeadingLabels } from "./LabelNames";
 import { JiraIssueTag } from "./JiraIssueTag";
+import { JiraItemMenuItems } from "./JiraItemMenuItems";
 import { MobileWorkItemAttributesSheet, MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
@@ -1631,6 +1632,7 @@ function WorkItemNodeContent({
         <ContextMenuContent className="w-52">
           <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
           <ContextMenuSeparator />
+          <JiraItemMenuItems workItemId={item.id} />
           <ContextMenuSub>
             <ContextMenuSubTrigger className="text-xs">
               <span
@@ -2612,6 +2614,7 @@ function SearchResultItem({
           <ContextMenuContent className="w-52">
             <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
             <ContextMenuSeparator />
+            <JiraItemMenuItems workItemId={item.id} />
             <ContextMenuSub>
               <ContextMenuSubTrigger className="text-xs">
                 <span

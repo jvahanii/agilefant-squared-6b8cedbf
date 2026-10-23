@@ -1080,3 +1080,85 @@ describe("the clock's check of every pair's web links", () => {
     expect(read).toEqual(["INT-8", "INT-9", "INT-10", "INT-1"]);
   });
 });
+
+describe("an item whose sync is stopped from its menu", () => {
+  const stop = (id: string, stopped = true) => af.linkRows.set(id, { ...af.linkRows.get(id)!, stopped });
+
+  beforeEach(async () => {
+    af.add("Stopped one");
+    await engine().fullSync();
+    stop(af.byTitle("Stopped one")!.id);
+    jira.calls = [];
+    af.writes = [];
+  });
+
+  it("sends nothing either way, and keeps its pair", async () => {
+    const item = af.byTitle("Stopped one")!;
+    const issueId = af.linkRows.get(item.id)!.jiraId;
+    await af.updateItem(item.id, { title: "Renamed in Agilefant" });
+    await engine().syncItem(item.id);
+    jira.edit(issueId, { status: "Done" });
+    await engine().syncIssue(issueId);
+
+    expect(jira.calls).toEqual([]);
+    expect(af.items.get(item.id)!.status).toBe("not_started");
+    expect(af.linkRows.get(item.id)).toMatchObject({ jiraId: issueId, stopped: true });
+  });
+
+  it("makes no second item or issue on a full sync", async () => {
+    const report = await engine().fullSync();
+    expect(report).toMatchObject({ createdInJira: 0, createdInAgilefant: 0, updatedInJira: 0, updatedInAgilefant: 0 });
+    expect(jira.issues.size).toBe(1);
+    expect(af.items.size).toBe(1);
+  });
+
+  it("leaves the issue when the item is deleted, and no full sync brings it back", async () => {
+    const item = af.byTitle("Stopped one")!;
+    const issueId = af.linkRows.get(item.id)!.jiraId;
+    af.items.delete(item.id);
+    await engine().syncItem(item.id);
+    await engine().fullSync();
+    expect(jira.issues.has(issueId)).toBe(true);
+    expect(af.items.size).toBe(0);
+  });
+
+  it("leaves the item when the issue is deleted, and no full sync makes it a new one", async () => {
+    const item = af.byTitle("Stopped one")!;
+    jira.issues.delete(af.linkRows.get(item.id)!.jiraId);
+    await engine().syncIssue(af.linkRows.get(item.id)!.jiraId);
+    await engine().fullSync();
+    expect(af.items.has(item.id)).toBe(true);
+    expect(jira.issues.size).toBe(0);
+  });
+
+  it("forgets the pair once both sides are gone", async () => {
+    const item = af.byTitle("Stopped one")!;
+    jira.issues.delete(af.linkRows.get(item.id)!.jiraId);
+    af.items.delete(item.id);
+    await engine().fullSync();
+    expect(af.linkRows.size).toBe(0);
+  });
+
+  it("is made a new issue when resumed after its issue was deleted, not deleted itself", async () => {
+    const item = af.byTitle("Stopped one")!;
+    jira.issues.delete(af.linkRows.get(item.id)!.jiraId);
+    stop(item.id, false);
+    await engine().resumeItem(item.id);
+    expect(af.items.has(item.id)).toBe(true);
+    expect(jira.byTitle("Stopped one")).toBeDefined();
+    expect(af.linkRows.get(item.id)!.jiraId).toBe(jira.byTitle("Stopped one")!.id);
+  });
+
+  it("is brought in step from where the two last agreed when resumed", async () => {
+    const item = af.byTitle("Stopped one")!;
+    const issueId = af.linkRows.get(item.id)!.jiraId;
+    await af.updateItem(item.id, { title: "Renamed while stopped" });
+    jira.edit(issueId, { status: "Done" });
+    await engine().syncItem(item.id);
+
+    stop(item.id, false);
+    await engine().resumeItem(item.id);
+    expect(jira.issues.get(issueId)!.state.title).toBe("Renamed while stopped");
+    expect(af.items.get(item.id)!.status).toBe("done");
+  });
+});

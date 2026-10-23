@@ -736,6 +736,7 @@ export type Database = {
           jira_type: string
           last_error: string | null
           organization_id: string
+          stopped: boolean
           synced_at: string
           work_item_id: string
         }
@@ -747,6 +748,7 @@ export type Database = {
           jira_type: string
           last_error?: string | null
           organization_id: string
+          stopped?: boolean
           synced_at?: string
           work_item_id: string
         }
@@ -758,6 +760,7 @@ export type Database = {
           jira_type?: string
           last_error?: string | null
           organization_id?: string
+          stopped?: boolean
           synced_at?: string
           work_item_id?: string
         }

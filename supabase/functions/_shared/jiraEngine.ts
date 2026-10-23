@@ -92,6 +92,13 @@ export interface Link {
   /** What both sides held when they last agreed; null for a pair not yet synced. */
   agreed: SyncState | null;
   error?: string | null;
+  /**
+   * The item's sync stopped from its menu: the pair is kept, so neither side
+   * is taken for a new one, but nothing travels either way. Deleting one side
+   * leaves the other, and the pair stays while either does — forgotten, the
+   * one left would be taken for new and made again on the other side.
+   */
+  stopped?: boolean;
 }
 
 export interface AgilefantPort {
@@ -262,6 +269,7 @@ export class JiraSync {
     const item = await this.agilefant.getItem(itemId);
     const link = this.linksByItem.get(itemId);
 
+    if (link?.stopped) return;
     if (!item) {
       if (link) {
         await this.deleteInJira(link);
@@ -288,12 +296,30 @@ export class JiraSync {
     await this.reconcilePair(link, item, issue, Date.now(), issue.updatedAt);
   }
 
+  /**
+   * An item's sync resumed, its pair no longer stopped: brought in step from
+   * where the two last agreed. Where its issue was deleted while stopped, the
+   * item is not deleted for it but made a new issue, as an item never synced.
+   */
+  async resumeItem(itemId: string): Promise<void> {
+    await this.loadLinks();
+    const link = this.linksByItem.get(itemId);
+    if (link) {
+      link.stopped = false;
+      const item = await this.agilefant.getItem(itemId);
+      if (!item) return this.forget(link);
+      if (!(await this.jira.getIssue(link.jiraId))) await this.forget(link);
+    }
+    await this.syncItem(itemId);
+  }
+
   /** A Jira issue changed: bring it into Agilefant, or take it out when Jira deleted it. */
   async syncIssue(issueId: string, depth = 0): Promise<void> {
     await this.loadLinks();
     const issue = await this.jira.getIssue(issueId);
     const link = this.linksByIssue.get(issueId);
 
+    if (link?.stopped) return;
     if (!issue) {
       if (link) {
         const item = await this.agilefant.getItem(link.workItemId);
@@ -337,6 +363,10 @@ export class JiraSync {
     for (const link of [...this.linksByItem.values()]) {
       const item = itemById.get(link.workItemId);
       const issue = issueById.get(link.jiraId);
+      if (link.stopped) {
+        if (!item && !issue) await this.forget(link);
+        continue;
+      }
       if (!item && !issue) await this.forget(link);
       else if (!item) {
         if (await this.deleteInJira(link)) deletedIssues.add(link.jiraId);
@@ -367,6 +397,7 @@ export class JiraSync {
     // Pairs that both still exist. Without a record of when Agilefant last
     // changed, a field changed on both sides is taken from Jira.
     for (const link of [...this.linksByItem.values()]) {
+      if (link.stopped) continue;
       const item = itemById.get(link.workItemId) ?? (await this.agilefant.getItem(link.workItemId));
       const issue = issueById.get(link.jiraId) ?? (await this.jira.getIssue(link.jiraId));
       if (item && issue) await this.reconcilePair(link, item, issue, null, issue.updatedAt);
@@ -398,6 +429,7 @@ export class JiraSync {
   }
 
   private async syncPairHyperlinks(link: Link): Promise<void> {
+    if (link.stopped) return;
     try {
       const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
       if (!item || !issue) return;

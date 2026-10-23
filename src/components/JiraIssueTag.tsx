@@ -21,6 +21,9 @@ import { useExpectedJiraType } from "@/lib/expectedJiraType";
  * Red with a warning sign while the sync could not send the item's last change
  * to Jira — a change Jira refused, say — with Jira's or the sync's words
  * on hovering. It clears when the next sync of the item goes through.
+ *
+ * Muted and struck through once the item's sync is stopped from its menu:
+ * still the issue it was, but nothing travels between them any more.
  */
 export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId: string; className?: string }) {
   const issue = useJiraIssuesStore((s) => s.byItem.get(workItemId));
@@ -37,6 +40,30 @@ export function JiraIssueTag({ workItemId, className = "ml-1.5" }: { workItemId:
         {flatNote && <AlertTriangle className="mr-0.5 inline-block h-3 w-3 align-[-1px] text-destructive" aria-hidden="true" />}
         {expectedRef.projectKey}-… · {expectedRef.type}
       </span>
+    );
+  }
+  if (issue.stopped) {
+    const look = `${className} whitespace-nowrap text-xs text-muted-foreground line-through opacity-60`;
+    const title = `No longer synced with Jira (${issue.key})`;
+    if (!issue.url) {
+      return (
+        <span className={look} title={title}>
+          {issue.key} · {issue.type}
+        </span>
+      );
+    }
+    return (
+      <a
+        href={issue.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${look} hover:underline`}
+        title={title}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        {issue.key} · {issue.type}
+      </a>
     );
   }
   // The sync starts each error with the issue's key, which the tag already shows.

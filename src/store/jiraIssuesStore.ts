@@ -15,6 +15,10 @@ export interface JiraIssueRef {
   url: string | null;
   /** Why the sync could not send the item's last change to Jira; null while in step. */
   error: string | null;
+  /** The organization whose Jira the item is synced with: its members may stop the item's sync. */
+  organizationId: string;
+  /** The item's sync stopped from its menu: the pair kept, nothing travelling either way. */
+  stopped: boolean;
 }
 
 /** A list kept in step with a Jira project. */
@@ -51,7 +55,7 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
   load: async () => {
     // Columns are listed: only these are granted to the app.
     const [links, connections] = await Promise.all([
-      supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type, last_error'),
+      supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type, last_error, stopped'),
       supabase.from('jira_connections').select('organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
     ]);
     if (links.error) {
@@ -84,6 +88,8 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
               type: row.jira_type,
               url: base ? `${base}/browse/${encodeURIComponent(row.jira_key)}` : null,
               error: row.last_error ?? null,
+              organizationId: row.organization_id,
+              stopped: row.stopped ?? false,
             },
           ];
         }),
