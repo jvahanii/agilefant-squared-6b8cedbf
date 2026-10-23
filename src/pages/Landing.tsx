@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowLeftRight,
   BarChart3,
   Building2,
   CalendarClock,
@@ -118,6 +119,11 @@ const SCALES = [
 ] as const;
 
 const INTEGRATIONS = [
+  {
+    icon: ArrowLeftRight,
+    title: "Jira",
+    body: "Keep an Agilefant list and a Jira Cloud project in sync, both ways — names, descriptions, statuses, story points and the epic-to-subtask hierarchy. Changes arrive automatically in Agilefant; Jira may need a refresh to show them.",
+  },
   {
     icon: GitMerge,
     title: "GitHub",
@@ -336,7 +342,7 @@ export default function Landing() {
                 Connect the places work starts, and it shows up in the right list without anyone retyping it.
               </p>
             </div>
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <div className="mt-10 grid gap-4 md:grid-cols-2">
               {INTEGRATIONS.map(({ icon: Icon, title, body }) => (
                 <div key={title} className="flex gap-4 rounded-xl border bg-card p-5">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
