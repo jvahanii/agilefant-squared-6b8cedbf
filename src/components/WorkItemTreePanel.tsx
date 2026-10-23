@@ -512,6 +512,10 @@ function WorkItemNodeContent({
   const pointsRef = useRef<HTMLInputElement>(null);
   const dragStartedRef = useRef(false);
   const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  // A plain left click on an already-selected item opens the name for editing
+  // (like a file manager). The click is delayed a beat so a fast second click
+  // still counts as a double-click and cancels it.
+  const clickRenameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const assignmentCount = item ? Object.keys(item.backlogAssignments).length : 0;
 
@@ -969,11 +973,24 @@ function WorkItemNodeContent({
             if (dragStartedRef.current) return;
             const isMulti = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
+            if (!isMulti && !isShift && !isMobile && isSelected && !isMultiSelected) {
+              if (clickRenameTimerRef.current) clearTimeout(clickRenameTimerRef.current);
+              clickRenameTimerRef.current = setTimeout(() => {
+                clickRenameTimerRef.current = null;
+                // The textarea only exists while the name is being edited.
+                if (!titleRef.current) startEditingTitle();
+              }, 250);
+              return;
+            }
             onSelect(workItemId, isMulti, isShift);
           }}
           onDoubleClick={(e) => {
             e.stopPropagation();
             if (dragStartedRef.current) return;
+            if (clickRenameTimerRef.current) {
+              clearTimeout(clickRenameTimerRef.current);
+              clickRenameTimerRef.current = null;
+            }
             const newStatus: WorkItemStatus = item.status === "done" ? "not_started" : "done";
             if (isSelected && isMultiSelected) {
               const sel = useAppStore.getState().selectedWorkItemIds;
@@ -1129,6 +1146,10 @@ function WorkItemNodeContent({
                 className="cursor-text"
                 onDoubleClick={(e) => {
                   e.stopPropagation();
+                  if (clickRenameTimerRef.current) {
+                    clearTimeout(clickRenameTimerRef.current);
+                    clickRenameTimerRef.current = null;
+                  }
                   startEditingTitle();
                 }}
               >
