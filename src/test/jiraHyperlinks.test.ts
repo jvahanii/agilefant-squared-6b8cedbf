@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { jiraPort } from '../../supabase/functions/_shared/jiraApi';
 import { normalizeHyperlinks, reconcile, type SyncState } from '../../supabase/functions/_shared/jiraMapping';

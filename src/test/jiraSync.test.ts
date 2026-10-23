@@ -149,7 +149,7 @@ describe("the levels of Jira's hierarchy", () => {
 });
 
 describe("which side wins, field by field", () => {
-  const base: SyncState = { title: "A", description: "", status: "To Do", points: 1, parent: null };
+  const base: SyncState = { title: "A", description: "", hyperlinks: [], status: "To Do", points: 1, parent: null };
 
   it("takes each field from the side that changed it", () => {
     const r = reconcile(base, { ...base, points: 5 }, { ...base, title: "B" }, null, null);
