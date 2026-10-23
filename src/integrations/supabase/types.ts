@@ -1804,6 +1804,7 @@ export type Database = {
           alt_text: string
           created_at: string
           id: string
+          jira_issue_link: string | null
           organization_id: string
           rank: number
           url: string
@@ -1813,6 +1814,7 @@ export type Database = {
           alt_text?: string
           created_at?: string
           id?: string
+          jira_issue_link?: string | null
           organization_id: string
           rank?: number
           url: string
@@ -1822,6 +1824,7 @@ export type Database = {
           alt_text?: string
           created_at?: string
           id?: string
+          jira_issue_link?: string | null
           organization_id?: string
           rank?: number
           url?: string

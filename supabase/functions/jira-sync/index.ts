@@ -21,7 +21,7 @@
 import { adminClient, corsHeaders, json } from '../_shared/gmail.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 import { jiraPort, JiraError, type JiraConfig } from '../_shared/jiraApi.ts';
-import { JiraSync, type AgilefantItem, type AgilefantPort, type Link } from '../_shared/jiraEngine.ts';
+import { JiraSync, type AgilefantItem, type AgilefantPort, type IssueLinkRef, type Link } from '../_shared/jiraEngine.ts';
 import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_shared/jiraMapping.ts';
 import { PROJECT_KEY, suggestProjectKey, uniqueProjectName } from '../_shared/jiraProjectKey.ts';
 
@@ -89,13 +89,28 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
   const tree = conn.tree_id;
   const today = () => new Date().toISOString().slice(0, 10);
 
-  const readHyperlinks = async (id: string): Promise<SyncHyperlink[]> => {
-    const { data, error } = await admin.from('work_item_hyperlinks').select('url, alt_text').eq('work_item_id', id);
+  type HyperlinkRow = { work_item_id: string; url: string; alt_text: string; jira_issue_link: string | null };
+  // The item's own web links, which sync with Jira's web links, apart from
+  // the ones that stand for Jira's issue links, which come from Jira only.
+  const splitHyperlinks = (rows: HyperlinkRow[]) => ({
+    hyperlinks: normalizeHyperlinks(rows.filter((h) => !h.jira_issue_link).map((h) => ({ url: h.url, title: h.alt_text }))),
+    issueLinks: rows.filter((h) => h.jira_issue_link).map((h) => ({ id: h.jira_issue_link as string, title: h.alt_text })),
+  });
+  const readHyperlinks = async (id: string) => {
+    const { data, error } = await admin.from('work_item_hyperlinks').select('work_item_id, url, alt_text, jira_issue_link').eq('work_item_id', id);
     if (error) throw error;
-    return normalizeHyperlinks((data ?? []).map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text })));
+    return splitHyperlinks((data ?? []) as HyperlinkRow[]);
+  };
+  const itemOrgOf = async (id: string) => {
+    const { data: owner } = await admin.from('work_items').select('organization_id').eq('id', id).maybeSingle();
+    return (owner?.organization_id as string | undefined) ?? org;
+  };
+  const nextRank = async (id: string) => {
+    const { data } = await admin.from('work_item_hyperlinks').select('rank').eq('work_item_id', id).order('rank', { ascending: false }).limit(1);
+    return (data?.[0]?.rank as number | undefined) ?? 0;
   };
   const writeHyperlinks = async (id: string, links: SyncHyperlink[]) => {
-    const { data, error } = await admin.from('work_item_hyperlinks').select('id, url, alt_text, rank').eq('work_item_id', id);
+    const { data, error } = await admin.from('work_item_hyperlinks').select('id, url, alt_text, rank').eq('work_item_id', id).is('jira_issue_link', null);
     if (error) throw error;
     const wanted = normalizeHyperlinks(links);
     const kept = new Set<string>();
@@ -112,17 +127,47 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         }
       }
     }
-    let rank = Math.max(0, ...(data ?? []).map((r: { rank: number }) => r.rank ?? 0));
+    const fresh = wanted.filter((h) => !kept.has(h.url));
+    if (fresh.length === 0) return;
+    let rank = await nextRank(id);
     // A link belongs to its item's organization — a partner's, for one of theirs in a shared list.
-    const { data: owner } = await admin.from('work_items').select('organization_id').eq('id', id).maybeSingle();
-    const itemOrg = (owner?.organization_id as string | undefined) ?? org;
-    const rows = wanted.filter((h) => !kept.has(h.url)).map((h) => ({
+    const itemOrg = await itemOrgOf(id);
+    const rows = fresh.map((h) => ({
       work_item_id: id, organization_id: itemOrg, url: h.url, alt_text: h.title, rank: ++rank,
     }));
-    if (rows.length) {
-      const { error } = await admin.from('work_item_hyperlinks').insert(rows);
-      if (error) throw error;
+    const { error: insertError } = await admin.from('work_item_hyperlinks').insert(rows);
+    if (insertError) throw insertError;
+  };
+  /** Jira's issue links as the item's hyperlinks, to the other issue in Jira. */
+  const writeIssueLinks = async (id: string, links: IssueLinkRef[]) => {
+    const { data, error } = await admin
+      .from('work_item_hyperlinks')
+      .select('id, url, alt_text, jira_issue_link')
+      .eq('work_item_id', id)
+      .not('jira_issue_link', 'is', null);
+    if (error) throw error;
+    const address = (key: string) => `${conn.base_url}/browse/${encodeURIComponent(key)}`;
+    const wanted = new Map(links.map((l) => [l.id, l]));
+    for (const row of data ?? []) {
+      const target = wanted.get(row.jira_issue_link as string);
+      if (!target) {
+        const { error } = await admin.from('work_item_hyperlinks').delete().eq('id', row.id);
+        if (error) throw error;
+        continue;
+      }
+      wanted.delete(target.id);
+      if (row.alt_text !== target.title || row.url !== address(target.key)) {
+        const { error } = await admin.from('work_item_hyperlinks').update({ alt_text: target.title, url: address(target.key) }).eq('id', row.id);
+        if (error) throw error;
+      }
     }
+    if (wanted.size === 0) return;
+    let rank = await nextRank(id);
+    const itemOrg = await itemOrgOf(id);
+    const { error: insertError } = await admin.from('work_item_hyperlinks').insert([...wanted.values()].map((l) => ({
+      work_item_id: id, organization_id: itemOrg, url: address(l.key), alt_text: l.title, rank: ++rank, jira_issue_link: l.id,
+    })));
+    if (insertError) throw insertError;
   };
 
   const asItem = (row: {
@@ -162,19 +207,21 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       const rows = (data ?? []) as Array<Parameters<typeof asItem>[0] & { in_list?: boolean }>;
       const ids = new Set(rows.map((r) => r.id));
       // By item, not by organization: a partner's item in a shared list keeps its links in its own.
-      const hyperlinks: Array<{ work_item_id: string; url: string; alt_text: string }> = [];
+      const hyperlinks: HyperlinkRow[] = [];
       const allIds = [...ids];
       for (let i = 0; i < allIds.length; i += 200) {
         const { data: chunk, error: linkError } = await admin
           .from('work_item_hyperlinks')
-          .select('work_item_id, url, alt_text')
+          .select('work_item_id, url, alt_text, jira_issue_link')
           .in('work_item_id', allIds.slice(i, i + 200));
         if (linkError) throw linkError;
-        hyperlinks.push(...(chunk ?? []));
+        hyperlinks.push(...((chunk ?? []) as HyperlinkRow[]));
       }
-      return rows.map((r) => ({ ...asItem(r, r.in_list ?? true, !!r.parent_id && ids.has(r.parent_id)),
-        hyperlinks: normalizeHyperlinks((hyperlinks ?? []).filter((h: { work_item_id: string }) => h.work_item_id === r.id)
-          .map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text }))),
+      const byItem = new Map<string, HyperlinkRow[]>();
+      for (const h of hyperlinks) byItem.set(h.work_item_id, [...(byItem.get(h.work_item_id) ?? []), h]);
+      return rows.map((r) => ({
+        ...asItem(r, r.in_list ?? true, !!r.parent_id && ids.has(r.parent_id)),
+        ...splitHyperlinks(byItem.get(r.id) ?? []),
       }));
     },
 
@@ -204,7 +251,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
           parentInList = (count ?? 0) > 0;
         }
       }
-      return { ...asItem({ ...data, parent_id: parentId }, inList, parentInList), hyperlinks: await readHyperlinks(id) };
+      return { ...asItem({ ...data, parent_id: parentId }, inList, parentInList), ...(await readHyperlinks(id)) };
     },
 
     async createItem(fields) {
@@ -236,6 +283,8 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       await writeHyperlinks(id, fields.hyperlinks);
       return id;
     },
+
+    writeIssueLinks,
 
     async updateItem(id, fields) {
       if (fields.hyperlinks !== undefined) await writeHyperlinks(id, fields.hyperlinks);
@@ -624,6 +673,22 @@ Deno.serve(async (req) => {
       const { data: conn } = await admin.from('jira_connections').select('*').eq('webhook_secret', secret).maybeSingle();
       if (!secret || !conn) return json({ error: 'unknown webhook' }, 404);
       const event = await req.json().catch(() => ({}));
+      // A link made or removed between two issues: each end paired in this
+      // space is read again. Jira sends these for the whole site, not the
+      // space alone — an end not paired here is not this space's to bring in.
+      if (event?.issueLink) {
+        const ends = [event.issueLink.sourceIssueId, event.issueLink.destinationIssueId].filter(Boolean).map(String);
+        const { data: paired } = await admin
+          .from('jira_issue_links')
+          .select('jira_issue_id')
+          .eq('connection_id', conn.id)
+          .in('jira_issue_id', ends);
+        const refs = [...new Set((paired ?? []).map((r: { jira_issue_id: string }) => r.jira_issue_id))];
+        if (refs.length === 0) return json({ ignored: true });
+        await admin.from('jira_sync_queue').insert(refs.map((ref) => ({ organization_id: conn.organization_id, connection_id: conn.id, kind: 'issue', ref })));
+        inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn as Connection)).catch((e) => console.error('jira-sync webhook drain:', e)));
+        return json({ queued: refs });
+      }
       const issueId = event?.issue?.id ? String(event.issue.id) : null;
       if (!issueId) return json({ ignored: true });
       await admin.from('jira_sync_queue').insert({ organization_id: conn.organization_id, connection_id: conn.id, kind: 'issue', ref: issueId });
@@ -769,6 +834,12 @@ Deno.serve(async (req) => {
       if (conns.length === 0) return json({ error: 'Jira is not connected' }, 409);
       const reports = [];
       for (const conn of conns) {
+        // A webhook made before it heard of issue links hears them from now on.
+        if (conn.webhook_url) {
+          await jiraPort(configFor(conn))
+            .updateWebhook(conn.webhook_url, `${Deno.env.get('SUPABASE_URL')}/functions/v1/jira-sync?action=webhook&secret=${conn.webhook_secret}`)
+            .catch((e) => console.error('jira-sync: could not update the webhook:', e instanceof Error ? e.message : e));
+        }
         await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
         const result = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
         if (result === 'busy') return json({ error: `A sync of ${conn.project_key} is already running. Try again in a minute.` }, 409);

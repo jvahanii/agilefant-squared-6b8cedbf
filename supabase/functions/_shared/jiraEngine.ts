@@ -37,6 +37,21 @@ export interface JiraIssue {
   statusCategory: string | null;
   /** When Jira last changed it, epoch milliseconds. */
   updatedAt: number;
+  /** Its links to other issues; undefined where Jira was not asked for them. */
+  issueLinks?: IssueLinkRef[];
+}
+
+/**
+ * A link between two issues in Jira — "blocks", "relates to" — as one of the
+ * item's hyperlinks in Agilefant: from Jira one way, never sent back as a web link.
+ */
+export interface IssueLinkRef {
+  /** Jira's id of the link. */
+  id: string;
+  /** How this issue stands to the other, and which: "blocks INT-12". */
+  title: string;
+  /** The other issue's key. */
+  key: string;
 }
 
 export interface JiraPort {
@@ -63,6 +78,8 @@ export interface AgilefantItem {
   title: string;
   description: string | null;
   hyperlinks?: SyncHyperlink[];
+  /** The hyperlinks that stand for Jira's issue links, by the link's id. */
+  issueLinks?: Array<Pick<IssueLinkRef, 'id' | 'title'>>;
   status: string;
   points: number | null;
   /** The parent work item within the list, or null. */
@@ -107,6 +124,8 @@ export interface AgilefantPort {
   getItem(id: string): Promise<AgilefantItem | null>;
   createItem(fields: Required<ItemFields>): Promise<string>;
   updateItem(id: string, fields: ItemFields): Promise<void>;
+  /** Make the item's issue-link hyperlinks these, adding, changing and removing as needed. */
+  writeIssueLinks?(id: string, links: IssueLinkRef[]): Promise<void>;
   /** Delete the item, its children first moved to the top level as Jira does. */
   deleteItem(id: string): Promise<void>;
   links(): Promise<Link[]>;
@@ -344,6 +363,7 @@ export class JiraSync {
     }
     // Jira's change is the later one.
     await this.reconcilePair(link, item, issue, null, issue.updatedAt);
+    await this.bringIssueLinks(link, issue, item);
   }
 
   /**
@@ -400,7 +420,10 @@ export class JiraSync {
       if (link.stopped) continue;
       const item = itemById.get(link.workItemId) ?? (await this.agilefant.getItem(link.workItemId));
       const issue = issueById.get(link.jiraId) ?? (await this.jira.getIssue(link.jiraId));
-      if (item && issue) await this.reconcilePair(link, item, issue, null, issue.updatedAt);
+      if (item && issue) {
+        await this.reconcilePair(link, item, issue, null, issue.updatedAt);
+        await this.bringIssueLinks(link, issue, item);
+      }
     }
 
     await this.relevelAll();
@@ -791,6 +814,26 @@ export class JiraSync {
     this.remember(link);
     await this.agilefant.saveLink(link);
     this.report.createdInAgilefant += 1;
+    await this.bringIssueLinks(link, issue, null);
+  }
+
+  /**
+   * The issue's links to other issues — "blocks INT-12" — as the item's
+   * hyperlinks: Jira's, so from Jira one way, and written only where they
+   * differ from what the item has. A failure is reported, not thrown: the
+   * rest of the pair is in step all the same.
+   */
+  private async bringIssueLinks(link: Link, issue: JiraIssue, item: AgilefantItem | null) {
+    if (link.stopped || !issue.issueLinks || !this.agilefant.writeIssueLinks) return;
+    const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
+    const want = [...issue.issueLinks].sort(byId);
+    const have = [...(item?.issueLinks ?? [])].sort(byId);
+    if (want.length === have.length && want.every((l, i) => l.id === have[i].id && l.title === have[i].title)) return;
+    try {
+      await this.agilefant.writeIssueLinks(link.workItemId, want);
+    } catch (e) {
+      this.report.errors.push(`${link.jiraKey}: issue links: ${message(e)}`);
+    }
   }
 
   /** Keep the issue's identity even if its separate remote-link write fails. */

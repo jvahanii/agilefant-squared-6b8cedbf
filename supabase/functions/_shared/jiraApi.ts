@@ -74,6 +74,12 @@ type RawIssue = {
     issuetype?: { name: string };
     parent?: { id: string } | null;
     updated?: string;
+    issuelinks?: Array<{
+      id: string;
+      type?: { name?: string; inward?: string; outward?: string };
+      inwardIssue?: { id: string; key: string };
+      outwardIssue?: { id: string; key: string };
+    }>;
     [field: string]: unknown;
   };
 };
@@ -86,10 +92,20 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
   findPointsField(): Promise<string | null>;
   registerWebhook(url: string): Promise<string>;
   removeWebhook(self: string): Promise<void>;
+  updateWebhook(self: string, url: string): Promise<void>;
   changeType(id: string, type: string, parent: string | null): Promise<void>;
 } {
   const call = jiraRequester(config, fetcher);
-  const fields = ['summary', 'description', 'status', 'issuetype', 'parent', 'updated', ...(config.pointsField ? [config.pointsField] : [])];
+  const fields = ['summary', 'description', 'status', 'issuetype', 'parent', 'updated', 'issuelinks', ...(config.pointsField ? [config.pointsField] : [])];
+  // What the webhook hears: the space's issues, and links made or removed
+  // between issues, which Jira announces on their own and not as an edit.
+  const webhookBody = (url: string) => ({
+    name: `Agilefant sync (${config.projectKey})`,
+    url,
+    events: ['jira:issue_created', 'jira:issue_updated', 'jira:issue_deleted', 'issuelink_created', 'issuelink_deleted'],
+    filters: { 'issue-related-events-section': `project = "${config.projectKey}"` },
+    excludeBody: false,
+  });
 
   type RemoteLink = { id: number; globalId?: string; application?: { type?: string; name?: string }; object?: { url?: string; title?: string } };
   const external = (link: RemoteLink) => !link.application?.type && !link.application?.name;
@@ -136,6 +152,13 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
       points: config.pointsField ? toPoints(raw.fields[config.pointsField]) : null,
       parent: raw.fields.parent?.id ?? null,
     },
+    // Each link as this issue stands to the other: "blocks INT-12", or "is blocked by INT-12" from the other end.
+    issueLinks: (raw.fields.issuelinks ?? []).flatMap((l) => {
+      const other = l.outwardIssue ?? l.inwardIssue;
+      if (!other?.key) return [];
+      const phrase = (l.outwardIssue ? l.type?.outward : l.type?.inward) || l.type?.name || 'links to';
+      return [{ id: String(l.id), key: other.key, title: `${phrase} ${other.key}` }];
+    }),
   });
 
   /** Move the issue to the status by name, through whichever transition gets there. */
@@ -430,17 +453,13 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
 
     /** A webhook for the project's issues, made in Jira's admin settings. Its address is returned to remove it by. */
     async registerWebhook(url) {
-      const created = await call<{ self: string }>('/rest/webhooks/1.0/webhook', {
-        method: 'POST',
-        body: {
-          name: `Agilefant sync (${config.projectKey})`,
-          url,
-          events: ['jira:issue_created', 'jira:issue_updated', 'jira:issue_deleted'],
-          filters: { 'issue-related-events-section': `project = "${config.projectKey}"` },
-          excludeBody: false,
-        },
-      });
+      const created = await call<{ self: string }>('/rest/webhooks/1.0/webhook', { method: 'POST', body: webhookBody(url) });
       return created.self;
+    },
+
+    /** A webhook made before it heard of issue links brought up to what it hears now. */
+    async updateWebhook(self, url) {
+      await call(new URL(self).pathname, { method: 'PUT', body: webhookBody(url) });
     },
 
     async removeWebhook(self) {

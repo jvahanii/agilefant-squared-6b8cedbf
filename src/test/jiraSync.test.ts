@@ -31,6 +31,7 @@ import {
   type ItemFields,
   type JiraIssue,
   type JiraPort,
+  type IssueLinkRef,
   type Link,
 } from "../../supabase/functions/_shared/jiraEngine";
 import { JiraError } from "../../supabase/functions/_shared/jiraApi";
@@ -310,6 +311,11 @@ class FakeAgilefant implements AgilefantPort {
   }
   async dropLink(workItemId: string) {
     this.linkRows.delete(workItemId);
+  }
+  issueLinkWrites: string[] = [];
+  async writeIssueLinks(id: string, links: IssueLinkRef[]) {
+    this.issueLinkWrites.push(`${this.items.get(id)!.title}: ${links.map((l) => l.title).join(", ")}`);
+    this.items.set(id, { ...this.items.get(id)!, issueLinks: links.map(({ id, title }) => ({ id, title })) });
   }
   statusRows = [
     { key: "not_started", label: "Not Started" },
@@ -1160,5 +1166,49 @@ describe("an item whose sync is stopped from its menu", () => {
     await engine().resumeItem(item.id);
     expect(jira.issues.get(issueId)!.state.title).toBe("Renamed while stopped");
     expect(af.items.get(item.id)!.status).toBe("done");
+  });
+});
+
+describe("Jira's links between issues", () => {
+  beforeEach(async () => {
+    const a = jira.add("INT-5", "Epic", { title: "A" });
+    const b = jira.add("INT-6", "Epic", { title: "B" });
+    a.issueLinks = [{ id: "9", key: "INT-6", title: "blocks INT-6" }];
+    b.issueLinks = [{ id: "9", key: "INT-5", title: "is blocked by INT-5" }];
+    await engine().fullSync();
+    jira.calls = [];
+  });
+
+  it("come into Agilefant as the items' hyperlinks, each end as it stands to the other", () => {
+    expect(af.byTitle("A")!.issueLinks).toEqual([{ id: "9", title: "blocks INT-6" }]);
+    expect(af.byTitle("B")!.issueLinks).toEqual([{ id: "9", title: "is blocked by INT-5" }]);
+    // Jira's, not the item's own web links: nothing of them goes back.
+    expect(af.byTitle("A")!.hyperlinks ?? []).toEqual([]);
+  });
+
+  it("are written only when they changed", async () => {
+    af.issueLinkWrites = [];
+    await engine().fullSync();
+    await engine().syncIssue(jira.byTitle("A")!.id);
+    expect(af.issueLinkWrites).toEqual([]);
+    expect(jira.calls).toEqual([]);
+  });
+
+  it("follow a link made or removed in Jira", async () => {
+    const a = jira.byTitle("A")!;
+    a.issueLinks = [{ id: "12", key: "INT-7", title: "relates to INT-7" }];
+    await engine().syncIssue(a.id);
+    expect(af.byTitle("A")!.issueLinks).toEqual([{ id: "12", title: "relates to INT-7" }]);
+    a.issueLinks = [];
+    await engine().syncIssue(a.id);
+    expect(af.byTitle("A")!.issueLinks).toEqual([]);
+  });
+
+  it("are left as they are on an item whose sync is stopped", async () => {
+    const item = af.byTitle("A")!;
+    af.linkRows.set(item.id, { ...af.linkRows.get(item.id)!, stopped: true });
+    jira.byTitle("A")!.issueLinks = [];
+    await engine().fullSync();
+    expect(af.byTitle("A")!.issueLinks).toEqual([{ id: "9", title: "blocks INT-6" }]);
   });
 });

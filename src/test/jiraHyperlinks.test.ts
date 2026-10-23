@@ -98,3 +98,33 @@ describe('external web links', () => {
     expect(writes).toBe(before);
   });
 });
+describe("Jira's links between issues", () => {
+  it("are read with the issue, each as this end stands to the other", async () => {
+    const port = jiraPort(config, async (url) => new Response(JSON.stringify(url.includes('/remotelink') ? [] : {
+      id: '100', key: 'AF-1', fields: {
+        summary: 'Item',
+        issuelinks: [
+          { id: '9', type: { name: 'Blocks', inward: 'is blocked by', outward: 'blocks' }, outwardIssue: { id: '101', key: 'AF-2' } },
+          { id: '10', type: { name: 'Blocks', inward: 'is blocked by', outward: 'blocks' }, inwardIssue: { id: '102', key: 'AF-3' } },
+        ],
+      },
+    })));
+    expect((await port.getIssue('100'))?.issueLinks).toEqual([
+      { id: '9', key: 'AF-2', title: 'blocks AF-2' },
+      { id: '10', key: 'AF-3', title: 'is blocked by AF-3' },
+    ]);
+  });
+
+  it('are heard by the webhook, a webhook made before brought up to it', async () => {
+    const calls: { url: string; method?: string; body?: { events?: string[] } }[] = [];
+    const port = jiraPort(config, async (url, init) => {
+      calls.push({ url, method: init.method, body: init.body ? JSON.parse(String(init.body)) : undefined });
+      return new Response(JSON.stringify({ self: `${config.baseUrl}/rest/webhooks/1.0/webhook/7` }));
+    });
+    await port.registerWebhook('https://example.com/hook');
+    await port.updateWebhook(`${config.baseUrl}/rest/webhooks/1.0/webhook/7`, 'https://example.com/hook');
+    expect(calls.map((c) => c.method)).toEqual(['POST', 'PUT']);
+    expect(calls[1].url).toBe(`${config.baseUrl}/rest/webhooks/1.0/webhook/7`);
+    for (const c of calls) expect(c.body?.events).toEqual(expect.arrayContaining(['issuelink_created', 'issuelink_deleted']));
+  });
+});
