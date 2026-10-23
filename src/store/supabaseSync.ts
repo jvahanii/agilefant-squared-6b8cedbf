@@ -3,6 +3,7 @@ import { paginateSelect } from '@/integrations/supabase/pagination';
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/types/models';
 import { toast } from '@/hooks/use-toast';
 import { notifyPersistDebug } from '@/lib/persistDebug';
+import { markContainersDeleted, isRecentlyDeletedContainer } from './deletedContainers';
 import {
   forgetDeletedWorkItems,
   isRecentlyDeletedWorkItem,
@@ -809,6 +810,7 @@ export async function restoreWorkItems(
 }
 
 export async function upsertBacklog(bl: Backlog, organizationId: string) {
+  if (isRecentlyDeletedContainer(bl.id) || isRecentlyDeletedContainer(bl.treeId)) return;
   const { error } = await supabase.from('backlogs').upsert({
     id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: safeRank(bl.rank),
     organization_id: ownerOrgOf(bl.id, organizationId),
@@ -871,6 +873,7 @@ export async function updateBacklogViewMode(backlogId: string, mode: 'list' | 'b
 
 export async function deleteBacklogs(ids: string[]) {
   if (ids.length === 0) return;
+  markContainersDeleted(ids);
   // Also delete any double-prefixed variants that may exist in the DB
   const allIds = new Set(ids);
   ids.forEach(id => {
@@ -893,6 +896,7 @@ export async function upsertBacklogTree(tree: BacklogTree, organizationId: strin
 }
 
 export async function deleteBacklogTree(id: string) {
+  markContainersDeleted([id]);
   // Also delete any double-prefixed variants that may exist in the DB
   const parts = id.split('::');
   const allIds = [id];
@@ -976,6 +980,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
 }
 
 export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
+  bls = bls.filter((bl) => !isRecentlyDeletedContainer(bl.id) && !isRecentlyDeletedContainer(bl.treeId));
   if (bls.length === 0) return;
   const rows = bls.map(bl => ({
     id: bl.id, name: bl.name, parent_id: bl.parentId, tree_id: bl.treeId, rank: safeRank(bl.rank),
@@ -986,6 +991,7 @@ export async function upsertBacklogs(bls: Backlog[], organizationId: string) {
 }
 
 export async function upsertBacklogTrees(trees: BacklogTree[], organizationId: string) {
+  trees = trees.filter((t) => !isRecentlyDeletedContainer(t.id));
   if (trees.length === 0) return;
   const rows = trees.map(t => ({
     id: t.id, name: t.name, rank: safeRank(t.rank),
