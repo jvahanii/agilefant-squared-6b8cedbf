@@ -2148,6 +2148,7 @@ export type Database = {
         }[]
       }
       jira_queue_levels_check: { Args: never; Returns: undefined }
+      jira_queue_links_check: { Args: never; Returns: undefined }
       jira_try_lock: {
         Args: { _org: string; _seconds?: number }
         Returns: boolean
