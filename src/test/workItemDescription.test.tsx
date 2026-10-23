@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { useState } from "react";
 
 vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/supabaseSync")>()),
@@ -7,7 +8,9 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   upsertWorkItems: vi.fn(),
 }));
 
-import { WorkItemDescriptionDialog } from "@/components/WorkItemDescriptionDialog";
+import { WorkItemDescriptionDialog, WorkItemDescriptionMenuItem } from "@/components/WorkItemDescriptionDialog";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent } from "@/components/ui/context-menu";
+import { MobileWorkItemAttributesSheet } from "@/components/MobileAttributesSheet";
 import { useAppStore } from "@/store/appStore";
 import { upsertWorkItem } from "@/store/supabaseSync";
 
@@ -22,6 +25,40 @@ beforeEach(() => {
 });
 
 describe("item description", () => {
+  it("opens from a dismissed context menu and saves the edited description", async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return <>
+        <ContextMenu>
+          <ContextMenuTrigger>Item row</ContextMenuTrigger>
+          <ContextMenuContent><WorkItemDescriptionMenuItem onOpen={() => setOpen(true)} /></ContextMenuContent>
+        </ContextMenu>
+        {open && <WorkItemDescriptionDialog workItemId={ID} open onOpenChange={setOpen} />}
+      </>;
+    }
+    render(<Harness />);
+    fireEvent.contextMenu(screen.getByText("Item row"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Description…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), { target: { value: "Saved through menu" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(upsertWorkItem).toHaveBeenCalledWith(expect.objectContaining({ description: "Saved through menu" }), "org");
+  });
+
+  it("opens from the phone menu and persists an edit", async () => {
+    render(<MobileWorkItemAttributesSheet
+      workItemId={ID} open onOpenChange={vi.fn()}
+      onOpenTimeLog={vi.fn()} onOpenRespawn={vi.fn()} onOpenHyperlinks={vi.fn()}
+      onOpenSnooze={vi.fn()} onOpenMove={vi.fn()} onOpenReparent={vi.fn()}
+      onDuplicate={vi.fn()} onScrambleName={vi.fn()} onRevealName={vi.fn()} onUnscrambleName={vi.fn()}
+    />);
+    fireEvent.click(screen.getByRole("button", { name: "Description View / edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), { target: { value: "Phone edit" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(upsertWorkItem).toHaveBeenCalledWith(expect.objectContaining({ description: "Phone edit" }), "org");
+  });
+
   it("edits the Jira-imported description and sends the new value to persistence", () => {
     render(<WorkItemDescriptionDialog workItemId={ID} open onOpenChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
