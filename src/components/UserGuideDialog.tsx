@@ -1106,20 +1106,22 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Keep <strong className="text-foreground">one Agilefant list and one Jira Cloud project</strong> in
-            sync, both ways. Each organisation can connect one project and list from{" "}
+            Synchronise <strong className="text-foreground">Jira Cloud spaces with Agilefant lists</strong>, both
+            ways. An organisation can synchronise several spaces, each with a list of its own, from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → Jira</strong>.
           </p>
           <div className="space-y-2">
-            <ActionRow action="Prepare Jira" how={<>Create an Atlassian API token for an account with access to the project. Ask the person managing your Supabase project to save it under Edge Functions → Secrets as <code>JIRA_API_TOKEN</code>. Do not enter the token in the Jira card.</>} labelWidth="sm:w-40" />
-            <ActionRow action="Connect" how="An owner or admin enters the Jira address (https://yoursite.atlassian.net), the token owner's Atlassian email and project key, chooses the Agilefant list, then clicks Connect." labelWidth="sm:w-40" />
-            <ActionRow action="First sync" how="Click Sync now to bring existing items and issues into step. The card shows the paired-item count, waiting changes, last sync time and last error." labelWidth="sm:w-40" />
-            <ActionRow action="Automatic updates" how="Agilefant changes are sent automatically. Jira changes arrive automatically when Jira's webhook is registered. If the card warns that the webhook is missing, use Sync now to fetch Jira changes." labelWidth="sm:w-40" />
-            <ActionRow action="Disconnect" how="An owner or admin can click Disconnect to stop syncing. Existing items and Jira issues remain on both sides." labelWidth="sm:w-40" />
+            <ActionRow action="Prepare Jira" how={<>Create an Atlassian API token for an account with access to the spaces. Ask the person managing your Supabase project to save it under Edge Functions → Secrets as <code>JIRA_API_TOKEN</code>. Do not enter the token in the Jira card.</>} labelWidth="sm:w-40" />
+            <ActionRow action="Connect a space" how="An owner or admin enters the Jira address (https://yoursite.atlassian.net) and the token owner's Atlassian email, clicks Choose spaces, picks a tree for each space and clicks its Sync now. The space gets a new list named after it in that tree." labelWidth="sm:w-40" />
+            <ActionRow action="Send a list to Jira" how="Right-click a list that is not synchronised yet and choose Sync with Jira… A new Jira space is created for it, named after the list; its key is suggested and can be changed. The list's items are sent there at once." labelWidth="sm:w-40" />
+            <ActionRow action="Sync now" how="Sync now on the Jira card, or the Jira button in the header, synchronises every space at once and reports what changed. Each space shows its paired items, waiting changes, last sync time and last error." labelWidth="sm:w-40" />
+            <ActionRow action="Automatic updates" how="Agilefant changes are sent within seconds. Jira changes arrive within seconds when the space's webhook is registered; if the card says it is not, use Sync now to fetch Jira changes." labelWidth="sm:w-40" />
+            <ActionRow action="Disconnect" how="Disconnect stops syncing one space; Disconnect all stops every space. Existing items and Jira issues remain on both sides." labelWidth="sm:w-40" />
           </div>
           <h3 className="text-sm font-semibold">What stays in sync</h3>
           <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-            <li>Names, descriptions, statuses, story points where Jira provides a compatible field, and the epic → task → subtask hierarchy supported by the project.</li>
+            <li>Names, descriptions, statuses, story points where Jira provides a compatible field, and the epic → task → subtask hierarchy supported by the space.</li>
+            <li>Web links: an item's hyperlinks and the issue's external web links are kept in step. Links Jira's own apps add are left alone.</li>
             <li>Open an item's menu and choose Description to view or edit it, including from the phone's item menu. Saving the description sends it to Jira. Descriptions are exchanged as plain text; Jira's rich formatting is not preserved.</li>
             <li>Built-in statuses map to Jira's To Do, In Progress, In Review and Done. Blocked maps to In Progress; No Go maps to Done.</li>
             <li>A Jira status missing from Agilefant is added to the synced list's status set. An Agilefant status missing from Jira is added where Jira permissions and workflow allow it. If Jira refuses, the sync falls back to In Progress and records an error.</li>

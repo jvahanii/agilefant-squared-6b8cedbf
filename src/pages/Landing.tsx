@@ -122,7 +122,7 @@ const INTEGRATIONS = [
   {
     icon: ArrowLeftRight,
     title: "Jira",
-    body: "Keep an Agilefant list and a Jira Cloud project in sync, both ways — names, descriptions, statuses, story points and the epic-to-subtask hierarchy. Changes arrive automatically in Agilefant; Jira may need a refresh to show them.",
+    body: "Synchronise Jira Cloud spaces with Agilefant lists, both ways — names, descriptions, statuses, story points, web links and the epic-to-subtask hierarchy. Send any list to a new Jira space in one click; statuses missing on either side are created. Changes arrive within seconds; Jira may need a refresh to show them.",
   },
   {
     icon: GitMerge,
