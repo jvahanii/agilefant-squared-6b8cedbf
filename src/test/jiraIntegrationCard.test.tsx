@@ -139,7 +139,7 @@ describe("the Jira card", () => {
     );
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "OPS is kept in step", description: expect.stringContaining("3 issue(s) brought in") }),
+        expect.objectContaining({ title: "OPS is synchronised", description: expect.stringContaining("3 issue(s) brought in") }),
       ),
     );
   });
@@ -150,7 +150,7 @@ describe("the Jira card", () => {
       body.action === "status" ? CONNECTED : { connected: false, tokenConfigured: true, spaces: [] },
     );
     render(<JiraIntegrationCard canManage />);
-    fireEvent.click(await screen.findByRole("button", { name: /Stop syncing/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect" }));
     await waitFor(() => expect(callJira).toHaveBeenCalledWith({ action: "removeSpace", organizationId: "org-1", connectionId: "conn-1" }));
     expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/list and its items stay/));
   });
@@ -176,6 +176,6 @@ describe("the Jira card", () => {
     callJira.mockResolvedValue(CONNECTED);
     render(<JiraIntegrationCard canManage={false} />);
     expect(await screen.findByText(/Only an owner or admin/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Stop syncing/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Disconnect" })).toBeNull();
   });
 });
