@@ -974,13 +974,14 @@ function WorkItemNodeContent({
             if (dragStartedRef.current) return;
             const isMulti = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
-            if (!isMulti && !isShift && !isMobile && isSelected && !isMultiSelected) {
+            if (rowClickIntent({ isMulti, isShift, isMobile, isSelected, isMultiSelected }) === "rename") {
               if (clickRenameTimerRef.current) clearTimeout(clickRenameTimerRef.current);
               clickRenameTimerRef.current = setTimeout(() => {
                 clickRenameTimerRef.current = null;
-                // The textarea only exists while the name is being edited.
-                if (!titleRef.current) startEditingTitle();
-              }, 250);
+                // The textarea only exists while the name is being edited, and
+                // a pointer still down means a drag or a second press is under way.
+                if (!titleRef.current && !pointerDownPosRef.current) startEditingTitle();
+              }, 500);
               return;
             }
             onSelect(workItemId, isMulti, isShift);
