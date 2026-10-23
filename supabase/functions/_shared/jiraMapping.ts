@@ -19,6 +19,7 @@
 export interface SyncState {
   title: string;
   description: string;
+  hyperlinks?: SyncHyperlink[];
   /** Jira's status name, the one both sides map to: "To Do", "In Progress", "In Review", "Done". */
   status: string;
   points: number | null;
@@ -26,8 +27,32 @@ export interface SyncState {
   parent: string | null;
 }
 
-export const SYNCED_FIELDS = ['title', 'description', 'status', 'points', 'parent'] as const;
+export const SYNCED_FIELDS = ['title', 'description', 'hyperlinks', 'status', 'points', 'parent'] as const;
 export type SyncedField = (typeof SYNCED_FIELDS)[number];
+
+export interface SyncHyperlink { url: string; title: string }
+
+/** Compare safe web links independently of storage ids and display order. */
+export function normalizeHyperlinks(value: unknown): SyncHyperlink[] {
+  if (!Array.isArray(value)) return [];
+  const links = new Map<string, SyncHyperlink>();
+  for (const link of value) {
+    if (!link || typeof link.url !== 'string') continue;
+    const url = link.url.trim();
+    try {
+      if (!['http:', 'https:'].includes(new URL(url).protocol)) continue;
+    } catch { continue; }
+    const title = typeof link.title === 'string' ? link.title.trim() : '';
+    links.set(url, { url, title: title || url });
+  }
+  return [...links.values()].sort((a, b) => a.url.localeCompare(b.url));
+}
+
+export function sameField(field: SyncedField, a: unknown, b: unknown): boolean {
+  return field === 'hyperlinks'
+    ? JSON.stringify(normalizeHyperlinks(a)) === JSON.stringify(normalizeHyperlinks(b))
+    : a === b;
+}
 
 // ─── Text ────────────────────────────────────────────────────────────────────
 
@@ -427,7 +452,7 @@ export function expectedTypes(
 /** Two states equal, field by field. */
 export function sameState(a: SyncState | null | undefined, b: SyncState | null | undefined): boolean {
   if (!a || !b) return a === b;
-  return SYNCED_FIELDS.every((field) => a[field] === b[field]);
+  return SYNCED_FIELDS.every((field) => sameField(field, a[field], b[field]));
 }
 
 export interface Reconciled {
@@ -458,6 +483,28 @@ export function reconcile(
   const toJira: SyncedField[] = [];
   const agilefantIsLater = (agilefantChangedAt ?? 0) > (jiraChangedAt ?? 0);
   for (const field of SYNCED_FIELDS) {
+    if (field === 'hyperlinks') {
+      const mine = normalizeHyperlinks(agilefant.hyperlinks);
+      const theirs = normalizeHyperlinks(jira.hyperlinks);
+      const old = agreed?.hyperlinks;
+      // First rollout: preserve both sides' existing links instead of treating
+      // the missing historical field as a deletion.
+      const merged = old === undefined
+        ? normalizeHyperlinks([...theirs, ...mine])
+        : normalizeHyperlinks([...new Set([...mine, ...theirs, ...old].map((l) => l.url))].flatMap((url) => {
+            const a = mine.find((l) => l.url === url);
+            const j = theirs.find((l) => l.url === url);
+            const previous = old.find((l) => l.url === url);
+            const aMoved = JSON.stringify(a) !== JSON.stringify(previous);
+            const jMoved = JSON.stringify(j) !== JSON.stringify(previous);
+            const picked = aMoved && (!jMoved || agilefantIsLater) ? a : j;
+            return picked ? [picked] : [];
+          }));
+      state.hyperlinks = merged;
+      if (!sameField(field, mine, merged)) toAgilefant.push(field);
+      if (!sameField(field, theirs, merged)) toJira.push(field);
+      continue;
+    }
     if (agilefant[field] === jira[field]) {
       (state as Record<SyncedField, unknown>)[field] = jira[field];
       continue;

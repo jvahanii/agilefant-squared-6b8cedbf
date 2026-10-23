@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Sync Jira external web links and Agilefant hyperlinks both ways, including edits/removals; 71 tests passed, service deployed and scheduled checks initialized live. Authenticated UI flow unavailable for external Supabase.
 - [x] Added current Jira integration details to the landing page and shared user guide; verified both public pages and 11 existing tests.
 - [x] Jira status missing from Agilefant is created in Agilefant's status set
 - [x] Description: confirmed existing two-way Jira sync; added viewing/editing through list, board, search and phone item menus with persistence tests.

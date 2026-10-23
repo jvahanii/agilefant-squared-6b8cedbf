@@ -6,7 +6,7 @@
 //
 // Takes its fetch as an argument so it can be tested without a network.
 
-import { adfToText, textToAdf, toPoints, toSummary, type SyncState, type SyncedField } from './jiraMapping.ts';
+import { adfToText, textToAdf, toPoints, toSummary, normalizeHyperlinks, type SyncState, type SyncedField } from './jiraMapping.ts';
 import type { JiraIssue, JiraPort } from './jiraEngine.ts';
 
 export interface JiraConfig {
@@ -88,6 +88,38 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
 } {
   const call = jiraRequester(config, fetcher);
   const fields = ['summary', 'description', 'status', 'issuetype', 'parent', 'updated', ...(config.pointsField ? [config.pointsField] : [])];
+
+  type RemoteLink = { id: number; globalId?: string; application?: { type?: string; name?: string }; object?: { url?: string; title?: string } };
+  const external = (link: RemoteLink) => !link.application?.type && !link.application?.name;
+  const remoteLinks = (id: string) => call<RemoteLink[]>(`/rest/api/3/issue/${encodeURIComponent(id)}/remotelink`);
+  const withLinks = async (raw: RawIssue): Promise<JiraIssue> => {
+    const issue = toIssue(raw);
+    issue.state.hyperlinks = normalizeHyperlinks((await remoteLinks(raw.id)).filter(external).map((l) => l.object));
+    return issue;
+  };
+  const writeLinks = async (id: string, state: SyncState) => {
+    const current = (await remoteLinks(id)).filter(external);
+    const wanted = normalizeHyperlinks(state.hyperlinks);
+    const kept = new Set<string>();
+    for (const link of current) {
+      const target = wanted.find((l) => l.url === link.object?.url);
+      const path = `/rest/api/3/issue/${encodeURIComponent(id)}/remotelink/${link.id}`;
+      if (!target || kept.has(target.url)) {
+        // Invalid/non-web remote links are not ours to remove.
+        if (normalizeHyperlinks([link.object]).length) await call(path, { method: 'DELETE' });
+      } else {
+        kept.add(target.url);
+        if ((link.object?.title || link.object?.url) !== target.title) {
+          await call(path, { method: 'PUT', body: { object: { ...link.object, ...target } } });
+        }
+      }
+    }
+    for (const target of wanted) {
+      if (!kept.has(target.url)) await call(`/rest/api/3/issue/${encodeURIComponent(id)}/remotelink`, {
+        method: 'POST', body: { globalId: `agilefant:web:${target.url}`, object: target },
+      });
+    }
+  };
 
   const toIssue = (raw: RawIssue): JiraIssue => ({
     id: raw.id,
@@ -268,7 +300,10 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
           method: 'POST',
           body: { jql: `project = "${config.projectKey}" ORDER BY key`, fields, maxResults: 100, nextPageToken },
         });
-        out.push(...result.issues.map(toIssue));
+        // Bound concurrent requests instead of sending one burst for a large project.
+        for (let start = 0; start < result.issues.length; start += 5) {
+          out.push(...await Promise.all(result.issues.slice(start, start + 5).map(withLinks)));
+        }
         if (!result.nextPageToken) break;
         nextPageToken = result.nextPageToken;
       }
@@ -276,12 +311,14 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     },
 
     async getIssue(id) {
+      let raw: RawIssue;
       try {
-        return toIssue(await call<RawIssue>(`/rest/api/3/issue/${id}?fields=${fields.join(',')}`));
+        raw = await call<RawIssue>(`/rest/api/3/issue/${id}?fields=${fields.join(',')}`);
       } catch (e) {
         if (e instanceof JiraError && e.status === 404) return null;
         throw e;
       }
+      return await withLinks(raw);
     },
 
     async createIssue(type, state) {
@@ -320,6 +357,7 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     async updateIssue(id, names, state) {
       await edit(id, fieldValues(names.filter((n) => n !== 'status'), state));
       if (names.includes('status')) await transitionTo(id, state.status);
+      if (names.includes('hyperlinks')) await writeLinks(id, state);
     },
 
     async deleteIssue(id) {

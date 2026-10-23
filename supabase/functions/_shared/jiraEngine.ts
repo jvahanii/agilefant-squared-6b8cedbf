@@ -17,6 +17,9 @@ import {
   jiraTypeForNewItem,
   Levels,
   normalizeText,
+  normalizeHyperlinks,
+  sameField,
+  type SyncHyperlink,
   planMove,
   type IssueTypeLevel,
   reconcile,
@@ -59,6 +62,7 @@ export interface AgilefantItem {
   id: string;
   title: string;
   description: string | null;
+  hyperlinks?: SyncHyperlink[];
   status: string;
   points: number | null;
   /** The parent work item within the list, or null. */
@@ -70,6 +74,7 @@ export interface AgilefantItem {
 export interface ItemFields {
   title?: string;
   description?: string;
+  hyperlinks?: SyncHyperlink[];
   status?: string;
   points?: number | null;
   parentId?: string | null;
@@ -215,6 +220,7 @@ export class JiraSync {
     return {
       title: toSummary(item.title),
       description: normalizeText(item.description),
+      hyperlinks: normalizeHyperlinks(item.hyperlinks),
       status: this.toJiraStatus(item.status),
       points: item.points ?? null,
       parent: item.parentId ? this.linksByItem.get(item.parentId)?.jiraId ?? null : null,
@@ -357,6 +363,32 @@ export class JiraSync {
     return this.report;
   }
 
+  /** Remote-link changes have no reliable Jira webhook: check only paired links. */
+  async syncHyperlinks(): Promise<void> {
+    await this.loadLinks();
+    for (const link of this.linksByItem.values()) {
+      try {
+        const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
+        if (!item?.inList || !issue) continue;
+        const result = reconcile(link.agreed, this.stateOfItem(item), issue.state, null, null);
+        const hyperlinks = result.state.hyperlinks ?? [];
+        if (result.toJira.includes('hyperlinks')) {
+          await this.jira.updateIssue(issue.id, ['hyperlinks'], { ...issue.state, hyperlinks });
+          this.report.updatedInJira++;
+        }
+        if (result.toAgilefant.includes('hyperlinks')) {
+          await this.agilefant.updateItem(item.id, { hyperlinks });
+          this.report.updatedInAgilefant++;
+        }
+        const next = { ...link, agreed: { ...(link.agreed ?? issue.state), hyperlinks } };
+        if (!sameField('hyperlinks', link.agreed?.hyperlinks, hyperlinks) || link.agreed?.hyperlinks === undefined) {
+          this.remember(next);
+          await this.agilefant.saveLink(next);
+        }
+      } catch (e) { this.report.errors.push(`${link.jiraKey}: ${message(e)}`); }
+    }
+  }
+
   /**
    * Every tree levelled to the hierarchy as Jira has it now. A move levels
    * the tree it lands in; but when a level is added or taken away in Jira's
@@ -421,7 +453,7 @@ export class JiraSync {
             jiraType = moved.after.type;
             state.parent = moved.after.state.parent;
             for (const field of SYNCED_FIELDS) {
-              if (field !== 'parent' && moved.after.state[field] !== state[field] && !fieldsForJira.includes(field)) {
+              if (field !== 'parent' && !sameField(field, moved.after.state[field], state[field]) && !fieldsForJira.includes(field)) {
                 fieldsForJira.push(field);
               }
             }
@@ -580,6 +612,7 @@ export class JiraSync {
     for (const field of fields) {
       if (field === 'title') out.title = state.title;
       if (field === 'description') out.description = state.description;
+      if (field === 'hyperlinks') out.hyperlinks = normalizeHyperlinks(state.hyperlinks);
       if (field === 'points') out.points = state.points;
       if (field === 'status') out.status = await this.toAgilefantStatus(state.status, category, current?.status);
       if (field === 'parent') out.parentId = state.parent ? this.linksByIssue.get(state.parent)?.workItemId ?? null : null;
@@ -602,6 +635,7 @@ export class JiraSync {
       this.remember(link);
       await this.agilefant.saveLink(link);
       this.report.createdInJira += 1;
+      await this.sendNewHyperlinks(link, state);
     } catch (e) {
       this.report.errors.push(`"${item.title}": ${message(e)}`);
     }
@@ -632,6 +666,7 @@ export class JiraSync {
         this.remember(link);
         await this.agilefant.saveLink(link);
         this.report.createdInJira += 1;
+        await this.sendNewHyperlinks(link, placed);
       } catch (e) {
         this.report.errors.push(`"${item.title}": ${message(e)}`);
       }
@@ -645,6 +680,7 @@ export class JiraSync {
       this.remember(link);
       await this.agilefant.saveLink(link);
       this.report.createdInJira += 1;
+      await this.sendNewHyperlinks(link, alone);
     } catch (e) {
       this.report.errors.push(`"${item.title}": ${message(e)}`);
       return;
@@ -675,6 +711,7 @@ export class JiraSync {
     const workItemId = await this.agilefant.createItem({
       title: issue.state.title,
       description: issue.state.description,
+      hyperlinks: normalizeHyperlinks(issue.state.hyperlinks),
       status: await this.toAgilefantStatus(issue.state.status, issue.statusCategory, null),
       points: issue.state.points,
       parentId,
@@ -690,6 +727,20 @@ export class JiraSync {
     this.remember(link);
     await this.agilefant.saveLink(link);
     this.report.createdInAgilefant += 1;
+  }
+
+  /** Keep the issue's identity even if its separate remote-link write fails. */
+  private async sendNewHyperlinks(link: Link, state: SyncState) {
+    if (!state.hyperlinks?.length) return;
+    try {
+      await this.jira.updateIssue(link.jiraId, ['hyperlinks'], state);
+    } catch (e) {
+      const error = `${link.jiraKey}: ${message(e)}`;
+      this.report.errors.push(error);
+      link.agreed = { ...state, hyperlinks: [] };
+      link.error = error;
+      await this.agilefant.saveLink(link);
+    }
   }
 
   /**
