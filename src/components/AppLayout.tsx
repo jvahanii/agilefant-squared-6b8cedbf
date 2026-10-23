@@ -1609,7 +1609,7 @@ function AppLayoutInner() {
 
       <DragOverlay dropAnimation={null}>
         {activeDrag && (
-          <div className="relative pointer-events-none" style={{ transform: "rotate(-1.5deg)" }}>
+          <div className="relative pointer-events-none opacity-75" style={{ transform: "rotate(-1.5deg)" }}>
             <div className="flex items-center gap-2 bg-card border border-primary shadow-2xl rounded-lg pl-3 pr-4 py-2 text-sm font-semibold max-w-sm ring-2 ring-primary/30">
               <span className="inline-block w-1.5 h-5 rounded-full bg-primary shrink-0" />
               <span className="truncate">{activeDrag.title}</span>
