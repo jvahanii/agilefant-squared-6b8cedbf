@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeftRight, Loader2, Plus, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
@@ -15,8 +15,8 @@ import { syncJiraNow } from "@/lib/jiraSyncNow";
 /**
  * Jira Cloud spaces kept in step with Agilefant lists, both ways: names,
  * descriptions, statuses, points and the hierarchy. Each space chosen here
- * goes with a list of its own — one there is, or a new one made in the tree
- * chosen for it. Changes travel at once — Agilefant's by a database trigger,
+ * goes with a new list of its own, named after it, in the backlog tree chosen
+ * for it. Changes travel at once — Agilefant's by a database trigger,
  * Jira's by each space's webhook — and "Sync now" goes through every space.
  * Taking a space off stops its sync; the list and its items stay.
  *
@@ -58,7 +58,6 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
   }, [load]);
 
   const spaces: JiraSpace[] = useMemo(() => status?.spaces ?? [], [status]);
-  const takenLists = useMemo(() => new Set(spaces.map((s) => s.backlogId)), [spaces]);
   const takenKeys = useMemo(() => new Set(spaces.map((s) => s.projectKey)), [spaces]);
 
   // Every list, named with its tree; and the trees, for a new list.
@@ -180,7 +179,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Keep Jira Cloud spaces in step with lists, both ways: names, descriptions, statuses, points, and the hierarchy.
-          Choose the spaces, and for each a list — one you have, or a new one. Changes travel at once in either direction;
+          Choose the spaces, and for each the backlog tree its new list goes in. Changes travel at once in either direction;
           a change made on both sides keeps the later one, and deleting on one side deletes on the other.
         </p>
 
@@ -271,29 +270,17 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                         <span className="min-w-[10rem]">
                           <span className="font-medium">{project.key}</span> {project.name}
                         </span>
+                        {/* Only the trees: the space gets a new list of its own, named after it, in the one chosen. */}
                         <Select value={targets[project.key] ?? ""} onValueChange={(v) => setTargets((t) => ({ ...t, [project.key]: v }))}>
-                          <SelectTrigger className="h-8 w-[18rem]" aria-label={`List for ${project.key}`}>
-                            <SelectValue placeholder="Choose its list" />
+                          <SelectTrigger className="h-8 w-[18rem]" aria-label={`Tree for ${project.key}`}>
+                            <SelectValue placeholder="Choose its tree" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>A new list, in</SelectLabel>
-                              {trees.map((t) => (
-                                <SelectItem key={`new:${t.id}`} value={`new:${t.id}`}>
-                                  New list in {t.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                            <SelectGroup>
-                              <SelectLabel>A list you have</SelectLabel>
-                              {lists
-                                .filter((l) => !takenLists.has(l.id))
-                                .map((l) => (
-                                  <SelectItem key={`list:${l.id}`} value={`list:${l.id}`}>
-                                    {l.label}
-                                  </SelectItem>
-                                ))}
-                            </SelectGroup>
+                            {trees.map((t) => (
+                              <SelectItem key={`new:${t.id}`} value={`new:${t.id}`}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Button size="sm" onClick={() => addSpace(project)} disabled={busy !== null || !targets[project.key]}>

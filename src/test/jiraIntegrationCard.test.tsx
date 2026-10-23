@@ -1,6 +1,6 @@
 /**
  * The Jira card on Bells & Whistles: choosing which Jira spaces are kept in
- * step, each with a list — one there is or a new one — taking one off, and
+ * step, each with a new list in the backlog tree chosen for it, taking one off, and
  * "Sync now". The sync itself is tested in jiraSync.test.ts; this pins what a
  * person sees and what the card asks the function to do.
  */
@@ -103,17 +103,17 @@ describe("the Jira card", () => {
     expect(within(offered).getByText("OPS")).toBeInTheDocument();
   });
 
-  it("shows each space kept in step with its list, and offers only the others", async () => {
+  it("shows each space kept in step with its list, and offers only the others, each with only the trees to choose", async () => {
     callJira.mockImplementation(async (body: { action: string }) => (body.action === "status" ? CONNECTED : { projects: PROJECTS }));
     render(<JiraIntegrationCard canManage />);
     expect(await screen.findByText(/Agilefant-Jira integration › Backlog/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Choose more spaces" }));
     const offered = await screen.findByRole("list", { name: "Jira spaces" });
     expect(within(offered).queryByText("AF")).toBeNull();
-    // A list already kept in step is not offered again.
+    // The backlog trees, and no lists or sublists.
     const [select] = within(offered).getAllByTestId("select");
-    expect(within(select).queryByText(/› Backlog/)).toBeNull();
-    expect(within(select).getByText(/› Ideas/)).toBeInTheDocument();
+    const options = within(select).getAllByRole("option").map((o) => o.textContent).filter(Boolean);
+    expect(options).toEqual(["Agilefant-Jira integration", "Ops"]);
   });
 
   it("adds a space with a new list in the tree chosen for it", async () => {
@@ -136,18 +136,6 @@ describe("the Jira card", () => {
         newListTreeId: "tree-2",
       }),
     );
-  });
-
-  it("adds a space with a list there is", async () => {
-    callJira.mockImplementation(async (body: { action: string }) =>
-      body.action === "status" ? CONNECTED : body.action === "projects" ? { projects: PROJECTS } : { ...CONNECTED, webhookError: null },
-    );
-    render(<JiraIntegrationCard canManage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Choose more spaces" }));
-    const int = within(await screen.findByRole("list", { name: "Jira spaces" })).getByText("INT").closest("li")!;
-    fireEvent.change(within(int).getByTestId("select"), { target: { value: "list:bl-2" } });
-    fireEvent.click(within(int).getByRole("button", { name: "Keep in step" }));
-    await waitFor(() => expect(callJira).toHaveBeenCalledWith(expect.objectContaining({ action: "addSpace", projectKey: "INT", backlogId: "bl-2" })));
   });
 
   it("takes a space off, once asked to, leaving its list", async () => {
