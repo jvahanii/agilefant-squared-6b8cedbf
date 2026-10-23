@@ -643,6 +643,7 @@ export type Database = {
           email: string
           enabled: boolean
           function_url: string | null
+          id: string
           issue_types: Json | null
           last_error: string | null
           last_synced_at: string | null
@@ -650,6 +651,7 @@ export type Database = {
           points_field: string | null
           project_id: string | null
           project_key: string
+          project_name: string | null
           tree_id: string
           updated_at: string
           webhook_secret: string
@@ -664,6 +666,7 @@ export type Database = {
           email: string
           enabled?: boolean
           function_url?: string | null
+          id?: string
           issue_types?: Json | null
           last_error?: string | null
           last_synced_at?: string | null
@@ -671,6 +674,7 @@ export type Database = {
           points_field?: string | null
           project_id?: string | null
           project_key: string
+          project_name?: string | null
           tree_id: string
           updated_at?: string
           webhook_secret?: string
@@ -685,6 +689,7 @@ export type Database = {
           email?: string
           enabled?: boolean
           function_url?: string | null
+          id?: string
           issue_types?: Json | null
           last_error?: string | null
           last_synced_at?: string | null
@@ -692,6 +697,7 @@ export type Database = {
           points_field?: string | null
           project_id?: string | null
           project_key?: string
+          project_name?: string | null
           tree_id?: string
           updated_at?: string
           webhook_secret?: string
@@ -701,14 +707,14 @@ export type Database = {
           {
             foreignKeyName: "jira_connections_backlog_id_fkey"
             columns: ["backlog_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "backlogs"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "jira_connections_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -724,6 +730,7 @@ export type Database = {
       jira_issue_links: {
         Row: {
           agreed: Json | null
+          connection_id: string
           jira_issue_id: string
           jira_key: string
           jira_type: string
@@ -734,6 +741,7 @@ export type Database = {
         }
         Insert: {
           agreed?: Json | null
+          connection_id: string
           jira_issue_id: string
           jira_key: string
           jira_type: string
@@ -744,6 +752,7 @@ export type Database = {
         }
         Update: {
           agreed?: Json | null
+          connection_id?: string
           jira_issue_id?: string
           jira_key?: string
           jira_type?: string
@@ -753,6 +762,13 @@ export type Database = {
           work_item_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "jira_issue_links_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "jira_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jira_issue_links_organization_id_fkey"
             columns: ["organization_id"]
@@ -765,6 +781,7 @@ export type Database = {
       jira_sync_queue: {
         Row: {
           attempts: number
+          connection_id: string | null
           done_at: string | null
           error: string | null
           id: number
@@ -775,6 +792,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          connection_id?: string | null
           done_at?: string | null
           error?: string | null
           id?: number
@@ -785,6 +803,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          connection_id?: string | null
           done_at?: string | null
           error?: string | null
           id?: number
@@ -794,6 +813,13 @@ export type Database = {
           ref?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jira_sync_queue_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "jira_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jira_sync_queue_organization_id_fkey"
             columns: ["organization_id"]
@@ -2147,13 +2173,32 @@ export type Database = {
           title: string
         }[]
       }
+      jira_list_items_for: {
+        Args: { _connection: string }
+        Returns: {
+          description: string
+          id: string
+          parent_id: string
+          points: number
+          status: string
+          title: string
+        }[]
+      }
       jira_queue_levels_check: { Args: never; Returns: undefined }
       jira_queue_links_check: { Args: never; Returns: undefined }
       jira_try_lock: {
         Args: { _org: string; _seconds?: number }
         Returns: boolean
       }
+      jira_try_lock_connection: {
+        Args: { _connection: string; _seconds?: number }
+        Returns: boolean
+      }
       jira_unlock: { Args: { _org: string }; Returns: undefined }
+      jira_unlock_connection: {
+        Args: { _connection: string }
+        Returns: undefined
+      }
       link_clerk_identity: { Args: never; Returns: string }
       lookup_org_by_slug: {
         Args: { _slug: string }
