@@ -285,7 +285,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                         </Select>
                         <Button size="sm" onClick={() => addSpace(project)} disabled={busy !== null || !targets[project.key]}>
                           {busy === `add:${project.key}` && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-                          Keep in step
+                          Sync now
                         </Button>
                       </li>
                     ))}
