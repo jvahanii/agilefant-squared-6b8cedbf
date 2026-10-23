@@ -6,7 +6,7 @@
  * window in which to open devtools or clear the cache.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ErrorBoundary, RELOAD_COOLDOWN_MS } from "@/components/ErrorBoundary";
 
 const CHUNK_ERROR = "Failed to fetch dynamically imported module: /assets/Index-DY3qiVj0.js";
@@ -16,13 +16,15 @@ function Boom({ message }: { message: string }): never {
 }
 
 let reload: ReturnType<typeof vi.fn>;
+let replace: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   sessionStorage.clear();
   reload = vi.fn();
+  replace = vi.fn();
   Object.defineProperty(window, "location", {
     configurable: true,
-    value: { ...window.location, reload },
+    value: { ...window.location, reload, replace },
   });
   // React logs caught errors; keep the output readable.
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -43,7 +45,9 @@ const mountAfterReload = (message = CHUNK_ERROR) =>
 describe("chunk-error auto-reload", () => {
   it("reloads once when a lazy chunk fails", () => {
     mountAfterReload();
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0]).toMatch(/[?&]v=recovery-/);
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it("does not reload again when the reloaded page fails the same way", () => {
@@ -52,18 +56,20 @@ describe("chunk-error auto-reload", () => {
     mountAfterReload();
     mountAfterReload();
     mountAfterReload();
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledTimes(1);
   });
 
-  it("offers the hard refresh once reloading has been tried and failed", () => {
+  it("manually bypasses the document cache even during the automatic cooldown", () => {
     mountAfterReload();
     render(
       <ErrorBoundary>
         <Boom message={CHUNK_ERROR} />
       </ErrorBoundary>,
     );
-    expect(screen.getByText(/hard refresh/i)).toBeTruthy();
-    expect(screen.getByText(/Ctrl/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Load fresh version" }));
+    expect(replace).toHaveBeenCalledTimes(2);
+    expect(replace.mock.calls[1][0]).toMatch(/[?&]v=recovery-/);
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it("allows another reload once the cooldown has passed", () => {
@@ -73,12 +79,13 @@ describe("chunk-error auto-reload", () => {
       String(Date.now() - RELOAD_COOLDOWN_MS - 1_000),
     );
     mountAfterReload();
-    expect(reload).toHaveBeenCalledTimes(2);
+    expect(replace).toHaveBeenCalledTimes(2);
   });
 
   it("never reloads for an ordinary rendering error", () => {
     mountAfterReload("Cannot read properties of undefined (reading 'map')");
     expect(reload).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     render(
       <ErrorBoundary>
         <Boom message="Cannot read properties of undefined (reading 'map')" />
@@ -95,6 +102,16 @@ describe("chunk-error auto-reload", () => {
     });
     mountAfterReload();
     expect(reload).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("still allows manual recovery when session storage is blocked", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    render(<ErrorBoundary><Boom message={CHUNK_ERROR} /></ErrorBoundary>);
+    fireEvent.click(screen.getByRole("button", { name: "Load fresh version" }));
+    expect(replace).toHaveBeenCalledTimes(1);
   });
 
   it("shows the error message either way", () => {

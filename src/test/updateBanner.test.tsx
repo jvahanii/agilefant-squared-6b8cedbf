@@ -103,19 +103,14 @@ describe("UpdateBanner", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("reloads, then forces a fresh copy if the reload did not take", async () => {
+  it("forces a fresh document on the first update click", async () => {
     serve(jsonResponse(NEWER));
     const navigator = nav();
     render(<UpdateBanner current={CURRENT} navigator={navigator} />);
     await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-    expect(navigator.reload).toHaveBeenCalledTimes(1);
-    expect(navigator.replace).not.toHaveBeenCalled();
-
-    // The page came back the same old build, so the next tap has to be a
-    // different address — a browser that prefers its cache ignores a reload.
-    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    expect(navigator.reload).not.toHaveBeenCalled();
     expect(navigator.replace).toHaveBeenCalledTimes(1);
     const forced = new URL(navigator.replace.mock.calls[0][0] as string, "http://localhost");
     expect(forced.searchParams.get("v")).toBe(NEWER.builtAt);

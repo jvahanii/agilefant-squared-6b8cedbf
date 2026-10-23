@@ -1,4 +1,6 @@
 import { Component, ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { reloadFreshPage } from "@/lib/appVersion";
 
 interface Props {
   children: ReactNode;
@@ -69,7 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (Date.now() - last < RELOAD_COOLDOWN_MS) return; // already tried; show the UI
     if (!recordAutoReload(ErrorBoundary.RELOAD_KEY)) return;
 
-    window.location.reload();
+    reloadFreshPage();
   }
 
   render() {
@@ -86,13 +88,9 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="text-center max-w-md px-4">
           <h1 className="text-2xl font-semibold mb-2">Something went wrong</h1>
           {looksLikeStaleBuild ? (
-            // Reached only once a reload has already been tried and the stale
-            // files came back, so name the thing that actually works.
             <p className="text-muted-foreground mb-4">
-              This page is holding files from an older version of Agilefant, and a normal
-              refresh keeps returning them. A <strong>hard refresh</strong> clears them: press{" "}
-              <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+
-              <kbd>R</kbd> on a Mac).
+              An application file could not be loaded. A newer version may be available.
+              Please try loading a fresh version of Agilefant.
             </p>
           ) : (
             <p className="text-muted-foreground mb-4">
@@ -100,12 +98,11 @@ export class ErrorBoundary extends Component<Props, State> {
               again.
             </p>
           )}
-          <button
-            className="px-4 py-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            onClick={() => window.location.reload()}
+          <Button
+            onClick={() => looksLikeStaleBuild ? reloadFreshPage() : window.location.reload()}
           >
-            Refresh Page
-          </button>
+            {looksLikeStaleBuild ? "Load fresh version" : "Refresh Page"}
+          </Button>
           {this.state.error && (
             <p className="mt-4 text-xs text-muted-foreground font-mono break-all">{message}</p>
           )}

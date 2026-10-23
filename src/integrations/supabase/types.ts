@@ -311,6 +311,30 @@ export type Database = {
         }
         Relationships: []
       }
+      db_io_snapshots: {
+        Row: {
+          blks_read: number
+          taken_at: string
+          temp_bytes: number
+          temp_files: number
+          wal_bytes: number
+        }
+        Insert: {
+          blks_read: number
+          taken_at?: string
+          temp_bytes: number
+          temp_files: number
+          wal_bytes: number
+        }
+        Update: {
+          blks_read?: number
+          taken_at?: string
+          temp_bytes?: number
+          temp_files?: number
+          wal_bytes?: number
+        }
+        Relationships: []
+      }
       deleted_work_items: {
         Row: {
           children: Json
@@ -2032,6 +2056,7 @@ export type Database = {
         Returns: string
       }
       current_user_id: { Args: never; Returns: string }
+      db_io_report: { Args: { _hours?: number }; Returns: Json }
       get_published_backlog: { Args: { _token: string }; Returns: Json }
       get_published_backlog_unchecked: {
         Args: { _token: string }
@@ -2229,6 +2254,7 @@ export type Database = {
           time_entries: number
         }[]
       }
+      take_db_io_snapshot: { Args: never; Returns: undefined }
       unpublish_backlog_link: {
         Args: { _backlog_id?: string; _tree_id: string }
         Returns: undefined
