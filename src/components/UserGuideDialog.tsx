@@ -34,6 +34,7 @@ import {
   Mail,
   MoveRight,
   Lock,
+  ArrowLeftRight,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -1094,6 +1095,49 @@ function buildSections(): Section[] {
           <Tip>
             Use <strong>Export data</strong> to copy the current data snapshot to the clipboard, or{" "}
             <strong>Export history</strong> to copy a CSV of all recorded changes.
+          </Tip>
+        </div>
+      ),
+    },
+    {
+      id: "jira",
+      icon: <ArrowLeftRight className="w-4 h-4" />,
+      label: "Jira Integration",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Keep <strong className="text-foreground">one Agilefant list and one Jira Cloud project</strong> in
+            sync, both ways. Each organisation can connect one project and list from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → Jira</strong>.
+          </p>
+          <div className="space-y-2">
+            <ActionRow action="Prepare Jira" how={<>Create an Atlassian API token for an account with access to the project. Ask the person managing your Supabase project to save it under Edge Functions → Secrets as <code>JIRA_API_TOKEN</code>. Do not enter the token in the Jira card.</>} labelWidth="sm:w-40" />
+            <ActionRow action="Connect" how="An owner or admin enters the Jira address (https://yoursite.atlassian.net), the token owner's Atlassian email and project key, chooses the Agilefant list, then clicks Connect." labelWidth="sm:w-40" />
+            <ActionRow action="First sync" how="Click Sync now to bring existing items and issues into step. The card shows the paired-item count, waiting changes, last sync time and last error." labelWidth="sm:w-40" />
+            <ActionRow action="Automatic updates" how="Agilefant changes are sent automatically. Jira changes arrive automatically when Jira's webhook is registered. If the card warns that the webhook is missing, use Sync now to fetch Jira changes." labelWidth="sm:w-40" />
+            <ActionRow action="Disconnect" how="An owner or admin can click Disconnect to stop syncing. Existing items and Jira issues remain on both sides." labelWidth="sm:w-40" />
+          </div>
+          <h3 className="text-sm font-semibold">What stays in sync</h3>
+          <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+            <li>Names, descriptions, statuses, story points where Jira provides a compatible field, and the epic → task → subtask hierarchy supported by the project.</li>
+            <li>Open an item's menu and choose Description to view or edit it, including from the phone's item menu. Saving the description sends it to Jira. Descriptions are exchanged as plain text; Jira's rich formatting is not preserved.</li>
+            <li>Built-in statuses map to Jira's To Do, In Progress, In Review and Done. Blocked maps to In Progress; No Go maps to Done.</li>
+            <li>A Jira status missing from Agilefant is added to the synced list's status set. An Agilefant status missing from Jira is added where Jira permissions and workflow allow it. If Jira refuses, the sync falls back to In Progress and records an error.</li>
+          </ul>
+          <h3 className="text-sm font-semibold">Deletion and conflicting edits</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Deleting a linked item on either side deletes its counterpart. Moving an Agilefant item out of the
+            connected list also deletes its Jira issue. Jira deletion is permanent: restoring the item in
+            Agilefant creates a new Jira issue with a new number, not the old issue's comments or history.
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Changes to different fields can be combined. If the same field changes on both sides, automatic
+            sync uses the change times where available; during a full Sync now, Jira wins that conflict.
+          </p>
+          <Tip>
+            Syncing and refreshing Jira's open page are different things. Changes can reach Jira while its
+            board or issue page still shows the old value. Refresh Jira to see them; Agilefant receives live
+            updates without a page refresh. If a change is missing, check the Jira card's last error and try Sync now.
           </Tip>
         </div>
       ),
