@@ -16,7 +16,7 @@ import { adminClient, corsHeaders, json } from '../_shared/gmail.ts';
 import { requireAppUser } from '../_shared/auth.ts';
 import { jiraPort, JiraError, type JiraConfig } from '../_shared/jiraApi.ts';
 import { JiraSync, type AgilefantItem, type AgilefantPort, type Link } from '../_shared/jiraEngine.ts';
-import type { SyncState } from '../_shared/jiraMapping.ts';
+import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_shared/jiraMapping.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Admin = any;
@@ -72,6 +72,39 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
   const tree = conn.tree_id;
   const today = () => new Date().toISOString().slice(0, 10);
 
+  const readHyperlinks = async (id: string): Promise<SyncHyperlink[]> => {
+    const { data, error } = await admin.from('work_item_hyperlinks').select('url, alt_text').eq('work_item_id', id);
+    if (error) throw error;
+    return normalizeHyperlinks((data ?? []).map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text })));
+  };
+  const writeHyperlinks = async (id: string, links: SyncHyperlink[]) => {
+    const { data, error } = await admin.from('work_item_hyperlinks').select('id, url, alt_text, rank').eq('work_item_id', id);
+    if (error) throw error;
+    const wanted = normalizeHyperlinks(links);
+    const kept = new Set<string>();
+    for (const row of data ?? []) {
+      const target = wanted.find((h) => h.url === row.url);
+      if (!target || kept.has(row.url)) {
+        const { error } = await admin.from('work_item_hyperlinks').delete().eq('id', row.id);
+        if (error) throw error;
+      } else {
+        kept.add(row.url);
+        if ((row.alt_text || row.url) !== target.title) {
+          const { error } = await admin.from('work_item_hyperlinks').update({ alt_text: target.title }).eq('id', row.id);
+          if (error) throw error;
+        }
+      }
+    }
+    let rank = Math.max(0, ...(data ?? []).map((r: { rank: number }) => r.rank ?? 0));
+    const rows = wanted.filter((h) => !kept.has(h.url)).map((h) => ({
+      work_item_id: id, organization_id: org, url: h.url, alt_text: h.title, rank: ++rank,
+    }));
+    if (rows.length) {
+      const { error } = await admin.from('work_item_hyperlinks').insert(rows);
+      if (error) throw error;
+    }
+  };
+
   const asItem = (row: {
     id: string;
     title: string;
@@ -107,7 +140,13 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       if (error) throw error;
       const rows = (data ?? []) as Array<Parameters<typeof asItem>[0]>;
       const ids = new Set(rows.map((r) => r.id));
-      return rows.map((r) => asItem(r, true, !!r.parent_id && ids.has(r.parent_id)));
+      const { data: hyperlinks, error: linkError } = await admin.from('work_item_hyperlinks')
+        .select('work_item_id, url, alt_text').eq('organization_id', org);
+      if (linkError) throw linkError;
+      return rows.map((r) => ({ ...asItem(r, true, !!r.parent_id && ids.has(r.parent_id)),
+        hyperlinks: normalizeHyperlinks((hyperlinks ?? []).filter((h: { work_item_id: string }) => h.work_item_id === r.id)
+          .map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text }))),
+      }));
     },
 
     async getItem(id) {
@@ -125,7 +164,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         const { data: parent } = await admin.from('work_items').select('backlog_assignments').eq('id', parentId).maybeSingle();
         parentInList = parent?.backlog_assignments?.[tree] === conn.backlog_id;
       }
-      return asItem({ ...data, parent_id: parentId }, inList, parentInList);
+      return { ...asItem({ ...data, parent_id: parentId }, inList, parentInList), hyperlinks: await readHyperlinks(id) };
     },
 
     async createItem(fields) {
@@ -154,10 +193,12 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         .from('work_item_backlog_ranks')
         .insert({ work_item_id: id, backlog_id: conn.backlog_id, rank, organization_id: org });
       if (rankError) console.error('jira-sync: could not rank a new item:', rankError.message);
+      await writeHyperlinks(id, fields.hyperlinks);
       return id;
     },
 
     async updateItem(id, fields) {
+      if (fields.hyperlinks !== undefined) await writeHyperlinks(id, fields.hyperlinks);
       const values: Record<string, unknown> = {};
       if (fields.title !== undefined) values.title = fields.title;
       if (fields.description !== undefined) values.description = fields.description || null;
