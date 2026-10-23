@@ -1,11 +1,16 @@
-// Agilefant ↔ Jira Cloud: one list kept in step with one project, both ways.
+// Agilefant ↔ Jira Cloud: Jira spaces kept in step with lists, both ways.
+//
+// Each space chosen is a connection of its own — one space, one list — with
+// its own webhook, queue and lock; the Jira site and account are shared by an
+// organization's spaces.
 //
 // Who calls this:
-//   the app        status · configure · sync (now) · disconnect — signed in, an
-//                  owner or admin for anything that changes the connection
+//   the app        status · projects · addSpace · removeSpace · sync (now) ·
+//                  disconnect — signed in, an owner or admin for anything that
+//                  changes which spaces are kept in step
 //   the database   drain — a trigger queued changed items (no sign-in: all it
 //                  can do is work through what is already queued)
-//   Jira           webhook — an issue changed; the URL carries the connection's
+//   Jira           webhook — an issue changed; the URL carries the space's
 //                  secret
 //
 // The rules of what stands for what are in _shared/jiraMapping.ts and the
@@ -22,10 +27,12 @@ import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_sha
 type Admin = any;
 
 interface Connection {
+  id: string;
   organization_id: string;
   base_url: string;
   email: string;
   project_key: string;
+  project_name: string | null;
   project_id: string | null;
   tree_id: string;
   backlog_id: string;
@@ -59,8 +66,16 @@ function configFor(conn: Connection): JiraConfig {
   };
 }
 
-async function getConnection(admin: Admin, organizationId: string): Promise<Connection | null> {
-  const { data, error } = await admin.from('jira_connections').select('*').eq('organization_id', organizationId).maybeSingle();
+/** An organization's spaces, by project key. */
+async function getConnections(admin: Admin, organizationId: string): Promise<Connection[]> {
+  const { data, error } = await admin.from('jira_connections').select('*').eq('organization_id', organizationId).order('project_key');
+  if (error) throw error;
+  return (data ?? []) as Connection[];
+}
+
+/** One space, if it is the organization's. */
+async function getConnection(admin: Admin, organizationId: string, id: string): Promise<Connection | null> {
+  const { data, error } = await admin.from('jira_connections').select('*').eq('id', id).eq('organization_id', organizationId).maybeSingle();
   if (error) throw error;
   return data as Connection | null;
 }
@@ -136,7 +151,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
 
   return {
     async listItems() {
-      const { data, error } = await admin.rpc('jira_list_items', { _org: org });
+      const { data, error } = await admin.rpc('jira_list_items_for', { _connection: conn.id });
       if (error) throw error;
       const rows = (data ?? []) as Array<Parameters<typeof asItem>[0]>;
       const ids = new Set(rows.map((r) => r.id));
@@ -229,7 +244,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       const { data, error } = await admin
         .from('jira_issue_links')
         .select('work_item_id, jira_issue_id, jira_key, jira_type, agreed, last_error')
-        .eq('organization_id', org);
+        .eq('connection_id', conn.id);
       if (error) throw error;
       return (data ?? []).map((row: Record<string, unknown>) => ({
         workItemId: row.work_item_id as string,
@@ -245,6 +260,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       const { error } = await admin.from('jira_issue_links').upsert(
         {
           work_item_id: link.workItemId,
+          connection_id: conn.id,
           organization_id: org,
           jira_issue_id: link.jiraId,
           jira_key: link.jiraKey,
@@ -253,7 +269,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
           last_error: link.error ?? null,
           synced_at: new Date().toISOString(),
         },
-        { onConflict: 'work_item_id' },
+        { onConflict: 'connection_id,work_item_id' },
       );
       if (error) throw error;
     },
@@ -283,7 +299,7 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
     },
 
     async dropLink(workItemId) {
-      const { error } = await admin.from('jira_issue_links').delete().eq('work_item_id', workItemId);
+      const { error } = await admin.from('jira_issue_links').delete().eq('connection_id', conn.id).eq('work_item_id', workItemId);
       if (error) throw error;
     },
   };
@@ -291,10 +307,10 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
 
 // ─── The queue ───────────────────────────────────────────────────────────────
 
-async function withLock<T>(admin: Admin, org: string, waitMs: number, work: () => Promise<T>): Promise<T | 'busy'> {
+async function withLock<T>(admin: Admin, connection: string, waitMs: number, work: () => Promise<T>): Promise<T | 'busy'> {
   const until = Date.now() + waitMs;
   for (;;) {
-    const { data, error } = await admin.rpc('jira_try_lock', { _org: org, _seconds: 120 });
+    const { data, error } = await admin.rpc('jira_try_lock_connection', { _connection: connection, _seconds: 120 });
     if (error) throw error;
     if (data === true) break;
     if (Date.now() >= until) return 'busy';
@@ -305,20 +321,20 @@ async function withLock<T>(admin: Admin, org: string, waitMs: number, work: () =
   try {
     result = await work();
   } finally {
-    await admin.rpc('jira_unlock', { _org: org });
+    await admin.rpc('jira_unlock_connection', { _connection: connection });
   }
   // Something queued between the drain's last read and the unlock would otherwise wait for the minute job.
   const { count } = await admin
     .from('jira_sync_queue')
     .select('id', { count: 'exact', head: true })
-    .eq('organization_id', org)
+    .eq('connection_id', connection)
     .is('done_at', null)
     .lt('attempts', 3);
-  if ((count ?? 0) > 0) await withLock(admin, org, 0, work);
+  if ((count ?? 0) > 0) await withLock(admin, connection, 0, work);
   return result;
 }
 
-/** Work through what is queued for one organization, oldest first, each item once. */
+/** Work through what is queued for one space, oldest first, each item once. */
 async function drain(admin: Admin, conn: Connection) {
   const jira = jiraPort(configFor(conn));
   const engine = new JiraSync(jira, agilefantPort(admin, conn));
@@ -329,7 +345,7 @@ async function drain(admin: Admin, conn: Connection) {
     const { data: rows, error } = await admin
       .from('jira_sync_queue')
       .select('id, kind, ref, attempts')
-      .eq('organization_id', conn.organization_id)
+      .eq('connection_id', conn.id)
       .is('done_at', null)
       .lt('attempts', 3)
       .order('id')
@@ -361,7 +377,7 @@ async function drain(admin: Admin, conn: Connection) {
           // level every tree to them.
           const types = await jira.issueTypes();
           if (JSON.stringify(types) !== JSON.stringify(conn.issue_types)) {
-            await admin.from('jira_connections').update({ issue_types: types }).eq('organization_id', conn.organization_id);
+            await admin.from('jira_connections').update({ issue_types: types }).eq('id', conn.id);
             conn.issue_types = types;
             await engine.fullSync();
           }
@@ -391,7 +407,7 @@ async function drain(admin: Admin, conn: Connection) {
       last_error: lastError,
       ...(typesChanged ? { issue_types: issueTypes } : {}),
     })
-    .eq('organization_id', conn.organization_id);
+    .eq('id', conn.id);
   return { processed, report };
 }
 
@@ -410,21 +426,17 @@ async function assertManager(admin: Admin, userId: string, org: string) {
   if (role !== 'owner' && role !== 'admin' && role !== 'superuser') throw new Error('forbidden: owners and admins only');
 }
 
-async function statusOf(admin: Admin, org: string) {
-  const conn = await getConnection(admin, org);
-  const tokenConfigured = !!Deno.env.get('JIRA_API_TOKEN');
-  if (!conn) return { connected: false, tokenConfigured };
+/** One space as the app shows it. */
+async function spaceStatus(admin: Admin, conn: Connection) {
   const [{ count: linked }, { count: pending }, { data: failed }] = await Promise.all([
-    admin.from('jira_issue_links').select('work_item_id', { count: 'exact', head: true }).eq('organization_id', org),
-    admin.from('jira_sync_queue').select('id', { count: 'exact', head: true }).eq('organization_id', org).is('done_at', null),
-    admin.from('jira_issue_links').select('jira_key, last_error').eq('organization_id', org).not('last_error', 'is', null).limit(5),
+    admin.from('jira_issue_links').select('work_item_id', { count: 'exact', head: true }).eq('connection_id', conn.id),
+    admin.from('jira_sync_queue').select('id', { count: 'exact', head: true }).eq('connection_id', conn.id).is('done_at', null),
+    admin.from('jira_issue_links').select('jira_key, last_error').eq('connection_id', conn.id).not('last_error', 'is', null).limit(5),
   ]);
   return {
-    connected: true,
-    tokenConfigured,
-    baseUrl: conn.base_url,
-    email: conn.email,
+    id: conn.id,
     projectKey: conn.project_key,
+    projectName: conn.project_name,
     treeId: conn.tree_id,
     backlogId: conn.backlog_id,
     pointsField: conn.points_field,
@@ -435,6 +447,64 @@ async function statusOf(admin: Admin, org: string) {
     pending: pending ?? 0,
     itemErrors: failed ?? [],
   };
+}
+
+/**
+ * The organization's Jira: the site and account its spaces share, and each
+ * space. The single-space fields (projectKey, backlogId, …) are the first
+ * space's, and the counts the sum, for callers that knew only one.
+ */
+async function statusOf(admin: Admin, org: string) {
+  const conns = await getConnections(admin, org);
+  const tokenConfigured = !!Deno.env.get('JIRA_API_TOKEN');
+  if (conns.length === 0) return { connected: false, tokenConfigured, spaces: [] };
+  const spaces = await Promise.all(conns.map((c) => spaceStatus(admin, c)));
+  const latest = spaces.map((s) => s.lastSyncedAt).filter(Boolean).sort().at(-1) ?? null;
+  return {
+    connected: true,
+    tokenConfigured,
+    baseUrl: conns[0].base_url,
+    email: conns[0].email,
+    spaces,
+    projectKey: spaces[0].projectKey,
+    treeId: spaces[0].treeId,
+    backlogId: spaces[0].backlogId,
+    pointsField: spaces[0].pointsField,
+    webhook: spaces.every((s) => s.webhook),
+    lastSyncedAt: latest,
+    lastError: spaces.map((s) => s.lastError).find(Boolean) ?? null,
+    linked: spaces.reduce((n, s) => n + s.linked, 0),
+    pending: spaces.reduce((n, s) => n + s.pending, 0),
+    itemErrors: spaces.flatMap((s) => s.itemErrors).slice(0, 5),
+  };
+}
+
+/** Sum of several syncs' reports, for "Sync now" over all spaces. */
+function addReports(reports: Array<Awaited<ReturnType<typeof drain>>['report']>) {
+  const sum = { createdInAgilefant: 0, createdInJira: 0, updatedInAgilefant: 0, updatedInJira: 0, deletedInAgilefant: 0, deletedInJira: 0, skipped: [] as string[], errors: [] as string[] };
+  for (const r of reports) {
+    sum.createdInAgilefant += r.createdInAgilefant;
+    sum.createdInJira += r.createdInJira;
+    sum.updatedInAgilefant += r.updatedInAgilefant;
+    sum.updatedInJira += r.updatedInJira;
+    sum.deletedInAgilefant += r.deletedInAgilefant;
+    sum.deletedInJira += r.deletedInJira;
+    sum.skipped.push(...r.skipped);
+    sum.errors.push(...r.errors);
+  }
+  return sum;
+}
+
+/** The Jira site and account an organization's spaces share, or the ones given for its first. */
+function accountFrom(body: Record<string, unknown>, existing: Connection | undefined) {
+  const baseUrl = String(body.baseUrl ?? existing?.base_url ?? '').trim().replace(/\/+$/, '');
+  const email = String(body.email ?? existing?.email ?? '').trim();
+  if (!/^https:\/\/[a-z0-9-]+\.atlassian\.net$/i.test(baseUrl)) throw new Error('bad_request: The Jira address must look like https://yoursite.atlassian.net');
+  if (!email.includes('@')) throw new Error("bad_request: The Atlassian account's email is needed");
+  if (existing && existing.base_url !== baseUrl) {
+    throw new Error('bad_request: The spaces kept in step are on another Jira site; take them off first to change the site');
+  }
+  return { baseUrl, email };
 }
 
 // ─── The handler ─────────────────────────────────────────────────────────────
@@ -458,9 +528,9 @@ Deno.serve(async (req) => {
       const event = await req.json().catch(() => ({}));
       const issueId = event?.issue?.id ? String(event.issue.id) : null;
       if (!issueId) return json({ ignored: true });
-      await admin.from('jira_sync_queue').insert({ organization_id: conn.organization_id, kind: 'issue', ref: issueId });
+      await admin.from('jira_sync_queue').insert({ organization_id: conn.organization_id, connection_id: conn.id, kind: 'issue', ref: issueId });
       // Answer Jira at once; the work goes on after.
-      inBackground(withLock(admin, conn.organization_id, 30_000, () => drain(admin, conn as Connection)).catch((e) => console.error('jira-sync webhook drain:', e)));
+      inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn as Connection)).catch((e) => console.error('jira-sync webhook drain:', e)));
       return json({ queued: issueId });
     }
 
@@ -471,10 +541,14 @@ Deno.serve(async (req) => {
 
     // The database's "there is work queued": it can only start what is already queued.
     if (action === 'drain') {
-      const conn = await getConnection(admin, org);
-      if (!conn || !conn.enabled) return json({ skipped: true });
-      const result = await withLock(admin, org, 0, () => drain(admin, conn));
-      return json(result === 'busy' ? { busy: true } : { processed: result.processed });
+      const wanted = body.connectionId ? [await getConnection(admin, org, String(body.connectionId))] : await getConnections(admin, org);
+      let processed = 0;
+      for (const conn of wanted) {
+        if (!conn || !conn.enabled) continue;
+        const result = await withLock(admin, conn.id, 0, () => drain(admin, conn));
+        if (result !== 'busy') processed += result.processed;
+      }
+      return json({ processed });
     }
 
     const user = await requireAppUser(req);
@@ -484,81 +558,136 @@ Deno.serve(async (req) => {
       return json(await statusOf(admin, org));
     }
 
-    if (action === 'configure') {
+    // The site's spaces, to choose from: with the account the organization's spaces use, or the one given.
+    if (action === 'projects') {
       await assertManager(admin, user.id, org);
-      const baseUrl = String(body.baseUrl ?? '').trim().replace(/\/+$/, '');
-      const email = String(body.email ?? '').trim();
-      const projectKey = String(body.projectKey ?? '').trim().toUpperCase();
-      const backlogId = String(body.backlogId ?? '');
-      if (!/^https:\/\/[a-z0-9-]+\.atlassian\.net$/i.test(baseUrl)) return json({ error: 'The Jira address must look like https://yoursite.atlassian.net' }, 400);
-      if (!email.includes('@') || !projectKey || !backlogId) return json({ error: 'email, projectKey and backlogId are required' }, 400);
-      const { data: backlog } = await admin.from('backlogs').select('id, tree_id, organization_id').eq('id', backlogId).maybeSingle();
-      if (!backlog || backlog.organization_id !== org) return json({ error: 'That list is not in this organization' }, 400);
+      const existing = (await getConnections(admin, org))[0];
+      const { baseUrl, email } = accountFrom(body, existing);
+      const probe = jiraPort({ baseUrl, email, token: token(), projectKey: '', pointsField: null });
+      await probe.myself();
+      return json({ projects: await probe.listProjects() });
+    }
 
-      // Check the token and the project before keeping anything.
+    // A space kept in step with a list: one there is, or one made for it in the tree given.
+    if (action === 'addSpace') {
+      await assertManager(admin, user.id, org);
+      const existing = await getConnections(admin, org);
+      const { baseUrl, email } = accountFrom(body, existing[0]);
+      const projectKey = String(body.projectKey ?? '').trim().toUpperCase();
+      if (!projectKey) return json({ error: 'projectKey is required' }, 400);
+      if (existing.some((c) => c.project_key === projectKey)) return json({ error: `${projectKey} is already kept in step` }, 409);
+
+      // The space and the token first, before anything is made.
       const probe = jiraPort({ baseUrl, email, token: token(), projectKey, pointsField: null });
       await probe.myself();
       const project = await probe.project();
       const pointsField = await probe.findPointsField();
 
-      const previous = await getConnection(admin, org);
+      let backlogId = String(body.backlogId ?? '');
+      let treeId: string;
+      if (backlogId) {
+        const { data: backlog } = await admin.from('backlogs').select('id, tree_id, organization_id').eq('id', backlogId).maybeSingle();
+        if (!backlog || backlog.organization_id !== org) return json({ error: 'That list is not in this organization' }, 400);
+        if (existing.some((c) => c.backlog_id === backlogId)) return json({ error: 'That list is already kept in step with a space' }, 409);
+        treeId = backlog.tree_id;
+      } else {
+        // A new list, named after the space, last among the tree's top-level lists.
+        treeId = String(body.newListTreeId ?? '');
+        const { data: tree } = await admin.from('backlog_trees').select('id, organization_id').eq('id', treeId).maybeSingle();
+        if (!tree || tree.organization_id !== org) return json({ error: 'Choose a tree of this organization for the new list' }, 400);
+        const { data: last } = await admin
+          .from('backlogs')
+          .select('rank')
+          .eq('tree_id', treeId)
+          .is('parent_id', null)
+          .order('rank', { ascending: false })
+          .limit(1);
+        backlogId = `${org}::bl-${crypto.randomUUID().slice(0, 8)}`;
+        const { error: listError } = await admin.from('backlogs').insert({
+          id: backlogId,
+          name: project.name,
+          parent_id: null,
+          tree_id: treeId,
+          rank: (last?.[0]?.rank ?? -1) + 1,
+          organization_id: org,
+        });
+        if (listError) throw listError;
+      }
+
       const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/jira-sync`;
-      const { error } = await admin.from('jira_connections').upsert(
-        {
+      const { data: inserted, error } = await admin
+        .from('jira_connections')
+        .insert({
           organization_id: org,
           base_url: baseUrl,
           email,
           project_key: project.key,
+          project_name: project.name,
           project_id: project.id,
-          tree_id: backlog.tree_id,
+          tree_id: treeId,
           backlog_id: backlogId,
           points_field: pointsField,
           enabled: true,
           function_url: functionUrl,
           created_by: user.id,
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'organization_id' },
-      );
+        })
+        .select('*')
+        .single();
       if (error) throw error;
-      const conn = (await getConnection(admin, org))!;
+      const conn = inserted as Connection;
 
-      // Jira's webhook, made afresh; the old one, if any, removed.
-      const port = jiraPort(configFor(conn));
+      // Its own webhook: Jira's changes to this space come to this connection.
       let webhookError: string | null = null;
-      if (previous?.webhook_url) await port.removeWebhook(previous.webhook_url).catch(() => undefined);
       try {
-        const self = await port.registerWebhook(`${functionUrl}?action=webhook&secret=${conn.webhook_secret}`);
-        await admin.from('jira_connections').update({ webhook_url: self }).eq('organization_id', org);
+        const self = await jiraPort(configFor(conn)).registerWebhook(`${functionUrl}?action=webhook&secret=${conn.webhook_secret}`);
+        await admin.from('jira_connections').update({ webhook_url: self }).eq('id', conn.id);
       } catch (e) {
         webhookError = e instanceof Error ? e.message : String(e);
-        await admin.from('jira_connections').update({ webhook_url: null, last_error: `Webhook: ${webhookError}` }).eq('organization_id', org);
+        await admin.from('jira_connections').update({ webhook_url: null, last_error: `Webhook: ${webhookError}` }).eq('id', conn.id);
       }
-      // A connection to another list starts its pairs afresh.
-      if (previous && (previous.backlog_id !== backlogId || previous.project_key !== project.key)) {
-        await admin.from('jira_issue_links').delete().eq('organization_id', org);
-      }
-      return json({ ...(await statusOf(admin, org)), webhookError });
+
+      // The first sync, after answering: the space's issues come in, the list's items go out.
+      await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
+      inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn)).catch((e) => console.error('jira-sync first sync:', e)));
+      return json({ ...(await statusOf(admin, org)), added: conn.id, webhookError });
     }
 
+    // A space taken off: its sync stops and its pairs are forgotten; the list and the issues stay.
+    if (action === 'removeSpace') {
+      await assertManager(admin, user.id, org);
+      const conn = await getConnection(admin, org, String(body.connectionId ?? ''));
+      if (!conn) return json({ error: 'No such space here' }, 404);
+      if (conn.webhook_url) await jiraPort(configFor(conn)).removeWebhook(conn.webhook_url).catch(() => undefined);
+      // Its pairs and queue go with it (ON DELETE CASCADE).
+      await admin.from('jira_connections').delete().eq('id', conn.id);
+      return json(await statusOf(admin, org));
+    }
+
+    // Everything, both ways: one space, or every space of the organization.
     if (action === 'sync') {
       await assertMember(admin, user.id, org);
-      const conn = await getConnection(admin, org);
-      if (!conn) return json({ error: 'Jira is not connected' }, 409);
-      await admin.from('jira_sync_queue').insert({ organization_id: org, kind: 'full', ref: null });
-      const result = await withLock(admin, org, 30_000, () => drain(admin, conn));
-      if (result === 'busy') return json({ error: 'A sync is already running. Try again in a minute.' }, 409);
-      return json({ ...(await statusOf(admin, org)), report: result.report });
+      const wanted = body.connectionId ? [await getConnection(admin, org, String(body.connectionId))] : await getConnections(admin, org);
+      const conns = wanted.filter((c): c is Connection => !!c);
+      if (conns.length === 0) return json({ error: 'Jira is not connected' }, 409);
+      const reports = [];
+      for (const conn of conns) {
+        await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
+        const result = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
+        if (result === 'busy') return json({ error: `A sync of ${conn.project_key} is already running. Try again in a minute.` }, 409);
+        reports.push(result.report);
+      }
+      return json({ ...(await statusOf(admin, org)), report: addReports(reports) });
     }
 
+    // Every space taken off.
     if (action === 'disconnect') {
       await assertManager(admin, user.id, org);
-      const conn = await getConnection(admin, org);
-      if (conn?.webhook_url) await jiraPort(configFor(conn)).removeWebhook(conn.webhook_url).catch(() => undefined);
-      await admin.from('jira_issue_links').delete().eq('organization_id', org);
-      await admin.from('jira_sync_queue').delete().eq('organization_id', org);
-      await admin.from('jira_connections').delete().eq('organization_id', org);
-      return json({ connected: false });
+      for (const conn of await getConnections(admin, org)) {
+        if (conn.webhook_url) await jiraPort(configFor(conn)).removeWebhook(conn.webhook_url).catch(() => undefined);
+        await admin.from('jira_connections').delete().eq('id', conn.id);
+      }
+      return json({ connected: false, tokenConfigured: !!Deno.env.get('JIRA_API_TOKEN'), spaces: [] });
     }
 
     return json({ error: `unknown action: ${action}` }, 400);
@@ -567,6 +696,7 @@ Deno.serve(async (req) => {
     console.error('jira-sync error:', message);
     if (message.startsWith('unauthorized')) return json({ error: 'unauthorized' }, 401);
     if (message.startsWith('forbidden')) return json({ error: message }, 403);
+    if (message.startsWith('bad_request: ')) return json({ error: message.slice('bad_request: '.length) }, 400);
     if (message === 'jira_token_missing') {
       return json({ error: 'The JIRA_API_TOKEN secret is not set for the edge functions.' }, 409);
     }

@@ -3,20 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeftRight, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeftRight, Loader2, Plus, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useOrgStore } from "@/store/orgStore";
 import { useAppStore } from "@/store/appStore";
-import { callJira, type JiraStatus } from "@/lib/jiraSync";
+import { callJira, type JiraProject, type JiraSpace, type JiraStatus } from "@/lib/jiraSync";
 import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { syncJiraNow } from "@/lib/jiraSyncNow";
 
 /**
- * One Agilefant list kept in step with one Jira Cloud project, both ways:
- * names, descriptions, statuses, points and the epic → task → subtask
- * hierarchy. Changes travel at once — Agilefant's by a database trigger,
- * Jira's by its webhook — and "Sync now" goes through everything.
+ * Jira Cloud spaces kept in step with Agilefant lists, both ways: names,
+ * descriptions, statuses, points and the hierarchy. Each space chosen here
+ * goes with a list of its own — one there is, or a new one made in the tree
+ * chosen for it. Changes travel at once — Agilefant's by a database trigger,
+ * Jira's by each space's webhook — and "Sync now" goes through every space.
+ * Taking a space off stops its sync; the list and its items stay.
  *
  * The Jira API token is never typed here: it is the edge functions'
  * JIRA_API_TOKEN secret, set in Supabase by whoever owns the Jira account.
@@ -28,12 +30,13 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
   const [status, setStatus] = useState<JiraStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | "connect" | "sync" | "disconnect">(null);
-  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState<null | string>(null);
   const [baseUrl, setBaseUrl] = useState("");
   const [email, setEmail] = useState("");
-  const [projectKey, setProjectKey] = useState("");
-  const [backlogId, setBacklogId] = useState("");
+  /** The site's spaces, once asked for. */
+  const [projects, setProjects] = useState<JiraProject[] | null>(null);
+  /** Per space key: where it goes — "new:<treeId>" or "list:<backlogId>". */
+  const [targets, setTargets] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!activeOrgId) return;
@@ -44,8 +47,6 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
       if (next.connected) {
         setBaseUrl(next.baseUrl ?? "");
         setEmail(next.email ?? "");
-        setProjectKey(next.projectKey ?? "");
-        setBacklogId(next.backlogId ?? "");
       }
     } catch (e) {
       setLoadError((e as Error).message);
@@ -56,7 +57,11 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
     void load();
   }, [load]);
 
-  // Every list, named with its tree, to choose the one to keep in step.
+  const spaces: JiraSpace[] = useMemo(() => status?.spaces ?? [], [status]);
+  const takenLists = useMemo(() => new Set(spaces.map((s) => s.backlogId)), [spaces]);
+  const takenKeys = useMemo(() => new Set(spaces.map((s) => s.projectKey)), [spaces]);
+
+  // Every list, named with its tree; and the trees, for a new list.
   const lists = useMemo(
     () =>
       Object.values(backlogs)
@@ -64,28 +69,76 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
         .sort((a, b) => a.label.localeCompare(b.label)),
     [backlogs, backlogTrees],
   );
+  const trees = useMemo(
+    () => Object.values(backlogTrees).map((t) => ({ id: t.id, name: t.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    [backlogTrees],
+  );
   const listName = (id?: string) => lists.find((l) => l.id === id)?.label ?? "(a list not loaded here)";
 
-  const connect = async () => {
+  /** After a space is added or taken off: the sidebar's marks, the tags, and a new list. */
+  const refreshAround = () => {
+    void useJiraIssuesStore.getState().load();
+    void useAppStore.getState().loadFromSupabase?.();
+  };
+
+  const showSpaces = async () => {
     if (!activeOrgId) return;
-    setBusy("connect");
+    setBusy("projects");
     try {
-      const next = await callJira({ action: "configure", organizationId: activeOrgId, baseUrl, email, projectKey, backlogId });
-      // The sidebar marks the list that is now kept in step.
-      void useJiraIssuesStore.getState().load();
+      const result = await callJira<{ projects: JiraProject[] }>({ action: "projects", organizationId: activeOrgId, baseUrl, email });
+      setProjects(result.projects);
+    } catch (e) {
+      toast({ title: "Could not read Jira's spaces", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const addSpace = async (project: JiraProject) => {
+    if (!activeOrgId) return;
+    const target = targets[project.key];
+    if (!target) return;
+    setBusy(`add:${project.key}`);
+    try {
+      const [kind, id] = [target.slice(0, target.indexOf(":")), target.slice(target.indexOf(":") + 1)];
+      const next = await callJira({
+        action: "addSpace",
+        organizationId: activeOrgId,
+        baseUrl,
+        email,
+        projectKey: project.key,
+        ...(kind === "list" ? { backlogId: id } : { newListTreeId: id }),
+      });
       setStatus(next);
-      setEditing(false);
+      setTargets(({ [project.key]: _done, ...rest }) => rest);
+      refreshAround();
+      const where = kind === "list" ? listName(id) : `a new list "${project.name}" in ${backlogTrees[id]?.name ?? "the tree"}`;
       toast(
         next.webhookError
           ? {
-              title: "Connected, but Jira's webhook could not be made",
+              title: `${project.key} added, but Jira's webhook could not be made`,
               description: `Changes in Jira will come in only on Sync now. ${next.webhookError}`,
               variant: "destructive",
             }
-          : { title: "Jira connected", description: `${next.projectKey} ↔ ${listName(next.backlogId)}. Press Sync now for the first sync.` },
+          : { title: `${project.key} is kept in step`, description: `With ${where}. The first sync is under way.` },
       );
     } catch (e) {
-      toast({ title: "Could not connect Jira", description: (e as Error).message, variant: "destructive" });
+      toast({ title: `Could not add ${project.key}`, description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeSpace = async (space: JiraSpace) => {
+    if (!activeOrgId) return;
+    if (!confirm(`Stop keeping ${space.projectKey} in step? The list and its items stay in Agilefant, and the issues in Jira.`)) return;
+    setBusy(`remove:${space.id}`);
+    try {
+      setStatus(await callJira({ action: "removeSpace", organizationId: activeOrgId, connectionId: space.id }));
+      refreshAround();
+      toast({ title: `${space.projectKey} is no longer kept in step` });
+    } catch (e) {
+      toast({ title: `Could not take ${space.projectKey} off`, description: (e as Error).message, variant: "destructive" });
     } finally {
       setBusy(null);
     }
@@ -101,11 +154,12 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
 
   const disconnect = async () => {
     if (!activeOrgId) return;
-    if (!confirm("Disconnect Jira? Items and issues stay as they are on both sides; they just stop being kept in step.")) return;
+    if (!confirm("Stop keeping every space in step? Lists, items and issues stay as they are on both sides.")) return;
     setBusy("disconnect");
     try {
       setStatus(await callJira({ action: "disconnect", organizationId: activeOrgId }));
-      void useJiraIssuesStore.getState().load();
+      setProjects(null);
+      refreshAround();
       toast({ title: "Jira disconnected" });
     } catch (e) {
       toast({ title: "Could not disconnect", description: (e as Error).message, variant: "destructive" });
@@ -114,51 +168,7 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
     }
   };
 
-  const form = (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="jira-base-url">Jira address</Label>
-          <Input id="jira-base-url" placeholder="https://yoursite.atlassian.net" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="jira-email">Atlassian account email</Label>
-          <Input id="jira-email" type="email" placeholder="the API token's owner" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="jira-project">Jira project key</Label>
-          <Input id="jira-project" placeholder="INT" value={projectKey} onChange={(e) => setProjectKey(e.target.value.toUpperCase())} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="jira-list">Agilefant list</Label>
-          <Select value={backlogId} onValueChange={setBacklogId}>
-            <SelectTrigger id="jira-list" aria-label="Agilefant list">
-              <SelectValue placeholder="Choose the list" />
-            </SelectTrigger>
-            <SelectContent>
-              {lists.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={connect} disabled={!canManage || busy !== null || !baseUrl || !email || !projectKey || !backlogId}>
-          {busy === "connect" && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
-          {status?.connected ? "Save" : "Connect"}
-        </Button>
-        {editing && (
-          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-            Cancel
-          </Button>
-        )}
-      </div>
-      {!canManage && <p className="text-xs text-muted-foreground">Only an owner or admin can connect Jira.</p>}
-    </div>
-  );
+  const available = (projects ?? []).filter((p) => !takenKeys.has(p.key));
 
   return (
     <Card>
@@ -169,9 +179,9 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Keep one list and one Jira Cloud project in step, both ways: names, descriptions, statuses, points, and epics →
-          tasks → subtasks. Changes travel at once in either direction; a change made on both sides keeps the later one,
-          and deleting on one side deletes on the other.
+          Keep Jira Cloud spaces in step with lists, both ways: names, descriptions, statuses, points, and the hierarchy.
+          Choose the spaces, and for each a list — one you have, or a new one. Changes travel at once in either direction;
+          a change made on both sides keeps the later one, and deleting on one side deletes on the other.
         </p>
 
         {loadError && <p className="text-sm text-destructive">Could not read the Jira connection: {loadError}</p>}
@@ -183,43 +193,123 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
           </p>
         )}
 
-        {status && !status.connected && form}
-
-        {status?.connected && !editing && (
-          <div className="space-y-3">
-            <div className="text-sm space-y-1">
-              <p>
-                <span className="font-medium">{status.projectKey}</span> at {status.baseUrl} ↔{" "}
-                <span className="font-medium">{listName(status.backlogId)}</span>
-              </p>
+        {status && (
+          <>
+            {/* The site and account the spaces share: typed once, then fixed while spaces are kept in step. */}
+            {spaces.length === 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="jira-base-url">Jira address</Label>
+                  <Input id="jira-base-url" placeholder="https://yoursite.atlassian.net" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="jira-email">Atlassian account email</Label>
+                  <Input id="jira-email" type="email" placeholder="the API token's owner" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              </div>
+            ) : (
               <p className="text-xs text-muted-foreground">
-                {status.linked ?? 0} item(s) paired
-                {status.pending ? `, ${status.pending} change(s) waiting` : ""}
-                {status.lastSyncedAt ? `. Last synced ${new Date(status.lastSyncedAt).toLocaleString()}` : ". Not synced yet"}
-                {status.webhook ? "." : ". Jira's webhook is not registered, so Jira's changes come in only on Sync now."}
+                {status.baseUrl} · {status.email}
               </p>
-              {status.lastError && <p className="text-xs text-destructive">Last error: {status.lastError}</p>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={syncNow} disabled={busy !== null}>
-                {busy === "sync" ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
-                Sync now
-              </Button>
-              {canManage && (
-                <>
-                  <Button size="sm" variant="outline" onClick={() => setEditing(true)} disabled={busy !== null}>
-                    Change
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={disconnect} disabled={busy !== null}>
-                    <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+            )}
 
-        {status?.connected && editing && form}
+            {spaces.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Spaces kept in step</p>
+                <ul className="space-y-2">
+                  {spaces.map((space) => (
+                    <li key={space.id} className="rounded-md border p-2 text-sm space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          <span className="font-medium">{space.projectKey}</span>
+                          {space.projectName ? ` ${space.projectName}` : ""} ↔ <span className="font-medium">{listName(space.backlogId)}</span>
+                        </span>
+                        {canManage && (
+                          <Button size="sm" variant="ghost" onClick={() => removeSpace(space)} disabled={busy !== null}>
+                            {busy === `remove:${space.id}` ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Unplug className="w-3.5 h-3.5 mr-1" />}
+                            Stop syncing
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {space.linked} item(s) paired
+                        {space.pending ? `, ${space.pending} change(s) waiting` : ""}
+                        {space.lastSyncedAt ? `. Last synced ${new Date(space.lastSyncedAt).toLocaleString()}` : ". Not synced yet"}
+                        {space.webhook ? "." : ". Jira's webhook is not registered, so Jira's changes come in only on Sync now."}
+                      </p>
+                      {space.lastError && <p className="text-xs text-destructive">Last error: {space.lastError}</p>}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={syncNow} disabled={busy !== null}>
+                    {busy === "sync" ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                    Sync now
+                  </Button>
+                  {canManage && (
+                    <Button size="sm" variant="outline" onClick={disconnect} disabled={busy !== null}>
+                      <Unplug className="w-3.5 h-3.5 mr-1" /> Disconnect all
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {canManage ? (
+              <div className="space-y-2">
+                <Button size="sm" variant="outline" onClick={showSpaces} disabled={busy !== null || !baseUrl || !email}>
+                  {busy === "projects" ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+                  {spaces.length > 0 ? "Choose more spaces" : "Choose spaces"}
+                </Button>
+                {projects && available.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Every space on the site the account can see is kept in step already.</p>
+                )}
+                {projects && available.length > 0 && (
+                  <ul className="space-y-2" aria-label="Jira spaces">
+                    {available.map((project) => (
+                      <li key={project.key} className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="min-w-[10rem]">
+                          <span className="font-medium">{project.key}</span> {project.name}
+                        </span>
+                        <Select value={targets[project.key] ?? ""} onValueChange={(v) => setTargets((t) => ({ ...t, [project.key]: v }))}>
+                          <SelectTrigger className="h-8 w-[18rem]" aria-label={`List for ${project.key}`}>
+                            <SelectValue placeholder="Choose its list" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>A new list, in</SelectLabel>
+                              {trees.map((t) => (
+                                <SelectItem key={`new:${t.id}`} value={`new:${t.id}`}>
+                                  New list in {t.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                            <SelectGroup>
+                              <SelectLabel>A list you have</SelectLabel>
+                              {lists
+                                .filter((l) => !takenLists.has(l.id))
+                                .map((l) => (
+                                  <SelectItem key={`list:${l.id}`} value={`list:${l.id}`}>
+                                    {l.label}
+                                  </SelectItem>
+                                ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" onClick={() => addSpace(project)} disabled={busy !== null || !targets[project.key]}>
+                          {busy === `add:${project.key}` && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+                          Keep in step
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Only an owner or admin can choose which Jira spaces are kept in step.</p>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );

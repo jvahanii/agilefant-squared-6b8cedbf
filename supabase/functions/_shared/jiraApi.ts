@@ -81,6 +81,7 @@ type RawIssue = {
 export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
   myself(): Promise<{ accountId: string; displayName: string; emailAddress?: string }>;
   project(): Promise<{ id: string; key: string; name: string }>;
+  listProjects(): Promise<Array<{ id: string; key: string; name: string; style: string | null }>>;
   findPointsField(): Promise<string | null>;
   registerWebhook(url: string): Promise<string>;
   removeWebhook(self: string): Promise<void>;
@@ -377,6 +378,21 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
 
     myself: () => call('/rest/api/3/myself'),
     project: () => call(`/rest/api/3/project/${encodeURIComponent(config.projectKey)}`),
+
+    /** The site's spaces the account can see, by name: what may be chosen to keep in step. */
+    async listProjects() {
+      const out: Array<{ id: string; key: string; name: string; style: string | null }> = [];
+      let startAt = 0;
+      for (let page = 0; page < 20; page++) {
+        const result = await call<{ values: Array<{ id: string; key: string; name: string; style?: string }>; isLast?: boolean }>(
+          `/rest/api/3/project/search?startAt=${startAt}&maxResults=50&orderBy=name`,
+        );
+        out.push(...result.values.map((p) => ({ id: p.id, key: p.key, name: p.name, style: p.style ?? null })));
+        if (result.isLast !== false || result.values.length === 0) break;
+        startAt += result.values.length;
+      }
+      return out;
+    },
 
     async findPointsField() {
       const all = await call<Array<{ id: string; name: string }>>('/rest/api/3/field');

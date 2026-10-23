@@ -13,8 +13,13 @@ import { TRexIcon } from "@/components/TRexIcon";
  */
 export function JiraSyncHeaderButton() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  // Every space the organization keeps in step, joined: a string, so the button re-renders only when it changes.
   const project = useJiraIssuesStore((s) =>
-    [...s.byList.values()].find((list) => list.organizationId === activeOrgId)?.projectKey,
+    [...s.byList.values()]
+      .filter((list) => list.organizationId === activeOrgId)
+      .map((list) => list.projectKey)
+      .sort()
+      .join(", "),
   );
   const [busy, setBusy] = useState(false);
   if (!activeOrgId || !project) return null;
@@ -30,7 +35,7 @@ export function JiraSyncHeaderButton() {
       className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors disabled:opacity-60"
       onClick={sync}
       disabled={busy}
-      title={`Sync now with Jira project ${project}`}
+      title={`Sync now with Jira ${project.includes(",") ? "projects" : "project"} ${project}`}
     >
       {busy ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
