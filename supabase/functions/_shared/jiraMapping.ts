@@ -277,24 +277,83 @@ export interface Placement {
   id: string;
   type: string;
   parent: string | null;
+  /**
+   * Deeper in Agilefant than Jira's lowest level: put under the nearest issue
+   * above it that can hold a subtask, its own parent being a subtask itself.
+   * Agilefant keeps the deeper hierarchy; Jira shows it one level flatter.
+   */
+  flattened: boolean;
 }
 
 export type MovePlan = { placements: Placement[] } | { impossible: string };
+
+/**
+ * One tree levelled from its top: `order` top-down with each issue's depth.
+ * The top keeps its level if the tree fits under it and is raised as far as
+ * it needs; every issue sits one level under its parent. Where the tree is
+ * deeper than Jira has levels, the top goes as high as Jira allows, and what
+ * would fall below the lowest level is flattened: a subtask of the nearest
+ * issue above it on the level over the lowest.
+ */
+function levelTree(
+  order: ReadonlyArray<readonly [string, number]>,
+  parentOf: (id: string) => string | null,
+  typeOf: (id: string) => string,
+  levels: Levels,
+): Map<string, Placement> {
+  const [top] = order[0];
+  const height = Math.max(...order.map(([, depth]) => depth));
+  // Never a subtask at the top, never lower than the tree needs, never higher than Jira goes.
+  const topLevel = Math.min(Math.max(levels.of(typeOf(top)), levels.bottom + height, 0), Math.max(levels.top, levels.of(typeOf(top))));
+  // The depth of the issues on the level over the lowest: those that can hold a flattened one.
+  const holderDepth = topLevel - (levels.bottom + 1);
+  const depthOf = new Map(order);
+  const out = new Map<string, Placement>();
+  for (const [id, depth] of order) {
+    const level = topLevel - depth;
+    if (level >= levels.bottom) {
+      out.set(id, { id, type: levels.typeAt(level, typeOf(id)), parent: parentOf(id), flattened: false });
+      continue;
+    }
+    let holder = parentOf(id);
+    while (holder && (depthOf.get(holder) ?? 0) > holderDepth) holder = parentOf(holder);
+    out.set(id, { id, type: levels.typeAt(levels.bottom, typeOf(id)), parent: holder, flattened: true });
+  }
+  return out;
+}
+
+/** Each tree of a hierarchy top-down, with each issue's depth below its top. */
+function treesOf(ids: Iterable<string>, parentOf: (id: string) => string | null, has: (id: string) => boolean) {
+  const children = new Map<string, string[]>();
+  const tops: string[] = [];
+  for (const id of ids) {
+    const p = parentOf(id);
+    if (p && has(p)) children.set(p, [...(children.get(p) ?? []), id]);
+    else tops.push(id);
+  }
+  return tops.map((top) => {
+    const order: Array<[string, number]> = [[top, 0]];
+    for (let i = 0; i < order.length && i < 10_000; i++) {
+      const [id, depth] = order[i];
+      for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
+    }
+    return order;
+  });
+}
 
 /**
  * What a move in Agilefant's hierarchy asks of Jira. Agilefant nests as deep
  * as anyone likes and has no types; in Jira each issue's type says its level,
  * and a child sits exactly one level below its parent.
  *
- * So the tree the issue lands in is levelled again from its top: the top
- * keeps its level if the tree fits under it, and is raised as far as the tree
- * needs; every issue below sits one level under its parent. That raises a
- * task to an epic when a third level appears under it, an epic to the level
- * above when a fourth does, and lowers an epic to a story when it is put
- * under another epic — its tasks becoming subtasks.
+ * So the tree the issue lands in is levelled again from its top (levelTree).
+ * That raises a task to an epic when a third level appears under it, an epic
+ * to the level above when a fourth does, and lowers an epic to a story when
+ * it is put under another epic — its tasks becoming subtasks. Deeper than
+ * Jira's levels, what falls below the lowest is flattened.
  *
- * Returns, top-down, the issues whose type or parent changes; or why the
- * tree cannot fit, when it needs more levels than Jira has.
+ * Returns, top-down, the issues whose type or parent changes, and the moved
+ * one; impossible only for a move under itself.
  */
 export function planMove(
   issues: ReadonlyMap<string, { type: string; parent: string | null }>,
@@ -308,90 +367,59 @@ export function planMove(
   }
   let top = moved;
   for (let p = parentOf(top); p && issues.has(p); p = parentOf(top)) top = p;
-
-  const children = new Map<string, string[]>();
-  for (const id of new Set([...issues.keys(), moved])) {
-    const p = parentOf(id);
-    if (p) children.set(p, [...(children.get(p) ?? []), id]);
-  }
-  // Top-down, with each issue's depth below the top.
-  const order: Array<[string, number]> = [[top, 0]];
-  for (let i = 0; i < order.length; i++) {
-    const [id, depth] = order[i];
-    for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
-  }
-  const height = Math.max(...order.map(([, depth]) => depth));
-  if (height + 1 > levels.count) {
-    return {
-      impossible: `Jira has ${levels.count} levels — ${levels.describe()} — and this would make ${height + 1}; move something up first`,
-    };
-  }
+  const order = treesOf(new Set([...issues.keys(), moved]), parentOf, (id) => issues.has(id) || id === moved).find(
+    (tree) => tree[0][0] === top,
+  )!;
   const typeOf = (id: string) => issues.get(id)?.type ?? levels.defaultAt(0);
-  // Never a subtask at the top, never lower than the tree needs.
-  const topLevel = Math.max(levels.of(typeOf(top)), levels.bottom + height, 0);
+  const placed = levelTree(order, parentOf, typeOf, levels);
   const placements: Placement[] = [];
-  for (const [id, depth] of order) {
-    const type = levels.typeAt(topLevel - depth, typeOf(id));
-    if (type !== typeOf(id) || id === moved) placements.push({ id, type, parent: parentOf(id) });
+  for (const [id] of order) {
+    const p = placed.get(id)!;
+    if (p.type !== typeOf(id) || p.parent !== parentOf(id) || id === moved) placements.push(p);
   }
   return { placements };
 }
 
 /**
- * The types every issue of a hierarchy should have, as the sync levels them:
- * each tree from its top, the top keeping its level if the tree fits under
- * it and raised as far as it needs, everything else one level under its
- * parent. A tree too deep for Jira keeps the types it has — the sync refuses
- * the move that made it so.
+ * Every issue of a hierarchy as the sync levels it: its type, and whether it
+ * is flattened — deeper in Agilefant than Jira's levels go.
  *
  * What the app shows the moment an item is moved in Agilefant, before Jira
- * has made the change: planMove on the tree the item lands in gives the same
- * types, every other tree being levelled already.
+ * has made the change: planMove on the tree the item lands in gives the same,
+ * every other tree being levelled already.
  *
  * An item not in Jira yet (no type) gets the type the sync will make it:
  * the level under its parent, as jiraTypeForNewItem says — an epic at the
  * top — and where there is none under its parent, a task the tree is then
- * raised to hold, as createUnderSubtask does. Levelled with the rest, that is
- * what the sync's creating and moving come to.
+ * raised to hold, or flattened into, as createUnderSubtask does.
  */
+export function expectedLayout(
+  issues: ReadonlyMap<string, { type: string | null; parent: string | null }>,
+  levels: Levels = DEFAULT_LEVELS,
+): Map<string, { type: string; flattened: boolean }> {
+  const parentOf = (id: string) => issues.get(id)?.parent ?? null;
+  const out = new Map<string, { type: string; flattened: boolean }>();
+  for (const order of treesOf(issues.keys(), parentOf, (id) => issues.has(id))) {
+    // Parents before children: a new item's type follows its parent's.
+    const typeOf = new Map<string, string>();
+    for (const [id] of order) {
+      const parent = parentOf(id);
+      const parentType = parent ? typeOf.get(parent) : undefined;
+      typeOf.set(id, issues.get(id)?.type ?? jiraTypeForNewItem(parentType, levels) ?? levels.defaultAt(0));
+    }
+    for (const [id, p] of levelTree(order, parentOf, (id) => typeOf.get(id)!, levels)) {
+      out.set(id, { type: p.type, flattened: p.flattened });
+    }
+  }
+  return out;
+}
+
+/** The types alone of expectedLayout. */
 export function expectedTypes(
   issues: ReadonlyMap<string, { type: string | null; parent: string | null }>,
   levels: Levels = DEFAULT_LEVELS,
 ): Map<string, string> {
-  const children = new Map<string, string[]>();
-  const tops: string[] = [];
-  for (const [id, issue] of issues) {
-    if (issue.parent && issues.has(issue.parent)) children.set(issue.parent, [...(children.get(issue.parent) ?? []), id]);
-    else tops.push(id);
-  }
-  const out = new Map<string, string>();
-  for (const top of tops) {
-    const order: Array<[string, number]> = [[top, 0]];
-    for (let i = 0; i < order.length && i < 10_000; i++) {
-      const [id, depth] = order[i];
-      for (const child of children.get(id) ?? []) order.push([child, depth + 1]);
-    }
-    const height = Math.max(...order.map(([, depth]) => depth));
-    if (height + 1 > levels.count) {
-      // Too deep for Jira: the sync leaves its types, and makes nothing new in it.
-      for (const [id] of order) {
-        const type = issues.get(id)?.type;
-        if (type) out.set(id, type);
-      }
-      continue;
-    }
-    // Parents before children: a new item's type follows its parent's.
-    const typeOf = new Map<string, string>();
-    for (const [id] of order) {
-      const own = issues.get(id)?.type;
-      const parent = issues.get(id)?.parent;
-      const parentType = parent ? typeOf.get(parent) : undefined;
-      typeOf.set(id, own ?? jiraTypeForNewItem(parentType, levels) ?? levels.defaultAt(0));
-    }
-    const topLevel = Math.max(levels.of(typeOf.get(top)!), levels.bottom + height, 0);
-    for (const [id, depth] of order) out.set(id, levels.typeAt(topLevel - depth, typeOf.get(id)!));
-  }
-  return out;
+  return new Map([...expectedLayout(issues, levels)].map(([id, { type }]) => [id, type]));
 }
 
 // ─── Deciding ────────────────────────────────────────────────────────────────

@@ -221,6 +221,23 @@ export class JiraSync {
     };
   }
 
+  /**
+   * The item as Jira should have it. Its parent is its Agilefant parent's
+   * issue — but where the item is deeper than Jira's levels, the issue it is
+   * flattened under, as the sync placed it. Otherwise the two would differ
+   * for good, and every sync would try again to put it where Jira cannot.
+   */
+  private async jiraStateOfItem(item: AgilefantItem, jiraId: string): Promise<SyncState> {
+    const state = this.stateOfItem(item);
+    if (!state.parent) return state;
+    const plan = planMove(this.jiraTree(), jiraId, state.parent, await this.levels());
+    if ('placements' in plan) {
+      const own = plan.placements.find((p) => p.id === jiraId);
+      if (own?.flattened) state.parent = own.parent;
+    }
+    return state;
+  }
+
   /** An Agilefant item changed: send it to Jira, or take it out of Jira when it left the list. */
   async syncItem(itemId: string, depth = 0): Promise<void> {
     await this.loadLinks();
@@ -378,7 +395,7 @@ export class JiraSync {
     jiraChangedAt: number | null,
   ) {
     await this.prepareStatus(item.status);
-    const mine = this.stateOfItem(item);
+    const mine = await this.jiraStateOfItem(item, link.jiraId);
     const { state, toAgilefant, toJira } = reconcile(link.agreed, mine, issue.state, agilefantChangedAt, jiraChangedAt);
     let error: string | null = null;
 
@@ -457,9 +474,9 @@ export class JiraSync {
 
   /**
    * Put the issue under this parent in Jira, raising or lowering the types of
-   * the tree it lands in as planMove says. Null when only its parent changes,
-   * which the ordinary edit does. Throws, changing nothing, where the tree
-   * cannot fit in Jira's three levels.
+   * the tree it lands in as planMove says — flattening what falls below
+   * Jira's lowest level. Null when only its parent changes, which the
+   * ordinary edit does. Throws, changing nothing, for a move under itself.
    *
    * Jira checks every step, so: whatever changes type is let go of first —
    * a subtask by becoming a task, anything else by losing its parent, unless
@@ -498,7 +515,9 @@ export class JiraSync {
     try {
       for (const p of placements) {
         const at = now.get(p.id)!;
-        if (p.type === at.type) continue;
+        // Under a parent that changes type, and going elsewhere: let go first, or the parent cannot change.
+        const leavesRetyped = Boolean(at.parent && retyped.has(at.parent) && at.parent !== p.parent);
+        if (p.type === at.type && !leavesRetyped) continue;
         if (lowest(p.type) && !(at.parent && retyped.has(at.parent))) continue;
         if (lowest(at.type)) {
           const task = levels.defaultAt(0);
@@ -582,8 +601,9 @@ export class JiraSync {
   }
 
   /**
-   * A new item under a subtask: made a task on its own, then moved in, the
-   * tree raised to hold it — or not made at all where it cannot fit.
+   * A new item under a subtask: made as the subtask of the issue it is
+   * flattened under, where the tree is as deep as Jira goes; otherwise made a
+   * task on its own, then moved in, the tree raised to hold it.
    */
   private async createUnderSubtask(item: AgilefantItem, state: SyncState) {
     const levels = await this.levels();
@@ -593,6 +613,21 @@ export class JiraSync {
     const plan = planMove(tree, '', state.parent, levels);
     if ('impossible' in plan) {
       this.report.skipped.push(`"${item.title}": ${plan.impossible}`);
+      return;
+    }
+    // Nothing else changes: made straight where it goes.
+    if (plan.placements.length === 1) {
+      const [own] = plan.placements;
+      const placed: SyncState = { ...state, parent: own.parent };
+      try {
+        const created = await this.jira.createIssue(own.type, placed);
+        const link: Link = { workItemId: item.id, jiraId: created.id, jiraKey: created.key, jiraType: own.type, agreed: placed };
+        this.remember(link);
+        await this.agilefant.saveLink(link);
+        this.report.createdInJira += 1;
+      } catch (e) {
+        this.report.errors.push(`"${item.title}": ${message(e)}`);
+      }
       return;
     }
     const alone: SyncState = { ...state, parent: null };

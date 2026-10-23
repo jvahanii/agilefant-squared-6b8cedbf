@@ -1,7 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { useJiraIssuesStore, type JiraIssueRef, type JiraListRef } from "@/store/jiraIssuesStore";
 import type { WorkItem } from "@/types/models";
-import { expectedTypes, Levels } from "../../supabase/functions/_shared/jiraMapping";
+import { expectedLayout, Levels } from "../../supabase/functions/_shared/jiraMapping";
 
 /**
  * The Jira type each synced item will have once the sync has caught up with
@@ -18,6 +18,10 @@ export interface ExpectedJiraType {
   type: string;
   /** The Jira project, for an item the sync has yet to create there. */
   projectKey: string;
+  /** Deeper in Agilefant than Jira's levels: in Jira one level flatter. */
+  flattened: boolean;
+  /** How many levels the project's hierarchy has. */
+  levels: number;
 }
 
 export function expectedJiraTypes(
@@ -34,7 +38,10 @@ export function expectedJiraTypes(
       if (item.backlogAssignments?.[list.treeId] !== backlogId) continue;
       nodes.set(item.id, { type: byItem.get(item.id)?.type ?? null, parent: item.parentIds?.[list.treeId] ?? item.parentId });
     }
-    for (const [id, type] of expectedTypes(nodes, new Levels(list.issueTypes))) result.set(id, { type, projectKey: list.projectKey });
+    const levels = new Levels(list.issueTypes);
+    for (const [id, { type, flattened }] of expectedLayout(nodes, levels)) {
+      result.set(id, { type, projectKey: list.projectKey, flattened, levels: levels.count });
+    }
   }
   cache = { workItems, byItem, byList, result };
   return result;
