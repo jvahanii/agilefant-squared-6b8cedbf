@@ -48,6 +48,7 @@ export function toSummary(title: string): string {
 }
 
 type AdfNode = { type: string; text?: string; content?: AdfNode[]; attrs?: Record<string, unknown> };
+type AdfDocument = AdfNode & { type: 'doc'; version: 1 };
 
 /**
  * Jira's description, Atlassian Document Format, as plain text: paragraphs
@@ -102,7 +103,7 @@ export function adfToText(doc: unknown): string {
  * block, its lines kept apart by hard breaks, and "- " lines as a bullet
  * list. Written so that adfToText reads back exactly the normalized text.
  */
-export function textToAdf(text: string | null | undefined): AdfNode | null {
+export function textToAdf(text: string | null | undefined): AdfDocument | null {
   const normalized = normalizeText(text);
   if (!normalized) return null;
   const content: AdfNode[] = [];
@@ -125,7 +126,7 @@ export function textToAdf(text: string | null | undefined): AdfNode | null {
     });
     content.push({ type: 'paragraph', content: inline });
   }
-  return { type: 'doc', attrs: { version: 1 }, content } as AdfNode & { attrs: { version: number } };
+  return { type: 'doc', version: 1, content };
 }
 
 // ─── Status ──────────────────────────────────────────────────────────────────

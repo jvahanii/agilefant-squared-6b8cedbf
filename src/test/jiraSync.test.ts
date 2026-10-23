@@ -37,6 +37,18 @@ import { JiraError } from "../../supabase/functions/_shared/jiraApi";
 // ─── The rules ───────────────────────────────────────────────────────────────
 
 describe("a description between Jira's format and plain text", () => {
+  it("writes Jira's required document version at the top level, not in attrs", () => {
+    expect(textToAdf("Kyllä näkyy\nToinen rivi")).toEqual({
+      type: "doc",
+      version: 1,
+      content: [{ type: "paragraph", content: [
+        { type: "text", text: "Kyllä näkyy" },
+        { type: "hardBreak" },
+        { type: "text", text: "Toinen rivi" },
+      ] }],
+    });
+  });
+
   it("reads Jira's paragraphs, line breaks, lists and headings as text", () => {
     const adf = {
       type: "doc",
