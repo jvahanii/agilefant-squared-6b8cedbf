@@ -72,7 +72,6 @@ export function isNewerBuild(live: BuildInfo, current: BuildInfo = APP_BUILD): b
  * so nobody ends up sharing a link with it in.
  */
 export const BUILD_MARKER = "v";
-const RELOAD_FLAG = "agilefant-update-reload";
 
 export function buildMarkerUrl(build: BuildInfo): string {
   const params = new URLSearchParams(window.location.search);
