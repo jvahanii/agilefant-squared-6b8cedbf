@@ -1,0 +1,72 @@
+name: Disk IO watch
+
+# Supabase warned on 2026-10-23 that the project was depleting its Disk IO
+# budget; the cause, sorts spilling to temporary files, was fixed the same day.
+# This checks every morning that it stays fixed: the database records its own
+# IO counters hourly (db_io_snapshots), and the last 24 hours must stay within
+# the budgets below. Over budget, the job fails and GitHub emails about it,
+# with the statements that wrote most to temporary files in the log.
+#
+# Before the fix: about 160 MB of temporary files and 21 MB of WAL a day.
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Hours to look back"
+        default: "24"
+
+env:
+  # Per day. Temporary files should be close to nothing now.
+  MAX_TEMP_MB: 50
+  MAX_WAL_MB: 100
+  MAX_DISK_READ_MB: 500
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the last day's IO
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          HOURS: ${{ inputs.hours || '24' }}
+        run: |
+          if [[ -z "$DB_URL" ]]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          report=$(psql "$DB_URL" -X -At -v ON_ERROR_STOP=1 -c "select public.db_io_report($HOURS)")
+          echo "$report" | jq .
+
+          snapshots=$(echo "$report" | jq '.snapshots')
+          temp=$(echo "$report" | jq '.temp_mb')
+          wal=$(echo "$report" | jq '.wal_mb')
+          read=$(echo "$report" | jq '.disk_read_mb')
+          covered=$(echo "$report" | jq '.covered_hours')
+
+          {
+            echo "### Disk IO, last $HOURS h (snapshots cover ${covered} h)"
+            echo "| | Used | Budget |"
+            echo "|---|---|---|"
+            echo "| Temporary files | ${temp} MB | ${MAX_TEMP_MB} MB |"
+            echo "| WAL | ${wal} MB | ${MAX_WAL_MB} MB |"
+            echo "| Read from disk | ${read} MB | ${MAX_DISK_READ_MB} MB |"
+            echo
+            echo "Most temporary-file writing since statistics were last reset:"
+            echo '```'
+            echo "$report" | jq -r '.top_temp_statements[] | "\(.temp_mb_total) MB, \(.temp_blocks_per_call) blocks/call, \(.calls) calls: \(.query)"'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$snapshots" -lt 2 ]]; then
+            echo "::notice::Only $snapshots hourly snapshot(s) so far; nothing to judge yet."
+            exit 0
+          fi
+          failed=0
+          over() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a > b) }'; }
+          if over "$temp" "$MAX_TEMP_MB"; then echo "::error::Temporary files: ${temp} MB in ${HOURS} h, budget ${MAX_TEMP_MB} MB. Something sorts on disk again — see the statements in the summary."; failed=1; fi
+          if over "$wal" "$MAX_WAL_MB"; then echo "::error::WAL: ${wal} MB in ${HOURS} h, budget ${MAX_WAL_MB} MB. Something writes much more than usual."; failed=1; fi
+          if over "$read" "$MAX_DISK_READ_MB"; then echo "::error::Read from disk: ${read} MB in ${HOURS} h, budget ${MAX_DISK_READ_MB} MB. The working set may no longer fit in memory."; failed=1; fi
+          exit $failed
