@@ -18,6 +18,7 @@ import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { WorkItemDescriptionDialog, WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { MoveTimeDialog } from "./MoveTimeDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
@@ -456,6 +457,7 @@ function WorkItemNodeContent({
   const [ctxDeleteLabelId, setCtxDeleteLabelId] = useState<string | null>(null);
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
+  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMoveTimeDialog, setShowMoveTimeDialog] = useState(false);
   const [moveTimeEntryIds, setMoveTimeEntryIds] = useState<string[]>([]);
@@ -1767,6 +1769,7 @@ function WorkItemNodeContent({
           {/* A scrambled name cannot be edited — the database refuses it, since
               a rename would be lost when the original is put back, and would
               let anyone replace a name they cannot read. */}
+          <WorkItemDescriptionMenuItem onOpen={() => setShowDescriptionDialog(true)} />
           {!isNameScrambled && (
             <ContextMenuItem className="text-xs" onSelect={startEditingTitle}>
               Rename
@@ -2204,6 +2207,12 @@ function WorkItemNodeContent({
           }
         />
       )}
+      {showDescriptionDialog && (
+        <WorkItemDescriptionDialog workItemId={workItemId} open onOpenChange={(o) => {
+          setShowDescriptionDialog(o);
+          if (!o) releaseOverlayLock();
+        }} />
+      )}
       {showHyperlinksDialog && (
         <HyperlinksDialog
           workItemId={workItemId}
@@ -2438,6 +2447,7 @@ function SearchResultItem({
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
+  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
   // Inline new-label creation in context menu (SearchResultItem)
@@ -2623,6 +2633,7 @@ function SearchResultItem({
                 </ContextMenuRadioGroup>
               </ContextMenuSubContent>
             </ContextMenuSub>
+            <WorkItemDescriptionMenuItem onOpen={() => setShowDescriptionDialog(true)} />
             <ContextMenuItem className="text-xs" onSelect={() => setShowMoveToParentDialog(true)}>
               Reparent…
             </ContextMenuItem>
@@ -2855,6 +2866,12 @@ function SearchResultItem({
           open
           onOpenChange={(o) => { setShowHyperlinksDialog(o); if (!o) releaseOverlayLock(); }}
         />
+      )}
+      {showDescriptionDialog && (
+        <WorkItemDescriptionDialog workItemId={item.id} open onOpenChange={(o) => {
+          setShowDescriptionDialog(o);
+          if (!o) releaseOverlayLock();
+        }} />
       )}
       {showTimeLogDialog && timeLoggingVisible && (
         <TimeLogDialog

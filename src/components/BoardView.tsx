@@ -23,6 +23,7 @@ import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { toast } from "@/hooks/use-toast";
 import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
 import { HyperlinksDialog } from "./HyperlinksDialog";
+import { WorkItemDescriptionDialog, WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { FinancialsDialog } from "./FinancialsDialog";
 import { SnoozeDialog } from "./SnoozeDialog";
@@ -1295,6 +1296,7 @@ function BoardCard({
   // Dialog state
   const [showRespawnDialog, setShowRespawnDialog] = useState(false);
   const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
+  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
@@ -1786,6 +1788,7 @@ function BoardCard({
             <RotateCcw className="w-3 h-3 mr-2" />
             Respawn settings
           </ContextMenuItem>
+          <WorkItemDescriptionMenuItem onOpen={() => setShowDescriptionDialog(true)} />
           <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
             <Link2 className="w-3 h-3 mr-2" />
             Hyperlinks
@@ -1807,6 +1810,7 @@ function BoardCard({
       </ContextMenu>
 
       {/* Dialogs */}
+      {showDescriptionDialog && <WorkItemDescriptionDialog workItemId={item.id} open onOpenChange={setShowDescriptionDialog} />}
       <RespawnSettingsDialog
         workItemId={item.id}
         open={showRespawnDialog}
