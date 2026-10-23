@@ -67,7 +67,11 @@ export interface AgilefantItem {
   points: number | null;
   /** The parent work item within the list, or null. */
   parentId: string | null;
-  /** Still on the list the project is kept in step with. */
+  /**
+   * On the list the project is kept in step with. An item paired with an issue
+   * and moved elsewhere is not, and keeps syncing all the same; only one in
+   * the list is ever sent to Jira as new.
+   */
   inList: boolean;
 }
 
@@ -247,18 +251,24 @@ export class JiraSync {
     return state;
   }
 
-  /** An Agilefant item changed: send it to Jira, or take it out of Jira when it left the list. */
+  /**
+   * An Agilefant item changed: send it to Jira, or take its issue out of Jira
+   * when it was deleted. A paired item keeps syncing wherever it was moved —
+   * out of the list, or to another tree; only one never paired, outside the
+   * list, is none of the sync's business.
+   */
   async syncItem(itemId: string, depth = 0): Promise<void> {
     await this.loadLinks();
     const item = await this.agilefant.getItem(itemId);
     const link = this.linksByItem.get(itemId);
 
-    if (!item || !item.inList) {
+    if (!item) {
       if (link) {
         await this.deleteInJira(link);
       }
       return;
     }
+    if (!item.inList && !link) return;
 
     // A parent with no Jira issue yet gets one first, so this item can name it.
     if (item.parentId && !this.linksByItem.has(item.parentId) && depth < MAX_DEPTH) {
@@ -302,7 +312,7 @@ export class JiraSync {
       return;
     }
     const item = await this.agilefant.getItem(link.workItemId);
-    if (!item || !item.inList) {
+    if (!item) {
       await this.deleteInJira(link);
       return;
     }
@@ -351,7 +361,7 @@ export class JiraSync {
         ? 1 + depthOfItem(itemById.get(item.parentId)!, seen + 1)
         : 0;
     for (const item of [...items].sort((a, b) => depthOfItem(a) - depthOfItem(b))) {
-      if (!this.linksByItem.has(item.id) && !deletedItems.has(item.id)) await this.createInJira(item);
+      if (item.inList && !this.linksByItem.has(item.id) && !deletedItems.has(item.id)) await this.createInJira(item);
     }
 
     // Pairs that both still exist. Without a record of when Agilefant last
@@ -359,7 +369,7 @@ export class JiraSync {
     for (const link of [...this.linksByItem.values()]) {
       const item = itemById.get(link.workItemId) ?? (await this.agilefant.getItem(link.workItemId));
       const issue = issueById.get(link.jiraId) ?? (await this.jira.getIssue(link.jiraId));
-      if (item && item.inList && issue) await this.reconcilePair(link, item, issue, null, issue.updatedAt);
+      if (item && issue) await this.reconcilePair(link, item, issue, null, issue.updatedAt);
     }
 
     await this.relevelAll();
@@ -390,7 +400,7 @@ export class JiraSync {
   private async syncPairHyperlinks(link: Link): Promise<void> {
     try {
       const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
-      if (!item?.inList || !issue) return;
+      if (!item || !issue) return;
       const result = reconcile(link.agreed, this.stateOfItem(item), issue.state, null, null);
       const hyperlinks = result.state.hyperlinks ?? [];
       if (result.toJira.includes('hyperlinks')) {
@@ -766,7 +776,7 @@ export class JiraSync {
   }
 
   /**
-   * The issue of an item deleted in Agilefant, or taken off the list, deleted
+   * The issue of an item deleted in Agilefant deleted
    * in Jira. Where Jira refuses — no permission to delete, say — the pair is
    * kept, with the error: forgotten, the issue would stay in Jira for good, and
    * the next full sync would bring it back into Agilefant as a new item. Kept,

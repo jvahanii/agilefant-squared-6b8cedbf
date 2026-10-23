@@ -43,6 +43,7 @@ import { useAppStore } from "@/store/appStore";
 import { getEffectiveStatuses, useBacklogStatusesStore } from "@/store/backlogStatusesStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { JiraIssueTag } from "@/components/JiraIssueTag";
 import { getEffectiveParentId, type WorkItem } from "@/types/models";
 
 interface TimelineViewProps {
@@ -619,6 +620,8 @@ export function TimelineView({ treeId, rootIds, backlogIds, isScrambled }: Timel
                     ) : (
                       <span className="truncate">
                         {isScrambled ? scrambleName(item.title) : <IconizedTitle title={item.title} />}
+                        {/* Its Jira issue, as in the list and on the board, whichever list it is in. */}
+                        <JiraIssueTag workItemId={item.id} />
                       </span>
                     )}
                   </div>

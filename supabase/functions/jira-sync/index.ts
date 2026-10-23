@@ -155,12 +155,13 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
     async listItems() {
       const { data, error } = await admin.rpc('jira_list_items_for', { _connection: conn.id });
       if (error) throw error;
-      const rows = (data ?? []) as Array<Parameters<typeof asItem>[0]>;
+      // The list's items, and the ones paired with the space that were moved elsewhere (in_list false).
+      const rows = (data ?? []) as Array<Parameters<typeof asItem>[0] & { in_list?: boolean }>;
       const ids = new Set(rows.map((r) => r.id));
       const { data: hyperlinks, error: linkError } = await admin.from('work_item_hyperlinks')
         .select('work_item_id, url, alt_text').eq('organization_id', org);
       if (linkError) throw linkError;
-      return rows.map((r) => ({ ...asItem(r, true, !!r.parent_id && ids.has(r.parent_id)),
+      return rows.map((r) => ({ ...asItem(r, r.in_list ?? true, !!r.parent_id && ids.has(r.parent_id)),
         hyperlinks: normalizeHyperlinks((hyperlinks ?? []).filter((h: { work_item_id: string }) => h.work_item_id === r.id)
           .map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text }))),
       }));
@@ -176,10 +177,20 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       if (!data || data.organization_id !== org) return null;
       const inList = data.backlog_assignments?.[tree] === conn.backlog_id;
       const parentId: string | null = data.parent_id_overrides?.[tree] ?? data.parent_id ?? null;
+      // The parent counts where it is in the list, or paired from elsewhere:
+      // a subtree moved out of the list keeps its shape in Jira.
       let parentInList = false;
       if (parentId) {
         const { data: parent } = await admin.from('work_items').select('backlog_assignments').eq('id', parentId).maybeSingle();
         parentInList = parent?.backlog_assignments?.[tree] === conn.backlog_id;
+        if (!parentInList) {
+          const { count } = await admin
+            .from('jira_issue_links')
+            .select('work_item_id', { count: 'exact', head: true })
+            .eq('connection_id', conn.id)
+            .eq('work_item_id', parentId);
+          parentInList = (count ?? 0) > 0;
+        }
       }
       return { ...asItem({ ...data, parent_id: parentId }, inList, parentInList), hyperlinks: await readHyperlinks(id) };
     },

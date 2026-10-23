@@ -282,7 +282,8 @@ class FakeAgilefant implements AgilefantPort {
   }
 
   async listItems() {
-    return [...this.items.values()].filter((i) => i.inList);
+    // The list's items, and the ones paired with the space that were moved elsewhere, as the database gives them.
+    return [...this.items.values()].filter((i) => i.inList || this.linkRows.has(i.id));
   }
   async getItem(id: string) {
     return this.items.get(id) ?? null;
@@ -400,14 +401,54 @@ describe("a change in Agilefant", () => {
     expect(af.writes).toEqual([]);
   });
 
-  it("deletes the Jira issue when the item is deleted, or leaves the list", async () => {
+  it("deletes the Jira issue when the item is deleted", async () => {
     const item = af.byTitle("Epic one")!;
     const issueId = af.linkRows.get(item.id)!.jiraId;
-    af.items.set(item.id, { ...item, inList: false });
+    af.items.delete(item.id);
 
     await engine().syncItem(item.id);
     expect(jira.issues.has(issueId)).toBe(false);
     expect(af.linkRows.has(item.id)).toBe(false);
+  });
+
+  it("keeps an item moved out of the list in step, both ways, and a full sync leaves it be", async () => {
+    const item = af.byTitle("Epic one")!;
+    const issueId = af.linkRows.get(item.id)!.jiraId;
+    af.items.set(item.id, { ...item, inList: false });
+    await engine().syncItem(item.id);
+    expect(jira.issues.has(issueId)).toBe(true);
+    expect(jira.calls).toEqual([]);
+
+    // Changed in Agilefant, where it is now: to Jira.
+    await af.updateItem(item.id, { title: "Moved, renamed" });
+    await engine().syncItem(item.id);
+    expect(jira.issues.get(issueId)!.state.title).toBe("Moved, renamed");
+    // Changed in Jira: back to it.
+    jira.edit(issueId, { status: "Done" });
+    await engine().syncIssue(issueId);
+    expect(af.items.get(item.id)!.status).toBe("done");
+
+    jira.calls = [];
+    const report = await engine().fullSync();
+    expect(report).toMatchObject({ deletedInJira: 0, createdInJira: 0, createdInAgilefant: 0 });
+    expect(jira.calls).toEqual([]);
+  });
+
+  it("keeps a subtree moved out of the list in its shape in Jira", async () => {
+    const epic = af.byTitle("Epic one")!;
+    const task = af.add("Its task", { parentId: epic.id });
+    await engine().syncItem(task.id);
+    const taskIssue = jira.byTitle("Its task")!;
+    for (const id of [epic.id, task.id]) af.items.set(id, { ...af.items.get(id)!, inList: false });
+    for (const id of [epic.id, task.id]) await engine().syncItem(id);
+    expect(jira.issues.get(taskIssue.id)!.state.parent).toBe(af.linkRows.get(epic.id)!.jiraId);
+  });
+
+  it("does not send to Jira an item outside the list that was never paired", async () => {
+    const elsewhere = af.add("Somewhere else", { inList: false });
+    await engine().syncItem(elsewhere.id);
+    await engine().fullSync();
+    expect(jira.byTitle("Somewhere else")).toBeUndefined();
   });
 
   it("brings a new item to Jira under its parent, the parent first if it has no issue yet", async () => {
