@@ -113,8 +113,11 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       }
     }
     let rank = Math.max(0, ...(data ?? []).map((r: { rank: number }) => r.rank ?? 0));
+    // A link belongs to its item's organization — a partner's, for one of theirs in a shared list.
+    const { data: owner } = await admin.from('work_items').select('organization_id').eq('id', id).maybeSingle();
+    const itemOrg = (owner?.organization_id as string | undefined) ?? org;
     const rows = wanted.filter((h) => !kept.has(h.url)).map((h) => ({
-      work_item_id: id, organization_id: org, url: h.url, alt_text: h.title, rank: ++rank,
+      work_item_id: id, organization_id: itemOrg, url: h.url, alt_text: h.title, rank: ++rank,
     }));
     if (rows.length) {
       const { error } = await admin.from('work_item_hyperlinks').insert(rows);
@@ -158,9 +161,17 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       // The list's items, and the ones paired with the space that were moved elsewhere (in_list false).
       const rows = (data ?? []) as Array<Parameters<typeof asItem>[0] & { in_list?: boolean }>;
       const ids = new Set(rows.map((r) => r.id));
-      const { data: hyperlinks, error: linkError } = await admin.from('work_item_hyperlinks')
-        .select('work_item_id, url, alt_text').eq('organization_id', org);
-      if (linkError) throw linkError;
+      // By item, not by organization: a partner's item in a shared list keeps its links in its own.
+      const hyperlinks: Array<{ work_item_id: string; url: string; alt_text: string }> = [];
+      const allIds = [...ids];
+      for (let i = 0; i < allIds.length; i += 200) {
+        const { data: chunk, error: linkError } = await admin
+          .from('work_item_hyperlinks')
+          .select('work_item_id, url, alt_text')
+          .in('work_item_id', allIds.slice(i, i + 200));
+        if (linkError) throw linkError;
+        hyperlinks.push(...(chunk ?? []));
+      }
       return rows.map((r) => ({ ...asItem(r, r.in_list ?? true, !!r.parent_id && ids.has(r.parent_id)),
         hyperlinks: normalizeHyperlinks((hyperlinks ?? []).filter((h: { work_item_id: string }) => h.work_item_id === r.id)
           .map((h: { url: string; alt_text: string }) => ({ url: h.url, title: h.alt_text }))),
@@ -174,7 +185,8 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
         .eq('id', id)
         .maybeSingle();
       if (error) throw error;
-      if (!data || data.organization_id !== org) return null;
+      // Whoever's it is: a partner organization's item in a shared list is the list's all the same.
+      if (!data) return null;
       const inList = data.backlog_assignments?.[tree] === conn.backlog_id;
       const parentId: string | null = data.parent_id_overrides?.[tree] ?? data.parent_id ?? null;
       // The parent counts where it is in the list, or paired from elsewhere:

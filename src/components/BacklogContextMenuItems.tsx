@@ -108,6 +108,8 @@ export function BacklogContextMenuItems({
   const canManageJira = role === "owner" || role === "admin";
   const jiraConnected = useJiraIssuesStore((s) => [...s.byList.values()].some((list) => list.organizationId === activeOrgId));
   const keptInStep = useJiraIssuesStore((s) => s.byList.has(backlogId));
+  // Only the organization's own lists: one shared from another organization is theirs to move to their Jira.
+  const ownList = backlogId.split("::")[0] === activeOrgId;
   const openJira = useJiraCreateSpaceStore((s) => s.open);
 
   if (!backlog) return null;
@@ -284,7 +286,7 @@ export function BacklogContextMenuItems({
         </ContextMenuItem>
       )}
       {/* A list not kept in step yet, moved to a Jira space of its own: where the organization uses Jira. */}
-      {canManageJira && jiraConnected && !keptInStep && (
+      {canManageJira && jiraConnected && ownList && !keptInStep && (
         <ContextMenuItem className="text-xs" onSelect={() => openJira(backlogId)}>
           <ArrowLeftRight className="w-3 h-3 mr-2" />
           Sync with Jira…
