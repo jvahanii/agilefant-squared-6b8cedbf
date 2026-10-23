@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ContextMenuItem } from "@/components/ui/context-menu";
-import { releaseOverlayLock } from "@/lib/overlayLock";
 
 export function WorkItemDescriptionDialog({ workItemId, open, onOpenChange }: {
   workItemId: string;
@@ -63,17 +62,10 @@ export function WorkItemDescriptionDialog({ workItemId, open, onOpenChange }: {
   );
 }
 
-export function WorkItemDescriptionMenuItem({ workItemId }: { workItemId: string }) {
-  const [open, setOpen] = useState(false);
+export function WorkItemDescriptionMenuItem({ onOpen }: { onOpen: () => void }) {
   return (
-    <>
-      <ContextMenuItem className="text-xs" onSelect={() => setOpen(true)}>
+      <ContextMenuItem className="text-xs" onSelect={onOpen}>
         <FileText className="h-3 w-3 mr-2" />Description…
       </ContextMenuItem>
-      {open && <WorkItemDescriptionDialog workItemId={workItemId} open onOpenChange={(value) => {
-        setOpen(value);
-        if (!value) releaseOverlayLock();
-      }} />}
-    </>
   );
 }
