@@ -1033,7 +1033,7 @@ function WorkItemNodeContent({
               )
             ) : null}
           </button>
-          <span className="text-sm tabular-nums text-muted-foreground/40 shrink-0 w-6 text-right select-none" aria-hidden="true">
+          <span className="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">
             {runningNumber}
           </span>
 
@@ -2562,7 +2562,7 @@ function SearchResultItem({
               }}
             >
               <span
-                className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none"
+                className="text-[10px] tabular-nums text-muted-foreground shrink-0 w-5 text-right mt-1 select-none"
                 aria-hidden="true"
               >
                 {idx + 1}
@@ -4277,7 +4277,7 @@ export function WorkItemTreePanel() {
                           }}
                         >
                           <span
-                            className="text-[10px] tabular-nums text-muted-foreground/40 shrink-0 w-5 text-right mt-1 select-none"
+                            className="text-[10px] tabular-nums text-muted-foreground shrink-0 w-5 text-right mt-1 select-none"
                             aria-hidden="true"
                           >
                             {idx + 1}
