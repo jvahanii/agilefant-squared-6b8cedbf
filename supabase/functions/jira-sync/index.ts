@@ -354,6 +354,7 @@ async function drain(admin: Admin, conn: Connection) {
       const [kind, ref] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
       try {
         if (kind === 'full') await engine.fullSync();
+        else if (kind === 'links') await engine.syncHyperlinks();
         else if (kind === 'levels') {
           // Jira's hierarchy changed — a level added or taken away in its
           // settings, which no webhook announces: keep the new levels and

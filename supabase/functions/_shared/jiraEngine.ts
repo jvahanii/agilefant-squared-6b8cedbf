@@ -363,6 +363,32 @@ export class JiraSync {
     return this.report;
   }
 
+  /** Remote-link changes have no reliable Jira webhook: check only paired links. */
+  async syncHyperlinks(): Promise<void> {
+    await this.loadLinks();
+    for (const link of this.linksByItem.values()) {
+      try {
+        const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
+        if (!item?.inList || !issue) continue;
+        const result = reconcile(link.agreed, this.stateOfItem(item), issue.state, null, null);
+        const hyperlinks = result.state.hyperlinks ?? [];
+        if (result.toJira.includes('hyperlinks')) {
+          await this.jira.updateIssue(issue.id, ['hyperlinks'], { ...issue.state, hyperlinks });
+          this.report.updatedInJira++;
+        }
+        if (result.toAgilefant.includes('hyperlinks')) {
+          await this.agilefant.updateItem(item.id, { hyperlinks });
+          this.report.updatedInAgilefant++;
+        }
+        const next = { ...link, agreed: { ...(link.agreed ?? issue.state), hyperlinks } };
+        if (!sameField('hyperlinks', link.agreed?.hyperlinks, hyperlinks) || link.agreed?.hyperlinks === undefined) {
+          this.remember(next);
+          await this.agilefant.saveLink(next);
+        }
+      } catch (e) { this.report.errors.push(`${link.jiraKey}: ${message(e)}`); }
+    }
+  }
+
   /**
    * Every tree levelled to the hierarchy as Jira has it now. A move levels
    * the tree it lands in; but when a level is added or taken away in Jira's
