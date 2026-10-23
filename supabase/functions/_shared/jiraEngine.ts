@@ -132,6 +132,9 @@ const emptyReport = (): SyncReport => ({
   errors: [],
 });
 
+/** Pairs whose hyperlinks are checked at once: enough to be quick, few enough not to flood Jira. */
+const HYPERLINK_CHECKS_AT_ONCE = 4;
+
 /** How deep a chain of parents is followed before giving up: Jira has three levels. */
 const MAX_DEPTH = 6;
 
@@ -364,28 +367,47 @@ export class JiraSync {
   }
 
   /** Remote-link changes have no reliable Jira webhook: check only paired links. */
-  async syncHyperlinks(): Promise<void> {
+  /**
+   * Every pair's hyperlinks checked — Jira announces no change to its web
+   * links, so the clock asks every two minutes. A pair takes an item, an
+   * issue and its links read; one after another, a space's pairs held its
+   * lock for tens of seconds each time, and people's changes queued behind.
+   * So: a few pairs at a time, starting each round where `start` says, and
+   * stopping as soon as `giveWay` says a change is waiting — the rest are
+   * checked next round, from a different start.
+   */
+  async syncHyperlinks(options: { giveWay?: () => Promise<boolean>; start?: number } = {}): Promise<void> {
     await this.loadLinks();
-    for (const link of this.linksByItem.values()) {
-      try {
-        const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
-        if (!item?.inList || !issue) continue;
-        const result = reconcile(link.agreed, this.stateOfItem(item), issue.state, null, null);
-        const hyperlinks = result.state.hyperlinks ?? [];
-        if (result.toJira.includes('hyperlinks')) {
-          await this.jira.updateIssue(issue.id, ['hyperlinks'], { ...issue.state, hyperlinks });
-          this.report.updatedInJira++;
-        }
-        if (result.toAgilefant.includes('hyperlinks')) {
-          await this.agilefant.updateItem(item.id, { hyperlinks });
-          this.report.updatedInAgilefant++;
-        }
-        const next = { ...link, agreed: { ...(link.agreed ?? issue.state), hyperlinks } };
-        if (!sameField('hyperlinks', link.agreed?.hyperlinks, hyperlinks) || link.agreed?.hyperlinks === undefined) {
-          this.remember(next);
-          await this.agilefant.saveLink(next);
-        }
-      } catch (e) { this.report.errors.push(`${link.jiraKey}: ${message(e)}`); }
+    const links = [...this.linksByItem.values()];
+    const from = links.length ? Math.abs(Math.floor(options.start ?? 0)) % links.length : 0;
+    const ordered = [...links.slice(from), ...links.slice(0, from)];
+    for (let i = 0; i < ordered.length; i += HYPERLINK_CHECKS_AT_ONCE) {
+      if (i > 0 && (await options.giveWay?.())) return;
+      await Promise.all(ordered.slice(i, i + HYPERLINK_CHECKS_AT_ONCE).map((link) => this.syncPairHyperlinks(link)));
+    }
+  }
+
+  private async syncPairHyperlinks(link: Link): Promise<void> {
+    try {
+      const [item, issue] = await Promise.all([this.agilefant.getItem(link.workItemId), this.jira.getIssue(link.jiraId)]);
+      if (!item?.inList || !issue) return;
+      const result = reconcile(link.agreed, this.stateOfItem(item), issue.state, null, null);
+      const hyperlinks = result.state.hyperlinks ?? [];
+      if (result.toJira.includes('hyperlinks')) {
+        await this.jira.updateIssue(issue.id, ['hyperlinks'], { ...issue.state, hyperlinks });
+        this.report.updatedInJira++;
+      }
+      if (result.toAgilefant.includes('hyperlinks')) {
+        await this.agilefant.updateItem(item.id, { hyperlinks });
+        this.report.updatedInAgilefant++;
+      }
+      const next = { ...link, agreed: { ...(link.agreed ?? issue.state), hyperlinks } };
+      if (!sameField('hyperlinks', link.agreed?.hyperlinks, hyperlinks) || link.agreed?.hyperlinks === undefined) {
+        this.remember(next);
+        await this.agilefant.saveLink(next);
+      }
+    } catch (e) {
+      this.report.errors.push(`${link.jiraKey}: ${message(e)}`);
     }
   }
 

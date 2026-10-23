@@ -1006,3 +1006,36 @@ describe("an item deleted in Agilefant", () => {
     expect([...af.linkRows.values()].map((l) => `${l.jiraKey} ${l.error ?? ""}`)).toEqual([]);
   });
 });
+
+describe("the clock's check of every pair's web links", () => {
+  /** Ten issues, synced, and a count of the issues read. */
+  async function tenSynced() {
+    for (let n = 1; n <= 10; n++) jira.add(`INT-${n}`, "Task", { title: `Task ${n}` });
+    await engine().fullSync();
+    const read: string[] = [];
+    const getIssue = jira.getIssue.bind(jira);
+    jira.getIssue = async (id: string) => {
+      read.push(jira.issues.get(id)!.key);
+      return getIssue(id);
+    };
+    return read;
+  }
+
+  it("checks every pair, a few at a time", async () => {
+    const read = await tenSynced();
+    await engine().syncHyperlinks();
+    expect(read).toHaveLength(10);
+  });
+
+  it("gives way as soon as a change is waiting, leaving the rest for the next round", async () => {
+    const read = await tenSynced();
+    await engine().syncHyperlinks({ giveWay: async () => true });
+    expect(read).toHaveLength(4);
+  });
+
+  it("starts each round where it is told, so a round cut short does not always check the same pairs", async () => {
+    const read = await tenSynced();
+    await engine().syncHyperlinks({ start: 7, giveWay: async () => true });
+    expect(read).toEqual(["INT-8", "INT-9", "INT-10", "INT-1"]);
+  });
+});

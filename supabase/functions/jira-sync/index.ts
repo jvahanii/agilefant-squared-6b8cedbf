@@ -370,7 +370,23 @@ async function drain(admin: Admin, conn: Connection) {
       const [kind, ref] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
       try {
         if (kind === 'full') await engine.fullSync();
-        else if (kind === 'links') await engine.syncHyperlinks();
+        else if (kind === 'links') {
+          // The clock's check of every pair's web links gives way to a person's
+          // change, or Jira's, the moment one is queued for this space.
+          await engine.syncHyperlinks({
+            start: Math.floor(Math.random() * 1_000_000),
+            giveWay: async () => {
+              const { count } = await admin
+                .from('jira_sync_queue')
+                .select('id', { count: 'exact', head: true })
+                .eq('connection_id', conn.id)
+                .in('kind', ['item', 'issue', 'full'])
+                .is('done_at', null)
+                .lt('attempts', 3);
+              return (count ?? 0) > 0;
+            },
+          });
+        }
         else if (kind === 'levels') {
           // Jira's hierarchy changed — a level added or taken away in its
           // settings, which no webhook announces: keep the new levels and
