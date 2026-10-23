@@ -311,13 +311,14 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
     },
 
     async getIssue(id) {
+      let raw: RawIssue;
       try {
-        const raw = await call<RawIssue>(`/rest/api/3/issue/${id}?fields=${fields.join(',')}`);
-        return await withLinks(raw);
+        raw = await call<RawIssue>(`/rest/api/3/issue/${id}?fields=${fields.join(',')}`);
       } catch (e) {
         if (e instanceof JiraError && e.status === 404) return null;
         throw e;
       }
+      return await withLinks(raw);
     },
 
     async createIssue(type, state) {
