@@ -125,7 +125,7 @@ describe("the Jira card", () => {
     const offered = await screen.findByRole("list", { name: "Jira spaces" });
     const ops = within(offered).getByText("OPS").closest("li")!;
     fireEvent.change(within(ops).getByTestId("select"), { target: { value: "new:tree-2" } });
-    fireEvent.click(within(ops).getByRole("button", { name: "Keep in step" }));
+    fireEvent.click(within(ops).getByRole("button", { name: "Sync now" }));
     await waitFor(() =>
       expect(callJira).toHaveBeenCalledWith({
         action: "addSpace",
