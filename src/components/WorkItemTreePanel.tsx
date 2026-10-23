@@ -59,6 +59,7 @@ import { useScrambledListsStore } from "@/store/scrambledListsStore";
 import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { rowsForReparenting } from "@/lib/workItemRows";
+import { rowClickIntent } from "@/lib/rowClick";
 import { searchFilter } from "@/lib/searchFilters";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
