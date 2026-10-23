@@ -281,7 +281,11 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
                           <SelectTrigger className="h-8 w-[18rem]" aria-label={`Tree for ${project.key}`}>
                             <SelectValue placeholder="Choose its tree" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent
+                            side="bottom"
+                            avoidCollisions={false}
+                            className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto"
+                          >
                             {trees.map((t) => (
                               <SelectItem key={`new:${t.id}`} value={`new:${t.id}`}>
                                 {t.name}
