@@ -327,6 +327,12 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
         await call(`/rest/api/3/issue/${id}?deleteSubtasks=true`, { method: 'DELETE' });
       } catch (e) {
         if (e instanceof JiraError && e.status === 404) return;
+        // In a company-managed project only its administrators may delete by default.
+        if (e instanceof JiraError && e.status === 403) {
+          throw new Error(
+            'Jira did not allow deleting it: the Jira account the sync uses needs the "Delete work items" permission in this project',
+          );
+        }
         throw e;
       }
     },

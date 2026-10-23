@@ -226,7 +226,9 @@ class FakeJira implements JiraPort {
     for (const f of fields) (change as Record<string, unknown>)[f] = state[f];
     this.edit(id, change);
   }
+  refuseDeletes = false;
   async deleteIssue(id: string) {
+    if (this.refuseDeletes) throw new Error("Jira did not allow deleting it");
     this.calls.push(`delete ${this.issues.get(id)?.key}`);
     this.issues.delete(id);
   }
@@ -952,5 +954,55 @@ describe("a change to Jira's hierarchy", () => {
     jira.types = [...DEFAULT_ISSUE_TYPES, { name: "Initiative", level: 2 }];
     await engine().fullSync();
     expect(jira.calls).toEqual([]);
+  });
+});
+
+describe("an item deleted in Agilefant", () => {
+  /** An epic with a task with a subtask, synced. */
+  async function synced() {
+    const epic = jira.add("INT-1", "Epic", { title: "Epic" });
+    const task = jira.add("INT-2", "Task", { title: "Task", parent: epic.id });
+    const sub = jira.add("INT-3", "Subtask", { title: "Subtask", parent: task.id });
+    await engine().fullSync();
+    return { epic, task, sub };
+  }
+  /** As the app deletes: the item and everything under it. */
+  async function deleteWithChildren(title: string) {
+    const root = af.byTitle(title)!;
+    const gone = [root.id];
+    for (let i = 0; i < gone.length; i++) for (const item of af.items.values()) if (item.parentId === gone[i]) gone.push(item.id);
+    for (const id of gone) af.items.delete(id);
+    const sync = engine();
+    for (const id of gone) await sync.syncItem(id);
+    return sync.report;
+  }
+
+  it("takes everything under it out of Jira too", async () => {
+    await synced();
+    const report = await deleteWithChildren("Epic");
+    expect(report.errors).toEqual([]);
+    expect(jira.issues.size).toBe(0);
+    expect([...af.linkRows.values()].map((l) => `${l.jiraKey} ${l.error ?? ""}`)).toEqual([]);
+  });
+
+  it("keeps the pair, and says why, where Jira will not delete — not brought back by the next sync", async () => {
+    const { epic, task, sub } = await synced();
+    jira.refuseDeletes = true;
+    const report = await deleteWithChildren("Epic");
+
+    expect(report.errors).toHaveLength(3);
+    expect([...jira.issues.keys()].sort()).toEqual([epic.id, task.id, sub.id].sort());
+    expect([...af.linkRows.values()].every((link) => link.error?.includes("did not allow deleting"))).toBe(true);
+    // A full sync does not take the issues for new ones from Jira: it tries the delete again.
+    const again = await engine().fullSync();
+    expect(af.items.size).toBe(0);
+    expect(again.createdInAgilefant).toBe(0);
+
+    // Allowed again, the next full sync finishes the job.
+    jira.refuseDeletes = false;
+    const done = await engine().fullSync();
+    expect(done.errors).toEqual([]);
+    expect(jira.issues.size).toBe(0);
+    expect([...af.linkRows.values()].map((l) => `${l.jiraKey} ${l.error ?? ""}`)).toEqual([]);
   });
 });

@@ -311,13 +311,20 @@ export class JiraSync {
     const itemById = new Map(items.map((i) => [i.id, i]));
     const issueById = new Map(issues.map((i) => [i.id, i]));
 
-    // Pairs whose either side is gone.
+    // Pairs whose either side is gone. What is deleted here is still in the
+    // lists read above, and must not come back as new from the other side.
+    const deletedIssues = new Set<string>();
+    const deletedItems = new Set<string>();
     for (const link of [...this.linksByItem.values()]) {
       const item = itemById.get(link.workItemId);
       const issue = issueById.get(link.jiraId);
       if (!item && !issue) await this.forget(link);
-      else if (!item) await this.deleteInJira(link);
-      else if (!issue) await this.deleteInAgilefant(link, item);
+      else if (!item) {
+        if (await this.deleteInJira(link)) deletedIssues.add(link.jiraId);
+      } else if (!issue) {
+        await this.deleteInAgilefant(link, item);
+        deletedItems.add(item.id);
+      }
     }
 
     // Issues new to Agilefant, epics first.
@@ -326,7 +333,7 @@ export class JiraSync {
         ? 1 + depthOfIssue(issueById.get(issue.state.parent)!, seen + 1)
         : 0;
     for (const issue of [...issues].sort((a, b) => depthOfIssue(a) - depthOfIssue(b))) {
-      if (!this.linksByIssue.has(issue.id)) await this.createInAgilefant(issue);
+      if (!this.linksByIssue.has(issue.id) && !deletedIssues.has(issue.id)) await this.createInAgilefant(issue);
     }
 
     // Items new to Jira, top level first.
@@ -335,7 +342,7 @@ export class JiraSync {
         ? 1 + depthOfItem(itemById.get(item.parentId)!, seen + 1)
         : 0;
     for (const item of [...items].sort((a, b) => depthOfItem(a) - depthOfItem(b))) {
-      if (!this.linksByItem.has(item.id)) await this.createInJira(item);
+      if (!this.linksByItem.has(item.id) && !deletedItems.has(item.id)) await this.createInJira(item);
     }
 
     // Pairs that both still exist. Without a record of when Agilefant last
@@ -685,14 +692,27 @@ export class JiraSync {
     this.report.createdInAgilefant += 1;
   }
 
-  private async deleteInJira(link: Link) {
+  /**
+   * The issue of an item deleted in Agilefant, or taken off the list, deleted
+   * in Jira. Where Jira refuses — no permission to delete, say — the pair is
+   * kept, with the error: forgotten, the issue would stay in Jira for good, and
+   * the next full sync would bring it back into Agilefant as a new item. Kept,
+   * it is tried again by every full sync and every change Jira sends about it.
+   */
+  private async deleteInJira(link: Link): Promise<boolean> {
     try {
       await this.jira.deleteIssue(link.jiraId);
       this.report.deletedInJira += 1;
     } catch (e) {
-      this.report.errors.push(`${link.jiraKey}: ${message(e)}`);
+      const error = `${link.jiraKey}: ${message(e)}`;
+      this.report.errors.push(error);
+      const next: Link = { ...link, error };
+      this.remember(next);
+      await this.agilefant.saveLink(next);
+      return false;
     }
     await this.forget(link);
+    return true;
   }
 
   private async deleteInAgilefant(link: Link, item: AgilefantItem) {
