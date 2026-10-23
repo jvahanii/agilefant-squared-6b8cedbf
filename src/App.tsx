@@ -12,6 +12,7 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 import Auth from "./pages/Auth";
 import { clerkEnabled } from "@/lib/clerkBridge";
 import { looksSignedIn } from "@/lib/storedSession";
+import { importWithRetry } from "@/lib/importWithRetry";
 
 // Pre-load appStore data as soon as the active org is known, before any page
 // component mounts. Zustand's subscribe fires synchronously inside
@@ -30,7 +31,8 @@ useOrgStore.subscribe((state, prevState) => {
 
 // Lazy so the entry chunk stays small: this chunk downloads in parallel with
 // the auth + membership round-trips instead of blocking them on mobile.
-const importIndex = () => import("./pages/Index");
+// Retried under a fresh address when it fails to load: see lib/importWithRetry.
+const importIndex = importWithRetry(() => import("./pages/Index"));
 const Index = lazy(importIndex);
 
 // A returning signed-in user needs this chunk the moment auth resolves, so
@@ -49,16 +51,16 @@ const hasStoredSession = () => {
   }
 };
 if (hasStoredSession()) void importIndex();
-const ClerkAccountNotLinked = lazy(() => import("./pages/ClerkAccountNotLinked"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const TeamSettings = lazy(() => import("./pages/TeamSettings"));
-const ManagerScreen = lazy(() => import("./pages/ManagerScreen"));
-const UserGuide = lazy(() => import("./pages/UserGuide"));
-const BellsAndWhistles = lazy(() => import("./pages/BellsAndWhistles"));
-const PublicBacklog = lazy(() => import("./pages/PublicBacklog"));
-const JobAdsGuide = lazy(() => import("./pages/JobAdsGuide"));
-const Landing = lazy(() => import("./pages/Landing"));
+const ClerkAccountNotLinked = lazy(importWithRetry(() => import("./pages/ClerkAccountNotLinked")));
+const NotFound = lazy(importWithRetry(() => import("./pages/NotFound")));
+const Onboarding = lazy(importWithRetry(() => import("./pages/Onboarding")));
+const TeamSettings = lazy(importWithRetry(() => import("./pages/TeamSettings")));
+const ManagerScreen = lazy(importWithRetry(() => import("./pages/ManagerScreen")));
+const UserGuide = lazy(importWithRetry(() => import("./pages/UserGuide")));
+const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhistles")));
+const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
+const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
+const Landing = lazy(importWithRetry(() => import("./pages/Landing")));
 
 const queryClient = new QueryClient();
 
