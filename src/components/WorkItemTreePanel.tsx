@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { useJiraIssuesStore } from "@/store/jiraIssuesStore";
 import { patchCachedWorkItems } from "@/store/appDataCache";
 import { backlogPoints, childrenInTree, itemEffectivePoints } from "@/lib/backlogPoints";
 import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
@@ -3108,6 +3109,8 @@ export function WorkItemTreePanel() {
   // A command typed into the search box — "/due today" — rather than words
   // to look for in a title.
   const scrambledItemNames = useScrambledItemsStore((s) => s.byItem);
+  // A synced item is also found by its Jira key: "AF-20".
+  const jiraByItem = useJiraIssuesStore((s) => s.byItem);
   const activeSearchFilter = useMemo(
     () => searchFilter(searchQuery, undefined, scrambledItemNames),
     [searchQuery, scrambledItemNames],
@@ -3118,7 +3121,11 @@ export function WorkItemTreePanel() {
     if (q.length < 3) return null;
 
     const itemResults: SearchResultItem[] = Object.values(workItems)
-      .filter((wi) => (activeSearchFilter ? activeSearchFilter.matches(wi) : wi.title.toLowerCase().includes(q)))
+      .filter((wi) =>
+        activeSearchFilter
+          ? activeSearchFilter.matches(wi)
+          : wi.title.toLowerCase().includes(q) || (jiraByItem.get(wi.id)?.key.toLowerCase().includes(q) ?? false),
+      )
       .flatMap((wi) => {
         // Emit one result per backlog tree this item is assigned to,
         // so items present in multiple trees show all occurrences.
@@ -3201,7 +3208,7 @@ export function WorkItemTreePanel() {
       });
 
     return [...itemResults, ...backlogResults];
-  }, [searchQuery, activeSearchFilter, workItems, backlogTrees, backlogs]);
+  }, [searchQuery, activeSearchFilter, workItems, backlogTrees, backlogs, jiraByItem]);
 
   // Filter results: items from ALL trees that match the active label and/or
   // team filters, shown as a flat list. Returns null when no filter is active.
