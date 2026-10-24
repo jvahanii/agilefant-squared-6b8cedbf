@@ -89,6 +89,7 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
   project(): Promise<{ id: string; key: string; name: string }>;
   listProjects(): Promise<Array<{ id: string; key: string; name: string; style: string | null }>>;
   createProject(project: { key: string; name: string; leadAccountId: string }): Promise<{ id: string; key: string }>;
+  renameProject(name: string): Promise<void>;
   findPointsField(): Promise<string | null>;
   registerWebhook(url: string): Promise<string>;
   removeWebhook(self: string): Promise<void>;
@@ -425,6 +426,18 @@ export function jiraPort(config: JiraConfig, fetcher?: Fetcher): JiraPort & {
       } catch (e) {
         if (e instanceof JiraError && (e.status === 401 || e.status === 403)) {
           throw new Error('Jira did not allow making a space: the Jira account the sync uses needs the "Administer Jira" permission');
+        }
+        throw e;
+      }
+    },
+
+    /** The space given a new name: its list's, after the list is renamed. */
+    async renameProject(name) {
+      try {
+        await call(`/rest/api/3/project/${encodeURIComponent(config.projectKey)}`, { method: 'PUT', body: { name } });
+      } catch (e) {
+        if (e instanceof JiraError && (e.status === 401 || e.status === 403)) {
+          throw new Error('Jira did not allow renaming the space: the Jira account the sync uses needs the "Administer Jira" permission');
         }
         throw e;
       }

@@ -128,3 +128,20 @@ describe("Jira's links between issues", () => {
     for (const c of calls) expect(c.body?.events).toEqual(expect.arrayContaining(['issuelink_created', 'issuelink_deleted']));
   });
 });
+
+describe("a Jira space renamed with its list", () => {
+  it("is renamed by its key", async () => {
+    const calls: { url: string; method?: string; body?: unknown }[] = [];
+    const port = jiraPort(config, async (url, init) => {
+      calls.push({ url, method: init.method, body: init.body ? JSON.parse(String(init.body)) : undefined });
+      return new Response(null, { status: 204 });
+    });
+    await port.renameProject('Space B, renamed');
+    expect(calls).toEqual([{ url: `${config.baseUrl}/rest/api/3/project/AF`, method: 'PUT', body: { name: 'Space B, renamed' } }]);
+  });
+
+  it("says which permission is missing when Jira refuses", async () => {
+    const port = jiraPort(config, async () => new Response('{"errorMessages":["no"]}', { status: 403 }));
+    await expect(port.renameProject('X')).rejects.toThrow('Administer Jira');
+  });
+});

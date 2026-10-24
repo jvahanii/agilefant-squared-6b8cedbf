@@ -473,6 +473,21 @@ async function drain(admin: Admin, conn: Connection) {
             await engine.fullSync();
           }
         }
+        else if (kind === 'rename') {
+          // The list renamed: the space takes its name as it is now, made
+          // unique on the site as Jira wants, and at most Jira's 80 characters.
+          const { data: list } = await admin.from('backlogs').select('name').eq('id', conn.backlog_id).maybeSingle();
+          const wanted = String(list?.name ?? '').trim().slice(0, 72);
+          if (wanted && wanted !== conn.project_name) {
+            const others = (await jira.listProjects()).filter((p) => p.key !== conn.project_key).map((p) => p.name);
+            const name = uniqueProjectName(wanted, others);
+            if (name !== conn.project_name) {
+              await jira.renameProject(name);
+              await admin.from('jira_connections').update({ project_name: name }).eq('id', conn.id);
+              conn.project_name = name;
+            }
+          }
+        }
         else if (kind === 'item') await engine.syncItem(ref);
         else if (kind === 'issue') await engine.syncIssue(ref);
         await admin.from('jira_sync_queue').update({ done_at: new Date().toISOString(), error: null }).in('id', ids);
