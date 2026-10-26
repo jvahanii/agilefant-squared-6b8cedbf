@@ -4836,6 +4836,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           respawnLastTriggeredAt: (row.respawn_last_triggered_at as string | null) ?? undefined,
         };
 
+        // The echo of this page's own save — every item of a move sends one —
+        // says what the item already is here. Applied, each copied the whole
+        // map of items and re-rendered every view of them: a hundred items
+        // moved into a long list took seconds of this, one echo after another.
+        if (state.workItems[id] && samePersistedWorkItem(state.workItems[id], newItem)) return state;
+
         const updatedWorkItems = { ...state.workItems, [id]: newItem };
 
         const oldItem = state.workItems[id];
@@ -4913,6 +4919,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         const wi = state.workItems[workItemId];
         if (!wi) return state;
 
+        // An echo of what is held here already changes nothing; see applyRealtimeWorkItem.
+        if (eventType === 'DELETE' ? !(backlogId in wi.ranks) : wi.ranks[backlogId] === ((row.rank as number) ?? 0)) return state;
+
         if (eventType === 'DELETE') {
           const newRanks = { ...wi.ranks };
           delete newRanks[backlogId];
@@ -4961,6 +4970,8 @@ export const useAppStore = create<AppState>()((set, get) => {
         const wi = state.workItems[workItemId];
         if (!wi) return state;
         const current = wi.boardRanks ?? {};
+        // An echo of what is held here already changes nothing; see applyRealtimeWorkItem.
+        if (eventType === 'DELETE' ? !(backlogId in current) : current[backlogId] === ((row.rank as number) ?? 0)) return state;
         if (eventType === 'DELETE') {
           const next = { ...current };
           delete next[backlogId];
