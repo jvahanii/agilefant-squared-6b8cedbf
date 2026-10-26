@@ -35,6 +35,7 @@ import { DeleteGuardHost } from "@/components/DeleteGuardHost";
 import { RerankGuardHost } from "@/components/RerankGuardHost";
 import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
+import { PatternTrainerHeaderButton } from "@/components/PatternTrainerHeaderButton";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
@@ -1383,6 +1384,7 @@ function AppLayoutInner() {
           <JobSearchRunButton />
           {/* For the Jira workshop; to come out of the header again after it. */}
           <JiraSyncHeaderButton />
+          <PatternTrainerHeaderButton />
           <RoleSimulator />
 
           <div className="ml-auto flex items-center gap-1 md:gap-2">
