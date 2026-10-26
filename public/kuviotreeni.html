@@ -617,13 +617,13 @@ function finish(ok,given,k){
   const st=stats[item.fam]||{n:0,ok:0,time:0};st.n++;if(ok)st.ok++;st.time+=s;stats[item.fam]=st;saveStats();
   let head;
   if(item.kind==='num'){
-    if($('ans'))$('ans').disabled=true;$('go').disabled=true;$('skip').disabled=true;
+    if($('ans'))$('ans').disabled=true;$('go').disabled=true;$('skip').style.display='none';
     head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'vastaus on '+item.answer+'. ';
   }else{
     const bs=document.querySelectorAll('.opt');
     bs[item.ci].classList.add('ok');
     if(!ok&&k>=0)bs[k].classList.add('bad');
-    $('skip').disabled=true;
+    $('skip').style.display='none';
     head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'oikea vastaus on '+'ABCDEF'[item.ci]+'. ';
   }
   $('fb').innerHTML='<b style="font-weight:500">'+head+'</b>'+item.explain+' <span class="small">('+s+' s)</span>';
