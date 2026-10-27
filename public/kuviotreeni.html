@@ -447,7 +447,7 @@ function genTile3(){
 }
 const VPOOLS={1:[genAttr,genAttr,genTile2,genNest],2:[genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
-function genItem(mode,level){if(mode==="nl")return genNum(level,Math.random()<0.4);if(mode==="let")return genNum(level,true);const m=mode==="mix"?pick(["num","vis"]):mode;return m==="num"?genNum(level):genVis(level);}
+function genItem(mode,level){if(mode==="nl")return genNum(level,Math.random()<0.2);if(mode==="let")return genNum(level,true);const m=mode==="mix"?pick(["num","vis"]):mode;return m==="num"?genNum(level):genVis(level);}
 /*GEN-END*/
 
 function symSvg(sp){
