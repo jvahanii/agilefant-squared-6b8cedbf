@@ -543,7 +543,7 @@ function newItem(){
     h+='<span class="term tq">?</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="ans" placeholder="Vastauksesi" style="width:150px" autocomplete="off"><button id="go" class="primary">Tarkista</button><button id="skip">Ohita</button></div>';
     $('body').innerHTML=h;
     $('ans').addEventListener('input',()=>{$('err').textContent='';});
-    $('ans').addEventListener('keydown',e=>{if(e.key==='Enter')checkNum();});
+    $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkNum();}});
     $('go').onclick=checkNum;$('skip').onclick=()=>finish(false,'ohitettu');
     $('ans').focus();
   }else{
