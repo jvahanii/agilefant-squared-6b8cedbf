@@ -48,10 +48,11 @@ svg{display:block}
   <label>Tyyppi<select id="mode"><option value="mix">Sekoitus</option><option value="num">Numerosarjat</option><option value="nl">Numero- ja kirjainsarjat</option><option value="let">Kirjainsarjat</option><option value="vis">Kuviotäydennykset</option></select></label>
   <label>Vaikeus<select id="level"><option value="1">1 Helppo</option><option value="2" selected>2 Keskitaso</option><option value="3">3 Vaikea</option></select></label>
   <label>Aikaraja<select id="limit"><option value="0">Ei rajaa</option><option value="15">15 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option><option value="90">90 s</option></select></label>
+  <label>Kokonaisaika<select id="total"><option value="0">Ei rajaa</option><option value="600">10 min</option></select></label>
   <button id="newbtn" class="primary" style="align-self:flex-end">Aloita</button>
 </div>
 <div class="card" id="stage" style="display:none">
-  <div class="top"><span id="hdr"></span><span><span class="timer" id="timer"></span> <span id="score" style="margin-left:10px"></span></span></div>
+  <div class="top"><span id="hdr"></span><span><span class="timer" id="totaltimer" style="margin-right:10px"></span><span class="timer" id="timer"></span> <span id="score" style="margin-left:10px"></span></span></div>
   <div id="body"></div>
   <div class="err" id="err"></div>
   <div class="fb" id="fb"></div>
@@ -598,7 +599,32 @@ function finish(ok,given,k){
   $('btns').innerHTML='<button class="primary" id="next">Seuraava</button>';
   $('next').onclick=newItem;$('next').focus();
 }
-$('newbtn').onclick=()=>{session=[];newItem();};
+let deadline=0,ttick=null;
+const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+function totalUpd(){
+  if(!deadline)return;
+  const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+  $('totaltimer').textContent='Yht. '+fmt(left);$('totaltimer').style.color=left<=60?'var(--bad)':'var(--ink)';
+  if(left<=0)endSession();
+}
+function endSession(){
+  clearInterval(ttick);clearInterval(tick);deadline=0;done=true;
+  $('body').innerHTML='';$('err').textContent='';$('timer').textContent='';
+  $('hdr').textContent='Kokonaisaika täynnä';
+  const ok=session.filter(x=>x.ok).length,n=session.length,avg=n?Math.round(session.reduce((a,x)=>a+x.s,0)/n):0;
+  $('fb').innerHTML='<b style="font-weight:500">Aika loppui.</b> Vastattuja tehtäviä '+n+', oikein '+ok+'/'+n+(n?', keskim. '+avg+' s':'')+'. Kesken ollutta tehtävää ei lasketa.';
+  $('btns').innerHTML='<button class="primary" id="again">Aloita uusi</button>';
+  $('again').onclick=()=>$('newbtn').click();$('again').focus();
+  showStats();
+}
+$('newbtn').onclick=()=>{
+  session=[];clearInterval(ttick);
+  const t=+$('total').value;
+  deadline=t>0?Date.now()+t*1000:0;
+  $('totaltimer').textContent='';
+  if(deadline){ttick=setInterval(totalUpd,250);}
+  newItem();totalUpd();
+};
 $('resetstats').onclick=()=>{stats={};saveStats();showStats();};
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&done&&$('next')&&document.activeElement!==$('next')){$('next').click();}});
 showStats();
