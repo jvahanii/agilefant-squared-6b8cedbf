@@ -447,40 +447,7 @@ function genTile3(){
 }
 const VPOOLS={1:[genAttr,genAttr,genTile2,genNest],2:[genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
-function genLetterGroups(level){
-  for(let tries=0;tries<3000;tries++){
-    const nShown=level===3?5:4,len=nShown+1;
-    const spec=[];let steps=0;
-    for(let k=0;k<3;k++){
-      const r=Math.random();
-      if(k>0&&level>=2&&r<0.35)spec.push({kind:'copy',of:rnd(0,k-1)});
-      else if(r<0.55)spec.push({kind:'static',v:rnd(1,26)});
-      else{steps++;spec.push({kind:'step',v:rnd(1,26),d:pick([-3,-2,-1,1,2,3])});}
-    }
-    if(steps===0)continue;
-    if(level===1&&spec.some(s=>s.kind==='copy'))continue;
-    const groups=[];
-    for(let i=0;i<len;i++){
-      const g=[];
-      for(let k=0;k<3;k++){const s=spec[k];g.push(s.kind==='static'?s.v:s.kind==='step'?s.v+s.d*i:g[s.of]);}
-      groups.push(g);
-    }
-    if(!groups.every(g=>g.every(x=>x>=1&&x<=26)))continue;
-    const L=g=>g.map(x=>LET[x-1]).join('');
-    const shown=groups.slice(0,nShown).map(L),ans=L(groups[nShown]);
-    const lines=spec.map((s,k)=>{
-      const col=groups.slice(0,nShown).map(g=>g[k]);
-      const nm=(k+1)+'. kirjain';
-      if(s.kind==='static')return nm+' pysyy samana ('+LET[s.v-1]+').';
-      if(s.kind==='copy')return nm+' on sama kuin '+(s.of+1)+'. kirjain.';
-      return nm+': '+col.map(x=>LET[x-1]+'='+x).join(', ')+', joten askel on '+sg(s.d)+' ja seuraava on '+(col[col.length-1]+s.d)+' = '+LET[col[col.length-1]+s.d-1]+'.';
-    });
-    return{kind:'num',fam:'Kirjainsarja: kirjainryhmät',shown:shown,answer:ans,letters:true,explain:lines.join(' ')+' Seuraava ryhmä: '+ans+'.'};
-  }
-  return genNum(level,true);
-}
-
-function genItem(mode,level){if(mode==='nl'){const r=Math.random();return r<0.5?genNum(level):r<0.8?genNum(level,true):genLetterGroups(level);}if(mode==='let')return Math.random()<0.6?genNum(level,true):genLetterGroups(level);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level):genVis(level);}
+function genItem(mode,level){if(mode==="nl")return genNum(level,Math.random()<0.4);if(mode==="let")return genNum(level,true);const m=mode==="mix"?pick(["num","vis"]):mode;return m==="num"?genNum(level):genVis(level);}
 /*GEN-END*/
 
 function symSvg(sp){
