@@ -47,8 +47,9 @@ svg{display:block}
 <div class="bar">
   <label>Tyyppi<select id="mode"><option value="mix">Sekoitus</option><option value="num">Numerosarjat</option><option value="nl">Numero- ja kirjainsarjat</option><option value="let">Kirjainsarjat</option><option value="vis">Kuviotäydennykset</option></select></label>
   <label>Vaikeus<select id="level"><option value="1">1 Helppo</option><option value="2" selected>2 Keskitaso</option><option value="3">3 Vaikea</option><option value="0">Sekoitus (1–3)</option></select></label>
+  <label>Jatkettavat luvut<select id="count"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
   <label>Aikaraja<select id="limit"><option value="0">Ei rajaa</option><option value="15">15 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option><option value="90">90 s</option></select></label>
-  <label>Kokonaisaika<select id="total"><option value="0">Ei rajaa</option><option value="600">10 min</option></select></label>
+  <label>Kokonaisaika<select id="total"><option value="0">Ei rajaa</option><option value="420">7 min</option><option value="600">10 min</option></select></label>
   <button id="newbtn" class="primary" style="align-self:flex-end">Aloita</button>
 </div>
 <div class="card" id="stage" style="display:none">
@@ -132,323 +133,37 @@ const FAM={
 const LPOOLS={1:['arith','grow'],2:['arith','grow','geo','fib'],3:['grow','geo','fib','inter','third']};
 const POOLS={1:['arith','grow'],2:['grow','geo','mulAdd','altA','altB','fib'],3:['geo','mulAdd','altA','altB','inter','fact','fib','third','grow']};
 
-function genNum(level,onlyLetters){
-  for(let tries=0;tries<800;tries++){
+function genNum(level,onlyLetters,count){
+  count=count||1;
+  for(let tries=0;tries<2000;tries++){
     const id=pick(onlyLetters?LPOOLS[level]:POOLS[level]);const f=FAM[id];
     const len=f.len||(level===1?5:6);
-    const g=f.gen(len,level);const t=g.t;
-    const shown=t.slice(0,len),ans=t[len];
+    const g=f.gen(len+count-1,level);const t=g.t;
+    const shown=t.slice(0,len),answers=t.slice(len,len+count),ans=answers[0];
+    if(answers.length<count)continue;
     if(!t.every(x=>Number.isInteger(x)&&Math.abs(x)<=20000))continue;
     if(id!=='fact'&&t.some(x=>Math.abs(x)>1500))continue;
     if(t[0]===t[2]&&t[1]===t[3])continue;
     if(new Set(t).size<t.length-1)continue;
-    const preds=FITS.map(fn=>fn(shown)).filter(v=>v!==null);
-    if(!preds.length||!preds.every(v=>v===ans)||f.fit(shown)!==ans)continue;
+    let unique=true;
+    for(let j=0;j<count&&unique;j++){
+      const cur=t.slice(0,len+j);
+      const preds=FITS.map(fn=>fn(cur)).filter(v=>v!==null);
+      if(!preds.length||!preds.every(v=>v===t[len+j])||f.fit(cur)!==t[len+j])unique=false;
+    }
+    if(!unique)continue;
     const inRange=t.every(x=>x>=1&&x<=26);if(onlyLetters&&!inRange)continue;const letters=onlyLetters||(!!f.letters&&Math.random()<0.25&&inRange);
+    const fmt=x=>letters?LET[x-1]:String(x);
     let ex=f.ex(shown,ans,g.p);
     if(letters)ex='Kirjaimet numeroina: '+shown.map(x=>LET[x-1]+'='+x).join(', ')+'. '+ex+' Vastaus '+ans+' = '+LET[ans-1]+'.';
-    return{kind:'num',fam:(letters?'Kirjainsarja: ':'Numero: ')+f.label,shown:letters?shown.map(x=>LET[x-1]):shown.map(String),answer:letters?LET[ans-1]:String(ans),letters,explain:ex};
+    if(count>1)ex+=' Sama sääntö jatkuu: '+answers.slice(1).map(x=>letters?LET[x-1]+' ('+x+')':String(x)).join(', ')+'.';
+    return{kind:'num',fam:(letters?'Kirjainsarja: ':'Numero: ')+f.label,shown:shown.map(fmt),answers:answers.map(fmt),answer:answers.map(fmt).join(', '),count,letters,explain:ex};
   }
+  if(level>1)return genNum(level-1,onlyLetters,count);
+  if(count>1)return genNum(level,onlyLetters,count-1);
   throw new Error('genNum failed');
 }
-
-const SIZES=[18,28,38];
-const ALLSH=['circle','square','triangle','diamond','pentagon','hexagon','star','cross'];
-const SHN={circle:'ympyrä',square:'neliö',triangle:'kolmio',diamond:'vinoneliö',pentagon:'viisikulmio',hexagon:'kuusikulmio',star:'tähti',cross:'risti',arrow:'nuoli'};
-const ROTSH=['triangle','arrow'];
-const FLN=['valkoinen','harmaa','musta'],CNT=['yksi','kaksi','kolme'],SZN=['pieni','keskikokoinen','iso'];
-const RULES=[null,(r,c)=>r,(r,c)=>c,(r,c)=>(r+c)%3,(r,c)=>(r+2*c)%3,(r,c)=>2-c,(r,c)=>2-r];
-const RDESC=[ '',
- 'määräytyy rivin mukaan (ylhäältä alas)',
- 'määräytyy sarakkeen mukaan (vasemmalta oikealle)',
- 'etenee yhden askeleen sekä riviä että saraketta kohti, joten jokainen arvo esiintyy kerran joka rivillä ja sarakkeessa',
- 'etenee kaksi askelta sarakkeittain ja yhden riveittäin, joten jokainen arvo esiintyy kerran joka rivillä ja sarakkeessa',
- 'määräytyy sarakkeen mukaan käänteisessä järjestyksessä',
- 'määräytyy rivin mukaan käänteisessä järjestyksessä'];
-const ANAME={shape:'Muoto',fill:'Väri',count:'Lukumäärä',size:'Koko',rot:'Kierto (myötäpäivään)'};
-const keyOf=sp=>JSON.stringify(sp);
-
-function cfgVal(cfg,a,r,c){return cfg.rule[a]?RULES[cfg.rule[a]](r,c):cfg.cst[a];}
-function cellOf(vals,cfg){
-  const shape=cfg.shapes[vals.shape];
-  const sp={shape:shape,fill:vals.fill,n:vals.count+1};
-  if(cfg.fm==='h'&&vals.fill===1)sp.fm='h';
-  if(sp.n===1)sp.s=SIZES[vals.size];
-  if(ROTSH.indexOf(shape)>=0)sp.rot=vals.rot*cfg.rstep;
-  return sp;
-}
-function valsAt(cfg,r,c){const v={};['shape','fill','count','size','rot'].forEach(a=>v[a]=cfgVal(cfg,a,r,c));return v;}
-const fillName=sp=>sp.fill===1&&sp.fm==='h'?'viivoitettu':FLN[sp.fill];
-function describeCell(sp){return sp.n+' × '+fillName(sp)+' '+SHN[sp.shape]+(sp.rot?' (kierto '+sp.rot+'°)':'');}
-
-function genAttr(level){
-  for(;;){
-    const k=level===1?2:(level===2?rnd(2,3):3);
-    const act=shuffle(['shape','fill','count','size','rot']).slice(0,k);
-    if(act.includes('size')&&act.includes('count'))continue;
-    if(act.includes('rot')&&act.includes('shape'))continue;
-    if(level===1&&act.includes('rot'))continue;
-    let rules;
-    if(level===1)rules=shuffle([1,2]);
-    else{rules=shuffle(level===2?[1,2,3,4]:[1,2,3,4,5,6]).slice(0,k);if(!rules.some(x=>x===3||x===4))continue;}
-    const rule={};act.forEach((a,i)=>rule[a]=rules[i]);
-    const shapes=shuffle(ALLSH).slice(0,3);
-    if(act.includes('rot'))shapes[2]=pick(ROTSH);
-    const cst={shape:act.includes('rot')?2:rnd(0,2),fill:rnd(0,2),count:0,size:1,rot:0};
-    const cfg={act,rule,cst,shapes,fm:pick(['g','g','h']),rstep:pick([90,90,45])};
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(cellOf(valsAt(cfg,r,c),cfg));
-    if(new Set(cells.map(keyOf)).size<4)continue;
-    const ansVals=valsAt(cfg,2,2),ans=cells[8];
-    const cand=[];
-    ['shape','fill','count','size','rot'].forEach(a=>{[0,1,2].forEach(v=>{if(v!==ansVals[a]){const w=Object.assign({},ansVals);w[a]=v;cand.push(cellOf(w,cfg));}});});
-    [cells[7],cells[5],cells[2],cells[6]].forEach(x=>cand.push(x));
-    const seen=new Set([keyOf(ans)]);const opts=[];
-    shuffle(cand).forEach(x=>{const kk=keyOf(x);if(!seen.has(kk)&&opts.length<5){seen.add(kk);opts.push(x);}});
-    if(opts.length<5)continue;
-    const all=shuffle([ans].concat(opts));
-    const vlist={shape:cfg.shapes.map(x=>SHN[x]),fill:cfg.fm==='h'?['valkoinen','viivoitettu','musta']:FLN,count:CNT,size:SZN,rot:[0,1,2].map(i=>i*cfg.rstep+'°')};
-    const lines=act.map(a=>ANAME[a]+' '+RDESC[rule[a]]+' ('+vlist[a].join(', ')+').');
-    const consts=['shape','fill','count','size','rot'].filter(a=>!act.includes(a)&&!(a==='size'&&ans.n>1)&&!(a==='rot'&&ROTSH.indexOf(ans.shape)<0)).map(a=>ANAME[a].split(' ')[0].toLowerCase());
-    const ex=lines.join(' ')+(consts.length?' Pysyvät samoina: '+consts.join(', ')+'.':'')+' Rivi 3, sarake 3: '+describeCell(ans)+'.';
-    const grid=cells.slice(0,8).concat([{q:1}]);
-    return{kind:'vis',fam:'Kuvio: ominaisuussäännöt ('+k+')',grid,options:all,ci:all.indexOf(ans),explain:ex};
-  }
-}
-
-function specOptions(ans,cands,rand){
-  const seen=new Set([keyOf(ans)]);const opts=[];
-  shuffle(cands).forEach(x=>{const k=keyOf(x);if(!seen.has(k)&&opts.length<5){seen.add(k);opts.push(x);}});
-  let guard=0;
-  while(opts.length<5&&guard++<300){const x=rand();const k=keyOf(x);if(!seen.has(k)){seen.add(k);opts.push(x);}}
-  const all=shuffle([ans].concat(opts));
-  return{options:all,ci:all.findIndex(x=>keyOf(x)===keyOf(ans))};
-}
-function gridOf(cells){return cells.slice(0,8).concat([{q:1}]);}
-
-function genPoly(){
-  for(;;){
-    const sr=pick([0,1,1]),fr=pick([0,1,2]),fm=pick(['g','h']);
-    const FR=[(r,c)=>r,(r,c)=>c,(r,c)=>(r+c)%3];
-    const FD=['Väri määräytyy rivin mukaan (valkoinen, '+(fm==='h'?'viivoitettu':'harmaa')+', musta).','Väri määräytyy sarakkeen mukaan (valkoinen, '+(fm==='h'?'viivoitettu':'harmaa')+', musta).','Väri kiertää riveittäin ja sarakkeittain, joten jokainen väri esiintyy kerran joka rivillä ja sarakkeessa.'];
-    const mkv=(n,f)=>{const sp={poly:n,fill:f};if(fm==='h'&&f===1)sp.fm='h';return sp;};
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mkv(3+sr*r+c,FR[fr](r,c)));
-    const ans=cells[8];
-    const cands=[];
-    [-2,-1,1,2].forEach(d=>{if(ans.poly+d>=3&&ans.poly+d<=9)cands.push(mkv(ans.poly+d,ans.fill));});
-    [0,1,2].forEach(f=>{if(f!==ans.fill){cands.push(mkv(ans.poly,f));cands.push(mkv(ans.poly+1,f));}});
-    cands.push(cells[7],cells[5]);
-    const o=specOptions(ans,cands,()=>mkv(rnd(3,9),rnd(0,2)));
-    const ex='Monikulmion sivujen määrä kasvaa yhdellä joka sarakkeessa'+(sr?' ja yhdellä joka rivillä':'')+'. '+FD[fr]+' Rivi 3, sarake 3: '+ans.poly+' sivua, '+fillName(ans)+'.';
-    return{kind:'vis',fam:'Kuvio: monikulmion sivumäärä',grid:gridOf(cells),options:o.options,ci:o.ci,explain:ex};
-  }
-}
-
-function genLines(){
-  for(;;){
-    const nByRow=Math.random()<0.5,sa=pick([1,3]),off=pick([0,1,3]);
-    const mk=(r,c)=>nByRow?{lines:1+r,ang:((sa*c+off*r)*45)%180}:{lines:1+c,ang:((sa*r+off*c)*45)%180};
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk(r,c));
-    if(new Set(cells.map(keyOf)).size<6)continue;
-    const ans=cells[8];
-    const cands=[];
-    [0,45,90,135].forEach(a=>{if(a!==ans.ang)cands.push({lines:ans.lines,ang:a});});
-    [1,2,3].forEach(n=>{if(n!==ans.lines)cands.push({lines:n,ang:ans.ang});});
-    cands.push(cells[7],cells[5]);
-    const o=specOptions(ans,cands,()=>({lines:rnd(1,3),ang:pick([0,45,90,135])}));
-    const ex='Viivojen määrä määräytyy '+(nByRow?'rivin':'sarakkeen')+' mukaan (1, 2, 3). Viivojen suunta kääntyy '+(sa===1?'45°':'135°')+' myötäpäivään '+(nByRow?'sarakkeittain':'riveittäin')+(off?(', ja jokainen '+(nByRow?'rivi':'sarake')+' alkaa '+(off===1?'45°':'135°')+' edellistä pidemmältä (0° = vaakaviivat, 90° = pystyviivat)'):' (0° = vaakaviivat, 90° = pystyviivat)')+'. Rivi 3, sarake 3: '+ans.lines+' viivaa, suunta '+ans.ang+'°.';
-    return{kind:'vis',fam:'Kuvio: viivojen suunta ja lukumäärä',grid:gridOf(cells),options:o.options,ci:o.ci,explain:ex};
-  }
-}
-
-function genNest(){
-  for(;;){
-    const nByRow=Math.random()<0.5,sh=pick(['square','circle']),fm=pick(['g','h']),latin=Math.random()<0.4;
-    const mk=(r,c)=>{const n=1+(nByRow?r:c);const f=latin?(r+c)%3:(nByRow?c:r);const sp={nest:n,sh:sh,fill:f};if(fm==='h'&&f===1)sp.fm='h';return sp;};
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk(r,c));
-    const ans=cells[8];
-    const mkv=(n,f)=>{const sp={nest:n,sh:sh,fill:f};if(fm==='h'&&f===1)sp.fm='h';return sp;};
-    const cands=[];
-    [1,2,3].forEach(n=>{if(n!==ans.nest)cands.push(mkv(n,ans.fill));});
-    [0,1,2].forEach(f=>{if(f!==ans.fill)cands.push(mkv(ans.nest,f));});
-    cands.push(cells[7],cells[5]);
-    const o=specOptions(ans,cands,()=>mkv(rnd(1,3),rnd(0,2)));
-    const fn=fm==='h'?['valkoinen','viivoitettu','musta']:FLN;
-    const ex='Sisäkkäisten kehien määrä määräytyy '+(nByRow?'rivin':'sarakkeen')+' mukaan (1, 2, 3). Vain sisimmän kehän väri vaihtuu: '+(latin?'se kiertää riveittäin ja sarakkeittain, joten jokainen väri esiintyy kerran joka rivillä ja sarakkeessa':'se määräytyy '+(nByRow?'sarakkeen':'rivin')+' mukaan')+' ('+fn.join(', ')+'). Rivi 3, sarake 3: '+ans.nest+' kehää, sisin '+fillName(ans)+'.';
-    return{kind:'vis',fam:'Kuvio: sisäkkäiset kehät',grid:gridOf(cells),options:o.options,ci:o.ci,explain:ex};
-  }
-}
-
-function genGridMove(){
-  for(let t=0;t<2000;t++){
-    const a1=rnd(0,2),b1=rnd(0,2),a2=rnd(0,2),b2=rnd(0,2);
-    if(!(a1||a2)||!(b1||b2))continue;
-    const mk=(r,c)=>({gm:[(a1*c+b1*r)%3,(a2*c+b2*r)%3]});
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk(r,c));
-    if(new Set(cells.map(keyOf)).size<6)continue;
-    const ans=cells[8];
-    const cands=[cells[7],cells[5],cells[4],{gm:[ans.gm[1],ans.gm[0]]},{gm:[(ans.gm[0]+1)%3,ans.gm[1]]},{gm:[ans.gm[0],(ans.gm[1]+1)%3]},{gm:[(ans.gm[0]+2)%3,ans.gm[1]]},{gm:[ans.gm[0],(ans.gm[1]+2)%3]}];
-    const o=specOptions(ans,cands,()=>({gm:[rnd(0,2),rnd(0,2)]}));
-    const sx=(a,axis)=>a===0?null:(axis==='x'?(a===1?'yhden ruudun oikealle':'yhden ruudun vasemmalle'):(a===1?'yhden ruudun alas':'yhden ruudun ylös'));
-    const txt=(a,b,axis)=>{const p=[];if(sx(a,axis))p.push(sx(a,axis)+' sarakkeittain');if(sx(b,axis))p.push(sx(b,axis)+' riveittäin');return p.length?p.join(' ja '):'pysyy paikallaan';};
-    const nm=['vasen','keskimmäinen','oikea'],nr=['ylin','keskimmäinen','alin'];
-    const ex='Piste liikkuu 3×3-ruudukossa ja jatkaa reunan yli toiselle puolelle. Vaakasuunnassa se siirtyy: '+txt(a1,b1,'x')+'. Pystysuunnassa: '+txt(a2,b2,'y')+'. Rivi 3, sarake 3: '+nr[ans.gm[1]]+' rivi, '+nm[ans.gm[0]]+' sarake.';
-    return{kind:'vis',fam:'Kuvio: liikkuva piste ruudukossa',grid:gridOf(cells),options:o.options,ci:o.ci,explain:ex};
-  }
-  return genPoly();
-}
-
-const CW=[0,1,3,2];
-const CN=['vasen yläkulma','oikea yläkulma','vasen alakulma','oikea alakulma'];
-const sortSet=s=>Array.from(new Set(s)).sort((a,b)=>a-b);
-const dotsSp=a=>({dots:sortSet(a)});
-function dotOptions(ans,extras){
-  const cand=extras.slice();
-  const singles=[0,1,2,3].map(i=>[i]);
-  const pairs=[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]];
-  const triples=[[0,1,2],[0,1,3],[0,2,3],[1,2,3]];
-  const rest=shuffle(singles.concat(pairs,triples));
-  const seen=new Set([JSON.stringify(sortSet(ans))]);const opts=[];
-  extras.concat(rest).forEach(c=>{const s=sortSet(c);const kk=JSON.stringify(s);if(s.length&&!seen.has(kk)&&opts.length<5){seen.add(kk);opts.push(dotsSp(s));}});
-  const a=dotsSp(ans);const all=shuffle([a].concat(opts));
-  return{options:all,ci:all.indexOf(a)};
-}
-function gridFromSets(g){const grid=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)grid.push(r===2&&c===2?{q:1}:dotsSp(g[r][c]));return grid;}
-
-function genDotMove(){
-  for(;;){
-    const a=rnd(1,3),b=rnd(1,3);
-    const g=[0,1,2].map(r=>[0,1,2].map(c=>[CW[(a*c+b*r)%4]]));
-    const ans=g[2][2];
-    const extras=[[CW[(a*2+b*1)%4]],[CW[(a*1+b*2)%4]],[g[2][1][0],ans[0]]];
-    const o=dotOptions(ans,extras);
-    const row=g[2].map(x=>CN[x[0]]);
-    const ex='Pisteen paikkaa seurataan myötäpäivään (vasen yläkulma → oikea yläkulma → oikea alakulma → vasen alakulma). Se siirtyy '+a+' kulmaa sarakkeittain, ja jokainen rivi alkaa '+b+' kulmaa edellistä rivistä myöhemmin. Rivi 3: '+row.join(', ')+'.';
-    return{kind:'vis',fam:'Kuvio: yksi liikkuva piste',grid:gridFromSets(g),options:o.options,ci:o.ci,explain:ex};
-  }
-}
-function genTwoDots(){
-  for(let tries=0;tries<500;tries++){
-    const ra=rnd(0,3),rb=rnd(0,3),s0=rnd(0,3),sa=pick([1,1,3]),sb=pick([1,1,3]);
-    const A=(r,c)=>CW[(ra*r+sa*c)%4],B=(r,c)=>CW[(s0+rb*r+(4-sb)*c)%4];
-    const g=[0,1,2].map(r=>[0,1,2].map(c=>[A(r,c),B(r,c)]));
-    const sep=g.flat().filter(x=>x[0]!==x[1]).length;
-    const ans=g[2][2];
-    if(sep<7||ans[0]===ans[1]||(sa===sb&&false))continue;
-    if(sa===1&&sb===3&&false)continue;
-    const extras=[[A(2,2)],[B(2,2)],[A(2,1),B(2,1)],[CW[(CW.indexOf(ans[0])+1)%4],ans[1]]];
-    const o=dotOptions(ans,extras);
-    const dirA=sa===1?'myötäpäivään':'vastapäivään',dirB=sb===1?'myötäpäivään':'vastapäivään';
-    const ex='Kaksi pistettä, joita seurataan erikseen. Piste A siirtyy yhden kulman '+dirA+' sarakkeittain ja piste B yhden kulman '+dirB+'. Rivillä 3: A kulkee '+[0,1,2].map(c=>CN[A(2,c)]).join(' → ')+' ja B kulkee '+[0,1,2].map(c=>CN[B(2,c)]).join(' → ')+'.';
-    return{kind:'vis',fam:'Kuvio: kaksi liikkuvaa pistettä',grid:gridFromSets(g),options:o.options,ci:o.ci,explain:ex};
-  }
-  return genDotMove();
-}
-const mirH=s=>s.map(i=>[1,0,3,2][i]),mirV=s=>s.map(i=>[2,3,0,1][i]);
-const OPS={
- xor:{n:'Kuvio: yhteiset pisteet katoavat',f:(a,b)=>sortSet(a.filter(x=>!b.includes(x)).concat(b.filter(x=>!a.includes(x)))),ex:'Kolmannessa solussa näkyvät vain pisteet, jotka ovat tasan toisessa kahdesta ensimmäisestä solusta. Yhteiset pisteet katoavat.'},
- union:{n:'Kuvio: yhdistäminen',f:(a,b)=>sortSet(a.concat(b)),ex:'Kolmas solu on kahden ensimmäisen solun päällekkäinasettelu: kaikki pisteet säilyvät.'},
- and:{n:'Kuvio: vain yhteiset pisteet',f:(a,b)=>sortSet(a.filter(x=>b.includes(x))),ex:'Kolmannessa solussa näkyvät vain pisteet, jotka ovat sekä ensimmäisessä että toisessa solussa.'},
- minus:{n:'Kuvio: ensimmäisestä poistetaan toinen',f:(a,b)=>sortSet(a.filter(x=>!b.includes(x))),ex:'Kolmas solu näyttää ensimmäisen solun pisteet, joista on poistettu toisen solun pisteet.'},
- mirH:{n:'Kuvio: peilaus',f:a=>sortSet(mirH(a)),ex:'Kolmas solu on ensimmäisen solun peilikuva vasemmalta oikealle. Toinen sarake on harhauttaja.'},
- mirV:{n:'Kuvio: peilaus',f:a=>sortSet(mirV(a)),ex:'Kolmas solu on ensimmäisen solun peilikuva ylhäältä alas. Toinen sarake on harhauttaja.'}
-};
-function randSet(){const k=rnd(1,3);return sortSet(shuffle([0,1,2,3]).slice(0,k));}
-function genCombine(){
-  for(let tries=0;tries<2000;tries++){
-    const id=pick(Object.keys(OPS));const op=OPS[id];
-    const g=[0,1,2].map(()=>{const a=randSet(),b=randSet();return[a,b,op.f(a,b)];});
-    if(g.some(row=>!row[2].length))continue;
-    if(g.some(row=>JSON.stringify(row[2])===JSON.stringify(row[0])||JSON.stringify(row[2])===JSON.stringify(row[1])))continue;
-    const fitting=Object.keys(OPS).filter(k=>[0,1].every(r=>JSON.stringify(OPS[k].f(g[r][0],g[r][1]))===JSON.stringify(g[r][2])));
-    if(fitting.length!==1)continue;
-    const ans=g[2][2];
-    const extras=Object.keys(OPS).filter(k=>k!==id).map(k=>OPS[k].f(g[2][0],g[2][1])).concat([g[2][0],g[2][1]]);
-    const o=dotOptions(ans,extras);
-    const names=s=>s.map(i=>CN[i]).join(' + ');
-    const ex=op.ex+' Rivi 3: '+names(g[2][0])+' ja '+names(g[2][1])+' antavat '+names(ans)+'.';
-    const grid=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)grid.push(r===2&&c===2?{q:1}:dotsSp(g[r][c]));
-    return{kind:'vis',fam:op.n,grid,options:o.options,ci:o.ci,explain:ex};
-  }
-  return genDotMove();
-}
-const TF={
- neg:{n:'värinegatiivi',d:'värit vaihtuvat: mustat alueet muuttuvat valkoisiksi ja valkoiset mustiksi',f:t=>t.map(x=>1-x)},
- rot90:{n:'kierto 90°',d:'kuvio kääntyy 90 astetta myötäpäivään',f:t=>t.map((_,i)=>t[(i+6)%8])},
- rot180:{n:'kierto 180°',d:'kuvio kääntyy 180 astetta',f:t=>t.map((_,i)=>t[(i+4)%8])},
- mirH:{n:'peilaus vaakasuunnassa',d:'kuvio peilautuu vasemmalta oikealle',f:t=>[1,0,7,6,5,4,3,2].map(j=>t[j])},
- mirV:{n:'peilaus pystysuunnassa',d:'kuvio peilautuu ylhäältä alas',f:t=>[5,4,3,2,1,0,7,6].map(j=>t[j])}
-};
-const TFK=Object.keys(TF);
-const tileSp=t=>({tile:t});
-function randTile(){
-  for(;;){
-    const st=pick(['tri','quad','mix','mix']);let t;
-    const c=[0,1,2,3].map(()=>rnd(0,1));
-    if(st==='tri')t=[c[0],c[0],c[1],c[1],c[2],c[2],c[3],c[3]];
-    else if(st==='quad')t=[c[0],c[1],c[1],c[2],c[2],c[3],c[3],c[0]];
-    else t=[0,1,2,3,4,5,6,7].map(()=>rnd(0,1));
-    const s=t.reduce((a,b)=>a+b,0);
-    if(s>=2&&s<=6)return t;
-  }
-}
-const tk=t=>JSON.stringify(t);
-function tileOptions(ans,neighbors){
-  const cand=[];
-  TFK.forEach(k=>{cand.push(TF[k].f(ans));neighbors.forEach(n=>cand.push(TF[k].f(n)));});
-  neighbors.forEach(n=>cand.push(n));
-  for(let i=0;i<8;i++){const w=ans.slice();w[i]=1-w[i];w[(i+1)%8]=1-w[(i+1)%8];cand.push(w);}
-  const seen=new Set([tk(ans)]);const opts=[];
-  shuffle(cand).forEach(x=>{const kk=tk(x);if(!seen.has(kk)&&opts.length<5){seen.add(kk);opts.push(tileSp(x));}});
-  const all=shuffle([tileSp(ans)].concat(opts));
-  return{options:all,ci:all.findIndex(x=>tk(x.tile)===tk(ans))};
-}
-function genTile2(level){
-  const keys=level===1?['neg']:TFK;
-  for(let tries=0;tries<3000;tries++){
-    const T=pick(keys),f=TF[T].f;
-    const a=randTile(),b=randTile();
-    const fa=f(a),fb=f(b);
-    if(tk(fa)===tk(a)||tk(fb)===tk(b))continue;
-    if(TFK.some(u=>u!==T&&tk(TF[u].f(a))===tk(fa)))continue;
-    if(TFK.some(u=>tk(TF[u].f(a))===tk(b))||tk(a)===tk(b))continue;
-    if([tk(a),tk(b),tk(fa)].includes(tk(fb)))continue;
-    const axisRow=Math.random()<0.6;
-    const cells=axisRow?[a,b,fa,fb]:[a,fa,b,fb];
-    const grid=cells.slice(0,3).map(tileSp).concat([{q:1}]);
-    const o=tileOptions(fb,axisRow?[a,b,fa]:[a,fa,b]);
-    const where=axisRow?'Alarivi on ylärivin muunnos: ':'Oikea sarake on vasemman sarakkeen muunnos: ';
-    const ex=where+TF[T].d+'. Sama muunnos tehdään toiselle sarakkeelle ('+(axisRow?'oikean yläkulman kuviolle':'vasemman alakulman kuviolle')+'), joten vastaus on sen tulos.';
-    return{kind:'vis',cols:2,fam:'Kuvio: kolmiot, '+TF[T].n,grid,options:o.options,ci:o.ci,explain:ex};
-  }
-  return genDotMove();
-}
-function applyN(t,k,n){for(let i=0;i<n;i++)t=TF[k].f(t);return t;}
-function genTile3(){
-  for(let tries=0;tries<3000;tries++){
-    const T1=pick(TFK),T2=pick(TFK);
-    if(T1===T2||(T1==='neg'&&T2==='neg'))continue;
-    const base=randTile();
-    if(tk(TF[T1].f(base))===tk(base)||tk(TF[T2].f(base))===tk(base))continue;
-    const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(applyN(applyN(base,T1,c),T2,r));
-    if(new Set(cells.map(tk)).size<5)continue;
-    const ans=cells[8];
-    const IDK=['id'].concat(TFK);
-    const ap=(t,k,n)=>k==='id'?t:applyN(t,k,n);
-    let ok=true;
-    IDK.forEach(u1=>IDK.forEach(u2=>{
-      const g=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)g.push(ap(ap(base,u1,c),u2,r));
-      if(g.slice(0,8).every((x,i)=>tk(x)===tk(cells[i]))&&tk(g[8])!==tk(ans))ok=false;
-    }));
-    if(!ok)continue;
-    const o=tileOptions(ans,[cells[7],cells[5],cells[4]]);
-    const ex='Oikealle siirryttäessä: '+TF[T1].d+'. Alaspäin siirryttäessä: '+TF[T2].d+'. Rivi 3, sarake 3 saadaan, kun molemmat muunnokset tehdään kahdesti peräkkäin.';
-    return{kind:'vis',cols:3,fam:'Kuvio: kolmiot, kaksi muunnosta (3×3)',grid:cells.slice(0,8).map(tileSp).concat([{q:1}]),options:o.options,ci:o.ci,explain:ex};
-  }
-  return genTile2(2);
-}
-const VPOOLS={1:[genAttr,genAttr,genTile2,genNest],2:[genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
-function genVis(level){return pick(VPOOLS[level])(level);}
-function genItem(mode,level){if(mode==="nl")return genNum(level,Math.random()<0.2);if(mode==="let")return genNum(level,true);const m=mode==="mix"?pick(["num","vis"]):mode;return m==="num"?genNum(level):genVis(level);}
+function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
 
 function symSvg(sp){
@@ -535,14 +250,14 @@ function newItem(){
   clearInterval(tick);
   done=false;limit=+$('limit').value;
   const lv=+$('level').value;
-  item=genItem($('mode').value,lv||rnd(1,3));
+  item=genItem($('mode').value,lv||rnd(1,3),+$('count').value);
   $('stage').style.display='block';$('err').textContent='';$('fb').innerHTML='';$('btns').innerHTML='';
   $('hdr').textContent=(item.kind==='num'?'Sarja':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
   sessionLine();
   if(item.kind==='num'){
     let h='<div style="margin-bottom:14px">';
     item.shown.forEach(s=>{h+='<span class="term">'+s+'</span>';});
-    h+='<span class="term tq">?</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="ans" placeholder="Vastauksesi" style="width:150px" autocomplete="off"><button id="go" class="primary">Tarkista</button><button id="skip">Ohita</button></div>';
+    for(let q=0;q<(item.count||1);q++)h+='<span class="term tq">?</span>';h+='</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="ans" placeholder="'+((item.count||1)>1?'Vastauksesi ('+item.count+' lukua)':'Vastauksesi')+'" style="width:'+((item.count||1)>1?230:150)+'px" autocomplete="off"><button id="go" class="primary">Tarkista</button><button id="skip">Ohita</button></div>';
     $('body').innerHTML=h;
     $('ans').addEventListener('input',()=>{$('err').textContent='';});
     $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkNum();}});
@@ -571,8 +286,10 @@ function checkNum(){
   if(done)return;
   const v=$('ans').value.trim();
   if(!v){$('err').textContent='Kirjoita ensin vastaus tai paina Ohita';return;}
-  const norm=v.replace('−','-').replace(/\s/g,'').toUpperCase();
-  finish(norm===item.answer.toUpperCase(),v);
+  const want=(item.answers||[item.answer]).map(x=>x.toUpperCase());
+  let got=v.replace(/−/g,'-').toUpperCase().split(/[\s,;]+/).filter(Boolean);
+  if(want.length>1&&got.length===1&&item.letters)got=got[0].split('');
+  finish(got.length===want.length&&got.every((x,i)=>x===want[i]),v);
 }
 function pickVis(k){
   if(done)return;
