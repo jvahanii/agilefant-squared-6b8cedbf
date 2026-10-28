@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   BookOpen,
@@ -35,6 +35,7 @@ import {
   MoveRight,
   Lock,
   ArrowLeftRight,
+  Briefcase,
 } from "lucide-react";
 
 interface UserGuideDialogProps {
@@ -1106,41 +1107,18 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Synchronise <strong className="text-foreground">Jira Cloud spaces with Agilefant lists</strong>, both
-            ways. An organisation can synchronise several spaces, each with a list of its own, from{" "}
+            Keep <strong className="text-foreground">Jira Cloud spaces and Agilefant lists</strong> in step, both
+            ways: names, descriptions, statuses, points, web links and the hierarchy, with each item's Jira key and
+            type shown after its name. An organisation can sync several spaces, each with a list of its own, from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → Jira</strong>.
           </p>
           <div className="space-y-2">
-            <ActionRow action="Prepare Jira" how={<>Create an Atlassian API token for an account with access to the spaces. Ask the person managing your Supabase project to save it under Edge Functions → Secrets as <code>JIRA_API_TOKEN</code>. Do not enter the token in the Jira card.</>} labelWidth="sm:w-40" />
-            <ActionRow action="Connect a space" how="An owner or admin enters the Jira address (https://yoursite.atlassian.net) and the token owner's Atlassian email, clicks Choose spaces, picks a tree for each space and clicks its Sync now. The space gets a new list named after it in that tree." labelWidth="sm:w-40" />
-            <ActionRow action="Send a list to Jira" how="Right-click a list that is not synchronised yet and choose Sync with Jira… A new Jira space is created for it, named after the list; its key is suggested and can be changed. The list's items are sent there at once." labelWidth="sm:w-40" />
-            <ActionRow action="Sync now" how="Sync now on the Jira card, or the Jira button in the header, synchronises every space at once and reports what changed. Each space shows its paired items, waiting changes, last sync time and last error." labelWidth="sm:w-40" />
-            <ActionRow action="Automatic updates" how="Agilefant changes are sent within seconds. Jira changes arrive within seconds when the space's webhook is registered; if the card says it is not, use Sync now to fetch Jira changes." labelWidth="sm:w-40" />
-            <ActionRow action="Disconnect" how="Disconnect stops syncing one space; Disconnect all stops every space. Existing items and Jira issues remain on both sides." labelWidth="sm:w-40" />
+            <ActionRow action="Connect a space" how="An owner or admin enters the Jira address and the API token owner's Atlassian email, chooses Choose spaces, picks a tree for a space and chooses its Sync now. The space gets a new list named after it." labelWidth="sm:w-40" />
+            <ActionRow action="Send a list to Jira" how="Right-click a list that is not synced yet and choose Sync with Jira… A new Jira space is made for it and its items are sent there." labelWidth="sm:w-40" />
+            <ActionRow action="Sync now" how="Sync now on the Jira card, or Sync Jira in the header, goes through every space both ways and reports what changed. Otherwise changes travel on their own within seconds." labelWidth="sm:w-40" />
+            <ActionRow action="Stop one item" how="Right-click a synced item and choose Stop syncing with Jira; Resume syncing with Jira brings it back in step." labelWidth="sm:w-40" />
           </div>
-          <h3 className="text-sm font-semibold">What stays in sync</h3>
-          <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-            <li>Names, descriptions, statuses, story points where Jira provides a compatible field, and the epic → task → subtask hierarchy supported by the space.</li>
-            <li>Web links: an item's hyperlinks and the issue's external web links are kept in step. Links Jira's own apps add are left alone.</li>
-            <li>Open an item's menu and choose Description to view or edit it, including from the phone's item menu. Saving the description sends it to Jira. Descriptions are exchanged as plain text; Jira's rich formatting is not preserved.</li>
-            <li>Built-in statuses map to Jira's To Do, In Progress, In Review and Done. Blocked maps to In Progress; No Go maps to Done.</li>
-            <li>A Jira status missing from Agilefant is added to the synced list's status set. An Agilefant status missing from Jira is added where Jira permissions and workflow allow it. If Jira refuses, the sync falls back to In Progress and records an error.</li>
-          </ul>
-          <h3 className="text-sm font-semibold">Deletion and conflicting edits</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Deleting a linked item on either side deletes its counterpart. Moving an Agilefant item out of the
-            connected list also deletes its Jira issue. Jira deletion is permanent: restoring the item in
-            Agilefant creates a new Jira issue with a new number, not the old issue's comments or history.
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Changes to different fields can be combined. If the same field changes on both sides, automatic
-            sync uses the change times where available; during a full Sync now, Jira wins that conflict.
-          </p>
-          <Tip>
-            Syncing and refreshing Jira's open page are different things. Changes can reach Jira while its
-            board or issue page still shows the old value. Refresh Jira to see them; Agilefant receives live
-            updates without a page refresh. If a change is missing, check the Jira card's last error and try Sync now.
-          </Tip>
+          <FullGuideLink href="/user-guide/jira">Read the full Jira integration guide</FullGuideLink>
         </div>
       ),
     },
@@ -1331,6 +1309,27 @@ function buildSections(): Section[] {
       ),
     },
     {
+      id: "job-ads",
+      icon: <Briefcase className="w-4 h-4" />,
+      label: "Job Ad Import",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Turn the <strong className="text-foreground">job alert emails in your Gmail</strong> into list items, one
+            per job posting, named after the employer and the role, with the closing date where one is found and
+            the posting attached. Set it up from{" "}
+            <strong className="text-foreground">Settings → Bells & Whistles → Job ad import</strong>.
+          </p>
+          <div className="space-y-2">
+            <ActionRow action="Import" how="Connect Gmail, search your job alerts, and choose which postings become items in which list." labelWidth="sm:w-40" />
+            <ActionRow action="Schedule" how="Run the same search on a schedule, so new postings arrive by themselves." labelWidth="sm:w-40" />
+            <ActionRow action="Closed ads" how="Check the imported postings for ads that have closed, and clear them away." labelWidth="sm:w-40" />
+          </div>
+          <FullGuideLink href="/user-guide/job-ads">Read the full job ad import guide</FullGuideLink>
+        </div>
+      ),
+    },
+    {
       id: "pricing",
       icon: <CreditCard className="w-4 h-4" />,
       label: "Pricing & Plans",
@@ -1402,10 +1401,52 @@ function buildSections(): Section[] {
   ];
 }
 
-export function UserGuideContent() {
-  const [activeSection, setActiveSection] = useState("overview");
+/** A guide too long for a section here, on a public page of its own. */
+function FullGuideLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+    >
+      {children}
+      <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+    </a>
+  );
+}
+
+/** The section the address names — /user-guide#jira opens the Jira section — or null. */
+function sectionInAddress(): string | null {
+  return typeof window === "undefined" ? null : decodeURIComponent(window.location.hash.slice(1)) || null;
+}
+
+/**
+ * The guide's sections. On its own page (`linked`) the address names the
+ * section shown, so a section can be linked to directly: /user-guide#jira.
+ */
+export function UserGuideContent({ linked = false }: { linked?: boolean } = {}) {
   const sections = buildSections();
+  const [activeSection, setActiveSectionState] = useState(() => {
+    const named = linked ? sectionInAddress() : null;
+    return named && sections.some((s) => s.id === named) ? named : "overview";
+  });
   const active = sections.find((s) => s.id === activeSection) ?? sections[0];
+
+  const setActiveSection = (id: string) => {
+    setActiveSectionState(id);
+    if (linked) window.history.replaceState(null, "", `#${id}`);
+  };
+
+  useEffect(() => {
+    if (!linked) return;
+    const follow = () => {
+      const named = sectionInAddress();
+      if (named) setActiveSectionState(named);
+    };
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, [linked]);
 
   return (
     <div className="flex flex-col sm:flex-row flex-1 min-h-0">

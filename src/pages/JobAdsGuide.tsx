@@ -1,6 +1,5 @@
-import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen } from "lucide-react";
+import { PublicGuide, Section, SubHeading, P, Ul, Ol, Em, Code, Dl, Callout } from "@/components/PublicGuide";
 import { CAREER_PAGE_SOURCES } from "../../supabase/functions/_shared/careerPages";
 
 /**
@@ -68,640 +67,538 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
 ];
 
 export default function JobAdsGuide() {
-  useEffect(() => {
-    document.title = "Job ad import guide – Agilefant²";
-  }, []);
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" aria-hidden="true" />
-            <span className="text-base font-semibold">
-              Agilefant<sup className="text-primary">2</sup> — Job ad import guide
-            </span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link to="/user-guide" className="text-muted-foreground transition-colors hover:text-foreground">
-              Full user guide
-            </Link>
-            <Link to="/auth" className="text-muted-foreground transition-colors hover:text-foreground">
-              Sign in →
-            </Link>
-          </nav>
+    <PublicGuide
+      documentTitle="Job ad import guide – Agilefant²"
+      name="Job ad import guide"
+      heading="Job ad import"
+      intro={
+        <>
+          Job ad import turns the job alert emails in your Gmail into list items — one item per job posting — so
+          a job search can be tracked like any other work: prioritised, moved between lists, and cleared away when
+          an ad closes.
+        </>
+      }
+      sections={SECTIONS}
+    >
+      <Section id="what-it-does" title="What it does">
+        <P>For every job posting it finds in a matching email, job ad import creates one work item:</P>
+        <Ul>
+          <li>
+            <strong>Named after the employer and the role</strong> — for example <Code>Fennia - Product owner</Code>.
+          </li>
+          <li>
+            <strong>Given the closing date</strong> when one can be found. Where your organization has{" "}
+            <strong>Deadlines</strong> switched on in Bells &amp; Whistles, it becomes the item's deadline, shown before
+            the name and sortable with <em>Deadline, soonest first</em>. Otherwise it goes in front of the name as
+            month and day — <Code>0930 Fennia - Product owner</Code> closes on 30 September — and sorting by name puts
+            the soonest first.
+          </li>
+          <li>
+            <strong>With the posting attached as a hyperlink</strong>, and a description recording when applications
+            close, which email it came from, the sender and when it arrived.
+          </li>
+        </Ul>
+        <P>
+          Job alert emails carry a lot besides the postings. Site navigation, editorial articles and the
+          &ldquo;jobs you have already seen&rdquo; section of a digest are left out. When the same posting arrives
+          in several alerts — LinkedIn can send one role several times a day — a single import creates it once.
+        </P>
+      </Section>
+
+      <Section id="job-boards" title="Supported job boards">
+        <P>
+          Postings are recognised in emails from these job boards. &ldquo;Searched by default&rdquo; means the
+          search a new saved search starts with already looks for them.
+        </P>
+        <div className="mt-4 overflow-x-auto rounded-lg border">
+          <table className="w-full min-w-[32rem] text-left text-sm">
+            <thead className="border-b bg-muted/40">
+              <tr>
+                <th scope="col" className="px-4 py-2 font-medium">Job board</th>
+                <th scope="col" className="px-4 py-2 font-medium">Searched by default</th>
+                <th scope="col" className="px-4 py-2 font-medium">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {BOARDS.map((b) => (
+                <tr key={b.name}>
+                  <td className="px-4 py-2 font-medium">{b.name}</td>
+                  <td className="px-4 py-2">{b.searched}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{b.note ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </header>
+        <P>
+          The search only looks for these job boards unless you change it. If you widen it to other senders, their
+          emails are not recognised as job alerts, and every link in them is offered as if it were a posting.
+        </P>
+      </Section>
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Job ad import</h1>
-        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-          Job ad import turns the job alert emails in your Gmail into list items — one item per job posting —
-          so a job search can be tracked like any other work: prioritised, moved between lists, and cleared away
-          when an ad closes.
-        </p>
-
-        <nav aria-label="On this page" className="mt-8 rounded-lg border p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On this page</p>
-          <ol className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <a href={`#${s.id}`} className="text-primary underline-offset-2 hover:underline">
-                  {s.title}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
-        <Section id="what-it-does" title="What it does">
-          <P>For every job posting it finds in a matching email, job ad import creates one work item:</P>
+      <Section id="google-oauth" title="Your organization's Google OAuth client">
+        <P>
+          Gmail is connected through your organization&apos;s own Google OAuth client, so your mail is read under an
+          app your organization controls. Until an owner or admin adds one, nobody in the organization can connect
+          Gmail. If <Em>Job ad import</Em> shows no <Em>Google OAuth client</Em> section, your organization is
+          already set up and you can skip this.
+        </P>
+        <P>An owner or admin creates the client once, in Google Cloud Console:</P>
+        <Ol>
+          <li>Create a project, or choose an existing one.</li>
+          <li>
+            Enable the <Em>Gmail API</Em> for the project.
+          </li>
+          <li>
+            Configure the OAuth consent screen: an app name, a support email, and who may use it (see the notes
+            below). Add these scopes: <Code>gmail.modify</Code>, <Code>userinfo.email</Code> and{" "}
+            <Code>userinfo.profile</Code>. <Code>gmail.modify</Code> rather than read-only access is what lets
+            Agilefant mark job alerts as read once you have dealt with them; it is the narrowest scope Google offers
+            for that.
+          </li>
+          <li>
+            Create an OAuth client ID of type <Em>Web application</Em>. Under <Em>Authorized redirect URIs</Em>, add
+            the address shown in Agilefant under <Em>Authorized redirect URI</Em> — normally{" "}
+            <Code>https://agilefant.org/gmail-callback.html</Code>. It must match exactly.
+          </li>
+          <li>
+            Copy the <Em>Client ID</Em> and <Em>Client secret</Em> into the <Em>Google OAuth client</Em> section of{" "}
+            <Em>Job ad import</Em>, and choose <Em>Save client</Em>.
+          </li>
+        </Ol>
+        <P>
+          The secret is encrypted when it is saved and is never shown again. Replacing the secret for the same
+          client keeps everyone&apos;s Gmail connections; switching to a different client ID, or removing the
+          client, disconnects everyone, who then connect again.
+        </P>
+        <Callout tone="warning">
+          <strong>Who can connect depends on how the Google app is set up.</strong> Access to Gmail messages is a
+          restricted permission, and Google limits apps that use it:
           <Ul>
             <li>
-              <strong>Named after the employer and the role</strong> — for example <Code>Fennia - Product owner</Code>.
+              <strong>Internal</strong> — available if your organization uses Google Workspace. Anyone in your
+              Workspace domain can connect, with no approval from Google needed.
             </li>
             <li>
-              <strong>Given the closing date</strong> when one can be found. Where your organization has{" "}
-              <strong>Deadlines</strong> switched on in Bells &amp; Whistles, it becomes the item's deadline, shown before
-              the name and sortable with <em>Deadline, soonest first</em>. Otherwise it goes in front of the name as
-              month and day — <Code>0930 Fennia - Product owner</Code> closes on 30 September — and sorting by name puts
-              the soonest first.
+              <strong>External, in testing</strong> — only people you add as test users can connect, up to 100.
+              Their connections expire after seven days, after which they connect again; scheduled imports stop
+              until they do.
             </li>
             <li>
-              <strong>With the posting attached as a hyperlink</strong>, and a description recording when applications
-              close, which email it came from, the sender and when it arrived.
+              <strong>External, published</strong> — anyone with a Google account can connect, but Google must
+              verify the app first, including a security assessment.
             </li>
           </Ul>
-          <P>
-            Job alert emails carry a lot besides the postings. Site navigation, editorial articles and the
-            &ldquo;jobs you have already seen&rdquo; section of a digest are left out. When the same posting arrives
-            in several alerts — LinkedIn can send one role several times a day — a single import creates it once.
-          </P>
-        </Section>
+        </Callout>
+      </Section>
 
-        <Section id="job-boards" title="Supported job boards">
-          <P>
-            Postings are recognised in emails from these job boards. &ldquo;Searched by default&rdquo; means the
-            search a new saved search starts with already looks for them.
-          </P>
-          <div className="mt-4 overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Job board</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Searched by default</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {BOARDS.map((b) => (
-                  <tr key={b.name}>
-                    <td className="px-4 py-2 font-medium">{b.name}</td>
-                    <td className="px-4 py-2">{b.searched}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{b.note ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <P>
-            The search only looks for these job boards unless you change it. If you widen it to other senders, their
-            emails are not recognised as job alerts, and every link in them is offered as if it were a posting.
-          </P>
-        </Section>
-
-        <Section id="google-oauth" title="Your organization's Google OAuth client">
-          <P>
-            Gmail is connected through your organization&apos;s own Google OAuth client, so your mail is read under an
-            app your organization controls. Until an owner or admin adds one, nobody in the organization can connect
-            Gmail. If <Em>Job ad import</Em> shows no <Em>Google OAuth client</Em> section, your organization is
-            already set up and you can skip this.
-          </P>
-          <P>An owner or admin creates the client once, in Google Cloud Console:</P>
-          <Ol>
-            <li>Create a project, or choose an existing one.</li>
-            <li>
-              Enable the <Em>Gmail API</Em> for the project.
-            </li>
-            <li>
-              Configure the OAuth consent screen: an app name, a support email, and who may use it (see the notes
-              below). Add these scopes: <Code>gmail.modify</Code>, <Code>userinfo.email</Code> and{" "}
-              <Code>userinfo.profile</Code>. <Code>gmail.modify</Code> rather than read-only access is what lets
-              Agilefant mark job alerts as read once you have dealt with them; it is the narrowest scope Google offers
-              for that.
-            </li>
-            <li>
-              Create an OAuth client ID of type <Em>Web application</Em>. Under <Em>Authorized redirect URIs</Em>, add
-              the address shown in Agilefant under <Em>Authorized redirect URI</Em> — normally{" "}
-              <Code>https://agilefant.org/gmail-callback.html</Code>. It must match exactly.
-            </li>
-            <li>
-              Copy the <Em>Client ID</Em> and <Em>Client secret</Em> into the <Em>Google OAuth client</Em> section of{" "}
-              <Em>Job ad import</Em>, and choose <Em>Save client</Em>.
-            </li>
-          </Ol>
-          <P>
-            The secret is encrypted when it is saved and is never shown again. Replacing the secret for the same
-            client keeps everyone&apos;s Gmail connections; switching to a different client ID, or removing the
-            client, disconnects everyone, who then connect again.
-          </P>
-          <Callout tone="warning">
-            <strong>Who can connect depends on how the Google app is set up.</strong> Access to Gmail messages is a
-            restricted permission, and Google limits apps that use it:
+      <Section id="getting-started" title="Getting started">
+        <Ol>
+          <li>
+            Sign in and open <Em>Bells &amp; Whistles</Em> from the button next to the organization name at the top
+            of the app — or, on a small screen, choose the organization name and then <Em>Org Settings</Em>. Scroll
+            to <Em>Job ad import</Em>.
+          </li>
+          <li>
+            If there is a <Em>Google OAuth client</Em> section with no client in it, an owner or admin needs to{" "}
+            <a href="#google-oauth" className="text-primary underline-offset-2 hover:underline">
+              add your organization&apos;s client
+            </a>{" "}
+            first.
+          </li>
+          <li>
+            Under <Em>Your Gmail account</Em>, choose <Em>Connect Gmail</Em> and sign in to Google in the window that
+            opens. The connection is to your own Gmail account, for this organization, and is used only for the
+            searches you save. You can choose <Em>Disconnect</Em> at any time.
+          </li>
+          <li>
+            Under <Em>Add a saved search</Em>, fill in:
             <Ul>
               <li>
-                <strong>Internal</strong> — available if your organization uses Google Workspace. Anyone in your
-                Workspace domain can connect, with no approval from Google needed.
+                <Em>Name (optional)</Em> — something to recognise the search by.
               </li>
               <li>
-                <strong>External, in testing</strong> — only people you add as test users can connect, up to 100.
-                Their connections expire after seven days, after which they connect again; scheduled imports stop
-                until they do.
+                <Em>Gmail search query for job alerts</Em> — this starts out searching every supported job board. It
+                is an ordinary Gmail search, so you can narrow it, for example to a label.
               </li>
               <li>
-                <strong>External, published</strong> — anyone with a Google account can connect, but Google must
-                verify the app first, including a security assessment.
+                <Em>How far back to look</Em> — from the last 12 hours to the last year. Last 30 days is the default.
+              </li>
+              <li>
+                <Em>Only unread</Em> — to skip emails you have already opened.
+              </li>
+              <li>
+                <Em>Tree</Em> and <Em>List</Em> — where the imported postings go.
               </li>
             </Ul>
-          </Callout>
-        </Section>
+          </li>
+          <li>
+            Choose <Em>Save search</Em>.
+          </li>
+        </Ol>
+      </Section>
 
-        <Section id="getting-started" title="Getting started">
-          <Ol>
-            <li>
-              Sign in and open <Em>Bells &amp; Whistles</Em> from the button next to the organization name at the top
-              of the app — or, on a small screen, choose the organization name and then <Em>Org Settings</Em>. Scroll
-              to <Em>Job ad import</Em>.
-            </li>
-            <li>
-              If there is a <Em>Google OAuth client</Em> section with no client in it, an owner or admin needs to{" "}
-              <a href="#google-oauth" className="text-primary underline-offset-2 hover:underline">
-                add your organization&apos;s client
-              </a>{" "}
-              first.
-            </li>
-            <li>
-              Under <Em>Your Gmail account</Em>, choose <Em>Connect Gmail</Em> and sign in to Google in the window that
-              opens. The connection is to your own Gmail account, for this organization, and is used only for the
-              searches you save. You can choose <Em>Disconnect</Em> at any time.
-            </li>
-            <li>
-              Under <Em>Add a saved search</Em>, fill in:
-              <Ul>
-                <li>
-                  <Em>Name (optional)</Em> — something to recognise the search by.
-                </li>
-                <li>
-                  <Em>Gmail search query for job alerts</Em> — this starts out searching every supported job board. It
-                  is an ordinary Gmail search, so you can narrow it, for example to a label.
-                </li>
-                <li>
-                  <Em>How far back to look</Em> — from the last 12 hours to the last year. Last 30 days is the default.
-                </li>
-                <li>
-                  <Em>Only unread</Em> — to skip emails you have already opened.
-                </li>
-                <li>
-                  <Em>Tree</Em> and <Em>List</Em> — where the imported postings go.
-                </li>
-              </Ul>
-            </li>
-            <li>
-              Choose <Em>Save search</Em>.
-            </li>
-          </Ol>
-        </Section>
-
-        <Section id="importing" title="Importing postings">
-          <SubHeading>Running a search</SubHeading>
-          <P>
-            Choose <Em>Run now</Em> on a saved search. Superusers can also choose <Em>Run job search</Em> in the app
-            header, which runs the same search from any page. Neither imports anything yet: they search your Gmail and
-            open a picker listing the postings found, so you choose what becomes work. Running a search this way never
-            changes its schedule.
-          </P>
-          <P>While it works, the picker says what it is doing:</P>
-          <Ol>
-            <li>
-              <Code>Searching Gmail…</Code> while it finds the emails and reads them.
-            </li>
-            <li>
-              <Code>Checking career pages…</Code> while it reads any{" "}
-              <a href="#career-pages" className="text-primary underline-offset-2 hover:underline">
-                company career pages
-              </a>{" "}
-              the search names.
-            </li>
-            <li>
-              <Code>Found 40 jobs in 14 emails. Reading job postings for deadlines… 12/34</Code> while it opens the
-              postings whose email gave no deadline, up to 40 of them. This is usually the longest part.
-            </li>
-            <li>
-              The list appears. If there are Jobly postings and you have the posting reader extension,{" "}
-              <Code>Reading Jobly postings through your browser… 3/8</Code> follows, filling in their deadlines as it
-              goes — see{" "}
-              <a href="#deadlines" className="text-primary underline-offset-2 hover:underline">
-                Application deadlines
-              </a>
-              .
-            </li>
-          </Ol>
-          <P>
-            When there is nothing to show, the picker says so and stays open until you close it. For a search on
-            unread mail that is <Code>All caught up</Code>: every alert has been read, and new ones will show up the
-            next time you run it.
-          </P>
-
-          <SubHeading>Reading the list</SubHeading>
-          <P>
-            The line above the list sums it up, for example <Code>12 jobs, out of which 5 seem new, found in 3 emails</Code>
-            . Jobs are counted once however many emails list them, and the ones that <Em>seem new</Em> are the ones
-            ticked to start with.
-          </P>
-          <Ul>
-            <li>
-              Postings are grouped under the email — or the career page — they came from, with its subject, sender
-              and date.{" "}
-              <Em>Open in Gmail</Em> opens that email. Under the heading it says how many jobs the email holds and
-              where any of them already are, for example <Code>2 already in Jobs with no deadline</Code>.
-            </li>
-            <li>
-              Each posting shows what is known about its deadline: <Code>closes</Code> with a date,{" "}
-              <Code>open until further notice</Code>, or <Code>deadline unknown</Code>.
-            </li>
-            <li>
-              <Em>Filter by keyword…</Em> narrows the list, for example to a job title or an employer.
-            </li>
-            <li>Tick the postings to import, individually or a whole email at a time.</li>
-          </Ul>
-
-          <SubHeading>What starts unticked</SubHeading>
-          <P>
-            The picker ticks only the postings worth a new item. Every unticked posting says why under it, and can
-            still be ticked to import anyway:
-          </P>
-          <Dl
-            items={[
-              [
-                "already in …",
-                "The posting is already an item somewhere in the same tree — not only in the list you are importing into — and it names the list.",
-              ],
-              [
-                "no longer accepting applications",
-                "The posting says it has closed. There is little point tracking it as work.",
-              ],
-              [
-                "the closing date has passed",
-                "The deadline stated in the email or the posting is already behind us.",
-              ],
-              [
-                "also in “…”",
-                "Another email lists the same posting, and that copy is the one ticked — the one that states a closing date if either does, otherwise the most recent. Importing both would still create just one item.",
-              ],
-              [
-                "looks like “…”, already in …",
-                "An item with the same employer and role is already in the tree, under a different link: the same job from another job board, or one the board has posted again. It names the item and its list.",
-              ],
-              [
-                "same job as “…” from …, listed here too",
-                "Two postings in this run are the same job under different links — one board each, say. One is ticked: the one that states a closing date if either does, otherwise the first.",
-              ],
-            ]}
-          />
-
-          <P>
-            Jobs are told to be the same by name — employer and role, whatever the capitals and punctuation — since
-            each board gives a job a link of its own. A different city tells them apart: a role an employer
-            advertises once in Espoo and once in Tampere is two jobs, and both are ticked.
-          </P>
-
-          <SubHeading>Importing</SubHeading>
-          <Dl
-            items={[
-              [
-                "Import selected into …",
-                "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. Every email listed is marked as read — also one nothing was taken from, because its jobs were all in your lists already — so a search for unread mail offers only what has arrived since. Emails a keyword filter is hiding are left as they are.",
-              ],
-              [
-                "Do not import anything, mark N emails read",
-                "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import selected into … marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
-              ],
-            ]}
-          />
-          <P>
-            A job search imports into one list. It starts as the list the search was saved with; choose another
-            under <Em>Import into</Em> in the picker, above the buttons, and it becomes the search&apos;s list from
-            then on — in the picker, under the saved search, and for a scheduled run. It is kept by the list itself
-            rather than its name: rename the list and the import follows it.
-          </P>
-          <P>
-            A posting that is already in the <Em>Mirror to</Em> list — or in the list of jobs already applied for — says so
-            on its row, in green: <Em>also in</Em> when it is in this tree as well, <Em>already in</Em> when it is only
-            there, in which case it starts unticked.
-            Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
-            ones you mean to pursue, and <Em>Import selected into …</Em> also puts them in the <Em>Mirror to</Em> list —
-            any list in another tree, saved on the search like the first. The status plays no part in this: it only
-            sets how the new item starts.
-          </P>
-          <P>
-            After an import, superusers also get a check of the ads that were already in the list it filled: any that
-            have closed since are marked, and a message reports the result — see{" "}
-            <a href="#closed-ads" className="text-primary underline-offset-2 hover:underline">
-              Checking for closed ads
+      <Section id="importing" title="Importing postings">
+        <SubHeading>Running a search</SubHeading>
+        <P>
+          Choose <Em>Run now</Em> on a saved search. Superusers can also choose <Em>Run job search</Em> in the app
+          header, which runs the same search from any page. Neither imports anything yet: they search your Gmail and
+          open a picker listing the postings found, so you choose what becomes work. Running a search this way never
+          changes its schedule.
+        </P>
+        <P>While it works, the picker says what it is doing:</P>
+        <Ol>
+          <li>
+            <Code>Searching Gmail…</Code> while it finds the emails and reads them.
+          </li>
+          <li>
+            <Code>Checking career pages…</Code> while it reads any{" "}
+            <a href="#career-pages" className="text-primary underline-offset-2 hover:underline">
+              company career pages
+            </a>{" "}
+            the search names.
+          </li>
+          <li>
+            <Code>Found 40 jobs in 14 emails. Reading job postings for deadlines… 12/34</Code> while it opens the
+            postings whose email gave no deadline, up to 40 of them. This is usually the longest part.
+          </li>
+          <li>
+            The list appears. If there are Jobly postings and you have the posting reader extension,{" "}
+            <Code>Reading Jobly postings through your browser… 3/8</Code> follows, filling in their deadlines as it
+            goes — see{" "}
+            <a href="#deadlines" className="text-primary underline-offset-2 hover:underline">
+              Application deadlines
             </a>
             .
-          </P>
-          <Callout>
-            Marking emails as read needs permission to change your Gmail labels. A connection made before that was
-            asked for keeps working for everything else; choose <Em>Connect Gmail</Em> again to grant it.
-          </Callout>
-        </Section>
+          </li>
+        </Ol>
+        <P>
+          When there is nothing to show, the picker says so and stays open until you close it. For a search on
+          unread mail that is <Code>All caught up</Code>: every alert has been read, and new ones will show up the
+          next time you run it.
+        </P>
 
-        <Section id="career-pages" title="Company career pages">
-          <P>
-            A job alert is a board&apos;s selection, mailed when the board gets round to it. A company&apos;s own list of
-            open positions is all of them, as of now. A saved search can read such pages as well: each run then offers
-            the positions on them beside the jobs from email.
-          </P>
-          <P>
-            Under a saved search, <Em>Career pages</Em> lists the pages it reads. Paste a page&apos;s address and choose{" "}
-            <Em>Add page</Em>; the <Em>×</Em> beside a page stops reading it. Each page is read by rules written for
-            that site, so only these can be added:
-          </P>
-          <div className="mt-4 overflow-x-auto rounded-lg border">
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <thead className="border-b bg-muted/40">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Company</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Page</th>
+        <SubHeading>Reading the list</SubHeading>
+        <P>
+          The line above the list sums it up, for example <Code>12 jobs, out of which 5 seem new, found in 3 emails</Code>
+          . Jobs are counted once however many emails list them, and the ones that <Em>seem new</Em> are the ones
+          ticked to start with.
+        </P>
+        <Ul>
+          <li>
+            Postings are grouped under the email — or the career page — they came from, with its subject, sender
+            and date.{" "}
+            <Em>Open in Gmail</Em> opens that email. Under the heading it says how many jobs the email holds and
+            where any of them already are, for example <Code>2 already in Jobs with no deadline</Code>.
+          </li>
+          <li>
+            Each posting shows what is known about its deadline: <Code>closes</Code> with a date,{" "}
+            <Code>open until further notice</Code>, or <Code>deadline unknown</Code>.
+          </li>
+          <li>
+            <Em>Filter by keyword…</Em> narrows the list, for example to a job title or an employer.
+          </li>
+          <li>Tick the postings to import, individually or a whole email at a time.</li>
+        </Ul>
+
+        <SubHeading>What starts unticked</SubHeading>
+        <P>
+          The picker ticks only the postings worth a new item. Every unticked posting says why under it, and can
+          still be ticked to import anyway:
+        </P>
+        <Dl
+          items={[
+            [
+              "already in …",
+              "The posting is already an item somewhere in the same tree — not only in the list you are importing into — and it names the list.",
+            ],
+            [
+              "no longer accepting applications",
+              "The posting says it has closed. There is little point tracking it as work.",
+            ],
+            [
+              "the closing date has passed",
+              "The deadline stated in the email or the posting is already behind us.",
+            ],
+            [
+              "also in “…”",
+              "Another email lists the same posting, and that copy is the one ticked — the one that states a closing date if either does, otherwise the most recent. Importing both would still create just one item.",
+            ],
+            [
+              "looks like “…”, already in …",
+              "An item with the same employer and role is already in the tree, under a different link: the same job from another job board, or one the board has posted again. It names the item and its list.",
+            ],
+            [
+              "same job as “…” from …, listed here too",
+              "Two postings in this run are the same job under different links — one board each, say. One is ticked: the one that states a closing date if either does, otherwise the first.",
+            ],
+          ]}
+        />
+
+        <P>
+          Jobs are told to be the same by name — employer and role, whatever the capitals and punctuation — since
+          each board gives a job a link of its own. A different city tells them apart: a role an employer
+          advertises once in Espoo and once in Tampere is two jobs, and both are ticked.
+        </P>
+
+        <SubHeading>Importing</SubHeading>
+        <Dl
+          items={[
+            [
+              "Import selected into …",
+              "Creates every ticked posting in the one list chosen under Import into — the button names it. The list is then put in order: the jobs with a deadline first, soonest at the top, then the jobs without one by name; that order is saved as its rank. Postings whose Mirror switch is on also appear in the list chosen under Mirror to — the same item, filed in a second tree. Every email listed is marked as read — also one nothing was taken from, because its jobs were all in your lists already — so a search for unread mail offers only what has arrived since. Emails a keyword filter is hiding are left as they are.",
+            ],
+            [
+              "Do not import anything, mark N emails read",
+              "Imports nothing, and marks every email the search listed as read — for when none of the jobs is worth importing, every one already in your lists, say. Import selected into … marks the emails read as well, so after an import there is no need for this. When jobs from career pages are listed too, the button says so — “…, skip N career page jobs” — and those are not offered again.",
+            ],
+          ]}
+        />
+        <P>
+          A job search imports into one list. It starts as the list the search was saved with; choose another
+          under <Em>Import into</Em> in the picker, above the buttons, and it becomes the search&apos;s list from
+          then on — in the picker, under the saved search, and for a scheduled run. It is kept by the list itself
+          rather than its name: rename the list and the import follows it.
+        </P>
+        <P>
+          A posting that is already in the <Em>Mirror to</Em> list — or in the list of jobs already applied for — says so
+          on its row, in green: <Em>also in</Em> when it is in this tree as well, <Em>already in</Em> when it is only
+          there, in which case it starts unticked.
+          Each ticked posting has a <Em>Mirror</Em> switch beside its status, off to begin with. Switch it on for the
+          ones you mean to pursue, and <Em>Import selected into …</Em> also puts them in the <Em>Mirror to</Em> list —
+          any list in another tree, saved on the search like the first. The status plays no part in this: it only
+          sets how the new item starts.
+        </P>
+        <P>
+          After an import, superusers also get a check of the ads that were already in the list it filled: any that
+          have closed since are marked, and a message reports the result — see{" "}
+          <a href="#closed-ads" className="text-primary underline-offset-2 hover:underline">
+            Checking for closed ads
+          </a>
+          .
+        </P>
+        <Callout>
+          Marking emails as read needs permission to change your Gmail labels. A connection made before that was
+          asked for keeps working for everything else; choose <Em>Connect Gmail</Em> again to grant it.
+        </Callout>
+      </Section>
+
+      <Section id="career-pages" title="Company career pages">
+        <P>
+          A job alert is a board&apos;s selection, mailed when the board gets round to it. A company&apos;s own list of
+          open positions is all of them, as of now. A saved search can read such pages as well: each run then offers
+          the positions on them beside the jobs from email.
+        </P>
+        <P>
+          Under a saved search, <Em>Career pages</Em> lists the pages it reads. Paste a page&apos;s address and choose{" "}
+          <Em>Add page</Em>; the <Em>×</Em> beside a page stops reading it. Each page is read by rules written for
+          that site, so only these can be added:
+        </P>
+        <div className="mt-4 overflow-x-auto rounded-lg border">
+          <table className="w-full min-w-[32rem] text-left text-sm">
+            <thead className="border-b bg-muted/40">
+              <tr>
+                <th scope="col" className="px-4 py-2 font-medium">Company</th>
+                <th scope="col" className="px-4 py-2 font-medium">Page</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {CAREER_PAGE_SOURCES.map((s) => (
+                <tr key={s.id}>
+                  <td className="px-4 py-2 font-medium">{s.company}</td>
+                  <td className="px-4 py-2 break-all text-muted-foreground">{s.example}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y">
-                {CAREER_PAGE_SOURCES.map((s) => (
-                  <tr key={s.id}>
-                    <td className="px-4 py-2 font-medium">{s.company}</td>
-                    <td className="px-4 py-2 break-all text-muted-foreground">{s.example}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <SubHeading>In the picker</SubHeading>
-          <Ul>
-            <li>
-              A page&apos;s jobs sit under a heading of their own, like an email&apos;s, named for example{" "}
-              <Code>Reaktor: open positions</Code>. <Em>Open page</Em> opens the page.
-            </li>
-            <li>
-              Only positions that are new to the search are listed. Under the heading it says what else the page
-              holds, for example{" "}
-              <Code>2 new jobs from this page · 19 open positions on the page · 15 already in your lists · 2 skipped earlier</Code>
-              .
-            </li>
-            <li>
-              The line above the list counts the pages with the emails:{" "}
-              <Code>12 jobs, out of which 5 seem new, found in 3 emails and on 1 career page</Code>.
-            </li>
-            <li>
-              A page with nothing new, or one that could not be read, gets a line saying so above the list rather than
-              a heading.
-            </li>
-            <li>
-              Items are named like any other posting — <Code>Reaktor - Lead Developer (Helsinki)</Code> — with the
-              city the page gives, and their description names the career page they were found on.
-            </li>
-          </Ul>
-          <SubHeading>What is not offered again</SubHeading>
-          <P>
-            An email that has been dealt with is marked read. A page lists the same positions every day, so Agilefant
-            remembers instead which of them a search has already shown you:
-          </P>
-          <Ul>
-            <li>A position that is already an item anywhere in the tree is never listed.</li>
-            <li>
-              <Em>Import selected into …</Em> remembers every position listed from a page you took at least one job
-              from: the ones you left were left on purpose. A page you took nothing from is offered again next time.
-            </li>
-            <li>
-              <Em>Do not import anything, … skip N career page jobs</Em> remembers all of them.
-            </li>
-          </Ul>
-          <Callout>
-            Career pages are read when you run a search yourself. A scheduled run reads the mail only.
-          </Callout>
-        </Section>
-
-        <Section id="deadlines" title="Application deadlines">
-          <P>
-            A deadline is read from the alert email where the job board states one, and otherwise from the posting
-            itself, which is opened to look. Deadlines are recognised in Finnish, Swedish and English, written in the
-            ways postings actually write them, for example:
-          </P>
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {[
-              "haku päättyy 20.9.",
-              "Hae viimeistään keskiviikkona 30.9.2026",
-              "jätä hakemuksesi 30.9.2026 klo 16 mennessä",
-              "Julkaistu 15.9. (Päättyy 4.10. klo 00:00)",
-              "Ansök senast 4.10.2026",
-              "Submit your application … no later than Sunday, 4 October 2026",
-              "Application deadline is September 30th",
-            ].map((example) => (
-              <li key={example}>
-                <Code>{example}</Code>
-              </li>
-            ))}
-          </ul>
-          <P>
-            When a date is written without a year, the next occurrence of it is assumed. When no deadline can be
-            found, the item is created without a date prefix rather than with a guess — a wrong date in an item name
-            is worse than none.
-          </P>
-          <P>
-            Jobly refuses to show its postings to Agilefant's servers, so their deadlines cannot be read there.
-            Superusers can install the <Em>Agilefant posting reader</Em> browser extension, which reads Jobly postings
-            through your own browser instead: the picker then fills in their deadlines while you look at it.
-          </P>
-        </Section>
-
-        <Section id="scheduling" title="Scheduled imports">
-          <P>
-            Turn on <Em>Run on a schedule</Em> to import automatically, and choose <Em>Hourly</Em> or <Em>Daily</Em>.
-            A daily search can be given a time of day: runs happen seven minutes past the chosen hour, in the time
-            zone you chose it in, and keep that local time when the clocks change. Leave it at <Em>Any time</Em> and it
-            runs once a day at whatever hour it last ran.
-          </P>
-          <P>The saved search shows when it last ran and how many items that run created.</P>
-          <Callout tone="warning">
-            <strong>A scheduled run imports every posting it finds.</strong> There is no picker, and postings already
-            in your list are imported again. Give a scheduled search a short look-back that matches how often it
-            runs — for a daily search, <Em>Last 24 hours</Em> with <Em>Only unread</Em> — so each run brings in only
-            what is new.
-          </Callout>
-        </Section>
-
-        <Section id="closed-ads" title="Checking for closed ads">
-          <P>
-            Job boards often leave a posting up after it has stopped taking applications, so an item can look live
-            long after its chance has passed. <Em>Check for closed ads</Em>, in the header of a list, checks every
-            item in that list and the lists beneath it that has a link.
-          </P>
-          <Callout>This check is currently available to superusers only.</Callout>
-          <P>An item is marked as closed when:</P>
-          <Ul>
-            <li>its closing date — its deadline, or the date in its name — has already passed; this needs no checking online at all;</li>
-            <li>
-              the posting says so, for example &ldquo;No longer accepting applications&rdquo;, &ldquo;Hakuaika on
-              päättynyt&rdquo; or &ldquo;Job is not open for applying&rdquo;;
-            </li>
-            <li>the deadline the posting states has passed; or</li>
-            <li>the posting has been removed from the job board.</li>
-          </Ul>
-          <P>
-            Closed items get a red <Code>Closed</Code> label and the button shows the count. When it finishes, a
-            summary says how many ads are closed, how many are still open, and how many could not be reached.
-          </P>
-          <P>
-            Job boards sometimes refuse automated checks, LinkedIn especially. A posting that could not be reached is
-            marked <Code>?</Code> — not counted as open, because nothing was learnt about it. Pressing the button again
-            later often gets through: postings already found closed are remembered and not checked again, so each
-            check asks the job boards less.
-          </P>
-          <P>
-            The check changes nothing. Items are not renamed, moved or deleted — what to do about a closed ad is up to
-            you. The marks stay while you move between lists; the <Code>×</Code> beside the button clears the ones
-            in the list you are looking at, and reloading the page clears them all.
-          </P>
-          <P>
-            The check also runs by itself after a job import, on the ads that were already in the list the import
-            filled. The newly imported ads are left out, since their postings were just read. A
-            message reports the result when it finishes.
-          </P>
-          <P>
-            Reading an ad — at import or in this check — also notes whether it asks for Finnish. That is what the{" "}
-            <Em>Requires Finnish</Em> filter on a public page of job ads goes by: an ad written in English that wants
-            &ldquo;fluent Finnish&rdquo; is among the jobs it shows, and one written in Finnish that says Finnish is
-            not needed is not. An ad that says nothing about languages is judged by the language it is written in,
-            and an ad that could not be read by the language of its name.
-          </P>
-        </Section>
-
-        <Section id="troubleshooting" title="Troubleshooting">
-          <Dl
-            items={[
-              [
-                "Popup blocked",
-                "Connecting Gmail opens a Google sign-in window. Allow popups for this site and choose Connect Gmail again.",
-              ],
-              [
-                "Connect Gmail again",
-                "Gmail is not connected, or the connection has expired. Reconnect it under Your Gmail account. A connection through a Google app that is still in testing expires every seven days — see Gmail keeps disconnecting every week.",
-              ],
-              [
-                "Waiting for a Google OAuth client",
-                "Your organization has no Google OAuth client yet. An owner or admin needs to add one — see Your organization's Google OAuth client.",
-              ],
-              [
-                "Google refused the redirect address",
-                "The OAuth client in Google Cloud does not list the authorized redirect URI shown in Agilefant. Add it exactly as shown.",
-              ],
-              [
-                "Gmail keeps disconnecting every week",
-                "The Google app is External and still in testing, where connections expire after seven days. Publish the app, or use an Internal app if your organization is on Google Workspace.",
-              ],
-              [
-                "All caught up",
-                "A search for unread mail found no unread job alerts — everything has been read. Nothing is wrong; new alerts will show up the next time you run it.",
-              ],
-              [
-                "No job ads found",
-                "Nothing matched. Check the search in Gmail itself, or widen How far back to look.",
-              ],
-              [
-                "Could not mark the emails as read",
-                "Your Gmail connection was made before Agilefant asked for permission to change labels. Everything else keeps working; choose Connect Gmail again under Your Gmail account to grant it.",
-              ],
-              [
-                "A posting has no deadline",
-                "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers); the picker then reads the deadline through your browser.",
-              ],
-              [
-                "The same posting was imported twice",
-                "A scheduled search imports everything it finds. Shorten its look-back and turn on Only unread — see Scheduled imports.",
-              ],
-            ]}
-          />
-        </Section>
-
-        <footer className="mt-16 border-t pt-6 text-sm text-muted-foreground">
-          <Link to="/user-guide" className="text-primary underline-offset-2 hover:underline">
-            Read the full Agilefant² user guide →
-          </Link>
-        </footer>
-      </main>
-    </div>
-  );
-}
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section id={id} className="mt-12 scroll-mt-6" aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className="text-2xl font-semibold tracking-tight">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-/** A step within a long section — the picker has several. */
-function SubHeading({ children }: { children: ReactNode }) {
-  return <h3 className="mt-8 text-lg font-semibold tracking-tight">{children}</h3>;
-}
-
-function P({ children }: { children: ReactNode }) {
-  return <p className="mt-3 leading-relaxed">{children}</p>;
-}
-
-function Ul({ children }: { children: ReactNode }) {
-  return <ul className="mt-3 list-disc space-y-2 pl-6 leading-relaxed marker:text-muted-foreground">{children}</ul>;
-}
-
-function Ol({ children }: { children: ReactNode }) {
-  return <ol className="mt-3 list-decimal space-y-3 pl-6 leading-relaxed marker:text-muted-foreground">{children}</ol>;
-}
-
-/** A label the app shows, set apart from the prose around it. */
-function Em({ children }: { children: ReactNode }) {
-  return <span className="font-medium">{children}</span>;
-}
-
-function Code({ children }: { children: ReactNode }) {
-  return <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em]">{children}</code>;
-}
-
-function Dl({ items }: { items: [string, string][] }) {
-  return (
-    <dl className="mt-3 space-y-3">
-      {items.map(([term, description]) => (
-        <div key={term} className="rounded-lg border px-4 py-3">
-          <dt className="font-medium">{term}</dt>
-          <dd className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</dd>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
-    </dl>
-  );
-}
+        <SubHeading>In the picker</SubHeading>
+        <Ul>
+          <li>
+            A page&apos;s jobs sit under a heading of their own, like an email&apos;s, named for example{" "}
+            <Code>Reaktor: open positions</Code>. <Em>Open page</Em> opens the page.
+          </li>
+          <li>
+            Only positions that are new to the search are listed. Under the heading it says what else the page
+            holds, for example{" "}
+            <Code>2 new jobs from this page · 19 open positions on the page · 15 already in your lists · 2 skipped earlier</Code>
+            .
+          </li>
+          <li>
+            The line above the list counts the pages with the emails:{" "}
+            <Code>12 jobs, out of which 5 seem new, found in 3 emails and on 1 career page</Code>.
+          </li>
+          <li>
+            A page with nothing new, or one that could not be read, gets a line saying so above the list rather than
+            a heading.
+          </li>
+          <li>
+            Items are named like any other posting — <Code>Reaktor - Lead Developer (Helsinki)</Code> — with the
+            city the page gives, and their description names the career page they were found on.
+          </li>
+        </Ul>
+        <SubHeading>What is not offered again</SubHeading>
+        <P>
+          An email that has been dealt with is marked read. A page lists the same positions every day, so Agilefant
+          remembers instead which of them a search has already shown you:
+        </P>
+        <Ul>
+          <li>A position that is already an item anywhere in the tree is never listed.</li>
+          <li>
+            <Em>Import selected into …</Em> remembers every position listed from a page you took at least one job
+            from: the ones you left were left on purpose. A page you took nothing from is offered again next time.
+          </li>
+          <li>
+            <Em>Do not import anything, … skip N career page jobs</Em> remembers all of them.
+          </li>
+        </Ul>
+        <Callout>
+          Career pages are read when you run a search yourself. A scheduled run reads the mail only.
+        </Callout>
+      </Section>
 
-function Callout({ children, tone = "info" }: { children: ReactNode; tone?: "info" | "warning" }) {
-  return (
-    <div
-      role="note"
-      className={`mt-4 rounded-lg border px-4 py-3 text-sm leading-relaxed ${
-        tone === "warning" ? "border-amber-500/40 bg-amber-500/10" : "border-primary/30 bg-primary/5"
-      }`}
-    >
-      {children}
-    </div>
+      <Section id="deadlines" title="Application deadlines">
+        <P>
+          A deadline is read from the alert email where the job board states one, and otherwise from the posting
+          itself, which is opened to look. Deadlines are recognised in Finnish, Swedish and English, written in the
+          ways postings actually write them, for example:
+        </P>
+        <ul className="mt-3 space-y-1.5 text-sm">
+          {[
+            "haku päättyy 20.9.",
+            "Hae viimeistään keskiviikkona 30.9.2026",
+            "jätä hakemuksesi 30.9.2026 klo 16 mennessä",
+            "Julkaistu 15.9. (Päättyy 4.10. klo 00:00)",
+            "Ansök senast 4.10.2026",
+            "Submit your application … no later than Sunday, 4 October 2026",
+            "Application deadline is September 30th",
+          ].map((example) => (
+            <li key={example}>
+              <Code>{example}</Code>
+            </li>
+          ))}
+        </ul>
+        <P>
+          When a date is written without a year, the next occurrence of it is assumed. When no deadline can be
+          found, the item is created without a date prefix rather than with a guess — a wrong date in an item name
+          is worse than none.
+        </P>
+        <P>
+          Jobly refuses to show its postings to Agilefant's servers, so their deadlines cannot be read there.
+          Superusers can install the <Em>Agilefant posting reader</Em> browser extension, which reads Jobly postings
+          through your own browser instead: the picker then fills in their deadlines while you look at it.
+        </P>
+      </Section>
+
+      <Section id="scheduling" title="Scheduled imports">
+        <P>
+          Turn on <Em>Run on a schedule</Em> to import automatically, and choose <Em>Hourly</Em> or <Em>Daily</Em>.
+          A daily search can be given a time of day: runs happen seven minutes past the chosen hour, in the time
+          zone you chose it in, and keep that local time when the clocks change. Leave it at <Em>Any time</Em> and it
+          runs once a day at whatever hour it last ran.
+        </P>
+        <P>The saved search shows when it last ran and how many items that run created.</P>
+        <Callout tone="warning">
+          <strong>A scheduled run imports every posting it finds.</strong> There is no picker, and postings already
+          in your list are imported again. Give a scheduled search a short look-back that matches how often it
+          runs — for a daily search, <Em>Last 24 hours</Em> with <Em>Only unread</Em> — so each run brings in only
+          what is new.
+        </Callout>
+      </Section>
+
+      <Section id="closed-ads" title="Checking for closed ads">
+        <P>
+          Job boards often leave a posting up after it has stopped taking applications, so an item can look live
+          long after its chance has passed. <Em>Check for closed ads</Em>, in the header of a list, checks every
+          item in that list and the lists beneath it that has a link.
+        </P>
+        <Callout>This check is currently available to superusers only.</Callout>
+        <P>An item is marked as closed when:</P>
+        <Ul>
+          <li>its closing date — its deadline, or the date in its name — has already passed; this needs no checking online at all;</li>
+          <li>
+            the posting says so, for example &ldquo;No longer accepting applications&rdquo;, &ldquo;Hakuaika on
+            päättynyt&rdquo; or &ldquo;Job is not open for applying&rdquo;;
+          </li>
+          <li>the deadline the posting states has passed; or</li>
+          <li>the posting has been removed from the job board.</li>
+        </Ul>
+        <P>
+          Closed items get a red <Code>Closed</Code> label and the button shows the count. When it finishes, a
+          summary says how many ads are closed, how many are still open, and how many could not be reached.
+        </P>
+        <P>
+          Job boards sometimes refuse automated checks, LinkedIn especially. A posting that could not be reached is
+          marked <Code>?</Code> — not counted as open, because nothing was learnt about it. Pressing the button again
+          later often gets through: postings already found closed are remembered and not checked again, so each
+          check asks the job boards less.
+        </P>
+        <P>
+          The check changes nothing. Items are not renamed, moved or deleted — what to do about a closed ad is up to
+          you. The marks stay while you move between lists; the <Code>×</Code> beside the button clears the ones
+          in the list you are looking at, and reloading the page clears them all.
+        </P>
+        <P>
+          The check also runs by itself after a job import, on the ads that were already in the list the import
+          filled. The newly imported ads are left out, since their postings were just read. A
+          message reports the result when it finishes.
+        </P>
+        <P>
+          Reading an ad — at import or in this check — also notes whether it asks for Finnish. That is what the{" "}
+          <Em>Requires Finnish</Em> filter on a public page of job ads goes by: an ad written in English that wants
+          &ldquo;fluent Finnish&rdquo; is among the jobs it shows, and one written in Finnish that says Finnish is
+          not needed is not. An ad that says nothing about languages is judged by the language it is written in,
+          and an ad that could not be read by the language of its name.
+        </P>
+      </Section>
+
+      <Section id="troubleshooting" title="Troubleshooting">
+        <Dl
+          items={[
+            [
+              "Popup blocked",
+              "Connecting Gmail opens a Google sign-in window. Allow popups for this site and choose Connect Gmail again.",
+            ],
+            [
+              "Connect Gmail again",
+              "Gmail is not connected, or the connection has expired. Reconnect it under Your Gmail account. A connection through a Google app that is still in testing expires every seven days — see Gmail keeps disconnecting every week.",
+            ],
+            [
+              "Waiting for a Google OAuth client",
+              "Your organization has no Google OAuth client yet. An owner or admin needs to add one — see Your organization's Google OAuth client.",
+            ],
+            [
+              "Google refused the redirect address",
+              "The OAuth client in Google Cloud does not list the authorized redirect URI shown in Agilefant. Add it exactly as shown.",
+            ],
+            [
+              "Gmail keeps disconnecting every week",
+              "The Google app is External and still in testing, where connections expire after seven days. Publish the app, or use an Internal app if your organization is on Google Workspace.",
+            ],
+            [
+              "All caught up",
+              "A search for unread mail found no unread job alerts — everything has been read. Nothing is wrong; new alerts will show up the next time you run it.",
+            ],
+            [
+              "No job ads found",
+              "Nothing matched. Check the search in Gmail itself, or widen How far back to look.",
+            ],
+            [
+              "Could not mark the emails as read",
+              "Your Gmail connection was made before Agilefant asked for permission to change labels. Everything else keeps working; choose Connect Gmail again under Your Gmail account to grant it.",
+            ],
+            [
+              "A posting has no deadline",
+              "Neither the email nor the posting stated one in a form that could be recognised, or the job board would not let the posting be opened. For Jobly, install the posting reader extension (superusers); the picker then reads the deadline through your browser.",
+            ],
+            [
+              "The same posting was imported twice",
+              "A scheduled search imports everything it finds. Shorten its look-back and turn on Only unread — see Scheduled imports.",
+            ],
+          ]}
+        />
+      </Section>
+    </PublicGuide>
   );
 }

@@ -60,6 +60,7 @@ const UserGuide = lazy(importWithRetry(() => import("./pages/UserGuide")));
 const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhistles")));
 const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
 const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
+const JiraGuide = lazy(importWithRetry(() => import("./pages/JiraGuide")));
 const Landing = lazy(importWithRetry(() => import("./pages/Landing")));
 
 const queryClient = new QueryClient();
@@ -176,7 +177,6 @@ function AppRoutes() {
           <Route path="/" element={notLinked ?? <Landing />} />
           <Route path="/auth" element={notLinked ?? <Auth />} />
           <Route path="/auth/sign-up" element={notLinked ?? <Auth mode="sign-up" />} />
-          <Route path="/user-guide" element={<UserGuide />} />
           <Route path="*" element={notLinked ?? <Navigate to="/auth" replace />} />
         </Routes>
       </Suspense>
@@ -188,7 +188,6 @@ function AppRoutes() {
       <Suspense fallback={pageFallback}>
         <Routes>
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/user-guide" element={<UserGuide />} />
           <Route path="*" element={<Navigate to="/onboarding" replace />} />
         </Routes>
       </Suspense>
@@ -202,7 +201,6 @@ function AppRoutes() {
         <Route path="/settings/team" element={<TeamSettings />} />
         <Route path="/settings/bells-whistles" element={<BellsAndWhistles />} />
         <Route path="/manager" element={<ManagerScreen />} />
-        <Route path="/user-guide" element={<UserGuide />} />
         {/* Every sign-in route, not just /auth: reaching /auth/sign-up while
             already signed in used to fall through to the catch-all and show a
             404. The splat also matches bare /auth. */}
@@ -235,13 +233,29 @@ const App = () => (
                   </Suspense>
                 }
               />
-              {/* A public guide, mounted here for the same reason: someone sent
-                  the address should be reading it at once, signed in or not. */}
+              {/* The guides are public, mounted here for the same reason: someone
+                  sent the address should be reading it at once, signed in or not. */}
+              <Route
+                path="/user-guide"
+                element={
+                  <Suspense fallback={null}>
+                    <UserGuide />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/user-guide/job-ads"
                 element={
                   <Suspense fallback={null}>
                     <JobAdsGuide />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/user-guide/jira"
+                element={
+                  <Suspense fallback={null}>
+                    <JiraGuide />
                   </Suspense>
                 }
               />

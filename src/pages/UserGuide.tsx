@@ -20,7 +20,7 @@ export default function UserGuide() {
         </Link>
       </header>
       <div className="flex flex-1 min-h-0 max-w-4xl w-full mx-auto border-x">
-        <UserGuideContent />
+        <UserGuideContent linked />
       </div>
     </div>
   );

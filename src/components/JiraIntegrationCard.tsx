@@ -187,7 +187,10 @@ export function JiraIntegrationCard({ canManage }: { canManage: boolean }) {
         <p className="text-sm text-muted-foreground">
           Synchronise Jira Cloud spaces with lists, both ways: names, descriptions, statuses, points, and the hierarchy.
           Choose the spaces, and for each the backlog tree its new list goes in. Changes travel at once in either direction;
-          a change made on both sides keeps the later one, and deleting on one side deletes on the other.
+          a change made on both sides keeps the later one, and deleting on one side deletes on the other.{" "}
+          <a href="/user-guide/jira" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">
+            Read the guide
+          </a>
         </p>
 
         {loadError && <p className="text-sm text-destructive">Could not read the Jira connection: {loadError}</p>}
