@@ -8,11 +8,12 @@ import { expectedLayout, Levels } from "../../supabase/functions/_shared/jiraMap
  * Agilefant's hierarchy as it is now — the type a move gives an item, shown
  * the moment it is made rather than seconds later, when Jira has made it.
  *
- * The sync's own levelling (expectedTypes, beside planMove), run on the list
- * kept in step with Jira: each item under its parent in that list's tree, the
- * same parent the sync reads. Items not in Jira yet are given the type the
- * sync will create them as. Nothing for a list whose project's levels the
- * sync has not yet recorded.
+ * The sync's own levelling (expectedTypes, beside planMove), run on the
+ * space's items as the sync has them: the list's, those synced with it that
+ * were moved elsewhere, and any under one of these, each under its parent in
+ * the list's tree, the same parent the sync reads. Items not in Jira yet are
+ * given the type the sync will create them as. Nothing for a list whose
+ * project's levels the sync has not yet recorded.
  */
 export interface ExpectedJiraType {
   type: string;
@@ -34,9 +35,26 @@ export function expectedJiraTypes(
   for (const [backlogId, list] of byList) {
     if (!list.issueTypes) continue;
     const nodes = new Map<string, { type: string | null; parent: string | null }>();
+    const parentOf = (item: WorkItem) => item.parentIds?.[list.treeId] ?? item.parentId;
+    const add = (item: WorkItem) => nodes.set(item.id, { type: byItem.get(item.id)?.type ?? null, parent: parentOf(item) });
+    // The tree's other items, by parent: those under one of the space's are the space's too.
+    const others = new Map<string, WorkItem[]>();
     for (const item of Object.values(workItems)) {
-      if (item.backlogAssignments?.[list.treeId] !== backlogId) continue;
-      nodes.set(item.id, { type: byItem.get(item.id)?.type ?? null, parent: item.parentIds?.[list.treeId] ?? item.parentId });
+      const assigned = item.backlogAssignments?.[list.treeId];
+      if (!assigned) continue;
+      if (assigned === backlogId || byItem.get(item.id)?.listId === backlogId) add(item);
+      else {
+        const parent = parentOf(item);
+        if (parent) others.set(parent, [...(others.get(parent) ?? []), item]);
+      }
+    }
+    const below = [...nodes.keys()];
+    while (below.length > 0) {
+      for (const child of others.get(below.pop()!) ?? []) {
+        if (nodes.has(child.id)) continue;
+        add(child);
+        below.push(child.id);
+      }
     }
     const levels = new Levels(list.issueTypes);
     for (const [id, { type, flattened }] of expectedLayout(nodes, levels)) {

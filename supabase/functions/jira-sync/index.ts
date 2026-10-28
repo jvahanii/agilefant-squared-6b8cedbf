@@ -238,8 +238,10 @@ function agilefantPort(admin: Admin, conn: Connection): AgilefantPort {
       const parentId: string | null = data.parent_id_overrides?.[tree] ?? data.parent_id ?? null;
       // The parent counts where it is in the list, or paired from elsewhere:
       // a subtree moved out of the list keeps its shape in Jira.
-      let parentInList = false;
-      if (parentId) {
+      // Outside the list, the parent is kept whoever's it is: the sync looks
+      // up through it for a synced item, under which the item is the space's.
+      let parentInList = !inList;
+      if (parentId && !parentInList) {
         const { data: parent } = await admin.from('work_items').select('backlog_assignments').eq('id', parentId).maybeSingle();
         parentInList = parent?.backlog_assignments?.[tree] === conn.backlog_id;
         if (!parentInList) {

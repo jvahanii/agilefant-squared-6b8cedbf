@@ -39,6 +39,7 @@ const ref = (fields: Partial<JiraIssueRef> = {}): JiraIssueRef => ({
   error: null,
   organizationId: "org",
   stopped: false,
+  listId: null,
   ...fields,
 });
 

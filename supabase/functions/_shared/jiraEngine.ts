@@ -167,6 +167,8 @@ const HYPERLINK_CHECKS_AT_ONCE = 4;
 
 /** How deep a chain of parents is followed before giving up: Jira has three levels. */
 const MAX_DEPTH = 6;
+/** How far up the sync looks for a synced item above one outside the list, as the database does. */
+const ANCESTOR_DEPTH = 20;
 
 export class JiraSync {
   private linksByItem = new Map<string, Link>();
@@ -295,7 +297,7 @@ export class JiraSync {
       }
       return;
     }
-    if (!item.inList && !link) return;
+    if (!item.inList && !link && !(await this.underSyncedItem(item))) return;
 
     // A parent with no Jira issue yet gets one first, so this item can name it.
     if (item.parentId && !this.linksByItem.has(item.parentId) && depth < MAX_DEPTH) {
@@ -313,6 +315,25 @@ export class JiraSync {
     }
     // The change just made in Agilefant is the later one.
     await this.reconcilePair(link, item, issue, Date.now(), issue.updatedAt);
+  }
+
+  /**
+   * Whether an item outside the list is the space's all the same: an item
+   * above it — its parent, or one further up — is synced, or in the list. A
+   * new item put under a synced item that was moved out of the list is made
+   * in Jira under it, as one put under it in the list would be. In a full
+   * sync the items above are read from the space's items as listed.
+   */
+  private async underSyncedItem(item: AgilefantItem, listed?: Map<string, AgilefantItem>): Promise<boolean> {
+    let parentId = item.parentId;
+    for (let depth = 0; parentId && depth < ANCESTOR_DEPTH; depth++) {
+      if (this.linksByItem.has(parentId)) return true;
+      const parent = listed ? listed.get(parentId) : await this.agilefant.getItem(parentId);
+      if (!parent) return false;
+      if (parent.inList) return true;
+      parentId = parent.parentId;
+    }
+    return false;
   }
 
   /**
@@ -411,7 +432,8 @@ export class JiraSync {
         ? 1 + depthOfItem(itemById.get(item.parentId)!, seen + 1)
         : 0;
     for (const item of [...items].sort((a, b) => depthOfItem(a) - depthOfItem(b))) {
-      if (item.inList && !this.linksByItem.has(item.id) && !deletedItems.has(item.id)) await this.createInJira(item);
+      if (this.linksByItem.has(item.id) || deletedItems.has(item.id)) continue;
+      if (item.inList || (await this.underSyncedItem(item, itemById))) await this.createInJira(item);
     }
 
     // Pairs that both still exist. Without a record of when Agilefant last

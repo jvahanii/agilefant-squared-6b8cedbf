@@ -19,6 +19,8 @@ export interface JiraIssueRef {
   organizationId: string;
   /** The item's sync stopped from its menu: the pair kept, nothing travelling either way. */
   stopped: boolean;
+  /** The list whose Jira space the item is synced with, wherever the item is now; null where not visible. */
+  listId: string | null;
 }
 
 /** A list kept in step with a Jira project. */
@@ -55,14 +57,15 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
   load: async () => {
     // Columns are listed: only these are granted to the app.
     const [links, connections] = await Promise.all([
-      supabase.from('jira_issue_links').select('work_item_id, organization_id, jira_key, jira_type, last_error, stopped'),
-      supabase.from('jira_connections').select('organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
+      supabase.from('jira_issue_links').select('work_item_id, organization_id, connection_id, jira_key, jira_type, last_error, stopped'),
+      supabase.from('jira_connections').select('id, organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
     ]);
     if (links.error) {
       console.error('Could not load Jira issues:', links.error.message);
       return;
     }
     const baseUrls = new Map((connections.data ?? []).map((c) => [c.organization_id, c.base_url]));
+    const listOf = new Map((connections.data ?? []).map((c) => [c.id, c.backlog_id]));
     set({
       byList: new Map(
         (connections.data ?? [])
@@ -90,6 +93,7 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
               error: row.last_error ?? null,
               organizationId: row.organization_id,
               stopped: row.stopped ?? false,
+              listId: listOf.get(row.connection_id) ?? null,
             },
           ];
         }),

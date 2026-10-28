@@ -283,8 +283,11 @@ class FakeAgilefant implements AgilefantPort {
   }
 
   async listItems() {
-    // The list's items, and the ones paired with the space that were moved elsewhere, as the database gives them.
-    return [...this.items.values()].filter((i) => i.inList || this.linkRows.has(i.id));
+    // The list's items, the ones paired with the space that were moved
+    // elsewhere, and those under a paired one, as the database gives them.
+    const under = (i: AgilefantItem, depth = 0): boolean =>
+      !!i.parentId && depth < 20 && (this.linkRows.has(i.parentId) || (!!this.items.get(i.parentId) && under(this.items.get(i.parentId)!, depth + 1)));
+    return [...this.items.values()].filter((i) => i.inList || this.linkRows.has(i.id) || under(i));
   }
   async getItem(id: string) {
     return this.items.get(id) ?? null;
@@ -1210,5 +1213,47 @@ describe("Jira's links between issues", () => {
     jira.byTitle("A")!.issueLinks = [];
     await engine().fullSync();
     expect(af.byTitle("A")!.issueLinks).toEqual([{ id: "9", title: "blocks INT-6" }]);
+  });
+});
+
+describe("a new item under a synced item moved out of the list", () => {
+  let epic: AgilefantItem;
+  beforeEach(async () => {
+    epic = af.add("Moved epic");
+    await engine().fullSync();
+    // Moved to a list no space keeps: still synced.
+    af.items.set(epic.id, { ...af.items.get(epic.id)!, inList: false });
+    jira.calls = [];
+  });
+
+  it("is made in Jira under it, though its list is not synced", async () => {
+    const child = af.add("Put under it", { parentId: epic.id, inList: false });
+    await engine().syncItem(child.id);
+    const issue = jira.byTitle("Put under it")!;
+    expect(issue.state.parent).toBe(af.linkRows.get(epic.id)!.jiraId);
+    expect(af.linkRows.get(child.id)!.jiraId).toBe(issue.id);
+  });
+
+  it("brings the items under it along, parents first", async () => {
+    const child = af.add("Child", { parentId: epic.id, inList: false });
+    const grandchild = af.add("Grandchild", { parentId: child.id, inList: false });
+    await engine().syncItem(grandchild.id);
+    expect(jira.byTitle("Grandchild")!.state.parent).toBe(jira.byTitle("Child")!.id);
+    expect(jira.byTitle("Child")!.state.parent).toBe(af.linkRows.get(epic.id)!.jiraId);
+  });
+
+  it("is made by a full sync too", async () => {
+    af.add("Child", { parentId: epic.id, inList: false });
+    const report = await engine().fullSync();
+    expect(report.createdInJira).toBe(1);
+    expect(jira.byTitle("Child")).toBeDefined();
+  });
+
+  it("is not made where nothing above it is synced", async () => {
+    const elsewhere = af.add("Elsewhere", { inList: false });
+    const under = af.add("Under elsewhere", { parentId: elsewhere.id, inList: false });
+    await engine().syncItem(under.id);
+    await engine().fullSync();
+    expect(jira.byTitle("Under elsewhere")).toBeUndefined();
   });
 });
