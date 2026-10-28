@@ -547,7 +547,7 @@ function newItem(){
   clearInterval(tick);
   done=false;limit=+$('limit').value;
   const lv=+$('level').value;
-  item=genItem($('mode').value,lv||rnd(1,3),+$('count').value);
+  const useLv=lv||rnd(1,3);item=genItem($('mode').value,useLv,+$('count').value);item.mixLv=lv?0:useLv;
   $('stage').style.display='block';$('err').textContent='';$('fb').innerHTML='';$('btns').innerHTML='';
   $('hdr').textContent=(item.kind==='num'?'Sarja':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
   sessionLine();
@@ -609,7 +609,7 @@ function finish(ok,given,k){
     $('skip').style.display='none';
     head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'oikea vastaus on '+'ABCDEF'[item.ci]+'. ';
   }
-  $('fb').innerHTML='<b style="font-weight:500">'+head+'</b>'+item.explain+' <span class="small">('+s+' s)</span>';
+  $('fb').innerHTML='<b style="font-weight:500">'+head+'</b>'+(item.mixLv?'<span class="small">[Vaikeustaso '+item.mixLv+'] </span>':'')+item.explain+' <span class="small">('+s+' s)</span>';
   sessionLine();showStats();
   $('btns').innerHTML='<button class="primary" id="next">Seuraava</button>';
   $('next').onclick=newItem;$('next').focus();
