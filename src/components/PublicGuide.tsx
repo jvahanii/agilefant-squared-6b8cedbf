@@ -27,6 +27,14 @@ export function PublicGuide({
     document.title = documentTitle;
   }, [documentTitle]);
 
+  // A link to a section — /user-guide/jira#stopping — opens at it. The browser
+  // looks for the section as the address loads, before this page has arrived
+  // to have one, and stays at the top.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b px-4 py-4 sm:px-6">

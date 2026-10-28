@@ -36,6 +36,21 @@ describe("JiraGuide", () => {
     }
   });
 
+  it("opens at the section its address names", () => {
+    window.history.replaceState(null, "", "/user-guide/jira#stopping");
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    try {
+      renderGuide();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+    expect(scrolled).toEqual(["stopping"]);
+  });
+
   it("says an item moved out of its list keeps syncing", () => {
     renderGuide();
     expect(screen.getByText(/keeps its issue and keeps syncing/)).toBeInTheDocument();
