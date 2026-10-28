@@ -750,7 +750,125 @@ function genSnake(level){
     return{kind:'snake',fam:'Kuvio: kiemurteleva jono',seq:seq,L:L,cols:C,options:all,ci:ci,explain:ex};
   }
 }
-const VPOOLS={1:[genSnake,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+const PNAME=['ylhäällä','oikealla ylhäällä','oikealla alhaalla','vasemmalla alhaalla','vasemmalla ylhäällä'];
+const maskNames=m=>{const a=[];for(let i=0;i<5;i++)if(m>>i&1)a.push(PNAME[i]);return a.join(', ');};
+const popc=m=>{let c=0;for(;m;m>>=1)c+=m&1;return c;};
+function genPyramid(level){
+  for(;;){
+    const base=[];
+    for(let i=0;i<4;i++){let m=0;shuffle([0,1,2,3,4]).slice(0,rnd(1,4)).forEach(b=>{m|=1<<b;});base.push(m);}
+    const rows=[base];
+    for(let r=1;r<4;r++){const p=rows[r-1],n=[];for(let i=0;i<p.length-1;i++)n.push(p[i]^p[i+1]);rows.push(n);}
+    if(rows.some(r=>r.some(m=>m===0)))continue;
+    const allowed=[];
+    rows.forEach((r,ri)=>r.forEach((m,j)=>{if(level===1?ri===1:level===2?ri>=1:true)allowed.push([ri,j]);}));
+    const u=pick(allowed),ri=u[0],uj=u[1],ansM=rows[ri][uj];
+    const ans={pent:ansM};
+    const cell=(r,j)=>(r===ri&&j===uj)?{q:1}:{pent:rows[r][j]};
+    const grid=[];
+    for(let r=3;r>=0;r--)for(let j=0;j<rows[r].length;j++)grid.push(cell(r,j));
+    const cands=[];
+    for(let i=0;i<5;i++){const t=ansM^(1<<i);if(t)cands.push({pent:t});}
+    const rot=((ansM<<1)|(ansM>>4))&31;if(rot!==ansM)cands.push({pent:rot});
+    if(31^ansM)cands.push({pent:31^ansM});
+    if(ri>0){const c1=rows[ri-1][uj],c2=rows[ri-1][uj+1];cands.push({pent:c1|c2},{pent:c1&c2||c1});}
+    rows.forEach(r=>r.forEach(m=>cands.push({pent:m})));
+    let ex='Jokaisen viisikulmion pisteet määräytyvät sen alla olevasta kahdesta: piste on mukana, jos se on vain toisessa alemmista, mutta ei jos se on molemmissa tai kummassakaan. ';
+    if(ri>0){const c1=rows[ri-1][uj],c2=rows[ri-1][uj+1];ex+='Puuttuvan alla olevissa on pisteet ('+maskNames(c1)+') ja ('+maskNames(c2)+'), joten jää ('+maskNames(ansM)+').';}
+    else{const nb=uj>0?rows[0][uj-1]:rows[0][uj+1],par=uj>0?rows[1][uj-1]:rows[1][uj];ex+='Puuttuva on alin rivillä, joten sääntöä käytetään takaperin: yläpuolisessa on pisteet ('+maskNames(par)+') ja vieressä olevassa ('+maskNames(nb)+'), joten puuttuvassa on ('+maskNames(ansM)+').';}
+    const o=finishVis([],ans,cands,'Kuvio: pistepyramidi (vain toisessa → jää)',ex);
+    if(!o)continue;
+    o.grid=grid;o.pyr=true;
+    o.q='Mikä viisikulmio tulee kysymysmerkin paikalle?';
+    return o;
+  }
+}
+const SQT=[];for(let t=0;t<8;t++)SQT.push(t);
+function sqCells(rows){const c=[];rows.forEach((ab,y)=>{for(let x=ab[0];x<ab[1];x++)c.push([x,y]);});return c;}
+function sqCanon(rows){
+  const base=sqCells(rows);let best=null;
+  for(let t=0;t<8;t++){
+    let c=base.map(p=>{let x=p[0],y=p[1];for(let i=0;i<(t&3);i++){const q=x;x=-y;y=q;}if(t&4)x=-x;return [x,y];});
+    const mx=Math.min.apply(null,c.map(p=>p[0])),my=Math.min.apply(null,c.map(p=>p[1]));
+    const s=c.map(p=>(p[0]-mx)+','+(p[1]-my)).sort().join(';');
+    if(best===null||s<best)best=s;
+  }
+  return best;
+}
+function genSquare(level){
+  const N=level===1?5:level===2?6:7;
+  for(;;){
+    const w=[rnd(1,N-1)];
+    for(let r=1;r<N;r++)w.push(Math.max(1,Math.min(N-1,w[r-1]+pick([-2,-1,0,1,1,-1,2]))));
+    if(new Set(w).size<3)continue;
+    const P=w.map(x=>[x,N]);
+    const qRows=ww=>ww.map((x,r)=>[N-ww[N-1-r],N]);
+    const Q=qRows(w),qc=sqCanon(Q);
+    const seen=new Set([qc]),opts=[];
+    const tryAdd=ww=>{
+      if(ww.some(x=>x<1||x>N-1))return;
+      const rr=qRows(ww),c=sqCanon(rr);
+      if(seen.has(c))return;seen.add(c);opts.push({sq:rr,n:N});
+    };
+    for(let g=0;g<400&&opts.length<5;g++){
+      const ww=w.slice(),kind=rnd(0,3);
+      const i=rnd(0,N-1),j=rnd(0,N-1);
+      if(kind===0){const t=ww[i];ww[i]=ww[j];ww[j]=t;}
+      else if(kind===1){ww[i]+=1;ww[j]-=1;}
+      else if(kind===2){ww[i]+=pick([-1,1]);}
+      else{ww[i]+=pick([-1,1]);ww[j]+=pick([-1,1]);}
+      tryAdd(ww);
+    }
+    if(opts.length<5)continue;
+    const ans={sq:Q,n:N},all=shuffle([ans].concat(opts));
+    const ex='Neliöstä puuttuva osa on ylhäällä olevan palan vastakappale. Puuttuvan osan rivien leveydet ylhäältä alas ovat '+w.join(', ')+' ruutua; kun sen kääntää 180°, portaat jäävät oikealle ja litteä reuna vasemmalle. Se sopii täsmälleen ylemmän palan lovia vasten, ja yhdessä ne muodostavat '+N+'×'+N+' -neliön.';
+    return{kind:'vis',fam:'Kuvio: pala täydentää neliön',grid:[{sq:P,n:N},{q:1}],cols:2,q:'Mikä pala muodostaa ylhäällä olevan palan kanssa täydellisen neliön? Palaa saa kääntää.',options:all,ci:all.indexOf(ans),explain:ex};
+  }
+}
+function genScales(level){
+  for(let g=0;g<5000;g++){
+    const vs=level===1?rnd(2,3):rnd(2,4),vc=level===1?rnd(2,4):level===2?rnd(2,5):rnd(3,6);
+    const d=rnd(1,2),n2=rnd(0,2),n1=n2+d,s1=rnd(0,2),s2=rnd(0,3),t1=rnd(0,2);
+    const t2=t1+d*vc-(s2-s1)*vs;
+    if(s1===s2||t2<0||t2>6)continue;
+    if(n1+s1+t1>10||n2+s2+t2>10)continue;
+    const m=rnd(2,level===3?7:5),k=level===1?0:rnd(1,3),tt=level===3?rnd(0,2):0;
+    const ans=m*vc+k*vs+tt;
+    if(ans>40||m+k+tt>10)continue;
+    const sc=level>1&&Math.random()<0.5?rnd(1,2):0;
+    const scales=[
+      {L:{c:n1,s:s1,t:t1},R:{c:n2,s:s2,t:t2}},
+      {L:{c:sc,s:1,t:vs},R:{c:sc,s:2,t:0}},
+      {L:null,R:{c:m,s:k,t:tt}}
+    ];
+    const ex='Vaaka 2: '+(sc?'kuutiot ovat molemmilla puolilla, joten ne voi ohittaa. ':'')+'Pallo + '+vs+' kolmiota = 2 palloa, joten pallo = '+vs+' kolmiota. Vaaka 1: pallo = '+vs+' kolmiota, joten kun vaihdetaan pallot kolmioiksi ja poistetaan samat kummaltakin puolelta, '+d+' kuutio'+(d>1?'ta':'')+' vastaa '+(d*vc)+' kolmiota, eli kuutio = '+vc+' kolmiota. Vaaka 3: '+m+' kuutiota'+(k?' + '+k+' palloa':'')+(tt?' + '+tt+' kolmiota':'')+' = '+m+'×'+vc+(k?' + '+k+'×'+vs:'')+(tt?' + '+tt:'')+' = '+ans+' kolmiota.';
+    return{kind:'bal',fam:'Kuvio: vaakatehtävä',scales:scales,answer:String(ans),explain:ex};
+  }
+  return genScales(level);
+}
+const TCN=['valkoinen','sininen','keltainen'],TPN=['oikealla alhaalla','ylhäällä','vasemmalla alhaalla'];
+function genTriCircle(level){
+  for(;;){
+    const co=shuffle([[1,1],[1,2],[2,1],[2,2]]);
+    const T=co[0],P=co[1],Cc=co[2],o2=rnd(0,2),o3=rnd(0,2),o1=rnd(0,2);
+    const map=pick([[2,0,1],[1,2,0]]);
+    const tri=(r,c)=>(T[0]*r+T[1]*c+o1)%3,pos=(r,c)=>(P[0]*r+P[1]*c+o2)%3;
+    const cc=(r,c)=>level<3?map[tri(r,c)]:(Cc[0]*r+Cc[1]*c+o3)%3;
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push({tc:[tri(r,c),cc(r,c),pos(r,c)]});
+    const ans=cells[8],cands=[];
+    for(let a=0;a<3;a++)for(let b=0;b<3;b++)for(let p=0;p<3;p++){
+      const d=(a!==ans.tc[0])+(b!==ans.tc[1])+(p!==ans.tc[2]);
+      if(d===1||(d===2&&Math.random()<0.5))cands.push({tc:[a,b,p]});
+    }
+    let ex='Kolmion väri kiertää niin, että jokainen väri (valkoinen, sininen, keltainen) esiintyy kerran jokaisella rivillä ja sarakkeessa. ';
+    ex+=level<3?'Ympyrän väri riippuu kolmion väristä: '+[0,1,2].map(i=>TCN[i]+' kolmio → '+TCN[map[i]]+' ympyrä').join(', ')+'. ':'Myös ympyrän väri kiertää omalla tavallaan niin, että jokainen väri esiintyy kerran jokaisella rivillä ja sarakkeessa. ';
+    ex+='Ympyrän paikka (oikealla alhaalla, ylhäällä, vasemmalla alhaalla) kiertää samoin. Rivi 3, sarake 3: '+TCN[ans.tc[0]]+' kolmio, '+TCN[ans.tc[1]]+' ympyrä, paikka '+TPN[ans.tc[2]]+'.';
+    const o=finishVis(cells,ans,cands,'Kuvio: kolmio ja ympyrä (kolme ominaisuutta)',ex);
+    if(o)return o;
+  }
+}
+const VPOOLS={1:[genSnake,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -760,6 +878,22 @@ function symSvg(sp){
   const defs='<defs><pattern id="hatchP" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--ink);stroke-width:1.6"/></pattern><pattern id="vP" width="9" height="9" patternUnits="userSpaceOnUse"><rect width="9" height="9" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="9" style="stroke:var(--ink);stroke-width:1.8"/></pattern><pattern id="oP" width="9" height="9" patternUnits="userSpaceOnUse"><rect width="9" height="9" style="fill:var(--bg)"/><line x1="0" y1="0" x2="9" y2="0" style="stroke:var(--ink);stroke-width:1.8"/></pattern><clipPath id="clipS"><rect x="9" y="9" width="62" height="62"/></clipPath></defs>';
   const fillOf=(f,fm)=>f===2?'fill:var(--ink)':f===1?(fm==='h'?'fill:url(#hatchP)':fm==='v'?'fill:url(#vP)':fm==='o'?'fill:url(#oP)':fm==='d'?'fill:var(--bg)':'fill:#B4B2A9'):'fill:var(--bg)';
   const outline='stroke:var(--ink);stroke-width:2';
+  const drawPent=q=>{
+    const V=[];for(let i=0;i<5;i++){const t=(-90+72*i)*Math.PI/180;V.push([40+34*Math.cos(t),42+34*Math.sin(t)]);}
+    let b='<polygon points="'+V.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" style="fill:#2f5fb8;stroke:#1d3f80;stroke-width:2;stroke-linejoin:round"/>';
+    for(let i=0;i<5;i++)if(q.pent>>i&1)b+='<circle cx="'+(40+0.58*(V[i][0]-40)).toFixed(1)+'" cy="'+(42+0.58*(V[i][1]-42)).toFixed(1)+'" r="5" style="fill:#fff"/>';
+    return b;
+  };
+  const drawSq=q=>{
+    const N=q.n,u=64/N,X=x=>(8+x*u).toFixed(1),rw=q.sq,p=[];
+    for(let r=0;r<N;r++){p.push(X(rw[r][1])+','+X(r));p.push(X(rw[r][1])+','+X(r+1));}
+    for(let r=N-1;r>=0;r--){p.push(X(rw[r][0])+','+X(r+1));p.push(X(rw[r][0])+','+X(r));}
+    return '<polygon points="'+p.join(' ')+'" style="fill:#f5c400;stroke:#8a6d00;stroke-width:1.5;stroke-linejoin:miter"/>';
+  };
+  const drawTC=q=>{
+    const FC=['#ffffff','#2b8fd6','#f2d11a'],PP=[[58,56],[40,28],[22,56]],pp=PP[q.tc[2]];
+    return '<polygon points="40,8 73,68 7,68" style="fill:'+FC[q.tc[0]]+';stroke:#2b8fd6;stroke-width:2.5;stroke-linejoin:round"/><circle cx="'+pp[0]+'" cy="'+pp[1]+'" r="9" style="fill:'+FC[q.tc[1]]+';stroke:#0f3d63;stroke-width:2"/>';
+  };
   const pts=a=>a.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
   const reg=(n,cx,cy,r)=>{const a=[];for(let i=0;i<n;i++){const t=(-90+360*i/n)*Math.PI/180;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;};
   const star=(cx,cy,r)=>{const a=[];for(let i=0;i<10;i++){const t=(-90+36*i)*Math.PI/180,rr=i%2?r*0.45:r;a.push([cx+rr*Math.cos(t),cy+rr*Math.sin(t)]);}return a;};
@@ -904,6 +1038,9 @@ function symSvg(sp){
   else if(sp.frm!==undefined){g=drawFrame(sp);}
   else if(sp.ym){g=drawY(sp);}
   else if(sp.se){g=drawSE(sp);}
+  else if(sp.pent!==undefined){g=drawPent(sp);}
+  else if(sp.sq){g=drawSq(sp);}
+  else if(sp.tc){g=drawTC(sp);}
   else{
     const n=sp.n||1,xs=n===1?[40]:n===2?[26,54]:[18,40,62],s=sp.s||(n===3?16:n===2?22:28);
     xs.forEach(x=>{g+=drawShape(sp.shape,x,40,s,sp.fill,sp.fm,sp.rot);});
@@ -990,6 +1127,23 @@ function checkSnake(){
   if(snk.sel.indexOf(null)>=0){$('err').textContent='Valitse kaksi kuviota tai paina Ohita';return;}
   finish(snk.sel[0]===item.ci[0]&&snk.sel[1]===item.ci[1],'');
 }
+function balSvg(sc,no){
+  const ico=(k,x,y)=>{
+    if(k==='c')return '<rect x="'+x+'" y="'+(y-22)+'" width="22" height="22" rx="2" style="fill:#f08a24;stroke:#8a4b0a;stroke-width:1.5"/><polygon points="'+x+','+(y-22)+' '+(x+6)+','+(y-28)+' '+(x+28)+','+(y-28)+' '+(x+22)+','+(y-22)+'" style="display:none"/>';
+    if(k==='s')return '<circle cx="'+(x+11)+'" cy="'+(y-11)+'" r="11" style="fill:#f2a81d;stroke:#a06a10;stroke-width:1.5"/>';
+    return '<polygon points="'+x+','+y+' '+(x+11)+','+(y-22)+' '+(x+22)+','+y+'" style="fill:#c0392b;stroke:#6e1f14;stroke-width:1.5;stroke-linejoin:round"/>';
+  };
+  const side=(p,x0)=>{
+    const a=[];for(let i=0;i<p.c;i++)a.push('c');for(let i=0;i<p.s;i++)a.push('s');for(let i=0;i<p.t;i++)a.push('t');
+    let b='';a.forEach((k,i)=>{b+=ico(k,x0+(i%4)*25,96-Math.floor(i/4)*25);});return b;
+  };
+  let s='<svg viewBox="0 0 260 160" style="width:100%">';
+  s+='<polygon points="130,106 108,142 152,142" style="fill:#8fa9c4"/><rect x="10" y="98" width="240" height="8" rx="2" style="fill:#b7cde3;stroke:#7d98b5;stroke-width:1.5"/>';
+  s+=sc.L?side(sc.L,22):'<text x="70" y="78" text-anchor="middle" style="font-size:46px;font-weight:600;fill:#185fa5">?</text>';
+  s+=side(sc.R,138);
+  s+='<text x="240" y="154" text-anchor="end" style="font-size:16px;fill:#5f5e5a">'+no+'</text></svg>';
+  return s;
+}
 function sessionLine(){
   if(!session.length){$('score').textContent='';return;}
   const ok=session.filter(x=>x.ok).length,avg=Math.round(session.reduce((a,x)=>a+x.s,0)/session.length);
@@ -1001,12 +1155,19 @@ function newItem(){
   const lv=+$('level').value;
   const useLv=lv||rnd(1,3);item=genItem($('mode').value,useLv,+$('count').value);item.mixLv=lv?0:useLv;
   $('stage').style.display='block';$('err').textContent='';$('fb').innerHTML='';$('btns').innerHTML='';
-  $('hdr').textContent=(item.kind==='num'?'Sarja':item.kind==='snake'?'Kuviojono':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
+  $('hdr').textContent=(item.kind==='num'?'Sarja':item.kind==='snake'?'Kuviojono':item.kind==='bal'?'Vaaka':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
   sessionLine();
   if(item.kind==='num'){
     let h='<div style="margin-bottom:14px">';
     item.shown.forEach(s=>{h+='<span class="term">'+s+'</span>';});
     for(let q=0;q<(item.count||1);q++)h+='<span class="term tq">?</span>';h+='</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="ans" placeholder="'+((item.count||1)>1?'Vastauksesi ('+item.count+' lukua)':'Vastauksesi')+'" style="width:'+((item.count||1)>1?230:150)+'px" autocomplete="off"><button id="go" class="primary">Tarkista</button><button id="skip">Ohita</button></div>';
+    $('body').innerHTML=h;
+    $('ans').addEventListener('input',()=>{$('err').textContent='';});
+    $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkNum();}});
+    $('go').onclick=checkNum;$('skip').onclick=()=>finish(false,'ohitettu');
+    $('ans').focus();
+  }else if(item.kind==='bal'){
+    let h='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">'+item.scales.map((sc,i)=>'<div style="flex:1 1 220px;max-width:300px;background:#fff;border-radius:10px">'+balSvg(sc,i+1)+'</div>').join('')+'</div><div class="small" style="margin-bottom:8px">Vaakojen 1 ja 2 kuormat ovat tasapainossa. Montako kolmiota tarvitaan, jotta vaaka 3 on tasapainossa?</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="ans" placeholder="Montako kolmiota" style="width:150px" autocomplete="off"><button id="go" class="primary">Tarkista</button><button id="skip">Ohita</button></div>';
     $('body').innerHTML=h;
     $('ans').addEventListener('input',()=>{$('err').textContent='';});
     $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkNum();}});
@@ -1024,9 +1185,10 @@ function newItem(){
     $('go').onclick=checkSnake;$('skip').onclick=()=>finish(false,'ohitettu');
   }else{
     const cw=item.cols===2?130:92;
-    let h='<div class="grid" style="grid-template-columns:repeat('+(item.cols||3)+',minmax(0,'+cw+'px))">';
-    item.grid.forEach(sp=>{h+='<div class="cell">'+symSvg(sp)+'</div>';});
-    h+='</div><div class="small" style="margin-bottom:8px">Mikä palanen täydentää kuvion?</div><div class="opts">';
+    let h='<div class="grid" style="grid-template-columns:repeat('+(item.pyr?8:(item.cols||3))+',minmax(0,'+(item.pyr?46:cw)+'px))'+(item.pyr?';column-gap:0':'')+'">';
+    const PS=[4,3,5,2,4,6,1,3,5,7];
+    item.grid.forEach((sp,i)=>{h+='<div class="cell"'+(item.pyr?' style="grid-column:'+PS[i]+' / span 2;margin:0 4px"':'')+'>'+symSvg(sp)+'</div>';});
+    h+='</div><div class="small" style="margin-bottom:8px">'+(item.q||'Mikä palanen täydentää kuvion?')+'</div><div class="opts">';
     item.options.forEach((sp,k)=>{h+='<div><button class="opt" data-k="'+k+'" aria-label="Vaihtoehto '+'ABCDEF'[k]+'">'+symSvg(sp)+'</button><div class="lab">'+'ABCDEF'[k]+'</div></div>';});
     h+='</div><div style="margin-top:12px"><button id="skip">Ohita</button></div>';
     $('body').innerHTML=h;
@@ -1061,7 +1223,7 @@ function finish(ok,given,k){
   session.push({ok:ok,s:s});
   const st=stats[item.fam]||{n:0,ok:0,time:0};st.n++;if(ok)st.ok++;st.time+=s;stats[item.fam]=st;saveStats();
   let head;
-  if(item.kind==='num'){
+  if(item.kind==='num'||item.kind==='bal'){
     if($('ans'))$('ans').disabled=true;$('go').disabled=true;$('skip').style.display='none';
     head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'vastaus on '+item.answer+'. ';
   }else if(item.kind==='snake'){
