@@ -96,9 +96,13 @@ export function Section({ id, title, children }: { id: string; title: string; ch
   );
 }
 
-/** A step within a long section. */
-export function SubHeading({ children }: { children: ReactNode }) {
-  return <h3 className="mt-8 text-lg font-semibold tracking-tight">{children}</h3>;
+/** A step within a long section; with an id, one that can be linked to. */
+export function SubHeading({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <h3 id={id} className="mt-8 scroll-mt-6 text-lg font-semibold tracking-tight">
+      {children}
+    </h3>
+  );
 }
 
 export function P({ children }: { children: ReactNode }) {

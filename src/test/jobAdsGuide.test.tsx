@@ -63,4 +63,18 @@ describe("JobAdsGuide", () => {
     expect(section.getByText(/A scheduled run reads the mail only/)).toBeInTheDocument();
     expect(section.getByText(/A page you took nothing from is offered again next time/)).toBeInTheDocument();
   });
+
+  it("gives the closing date as the item's deadline, not in its name", () => {
+    renderGuide();
+    expect(screen.getByText(/Given the closing date as its deadline/)).toBeInTheDocument();
+    expect(screen.getByText(/created without a deadline rather than with a guess/)).toBeInTheDocument();
+  });
+
+  it("explains rating postings in the picker, and links to it", () => {
+    const { container } = renderGuide();
+    expect(screen.getByRole("heading", { level: 3, name: "Rating postings" })).toBeInTheDocument();
+    expect(container.querySelector("#rating")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Rating postings" })).toHaveAttribute("href", "#rating");
+    expect(screen.getByText(/the stars rate that item there and then/)).toBeInTheDocument();
+  });
 });

@@ -88,17 +88,28 @@ export default function JobAdsGuide() {
             <strong>Named after the employer and the role</strong> — for example <Code>Fennia - Product owner</Code>.
           </li>
           <li>
-            <strong>Given the closing date</strong> when one can be found. Where your organization has{" "}
-            <strong>Deadlines</strong> switched on in Bells &amp; Whistles, it becomes the item's deadline, shown before
-            the name and sortable with <em>Deadline, soonest first</em>. Otherwise it goes in front of the name as
-            month and day — <Code>0930 Fennia - Product owner</Code> closes on 30 September — and sorting by name puts
-            the soonest first.
+            <strong>Given the closing date as its deadline</strong> when one can be found — shown before the name,
+            and sortable with <Em>Deadline, soonest first</Em>. Deadlines are seen where your organization has{" "}
+            <Em>Deadlines</Em> switched on in Bells &amp; Whistles; the date is stored on the item either way, so
+            switching them on later shows every date already in place.
+          </li>
+          <li>
+            <strong>Rated as you rated it</strong> in the picker, one to five stars — see{" "}
+            <a href="#rating" className="text-primary underline-offset-2 hover:underline">
+              Rating postings
+            </a>
+            .
           </li>
           <li>
             <strong>With the posting attached as a hyperlink</strong>, and a description recording when applications
             close, which email it came from, the sender and when it arrived.
           </li>
         </Ul>
+        <P>
+          An organization with deadlines switched off still sees the date: it goes in front of the name as month and
+          day — <Code>0930 Fennia - Product owner</Code> closes on 30 September — so that sorting by name puts the
+          soonest first.
+        </P>
         <P>
           Job alert emails carry a lot besides the postings. Site navigation, editorial articles and the
           &ldquo;jobs you have already seen&rdquo; section of a digest are left out. When the same posting arrives
@@ -370,6 +381,23 @@ export default function JobAdsGuide() {
           any list in another tree, saved on the search like the first. The status plays no part in this: it only
           sets how the new item starts.
         </P>
+        <SubHeading id="rating">Rating postings</SubHeading>
+        <P>
+          Each ticked posting has a row of stars beside its <Em>Mirror</Em> switch. Click one to rate the posting from
+          one to five; the item it becomes is created with that rating. A posting left unrated is imported unrated.
+        </P>
+        <P>
+          On a posting that is already in this tree — unticked, with <Em>already in</Em> on its row — the stars rate
+          that item there and then, without importing it again.
+        </P>
+        <P>
+          A rating plays no part in which list a posting goes to, or whether it is mirrored. Ratings are seen on a
+          list's items where your organization has <Em>Enable star ratings</Em> switched on in Bells &amp; Whistles
+          and the list has <Em>Star ratings</Em> ticked in its right-click menu. The list can then be sorted by{" "}
+          <Em>Rating ★ best first</Em>, or — with deadlines on as well — by <Em>Deadline, then rating ★</Em>: what
+          closes first at the top, and of the jobs closing the same day, the best first.
+        </P>
+
         <P>
           After an import, superusers also get a check of the ads that were already in the list it filled: any that
           have closed since are marked, and a message reports the result — see{" "}
@@ -481,8 +509,8 @@ export default function JobAdsGuide() {
         </ul>
         <P>
           When a date is written without a year, the next occurrence of it is assumed. When no deadline can be
-          found, the item is created without a date prefix rather than with a guess — a wrong date in an item name
-          is worse than none.
+          found, the item is created without a deadline rather than with a guess — a wrong date is worse than
+          none.
         </P>
         <P>
           Jobly refuses to show its postings to Agilefant's servers, so their deadlines cannot be read there.
@@ -499,6 +527,7 @@ export default function JobAdsGuide() {
           runs once a day at whatever hour it last ran.
         </P>
         <P>The saved search shows when it last ran and how many items that run created.</P>
+        <P>With no picker, a scheduled run rates nothing: its items arrive unrated, to be rated in the list.</P>
         <Callout tone="warning">
           <strong>A scheduled run imports every posting it finds.</strong> There is no picker, and postings already
           in your list are imported again. Give a scheduled search a short look-back that matches how often it

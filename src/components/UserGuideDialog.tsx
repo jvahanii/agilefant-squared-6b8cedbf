@@ -1316,12 +1316,12 @@ function buildSections(): Section[] {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Turn the <strong className="text-foreground">job alert emails in your Gmail</strong> into list items, one
-            per job posting, named after the employer and the role, with the closing date where one is found and
-            the posting attached. Set it up from{" "}
+            per job posting, named after the employer and the role, with the closing date as its deadline where
+            one is found, the star rating you give it in the picker, and the posting attached. Set it up from{" "}
             <strong className="text-foreground">Settings → Bells & Whistles → Job ad import</strong>.
           </p>
           <div className="space-y-2">
-            <ActionRow action="Import" how="Connect Gmail, search your job alerts, and choose which postings become items in which list." labelWidth="sm:w-40" />
+            <ActionRow action="Import" how="Connect Gmail, search your job alerts, and choose which postings become items in which list, rating each one from one to five stars as you go." labelWidth="sm:w-40" />
             <ActionRow action="Schedule" how="Run the same search on a schedule, so new postings arrive by themselves." labelWidth="sm:w-40" />
             <ActionRow action="Closed ads" how="Check the imported postings for ads that have closed, and clear them away." labelWidth="sm:w-40" />
           </div>
