@@ -564,13 +564,6 @@ function figPick(t){
   }
   return out;
 }
-function figVary(sp){
-  const v=sp.v.slice(),out=[];
-  if(sp.fig==='bars'){for(let i=0;i<3;i++)for(let j=i+1;j<3;j++){const w=v.slice();const t=w[i];w[i]=w[j];w[j]=t;out.push({fig:'bars',v:w});}}
-  else if(sp.fig==='quad'){for(let i=0;i<4;i++)[0,1,2].forEach(x=>{if(x!==v[i]){const w=v.slice();w[i]=x;out.push({fig:'quad',v:w});}});}
-  else{for(let i=0;i<8;i++){const w=v.indexOf(i)>=0?v.filter(x=>x!==i):v.concat([i]).sort((x,y)=>x-y);if(w.length)out.push({fig:'seg',v:w});}}
-  return out;
-}
 function genLatinFig(level){
   for(;;){
     const t=pick(['bars','quad','seg']);
@@ -585,29 +578,111 @@ function genLatinFig(level){
     if(o)return o;
   }
 }
+const FUNI={seg:8,ring:3,grid:9,blk:6},FMAXC={seg:5,ring:3,grid:6,blk:4},FNAME={seg:'viivat',ring:'kerrokset',grid:'ruudukon mustat ruudut',blk:'palikat viivan alla'};
+function figVary(sp){
+  const v=sp.v.slice(),out=[];
+  if(sp.fig==='bars'){for(let i=0;i<3;i++)for(let j=i+1;j<3;j++){const w=v.slice();const t=w[i];w[i]=w[j];w[j]=t;out.push({fig:'bars',v:w});}}
+  else if(sp.fig==='quad'){for(let i=0;i<4;i++)[0,1,2].forEach(x=>{if(x!==v[i]){const w=v.slice();w[i]=x;out.push({fig:'quad',v:w});}});}
+  else{for(let i=0;i<FUNI[sp.fig];i++){const w=v.indexOf(i)>=0?v.filter(x=>x!==i):v.concat([i]).sort((x,y)=>x-y);if(w.length)out.push({fig:sp.fig,v:w});}}
+  return out;
+}
 function genOverlay(level){
   for(;;){
-    const xor=level>2&&Math.random()<0.6;
-    const cells=[],Cs=[];let bad=false;
+    const kind=pick(level<2?['seg','grid']:['seg','ring','grid','blk']);
+    const xor=level>2&&Math.random()<0.6||kind==='ring'&&level>1&&Math.random()<0.6;
+    const U=FUNI[kind],cells=[],Cs=[];let bad=false;
     for(let r=0;r<3;r++){
-      let ids=shuffle([0,1,2,3,4,5,6,7]);
-      const A=ids.slice(0,rnd(1,2)).sort((x,y)=>x-y);
-      let B,shared=null;
-      if(xor){shared=A[0];B=[shared].concat(ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,2))).sort((x,y)=>x-y);}
-      else B=ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,2)).sort((x,y)=>x-y);
-      const U=A.concat(B.filter(x=>A.indexOf(x)<0)).sort((x,y)=>x-y);
-      const C=xor?U.filter(x=>!(A.indexOf(x)>=0&&B.indexOf(x)>=0)):U;
-      if(!C.length||C.length>5){bad=true;break;}
-      cells.push({fig:'seg',v:A},{fig:'seg',v:B},{fig:'seg',v:C});Cs.push({A:A,B:B,U:U,C:C});
+      const ids=shuffle(Array.from({length:U},(_,i)=>i));
+      const A=ids.slice(0,rnd(1,kind==='ring'?1:2)).sort((x,y)=>x-y);
+      let B;
+      if(xor)B=[A[0]].concat(ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,kind==='ring'?1:2))).sort((x,y)=>x-y);
+      else B=ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,kind==='ring'?2:2)).sort((x,y)=>x-y);
+      const Un=A.concat(B.filter(x=>A.indexOf(x)<0)).sort((x,y)=>x-y);
+      const C=xor?Un.filter(x=>!(A.indexOf(x)>=0&&B.indexOf(x)>=0)):Un;
+      if(!C.length||C.length>FMAXC[kind]){bad=true;break;}
+      cells.push({fig:kind,v:A},{fig:kind,v:B},{fig:kind,v:C});Cs.push({A:A,B:B,U:Un,C:C});
     }
     if(bad)continue;
     if(new Set(Cs.map(x=>x.C.join())).size<3)continue;
-    const ans=cells[8],last=Cs[2],cands=[{fig:'seg',v:last.A},{fig:'seg',v:last.B}];
-    if(xor)cands.push({fig:'seg',v:last.U});
-    else{const X=last.U.filter(x=>!(last.A.indexOf(x)>=0&&last.B.indexOf(x)>=0));if(X.join()!==last.C.join())cands.push({fig:'seg',v:X});}
+    const ans=cells[8],last=Cs[2],cands=[{fig:kind,v:last.A},{fig:kind,v:last.B}];
+    if(xor)cands.push({fig:kind,v:last.U});
+    else{const X=last.U.filter(x=>!(last.A.indexOf(x)>=0&&last.B.indexOf(x)>=0));if(X.join()!==last.C.join()&&X.length)cands.push({fig:kind,v:X});}
     figVary(ans).forEach(x=>cands.push(x));
-    const ex=xor?'Kolmas kuvio saadaan yhdistämällä kaksi ensimmäistä, mutta viivat, jotka ovat molemmissa, katoavat.':'Kolmas kuvio on kahden ensimmäisen päällekkäin (kaikki niiden viivat yhdessä).';
-    const o=finishVis(cells,ans,cands,xor?'Kuvio: viivat yhdistyvät (poistuvat jos molemmissa)':'Kuvio: viivat yhdistyvät',ex+' Rivi 3: '+last.A.length+' + '+last.B.length+' viivaa'+(xor?' miinus yhteiset':'')+' = '+last.C.length+' viivaa.');
+    const ex=(xor?'Kolmas kuvio saadaan yhdistämällä kaksi ensimmäistä, mutta se mikä on molemmissa katoaa.':'Kolmas kuvio on kahden ensimmäisen päällekkäin (kaikki niiden osat yhdessä).')+' ('+FNAME[kind]+')';
+    const o=finishVis(cells,ans,cands,'Kuvio: yhdistäminen ('+FNAME[kind]+(xor?', yhteinen katoaa':'')+')',ex);
+    if(o)return o;
+  }
+}
+function glyphOp(pts,k,m){
+  return pts.map(p=>{let x=p[0],y=p[1];if(m)x=80-x;for(let i=0;i<k;i++){const t=x;x=80-y;y=t;}return [x,y];});
+}
+const GLY_ASYM={zig:[[68,16],[68,40],[12,40],[12,64]],hook:[[14,66],[14,14],[66,14],[66,44],[40,44]],step:[[14,66],[14,44],[40,44],[40,22],[66,22]]};
+const GLY_ROT={brk:[[54,14],[22,14],[22,66],[54,66]],cor:[[16,66],[16,14],[64,14]],chev:[[54,12],[20,40],[54,68]]};
+const plKey=pts=>{const a=JSON.stringify(pts),b=JSON.stringify(pts.slice().reverse());return a<b?a:b;};
+function genGlyph(level){
+  for(;;){
+    const cells=[],cands=[];let ans,ex,fam;
+    if(level<3||Math.random()<0.5){
+      const base=GLY_ASYM[pick(Object.keys(GLY_ASYM))];
+      const ops=shuffle([[1,0],[2,0],[3,0],[0,1],[2,1],[1,1],[3,1]]);
+      const f=ops[0],g=ops[1];
+      const mk=(r,c)=>{let p=base;if(c%2)p=glyphOp(p,f[0],f[1]);if(r%2)p=glyphOp(p,g[0],g[1]);return {pl:p};};
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk(r,c));
+      ans=cells[8];
+      for(let k=0;k<4;k++)for(let m=0;m<2;m++){cands.push({pl:glyphOp(base,k,m)});cands.push({pl:glyphOp(glyphOp(base,f[0],f[1]),k,m)});}
+      ex='Kuviota muutetaan kahdella tavalla: joka toinen sarake on muutettu (kierretty tai peilattu), ja joka toinen rivi on muutettu toisella tavalla. Sarake 3 on sama kuin sarake 1, ja rivi 3 sama kuin rivi 1, joten rivi 3, sarake 3 on sama kuin ensimmäinen kuvio.';
+      fam='Kuvio: kierto ja peilaus (vuorottelu)';
+    }else{
+      const keys=shuffle(Object.keys(GLY_ROT));const a0=rnd(0,3),p=pick([1,2,3]),q=pick([1,3]),m=pick([1,2]);
+      const rot=(r,c)=>(a0+p*r+q*c)%4;
+      const mk=(t,k)=>({pl:glyphOp(GLY_ROT[keys[t]],k,0)});
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk((m*r+c)%3,rot(r,c)));
+      ans=cells[8];const at=(m*2+2)%3,ak=rot(2,2);
+      for(let k=0;k<4;k++)if(k!==ak)cands.push(mk(at,k));
+      [0,1,2].forEach(t=>{if(t!==at)[0,1,2,3].forEach(k=>cands.push(mk(t,k)));});
+      ex='Kolme eri kuviota kiertää niin, että jokainen esiintyy kerran jokaisella rivillä ja sarakkeella, ja lisäksi jokainen kuvio kääntyy 90° tai 180° askel kerrallaan. Rivi 3, sarake 3: puuttuva kuvio oikeassa asennossa.';
+      fam='Kuvio: kolme kuviota kiertyen';
+    }
+    const o=finishVis(cells,ans,cands,fam,ex);
+    if(o)return o;
+  }
+}
+function genFrame(level){
+  for(;;){
+    const p=pick([1,3]),q=pick([1,3]),m=pick([1,2]);
+    const gap=(r,c)=>(p*r+q*c)%4,fl=(r,c)=>(m*r+c)%3;
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push({frm:gap(r,c),fl:fl(r,c)});
+    const ans=cells[8],cands=[];
+    for(let g=0;g<4;g++)for(let f=0;f<3;f++)if(g!==ans.frm||f!==ans.fl)cands.push({frm:g,fl:f});
+    const ex='Kehyksen aukko kääntyy 90° joka askeleella ('+(q===1?'oikealle myötäpäivään':'oikealle vastapäivään')+'), ja sisällä olevan neliön väri (valkoinen, harmaa, musta) kiertää niin, että jokainen väri esiintyy kerran joka rivillä ja sarakkeessa. Rivi 3, sarake 3: aukko '+['ylhäällä','oikealla','alhaalla','vasemmalla'][ans.frm]+', neliö '+FLN[ans.fl]+'.';
+    const o=finishVis(cells,ans,cands,'Kuvio: avoin kehys ja sisäneliö',ex);
+    if(o)return o;
+  }
+}
+function genYMark(level){
+  for(;;){
+    const m=pick([1,2]),n=pick([1,2]);
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push({ym:[(r+c)%2,(m*r+c)%3,(n*r+2*c+r)%3]});
+    const ans=cells[8],cands=[];
+    for(let o=0;o<2;o++)for(let t=0;t<3;t++)for(let k=0;k<3;k++)if(o!==ans.ym[0]||t!==ans.ym[1]||k!==ans.ym[2])cands.push({ym:[o,t,k]});
+    const ex='Y-kuvion suunta vaihtuu joka askeleella (shakkilauta). Merkki (pisteet, risti, neliö) ja se, minkä haaran päässä se on, kiertävät kumpikin niin, että yhdistelmä on aina eri. Rivi 3, sarake 3: '+(ans.ym[0]?'Y pystyssä':'Y ylösalaisin')+', merkki '+['pisteet','risti','neliö'][ans.ym[2]]+' haarassa '+['vasen','oikea','varsi'][ans.ym[1]]+'.';
+    const o=finishVis(cells,ans,cands,'Kuvio: Y-kuvio ja merkki',ex);
+    if(o)return o;
+  }
+}
+function genShapeEdges(level){
+  for(;;){
+    const masks=shuffle([1,2,4,8,3,6,12,9,5,10]).slice(0,3),byCol=Math.random()<0.7;
+    const sh=shuffle([0,1,2]);
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push({se:[byCol?sh[c]:sh[r],byCol?masks[r]:masks[c]]});
+    const ans=cells[8],cands=[];
+    for(let s=0;s<3;s++)for(let k=0;k<3;k++){const mk=byCol?masks[k]:masks[k];if(s!==ans.se[0]||mk!==ans.se[1])cands.push({se:[s,mk]});}
+    shuffle([1,2,4,8,3,12]).slice(0,3).forEach(mk=>cands.push({se:[ans.se[0],mk]}));
+    const ex='Kuvion muoto määräytyy '+(byCol?'sarakkeen':'rivin')+' mukaan (musta neliö, vinoneliö, tyhjä neliö) ja reunaviivat (kaksoisviivat) '+(byCol?'rivin':'sarakkeen')+' mukaan. Rivi 3, sarake 3: yhdistä kolmannen '+(byCol?'sarakkeen muoto kolmannen rivin':'rivin muoto kolmannen sarakkeen')+' viivoihin.';
+    const o=finishVis(cells,ans,cands,'Kuvio: muoto ja reunaviivat',ex);
     if(o)return o;
   }
 }
@@ -628,7 +703,7 @@ function genHalf(level){
     if(o)return o;
   }
 }
-const VPOOLS={1:[genRowConst,genPointer,genCount,genAttr,genAttr,genTile2,genNest],2:[genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genPointer,genCount,genLatinFig,genOverlay,genHalf,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+const VPOOLS={1:[genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -687,10 +762,37 @@ function symSvg(sp){
     let b='';
     if(q.fig==='bars'){q.v.forEach((h,i)=>{b+='<rect x="'+(17+i*17)+'" y="'+(68-h*16)+'" width="11" height="'+(h*16)+'" style="fill:'+INK+'"/>';});}
     else if(q.fig==='quad'){q.v.forEach((v,i)=>{const x=14+(i%2)*26,y=14+Math.floor(i/2)*26;b+='<rect x="'+x+'" y="'+y+'" width="26" height="26" style="'+fillOf(v,'g')+';stroke:'+INK+';stroke-width:1.5"/>';});}
+    else if(q.fig==='ring'){[56,38,20].forEach((z,i)=>{b+='<rect x="'+(40-z/2)+'" y="'+(40-z/2)+'" width="'+z+'" height="'+z+'" style="fill:'+(q.v.indexOf(i)>=0?INK:'var(--bg)')+';stroke:'+INK+';stroke-width:2"/>';});}
+    else if(q.fig==='grid'){for(let i=0;i<9;i++){b+='<rect x="'+(13+(i%3)*18)+'" y="'+(13+Math.floor(i/3)*18)+'" width="18" height="18" style="fill:'+(q.v.indexOf(i)>=0?INK:'var(--bg)')+';stroke:'+INK+';stroke-width:1.5"/>';}}
+    else if(q.fig==='blk'){const W=[6,9,12,6,9,12];b+='<line x1="10" y1="22" x2="70" y2="22" style="stroke:'+INK+';stroke-width:2"/>';q.v.forEach(i=>{const w=W[i],x=12+i*10.5;b+='<rect x="'+x+'" y="23" width="'+w+'" height="'+w+'" style="fill:'+INK+'"/>';});}
     else{
       const S=[[12,12,68,12],[68,12,68,68],[12,68,68,68],[12,12,12,68],[12,12,68,68],[68,12,12,68],[40,12,40,68],[12,40,68,40]];
       q.v.forEach(i=>{const s=S[i];b+='<line x1="'+s[0]+'" y1="'+s[1]+'" x2="'+s[2]+'" y2="'+s[3]+'" style="stroke:'+INK+';stroke-width:2.5"/>';});
     }
+    return b;
+  };
+  const drawPl=q=>'<polyline points="'+q.pl.map(p=>p[0]+','+p[1]).join(' ')+'" style="fill:none;stroke:'+INK+';stroke-width:3;stroke-linejoin:miter"/>';
+  const drawFrame=q=>{
+    const P=[[12,12],[68,12],[68,68],[12,68]];let b='';
+    for(let i=0;i<4;i++){if(i===q.frm)continue;const A=P[i],B=P[(i+1)%4];b+='<line x1="'+A[0]+'" y1="'+A[1]+'" x2="'+B[0]+'" y2="'+B[1]+'" style="stroke:'+INK+';stroke-width:2.5"/>';}
+    return b+'<rect x="28" y="28" width="24" height="24" style="'+fillOf(q.fl,'g')+';stroke:'+INK+';stroke-width:1.5"/>';
+  };
+  const drawY=q=>{
+    const inv=q.ym[0]===0,T=inv?[[22,66],[58,66],[40,14]]:[[22,18],[58,18],[40,68]],C=[40,inv?42:40];
+    let b='';T.forEach(t=>{b+='<line x1="'+C[0]+'" y1="'+C[1]+'" x2="'+t[0]+'" y2="'+t[1]+'" style="stroke:'+INK+';stroke-width:2.5"/>';});
+    const t=T[q.ym[1]],k=q.ym[2];
+    if(k===0)[[-4,-4],[4,-4],[0,3]].forEach(d=>{b+='<circle cx="'+(t[0]+d[0])+'" cy="'+(t[1]+d[1])+'" r="2.4" style="fill:'+INK+'"/>';});
+    else if(k===1)b+='<line x1="'+(t[0]-6)+'" y1="'+t[1]+'" x2="'+(t[0]+6)+'" y2="'+t[1]+'" style="stroke:'+INK+';stroke-width:2.5"/><line x1="'+t[0]+'" y1="'+(t[1]-6)+'" x2="'+t[0]+'" y2="'+(t[1]+6)+'" style="stroke:'+INK+';stroke-width:2.5"/>';
+    else b+='<rect x="'+(t[0]-5)+'" y="'+(t[1]-5)+'" width="10" height="10" style="fill:'+INK+'"/>';
+    return b;
+  };
+  const drawSE=q=>{
+    let b='';const sh=q.se[0],mk=q.se[1];
+    if(sh===0)b+='<rect x="22" y="22" width="36" height="36" style="fill:'+INK+'"/>';
+    else if(sh===1)b+='<polygon points="40,20 60,40 40,60 20,40" style="fill:var(--bg);'+outline+'"/>';
+    else b+='<rect x="22" y="22" width="36" height="36" style="fill:var(--bg);'+outline+'"/>';
+    const L=[[[14,9,66,9],[14,14,66,14]],[[71,14,71,66],[66,14,66,66]],[[14,71,66,71],[14,66,66,66]],[[9,14,9,66],[14,14,14,66]]];
+    L.forEach((ls,i)=>{if(mk&(1<<i))ls.forEach(l=>{b+='<line x1="'+l[0]+'" y1="'+l[1]+'" x2="'+l[2]+'" y2="'+l[3]+'" style="stroke:'+INK+';stroke-width:1.8"/>';});});
     return b;
   };
   const drawCut=q=>{
@@ -751,6 +853,10 @@ function symSvg(sp){
   else if(sp.cnt){g=drawCnt(sp);}
   else if(sp.fig){g=drawFig(sp);}
   else if(sp.cutS){g=drawCut(sp);}
+  else if(sp.pl){g=drawPl(sp);}
+  else if(sp.frm!==undefined){g=drawFrame(sp);}
+  else if(sp.ym){g=drawY(sp);}
+  else if(sp.se){g=drawSE(sp);}
   else{
     const n=sp.n||1,xs=n===1?[40]:n===2?[26,54]:[18,40,62],s=sp.s||(n===3?16:n===2?22:28);
     xs.forEach(x=>{g+=drawShape(sp.shape,x,40,s,sp.fill,sp.fm,sp.rot);});
