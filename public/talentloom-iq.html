@@ -27,6 +27,7 @@ button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .opts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;max-width:600px}
 .opt{padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer;display:block;width:100%}
 .opt:hover{border-color:var(--ink)}
+.opt.used{opacity:.35}
 .opt.ok{border:2px solid var(--ok);background:var(--okbg)}
 .opt.bad{border:2px solid var(--bad);background:var(--badbg)}
 .lab{text-align:center;font-size:12px;color:var(--muted);margin-top:2px}
@@ -703,7 +704,53 @@ function genHalf(level){
     if(o)return o;
   }
 }
-const VPOOLS={1:[genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+const SNPAL=[{n:['valkoinen','musta','harmaa'],c:['#ffffff','#1f1f1e','#b4b2a9']},{n:['keltainen','harmaa','valkoinen'],c:['#ffe600','#808180','#ffffff']},{n:['oranssi','sininen','keltainen'],c:['#e8743b','#3b6fe8','#ffe600']}];
+const SNPAT={1:[[0,0,1,1],[0,0,1],[0,1,1]],2:[[0,0,0,0,1,1],[0,0,0,1,1],[0,0,1,1,1,1],[0,0,0,1,1,1]],3:[[0,0,1,1,2,2],[0,0,0,1,1,2],[0,0,0,0,1,1,2,2],[0,1,1,2,2,2]]};
+const SNSHN={flower:'kukka',cross:'risti',square:'neliö',circle:'ympyrä',hex:'kuusikulmio',diamond:'vinoneliö',tri:'kolmio',flower5:'viisilehti',star:'tähti'};
+const SNDARK=['#1f1f1e','#808180','#3b6fe8'];
+const gcd2=(a,b)=>b?gcd2(b,a%b):a;
+function genSnake(level){
+  for(;;){
+    const theme=pick(['flower','cs','mix3']);
+    const px=level===1?2:(Math.random()<(level===2?0.3:0.5)?3:2);
+    let X,dot=false;
+    if(theme==='flower'){X=(px===2?[1,0.5]:[1,0.72,0.45]).map(s=>({sh:'flower',sz:s}));dot=true;}
+    else if(theme==='cs'){X=[{sh:'cross',sz:1},{sh:'square',sz:0.58},{sh:'circle',sz:0.8}].slice(0,px);dot=Math.random()<0.25;}
+    else{X=shuffle(['circle','hex','diamond','tri','flower5','square']).slice(0,px).map(s=>({sh:s,sz:0.85}));dot=Math.random()<0.5;}
+    const pal=pick(SNPAL),pat0=pick(SNPAT[level]);
+    const perm=shuffle([0,1,2]),pat=pat0.map(v=>perm[v]);
+    const P=pat0.length,lcm=px*P/gcd2(px,P);
+    const C=pick([5,6]),rows=rnd(3,4),k=rnd(2,C-1),L=C*(rows-1)+k;
+    if(lcm>L-3)continue;
+    const dotOf=f=>SNDARK.indexOf(f)>=0?'#ffffff':'#1f1f1e';
+    const mk=(x,f)=>({sh:x.sh,sz:x.sz,f:f,d:dot?dotOf(f):null});
+    const seq=[];for(let i=0;i<L;i++)seq.push(mk(X[i%px],pal.c[pat[i%P]]));
+    const a1=seq[L-2],a2=seq[L-1];
+    const seen=new Set([keyOf(a1),keyOf(a2)]),opts=[];
+    const add=s=>{const kk=keyOf(s);if(!seen.has(kk)){seen.add(kk);opts.push(s);return true;}return false;};
+    let near=[];
+    [[a1,X[(L-2)%px]],[a2,X[(L-1)%px]]].forEach(pr=>{
+      pal.c.forEach(f=>{if(f!==pr[0].f)near.push(mk(pr[1],f));});
+      X.forEach(x=>{if(x!==pr[1])near.push(mk(x,pr[0].f));});
+    });
+    const near2=[];shuffle(near).forEach(s=>{if(near2.length<4)near2.push(s);});
+    near2.forEach(add);
+    const FILL=['circle','hex','star','flower5','diamond','tri','flower','cross','square'];
+    let guard=0;
+    while(opts.length<6&&guard++<200)add(mk({sh:pick(FILL),sz:pick([0.5,0.7,1])},pick(pal.c)));
+    if(opts.length<6)continue;
+    const all=shuffle([a1,a2].concat(opts));
+    const ci=[all.indexOf(a1),all.indexOf(a2)];
+    const nm=s=>(theme==='flower'?(s.sz>0.9?'iso ':s.sz>0.6?'keskikokoinen ':'pieni '):'')+SNSHN[s.sh]+', '+pal.n[pal.c.indexOf(s.f)];
+    const W=['','yksi','kaksi','kolme','neljä','viisi','kuusi'];
+    let runs=[],i0=0;
+    for(let i=1;i<=P;i++)if(i===P||pat0[i]!==pat0[i-1]){runs.push(W[i-i0]+' '+pal.n[pat[i0]]);i0=i;}
+    const xdesc=theme==='flower'?(px===2?'Koko vuorottelee (iso, pieni).':'Koko toistuu: iso, keskikokoinen, pieni, ja taas alusta.'):'Muoto '+(px===2?'vuorottelee':'toistuu')+' ('+X.map(x=>SNSHN[x.sh]).join(', ')+').';
+    const ex=xdesc+' Väri toistuu '+P+' kuvion jaksoissa: '+runs.join(', ')+' (sitten alusta). Puuttuvat ovat jonon kohdat '+(L-1)+' ja '+L+': '+nm(a1)+' ja '+nm(a2)+'.';
+    return{kind:'snake',fam:'Kuvio: kiemurteleva jono',seq:seq,L:L,cols:C,options:all,ci:ci,explain:ex};
+  }
+}
+const VPOOLS={1:[genSnake,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -878,6 +925,71 @@ function showStats(){
   keys.forEach(k=>{const s=stats[k];h+='<tr><td>'+k+'</td><td>'+s.ok+'/'+s.n+'</td><td>'+Math.round(s.time/s.n)+' s</td></tr>';});
   $('stats').innerHTML=h+'</table>';
 }
+let snk=null;
+function snkShape(sp,cx,cy,D){
+  const R=D*(sp.sz||1)/2,st='stroke:#1f1f1e;stroke-width:2;stroke-linejoin:round',fl='fill:'+sp.f+';';
+  const f1=n=>n.toFixed(1);
+  const poly=a=>'<polygon points="'+a.map(p=>f1(p[0])+','+f1(p[1])).join(' ')+'" style="'+fl+st+'"/>';
+  const wob=(n,am)=>{const a=[];for(let i=0;i<120;i++){const t=i/120*2*Math.PI,r=R/(1+am)*(1+am*Math.cos(n*t));a.push([cx+r*Math.sin(t),cy-r*Math.cos(t)]);}return a;};
+  const reg=(n,r,a0)=>{const a=[];for(let i=0;i<n;i++){const t=(a0+360*i/n)*Math.PI/180;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;};
+  let b;
+  if(sp.sh==='circle')b='<circle cx="'+cx+'" cy="'+cy+'" r="'+f1(R)+'" style="'+fl+st+'"/>';
+  else if(sp.sh==='square')b='<rect x="'+f1(cx-R*0.9)+'" y="'+f1(cy-R*0.9)+'" width="'+f1(R*1.8)+'" height="'+f1(R*1.8)+'" rx="'+f1(R*0.22)+'" style="'+fl+st+'"/>';
+  else if(sp.sh==='flower')b=poly(wob(8,0.1));
+  else if(sp.sh==='flower5')b=poly(wob(5,0.12));
+  else if(sp.sh==='hex')b=poly(reg(6,R,0));
+  else if(sp.sh==='diamond')b=poly(reg(4,R,-90));
+  else if(sp.sh==='tri')b=poly(reg(3,R*1.1,-90));
+  else if(sp.sh==='star'){const a=[];for(let i=0;i<10;i++){const t=(-90+36*i)*Math.PI/180,r=i%2?R*0.55:R;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}b=poly(a);}
+  else{
+    const w=R*0.76,rx=f1(w*0.4);
+    const h='x="'+f1(cx-R)+'" y="'+f1(cy-w/2)+'" width="'+f1(2*R)+'" height="'+f1(w)+'"',v='x="'+f1(cx-w/2)+'" y="'+f1(cy-R)+'" width="'+f1(w)+'" height="'+f1(2*R)+'"';
+    const hi='x="'+f1(cx-R+1)+'" y="'+f1(cy-w/2+1)+'" width="'+f1(2*R-2)+'" height="'+f1(w-2)+'"',vi='x="'+f1(cx-w/2+1)+'" y="'+f1(cy-R+1)+'" width="'+f1(w-2)+'" height="'+f1(2*R-2)+'"';
+    b='<rect '+h+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+v+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+hi+' rx="'+rx+'" style="fill:'+sp.f+'"/><rect '+vi+' rx="'+rx+'" style="fill:'+sp.f+'"/>';
+  }
+  if(sp.d)b+='<circle cx="'+cx+'" cy="'+cy+'" r="'+f1(R*0.2)+'" style="fill:'+sp.d+'"/>';
+  return b;
+}
+function snkTile(sp){return '<svg viewBox="0 0 80 80" style="background:#fff;border-radius:6px">'+snkShape(sp,40,40,68)+'</svg>';}
+function snkDraw(reveal){
+  const C=item.cols,L=item.L,R=Math.ceil(L/C),W=60+(C-1)*84+60,H=(R-1)*86+92;
+  const xs=j=>60+j*84,ys=r=>46+r*86;
+  const pos=i=>{const r=Math.floor(i/C),c=i%C;return [xs(r%2?C-1-c:c),ys(r)];};
+  const last=pos(L-1),lr=Math.floor((L-1)/C),dirL=lr%2?-1:1,endX=last[0]+dirL*52;
+  let d='M14,'+ys(0);
+  for(let r=0;r<R;r++){
+    const ex=r===R-1?endX:(r%2?14:W-14);
+    d+=' L'+ex+','+ys(r);
+    if(r<R-1)d+=' L'+ex+','+ys(r+1);
+  }
+  const chev=(x,y,dir)=>'<polyline points="'+(x-dir*12)+','+(y-10)+' '+x+','+y+' '+(x-dir*12)+','+(y+10)+'" style="fill:none;stroke:#1f1f1e;stroke-width:4"/>';
+  let s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:'+W+'px;background:#fff;border-radius:10px;margin-bottom:12px">';
+  s+='<path d="'+d+'" style="fill:none;stroke:#1f1f1e;stroke-width:4;stroke-linejoin:round"/>';
+  s+=chev(26,ys(0),1)+chev(endX+dirL*14,ys(lr),dirL);
+  for(let i=0;i<L-2;i++){const p=pos(i);s+=snkShape(item.seq[i],p[0],p[1],64);}
+  for(let j=0;j<2;j++){
+    const p=pos(L-2+j),sp=reveal?item.seq[L-2+j]:(snk.sel[j]===null?null:item.options[snk.sel[j]]);
+    s+='<rect x="'+(p[0]-38)+'" y="'+(p[1]-38)+'" width="76" height="76" style="fill:#fff"/>';
+    if(sp)s+=snkShape(sp,p[0],p[1],64);
+    s+='<rect data-j="'+j+'" x="'+(p[0]-37)+'" y="'+(p[1]-37)+'" width="74" height="74" rx="3" style="fill:transparent;stroke:'+(reveal?'#2f7d32':'#185fa5')+';stroke-width:2.5;'+(sp?'':'stroke-dasharray:6 4;')+'cursor:pointer"/>';
+  }
+  s+='</svg>';
+  $('snk').innerHTML=s;
+  Array.prototype.forEach.call(document.querySelectorAll('.opt'),(b,i)=>{b.classList.toggle('used',snk.sel.indexOf(i)>=0&&!reveal);});
+  if($('go'))$('go').disabled=snk.sel.indexOf(null)>=0;
+}
+function snkToggle(k){
+  if(done)return;
+  const at=snk.sel.indexOf(k);
+  if(at>=0)snk.sel[at]=null;
+  else{const e=snk.sel.indexOf(null);if(e>=0)snk.sel[e]=k;}
+  $('err').textContent='';snkDraw();
+}
+function checkSnake(){
+  if(done)return;
+  if(snk.sel.indexOf(null)>=0){$('err').textContent='Valitse kaksi kuviota tai paina Ohita';return;}
+  finish(snk.sel[0]===item.ci[0]&&snk.sel[1]===item.ci[1],'');
+}
 function sessionLine(){
   if(!session.length){$('score').textContent='';return;}
   const ok=session.filter(x=>x.ok).length,avg=Math.round(session.reduce((a,x)=>a+x.s,0)/session.length);
@@ -889,7 +1001,7 @@ function newItem(){
   const lv=+$('level').value;
   const useLv=lv||rnd(1,3);item=genItem($('mode').value,useLv,+$('count').value);item.mixLv=lv?0:useLv;
   $('stage').style.display='block';$('err').textContent='';$('fb').innerHTML='';$('btns').innerHTML='';
-  $('hdr').textContent=(item.kind==='num'?'Sarja':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
+  $('hdr').textContent=(item.kind==='num'?'Sarja':item.kind==='snake'?'Kuviojono':'Kuviotäydennys')+' · tehtävä '+(session.length+1);
   sessionLine();
   if(item.kind==='num'){
     let h='<div style="margin-bottom:14px">';
@@ -900,6 +1012,16 @@ function newItem(){
     $('ans').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkNum();}});
     $('go').onclick=checkNum;$('skip').onclick=()=>finish(false,'ohitettu');
     $('ans').focus();
+  }else if(item.kind==='snake'){
+    snk={sel:[null,null],over:false};
+    let h='<div id="snk"></div><div class="small" style="margin-bottom:8px">Napsauta kaksi kuviota siinä järjestyksessä kuin ne kuuluvat jonon loppuun (ensin ensimmäinen puuttuva). Napsauta valittua uudelleen, jos haluat poistaa sen.</div><div class="opts" style="grid-template-columns:repeat(4,minmax(0,1fr));max-width:480px">';
+    item.options.forEach((sp,k)=>{h+='<div><button class="opt" data-k="'+k+'" aria-label="Vaihtoehto '+'ABCDEFGH'[k]+'">'+snkTile(sp)+'</button><div class="lab">'+'ABCDEFGH'[k]+'</div></div>';});
+    h+='</div><div style="margin-top:12px"><button id="go" class="primary" disabled>Tarkista</button> <button id="skip">Ohita</button></div>';
+    $('body').innerHTML=h;
+    snkDraw();
+    Array.prototype.forEach.call(document.querySelectorAll('.opt'),b=>{b.onclick=()=>snkToggle(+b.dataset.k);});
+    $('snk').onclick=e=>{const t=e.target.closest&&e.target.closest('[data-j]');if(t&&!done){snk.sel[+t.dataset.j]=null;$('err').textContent='';snkDraw();}};
+    $('go').onclick=checkSnake;$('skip').onclick=()=>finish(false,'ohitettu');
   }else{
     const cw=item.cols===2?130:92;
     let h='<div class="grid" style="grid-template-columns:repeat('+(item.cols||3)+',minmax(0,'+cw+'px))">';
@@ -942,6 +1064,10 @@ function finish(ok,given,k){
   if(item.kind==='num'){
     if($('ans'))$('ans').disabled=true;$('go').disabled=true;$('skip').style.display='none';
     head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'vastaus on '+item.answer+'. ';
+  }else if(item.kind==='snake'){
+    Array.prototype.forEach.call(document.querySelectorAll('.opt'),(b,i)=>{b.disabled=true;b.classList.remove('used');if(item.ci.indexOf(i)>=0)b.classList.add('ok');else if(snk.sel.indexOf(i)>=0)b.classList.add('bad');});
+    $('go').style.display='none';$('skip').style.display='none';snk.over=true;snkDraw(true);
+    head=ok?'Oikein. ':(given==='ohitettu'?'Ohitettu, ':(given==='aika loppui'?'Aika loppui, ':'Ei aivan, '))+'oikea järjestys on '+'ABCDEFGH'[item.ci[0]]+' ja '+'ABCDEFGH'[item.ci[1]]+'. ';
   }else{
     const bs=document.querySelectorAll('.opt');
     bs[item.ci].classList.add('ok');
@@ -981,7 +1107,8 @@ $('newbtn').onclick=()=>{
   newItem();totalUpd();
 };
 $('resetstats').onclick=()=>{stats={};saveStats();showStats();};
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&done&&$('next')&&document.activeElement!==$('next')){$('next').click();}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!done&&item&&item.kind==='snake'&&snk&&snk.sel.indexOf(null)<0){e.preventDefault();checkSnake();return;}
+  if(e.key==='Enter'&&done&&$('next')&&document.activeElement!==$('next')){$('next').click();}});
 showStats();
 </script>
 </body>
