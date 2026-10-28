@@ -581,7 +581,7 @@ function genLatinFig(level){
     if(o)return o;
   }
 }
-const FUNI={seg:8,ring:3,grid:9,blk:6,hseg:12,ray:8},FMAXC={seg:5,ring:3,grid:6,blk:4,hseg:8,ray:5},FNAME={seg:'viivat',ring:'kerrokset',grid:'ruudukon mustat ruudut',blk:'palikat viivan alla',hseg:'viivojen puoliskot',ray:'säteet keskipisteestä'};
+const FUNI={seg:8,ring:3,grid:9,blk:6,hseg:12,ray:8,dseg:12},FMAXC={seg:5,ring:3,grid:6,blk:4,hseg:8,ray:5,dseg:8},FNAME={seg:'viivat',ring:'kerrokset',grid:'ruudukon mustat ruudut',blk:'palikat viivan alla',hseg:'viivojen puoliskot',ray:'säteet keskipisteestä',dseg:'vinoneliön viivat'};
 function figVary(sp){
   const v=sp.v.slice(),out=[];
   if(sp.fig==='bars'){for(let i=0;i<3;i++)for(let j=i+1;j<3;j++){const w=v.slice();const t=w[i];w[i]=w[j];w[j]=t;out.push({fig:'bars',v:w});}}
@@ -591,15 +591,15 @@ function figVary(sp){
 }
 function genOverlay(level){
   for(;;){
-    const kind=pick(level<2?['seg','grid']:['seg','ring','grid','blk','ray','hseg']);
-    const xor=level>2&&Math.random()<0.6||kind==='ring'&&level>1&&Math.random()<0.6||kind==='seg'&&level===2&&Math.random()<0.4||(kind==='ray'||kind==='hseg')&&Math.random()<0.7;
+    const kind=pick(level<2?['seg','grid']:['seg','ring','grid','blk','ray','hseg','dseg']);
+    const xor=level>2&&Math.random()<0.6||kind==='ring'&&level>1&&Math.random()<0.6||kind==='seg'&&level===2&&Math.random()<0.4||(kind==='ray'||(kind==='hseg'||kind==='dseg'))&&Math.random()<0.7;
     const U=FUNI[kind],cells=[],Cs=[];let bad=false;
     for(let r=0;r<3;r++){
       const ids=shuffle(Array.from({length:U},(_,i)=>i));
-      const SZ=kind==='hseg'?[3,5]:kind==='ray'?[2,3]:kind==='ring'?[1,1]:[1,2];
+      const SZ=(kind==='hseg'||kind==='dseg')?[3,5]:kind==='ray'?[2,3]:kind==='ring'?[1,1]:[1,2];
       const A=ids.slice(0,rnd(SZ[0],SZ[1])).sort((x,y)=>x-y);
       let B;
-      if(xor)B=A.slice(0,kind==='hseg'||kind==='ray'?rnd(1,2):1).concat(ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(kind==='hseg'?2:1,kind==='ring'?1:kind==='hseg'?4:kind==='ray'?2:2))).sort((x,y)=>x-y);
+      if(xor)B=A.slice(0,(kind==='hseg'||kind==='dseg')||kind==='ray'?rnd(1,2):1).concat(ids.filter(x=>A.indexOf(x)<0).slice(0,rnd((kind==='hseg'||kind==='dseg')?2:1,kind==='ring'?1:(kind==='hseg'||kind==='dseg')?4:kind==='ray'?2:2))).sort((x,y)=>x-y);
       else B=ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(SZ[0],kind==='ring'?2:SZ[1])).sort((x,y)=>x-y);
       const Un=A.concat(B.filter(x=>A.indexOf(x)<0)).sort((x,y)=>x-y);
       const C=xor?Un.filter(x=>!(A.indexOf(x)>=0&&B.indexOf(x)>=0)):Un;
@@ -950,7 +950,36 @@ function genLayer(level){
     if(o)return o;
   }
 }
-const VPOOLS={1:[genSnake,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+function genSqStack(level){
+  for(;;){
+    const lim=level===1?3:4;
+    const sv=()=>rnd(-lim,lim);
+    const rows=[];let bad=false;
+    for(let r=0;r<3;r++){
+      let ab=sv(),bb=sv(),aw=level===1?0:sv(),bw=level===1?0:sv();
+      if(level===1&&Math.random()<0.5){ab=Math.abs(ab);bb=Math.abs(bb);}
+      const cb=ab+bb,cw=aw+bw;
+      if(Math.abs(cb)>lim||Math.abs(cw)>lim){bad=true;break;}
+      const sd=(b,w)=>Math.max(Math.max(b,0)+Math.max(w,0),Math.max(-b,0)+Math.max(-w,0));
+      if(sd(ab,aw)>5||sd(bb,bw)>5||sd(cb,cw)>5){bad=true;break;}
+      rows.push([{bs:[ab,aw]},{bs:[bb,bw]},{bs:[cb,cw]}]);
+    }
+    if(bad)continue;
+    if(rows.some(r=>r[2].bs[0]===0&&r[2].bs[1]===0))continue;
+    if(new Set(rows.map(r=>r[2].bs.join())).size<3)continue;
+    const cells=[];rows.forEach(r=>r.forEach(c=>cells.push(c)));
+    const ans=cells[8],[b,w]=ans.bs,cands=[];
+    cands.push({bs:[-b,w]},{bs:[b,-w]},{bs:[-b,-w]},{bs:[w,b]},{bs:[b+1,w]},{bs:[b-1,w]},{bs:[b,w+1]},{bs:[b,w-1]},{bs:[rows[2][0].bs[0],rows[2][1].bs[1]]},{bs:[rows[2][0].bs[0]-rows[2][1].bs[0],w]},{bs:[b,rows[2][0].bs[1]-rows[2][1].bs[1]]});
+    const ok=x=>Math.max(Math.max(x.bs[0],0)+Math.max(x.bs[1],0),Math.max(-x.bs[0],0)+Math.max(-x.bs[1],0))<=5;
+    const c2=cands.filter(ok);
+    const A=rows[2][0].bs,B=rows[2][1].bs;
+    const side=v=>v>0?'vasemmalla':v<0?'oikealla':'ei yhtään';
+    const ex='Vasemmalla olevat ruudut lasketaan plussaksi ja oikealla olevat miinukseksi, erikseen mustat ja valkoiset. Kolmas kuva = ensimmäinen + toinen. Rivi 3: mustat '+A[0]+' + ('+B[0]+') = '+b+' ('+side(b)+'), valkoiset '+A[1]+' + ('+B[1]+') = '+w+' ('+side(w)+').';
+    const o=finishVis(cells,ans,c2,'Kuvio: pylväs ja ruudut (vasen plus, oikea miinus)',ex);
+    if(o)return o;
+  }
+}
+const VPOOLS={1:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -982,6 +1011,13 @@ function symSvg(sp){
       else if(l.sh==='square')b+='<rect x="'+(40-w/2).toFixed(1)+'" y="'+(40-w/2).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+w.toFixed(1)+'" style="'+st+'"/>';
       else{const h=w*0.9,y1=40-h/2,y2=40+h/2,up=l.sh==='tri';b+='<polygon points="'+(up?'40,'+y1.toFixed(1)+' '+(40+w/2).toFixed(1)+','+y2.toFixed(1)+' '+(40-w/2).toFixed(1)+','+y2.toFixed(1):(40-w/2).toFixed(1)+','+y1.toFixed(1)+' '+(40+w/2).toFixed(1)+','+y1.toFixed(1)+' 40,'+y2.toFixed(1))+'" style="'+st+'"/>';}
     });
+    return b;
+  };
+  const drawBs=q=>{
+    let b='<rect x="37" y="6" width="6" height="68" style="fill:var(--ink)"/>';
+    const stack=(nb,nw,x)=>{const a=[];for(let i=0;i<nb;i++)a.push(1);for(let i=0;i<nw;i++)a.push(0);let o='';a.forEach((k,i)=>{const y=72-(a.length-i)*12;o+='<rect x="'+x+'" y="'+y+'" width="9" height="9" style="fill:'+(k?'var(--ink)':'var(--bg)')+';stroke:var(--ink);stroke-width:1.6"/>';});return o;};
+    const B=q.bs[0],W=q.bs[1];
+    b+=stack(Math.max(B,0),Math.max(W,0),24)+stack(Math.max(-B,0),Math.max(-W,0),46);
     return b;
   };
   const drawPent=q=>{
@@ -1053,6 +1089,7 @@ function symSvg(sp){
     else if(q.fig==='grid'){for(let i=0;i<9;i++){b+='<rect x="'+(13+(i%3)*18)+'" y="'+(13+Math.floor(i/3)*18)+'" width="18" height="18" style="fill:'+(q.v.indexOf(i)>=0?INK:'var(--bg)')+';stroke:'+INK+';stroke-width:1.5"/>';}}
     else if(q.fig==='ray'){q.v.forEach(i=>{const t=(-90+45*i)*Math.PI/180;b+='<line x1="40" y1="40" x2="'+(40+28*Math.cos(t)).toFixed(1)+'" y2="'+(40+28*Math.sin(t)).toFixed(1)+'" style="stroke:'+INK+';stroke-width:2.5;stroke-linecap:round"/>';});}
     else if(q.fig==='hseg'){const H=[[12,12,40,12],[40,12,68,12],[68,12,68,40],[68,40,68,68],[68,68,40,68],[40,68,12,68],[12,68,12,40],[12,40,12,12],[40,12,40,40],[40,40,40,68],[12,40,40,40],[40,40,68,40]];q.v.forEach(i=>{const h=H[i];b+='<line x1="'+h[0]+'" y1="'+h[1]+'" x2="'+h[2]+'" y2="'+h[3]+'" style="stroke:'+INK+';stroke-width:2.5"/>';});}
+    else if(q.fig==='dseg'){const D=[[40,8,56,24],[56,24,72,40],[72,40,56,56],[56,56,40,72],[40,72,24,56],[24,56,8,40],[8,40,24,24],[24,24,40,8],[40,8,40,40],[40,40,40,72],[8,40,40,40],[40,40,72,40]];q.v.forEach(i=>{const h=D[i];b+='<line x1="'+h[0]+'" y1="'+h[1]+'" x2="'+h[2]+'" y2="'+h[3]+'" style="stroke:'+INK+';stroke-width:2.5"/>';});}
     else if(q.fig==='blk'){const W=[6,9,12,6,9,12];b+='<line x1="10" y1="22" x2="70" y2="22" style="stroke:'+INK+';stroke-width:2"/>';q.v.forEach(i=>{const w=W[i],x=12+i*10.5;b+='<rect x="'+x+'" y="23" width="'+w+'" height="'+w+'" style="fill:'+INK+'"/>';});}
     else{
       const S=[[12,12,68,12],[68,12,68,68],[12,68,68,68],[12,12,12,68],[12,12,68,68],[68,12,12,68],[40,12,40,68],[12,40,68,40]];
@@ -1148,6 +1185,7 @@ function symSvg(sp){
   else if(sp.se){g=drawSE(sp);}
   else if(sp.pent!==undefined){g=drawPent(sp);}
   else if(sp.qd){g=drawQd(sp);}
+  else if(sp.bs){g=drawBs(sp);}
   else if(sp.stk){g=drawStk(sp);}
   else if(sp.q4){g=drawQ4(sp);}
   else if(sp.sq){g=drawSq(sp);}
