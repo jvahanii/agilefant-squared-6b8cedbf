@@ -190,7 +190,8 @@ function cellOf(vals,cfg){
   return sp;
 }
 function valsAt(cfg,r,c){const v={};['shape','fill','count','size','rot'].forEach(a=>v[a]=cfgVal(cfg,a,r,c));return v;}
-const fillName=sp=>sp.fill===1&&sp.fm==='h'?'viivoitettu':sp.fill===1&&sp.fm==='d'?'katkoviivareunainen':FLN[sp.fill];
+const FMN={h:'viivoitettu',d:'katkoviivareunainen',v:'pystyraidallinen',o:'vaakaraidallinen'};
+const fillName=sp=>sp.fill===1&&FMN[sp.fm]?FMN[sp.fm]:FLN[sp.fill];
 function describeCell(sp){return sp.n+' × '+fillName(sp)+' '+SHN[sp.shape]+(sp.rot?' (kierto '+sp.rot+'°)':'');}
 
 function genAttr(level){
@@ -207,7 +208,7 @@ function genAttr(level){
     const shapes=shuffle(ALLSH).slice(0,3);
     if(act.includes('rot'))shapes[2]=pick(ROTSH);
     const cst={shape:act.includes('rot')?2:rnd(0,2),fill:rnd(0,2),count:0,size:1,rot:0};
-    const cfg={act,rule,cst,shapes,fm:pick(['g','g','h','d','d']),rstep:pick([90,90,45])};
+    const cfg={act,rule,cst,shapes,fm:pick(['g','g','h','d','d','v','v','o']),rstep:pick([90,90,45])};
     const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(cellOf(valsAt(cfg,r,c),cfg));
     if(new Set(cells.map(keyOf)).size<4)continue;
     const ansVals=valsAt(cfg,2,2),ans=cells[8];
@@ -218,7 +219,7 @@ function genAttr(level){
     shuffle(cand).forEach(x=>{const kk=keyOf(x);if(!seen.has(kk)&&opts.length<5){seen.add(kk);opts.push(x);}});
     if(opts.length<5)continue;
     const all=shuffle([ans].concat(opts));
-    const vlist={shape:cfg.shapes.map(x=>SHN[x]),fill:cfg.fm==='h'?['valkoinen','viivoitettu','musta']:cfg.fm==='d'?['valkoinen','katkoviivareunainen','musta']:FLN,count:CNT,size:SZN,rot:[0,1,2].map(i=>i*cfg.rstep+'°')};
+    const vlist={shape:cfg.shapes.map(x=>SHN[x]),fill:FMN[cfg.fm]?['valkoinen',FMN[cfg.fm],'musta']:FLN,count:CNT,size:SZN,rot:[0,1,2].map(i=>i*cfg.rstep+'°')};
     const lines=act.map(a=>ANAME[a]+' '+RDESC[rule[a]]+' ('+vlist[a].join(', ')+').');
     const consts=['shape','fill','count','size','rot'].filter(a=>!act.includes(a)&&!(a==='size'&&ans.n>1)&&!(a==='rot'&&ROTSH.indexOf(ans.shape)<0)).map(a=>ANAME[a].split(' ')[0].toLowerCase());
     const ex=lines.join(' ')+(consts.length?' Pysyvät samoina: '+consts.join(', ')+'.':'')+' Rivi 3, sarake 3: '+describeCell(ans)+'.';
@@ -487,8 +488,8 @@ function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.rando
 
 function symSvg(sp){
   let g='';
-  const defs='<defs><pattern id="hatchP" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--ink);stroke-width:1.6"/></pattern><clipPath id="clipS"><rect x="9" y="9" width="62" height="62"/></clipPath></defs>';
-  const fillOf=(f,fm)=>f===2?'fill:var(--ink)':f===1?(fm==='h'?'fill:url(#hatchP)':fm==='d'?'fill:var(--bg)':'fill:#B4B2A9'):'fill:var(--bg)';
+  const defs='<defs><pattern id="hatchP" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--ink);stroke-width:1.6"/></pattern><pattern id="vP" width="9" height="9" patternUnits="userSpaceOnUse"><rect width="9" height="9" style="fill:var(--bg)"/><line x1="0" y1="0" x2="0" y2="9" style="stroke:var(--ink);stroke-width:1.8"/></pattern><pattern id="oP" width="9" height="9" patternUnits="userSpaceOnUse"><rect width="9" height="9" style="fill:var(--bg)"/><line x1="0" y1="0" x2="9" y2="0" style="stroke:var(--ink);stroke-width:1.8"/></pattern><clipPath id="clipS"><rect x="9" y="9" width="62" height="62"/></clipPath></defs>';
+  const fillOf=(f,fm)=>f===2?'fill:var(--ink)':f===1?(fm==='h'?'fill:url(#hatchP)':fm==='v'?'fill:url(#vP)':fm==='o'?'fill:url(#oP)':fm==='d'?'fill:var(--bg)':'fill:#B4B2A9'):'fill:var(--bg)';
   const outline='stroke:var(--ink);stroke-width:2';
   const pts=a=>a.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
   const reg=(n,cx,cy,r)=>{const a=[];for(let i=0;i<n;i++){const t=(-90+360*i/n)*Math.PI/180;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;};
