@@ -1,5 +1,5 @@
 /**
- * "Kuviotreeni" in the app header: a link to the static trainer page, shown
+ * "Talentloom IQ" in the app header: a link to the static trainer page, shown
  * only while the active organization is the one called agilefant.
  */
 import { describe, it, expect, beforeEach } from "vitest";
@@ -21,10 +21,10 @@ beforeEach(() => {
   });
 });
 
-describe("the Kuviotreeni button in the header", () => {
+describe("the Talentloom IQ button in the header", () => {
   it("opens the trainer in its own tab for the agilefant organization", () => {
     render(<PatternTrainerHeaderButton />);
-    const link = screen.getByRole("link", { name: /kuviotreeni/i });
+    const link = screen.getByRole("link", { name: /talentloom iq/i });
     expect(link).toHaveAttribute("href", PATTERN_TRAINER_URL);
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
@@ -33,7 +33,7 @@ describe("the Kuviotreeni button in the header", () => {
   it("recognises the organization by its name when the slug differs", () => {
     useOrgStore.setState({ memberships: [membership("af", " AgileFant ", "af-2")], activeOrgId: "af" });
     render(<PatternTrainerHeaderButton />);
-    expect(screen.getByRole("link", { name: /kuviotreeni/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /talentloom iq/i })).toBeInTheDocument();
   });
 
   it("is not there for any other organization", () => {

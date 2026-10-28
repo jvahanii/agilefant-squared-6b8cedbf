@@ -2,10 +2,10 @@ import { Puzzle } from "lucide-react";
 import { useOrgStore } from "@/store/orgStore";
 
 /** The trainer is a static page in `public/`, so it opens as its own tab. */
-export const PATTERN_TRAINER_URL = "/kuviotreeni.html";
+export const PATTERN_TRAINER_URL = "/talentloom-iq.html";
 
 /**
- * "Kuviotreeni" in the app header: practice for number series, letter series
+ * "Talentloom IQ" in the app header: practice for number series, letter series
  * and pattern-completion tests. Shown only while the active organization is
  * the one called agilefant, matched on its slug or its name.
  */
@@ -26,10 +26,10 @@ export function PatternTrainerHeaderButton() {
       href={PATTERN_TRAINER_URL}
       target="_blank"
       rel="noopener noreferrer"
-      title="Kuviotreeni: practice number series, letter series and pattern completions"
+      title="Talentloom IQ: practice number series, letter series and pattern completions"
     >
       <Puzzle className="w-3.5 h-3.5 text-primary" />
-      <span className="hidden md:inline">Kuviotreeni</span>
+      <span className="hidden md:inline">Talentloom IQ</span>
     </a>
   );
 }
