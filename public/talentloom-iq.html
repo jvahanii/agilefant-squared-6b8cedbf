@@ -481,7 +481,154 @@ function genRowConst(level){
     :'Muoto määräytyy '+dir+' mukaan ('+shapes.slice(0,3).map(x=>SHN[x]).join(', ')+'), väri pysyy samana ('+FLN[cFill]+'). Rivi 3, sarake 3: '+FLN[ans.fill]+' '+SHN[ans.shape]+'.';
   return{kind:'vis',fam:'Kuvio: sama '+(varFill?'väri':'muoto')+' '+(byRow?'rivillä':'sarakkeessa'),grid:cells.slice(0,8).concat([{q:1}]),options:all,ci:all.indexOf(ans),explain:ex};
 }
-const VPOOLS={1:[genRowConst,genAttr,genAttr,genTile2,genNest],2:[genRowConst,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+function finishVis(cells,ans,cands,fam,ex){
+  const seen=new Set([keyOf(ans)]);const opts=[];
+  shuffle(cands).forEach(x=>{const k=keyOf(x);if(!seen.has(k)&&opts.length<5){seen.add(k);opts.push(x);}});
+  if(opts.length<5)return null;
+  const all=shuffle([ans].concat(opts));
+  return{kind:'vis',fam:fam,grid:cells.slice(0,8).concat([{q:1}]),options:all,ci:all.indexOf(ans),explain:ex};
+}
+const DIRN=['ylös','oikealle','alas','vasemmalle'];
+function genPointer(level){
+  for(;;){
+    const kind=pick(['stick','arrow','kite']);
+    const mode=level===1?pick(['lin','lin','pair']):level===2?pick(['lin','snake','pair']):pick(['snake','snake','lin']);
+    let f,ex,cands=[],ans,fam;
+    const cells=[];
+    if(mode==='pair'){
+      const a=pick(['d','u']),b=a==='d'?'u':'d';
+      const A={ptr:'pair',a:a,b:b,rot:0},B={ptr:'pair',a:a,b:b,rot:90};
+      f=(r,c)=>(r+c)%2?B:A;
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(f(r,c));
+      ans=cells[8];
+      ['d','u'].forEach(x=>['d','u'].forEach(y=>[0,90].forEach(z=>cands.push({ptr:'pair',a:x,b:y,rot:z}))));
+      ex='Kaksi kuviota vuorottelee kuin shakkilaudalla: pystynuolet ja vaakanuolet vaihtuvat joka askeleella sekä rivillä että sarakkeessa. Rivi 3, sarake 3 on samaa tyyppiä kuin rivi 1, sarake 1.';
+      fam='Kuvio: vuorottelevat nuolet';
+    }else{
+      const a0=rnd(0,3);let idx,hint;
+      if(mode==='lin'){
+        const p=pick([1,2,3]),q=pick([1,3]);
+        idx=(r,c)=>(a0+p*r+q*c)%4;
+        const nm=v=>v===1?'90° myötäpäivään':v===2?'180°':'90° vastapäivään';
+        hint='Osoitin kääntyy oikealle mentäessä '+nm(q)+' ja alas mentäessä '+nm(p)+'.';
+        fam='Kuvio: osoittimen kierto';
+      }else{
+        const e=pick([1,3]),d=pick([1,3]);
+        idx=(r,c)=>(a0+e*r+(r%2?4-d:d)*c)%4;
+        hint='Rivin sisällä osoitin kääntyy 90° joka askeleella, mutta kiertosuunta vaihtuu riveittäin (parittomalla rivillä päinvastoin). Rivin alkusuunta kääntyy '+(e===1?'myötäpäivään':'vastapäivään')+' 90° rivi kerrallaan.';
+        fam='Kuvio: osoittimen kierto (vuorotteleva)';
+      }
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push({ptr:kind,rot:idx(r,c)*90});
+      ans=cells[8];
+      [90,180,270,45,135,225,315].forEach(d=>cands.push({ptr:kind,rot:(ans.rot+d)%360}));
+      ex=hint+' Rivi 3, sarake 3: osoitin '+DIRN[idx(2,2)]+'.';
+    }
+    const o=finishVis(cells,ans,cands,fam,ex);
+    if(o)return o;
+  }
+}
+const CLAY=[[0,0],[1,0],[0,1],[1,1],[2,0],[2,1]];
+function genCount(level){
+  for(;;){
+    const mode=pick(['cells','cells','bars','lines']);
+    const ar=pick([1,1,-1]),ac=pick([1,-1]);
+    const vs=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)vs.push(ar*r+ac*c);
+    const k=1-Math.min.apply(null,vs)+(level>1?rnd(0,1):0);
+    if(k+Math.max.apply(null,vs)>6)continue;
+    const anc=rnd(0,3);
+    const caps=mode==='bars'&&level>1&&Math.random()<0.7;
+    const mk=(n,cp)=>({cnt:mode,n:n,anc:anc,cap:cp});
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(mk(k+ar*r+ac*c,caps?2-c:0));
+    const ans=cells[8],cands=[];
+    [-3,-2,-1,1,2,3].forEach(d=>{const n=ans.n+d;if(n>=1&&n<=6)cands.push(mk(n,ans.cap));});
+    ['cells','bars','lines'].forEach(m2=>{if(m2!==mode)cands.push({cnt:m2,n:ans.n,anc:anc,cap:0});});
+    if(caps)[0,1,2].forEach(cp=>{if(cp!==ans.cap)cands.push(mk(ans.n,cp));});
+    if(mode==='cells'){[0,1,2,3].forEach(a2=>{if(a2!==anc)cands.push({cnt:mode,n:ans.n,anc:a2,cap:0});});}
+    const noun=mode==='cells'?'neliöiden':mode==='bars'?'pystyviivojen':'vaakaviivojen';
+    const ex='Kuvion '+noun+' määrä '+(ac>0?'kasvaa':'vähenee')+' yhdellä oikealle mentäessä ja '+(ar>0?'kasvaa':'vähenee')+' yhdellä alas mentäessä.'+(caps?' Päätyviivojen määrä pienenee sarake kerrallaan (kaksi, yksi, ei yhtään).':'')+' Rivi 3, sarake 3: '+ans.n+' kpl'+(caps?' ja '+(ans.cap?ans.cap+' päätyviivaa':'ei päätyviivoja'):'')+'.';
+    const o=finishVis(cells,ans,cands,'Kuvio: määrä kasvaa ('+(mode==='cells'?'neliöt':mode==='bars'?'pystyviivat':'vaakaviivat')+')',ex);
+    if(o)return o;
+  }
+}
+function figPick(t){
+  if(t==='bars')return shuffle([[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]).slice(0,3).map(v=>({fig:'bars',v:v}));
+  const out=[],seen=new Set();
+  while(out.length<3){
+    let v;
+    if(t==='quad')v=[rnd(0,2),rnd(0,2),rnd(0,2),rnd(0,2)];
+    else v=shuffle([0,1,2,3,4,5,6,7]).slice(0,3).sort((x,y)=>x-y);
+    const sp={fig:t,v:v};
+    if(t==='quad'&&new Set(v).size<2)continue;
+    if(seen.has(keyOf(sp)))continue;seen.add(keyOf(sp));out.push(sp);
+  }
+  return out;
+}
+function figVary(sp){
+  const v=sp.v.slice(),out=[];
+  if(sp.fig==='bars'){for(let i=0;i<3;i++)for(let j=i+1;j<3;j++){const w=v.slice();const t=w[i];w[i]=w[j];w[j]=t;out.push({fig:'bars',v:w});}}
+  else if(sp.fig==='quad'){for(let i=0;i<4;i++)[0,1,2].forEach(x=>{if(x!==v[i]){const w=v.slice();w[i]=x;out.push({fig:'quad',v:w});}});}
+  else{for(let i=0;i<8;i++){const w=v.indexOf(i)>=0?v.filter(x=>x!==i):v.concat([i]).sort((x,y)=>x-y);if(w.length)out.push({fig:'seg',v:w});}}
+  return out;
+}
+function genLatinFig(level){
+  for(;;){
+    const t=pick(['bars','quad','seg']);
+    const F=figPick(t),m=pick([1,2]);
+    const cells=[];
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(F[(m*r+c)%3]);
+    const ans=cells[8];
+    const cands=figVary(ans).concat(F.filter(x=>x!==ans),[cells[7],cells[5]]);
+    const nm=t==='bars'?'pylväskuvio':t==='quad'?'ruutukuvio':'viivakuvio';
+    const ex='Kolme eri '+nm+'a kiertää niin, että jokainen esiintyy kerran jokaisella rivillä ja jokaisessa sarakkeessa. Rivillä 3 ja sarakkeessa 3 puuttuu se kuvio, jota ei vielä ole niissä.';
+    const o=finishVis(cells,ans,cands,'Kuvio: latinalainen neliö ('+nm+')',ex);
+    if(o)return o;
+  }
+}
+function genOverlay(level){
+  for(;;){
+    const xor=level>2&&Math.random()<0.6;
+    const cells=[],Cs=[];let bad=false;
+    for(let r=0;r<3;r++){
+      let ids=shuffle([0,1,2,3,4,5,6,7]);
+      const A=ids.slice(0,rnd(1,2)).sort((x,y)=>x-y);
+      let B,shared=null;
+      if(xor){shared=A[0];B=[shared].concat(ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,2))).sort((x,y)=>x-y);}
+      else B=ids.filter(x=>A.indexOf(x)<0).slice(0,rnd(1,2)).sort((x,y)=>x-y);
+      const U=A.concat(B.filter(x=>A.indexOf(x)<0)).sort((x,y)=>x-y);
+      const C=xor?U.filter(x=>!(A.indexOf(x)>=0&&B.indexOf(x)>=0)):U;
+      if(!C.length||C.length>5){bad=true;break;}
+      cells.push({fig:'seg',v:A},{fig:'seg',v:B},{fig:'seg',v:C});Cs.push({A:A,B:B,U:U,C:C});
+    }
+    if(bad)continue;
+    if(new Set(Cs.map(x=>x.C.join())).size<3)continue;
+    const ans=cells[8],last=Cs[2],cands=[{fig:'seg',v:last.A},{fig:'seg',v:last.B}];
+    if(xor)cands.push({fig:'seg',v:last.U});
+    else{const X=last.U.filter(x=>!(last.A.indexOf(x)>=0&&last.B.indexOf(x)>=0));if(X.join()!==last.C.join())cands.push({fig:'seg',v:X});}
+    figVary(ans).forEach(x=>cands.push(x));
+    const ex=xor?'Kolmas kuvio saadaan yhdistämällä kaksi ensimmäistä, mutta viivat, jotka ovat molemmissa, katoavat.':'Kolmas kuvio on kahden ensimmäisen päällekkäin (kaikki niiden viivat yhdessä).';
+    const o=finishVis(cells,ans,cands,xor?'Kuvio: viivat yhdistyvät (poistuvat jos molemmissa)':'Kuvio: viivat yhdistyvät',ex+' Rivi 3: '+last.A.length+' + '+last.B.length+' viivaa'+(xor?' miinus yhteiset':'')+' = '+last.C.length+' viivaa.');
+    if(o)return o;
+  }
+}
+function genHalf(level){
+  for(;;){
+    const shs=shuffle(['circle','square','diamond']),cuts=shuffle(['h','v','d']);
+    const cells=[];
+    for(let r=0;r<3;r++){
+      cells.push({cutS:shs[r],k:'full'},{cutS:shs[r],k:'line',d:cuts[r]},{cutS:shs[r],k:'half',d:cuts[r],keep:1});
+    }
+    const ans=cells[8],cands=[];
+    cands.push({cutS:ans.cutS,k:'half',d:ans.d,keep:0},{cutS:ans.cutS,k:'full'});
+    ['h','v','d'].forEach(d=>[0,1].forEach(kp=>{if(d!==ans.d)cands.push({cutS:ans.cutS,k:'half',d:d,keep:kp});}));
+    shs.forEach(s=>{if(s!==ans.cutS)cands.push({cutS:s,k:'half',d:ans.d,keep:1});});
+    const cn={h:'vaakasuora',v:'pystysuora',d:'viisto'},sn={circle:'ympyrän',square:'neliön',diamond:'vinoneliön'};
+    const ex='Jokaisella rivillä on kuvio, sen leikkausviiva ja viivan kohdalta puolitettu kuvio, josta jää alempi tai oikeanpuoleinen puoli. Rivi 3: '+sn[ans.cutS]+' '+cn[ans.d]+' leikkaus, jäljelle jää '+(ans.d==='h'?'alapuoli':ans.d==='v'?'oikea puoli':'oikea alapuoli')+'.';
+    const o=finishVis(cells,ans,cands,'Kuvio: kuvion puolitus',ex);
+    if(o)return o;
+  }
+}
+const VPOOLS={1:[genRowConst,genPointer,genCount,genAttr,genAttr,genTile2,genNest],2:[genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genPointer,genCount,genLatinFig,genOverlay,genHalf,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -512,6 +659,65 @@ function symSvg(sp){
     else p=arrow(cx,cy,r*1.05);
     return '<polygon points="'+pts(p)+'" style="'+st+'"'+tr+'/>';
   };
+  const INK='var(--ink)';
+  const arrowV=(x,y1,y2)=>{const d=y2>y1?1:-1;return '<line x1="'+x+'" y1="'+y1+'" x2="'+x+'" y2="'+(y2-d*3)+'" style="stroke:'+INK+';stroke-width:2"/><polyline points="'+(x-6)+','+(y2-d*9)+' '+x+','+y2+' '+(x+6)+','+(y2-d*9)+'" style="fill:none;stroke:'+INK+';stroke-width:2"/>';};
+  const drawPtr=q=>{
+    let b='';
+    if(q.ptr==='stick')b='<line x1="40" y1="16" x2="40" y2="66" style="stroke:'+INK+';stroke-width:5"/><rect x="34" y="10" width="12" height="12" style="fill:'+INK+'"/>';
+    else if(q.ptr==='arrow')b=arrowV(40,66,12);
+    else if(q.ptr==='kite')b='<polygon points="40,10 54,68 40,54 26,68" style="fill:var(--bg);stroke:'+INK+';stroke-width:2"/><polygon points="40,10 40,54 26,68" style="fill:'+INK+'"/>';
+    else b=arrowV(28,q.a==='d'?14:66,q.a==='d'?66:14)+arrowV(52,q.b==='d'?14:66,q.b==='d'?66:14);
+    return '<g transform="rotate('+(q.rot||0)+' 40 40)">'+b+'</g>';
+  };
+  const drawCnt=q=>{
+    let b='';const n=q.n;
+    if(q.cnt==='cells'){
+      for(let i=0;i<n;i++){let gx=CLAY[i][0],gy=CLAY[i][1];if(q.anc&1)gx=2-gx;if(q.anc&2)gy=2-gy;b+='<rect x="'+(13+gx*18)+'" y="'+(13+gy*18)+'" width="16" height="16" style="fill:'+INK+'"/>';}
+    }else if(q.cnt==='bars'){
+      const x0=40-(n-1)*4.5;
+      for(let i=0;i<n;i++)b+='<line x1="'+(x0+i*9)+'" y1="18" x2="'+(x0+i*9)+'" y2="62" style="stroke:'+INK+';stroke-width:4"/>';
+      if(q.cap>=1)b+='<line x1="'+(x0-5)+'" y1="65" x2="'+(x0+(n-1)*9+5)+'" y2="65" style="stroke:'+INK+';stroke-width:3.5"/>';
+      if(q.cap>=2)b+='<line x1="'+(x0-5)+'" y1="15" x2="'+(x0+(n-1)*9+5)+'" y2="15" style="stroke:'+INK+';stroke-width:3.5"/>';
+    }else{
+      for(let i=0;i<n;i++){const y=40+(i-(n-1)/2)*9;b+='<line x1="16" y1="'+y+'" x2="64" y2="'+y+'" style="stroke:'+INK+';stroke-width:2"/>';}
+    }
+    return b;
+  };
+  const drawFig=q=>{
+    let b='';
+    if(q.fig==='bars'){q.v.forEach((h,i)=>{b+='<rect x="'+(17+i*17)+'" y="'+(68-h*16)+'" width="11" height="'+(h*16)+'" style="fill:'+INK+'"/>';});}
+    else if(q.fig==='quad'){q.v.forEach((v,i)=>{const x=14+(i%2)*26,y=14+Math.floor(i/2)*26;b+='<rect x="'+x+'" y="'+y+'" width="26" height="26" style="'+fillOf(v,'g')+';stroke:'+INK+';stroke-width:1.5"/>';});}
+    else{
+      const S=[[12,12,68,12],[68,12,68,68],[12,68,68,68],[12,12,12,68],[12,12,68,68],[68,12,12,68],[40,12,40,68],[12,40,68,40]];
+      q.v.forEach(i=>{const s=S[i];b+='<line x1="'+s[0]+'" y1="'+s[1]+'" x2="'+s[2]+'" y2="'+s[3]+'" style="stroke:'+INK+';stroke-width:2.5"/>';});
+    }
+    return b;
+  };
+  const drawCut=q=>{
+    const st='fill:var(--bg);'+outline;
+    if(q.k==='line'){const L={h:[8,40,72,40],v:[40,8,40,72],d:[12,68,68,12]}[q.d];return drawCut({cutS:q.cutS,k:'full'})+'<line x1="'+L[0]+'" y1="'+L[1]+'" x2="'+L[2]+'" y2="'+L[3]+'" style="stroke:'+INK+';stroke-width:1.5;stroke-dasharray:4 3"/>';}
+    const kp=q.keep;
+    if(q.k==='full'){
+      if(q.cutS==='circle')return '<circle cx="40" cy="40" r="28" style="'+st+'"/>';
+      if(q.cutS==='square')return '<rect x="12" y="12" width="56" height="56" style="'+st+'"/>';
+      return '<polygon points="40,10 70,40 40,70 10,40" style="'+st+'"/>';
+    }
+    const P=a=>'<polygon points="'+a+'" style="'+st+'"/>';
+    if(q.cutS==='circle'){
+      const R=28,e=R*0.7071;
+      if(q.d==='h')return '<path d="M12,40 A28,28 0 0 '+(kp?0:1)+' 68,40 Z" style="'+st+'"/>';
+      if(q.d==='v')return '<path d="M40,12 A28,28 0 0 '+(kp?1:0)+' 40,68 Z" style="'+st+'"/>';
+      return '<path d="M'+(40+e)+','+(40-e)+' A28,28 0 0 '+(kp?1:0)+' '+(40-e)+','+(40+e)+' Z" style="'+st+'"/>';
+    }
+    if(q.cutS==='square'){
+      if(q.d==='h')return P(kp?'12,40 68,40 68,68 12,68':'12,12 68,12 68,40 12,40');
+      if(q.d==='v')return P(kp?'40,12 68,12 68,68 40,68':'12,12 40,12 40,68 12,68');
+      return P(kp?'68,12 68,68 12,68':'12,12 68,12 12,68');
+    }
+    if(q.d==='h')return P(kp?'10,40 70,40 40,70':'10,40 70,40 40,10');
+    if(q.d==='v')return P(kp?'40,10 70,40 40,70':'40,10 10,40 40,70');
+    return P(kp?'55,25 70,40 40,70 25,55':'55,25 40,10 10,40 25,55');
+  };
   if(sp.q)g='<text x="40" y="52" text-anchor="middle" style="font-size:34px;fill:var(--muted)">?</text>';
   else if(sp.tile){
     const o=8,S=64,c=32,Q=[[0,0],[c,0],[S,0],[S,c],[S,S],[c,S],[0,S],[0,c]];
@@ -541,6 +747,10 @@ function symSvg(sp){
     for(let i=1;i<3;i++){const p=9+62*i/3;g+='<line x1="'+p+'" y1="9" x2="'+p+'" y2="71" style="stroke:var(--line);stroke-width:1"/><line x1="9" y1="'+p+'" x2="71" y2="'+p+'" style="stroke:var(--line);stroke-width:1"/>';}
     g+='<circle cx="'+(9+62*(sp.gm[0]+0.5)/3)+'" cy="'+(9+62*(sp.gm[1]+0.5)/3)+'" r="6.5" style="fill:var(--ink)"/>';
   }
+  else if(sp.ptr){g=drawPtr(sp);}
+  else if(sp.cnt){g=drawCnt(sp);}
+  else if(sp.fig){g=drawFig(sp);}
+  else if(sp.cutS){g=drawCut(sp);}
   else{
     const n=sp.n||1,xs=n===1?[40]:n===2?[26,54]:[18,40,62],s=sp.s||(n===3?16:n===2?22:28);
     xs.forEach(x=>{g+=drawShape(sp.shape,x,40,s,sp.fill,sp.fm,sp.rot);});
