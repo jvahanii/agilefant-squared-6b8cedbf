@@ -1124,8 +1124,12 @@ function genSnake3(level){
     const pat={};['shape','colour','size'].forEach(a=>{pat[a]=nv[a]>1?sn3Pat(nv[a],maxP,a==='shape'&&Math.random()<0.3):[0];});
     const coupled=level>=2&&nv.colour===2&&nv.size===2&&Math.random()<0.35;
     if(coupled)pat.size=pat.colour.slice();
+    const scoupled=!coupled&&level>=2&&nv.shape===2&&nv.size===2&&Math.random()<0.3;
+    if(scoupled)pat.size=pat.shape.slice();
+    const dm=pick([0,1,1,2,3]),dotOf=c=>dm===0?null:dm===1?(c.d||null):dm===2?(c.n==='valkoinen'?c.d:null):(c.n==='musta'?c.d:null);
     const off={};['shape','colour','size'].forEach(a=>{off[a]=level>=2&&Math.random()<0.6?rnd(0,pat[a].length-1):0;});
     if(coupled)off.size=off.colour;
+    if(scoupled)off.size=off.shape;
     const cset=pick([['white','black','yellow'],['yellow','blue','white'],['yellow','grey','white'],['white','black','blue'],['yellow','lgrey','blue']]);
     const cn=shuffle(cset).slice(0,nv.colour);
     if(nv.colour===1&&cn[0]==='lgrey')continue;
@@ -1133,7 +1137,7 @@ function genSnake3(level){
     const shp=shuffle(SN3SH.filter(s=>!(ring&&s==='clover'))).slice(0,nv.shape);
     const szs=nv.size===1?[1]:nv.size===2?[1,0.58]:[1,0.78,0.55];
     const cols=cn.map(c=>SN3C[c]);
-    const mk=(s,c,z)=>{const o={sh:shp[s],sz:szs[z],f:cols[c].c,d:cols[c].d||null};if(cols[c].ring)o.ring=1;return o;};
+    const mk=(s,c,z)=>{const o={sh:shp[s],sz:szs[z],f:cols[c].c,d:dotOf(cols[c])};if(cols[c].ring)o.ring=1;return o;};
     const at=i=>[pat.shape[(i+off.shape)%pat.shape.length],pat.colour[(i+off.colour)%pat.colour.length],pat.size[(i+off.size)%pat.size.length]];
     const seq=[];for(let i=0;i<L;i++){const t=at(i);seq.push(mk(t[0],t[1],t[2]));}
     const a1=seq[L-2],a2=seq[L-1];
@@ -1151,7 +1155,7 @@ function genSnake3(level){
     let guard=0;
     while(opts.length<6&&guard++<300){
       const sh=Math.random()<0.5?pick(SN3SH.filter(s=>!(ring&&s==='clover'))):shp[rnd(0,nv.shape-1)];
-      const c=cols[rnd(0,cols.length-1)],o={sh:sh,sz:pick([0.45,0.58,0.78,1]),f:c.c,d:c.d||null};if(c.ring)o.ring=1;add(o);
+      const c=cols[rnd(0,cols.length-1)],o={sh:sh,sz:pick([0.45,0.58,0.78,1]),f:c.c,d:dotOf(c)};if(c.ring)o.ring=1;add(o);
     }
     if(opts.length<6)continue;
     const all=shuffle([a1,a2].concat(opts));
@@ -1164,6 +1168,7 @@ function genSnake3(level){
     if(nv.colour>1)parts.push('Väri toistuu '+pat.colour.length+' kuvion jaksoissa: '+pat.colour.map(v=>cols[v].n).join(', ')+'.');
     else parts.push('Väri on aina '+cols[0].n+'.');
     if(coupled)parts.push('Koko kulkee värin mukana: '+cols[0].n+' on iso ja '+cols[1].n+' pieni.');
+    else if(scoupled)parts.push('Koko kulkee muodon mukana: '+SNSHN[shp[0]]+' on iso ja '+SNSHN[shp[1]]+' pieni.');
     else if(nv.size>1)parts.push('Koko toistuu '+pat.size.length+' kuvion jaksoissa: '+pat.size.map(v=>SZN[v]).join(', ')+'.');
     else parts.push('Koko pysyy samana.');
     if(off.shape||off.colour||off.size)parts.push('Jakso voi alkaa jo ennen kuvan ensimmäistä kuviota, joten jonon alku ei ole välttämättä jakson alku.');
