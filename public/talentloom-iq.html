@@ -1105,10 +1105,10 @@ function genSnake2(level){
 SNSHN.pill='kapseli';SNSHN.clover='apila';SNSHN.star6c='kuusikärkitähti';SNSHN.star8c='kahdeksankärkitähti';
 const SN3C={white:{n:'valkoinen',c:'#ffffff',d:'#1f1f1e'},black:{n:'musta',c:'#1f1f1e',d:'#ffffff'},yellow:{n:'keltainen',c:'#ffe600'},blue:{n:'sininen',c:'#0a3fe0'},grey:{n:'harmaa',c:'#808180'},lgrey:{n:'vaaleanharmaa kehys',c:'#b4b2a9',ring:1}};
 const SN3SH=['pill','clover','circle','hex','square','star6c','star8c','flower','flower5'];
-function sn3Pat(nv,maxP){
-  for(let g=0;g<200;g++){
-    const vals=shuffle([0,1,2].slice(0,nv)),pat=[];
-    vals.forEach(v=>{const r=rnd(1,Math.max(1,Math.min(4,Math.floor(maxP/nv))));for(let i=0;i<r;i++)pat.push(v);});
+function sn3Pat(nv,maxP,same){
+  for(let g=0;g<400;g++){
+    const vals=shuffle([0,1,2].slice(0,nv)),pat=[],r0=rnd(2,3);
+    vals.forEach(v=>{const r=same?r0:rnd(1,4);for(let i=0;i<r;i++)pat.push(v);});
     if(pat.length>=2&&pat.length<=maxP)return pat;
   }
   return [0,1,2].slice(0,nv);
@@ -1116,12 +1116,16 @@ function sn3Pat(nv,maxP){
 function genSnake3(level){
   for(let g=0;g<4000;g++){
     const C=pick([5,6]),rows=rnd(3,5),k=rnd(2,C-1),L=C*(rows-1)+k;
-    const maxP=Math.min(level===1?4:level===2?6:8,L-2);
+    const maxP=Math.min(level===1?4:level===2?6:9,L-2);
     const varyN=level===1?2:level===2?pick([2,3]):pick([2,3,3]);
     const vary=shuffle(['shape','colour','size']).slice(0,varyN);
     const nvOf=a=>vary.indexOf(a)<0?1:(level===1?2:pick([2,2,3]));
     const nv={shape:nvOf('shape'),colour:nvOf('colour'),size:vary.indexOf('size')<0?1:(level===3&&Math.random()<0.3?3:2)};
-    const pat={};['shape','colour','size'].forEach(a=>{pat[a]=nv[a]>1?sn3Pat(nv[a],maxP):[0];});
+    const pat={};['shape','colour','size'].forEach(a=>{pat[a]=nv[a]>1?sn3Pat(nv[a],maxP,a==='shape'&&Math.random()<0.3):[0];});
+    const coupled=level>=2&&nv.colour===2&&nv.size===2&&Math.random()<0.35;
+    if(coupled)pat.size=pat.colour.slice();
+    const off={};['shape','colour','size'].forEach(a=>{off[a]=level>=2&&Math.random()<0.6?rnd(0,pat[a].length-1):0;});
+    if(coupled)off.size=off.colour;
     const cset=pick([['white','black','yellow'],['yellow','blue','white'],['yellow','grey','white'],['white','black','blue'],['yellow','lgrey','blue']]);
     const cn=shuffle(cset).slice(0,nv.colour);
     if(nv.colour===1&&cn[0]==='lgrey')continue;
@@ -1130,7 +1134,7 @@ function genSnake3(level){
     const szs=nv.size===1?[1]:nv.size===2?[1,0.58]:[1,0.78,0.55];
     const cols=cn.map(c=>SN3C[c]);
     const mk=(s,c,z)=>{const o={sh:shp[s],sz:szs[z],f:cols[c].c,d:cols[c].d||null};if(cols[c].ring)o.ring=1;return o;};
-    const at=i=>[pat.shape[i%pat.shape.length],pat.colour[i%pat.colour.length],pat.size[i%pat.size.length]];
+    const at=i=>[pat.shape[(i+off.shape)%pat.shape.length],pat.colour[(i+off.colour)%pat.colour.length],pat.size[(i+off.size)%pat.size.length]];
     const seq=[];for(let i=0;i<L;i++){const t=at(i);seq.push(mk(t[0],t[1],t[2]));}
     const a1=seq[L-2],a2=seq[L-1];
     if(keyOf(a1)===keyOf(a2))continue;
@@ -1159,8 +1163,10 @@ function genSnake3(level){
     else parts.push('Muoto on aina '+SNSHN[shp[0]]+'.');
     if(nv.colour>1)parts.push('Väri toistuu '+pat.colour.length+' kuvion jaksoissa: '+pat.colour.map(v=>cols[v].n).join(', ')+'.');
     else parts.push('Väri on aina '+cols[0].n+'.');
-    if(nv.size>1)parts.push('Koko toistuu '+pat.size.length+' kuvion jaksoissa: '+pat.size.map(v=>SZN[v]).join(', ')+'.');
+    if(coupled)parts.push('Koko kulkee värin mukana: '+cols[0].n+' on iso ja '+cols[1].n+' pieni.');
+    else if(nv.size>1)parts.push('Koko toistuu '+pat.size.length+' kuvion jaksoissa: '+pat.size.map(v=>SZN[v]).join(', ')+'.');
     else parts.push('Koko pysyy samana.');
+    if(off.shape||off.colour||off.size)parts.push('Jakso voi alkaa jo ennen kuvan ensimmäistä kuviota, joten jonon alku ei ole välttämättä jakson alku.');
     const ex=parts.join(' ')+' Jokaisella ominaisuudella on oma jaksonsa, joten ne täytyy lukea erikseen. Puuttuvat ovat jonon kohdat '+(L-1)+' ja '+L+': '+nm(a1)+' ja '+nm(a2)+'.';
     return{kind:'snake',fam:'Kuvio: kiemurteleva jono (kolme ominaisuutta, omat jaksot)',seq:seq,L:L,cols:C,options:all,ci:ci,explain:ex};
   }
