@@ -1102,9 +1102,73 @@ function genSnake2(level){
   }
   return genSnake2(level);
 }
-const VPOOLS={1:[genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+SNSHN.pill='kapseli';SNSHN.clover='apila';SNSHN.star6c='kuusikärkitähti';SNSHN.star8c='kahdeksankärkitähti';
+const SN3C={white:{n:'valkoinen',c:'#ffffff',d:'#1f1f1e'},black:{n:'musta',c:'#1f1f1e',d:'#ffffff'},yellow:{n:'keltainen',c:'#ffe600'},blue:{n:'sininen',c:'#0a3fe0'},grey:{n:'harmaa',c:'#808180'},lgrey:{n:'vaaleanharmaa kehys',c:'#b4b2a9',ring:1}};
+const SN3SH=['pill','clover','circle','hex','square','star6c','star8c','flower','flower5'];
+function sn3Pat(nv,maxP){
+  for(let g=0;g<200;g++){
+    const vals=shuffle([0,1,2].slice(0,nv)),pat=[];
+    vals.forEach(v=>{const r=rnd(1,Math.max(1,Math.min(4,Math.floor(maxP/nv))));for(let i=0;i<r;i++)pat.push(v);});
+    if(pat.length>=2&&pat.length<=maxP)return pat;
+  }
+  return [0,1,2].slice(0,nv);
+}
+function genSnake3(level){
+  for(let g=0;g<4000;g++){
+    const C=pick([5,6]),rows=rnd(3,5),k=rnd(2,C-1),L=C*(rows-1)+k;
+    const maxP=Math.min(level===1?4:level===2?6:8,L-2);
+    const varyN=level===1?2:level===2?pick([2,3]):pick([2,3,3]);
+    const vary=shuffle(['shape','colour','size']).slice(0,varyN);
+    const nvOf=a=>vary.indexOf(a)<0?1:(level===1?2:pick([2,2,3]));
+    const nv={shape:nvOf('shape'),colour:nvOf('colour'),size:vary.indexOf('size')<0?1:(level===3&&Math.random()<0.3?3:2)};
+    const pat={};['shape','colour','size'].forEach(a=>{pat[a]=nv[a]>1?sn3Pat(nv[a],maxP):[0];});
+    const cset=pick([['white','black','yellow'],['yellow','blue','white'],['yellow','grey','white'],['white','black','blue'],['yellow','lgrey','blue']]);
+    const cn=shuffle(cset).slice(0,nv.colour);
+    if(nv.colour===1&&cn[0]==='lgrey')continue;
+    const ring=cn.some(c=>SN3C[c].ring);
+    const shp=shuffle(SN3SH.filter(s=>!(ring&&s==='clover'))).slice(0,nv.shape);
+    const szs=nv.size===1?[1]:nv.size===2?[1,0.58]:[1,0.78,0.55];
+    const cols=cn.map(c=>SN3C[c]);
+    const mk=(s,c,z)=>{const o={sh:shp[s],sz:szs[z],f:cols[c].c,d:cols[c].d||null};if(cols[c].ring)o.ring=1;return o;};
+    const at=i=>[pat.shape[i%pat.shape.length],pat.colour[i%pat.colour.length],pat.size[i%pat.size.length]];
+    const seq=[];for(let i=0;i<L;i++){const t=at(i);seq.push(mk(t[0],t[1],t[2]));}
+    const a1=seq[L-2],a2=seq[L-1];
+    if(keyOf(a1)===keyOf(a2))continue;
+    const seen=new Set([keyOf(a1),keyOf(a2)]),opts=[];
+    const add=s=>{const kk=keyOf(s);if(!seen.has(kk)){seen.add(kk);opts.push(s);return true;}return false;};
+    const near=[];
+    [at(L-2),at(L-1)].forEach(t=>{
+      for(let s=0;s<nv.shape;s++)if(s!==t[0])near.push(mk(s,t[1],t[2]));
+      for(let c=0;c<nv.colour;c++)if(c!==t[1])near.push(mk(t[0],c,t[2]));
+      for(let z=0;z<nv.size;z++)if(z!==t[2])near.push(mk(t[0],t[1],z));
+    });
+    for(let s=0;s<nv.shape;s++)for(let c=0;c<nv.colour;c++)for(let z=0;z<nv.size;z++)if(Math.random()<0.15)near.push(mk(s,c,z));
+    shuffle(near).forEach(s=>{if(opts.length<6)add(s);});
+    let guard=0;
+    while(opts.length<6&&guard++<300){
+      const sh=Math.random()<0.5?pick(SN3SH.filter(s=>!(ring&&s==='clover'))):shp[rnd(0,nv.shape-1)];
+      const c=cols[rnd(0,cols.length-1)],o={sh:sh,sz:pick([0.45,0.58,0.78,1]),f:c.c,d:c.d||null};if(c.ring)o.ring=1;add(o);
+    }
+    if(opts.length<6)continue;
+    const all=shuffle([a1,a2].concat(opts));
+    const ci=[all.indexOf(a1),all.indexOf(a2)];
+    const SZN=['iso','pieni','pieni'];if(nv.size===3){SZN[1]='keskikokoinen';SZN[2]='pieni';}
+    const nm=s=>{const zi=szs.indexOf(s.sz);return (nv.size>1&&zi>=0?SZN[zi]+' ':'')+SNSHN[s.sh]+', '+cols.map(c=>c.n)[cols.findIndex(c=>c.c===s.f)];};
+    const parts=[];
+    if(nv.shape>1)parts.push('Muoto toistuu '+pat.shape.length+' kuvion jaksoissa: '+pat.shape.map(v=>SNSHN[shp[v]]).join(', ')+'.');
+    else parts.push('Muoto on aina '+SNSHN[shp[0]]+'.');
+    if(nv.colour>1)parts.push('Väri toistuu '+pat.colour.length+' kuvion jaksoissa: '+pat.colour.map(v=>cols[v].n).join(', ')+'.');
+    else parts.push('Väri on aina '+cols[0].n+'.');
+    if(nv.size>1)parts.push('Koko toistuu '+pat.size.length+' kuvion jaksoissa: '+pat.size.map(v=>SZN[v]).join(', ')+'.');
+    else parts.push('Koko pysyy samana.');
+    const ex=parts.join(' ')+' Jokaisella ominaisuudella on oma jaksonsa, joten ne täytyy lukea erikseen. Puuttuvat ovat jonon kohdat '+(L-1)+' ja '+L+': '+nm(a1)+' ja '+nm(a2)+'.';
+    return{kind:'snake',fam:'Kuvio: kiemurteleva jono (kolme ominaisuutta, omat jaksot)',seq:seq,L:L,cols:C,options:all,ci:ci,explain:ex};
+  }
+  return genSnake3(level);
+}
+const VPOOLS={1:[genHex,genSnake3,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genSnake3,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genSnake3,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
-function genItem(mode,level,count){if(mode==="snake")return pick([genSnake,genSnake2])(level);if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
+function genItem(mode,level,count){if(mode==="snake")return pick([genSnake,genSnake2,genSnake3,genSnake3,genSnake3])(level);if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
 
 function symSvg(sp){
@@ -1346,26 +1410,38 @@ function showStats(){
 }
 let snk=null;
 function snkShape(sp,cx,cy,D){
-  const R=D*(sp.sz||1)/2,st='stroke:#1f1f1e;stroke-width:2;stroke-linejoin:round',fl='fill:'+sp.f+';';
-  const f1=n=>n.toFixed(1);
-  const poly=a=>'<polygon points="'+a.map(p=>f1(p[0])+','+f1(p[1])).join(' ')+'" style="'+fl+st+'"/>';
-  const wob=(n,am)=>{const a=[];for(let i=0;i<120;i++){const t=i/120*2*Math.PI,r=R/(1+am)*(1+am*Math.cos(n*t));a.push([cx+r*Math.sin(t),cy-r*Math.cos(t)]);}return a;};
-  const reg=(n,r,a0)=>{const a=[];for(let i=0;i<n;i++){const t=(a0+360*i/n)*Math.PI/180;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;};
-  let b;
-  if(sp.sh==='circle')b='<circle cx="'+cx+'" cy="'+cy+'" r="'+f1(R)+'" style="'+fl+st+'"/>';
-  else if(sp.sh==='square')b='<rect x="'+f1(cx-R*0.9)+'" y="'+f1(cy-R*0.9)+'" width="'+f1(R*1.8)+'" height="'+f1(R*1.8)+'" rx="'+f1(R*0.22)+'" style="'+fl+st+'"/>';
-  else if(sp.sh==='flower')b=poly(wob(8,0.1));
-  else if(sp.sh==='flower5')b=poly(wob(5,0.12));
-  else if(sp.sh==='hex')b=poly(reg(6,R,0));
-  else if(sp.sh==='diamond')b=poly(reg(4,R,-90));
-  else if(sp.sh==='tri')b=poly(reg(3,R*1.1,-90));
-  else if(sp.sh==='star'){const a=[];for(let i=0;i<10;i++){const t=(-90+36*i)*Math.PI/180,r=i%2?R*0.55:R;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}b=poly(a);}
-  else{
+  const R=D*(sp.sz||1)/2,f1=n=>n.toFixed(1);
+  const body=(fl,st)=>{
+    const poly=a=>'<polygon points="'+a.map(p=>f1(p[0])+','+f1(p[1])).join(' ')+'" style="'+fl+st+'"/>';
+    const wob=(n,am)=>{const a=[];for(let i=0;i<120;i++){const t=i/120*2*Math.PI,r=R/(1+am)*(1+am*Math.cos(n*t));a.push([cx+r*Math.sin(t),cy-r*Math.cos(t)]);}return a;};
+    const pstar=n=>{const a=[];for(let i=0;i<160;i++){const t=i/160*2*Math.PI,r=R*(0.72+0.28*(1-Math.pow(Math.abs(Math.sin(n*t/2)),0.6)));a.push([cx+r*Math.sin(t),cy-r*Math.cos(t)]);}return a;};
+    const reg=(n,r,a0)=>{const a=[];for(let i=0;i<n;i++){const t=(a0+360*i/n)*Math.PI/180;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return a;};
+    const sh=sp.sh;
+    if(sh==='circle')return '<circle cx="'+cx+'" cy="'+cy+'" r="'+f1(R)+'" style="'+fl+st+'"/>';
+    if(sh==='square')return '<rect x="'+f1(cx-R*0.9)+'" y="'+f1(cy-R*0.9)+'" width="'+f1(R*1.8)+'" height="'+f1(R*1.8)+'" rx="'+f1(R*0.22)+'" style="'+fl+st+'"/>';
+    if(sh==='pill')return '<rect x="'+f1(cx-R*0.58)+'" y="'+f1(cy-R)+'" width="'+f1(R*1.16)+'" height="'+f1(R*2)+'" rx="'+f1(R*0.58)+'" style="'+fl+st+'"/>';
+    if(sh==='flower')return poly(wob(8,0.1));
+    if(sh==='flower5')return poly(wob(5,0.12));
+    if(sh==='star6c')return poly(pstar(6));
+    if(sh==='star8c')return poly(pstar(8));
+    if(sh==='hex')return poly(reg(6,R,0));
+    if(sh==='diamond')return poly(reg(4,R,-90));
+    if(sh==='tri')return poly(reg(3,R*1.1,-90));
+    if(sh==='star'){const a=[];for(let i=0;i<10;i++){const t=(-90+36*i)*Math.PI/180,r=i%2?R*0.55:R;a.push([cx+r*Math.cos(t),cy+r*Math.sin(t)]);}return poly(a);}
+    if(sh==='clover'){
+      const o=R*0.5,r=R*0.5,cs=[[-1,-1],[1,-1],[-1,1],[1,1]];
+      let b=cs.map(c=>'<circle cx="'+f1(cx+c[0]*o)+'" cy="'+f1(cy+c[1]*o)+'" r="'+f1(r)+'" style="'+fl+st+'"/>').join('')+'<rect x="'+f1(cx-o)+'" y="'+f1(cy-o)+'" width="'+f1(2*o)+'" height="'+f1(2*o)+'" style="'+fl+st+'"/>';
+      if(fl!=='fill:none;')b+=cs.map(c=>'<circle cx="'+f1(cx+c[0]*o)+'" cy="'+f1(cy+c[1]*o)+'" r="'+f1(r-1)+'" style="'+fl+'"/>').join('')+'<rect x="'+f1(cx-o)+'" y="'+f1(cy-o)+'" width="'+f1(2*o)+'" height="'+f1(2*o)+'" style="'+fl+'"/>';
+      return b;
+    }
     const w=R*0.76,rx=f1(w*0.4);
     const h='x="'+f1(cx-R)+'" y="'+f1(cy-w/2)+'" width="'+f1(2*R)+'" height="'+f1(w)+'"',v='x="'+f1(cx-w/2)+'" y="'+f1(cy-R)+'" width="'+f1(w)+'" height="'+f1(2*R)+'"';
     const hi='x="'+f1(cx-R+1)+'" y="'+f1(cy-w/2+1)+'" width="'+f1(2*R-2)+'" height="'+f1(w-2)+'"',vi='x="'+f1(cx-w/2+1)+'" y="'+f1(cy-R+1)+'" width="'+f1(w-2)+'" height="'+f1(2*R-2)+'"';
-    b='<rect '+h+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+v+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+hi+' rx="'+rx+'" style="fill:'+sp.f+'"/><rect '+vi+' rx="'+rx+'" style="fill:'+sp.f+'"/>';
-  }
+    return '<rect '+h+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+v+' rx="'+rx+'" style="fill:#1f1f1e"/><rect '+hi+' rx="'+rx+'" style="fill:'+sp.f+'"/><rect '+vi+' rx="'+rx+'" style="fill:'+sp.f+'"/>';
+  };
+  let b;
+  if(sp.ring)b=body('fill:none;','stroke:#1f1f1e;stroke-width:9;stroke-linejoin:round')+body('fill:none;','stroke:#808180;stroke-width:5.5;stroke-linejoin:round')+body('fill:'+sp.f+';','stroke:#1f1f1e;stroke-width:1.5;stroke-linejoin:round');
+  else b=body('fill:'+sp.f+';','stroke:#1f1f1e;stroke-width:2;stroke-linejoin:round');
   if(sp.d)b+='<circle cx="'+cx+'" cy="'+cy+'" r="'+f1(R*0.2)+'" style="fill:'+sp.d+'"/>';
   return b;
 }
