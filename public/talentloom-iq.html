@@ -46,7 +46,7 @@ svg{display:block}
 <div class="wrap">
 <h1>Talentloom IQ</h1>
 <div class="bar">
-  <label>Tyyppi<select id="mode"><option value="mix">Sekoitus</option><option value="num">Numerosarjat</option><option value="nl">Numero- ja kirjainsarjat</option><option value="let">Kirjainsarjat</option><option value="vis">Kuviotäydennykset</option></select></label>
+  <label>Tyyppi<select id="mode"><option value="mix">Sekoitus</option><option value="num">Numerosarjat</option><option value="nl">Numero- ja kirjainsarjat</option><option value="let">Kirjainsarjat</option><option value="vis">Kuviotäydennykset</option><option value="snake">Kiemurtelevat jonot</option></select></label>
   <label>Vaikeus<select id="level"><option value="1">1 Helppo</option><option value="2" selected>2 Keskitaso</option><option value="3">3 Vaikea</option><option value="0">Sekoitus (1–3)</option></select></label>
   <label>Jatkettavat luvut<select id="count"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
   <label>Aikaraja<select id="limit"><option value="0">Ei rajaa</option><option value="15">15 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option><option value="90">90 s</option></select></label>
@@ -1104,7 +1104,7 @@ function genSnake2(level){
 }
 const VPOOLS={1:[genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
-function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
+function genItem(mode,level,count){if(mode==="snake")return pick([genSnake,genSnake2])(level);if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
 
 function symSvg(sp){
