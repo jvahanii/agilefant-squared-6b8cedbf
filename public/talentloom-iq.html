@@ -708,7 +708,7 @@ function genHalf(level){
   }
 }
 const SNPAL=[{n:['valkoinen','musta','harmaa'],c:['#ffffff','#1f1f1e','#b4b2a9']},{n:['keltainen','harmaa','valkoinen'],c:['#ffe600','#808180','#ffffff']},{n:['oranssi','sininen','keltainen'],c:['#e8743b','#3b6fe8','#ffe600']}];
-const SNPAT={1:[[0,0,1,1],[0,0,1],[0,1,1]],2:[[0,0,0,0,1,1],[0,0,0,1,1],[0,0,1,1,1,1],[0,0,0,1,1,1]],3:[[0,0,1,1,2,2],[0,0,0,1,1,2],[0,0,0,0,1,1,2,2],[0,1,1,2,2,2]]};
+const SNPAT={1:[[0,0,1,1],[0,0,1],[0,1,1]],2:[[0,0,0,0,1,1],[0,0,0,1,1],[0,0,1,1,1,1],[0,0,0,1,1,1],[0,0,0,0,0,1,1,1,1,1]],3:[[0,0,0,0,0,1,1,1,1,1],[0,0,0,0,1,1,1,1],[0,0,1,1,2,2],[0,0,0,1,1,2],[0,0,0,0,1,1,2,2],[0,1,1,2,2,2]]};
 const SNSHN={flower:'kukka',cross:'risti',square:'neliö',circle:'ympyrä',hex:'kuusikulmio',diamond:'vinoneliö',tri:'kolmio',flower5:'viisilehti',star:'tähti'};
 const SNDARK=['#1f1f1e','#808180','#3b6fe8'];
 const gcd2=(a,b)=>b?gcd2(b,a%b):a;
@@ -1065,7 +1065,44 @@ function genHex(level){
   }
   return genHex(level);
 }
-const VPOOLS={1:[genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+function genSnake2(level){
+  for(let g=0;g<3000;g++){
+    const TP=level===1?[[0,1],[0,1,1],[0,0,1]]:level===2?[[0,1,1],[0,0,1],[0,1,1,0,0,1]]:[[0,1,2],[0,1,1,2],[0,0,1,2]];
+    const SP=level===1?[[1,0],[1,1,0]]:level===2?[[1,1,0,0],[1,1,1,0,0,0],[1,1,0]]:[[1,1,0,0],[1,1,1,0,0,0],[1,0,0]];
+    const tp=pick(TP),sp=pick(SP),nt=Math.max.apply(null,tp)+1;
+    const pal=pick(SNPAL),cols=shuffle([0,1,2]).slice(0,nt);
+    const shp=shuffle(['hex','cross','circle','square','diamond','tri','flower5','star']).slice(0,nt);
+    const Pt=tp.length,Ps=sp.length,lcm=Pt*Ps/gcd2(Pt,Ps);
+    const C=pick([5,6]),rows=rnd(3,5),k=rnd(2,C-1),L=C*(rows-1)+k;
+    if(Pt===Ps&&tp.join()===sp.join())continue;
+    if(lcm>L-4||lcm>12)continue;
+    const SZ=[0.55,1];
+    const mk=(t,s)=>({sh:shp[t],sz:SZ[s],f:pal.c[cols[t]],d:null});
+    const seq=[];for(let i=0;i<L;i++)seq.push(mk(tp[i%Pt],sp[i%Ps]));
+    const a1=seq[L-2],a2=seq[L-1];
+    if(keyOf(a1)===keyOf(a2))continue;
+    const seen=new Set([keyOf(a1),keyOf(a2)]),opts=[];
+    const add=s=>{const kk=keyOf(s);if(!seen.has(kk)){seen.add(kk);opts.push(s);return true;}return false;};
+    const near=[];
+    [[tp[(L-2)%Pt],sp[(L-2)%Ps]],[tp[(L-1)%Pt],sp[(L-1)%Ps]]].forEach(pr=>{
+      near.push(mk(pr[0],1-pr[1]));
+      for(let t=0;t<nt;t++)if(t!==pr[0]){near.push(mk(t,pr[1]));near.push({sh:shp[pr[0]],sz:SZ[pr[1]],f:pal.c[cols[t]],d:null});near.push({sh:shp[t],sz:SZ[pr[1]],f:pal.c[cols[pr[0]]],d:null});}
+    });
+    shuffle(near).forEach(s=>{if(opts.length<6)add(s);});
+    let guard=0;
+    while(opts.length<6&&guard++<200)add({sh:pick(shp),sz:pick([0.4,0.55,0.8,1]),f:pick(pal.c),d:null});
+    if(opts.length<6)continue;
+    const all=shuffle([a1,a2].concat(opts));
+    const ci=[all.indexOf(a1),all.indexOf(a2)];
+    const nm=s=>(s.sz>0.9?'iso ':'pieni ')+SNSHN[s.sh]+', '+pal.n[pal.c.indexOf(s.f)];
+    const tdesc=tp.map(t=>SNSHN[shp[t]]+' ('+pal.n[cols[t]]+')').join(', ');
+    const sdesc=sp.map(s=>s?'iso':'pieni').join(', ');
+    const ex='Muoto ja väri kulkevat yhdessä ja toistuvat '+Pt+' kuvion jaksoissa: '+tdesc+'. Koko toistuu erikseen '+Ps+' kuvion jaksoissa: '+sdesc+'. Koska jaksot ovat eripituisia, koko kuvio toistuu vasta '+lcm+' kuvion välein. Puuttuvat ovat jonon kohdat '+(L-1)+' ja '+L+': '+nm(a1)+' ja '+nm(a2)+'.';
+    return{kind:'snake',fam:'Kuvio: kiemurteleva jono (muoto/väri ja koko eri jaksoilla)',seq:seq,L:L,cols:C,options:all,ci:ci,explain:ex};
+  }
+  return genSnake2(level);
+}
+const VPOOLS={1:[genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genHex,genSnake,genSnake2,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
