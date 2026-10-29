@@ -979,7 +979,93 @@ function genSqStack(level){
     if(o)return o;
   }
 }
-const VPOOLS={1:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
+const HXV=['ylhäällä','oikealla ylhäällä','oikealla alhaalla','alhaalla','vasemmalla alhaalla','vasemmalla ylhäällä'];
+const HXP=[];for(let a=0;a<6;a++)for(let b=a+1;b<6;b++)HXP.push([a,b]);
+const hxK=l=>l[0]+'-'+l[1]+l[2];
+const hxPK=l=>l[0]+'-'+l[1];
+const hxCell=(d,l,p)=>{const o={d:d.slice().sort((x,y)=>x-y),l:l.map(x=>x.slice()).sort((x,y)=>hxK(x)<hxK(y)?-1:1)};if(p!==undefined)o.p=p;return{hx:o};};
+const hxSub=n=>shuffle([0,1,2,3,4,5]).slice(0,n);
+const hxXor=(a,b)=>a.filter(v=>b.indexOf(v)<0).concat(b.filter(v=>a.indexOf(v)<0));
+const hxLines=(n,avoid)=>{
+  const out=[],ban=new Set(avoid.map(hxPK));
+  shuffle(HXP).forEach(p=>{if(out.length<n&&!ban.has(hxPK(p))){out.push([p[0],p[1],Math.random()<0.5?'d':'t']);}});
+  return out;
+};
+const hxNm=d=>d.length?d.slice().sort((x,y)=>x-y).map(i=>HXV[i]).join(', '):'ei pisteitä';
+const hxLn=l=>l.length?l.map(x=>(x[2]==='d'?'katkoviiva ':'paksu viiva ')+HXV[x[0]]+' – '+HXV[x[1]]).join(' ja '):'ei viivoja';
+function hxCands(ans,extra){
+  const h=ans.hx,c=[];
+  const mk=(d,l,p)=>hxCell(d,l,p);
+  for(let i=0;i<6;i++){const d=h.d.indexOf(i)>=0?h.d.filter(v=>v!==i):h.d.concat([i]);c.push(mk(d,h.l,h.p));}
+  if(h.l.length>1)h.l.forEach((x,i)=>c.push(mk(h.d,h.l.filter((_,j)=>j!==i),h.p)));
+  if(h.l.length)h.l.forEach((x,i)=>c.push(mk(h.d,h.l.map((y,j)=>j===i?[y[0],y[1],y[2]==='d'?'t':'d']:y),h.p)));
+  if(h.p===undefined){const ex=hxLines(1,h.l);if(ex.length)c.push(mk(h.d,h.l.concat(ex),h.p));}
+  (extra||[]).forEach(e=>c.push(e));
+  return c;
+}
+function genHex(level){
+  const mode=level===1?'xor':pick(level===2?['xor','latin','clock']:['latin','clock','xor','latin']);
+  for(let g=0;g<4000;g++){
+    if(mode==='latin'){
+      const nl=level===2?1:2;
+      const LS=[],used=[];
+      for(let i=0;i<3;i++){const l=hxLines(rnd(1,nl),used);if(!l.length)break;LS.push(l);l.forEach(x=>used.push(x));}
+      if(LS.length<3)continue;
+      const DS=[],dk=new Set();
+      for(let i=0;i<30&&DS.length<3;i++){const d=hxSub(rnd(1,3)).sort((x,y)=>x-y),k=d.join();if(!dk.has(k)){dk.add(k);DS.push(d);}}
+      if(DS.length<3)continue;
+      const cell=(r,c)=>hxCell(DS[(2*r+c)%3],LS[(r+c)%3]);
+      const cells=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)cells.push(cell(r,c));
+      const ans=cells[8],ex=[];
+      for(let a=0;a<3;a++)for(let b=0;b<3;b++)ex.push(hxCell(DS[b],LS[a]));
+      const expl='Kuviossa on kaksi toisistaan riippumatonta ominaisuutta. Viivaryhmiä on kolme, ja jokainen esiintyy kerran jokaisella rivillä ja sarakkeessa. Pistejoukkoja on myös kolme, ja ne kiertävät samoin mutta eri järjestyksessä. Rivi 3, sarake 3: viivat ('+hxLn(ans.hx.l)+') ja pisteet ('+hxNm(ans.hx.d)+').';
+      const o=finishVis(cells,ans,hxCands(ans,ex),'Kuvio: kuusikulmio (viivaryhmä + pisteet)',expl);
+      if(o)return o;
+    }else{
+      const clock=mode==='clock';
+      const step=pick([1,2,4,5]);
+      const rows=[];let ok=true,ovl=0;
+      for(let r=0;r<3&&ok;r++){
+        const nd=clock?rnd(1,2):rnd(1,3);
+        const D1=hxSub(nd),D2=hxSub(clock?rnd(1,2):rnd(1,3));
+        const D3=hxXor(D1,D2),ov=D1.length+D2.length-D3.length;
+        if(!D3.length||D3.length>5||D1.length+D2.length>6){ok=false;break;}
+        if(ov>0)ovl+=r<2?1:0;
+        if(r===2&&!ov){ok=false;break;}
+        let c1,c2,c3;
+        if(clock){
+          const st=rnd(0,5);
+          c1=hxCell(D1,[],st);c2=hxCell(D2,[],(st+step)%6);c3=hxCell(D3,[],(st+2*step)%6);
+        }else{
+          const L1=hxLines(rnd(1,level===1?1:2),[]),L2=hxLines(rnd(1,level===1?1:2),L1);
+          c1=hxCell(D1,L1);c2=hxCell(D2,L2);c3=hxCell(D3,L1.concat(L2));
+        }
+        rows.push([c1,c2,c3,D1,D2,D3]);
+      }
+      if(!ok||ovl<1)continue;
+      const cells=[];rows.forEach(r=>{cells.push(r[0],r[1],r[2]);});
+      const ans=cells[8],R=rows[2],ex=[];
+      const U=R[3].concat(R[4].filter(v=>R[3].indexOf(v)<0));
+      if(clock){
+        [1,2,3,4,5].forEach(k=>{const p=(ans.hx.p+k)%6;ex.push(hxCell(ans.hx.d,[],p));ex.push(hxCell(U,[],p));});
+      }else{
+        ex.push(hxCell(U,ans.hx.l),hxCell(R[3],ans.hx.l),hxCell(R[4],ans.hx.l));
+        ex.push(hxCell(ans.hx.d,R[0].hx.l),hxCell(ans.hx.d,R[1].hx.l));
+      }
+      let expl;
+      if(clock){
+        const deg=step<3?step*60+'° myötäpäivään':(6-step)*60+'° vastapäivään';
+        expl='Osoitin kääntyy joka sarakkeella '+deg+' (kuvion ylös osoittavasta asennosta lukien). Pisteet toimivat näin: piste näkyy vain, jos se on täsmälleen toisessa kahdesta ensimmäisestä kuviosta; jos se on molemmissa, se katoaa. Rivi 3: sarake 1 ('+hxNm(R[3])+') ja sarake 2 ('+hxNm(R[4])+') antavat pisteet ('+hxNm(R[5])+'). Osoitin on '+(ans.hx.p*60)+'° ylös osoittavasta suunnasta myötäpäivään.';
+      }else{
+        expl='Sarakkeen 3 kuvassa on sekä sarakkeen 1 että sarakkeen 2 viivat (viivan tyyli säilyy). Pisteet toimivat näin: piste näkyy vain, jos se on täsmälleen toisessa kahdesta ensimmäisestä kuviosta; jos se on molemmissa, se katoaa. Rivi 3: viivat ovat ('+hxLn(ans.hx.l)+'). Pisteet: sarake 1 ('+hxNm(R[3])+') ja sarake 2 ('+hxNm(R[4])+') antavat ('+hxNm(R[5])+').';
+      }
+      const o=finishVis(cells,ans,hxCands(ans,ex),clock?'Kuvio: kuusikulmio (osoitin + pisteet)':'Kuvio: kuusikulmio (viivat yhdistyvät, pisteet katoavat)',expl);
+      if(o)return o;
+    }
+  }
+  return genHex(level);
+}
+const VPOOLS={1:[genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genGlyph,genAttr,genAttr,genTile2,genNest],2:[genHex,genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genRowConst,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genAttr,genDotMove,genTile2,genPoly,genLines,genNest,genGridMove],3:[genHex,genHex,genSnake,genSqStack,genLayer,genQuad,genQuad2,genPyramid,genSquare,genScales,genTriCircle,genPointer,genCount,genLatinFig,genOverlay,genHalf,genGlyph,genFrame,genYMark,genShapeEdges,genOverlay,genAttr,genAttr,genTwoDots,genCombine,genDotMove,genTile3,genTile2,genPoly,genLines,genNest,genGridMove]};
 function genVis(level){return pick(VPOOLS[level])(level);}
 function genItem(mode,level,count){if(mode==='nl')return genNum(level,Math.random()<0.2,count);if(mode==='let')return genNum(level,true,count);const m=mode==='mix'?pick(['num','vis']):mode;return m==='num'?genNum(level,false,count):genVis(level);}
 /*GEN-END*/
@@ -1001,6 +1087,15 @@ function symSvg(sp){
     q.q4.forEach((v,i)=>{const x=14+(i===1||i===2?1:0)*26,y=14+(i>=2?1:0)*26;
       b+='<rect x="'+x+'" y="'+y+'" width="26" height="26" style="fill:'+(v===1?'var(--ink)':v===2?'#808080':'var(--bg)')+';stroke:var(--ink);stroke-width:2"/>';
       if(v===3)b+='<line x1="'+x+'" y1="'+y+'" x2="'+(x+26)+'" y2="'+(y+26)+'" style="stroke:var(--ink);stroke-width:1.8"/><line x1="'+(x+26)+'" y1="'+y+'" x2="'+x+'" y2="'+(y+26)+'" style="stroke:var(--ink);stroke-width:1.8"/>';});
+    return b;
+  };
+  const drawHx=q=>{
+    const o=q.hx,V=i=>{const t=(-90+60*i)*Math.PI/180;return [40+30*Math.cos(t),40+30*Math.sin(t)];};
+    const f=n=>n.toFixed(1),clk=o.p!==undefined;
+    let b='<polygon points="'+[0,1,2,3,4,5].map(i=>V(i).map(f).join(',')).join(' ')+'" style="fill:none;stroke:'+(clk?'var(--ink)':'#9ca3af')+';stroke-width:2;stroke-linejoin:round"/>';
+    o.l.forEach(l=>{const a=V(l[0]),c=V(l[1]);b+='<line x1="'+f(a[0])+'" y1="'+f(a[1])+'" x2="'+f(c[0])+'" y2="'+f(c[1])+'" style="'+(l[2]==='d'?'stroke:#6b7280;stroke-width:1.8;stroke-dasharray:4 3':'stroke:var(--ink);stroke-width:3.4')+'"/>';});
+    if(clk){const t=(-90+60*o.p)*Math.PI/180,x=40+17*Math.cos(t),y=40+17*Math.sin(t);b+='<line x1="40" y1="40" x2="'+f(x)+'" y2="'+f(y)+'" style="stroke:var(--ink);stroke-width:3"/><circle cx="'+f(x)+'" cy="'+f(y)+'" r="3.4" style="fill:var(--ink)"/>';}
+    o.d.forEach(i=>{const p=V(i);b+='<circle cx="'+f(p[0])+'" cy="'+f(p[1])+'" r="3.8" style="fill:var(--ink)"/>';});
     return b;
   };
   const drawStk=q=>{
@@ -1186,6 +1281,7 @@ function symSvg(sp){
   else if(sp.pent!==undefined){g=drawPent(sp);}
   else if(sp.qd){g=drawQd(sp);}
   else if(sp.bs){g=drawBs(sp);}
+  else if(sp.hx){g=drawHx(sp);}
   else if(sp.stk){g=drawStk(sp);}
   else if(sp.q4){g=drawQ4(sp);}
   else if(sp.sq){g=drawSq(sp);}
