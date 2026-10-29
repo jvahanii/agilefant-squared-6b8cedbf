@@ -208,6 +208,8 @@ interface AppState extends DataSnapshot {
   selectBacklog: (backlogId: string, treeId: string, ctrlKey?: boolean) => void;
   selectWorkItem: (workItemId: string | null, ctrlKey?: boolean) => void;
   clearWorkItemSelection: () => void;
+  /** Select a range at once — a shift-click's — in order, added to the selection or in place of it. */
+  selectWorkItemRange: (ids: string[], add: boolean) => void;
   toggleWorkItemExpand: (workItemId: string) => void;
   toggleBacklogExpand: (backlogId: string) => void;
   expandWorkItemsRecursive: (workItemId: string) => void;
@@ -2094,6 +2096,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (orgId) localStorage.removeItem(`selection_${orgId}_workItemIds`);
       set({ selectedWorkItemIds: [] });
     },
+
+    // One update and one save for the whole range. Item by item, a range of
+    // hundreds woke every view of the selection hundreds of times and saved
+    // the growing selection to local storage as often.
+    selectWorkItemRange: (ids, add) =>
+      set((state) => {
+        const selected = add ? [...state.selectedWorkItemIds] : [];
+        const already = new Set(selected);
+        for (const id of ids) {
+          if (already.has(id)) continue;
+          already.add(id);
+          selected.push(id);
+        }
+        const orgId = get().organizationId;
+        if (orgId) localStorage.setItem(`selection_${orgId}_workItemIds`, JSON.stringify(selected));
+        return { selectedWorkItemIds: selected };
+      }),
 
     reorderWorkItemAmongSiblings: (workItemId, targetIndex, treeId, backlogIds) => {
       const state = get();

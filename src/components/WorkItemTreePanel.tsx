@@ -340,6 +340,33 @@ const WorkItemNode = memo(function WorkItemNode(props: WorkItemNodeProps) {
   return <WorkItemNodeContent {...props} />;
 });
 
+/**
+ * The shortcuts that act on the selection — M moves it, R reparents it,
+ * Delete deletes it — each answered by the row of its first item, which opens
+ * the dialog or makes the change. A long list draws only the rows near the
+ * view: select a range by scrolling down to shift-click its end, and the
+ * first item's row is not there to answer, so M did nothing at all.
+ */
+const SELECTION_SHORTCUTS = [
+  "shortcut:add-child-workitem",
+  "shortcut:add-sibling-workitem",
+  "shortcut:delete-selected",
+  "shortcut:duplicate-selected",
+  "shortcut:edit-hyperlinks",
+  "shortcut:log-time",
+  "shortcut:move-to-parent",
+  "shortcut:move-to-backlog",
+  "shortcut:open-team-assign",
+] as const;
+
+/** The work items whose rows are drawn now, by how many lists draw each. */
+const drawnRows = new Map<string, number>();
+
+/** Whether the item's row is drawn, and so listening for the shortcuts. */
+function rowIsDrawn(workItemId: string): boolean {
+  return (drawnRows.get(workItemId) ?? 0) > 0;
+}
+
 function WorkItemNodeContent({
   workItemId,
   depth,
@@ -358,6 +385,15 @@ function WorkItemNodeContent({
   const item = useAppStore((s) => s.workItems[workItemId]);
   const workItems = useAppStore((s) => s.workItems);
   const backlogs = useAppStore((s) => s.backlogs);
+
+  useEffect(() => {
+    drawnRows.set(workItemId, (drawnRows.get(workItemId) ?? 0) + 1);
+    return () => {
+      const left = (drawnRows.get(workItemId) ?? 1) - 1;
+      if (left > 0) drawnRows.set(workItemId, left);
+      else drawnRows.delete(workItemId);
+    };
+  }, [workItemId]);
   const expanded = useAppStore((s) => s.expandedWorkItems.has(workItemId));
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
   const isMultiSelected = useAppStore((s) => s.selectedWorkItemIds.length > 1);
@@ -3598,6 +3634,34 @@ export function WorkItemTreePanel() {
     return () => window.removeEventListener("shortcut:reveal-work-item", handler);
   }, [scrollToWorkItem]);
 
+  // A shortcut on the selection whose first item's row is not drawn — scrolled
+  // out of the window the list draws — goes unanswered. Bring the row into
+  // view, and once it is drawn, and listening, send the shortcut again.
+  useEffect(() => {
+    let cancelled = false;
+    const handler = (e: Event) => {
+      if ((e as CustomEvent<{ revealed?: boolean }>).detail?.revealed) return;
+      const first = useAppStore.getState().selectedWorkItemIds[0];
+      if (!first || rowIsDrawn(first) || !visibleItemIdsRef.current.includes(first)) return;
+      scrollToWorkItem(first);
+      let frames = 0;
+      const resend = () => {
+        if (cancelled) return;
+        if (rowIsDrawn(first)) {
+          window.dispatchEvent(new CustomEvent(e.type, { detail: { revealed: true } }));
+        } else if (++frames < 60) {
+          requestAnimationFrame(resend);
+        }
+      };
+      requestAnimationFrame(resend);
+    };
+    for (const name of SELECTION_SHORTCUTS) window.addEventListener(name, handler);
+    return () => {
+      cancelled = true;
+      for (const name of SELECTION_SHORTCUTS) window.removeEventListener(name, handler);
+    };
+  }, [scrollToWorkItem]);
+
   // Keyboard shortcuts: Tab = indent (make child of item above),
   // Shift+Tab = outdent (elevate to parent's level).
   useEffect(() => {
@@ -3770,18 +3834,13 @@ export function WorkItemTreePanel() {
         const endIdx = visibleItemIds.indexOf(id);
         const rangeIds = visibleItemIds.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
 
-        if (multi) {
-          rangeIds.forEach((rid) => selectWorkItem(rid, true));
-        } else {
-          clearWorkItemSelection();
-          rangeIds.forEach((rid) => selectWorkItem(rid, true));
-        }
+        useAppStore.getState().selectWorkItemRange(rangeIds, multi);
       } else {
         selectWorkItem(id, multi);
         lastSelectedId.current = id;
       }
     },
-    [visibleItemIds, selectWorkItem, clearWorkItemSelection],
+    [visibleItemIds, selectWorkItem],
   );
 
   const selectBacklog = useAppStore((s) => s.selectBacklog);
