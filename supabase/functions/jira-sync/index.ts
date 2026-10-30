@@ -23,7 +23,7 @@ import { requireAppUser } from '../_shared/auth.ts';
 import { jiraPort, JiraError, type JiraConfig } from '../_shared/jiraApi.ts';
 import { JiraSync, type AgilefantItem, type AgilefantPort, type IssueLinkRef, type Link } from '../_shared/jiraEngine.ts';
 import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_shared/jiraMapping.ts';
-import { PROJECT_KEY, suggestProjectKey, uniqueProjectName } from '../_shared/jiraProjectKey.ts';
+import { PROJECT_KEY, renameToFreeName, suggestProjectKey, uniqueProjectName } from '../_shared/jiraProjectKey.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Admin = any;
@@ -482,9 +482,8 @@ async function drain(admin: Admin, conn: Connection) {
           const wanted = String(list?.name ?? '').trim().slice(0, 72);
           if (wanted && wanted !== conn.project_name) {
             const others = (await jira.listProjects()).filter((p) => p.key !== conn.project_key).map((p) => p.name);
-            const name = uniqueProjectName(wanted, others);
-            if (name !== conn.project_name) {
-              await jira.renameProject(name);
+            const name = await renameToFreeName((n) => jira.renameProject(n), wanted, others, conn.project_name);
+            if (name) {
               await admin.from('jira_connections').update({ project_name: name }).eq('id', conn.id);
               conn.project_name = name;
             }
@@ -517,6 +516,30 @@ async function drain(admin: Admin, conn: Connection) {
     })
     .eq('id', conn.id);
   return { processed, report };
+}
+
+/**
+ * A drain, and the next if this one left anything: it ran out of its time, or
+ * a change arrived just as it finished. The clock's kick used to catch these
+ * within a minute, but a job every minute keeps the database from ever resting
+ * (20261030090000), so the clock now only comes by every half hour, for what
+ * slips through.
+ */
+async function drainThenKick(admin: Admin, conn: Connection, waitMs: number) {
+  const result = await withLock(admin, conn.id, waitMs, () => drain(admin, conn));
+  if (result !== 'busy') {
+    const { count } = await admin
+      .from('jira_sync_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('connection_id', conn.id)
+      .is('done_at', null)
+      .lt('attempts', 3);
+    if ((count ?? 0) > 0) {
+      const { error } = await admin.rpc('jira_kick');
+      if (error) console.error('jira-sync: could not kick the next drain:', error.message);
+    }
+  }
+  return result;
 }
 
 // ─── Who may do what ─────────────────────────────────────────────────────────
@@ -639,7 +662,7 @@ async function connectSpace(
 
   // The first sync: the space's issues come in, the list's items go out.
   await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
-  const first = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
+  const first = await drainThenKick(admin, conn, 30_000);
   return { conn, webhookError, report: first === 'busy' ? undefined : first.report };
 }
 
@@ -703,14 +726,14 @@ Deno.serve(async (req) => {
         const refs = [...new Set((paired ?? []).map((r: { jira_issue_id: string }) => r.jira_issue_id))];
         if (refs.length === 0) return json({ ignored: true });
         await admin.from('jira_sync_queue').insert(refs.map((ref) => ({ organization_id: conn.organization_id, connection_id: conn.id, kind: 'issue', ref })));
-        inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn as Connection)).catch((e) => console.error('jira-sync webhook drain:', e)));
+        inBackground(drainThenKick(admin, conn as Connection, 30_000).catch((e) => console.error('jira-sync webhook drain:', e)));
         return json({ queued: refs });
       }
       const issueId = event?.issue?.id ? String(event.issue.id) : null;
       if (!issueId) return json({ ignored: true });
       await admin.from('jira_sync_queue').insert({ organization_id: conn.organization_id, connection_id: conn.id, kind: 'issue', ref: issueId });
       // Answer Jira at once; the work goes on after.
-      inBackground(withLock(admin, conn.id, 30_000, () => drain(admin, conn as Connection)).catch((e) => console.error('jira-sync webhook drain:', e)));
+      inBackground(drainThenKick(admin, conn as Connection, 30_000).catch((e) => console.error('jira-sync webhook drain:', e)));
       return json({ queued: issueId });
     }
 
@@ -725,7 +748,7 @@ Deno.serve(async (req) => {
       let processed = 0;
       for (const conn of wanted) {
         if (!conn || !conn.enabled) continue;
-        const result = await withLock(admin, conn.id, 0, () => drain(admin, conn));
+        const result = await drainThenKick(admin, conn, 0);
         if (result !== 'busy') processed += result.processed;
       }
       return json({ processed });
@@ -858,7 +881,7 @@ Deno.serve(async (req) => {
             .catch((e) => console.error('jira-sync: could not update the webhook:', e instanceof Error ? e.message : e));
         }
         await admin.from('jira_sync_queue').insert({ organization_id: org, connection_id: conn.id, kind: 'full', ref: null });
-        const result = await withLock(admin, conn.id, 30_000, () => drain(admin, conn));
+        const result = await drainThenKick(admin, conn, 30_000);
         if (result === 'busy') return json({ error: `A sync of ${conn.project_key} is already running. Try again in a minute.` }, 409);
         reports.push(result.report);
       }

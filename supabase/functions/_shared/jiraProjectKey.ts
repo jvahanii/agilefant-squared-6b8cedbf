@@ -40,3 +40,30 @@ export function uniqueProjectName(name: string, taken: Iterable<string> = []): s
   }
   return plain;
 }
+
+/**
+ * Give a space the name, or the name with a number after it. Jira refuses a
+ * name it will not show us as well — a space in its trash, or one the account
+ * cannot see — so a refusal moves on to the next. Returns the name given, or
+ * null where the space has the right one already.
+ */
+export async function renameToFreeName(
+  rename: (name: string) => Promise<void>,
+  wanted: string,
+  visible: Iterable<string>,
+  current: string | null,
+): Promise<string | null> {
+  const taken = [...visible];
+  for (let tries = 0; tries < 10; tries++) {
+    const name = uniqueProjectName(wanted, taken);
+    if (name === current) return null;
+    try {
+      await rename(name);
+      return name;
+    } catch (e) {
+      if (!/already exists/i.test(e instanceof Error ? e.message : String(e))) throw e;
+      taken.push(name);
+    }
+  }
+  throw new Error(`Jira refused every name tried for "${wanted}"`);
+}

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { PROJECT_KEY, suggestProjectKey, uniqueProjectName } from "../../supabase/functions/_shared/jiraProjectKey";
+import { PROJECT_KEY, renameToFreeName, suggestProjectKey, uniqueProjectName } from "../../supabase/functions/_shared/jiraProjectKey";
 import { jiraPort } from "../../supabase/functions/_shared/jiraApi";
 
 const callJira = vi.fn();
@@ -102,5 +102,41 @@ describe("the form moving a list to Jira", () => {
     expect(key).toHaveValue("FIT2");
     fireEvent.click(screen.getByRole("button", { name: "Create space in Jira" }));
     await waitFor(() => expect(callJira).toHaveBeenCalledWith(expect.objectContaining({ projectKey: "FIT2" })));
+  });
+});
+
+describe("a space renamed after its list", () => {
+  const refusing = (...names: string[]) => {
+    const tried: string[] = [];
+    const rename = async (name: string) => {
+      tried.push(name);
+      if (names.includes(name)) throw new Error("Jira answered 400: projectName: A project with that name already exists.");
+    };
+    return { tried, rename };
+  };
+
+  it("takes the next free name when Jira refuses one it did not show", async () => {
+    const { tried, rename } = refusing("Roadmap", "Roadmap (2)");
+    await expect(renameToFreeName(rename, "Roadmap", [], null)).resolves.toBe("Roadmap (3)");
+    expect(tried).toEqual(["Roadmap", "Roadmap (2)", "Roadmap (3)"]);
+  });
+
+  it("skips a name it can see is taken, without asking", async () => {
+    const { tried, rename } = refusing();
+    await expect(renameToFreeName(rename, "Roadmap", ["Roadmap"], null)).resolves.toBe("Roadmap (2)");
+    expect(tried).toEqual(["Roadmap (2)"]);
+  });
+
+  it("does nothing where the space has the name already", async () => {
+    const { tried, rename } = refusing("Roadmap");
+    await expect(renameToFreeName(rename, "Roadmap", [], "Roadmap (2)")).resolves.toBeNull();
+    expect(tried).toEqual(["Roadmap"]);
+  });
+
+  it("passes on any other refusal", async () => {
+    const rename = async () => {
+      throw new Error("Jira did not allow renaming the space");
+    };
+    await expect(renameToFreeName(rename, "Roadmap", [], null)).rejects.toThrow("did not allow");
   });
 });

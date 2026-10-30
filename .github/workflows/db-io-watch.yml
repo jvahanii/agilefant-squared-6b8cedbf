@@ -8,6 +8,11 @@ name: Disk IO watch
 # with the statements that wrote most to temporary files in the log.
 #
 # Before the fix: about 160 MB of temporary files and 21 MB of WAL a day.
+#
+# Supabase warned again on 2026-10-30, with all of those well within budget:
+# the real cost was WAL segments. archive_timeout is 120 s, so any write within
+# two minutes means a whole 16 MB segment written and read, and a cron job every
+# minute made that about 720 a day (20261030090000). wal_bytes does not show it.
 
 on:
   schedule:
@@ -23,6 +28,9 @@ env:
   MAX_TEMP_MB: 50
   MAX_WAL_MB: 100
   MAX_DISK_READ_MB: 500
+  # Each 16 MB written and read. The clock alone now accounts for about 72; an
+  # open, visible tab adds up to 30 an hour.
+  MAX_WAL_SEGMENTS: 400
 
 jobs:
   watch:
@@ -44,6 +52,7 @@ jobs:
           temp=$(echo "$report" | jq '.temp_mb')
           wal=$(echo "$report" | jq '.wal_mb')
           read=$(echo "$report" | jq '.disk_read_mb')
+          segments=$(echo "$report" | jq '.wal_segments // 0')
           covered=$(echo "$report" | jq '.covered_hours')
 
           {
@@ -52,6 +61,7 @@ jobs:
             echo "|---|---|---|"
             echo "| Temporary files | ${temp} MB | ${MAX_TEMP_MB} MB |"
             echo "| WAL | ${wal} MB | ${MAX_WAL_MB} MB |"
+            echo "| WAL segments archived (16 MB each) | ${segments} | ${MAX_WAL_SEGMENTS} |"
             echo "| Read from disk | ${read} MB | ${MAX_DISK_READ_MB} MB |"
             echo
             echo "Most temporary-file writing since statistics were last reset:"
@@ -68,5 +78,6 @@ jobs:
           over() { awk -v a="$1" -v b="$2" 'BEGIN { exit !(a > b) }'; }
           if over "$temp" "$MAX_TEMP_MB"; then echo "::error::Temporary files: ${temp} MB in ${HOURS} h, budget ${MAX_TEMP_MB} MB. Something sorts on disk again — see the statements in the summary."; failed=1; fi
           if over "$wal" "$MAX_WAL_MB"; then echo "::error::WAL: ${wal} MB in ${HOURS} h, budget ${MAX_WAL_MB} MB. Something writes much more than usual."; failed=1; fi
+          if over "$segments" "$MAX_WAL_SEGMENTS"; then echo "::error::WAL segments: ${segments} in ${HOURS} h, budget ${MAX_WAL_SEGMENTS}. Something writes at least every two minutes — a frequent cron job, or tabs left open."; failed=1; fi
           if over "$read" "$MAX_DISK_READ_MB"; then echo "::error::Read from disk: ${read} MB in ${HOURS} h, budget ${MAX_DISK_READ_MB} MB. The working set may no longer fit in memory."; failed=1; fi
           exit $failed

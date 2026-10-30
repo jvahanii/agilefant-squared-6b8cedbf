@@ -48,6 +48,19 @@ describe("the live-updates token", () => {
     }
   });
 
+  it("is not asked for by the clock while a hidden tab has let go of the socket", () => {
+    stop();
+    const closed = { setAuth: vi.fn(async () => undefined), isConnected: () => false };
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    stop = keepRealtimeAuthFresh(closed);
+    vi.advanceTimersByTime(60_000);
+    expect(closed.setAuth).not.toHaveBeenCalled();
+    // Back in view it is asked for at once, so the socket reopens signed in.
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(closed.setAuth).toHaveBeenCalledTimes(1);
+  });
+
   it("stops being asked for once stopped", () => {
     stop();
     vi.advanceTimersByTime(60_000);

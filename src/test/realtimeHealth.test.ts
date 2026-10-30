@@ -7,10 +7,11 @@ let loadInFlight = false;
 /** Whether the realtime socket reports itself open, and reopen attempts. */
 let socketConnected = true;
 const connectSocket = vi.fn();
+const disconnectSocket = vi.fn(async () => 'ok');
 const removeChannel = vi.fn(async (_channel: unknown) => 'ok');
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    realtime: { isConnected: () => socketConnected, connect: () => connectSocket() },
+    realtime: { isConnected: () => socketConnected, connect: () => connectSocket(), disconnect: () => disconnectSocket() },
     removeChannel: (channel: unknown) => removeChannel(channel),
   },
 }));
@@ -203,6 +204,50 @@ describe('coming back to a hidden tab', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('a tab left hidden', () => {
+    const setVisibility = (value: string) =>
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+
+    beforeEach(() => {
+      disconnectSocket.mockClear();
+      connectSocket.mockClear();
+      setVisibility('hidden');
+    });
+    afterEach(() => {
+      delete (document as unknown as { visibilityState?: string }).visibilityState;
+    });
+
+    it('lets go of the socket once a return would catch up anyway', async () => {
+      // Connected, it renews its token and so writes to the database, which
+      // costs a 16 MB WAL segment every two minutes.
+      noteVisibilityChange('hidden', T0);
+      await vi.advanceTimersByTimeAsync(HIDDEN_RESYNC_MS - 1);
+      expect(disconnectSocket).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(disconnectSocket).toHaveBeenCalledTimes(1);
+    });
+
+    it('reopens it and catches up on coming back', async () => {
+      noteVisibilityChange('hidden', T0);
+      await vi.advanceTimersByTimeAsync(HIDDEN_RESYNC_MS);
+      socketConnected = false;
+      setVisibility('visible');
+      noteVisibilityChange('visible', T0 + HIDDEN_RESYNC_MS);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(connectSocket).toHaveBeenCalledTimes(1);
+      expect(loadFromSupabase).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps it through a quick look at another tab', async () => {
+      noteVisibilityChange('hidden', T0);
+      await vi.advanceTimersByTimeAsync(4 * MIN);
+      setVisibility('visible');
+      noteVisibilityChange('visible', T0 + 4 * MIN);
+      await vi.advanceTimersByTimeAsync(HIDDEN_RESYNC_MS);
+      expect(disconnectSocket).not.toHaveBeenCalled();
+    });
   });
 
   it('catches up on work items after five minutes away', async () => {

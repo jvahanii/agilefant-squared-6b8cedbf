@@ -228,7 +228,7 @@ export default function JiraGuide() {
           carries a red warning triangle saying so.
         </P>
         <P>
-          When the space's levels change in Jira's settings, the sync notices within ten minutes and puts every
+          When the space's levels change in Jira's settings, the sync notices within the hour and puts every
           synced tree to the new levels.
         </P>
       </Section>
@@ -366,7 +366,7 @@ export default function JiraGuide() {
             ["An item's tag is red", "Jira refused the item's last change. Hover the tag for the reason — often a field the space's screen does not have, or a missing permission. The tag clears when the next sync of the item goes through."],
             ["A deleted item's issue is still in Jira", "The sync's account lacks Delete work items in that space. Grant it; the deletion is tried again on the next sync."],
             ["Jira's changes arrive only on Sync now", "The space's webhook is not registered — the card says so under the space. Until it is, Sync now brings Jira's changes in."],
-            ["Levels added in Jira don't show", "Only company-managed spaces can have levels above the epic. Add them in Jira's settings; the sync picks them up within ten minutes."],
+            ["Levels added in Jira don't show", "Only company-managed spaces can have levels above the epic. Add them in Jira's settings; the sync picks them up within the hour."],
             ["An item has a red triangle", "It is deeper than the space's levels and sits one level flatter in Jira. Agilefant keeps its place."],
           ]}
         />

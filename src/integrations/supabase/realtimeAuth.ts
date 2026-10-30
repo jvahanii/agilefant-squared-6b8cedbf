@@ -17,7 +17,9 @@
  * itself is renewed with half its life left (authClient.ts), so a check this
  * often always hands it over in time. Also whenever the tab comes back into
  * view, since a hidden tab's timers are slowed. Asking is cheap: Clerk
- * answers from its cache until it renews.
+ * answers from its cache until it renews. Not while the socket is closed — a
+ * tab long hidden lets go of it (realtimeHealth) — when there is no one to
+ * hand a token to.
  */
 
 /** Well inside the thirty seconds a token is handed out with. */
@@ -25,13 +27,17 @@ export const REALTIME_AUTH_REFRESH_MS = 10_000;
 
 interface RealtimeWithAuth {
   setAuth(token?: string | null): Promise<void>;
+  isConnected?(): boolean;
 }
 
 export function keepRealtimeAuthFresh(realtime: RealtimeWithAuth): () => void {
   const refresh = () => {
     realtime.setAuth().catch((e) => console.warn("Could not refresh the live-updates token:", e));
   };
-  const timer = setInterval(refresh, REALTIME_AUTH_REFRESH_MS);
+  const timer = setInterval(() => {
+    if (document.visibilityState === "hidden" && realtime.isConnected?.() === false) return;
+    refresh();
+  }, REALTIME_AUTH_REFRESH_MS);
   const onVisible = () => {
     if (document.visibilityState === "visible") refresh();
   };

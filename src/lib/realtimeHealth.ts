@@ -254,6 +254,28 @@ export const HIDDEN_RESYNC_MS = 5 * 60_000;
 export const HIDDEN_FULL_RESYNC_MS = 60 * 60_000;
 
 let hiddenSince: number | null = null;
+let hiddenDisconnect: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Let go of the socket once the tab has been hidden as long as a return would
+ * catch up anyway. A connected tab renews its token every thirty seconds, each
+ * renewal rewriting its subscriptions in the database, and any write at all
+ * within two minutes costs a whole 16 MB WAL segment written and read
+ * (20261030090000) — so one tab left open overnight was gigabytes of Disk IO.
+ */
+function letGoOfSocketLater(): void {
+  if (hiddenDisconnect) clearTimeout(hiddenDisconnect);
+  hiddenDisconnect = setTimeout(() => {
+    hiddenDisconnect = null;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'hidden') return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      void (supabase.realtime as any)?.disconnect?.();
+    } catch (err) {
+      console.warn('realtimeHealth: disconnect failed', err);
+    }
+  }, HIDDEN_RESYNC_MS);
+}
 
 /**
  * Record a change in the tab's visibility. On return the socket is reopened if
@@ -263,12 +285,17 @@ let hiddenSince: number | null = null;
  */
 export function noteVisibilityChange(state: DocumentVisibilityState | string, now: number = Date.now()): void {
   if (state === 'hidden') {
-    if (hiddenSince === null) hiddenSince = now;
+    if (hiddenSince === null) {
+      hiddenSince = now;
+      letGoOfSocketLater();
+    }
     return;
   }
   if (state !== 'visible' || hiddenSince === null) return;
   const away = now - hiddenSince;
   hiddenSince = null;
+  if (hiddenDisconnect) clearTimeout(hiddenDisconnect);
+  hiddenDisconnect = null;
   ensureSocketConnected();
   if (away < HIDDEN_RESYNC_MS) return;
   requestResync('tab visible again', { full: away >= HIDDEN_FULL_RESYNC_MS });
@@ -374,6 +401,8 @@ export function subscribeWithHealth(build: () => RealtimeChannel): () => void {
 export function __resetRealtimeHealth(): void {
   channelHealth.clear();
   hiddenSince = null;
+  if (hiddenDisconnect) clearTimeout(hiddenDisconnect);
+  hiddenDisconnect = null;
   lastResyncAt = 0;
   pendingFull = false;
   if (resyncTimer) clearTimeout(resyncTimer);
