@@ -313,6 +313,7 @@ export type Database = {
       }
       db_io_snapshots: {
         Row: {
+          archived_count: number | null
           blks_read: number
           taken_at: string
           temp_bytes: number
@@ -320,6 +321,7 @@ export type Database = {
           wal_bytes: number
         }
         Insert: {
+          archived_count?: number | null
           blks_read: number
           taken_at?: string
           temp_bytes: number
@@ -327,6 +329,7 @@ export type Database = {
           wal_bytes: number
         }
         Update: {
+          archived_count?: number | null
           blks_read?: number
           taken_at?: string
           temp_bytes?: number
@@ -2184,6 +2187,7 @@ export type Database = {
         Returns: {
           description: string
           id: string
+          in_list: boolean
           parent_id: string
           points: number
           status: string
@@ -2192,6 +2196,10 @@ export type Database = {
       }
       jira_queue_levels_check: { Args: never; Returns: undefined }
       jira_queue_links_check: { Args: never; Returns: undefined }
+      jira_synced_ancestor: {
+        Args: { _connection: string; _parent: string; _tree: string }
+        Returns: boolean
+      }
       jira_try_lock: {
         Args: { _org: string; _seconds?: number }
         Returns: boolean
