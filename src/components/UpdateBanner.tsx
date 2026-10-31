@@ -33,7 +33,7 @@ export function UpdateBanner({ navigator = browserNavigator, current = APP_BUILD
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-foreground shadow-lg"
     >
       <div className="mx-auto flex max-w-3xl items-center gap-3">
-        <span className="min-w-0 flex-1 text-sm">A newer version is here</span>
+        <span className="min-w-0 flex-1 text-sm">A new version is here</span>
         <Button size="sm" onClick={() => reloadIntoNewBuild(live, navigator)}>
           Reload
         </Button>

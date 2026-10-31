@@ -85,7 +85,7 @@ describe("UpdateBanner", () => {
     render(<UpdateBanner current={CURRENT} navigator={nav()} />);
 
     await waitFor(() => expect(screen.getByRole("status")).toBeInTheDocument());
-    expect(screen.getByText("A newer version is here")).toBeInTheDocument();
+    expect(screen.getByText("A new version is here")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
   });
 
