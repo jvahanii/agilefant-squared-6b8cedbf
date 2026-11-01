@@ -2511,6 +2511,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       };
       const removedRanks: Array<{ workItemId: string; backlogId: string }> = [];
       const movedIds = new Set<string>();
+      /** Moved items in the destination already — mirrored there — which keep their place in it. */
+      const alreadyInDest = new Set<string>();
       /** Previous rank of each moved item, used for stable ordering. */
       const previousRank = new Map<string, number>();
 
@@ -2530,6 +2532,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         const newRanks = { ...wi.ranks };
         const newBoardRanks = { ...(wi.boardRanks ?? {}) };
         previousRank.set(id, oldBlId ? (wi.ranks[oldBlId] ?? 0) : (wi.ranks[cleanTargetBl] ?? 0));
+        if (oldBlId === cleanTargetBl) alreadyInDest.add(id);
         if (oldBlId && oldBlId !== cleanTargetBl) {
           delete newRanks[oldBlId];
           delete newBoardRanks[oldBlId];
@@ -2564,13 +2567,14 @@ export const useAppStore = create<AppState>()((set, get) => {
       const boardRows: WorkItemBoardRankUpsert[] = [];
       const movedByParent = new Map<string | null, string[]>();
       for (const id of movedIds) {
+        if (alreadyInDest.has(id)) continue;
         const pid = getEffectiveParentId(updatedItems[id], targetTreeId) ?? null;
         if (!movedByParent.has(pid)) movedByParent.set(pid, []);
         movedByParent.get(pid)!.push(id);
       }
       const destMinByParent = new Map<string | null, number>();
       for (const wi of Object.values(updatedItems)) {
-        if (movedIds.has(wi.id)) continue;
+        if (movedIds.has(wi.id) && !alreadyInDest.has(wi.id)) continue;
         if (wi.backlogAssignments[targetTreeId] !== cleanTargetBl) continue;
         const pid = getEffectiveParentId(wi, targetTreeId) ?? null;
         const r = wi.ranks[cleanTargetBl];

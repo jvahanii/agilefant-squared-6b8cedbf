@@ -17,7 +17,7 @@ interface MoveToBacklogDialogProps {
   workItemIds: string[];
   /** The tree in which the move takes place (used as fallback). */
   treeId: string;
-  /** The backlog the items currently live in (excluded from the list). */
+  /** The backlog the items currently live in. */
   currentBacklogId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,14 +59,18 @@ export function MoveToBacklogDialog({
       ? (workItems[workItemIds[0]]?.title ?? "item")
       : `${workItemIds.length} items`;
 
-  // Collect all backlog IDs the selected items are already assigned to.
-  const assignedBacklogIds = useMemo(() => {
-    const ids = new Set<string>();
-    workItemIds.forEach((id) => {
-      const wi = workItems[id];
-      if (wi) Object.values(wi.backlogAssignments).forEach((blId) => ids.add(blId));
-    });
-    return ids;
+  // The lists every selected item is in already, the only ones with nothing to
+  // move to: a list that holds some of them, mirrored there, is still a place
+  // for the rest.
+  const fullBacklogIds = useMemo(() => {
+    const items = workItemIds.map((id) => workItems[id]).filter(Boolean);
+    const holding = new Map<string, number>();
+    for (const wi of items) {
+      for (const blId of new Set(Object.values(wi.backlogAssignments))) {
+        holding.set(blId, (holding.get(blId) ?? 0) + 1);
+      }
+    }
+    return new Set([...holding].filter(([, count]) => count === items.length).map(([blId]) => blId));
   }, [workItemIds, workItems]);
 
   // Sort trees by rank so same-tree backlogs appear first.
@@ -85,7 +89,7 @@ export function MoveToBacklogDialog({
       const collectBacklog = (backlogId: string) => {
         const bl = backlogs[backlogId];
         if (!bl) return;
-        if (!assignedBacklogIds.has(backlogId)) {
+        if (!fullBacklogIds.has(backlogId)) {
           const name = bl.name ?? backlogId;
           if (!q || name.toLowerCase().includes(q) || tree.name.toLowerCase().includes(q)) {
             result.push({
@@ -106,7 +110,7 @@ export function MoveToBacklogDialog({
       if (a.crossTree !== b.crossTree) return a.crossTree ? 1 : -1;
       return a.name.localeCompare(b.name);
     });
-  }, [backlogs, sortedTrees, assignedBacklogIds, query, currentTreeId]);
+  }, [backlogs, sortedTrees, fullBacklogIds, query, currentTreeId]);
 
   const applySelection = (backlogId: string, targetTreeId: string, strategy: "move" | "mirror") => {
     moveWorkItemsToBacklog(
