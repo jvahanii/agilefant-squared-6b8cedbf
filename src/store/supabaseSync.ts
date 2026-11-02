@@ -628,11 +628,30 @@ export async function withDeadlockRetry<T extends { error: { message?: string; c
  */
 export const RANK_WRITE_CHUNK = 200;
 
-/** How long to wait before sending once more a write the database stopped for taking too long. */
-export const STATEMENT_TIMEOUT_RETRY_MS = 1_500;
+/**
+ * How long to wait before each further try of a write the database stopped for
+ * taking too long. The database can stall for minutes at a time — every
+ * statement slow, not this one — and a single small save then runs out of its
+ * eight seconds through no fault of its own. Nothing of a stopped write has been
+ * done, so sending it again is safe, and saves queue, so they stay in order.
+ */
+export const STALL_RETRY_DELAYS_MS = [1_500, 5_000, 15_000];
 
 function isStatementTimeout(error: { message?: string; code?: string } | null): boolean {
   return !!error && (error.code === '57014' || /statement timeout/i.test(error.message ?? ''));
+}
+
+/** A write, tried again while the database keeps stopping it for taking too long. */
+async function withStallRetry<T extends { error: { message?: string; code?: string } | null }>(
+  send: () => PromiseLike<T>,
+): Promise<T> {
+  let result = await send();
+  for (const delay of STALL_RETRY_DELAYS_MS) {
+    if (!isStatementTimeout(result.error)) break;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    result = await send();
+  }
+  return result;
 }
 
 export async function upsertWorkItem(item: WorkItem, organizationId: string): Promise<boolean> {
@@ -672,7 +691,7 @@ async function upsertWorkItemImmediate(item: WorkItem, organizationId: string): 
   row.parent_id_overrides = item.parentIds ?? {};
   if (item.createdOn) row.created_on = item.createdOn;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(row as any)));
+  const { error } = await withStallRetry(() => withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(row as any))));
   if (error) {
     console.error('upsertWorkItem:', error, 'row:', row);
     toast({ title: 'Failed to save', description: error.message || 'Your changes could not be saved. Please check your connection and try again.', variant: 'destructive' });
@@ -966,7 +985,7 @@ async function upsertWorkItemsImmediate(allItems: WorkItem[], organizationId: st
   ]) {
     if (group.length === 0) continue;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ error } = await withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(group as any))));
+    ({ error } = await withStallRetry(() => withSessionRetry(() => withDeadlockRetry(() => supabase.from('work_items').upsert(group as any)))));
     if (error) break;
   }
   if (error) {
@@ -1435,18 +1454,12 @@ async function upsertRankRowsSkippingMissing(
   rows.sort((a, b) => a.work_item_id < b.work_item_id ? -1 : a.work_item_id > b.work_item_id ? 1 : a.backlog_id < b.backlog_id ? -1 : a.backlog_id > b.backlog_id ? 1 : 0);
 
   // Tried again when it loses a deadlock to the write of the items it ranks,
-  // and once more, after a pause, when a busy database stopped it for taking
-  // too long. Nothing of a stopped write has been done, so sending it again
-  // is safe.
+  // and after a pause when a busy database stopped it for taking too long.
   const writeBatch = async (payload: RankRow[]) => {
-    const send = () =>
+    const result = await withStallRetry(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      withDeadlockRetry(() => supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' }));
-    let result = await send();
-    if (isStatementTimeout(result.error)) {
-      await new Promise((resolve) => setTimeout(resolve, STATEMENT_TIMEOUT_RETRY_MS));
-      result = await send();
-    }
+      withDeadlockRetry(() => supabase.from(table as any).upsert(payload, { onConflict: 'work_item_id,backlog_id' })),
+    );
     return result.error;
   };
   // A batch at a time, so no one statement carries a whole long list.

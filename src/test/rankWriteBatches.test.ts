@@ -9,7 +9,7 @@
  * rank writes go in batches, a batch stopped for taking too long is sent once
  * more, and re-ordering a list writes only the ranks that changed.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const upsertCalls: Array<{ table: string; rows: Array<{ work_item_id: string; rank: number }> }> = [];
 let upsertResults: Array<{ error: unknown }> = [];
@@ -18,8 +18,8 @@ vi.mock("@/integrations/supabase/authClient", () => ({ getSupabaseAccessToken: a
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => ({
-      upsert: async (rows: Array<{ work_item_id: string; rank: number }>) => {
-        upsertCalls.push({ table, rows: [...rows] });
+      upsert: async (rows: Array<{ work_item_id: string; rank: number }> | { work_item_id: string; rank: number }) => {
+        upsertCalls.push({ table, rows: Array.isArray(rows) ? [...rows] : [rows] });
         return upsertResults.shift() ?? { error: null };
       },
     }),
@@ -33,6 +33,9 @@ vi.mock("@/lib/persistDebug", () => ({ notifyPersistDebug: vi.fn() }));
 
 import {
   RANK_WRITE_CHUNK,
+  STALL_RETRY_DELAYS_MS,
+  upsertWorkItem,
+  upsertWorkItems,
   upsertWorkItemBacklogRankRowsDetailed,
   upsertWorkItemBoardRankRowsDetailed,
 } from "@/store/supabaseSync";
@@ -73,11 +76,15 @@ describe("writing a long list's ranks", () => {
     expect(toast).not.toHaveBeenCalled();
   });
 
-  it("says so, once, when the same batch times out again — and writes no further batches", async () => {
-    upsertResults = [{ error: TIMEOUT }, { error: TIMEOUT }];
-    const result = await upsertWorkItemBacklogRankRowsDetailed(rows(450));
+  it("says so, once, when the same batch keeps timing out — and writes no further batches", async () => {
+    upsertResults = STALL_RETRY_DELAYS_MS.map(() => ({ error: TIMEOUT })).concat({ error: TIMEOUT });
+    vi.useFakeTimers();
+    const pending = upsertWorkItemBacklogRankRowsDetailed(rows(450));
+    await vi.runAllTimersAsync();
+    const result = await pending;
+    vi.useRealTimers();
     expect(result.ok).toBe(false);
-    expect(upsertCalls).toHaveLength(2);
+    expect(upsertCalls).toHaveLength(STALL_RETRY_DELAYS_MS.length + 1);
     expect(toast).toHaveBeenCalledTimes(1);
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Failed to save ranking", description: TIMEOUT.message }),
@@ -124,5 +131,46 @@ describe("saving a list's order", () => {
       [id(11), 10],
     ]);
     expect(useAppStore.getState().workItems[id(11)].ranks["bl-open"]).toBe(10);
+  });
+});
+
+describe("saving an item while the database has stalled", () => {
+  const item = { id: id(1), title: "Talentloom IQ", status: "blocked", parentId: null, childrenIds: [], backlogAssignments: { t: "bl" }, ranks: {} } as unknown as WorkItem;
+  const itemWrites = () => upsertCalls.filter((c) => c.table === "work_items");
+
+  const settle = async <T,>(pending: Promise<T>) => {
+    await vi.runAllTimersAsync();
+    return pending;
+  };
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("is sent again until it goes through, without a word", async () => {
+    upsertResults = [{ error: TIMEOUT }, { error: TIMEOUT }];
+    await expect(settle(upsertWorkItem(item, "org-1"))).resolves.toBe(true);
+    expect(itemWrites()).toHaveLength(3);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("does the same for several items at once", async () => {
+    upsertResults = [{ error: TIMEOUT }];
+    await expect(settle(upsertWorkItems([item], "org-1"))).resolves.toBe(true);
+    expect(itemWrites()).toHaveLength(2);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("says so only when the database stays stalled through every try", async () => {
+    upsertResults = [{ error: TIMEOUT }, { error: TIMEOUT }, { error: TIMEOUT }, { error: TIMEOUT }];
+    await expect(settle(upsertWorkItem(item, "org-1"))).resolves.toBe(false);
+    expect(itemWrites()).toHaveLength(STALL_RETRY_DELAYS_MS.length + 1);
+    expect(toast).toHaveBeenCalledTimes(1);
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Failed to save", description: TIMEOUT.message }));
+  });
+
+  it("does not wait on any other failure", async () => {
+    upsertResults = [{ error: { code: "23514", message: "violates check constraint" } }];
+    await expect(settle(upsertWorkItem(item, "org-1"))).resolves.toBe(false);
+    expect(itemWrites()).toHaveLength(1);
   });
 });
