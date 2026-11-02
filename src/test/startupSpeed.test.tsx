@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
-import { loadPagesSideBySide } from "@/store/supabaseSync";
+import { LARGE_READS_AT_ONCE, loadPagesSideBySide } from "@/store/supabaseSync";
 import { CatchingUpGuard } from "@/components/CatchingUpGuard";
 import { useAppStore } from "@/store/appStore";
 
@@ -47,8 +47,35 @@ describe("reading every row of a long table", () => {
     expect(res.data).toHaveLength(3396);
     expect(res.data!.map((r) => r.id)).toEqual(Array.from({ length: 3396 }, (_, i) => i));
     expect(t.asked).toEqual(["0-999 counted", "1000-1999", "2000-2999", "3000-3999"]);
-    // Three at once, where it used to be one after another.
-    expect(t.mostAtOnce()).toBe(3);
+    // Side by side, where it used to be one after another — but no more than
+    // the database can take: all at once, it ran out of memory.
+    expect(t.mostAtOnce()).toBe(LARGE_READS_AT_ONCE);
+  });
+
+  it("keeps to the limit across tables read at the same time", async () => {
+    let inFlight = 0;
+    let mostAtOnce = 0;
+    const counting = async (from: number, to: number, counted: boolean) => {
+      inFlight += 1;
+      mostAtOnce = Math.max(mostAtOnce, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight -= 1;
+      return { data: rows(from, to, 5000), error: null, count: counted ? 5000 : null };
+    };
+    const [a, b] = await Promise.all([loadPagesSideBySide(counting), loadPagesSideBySide(counting)]);
+    expect(a.data).toHaveLength(5000);
+    expect(b.data).toHaveLength(5000);
+    expect(mostAtOnce).toBe(LARGE_READS_AT_ONCE);
+  });
+
+  it("passes its turn on when a read fails, so the rest are not left waiting", async () => {
+    const failing = async (from: number) => {
+      if (from === 0) throw new Error("network");
+      return { data: [], error: null };
+    };
+    await Promise.allSettled([1, 2, 3, 4].map(() => loadPagesSideBySide(failing)));
+    const t = table(1500);
+    expect((await loadPagesSideBySide(t.page)).data).toHaveLength(1500);
   });
 
   it("makes one request for a table that fits a page", async () => {

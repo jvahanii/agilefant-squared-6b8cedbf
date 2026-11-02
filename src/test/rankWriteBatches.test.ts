@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const upsertCalls: Array<{ table: string; rows: Array<{ work_item_id: string; rank: number }> }> = [];
 let upsertResults: Array<{ error: unknown }> = [];
+const rpcResults: Array<{ data: unknown; error: unknown }> = [];
 
 vi.mock("@/integrations/supabase/authClient", () => ({ getSupabaseAccessToken: async () => null }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -23,7 +24,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         return upsertResults.shift() ?? { error: null };
       },
     }),
-    rpc: async () => ({ data: null, error: null }),
+    rpc: async () => rpcResults.shift() ?? { data: null, error: null },
     auth: { getSession: async () => ({ data: { session: null }, error: null }) },
   },
 }));
@@ -34,6 +35,7 @@ vi.mock("@/lib/persistDebug", () => ({ notifyPersistDebug: vi.fn() }));
 import {
   RANK_WRITE_CHUNK,
   STALL_RETRY_DELAYS_MS,
+  fetchRanksGrouped,
   upsertWorkItem,
   upsertWorkItems,
   upsertWorkItemBacklogRankRowsDetailed,
@@ -172,5 +174,28 @@ describe("saving an item while the database has stalled", () => {
     upsertResults = [{ error: { code: "23514", message: "violates check constraint" } }];
     await expect(settle(upsertWorkItem(item, "org-1"))).resolves.toBe(false);
     expect(itemWrites()).toHaveLength(1);
+  });
+});
+
+describe("reading a list's ranks while the database has stalled", () => {
+  beforeEach(() => {
+    rpcResults.length = 0;
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("asks again rather than falling back to reading the tables, far more work", async () => {
+    rpcResults.push({ data: null, error: TIMEOUT }, { data: { backlogIds: ["bl"], backlog: { a: { 0: 7 } }, board: {} }, error: null });
+    const pending = fetchRanksGrouped(["org-1"]);
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toEqual({ backlog: { a: { bl: 7 } }, board: {} });
+  });
+
+  it("falls back at once where the call does not exist", async () => {
+    rpcResults.push({ data: null, error: { code: "PGRST202", message: "not found" } });
+    const pending = fetchRanksGrouped(["org-1"]);
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toBeNull();
+    expect(rpcResults).toHaveLength(0);
   });
 });

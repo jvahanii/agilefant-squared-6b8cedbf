@@ -103,12 +103,42 @@ const HYPERLINK_COLUMNS = 'id,work_item_id,url,alt_text,rank';
 type PageResult = { data: any[] | null; error: any; count?: number | null };
 
 /**
+ * The large reads of a load allowed at once, across every table. The database
+ * has 406 MB of memory and keeps as much again in swap. All of a load's pages at
+ * once pushed it into waiting on swap (IOwait to 72%), where a read that takes a
+ * third of a second took twenty and everything else in the app timed out —
+ * for minutes, and longer as failed reads were asked for again.
+ */
+export const LARGE_READS_AT_ONCE = 2;
+
+let largeReadsRunning = 0;
+const largeReadsWaiting: Array<() => void> = [];
+
+/** A large read, when its turn comes. */
+async function largeRead<T>(read: () => PromiseLike<T>): Promise<T> {
+  if (largeReadsRunning >= LARGE_READS_AT_ONCE) {
+    await new Promise<void>((resolve) => largeReadsWaiting.push(resolve));
+  } else {
+    largeReadsRunning += 1;
+  }
+  try {
+    return await read();
+  } finally {
+    // The turn passes straight to the next in line, or is given up.
+    const next = largeReadsWaiting.shift();
+    if (next) next();
+    else largeReadsRunning -= 1;
+  }
+}
+
+/**
  * Every row of a query the server hands out a thousand at a time.
  *
  * The pages used to be asked for one after another: an organization of a few
  * thousand items waited four round trips in a row before it had its items,
  * which on a phone is most of what a start costs. The first page now asks how
- * many rows there are in all, and the rest are fetched side by side.
+ * many rows there are in all, and the rest are fetched side by side, as many
+ * at once as LARGE_READS_AT_ONCE allows.
  *
  * `page(from, to, counted)` runs the query for those rows, with the total
  * asked for when `counted`. Where no total comes back the pages are read in
@@ -119,7 +149,7 @@ export async function loadPagesSideBySide(
   page: (from: number, to: number, counted: boolean) => PromiseLike<PageResult>,
   PAGE = 1000,
 ): Promise<SupabaseReadResult> {
-  const first = await page(0, PAGE - 1, true);
+  const first = await largeRead(() => page(0, PAGE - 1, true));
   if (first.error) return { data: null, error: first.error };
   const rows: any[] = [...(first.data ?? [])];
   let last = first.data ?? [];
@@ -128,7 +158,7 @@ export async function loadPagesSideBySide(
   if (last.length === PAGE && typeof first.count === 'number' && first.count > PAGE) {
     const starts: number[] = [];
     for (let start = PAGE; start < first.count; start += PAGE) starts.push(start);
-    const rest = await Promise.all(starts.map((start) => page(start, start + PAGE - 1, false)));
+    const rest = await Promise.all(starts.map((start) => largeRead(() => page(start, start + PAGE - 1, false))));
     for (const result of rest) {
       if (result.error) return { data: null, error: result.error };
       rows.push(...(result.data ?? []));
@@ -138,7 +168,7 @@ export async function loadPagesSideBySide(
   }
 
   while (last.length === PAGE) {
-    const next = await page(from, from + PAGE - 1, false);
+    const next = await largeRead(() => page(from, from + PAGE - 1, false));
     if (next.error) return { data: null, error: next.error };
     last = next.data ?? [];
     rows.push(...last);
@@ -1214,11 +1244,14 @@ type RankMaps = {
  *
  * Returns null if the RPC is unavailable — an older deployment, or the
  * migration not yet applied — so the caller can fall back to reading the
- * tables directly.
+ * tables directly. A database too busy to answer is asked again first: reading
+ * the tables is far more work, and it is the last thing a stalled database needs.
  */
-async function fetchRanksGrouped(orgIds: string[]): Promise<RankMaps | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc('get_work_item_ranks', { _org_ids: orgIds });
+export async function fetchRanksGrouped(orgIds: string[]): Promise<RankMaps | null> {
+  const { data, error } = await withStallRetry(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    largeRead(() => (supabase as any).rpc('get_work_item_ranks', { _org_ids: orgIds }) as PromiseLike<{ data: any; error: any }>),
+  );
   if (error || !data) {
     if (error) console.warn('get_work_item_ranks unavailable, falling back to row reads:', error);
     return null;

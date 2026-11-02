@@ -45,10 +45,7 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
   loadTeams: async (orgId: string) => {
     set({ loading: true });
     // Find partner org IDs via shared trees (both directions)
-    const [ownedShares, receivedShares] = await Promise.all([
-      supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id'),
-      supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id'),
-    ]);
+    const shares = (await supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id')).data as any[] | null;
     // Trees owned by orgId that are shared → partner is the share's organization_id
     // Trees shared WITH orgId → partner is the tree's owner org
     const partnerOrgIds = new Set<string>();
@@ -58,27 +55,20 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
       .select('id, organization_id')
       .eq('organization_id', orgId);
     const ownedTreeIds = new Set(((ownedTreesRes.data ?? []) as any[]).map((t: any) => t.id));
-    for (const share of ((ownedShares.data ?? []) as any[])) {
+    for (const share of shares ?? []) {
       if (ownedTreeIds.has(share.tree_id) && share.organization_id !== orgId) {
         partnerOrgIds.add(share.organization_id);
       }
     }
     // Shares where orgId is the recipient → tree owner is the partner
-    for (const share of ((receivedShares.data ?? []) as any[])) {
-      if (share.organization_id === orgId) {
-        // Find the tree's owner org
-        const tree = ((ownedTreesRes.data ?? []) as any[]).find((t: any) => t.id === share.tree_id);
-        if (!tree) {
-          // Tree not owned by us, fetch its org
-          const { data } = await supabase
-            .from('backlog_trees' as any)
-            .select('organization_id')
-            .eq('id', share.tree_id)
-            .single();
-          if (data && (data as any).organization_id !== orgId) {
-            partnerOrgIds.add((data as any).organization_id);
-          }
-        }
+    const receivedTreeIds = (shares ?? [])
+      .filter((share) => share.organization_id === orgId && !ownedTreeIds.has(share.tree_id))
+      .map((share) => share.tree_id as string);
+    if (receivedTreeIds.length > 0) {
+      // Their owners in one request, not one a tree.
+      const { data } = await supabase.from('backlog_trees' as any).select('organization_id').in('id', receivedTreeIds);
+      for (const tree of (data ?? []) as any[]) {
+        if (tree.organization_id !== orgId) partnerOrgIds.add(tree.organization_id);
       }
     }
     const allOrgIds = [orgId, ...Array.from(partnerOrgIds)];
