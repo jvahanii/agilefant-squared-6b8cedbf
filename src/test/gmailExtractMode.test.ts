@@ -685,3 +685,87 @@ describe("Indeed's job alerts", () => {
     expect(canonicalizeByHost('https://fi.indeed.com/jobs?q=product+owner')).toBeNull();
   });
 });
+
+describe("MPS's weekly job mail", () => {
+  // As the mail has it: every link a tracker, a posting a heading link with a
+  // line after it, and "Lue lisää" a second tracker to the same place.
+  const T = (id: string) => `https://email.mps.fi/e3t/Ctc/OP+113/cJX4X04/VVP48Z6Dv78tW3HLSqH4s9lpdW8_${id}`;
+  const card = (id: string, title: string, line: string) =>
+    `<tr><td><h1 style="margin:0"><span style="color: #00239c;"><span style="text-decoration: underline;">` +
+    `<a href="${T(id)}" style="color:#00239c" data-hs-link-id="0" target="_blank">${title}</a></span>&nbsp;</span></h1> ` +
+    `<p style="margin-bottom:10px"><span style="color: #00239c;"> </span></p> \r\n    <div style="color: #28334a;">\r\n      ${line} \r\n    </div>` +
+    `<p style="margin-bottom:10px"></p> <p style="margin-bottom:10px"><span style="color: #00239c;">` +
+    `<a href="${T(id + 'more')}" style="color:#00239c" data-hs-link-id="1" target="_blank">Lue lisää&nbsp; »</a></span></p> <p>&nbsp;</p> </td></tr>`;
+  const MAIL =
+    `<a href="${T('browser')}">Tarkastele selaimessa</a>` +
+    `<h2>Hei,</h2><p>Kaikki MPS:n avoimet työpaikat löydät <a href="${T('all')}">täältä</a>.</p>` +
+    `<h2>Tuoreimmat työpaikat</h2><table>` +
+    card('a', 'Director, Corporate Relations and Communications', 'Deloitte Helsinki, Uusimaa Hakuaika päättyy: 08.11.2026 23:59') +
+    card('b', 'Toimitusjohtaja', 'Suomen Tekstiili &amp; Muoti ry Helsinki, Uusimaa Hakuaika päättyy: 02.11.2026 23:59') +
+    card('c', 'Projektijohtaja', 'Gasgrid Espoo, Kouvola, Uusimaa, Kymenlaakso Hakuaika päättyy: 01.11.2026 23:59') +
+    `</table><p><a href="${T('privacy')}">Tietosuojaseloste</a></p>` +
+    `<a data-unsubscribe="true" href="https://email.mps.fi/hs/preferences-center/fi/page?data=W2n">Hallitse asetuksia</a>`;
+  const FROM_MPS = 'MPS <mps@mps.fi>';
+  const links = () => extractLinks(message(FROM_MPS, MAIL, 'MPS ❤️ viikon työpaikat'), 'jobs');
+
+  it('takes the headed postings only: not "Lue lisää", the list of all jobs or the footer', () => {
+    expect(links().map((l) => l.url)).toEqual([T('a'), T('b'), T('c')]);
+  });
+
+  it('names each after the employer, however many words it has', () => {
+    expect(links().map((l) => l.title)).toEqual([
+      'Deloitte - Director, Corporate Relations and Communications',
+      'Suomen Tekstiili & Muoti ry - Toimitusjohtaja',
+      'Gasgrid - Projektijohtaja',
+    ]);
+  });
+
+  it('reads the cities and not the regions', () => {
+    expect(links().map((l) => l.cities)).toEqual([['Helsinki'], ['Helsinki'], ['Espoo', 'Kouvola']]);
+  });
+
+  it('reads the closing date', () => {
+    expect(links().map((l) => l.deadline)).toEqual(['2026-11-08', '2026-11-02', '2026-11-01']);
+  });
+
+  it('takes nothing from a newsletter from the same address', () => {
+    const newsletter = `<h1>Trilliant kehittyy työelämän mukana</h1><p>Haluatko nähdä? <a href="${T('demo')}">Varaa demo!</a></p>` +
+      `<p><a href="${T('blog')}">Lue blogi verkkosivuiltamme!</a></p><div>Trilliant-terveisin</div>`;
+    expect(extractLinks(message(FROM_MPS, newsletter, 'Enemmän irti henkilöstödatasta'), 'jobs')).toEqual([]);
+  });
+
+  it("finds where each leads through the tracker's page, keeping none of its tracking", async () => {
+    const asked: string[] = [];
+    const out = await resolveJobLinks(links(), async (url: string) => {
+      asked.push(url);
+      if (url.includes('/e3t/')) {
+        const id = url.slice(-1);
+        return new Response(
+          `<script>window.location.replace(targetURL)</script><p>If you're not redirected, ` +
+            `<a href="https://email.mps.fi/events/public/v1/encoded/track/tc/OP+113/${id}?_ud=uuid&amp;_jss=0" rel="noreferrer">click here</a></p>`,
+          { status: 200 },
+        );
+      }
+      const id = new URL(url).pathname.slice(-1);
+      return new Response(null, {
+        status: 307,
+        headers: { location: `https://ats.talentadore.com/apply/job-${id}/abc${id}?utm_campaign=Lifeworks&utm_medium=email&_hsenc=p2AN&_hsmi=149` },
+      });
+    });
+    expect(out.map((l) => l.url)).toEqual([
+      'https://ats.talentadore.com/apply/job-a/abca',
+      'https://ats.talentadore.com/apply/job-b/abcb',
+      'https://ats.talentadore.com/apply/job-c/abcc',
+    ]);
+    // Never the posting's own site.
+    expect(asked.every((url) => new URL(url).hostname === 'email.mps.fi')).toBe(true);
+    expect(asked.some((url) => url.includes('_ud=uuid&_jss=0'))).toBe(true);
+    // What the mail said stays with it.
+    expect(out[0]).toMatchObject({ title: 'Deloitte - Director, Corporate Relations and Communications', deadline: '2026-11-08' });
+  });
+
+  it('drops a posting whose tracker leads nowhere it can read', async () => {
+    const out = await resolveJobLinks(links(), async () => new Response('<p>Nothing here</p>', { status: 200 }));
+    expect(out).toEqual([]);
+  });
+});

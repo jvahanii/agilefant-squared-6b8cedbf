@@ -11,7 +11,7 @@
 // Dependency-free apart from the URL helpers: shared by the Deno edge functions
 // and vitest.
 
-import { decodeEntities } from './urls.ts';
+import { decodeEntities, normalizeUrl } from './urls.ts';
 import { parseDeadline, parseOpenEnded } from './deadlines.ts';
 import { citiesFromList } from './cities.ts';
 import { THERMO_FISHER_FINLAND } from './phenom.ts';
@@ -120,6 +120,11 @@ export interface JobSource {
   unresolved?(u: URL): boolean;
   /** The posting's address, given where such a tracker leads — or null if not to a posting. */
   fromRedirect?(to: URL): string | null;
+  /**
+   * Where a tracker's page sends the browser, for a tracker that answers with a
+   * page rather than a redirect. Asked only when the answer has no redirect.
+   */
+  redirectInPage?(html: string): string | null;
   /**
    * Where this sender's jobs are listed, for mail that names none of them. A
    * mail with no posting in it then stands for the jobs on this page.
@@ -403,6 +408,41 @@ export const JOB_SOURCES: JobSource[] = [
     },
   },
   {
+    // MPS's weekly job mail, "MPS viikon työpaikat". A posting is a heading
+    // link, with a line after it saying everything else:
+    //
+    //   <h1><span><span><a href="https://email.mps.fi/e3t/Ctc/…">Director, Corporate Relations</a></span>&nbsp;</span></h1>
+    //   <p></p>
+    //   <div>Deloitte Helsinki, Uusimaa Hakuaika päättyy: 08.11.2026 23:59</div>
+    //   <p><a href="https://email.mps.fi/e3t/Ctc/…">Lue lisää »</a></p>
+    //
+    // Every link in the mail is a HubSpot tracker, a different one in every
+    // mail, with its destination encoded out of reach. So a posting is known by
+    // its heading, and where it leads is asked (see resolveJobLinks): "Lue
+    // lisää" goes to the same place and is passed over. mps@mps.fi also sends
+    // newsletters, whose links are in no such heading, and which yield nothing.
+    id: 'mps',
+    senders: /\bmps@mps\.fi/i,
+    alertSenders: ['mps@mps.fi'],
+    isJobUrl: isMpsTracker,
+    isPosting: ({ afters }) => mpsCard(afters) !== undefined,
+    company: ({ afters }) => mpsCard(afters)?.company,
+    cities: ({ afters }) => {
+      const cities = mpsCard(afters)?.cities;
+      return cities && citiesFromList(cities.join(','));
+    },
+    deadlineText: ({ afters }) => mpsCard(afters)?.closes,
+    unresolved: isMpsTracker,
+    // Wherever the employer takes its applications, Talentadore or its own site.
+    fromRedirect: (to) => (isMpsTracker(to) ? null : normalizeUrl(to.toString())),
+    // The first answer is a page that tells browsers from bots by script, with
+    // a plain link for those without one: that link answers with the redirect.
+    redirectInPage: (html) => {
+      const href = html.match(/<a\b[^>]*\bhref="(https:\/\/email\.mps\.fi\/events\/public\/v1\/encoded\/track\/tc\/[^"]+)"/i)?.[1];
+      return href ? decodeEntities(href) : null;
+    },
+  },
+  {
     // Thermo Fisher Scientific's own recruiting newsletter, "Explore Careers
     // at Thermo Fisher Scientific". It names no job: six links to worldwide
     // searches by trade ("Software Engineers", "Scientists"), each behind a
@@ -468,6 +508,31 @@ function valtiolleCard(inners: string[]): { title?: string; company?: string; cl
     const closes = subs.find((text) => /hakuaika|ansökningstid|application period/i.test(text));
     const company = subs.find((text) => text !== closes);
     return { title, company, closes };
+  }
+  return undefined;
+}
+
+/** A link in MPS's mail before it is known where it leads. */
+function isMpsTracker(u: URL): boolean {
+  return /^email\.mps\.fi$/i.test(u.hostname) && /^\/(e3t\/|events\/public\/v1\/encoded\/track\/tc\/)/i.test(u.pathname);
+}
+
+/**
+ * An MPS posting, read from the line after its heading: "<employer> <cities>,
+ * <regions> Hakuaika päättyy: <date>". The cities and their regions come in
+ * equal numbers — "Gasgrid Espoo, Kouvola, Uusimaa, Kymenlaakso" — and nothing
+ * but a space parts the employer from the first city, which is one word.
+ */
+function mpsCard(afters: string[]): { company?: string; cities?: string[]; closes?: string } | undefined {
+  for (const after of afters) {
+    const line = after.match(/^(?:\s|&nbsp;|<\/span>)*<\/h1>[\s\S]*?<div\b[^>]*>([\s\S]*?)<\/div>/i)?.[1];
+    if (line === undefined) continue;
+    const [place, closes] = stripTags(line).split(/\s+(?=Hakuaika\b)/i);
+    const parts = place.split(/\s*,\s*/);
+    const space = parts[0].lastIndexOf(' ');
+    if (space < 0) return { company: parts[0] || undefined, closes };
+    const cities = [parts[0].slice(space + 1), ...parts.slice(1, Math.ceil(parts.length / 2))];
+    return { company: parts[0].slice(0, space), cities, closes };
   }
   return undefined;
 }

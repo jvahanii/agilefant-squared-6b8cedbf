@@ -10,7 +10,8 @@
 // So each such link is requested once, and only as far as its own redirect:
 // the answer's Location header is read and never followed. The site the
 // posting lives on is not contacted at all. To the board this is the recipient
-// opening each job in the alert once.
+// opening each job in the alert once. MPS's tracker answers first with a page,
+// whose link is the one that redirects; that is read the same way.
 //
 // Kept apart from jobSources.ts, which is pure, and takes its fetch as an
 // argument so it can be tested without a network.
@@ -36,8 +37,12 @@ async function follow(url: string, source: JobSource, fetcher: Fetcher): Promise
     try {
       const res = await fetcher(current, { redirect: 'manual', signal: controller.signal });
       location = res.headers.get('location');
-      // Only the header was wanted.
-      await res.body?.cancel().catch(() => undefined);
+      if (!location && source.redirectInPage) {
+        location = source.redirectInPage(await res.text());
+      } else {
+        // Only the header was wanted.
+        await res.body?.cancel().catch(() => undefined);
+      }
     } catch {
       return null;
     } finally {

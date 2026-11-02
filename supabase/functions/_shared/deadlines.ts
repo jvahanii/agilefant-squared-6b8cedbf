@@ -63,8 +63,8 @@ const LABELLED = String.raw`\b(?:last\s+(?:application\s+)?(?:date|day)(?:\s+(?:
 
 /** Numeric patterns. Capture order is day, month, optional year. */
 const NUMERIC_PATTERNS: RegExp[] = [
-  // "haku päättyy 20.9." / "Haku päättyy 27.09.2026 19.00"
-  new RegExp(String.raw`haku(?:aika)?\s*päättyy\s*${DAY_MONTH}`, "i"),
+  // "haku päättyy 20.9." / "Haku päättyy 27.09.2026 19.00" / "Hakuaika päättyy: 08.11.2026 23:59"
+  new RegExp(String.raw`haku(?:aika)?\s*päättyy\s*:?\s*${DAY_MONTH}`, "i"),
   // "jätä hakemus viimeistään 28.9.2026".
   // Spelled out rather than \w*, which does not match "ä" in JavaScript.
   new RegExp(String.raw`viimeist[a-zäöå]*\s*${SOFT_GAP}${DAY_MONTH}`, "i"),
