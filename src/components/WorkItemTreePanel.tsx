@@ -1065,7 +1065,8 @@ function WorkItemNodeContent({
             onClick={(e) => {
               e.stopPropagation();
               if (!hasChildren) return;
-              if (expanded) collapseRecursive(workItemId);
+              if (e.shiftKey) toggleExpand(workItemId);
+              else if (expanded) collapseRecursive(workItemId);
               else expandRecursive(workItemId);
             }}
           >
