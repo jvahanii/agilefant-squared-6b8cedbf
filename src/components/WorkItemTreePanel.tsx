@@ -398,6 +398,8 @@ function WorkItemNodeContent({
   const isSelected = useAppStore((s) => s.selectedWorkItemIds.includes(workItemId));
   const isMultiSelected = useAppStore((s) => s.selectedWorkItemIds.length > 1);
   const toggleExpand = useAppStore((s) => s.toggleWorkItemExpand);
+  const expandRecursive = useAppStore((s) => s.expandWorkItemsRecursive);
+  const collapseRecursive = useAppStore((s) => s.collapseWorkItemsRecursive);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const deleteWorkItemsBulk = useAppStore((s) => s.deleteWorkItemsBulk);
@@ -1062,7 +1064,9 @@ function WorkItemNodeContent({
             className={`relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 ${isChildBacklog ? "text-muted-foreground/50" : "text-muted-foreground"} hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']`}
             onClick={(e) => {
               e.stopPropagation();
-              if (hasChildren) toggleExpand(workItemId);
+              if (!hasChildren) return;
+              if (expanded) collapseRecursive(workItemId);
+              else expandRecursive(workItemId);
             }}
           >
             {hasChildren ? (
