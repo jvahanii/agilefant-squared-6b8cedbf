@@ -60,6 +60,11 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
     note: "Job alerts from Tieto's own career site, sent from careers@tietoevry.com.",
   },
   {
+    name: "Danske Bank",
+    searched: "Yes",
+    note: "“New job opportunities in Danske Bank” alerts from the bank's own career site, sent from hrplatform-noreply@hr.danskebank.com.",
+  },
+  {
     name: "MPS",
     searched: "Yes",
     note: "The weekly “viikon työpaikat” email from mps@mps.fi. Its links hide where they lead, so each job in it is asked once — to MPS, as if you had opened every job in it. The company's other newsletters, from the same address, yield nothing and stay unread.",

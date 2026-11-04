@@ -9,7 +9,7 @@
 // item's name.
 
 import { deadlinePassed, parseApplicationsClosed, parseDeadline } from './deadlines.ts';
-import { citiesFromPage } from './cities.ts';
+import { citiesFromList, citiesFromPage } from './cities.ts';
 import { finnishRequirement, type LanguageVerdict } from './languageRequirement.ts';
 import { decodeEntities } from './urls.ts';
 
@@ -75,6 +75,54 @@ export function isLinkedInGuest(target: string): boolean {
   return target.startsWith('https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/');
 }
 
+/**
+ * A posting on an Oracle recruiting site — Danske Bank's: /hcmUI/CandidateExperience/<lang>/sites/<site>/job/<id>.
+ * Its page is a shell the site fills in with script: seven kilobytes naming the
+ * job and nothing else. The site's own public job API answers with the posting
+ * as data, closing date and place included, and with nothing at all once the
+ * posting is gone.
+ */
+const ORACLE_JOB = /^\/hcmUI\/CandidateExperience\/[a-z]{2}\/sites\/([^/]+)\/job\/(\d+)\/?$/i;
+const ORACLE_JOB_API = '/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails';
+
+/** Did postingTextUrl send us to an Oracle recruiting site's job API? */
+export function isOracleJobApi(target: string): boolean {
+  try {
+    return new URL(target).pathname === ORACLE_JOB_API;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What Oracle's job API says about a posting. Its closing time is the moment
+ * applications stop, usually local midnight, which is the evening before in
+ * UTC; three hours back puts any European midnight on the last day to apply.
+ */
+export function factsFromOracleJob(json: string): PostingFacts {
+  let job: { ExternalPostedEndDate?: string; PrimaryLocation?: string; ExternalDescriptionStr?: string; ShortDescriptionStr?: string } | undefined;
+  try {
+    const data = JSON.parse(json) as { items?: unknown[] };
+    if (!Array.isArray(data.items)) return { unreachable: 200 };
+    // Asked for by its number, a posting taken down is simply not there.
+    if (data.items.length === 0) return { closed: true, language: null };
+    job = data.items[0] as typeof job;
+  } catch {
+    return { unreachable: 200 };
+  }
+  const ends = job?.ExternalPostedEndDate ? Date.parse(job.ExternalPostedEndDate) : NaN;
+  const deadline = Number.isNaN(ends) ? undefined : new Date(ends - 3 * 3_600_000).toISOString().slice(0, 10);
+  // "Copenhagen K, Denmark": the city, with the postal district letter after it.
+  const city = (job?.PrimaryLocation ?? '').split(',')[0].replace(/\s+[A-ZÆØÅ]{1,2}$/, '').trim();
+  const text = textFromHtml(decodeEntities([job?.ShortDescriptionStr, job?.ExternalDescriptionStr].filter(Boolean).join(' ')));
+  return {
+    deadline,
+    closed: deadlinePassed(deadline),
+    cities: city ? citiesFromList(city) : [],
+    language: finnishRequirement(text) ?? null,
+  };
+}
+
 export function postingTextUrl(rawUrl: string): string | null {
   let u: URL;
   try {
@@ -94,6 +142,12 @@ export function postingTextUrl(rawUrl: string): string | null {
     const fromQuery = u.searchParams.get('currentJobId');
     const id = fromPath ?? (fromQuery && /^\d+$/.test(fromQuery) ? fromQuery : null);
     if (id) return `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`;
+  }
+  const oracle = u.hostname.endsWith('.oraclecloud.eu') || u.hostname.endsWith('.oraclecloud.com') ? u.pathname.match(ORACLE_JOB) : null;
+  if (oracle) {
+    const [, site, id] = oracle;
+    const finder = encodeURIComponent(`ById;Id="${id}",siteNumber=${site}`);
+    return `https://${u.hostname}${ORACLE_JOB_API}?onlyData=true&expand=all&finder=${finder}`;
   }
   return u.toString();
 }
@@ -255,6 +309,7 @@ export function factsFromPage(
   html: string,
   reference: string,
 ): PostingFacts {
+  if (isOracleJobApi(target) && status >= 200 && status < 300) return factsFromOracleJob(html);
   if (isChallengePage(html)) return { unreachable: status || 403 };
   if (status < 200 || status >= 300) {
     // An ad that is gone has no text left to read a language from, and never

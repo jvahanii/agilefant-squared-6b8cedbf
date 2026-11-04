@@ -9,6 +9,8 @@ import {
 } from '../../supabase/functions/_shared/deadlines';
 import {
   closedByStatus,
+  factsFromOracleJob,
+  factsFromPage,
   isLinkedInGuest,
   linkedInApplyWithdrawn,
   postingTextUrl,
@@ -500,5 +502,49 @@ describe('textFromHtml', () => {
     const text = textFromHtml(html);
     expect(text).toBe('haku päättyy 20.9.');
     expect(text).not.toContain('1.1.2000');
+  });
+});
+
+describe("a posting on an Oracle recruiting site — Danske Bank's", () => {
+  // Its page is a shell filled in by script; the site's job API has the posting.
+  const POSTING = 'https://ejqi.fa.ocs.oraclecloud.eu:443/hcmUI/CandidateExperience/en/sites/CX_1001/job/25234/?utm_medium=career+site';
+  // As the API answered for it on 4 November 2026, trimmed to what is read.
+  const ANSWER = JSON.stringify({
+    items: [{
+      Id: '25234',
+      Title: 'Head of Operational Design & Governance',
+      ExternalPostedStartDate: '2026-11-03T09:22:25+00:00',
+      ExternalPostedEndDate: '2026-11-16T23:00:00+00:00',
+      PrimaryLocation: 'Copenhagen K, Denmark',
+      ShortDescriptionStr: 'Operational information is the backbone of how a bank operates, and getting it right matters.',
+      ExternalDescriptionStr: '<p><span lang="EN-GB">We are looking for a Head of Operational Design &amp; Governance.</span></p>',
+    }],
+    count: 1,
+  });
+
+  it('is read from the job API, not its empty page', () => {
+    const target = postingTextUrl(POSTING)!;
+    expect(target).toBe(
+      'https://ejqi.fa.ocs.oraclecloud.eu/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=' +
+        encodeURIComponent('ById;Id="25234",siteNumber=CX_1001'),
+    );
+  });
+
+  it('gives the last day to apply and the city', () => {
+    // Closes at midnight in Copenhagen, 23:00 UTC: the last day is the 16th.
+    expect(factsFromOracleJob(ANSWER)).toMatchObject({ deadline: '2026-11-16', cities: ['Copenhagen'] });
+  });
+
+  it('is read the same through the page reader, whatever its content type', () => {
+    const facts = factsFromPage(postingTextUrl(POSTING)!, 200, 'application/vnd.oracle.adf.resourcecollection+json', ANSWER, '2026-11-04');
+    expect(facts.deadline).toBe('2026-11-16');
+  });
+
+  it('is closed once the API no longer has it', () => {
+    expect(factsFromOracleJob(JSON.stringify({ items: [], count: 0 }))).toEqual({ closed: true, language: null });
+  });
+
+  it('says nothing is known where the answer is not the API\'s', () => {
+    expect(factsFromOracleJob('<html>Maintenance</html>')).toEqual({ unreachable: 200 });
   });
 });

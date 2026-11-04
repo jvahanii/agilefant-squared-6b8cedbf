@@ -769,3 +769,37 @@ describe("MPS's weekly job mail", () => {
     expect(out).toEqual([]);
   });
 });
+
+describe("Danske Bank's job alerts", () => {
+  // As the mail has it: the posting a plain link named after the job, then
+  // "See all opportunities" and the candidate profile's sign-in page.
+  const SITE = 'https://ejqi.fa.ocs.oraclecloud.eu:443/hcmUI/CandidateExperience/en/sites/CX_1001';
+  const posting = (id: number, title: string) =>
+    `<div>\r\n <font color="#808080"> <a style="color: black;" href="${SITE}/job/${id}/?utm_medium=career+site&utm_source=job+alert">${title}</a><br> </font>\r\n</div>`;
+  const mail = (...postings: string[]) =>
+    `<img src="https://web.danskebank.com/recruitment/images/600x400webDBlogo.jpg"/>` +
+    `<div><font color="#808080"> We have posted new job opportunities within your area of interest today. You can check them out here:&nbsp; </font></div>` +
+    postings.join('') +
+    `<div><font color="#808080"> You can also see if we have other job opportunities that may fall within your interest here: </font></div>` +
+    `<p align="center"><a target="_blank" href="${SITE}/jobs?selectedCategoriesFacet=300000856651895&selectedLocationsFacet=300000050630065&sortBy=POSTING_DATES_DESC"><font color="#ffffff">See all opportunities</font></a></p>` +
+    `<div>If you do not want to receive these job notifications, go to your </font> <a href="https://ejqi.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_1001/my-profile/sign-in" target="_blank"><font color="#00bfff">candidate self-service page</font> </a></div>`;
+  const FROM = 'hrplatform-noreply@hr.danskebank.com';
+  const links = (html: string) => extractLinks(message(FROM, html, 'New job opportunities in Danske Bank'), 'jobs');
+
+  it('takes the posting, named after the bank and the job, and nothing else', () => {
+    const out = links(mail(posting(25234, 'Head of Operational Design &amp; Governance')));
+    expect(out.map((l) => [l.url, l.title])).toEqual([
+      [`${SITE.replace(':443', '')}/job/25234`, 'Danske Bank - Head of Operational Design & Governance'],
+    ]);
+  });
+
+  it('takes every posting when there are several', () => {
+    const out = links(mail(posting(25074, 'Senior CRM Analyst'), posting(25234, 'Head of Operational Design &amp; Governance')));
+    expect(out.map((l) => l.title)).toEqual(['Danske Bank - Senior CRM Analyst', 'Danske Bank - Head of Operational Design & Governance']);
+  });
+
+  it('is one posting whatever language the link opens it in', () => {
+    const fi = links(mail(posting(25074, 'Senior CRM Analyst').replace('/en/sites/', '/fi/sites/')));
+    expect(fi[0].url).toBe(`${SITE.replace(':443', '')}/job/25074`);
+  });
+});

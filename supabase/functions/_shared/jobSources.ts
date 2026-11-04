@@ -408,6 +408,27 @@ export const JOB_SOURCES: JobSource[] = [
     },
   },
   {
+    // Danske Bank's own job alerts, "New job opportunities in Danske Bank",
+    // from its Oracle recruiting site. Each posting is a plain link, named after
+    // the job, straight to the posting:
+    //
+    //   <a href="https://ejqi.fa.ocs.oraclecloud.eu:443/hcmUI/CandidateExperience/en/sites/CX_1001/job/25234/?utm_…">
+    //     Head of Operational Design &amp; Governance</a>
+    //
+    // Around it "See all opportunities" (/jobs?…) and the candidate profile's
+    // sign-in page, neither of them a posting.
+    id: 'danskebank',
+    senders: /@hr\.danskebank\.com/i,
+    alertSenders: ['hrplatform-noreply@hr.danskebank.com'],
+    // One employer: the mail names no other.
+    company: () => 'Danske Bank',
+    isJobUrl: (u) =>
+      /^ejqi\.fa\.ocs\.oraclecloud\.eu$/i.test(u.hostname) &&
+      /^\/hcmUI\/CandidateExperience\/[a-z]{2}\/sites\/[^/]+\/job\/\d+\/?$/i.test(u.pathname),
+    // The job's number is the posting, whatever language the link opens it in.
+    canonicalPath: (u) => u.pathname.replace(/\/CandidateExperience\/[a-z]{2}\//i, '/CandidateExperience/en/').replace(/\/+$/, ''),
+  },
+  {
     // MPS's weekly job mail, "MPS viikon työpaikat". A posting is a heading
     // link, with a line after it saying everything else:
     //
