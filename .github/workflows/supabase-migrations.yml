@@ -43,4 +43,6 @@ jobs:
           fi
 
       - name: Deploy migrations to remote
-        run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
+        # --yes: the CLI asks before applying since November 2026, and in CI there is
+        # no one to answer; without it the job fails having changed nothing.
+        run: supabase db push --yes --db-url "${{ secrets.SUPABASE_DB_URL }}"

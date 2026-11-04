@@ -46,4 +46,6 @@ jobs:
       - name: Deploy functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase functions deploy --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+        # --yes: the CLI asks before deploying since November 2026, and in CI there is
+        # no one to answer; without it the job fails having changed nothing.
+        run: supabase functions deploy --yes --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
