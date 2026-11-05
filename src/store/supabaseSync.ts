@@ -4,6 +4,7 @@ import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from '@/typ
 import { toast } from '@/hooks/use-toast';
 import { notifyPersistDebug } from '@/lib/persistDebug';
 import { markContainersDeleted, isRecentlyDeletedContainer } from './deletedContainers';
+import { loadOrgRows, type FullReads, type HyperlinkRow } from './rowMirror';
 import {
   forgetDeletedWorkItems,
   isRecentlyDeletedWorkItem,
@@ -227,8 +228,18 @@ export async function loadFromSupabase(
   // Only the two small structure queries are awaited here — work items and the
   // rank tables are by far the largest payloads, so they stay in flight while
   // the structure is assembled and are awaited once the caller has painted.
-  const ownItemsPromise = loadAllRows('work_items', 'organization_id', organizationId);
-  const ranksPromise = fetchAllRanksForOrg(organizationId);
+  // The org's own items and ranks — and its links, asked for by the caller at
+  // the same moment — in one request for what changed, where the browser has
+  // them already (rowMirror.ts).
+  const ownRowsPromise = loadOrgRows(organizationId, fullReadsFor(organizationId));
+  const ownItemsPromise: Promise<SupabaseReadResult> = ownRowsPromise.then(
+    (rows) => ({ data: rows.items as any[], error: null }),
+    (error) => ({ data: null, error }),
+  );
+  const ranksPromise: Promise<RankMaps> = ownRowsPromise.then(
+    (rows) => rows.ranks,
+    () => ({ backlog: {}, board: {} }),
+  );
 
   const [sharesRes, ownTreesRes] = await Promise.all([
     supabase.from('backlog_tree_shares' as any).select('tree_id').eq('organization_id', organizationId),
@@ -1277,6 +1288,30 @@ export async function fetchRanksGrouped(orgIds: string[]): Promise<RankMaps | nu
   return { backlog: expand(payload.backlog), board: expand(payload.board) };
 }
 
+/** How the org's kept rows are read in full, when they cannot just be brought up to date. */
+function fullReadsFor(organizationId: string): FullReads {
+  return {
+    items: async () => {
+      const res = await loadAllRows('work_items', 'organization_id', organizationId);
+      if (res.error) throw res.error;
+      return (res.data ?? []) as Record<string, unknown>[];
+    },
+    ranks: () => fetchAllRanksForOrg(organizationId),
+    hyperlinks: async () => {
+      const res = await paginateSelect<HyperlinkRow>((from, to) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from('work_item_hyperlinks' as any).select(HYPERLINK_COLUMNS) as any)
+          .eq('organization_id', organizationId)
+          .order('rank', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      );
+      if (res.error) throw res.error;
+      return (res.data ?? []) as HyperlinkRow[];
+    },
+  };
+}
+
 /** Both rank maps for an org, grouped in one request where possible. */
 async function fetchAllRanksForOrg(orgId: string): Promise<RankMaps> {
   const grouped = await fetchRanksGrouped([orgId]);
@@ -1693,17 +1728,12 @@ export async function loadHyperlinksForWorkItems(
   let data: any[] | null = null;
   let error: unknown = null;
   if (organizationId) {
-    // Paginate: an org with many links can easily exceed the 1000-row cap.
-    const res = await paginateSelect<Record<string, unknown>>((from, to) =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from('work_item_hyperlinks' as any).select(HYPERLINK_COLUMNS) as any)
-        .eq('organization_id', organizationId)
-        .order('rank', { ascending: true })
-        .order('id', { ascending: true })
-        .range(from, to),
-    );
-    data = res.data as any[] | null;
-    error = res.error;
+    // With the org's items and ranks: only what changed, where the browser has the rest.
+    try {
+      data = (await loadOrgRows(organizationId, fullReadsFor(organizationId))).hyperlinks;
+    } catch (err) {
+      error = err;
+    }
     if (data && workItemIds.length > 0) {
       const idSet = new Set(workItemIds);
       data = data.filter((row) => idSet.has(row.work_item_id));
