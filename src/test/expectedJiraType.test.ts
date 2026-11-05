@@ -43,3 +43,42 @@ describe("the type an item will have in Jira", () => {
     expect(types.has("other")).toBe(false);
   });
 });
+
+describe("working the types out again", () => {
+  // Every edit gives a new set of items; only a change of place changes a type.
+  const links = new Map([["epic", ref("INT-1", "Epic")]]);
+  const start = () => ({
+    epic: item("epic", SYNCED),
+    task: item("task", SYNCED, "epic"),
+    loose: item("loose", SYNCED),
+  });
+
+  it("keeps the types through an edit that moves nothing", () => {
+    const before = start();
+    const types = expectedJiraTypes(before, links, byList);
+    const renamed = { ...before, task: { ...before.task, title: "renamed", status: "done" } as WorkItem };
+    expect(expectedJiraTypes(renamed, links, byList)).toBe(types);
+  });
+
+  it("works them out again when an item moves under another", () => {
+    const before = start();
+    expectedJiraTypes(before, links, byList);
+    const moved = { ...before, loose: { ...before.loose, parentId: "task" } as WorkItem };
+    expect(expectedJiraTypes(moved, links, byList).get("loose")).toMatchObject({ type: "Subtask" });
+  });
+
+  it("works them out again when an item moves to another list", () => {
+    const before = start();
+    expect(expectedJiraTypes(before, links, byList).has("loose")).toBe(true);
+    const away = { ...before, loose: { ...before.loose, backlogAssignments: { [TREE]: ELSEWHERE } } as WorkItem };
+    expect(expectedJiraTypes(away, links, byList).has("loose")).toBe(false);
+  });
+
+  it("works them out again when an item is removed", () => {
+    const before = start();
+    expectedJiraTypes(before, links, byList);
+    const { loose: _gone, ...rest } = before;
+    const after = { ...rest, other: item("other", ELSEWHERE) };
+    expect(expectedJiraTypes(after, links, byList).has("loose")).toBe(false);
+  });
+});

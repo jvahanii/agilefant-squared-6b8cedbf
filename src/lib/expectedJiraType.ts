@@ -30,8 +30,31 @@ export function expectedJiraTypes(
   byItem: ReadonlyMap<string, JiraIssueRef>,
   byList: ReadonlyMap<string, JiraListRef>,
 ): Map<string, ExpectedJiraType> {
-  if (cache && cache.workItems === workItems && cache.byItem === byItem && cache.byList === byList) return cache.result;
+  if (cache && cache.byItem === byItem && cache.byList === byList) {
+    if (cache.workItems === workItems) return cache.result;
+    // Most edits — a name, a status, a rank — leave every item where it was,
+    // and the types with it. Checking that is a fraction of a millisecond;
+    // working the types out again took some 40 ms, on every edit and every
+    // change arriving from elsewhere.
+    if (sameShape(cache.workItems, workItems)) {
+      cache.workItems = workItems;
+      return cache.result;
+    }
+  }
   const result = new Map<string, ExpectedJiraType>();
+  // Every item is looked at once, for the trees with a synced list, rather
+  // than once for each synced list: most items are in no such tree.
+  const itemsOfTree = new Map<string, WorkItem[]>();
+  for (const list of byList.values()) if (list.issueTypes) itemsOfTree.set(list.treeId, []);
+  if (itemsOfTree.size > 0) {
+    for (const item of Object.values(workItems)) {
+      const assignments = item.backlogAssignments;
+      if (!assignments) continue;
+      for (const treeId in assignments) {
+        if (assignments[treeId]) itemsOfTree.get(treeId)?.push(item);
+      }
+    }
+  }
   for (const [backlogId, list] of byList) {
     if (!list.issueTypes) continue;
     const nodes = new Map<string, { type: string | null; parent: string | null }>();
@@ -39,13 +62,16 @@ export function expectedJiraTypes(
     const add = (item: WorkItem) => nodes.set(item.id, { type: byItem.get(item.id)?.type ?? null, parent: parentOf(item) });
     // The tree's other items, by parent: those under one of the space's are the space's too.
     const others = new Map<string, WorkItem[]>();
-    for (const item of Object.values(workItems)) {
-      const assigned = item.backlogAssignments?.[list.treeId];
-      if (!assigned) continue;
+    for (const item of itemsOfTree.get(list.treeId) ?? []) {
+      const assigned = item.backlogAssignments[list.treeId];
       if (assigned === backlogId || byItem.get(item.id)?.listId === backlogId) add(item);
       else {
         const parent = parentOf(item);
-        if (parent) others.set(parent, [...(others.get(parent) ?? []), item]);
+        if (!parent) continue;
+        // Pushed, not copied: a parent of hundreds of items was copied once per child.
+        const siblings = others.get(parent);
+        if (siblings) siblings.push(item);
+        else others.set(parent, [item]);
       }
     }
     const below = [...nodes.keys()];
@@ -63,6 +89,30 @@ export function expectedJiraTypes(
   }
   cache = { workItems, byItem, byList, result };
   return result;
+}
+
+/** The same items, each in the same lists under the same parents: all the types depend on. */
+function sameShape(before: Record<string, WorkItem>, after: Record<string, WorkItem>): boolean {
+  const ids = Object.keys(after);
+  // As many items as before, every one of them there before: none removed either.
+  if (ids.length !== Object.keys(before).length) return false;
+  for (const id of ids) {
+    const a = after[id];
+    const b = before[id];
+    if (a === b) continue;
+    if (!b) return false;
+    if (a.parentId !== b.parentId) return false;
+    if (!sameEntries(a.parentIds, b.parentIds) || !sameEntries(a.backlogAssignments, b.backlogAssignments)) return false;
+  }
+  return true;
+}
+
+function sameEntries(a: Record<string, unknown> | undefined | null, b: Record<string, unknown> | undefined | null): boolean {
+  if (a === b) return true;
+  const keysA = a ? Object.keys(a) : [];
+  const keysB = b ? Object.keys(b) : [];
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) => a![key] === b?.[key]);
 }
 
 // Worked out once per change and shared by every row's tag.

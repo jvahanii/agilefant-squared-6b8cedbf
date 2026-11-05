@@ -353,8 +353,14 @@ function treesOf(ids: Iterable<string>, parentOf: (id: string) => string | null,
   const tops: string[] = [];
   for (const id of ids) {
     const p = parentOf(id);
-    if (p && has(p)) children.set(p, [...(children.get(p) ?? []), id]);
-    else tops.push(id);
+    if (!p || !has(p)) {
+      tops.push(id);
+      continue;
+    }
+    // Pushed, not copied: a parent of hundreds of issues was copied once per child.
+    const siblings = children.get(p);
+    if (siblings) siblings.push(id);
+    else children.set(p, [id]);
   }
   return tops.map((top) => {
     const order: Array<[string, number]> = [[top, 0]];
