@@ -19,7 +19,9 @@ import { dueDay } from "@/lib/searchFilters";
  *
  * The best matches come first: the name exactly, then names starting with
  * what was typed, then names holding it, then the other places. Open items
- * before done ones; otherwise by name.
+ * before done ones, and recently changed ones before those left alone: a
+ * little for a change this month, more this week, most today. Among equals,
+ * the most recently changed first; then by name.
  */
 
 // ─── Folding ─────────────────────────────────────────────────────────────────
@@ -61,6 +63,8 @@ export interface SearchContext {
   labelNames?: (itemId: string) => string[];
   teamNames?: (itemId: string) => string[];
   links?: (itemId: string) => Array<{ url: string; altText?: string }>;
+  /** When the item last changed, in milliseconds (itemChangedAt.ts). */
+  changedAt?: (item: Item) => number | undefined;
 }
 
 type Item = Pick<WorkItem, "id" | "title" | "status" | "deadline"> & Partial<Pick<WorkItem, "description" | "rating">>;
@@ -339,6 +343,8 @@ export type MatchedIn = "name" | "key" | "label" | "description" | "link";
 
 export interface ItemMatch {
   score: number;
+  /** When the item last changed, for ordering equal matches; 0 when not known. */
+  changedAt: number;
   /** In the name, to mark. */
   ranges: Ranges;
   /** The other places a word was found, with a piece of the text around it. */
@@ -389,7 +395,21 @@ export function matchItem(item: Item, query: ParsedQuery, ctx: SearchContext = {
   }
   score += nameBonus(name, query.words, ranges);
   if (item.status !== "done") score += 15;
-  return { score, ranges, elsewhere };
+  const changedAt = ctx.changedAt?.(item) ?? 0;
+  score += recencyBonus(changedAt, (ctx.now ?? new Date()).getTime());
+  return { score, changedAt, ranges, elsewhere };
+}
+
+const DAY_MS = 24 * 60 * 60_000;
+
+/** Changed today, this week or this month: enough to order like matches, not to lift a poor one over a good one. */
+export function recencyBonus(changedAt: number, now: number): number {
+  if (!changedAt) return 0;
+  const age = now - changedAt;
+  if (age < DAY_MS) return 10;
+  if (age < 7 * DAY_MS) return 6;
+  if (age < 30 * DAY_MS) return 3;
+  return 0;
 }
 
 function findElsewhere(item: Item, word: string, ctx: SearchContext): ItemMatch["elsewhere"][number] | null {

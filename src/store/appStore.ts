@@ -48,6 +48,7 @@ import { getEffectiveStatuses } from "./backlogStatusesStore";
 import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 import { notifyPersistDebug } from "@/lib/persistDebug";
+import { noteItemChanged } from "@/lib/itemChangedAt";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -4706,6 +4707,8 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     applyRealtimeWorkItem: (eventType, row) => {
+      // Before anything decides the update changes nothing: the search goes by it.
+      if (eventType !== 'DELETE') noteItemChanged(row.id as string, row.changed_at);
       set((state) => {
         const id = row.id as string;
 
@@ -4857,6 +4860,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           respawnHour: (row.respawn_hour as number | null) ?? undefined,
           respawnMinute: (row.respawn_minute as number | null) ?? undefined,
           respawnLastTriggeredAt: (row.respawn_last_triggered_at as string | null) ?? undefined,
+          changedAt: (row.changed_at as string | null) ?? state.workItems[id]?.changedAt,
         };
 
         // The echo of this page's own save — every item of a move sends one —

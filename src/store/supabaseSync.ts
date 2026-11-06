@@ -449,6 +449,7 @@ export async function loadFromSupabase(
       respawnHour: row.respawn_hour ?? undefined,
       respawnMinute: row.respawn_minute ?? undefined,
       respawnLastTriggeredAt: row.respawn_last_triggered_at ?? undefined,
+      changedAt: (row as { changed_at?: string | null }).changed_at ?? undefined,
     };
   }
   for (const wi of Object.values(workItems)) {

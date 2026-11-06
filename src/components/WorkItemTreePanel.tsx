@@ -73,6 +73,7 @@ import {
   type Ranges,
   type SearchContext,
 } from "@/lib/itemSearch";
+import { itemChangedAt } from "@/lib/itemChangedAt";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
@@ -3194,6 +3195,7 @@ export function WorkItemTreePanel() {
     backlogPath: string[];
     workItemAncestors: string[];
     score: number;
+    changedAt: number;
     ranges: Ranges;
     elsewhere: ItemMatch["elsewhere"];
   };
@@ -3239,6 +3241,7 @@ export function WorkItemTreePanel() {
           return name ? [name] : [];
         }),
       links: (id) => (searchHyperlinks[id] ?? []).map((link) => ({ url: link.url, altText: link.altText })),
+      changedAt: (item) => itemChangedAt(item),
     };
   }, [jiraByItem, scrambledItemNames, searchLabels, searchLabelsByEntity, searchTeams, searchWorkItemTeams, searchHyperlinks]);
 
@@ -3287,6 +3290,7 @@ export function WorkItemTreePanel() {
           backlogPath,
           workItemAncestors,
           score: match.score,
+          changedAt: match.changedAt,
           ranges: match.ranges,
           elsewhere: match.elsewhere,
         });
@@ -3321,10 +3325,12 @@ export function WorkItemTreePanel() {
             }];
           });
 
+    const changedOf = (r: SearchResult) => ('item' in r ? (r as SearchResultItem).changedAt : 0);
     const nameOf = (r: SearchResult) => (r.kind === 'backlog' && !('item' in r) ? r.backlogName : (r as SearchResultItem).item.title);
     return [...itemResults, ...backlogResults]
       .filter((r) => r.treeId)
-      .sort((a, b) => b.score - a.score || nameOf(a).localeCompare(nameOf(b)) || a.treeName.localeCompare(b.treeName));
+      // Equal matches: the most recently changed first (lists have no change time).
+      .sort((a, b) => b.score - a.score || changedOf(b) - changedOf(a) || nameOf(a).localeCompare(nameOf(b)) || a.treeName.localeCompare(b.treeName));
   }, [parsedSearch, searchContext, workItems, backlogTrees, backlogs]);
 
   // Long result lists are shown fifty at a time.

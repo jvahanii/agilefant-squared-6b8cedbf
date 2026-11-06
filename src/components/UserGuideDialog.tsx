@@ -838,7 +838,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Best matches first",
-                how: "An item named exactly what you typed comes first, then names starting with it, then the rest. Open items come before done ones. Fifty results are shown at a time; Show more lists the next fifty.",
+                how: "An item named exactly what you typed comes first, then names starting with it, then the rest. Open items come before done ones, and items changed today, this week or this month get a lift; among equally good matches the most recently changed comes first. Fifty results are shown at a time; Show more lists the next fifty.",
               },
               {
                 action: "Keyboard",

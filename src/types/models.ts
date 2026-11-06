@@ -55,6 +55,8 @@ export interface WorkItem {
   respawnMinute?: number;
   /** ISO timestamp of the last time this item was respawned */
   respawnLastTriggeredAt?: string;
+  /** When the database last changed the item, as of the load that read it (see itemChangedAt.ts). */
+  changedAt?: string;
 }
 
 export interface Backlog {

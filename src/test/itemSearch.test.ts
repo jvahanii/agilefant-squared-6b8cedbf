@@ -223,3 +223,39 @@ describe("folding", () => {
     for (const text of ["Työpaikka", "Café", "ÅÄÖ", "naïve résumé", "plain"]) expect(fold(text)).toHaveLength(text.length);
   });
 });
+
+describe("recently changed items", () => {
+  const DAY = 24 * 60 * 60_000;
+  const at = (daysAgo: number) => NOW.getTime() - daysAgo * DAY;
+  const changed = new Map<string, number>();
+  const ctx: SearchContext = { now: NOW, changedAt: (i) => changed.get(i.id) };
+
+  it("come first among equally good matches", () => {
+    const old = item("Report", { id: "old" });
+    const recent = item("Report", { id: "recent" });
+    changed.set("old", at(90)).set("recent", at(0.5));
+    const parsed = parseQuery("report", NOW);
+    const a = matchItem(old, parsed, ctx)!;
+    const b = matchItem(recent, parsed, ctx)!;
+    expect(b.score).toBeGreaterThan(a.score);
+    expect(b.changedAt).toBe(at(0.5));
+  });
+
+  it("are lifted by a little, not over a far better match", () => {
+    const exact = item("Budget plan", { id: "exact" });
+    const loose = item("A plan for the budget", { id: "loose" });
+    changed.set("exact", at(400)).set("loose", at(0));
+    expect(ranked("budget plan", [loose, exact], ctx)).toEqual(["Budget plan", "A plan for the budget"]);
+  });
+
+  it("order what a command finds, newest first", () => {
+    const items = [item("First", { id: "c1" }), item("Second", { id: "c2" }), item("Third", { id: "c3" })];
+    changed.set("c1", at(40)).set("c2", at(3)).set("c3", at(0.1));
+    const parsed = parseQuery("/open", NOW);
+    const order = items
+      .map((i) => ({ i, m: matchItem(i, parsed, ctx)! }))
+      .sort((x, y) => y.m.score - x.m.score || y.m.changedAt - x.m.changedAt)
+      .map((r) => r.i.title);
+    expect(order).toEqual(["Third", "Second", "First"]);
+  });
+});

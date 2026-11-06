@@ -5,6 +5,7 @@ import "fake-indexeddb/auto";
 import { beforeEach } from "vitest";
 import { clearAllCachedAppData } from "@/store/appDataCache";
 import { forgetRowMirrors } from "@/store/rowMirror";
+import { forgetItemChanges } from "@/lib/itemChangedAt";
 
 // Unlike localStorage, the cache survives between tests in a file, so without
 // this one test's snapshot sends the next one down the cached load path.
@@ -12,6 +13,7 @@ import { forgetRowMirrors } from "@/store/rowMirror";
 beforeEach(async () => {
   await clearAllCachedAppData();
   await forgetRowMirrors();
+  forgetItemChanges();
 });
 
 Object.defineProperty(window, "matchMedia", {
