@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-import { createContext, memo, useContext, useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { createContext, memo, useContext, useDeferredValue, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
 import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
@@ -62,7 +62,17 @@ import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { rowsForReparenting } from "@/lib/workItemRows";
 import { rowClickIntent } from "@/lib/rowClick";
-import { searchFilter } from "@/lib/searchFilters";
+import {
+  commandBeingTyped,
+  matchItem,
+  matchName,
+  nothingFound as searchNothingFound,
+  parseQuery,
+  suggestCommands,
+  type ItemMatch,
+  type Ranges,
+  type SearchContext,
+} from "@/lib/itemSearch";
 import { ScramblePinDialog, type ScramblePinResult } from "@/components/ScramblePinDialog";
 import { PublishBacklogDialog } from "@/components/PublicLinkControls";
 import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
@@ -2440,6 +2450,37 @@ function scrollWorkItemIntoView(itemId: string) {
  * Supports drag-and-drop (drop onto a backlog in the left panel) and a full
  * right-click context menu that mirrors the one on regular work-item rows.
  */
+/** A name with the places the search found its words marked. */
+function MarkedTitle({ title, ranges }: { title: string; ranges: Ranges }) {
+  const merged: Array<[number, number]> = [];
+  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
+    const last = merged[merged.length - 1];
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+    else merged.push([from, to]);
+  }
+  if (merged.length === 0) return <IconizedTitle title={title} />;
+  const parts: React.ReactNode[] = [];
+  let at = 0;
+  merged.forEach(([from, to], i) => {
+    if (from > at) parts.push(<IconizedTitle key={`t${i}`} title={title.slice(at, from)} />);
+    parts.push(
+      <mark key={`m${i}`} className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
+        {title.slice(from, to)}
+      </mark>,
+    );
+    at = to;
+  });
+  if (at < title.length) parts.push(<IconizedTitle key="rest" title={title.slice(at)} />);
+  return <>{parts}</>;
+}
+
+const MATCHED_IN_LABEL: Record<ItemMatch["elsewhere"][number]["in"], string> = {
+  key: "Jira key",
+  label: "label",
+  description: "description",
+  link: "link",
+};
+
 function SearchResultItem({
   item,
   treeId,
@@ -2451,6 +2492,8 @@ function SearchResultItem({
   backlogPath,
   isScrambled,
   onNavigate,
+  active = false,
+  note,
 }: {
   item: WorkItem;
   treeId: string;
@@ -2462,7 +2505,15 @@ function SearchResultItem({
   backlogPath: string[];
   isScrambled: boolean;
   onNavigate: () => void;
+  /** Chosen with the arrow keys in the search box. */
+  active?: boolean;
+  /** Where the search found it, when not in the name. */
+  note?: string;
 }) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (active) rowRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
   const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
@@ -2579,13 +2630,15 @@ function SearchResultItem({
 
   return (
     <>
-      <div ref={setNodeRef} style={isDragging ? { opacity: 0.4 } : undefined}>
+      <div ref={(node) => { setNodeRef(node); rowRef.current = node; }} style={isDragging ? { opacity: 0.4 } : undefined}>
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div
               {...attributes}
               {...restListeners}
-              className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group select-none${!isMobile ? " cursor-grab active:cursor-grabbing" : ""}`}
+              role="option"
+              aria-selected={active}
+              className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group select-none${active ? " bg-accent" : ""}${!isMobile ? " cursor-grab active:cursor-grabbing" : ""}`}
               title={timeLoggingVisible && itemTotalMinutes > 0 ? `${formatDuration(itemTotalMinutes)} logged` : undefined}
               onPointerDown={(e) => {
                 dndPointerDown?.(e);
@@ -2636,6 +2689,9 @@ function SearchResultItem({
                   )}
                   {titleNode}
                 </span>
+                {note && !isScrambled && (
+                  <p className="text-[10px] text-muted-foreground mt-0 truncate italic">{note}</p>
+                )}
                 {workItemAncestors.length > 0 && (
                   <p className="text-[10px] text-muted-foreground/70 mt-0 truncate">
                     {isScrambled ? "···" : workItemAncestors.join(" › ")}
@@ -3137,6 +3193,9 @@ export function WorkItemTreePanel() {
     backlogName: string;
     backlogPath: string[];
     workItemAncestors: string[];
+    score: number;
+    ranges: Ranges;
+    elsewhere: ItemMatch["elsewhere"];
   };
 
   type SearchResultBacklog = {
@@ -3146,113 +3205,147 @@ export function WorkItemTreePanel() {
     treeName: string;
     backlogName: string;
     backlogPath: string[];
+    score: number;
+    ranges: Ranges;
   };
 
   type SearchResult = SearchResultItem | SearchResultBacklog;
 
-  // A command typed into the search box — "/due today" — rather than words
-  // to look for in a title.
+  // Words and commands ("/due today") typed into the search box: itemSearch.ts.
   const scrambledItemNames = useScrambledItemsStore((s) => s.byItem);
   // A synced item is also found by its Jira key: "AF-20".
   const jiraByItem = useJiraIssuesStore((s) => s.byItem);
-  const activeSearchFilter = useMemo(
-    () => searchFilter(searchQuery, undefined, scrambledItemNames),
-    [searchQuery, scrambledItemNames],
-  );
+  const searchLabels = useLabelsStore((s) => s.labels);
+  const searchLabelsByEntity = useLabelsStore((s) => s.byEntity);
+  const searchTeams = useTeamStore((s) => s.teams);
+  const searchWorkItemTeams = useTeamStore((s) => s.workItemTeams);
+  const searchHyperlinks = useAppStore((s) => s.hyperlinks);
+  // Typing stays quick: with thousands of items the results follow a moment behind.
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const parsedSearch = useMemo(() => parseQuery(deferredSearchQuery), [deferredSearchQuery]);
+  const searchContext = useMemo<SearchContext>(() => {
+    const teamNames = new Map(searchTeams.map((team) => [team.id, team.name]));
+    return {
+      jiraKey: (id) => jiraByItem.get(id)?.key,
+      scrambled: scrambledItemNames,
+      labelNames: (id) =>
+        (searchLabelsByEntity[`work_item:${id}`] ?? []).flatMap((labelId) => {
+          const name = searchLabels[labelId]?.name;
+          return name ? [name] : [];
+        }),
+      teamNames: (id) =>
+        (searchWorkItemTeams[id] ?? []).flatMap((teamId) => {
+          const name = teamNames.get(teamId);
+          return name ? [name] : [];
+        }),
+      links: (id) => (searchHyperlinks[id] ?? []).map((link) => ({ url: link.url, altText: link.altText })),
+    };
+  }, [jiraByItem, scrambledItemNames, searchLabels, searchLabelsByEntity, searchTeams, searchWorkItemTeams, searchHyperlinks]);
 
   const searchResults = useMemo((): SearchResult[] | null => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q.length < 3) return null;
+    if (!parsedSearch.active) return null;
 
-    const itemResults: SearchResultItem[] = Object.values(workItems)
-      .filter((wi) =>
-        activeSearchFilter
-          ? activeSearchFilter.matches(wi)
-          : wi.title.toLowerCase().includes(q) || (jiraByItem.get(wi.id)?.key.toLowerCase().includes(q) ?? false),
-      )
-      .flatMap((wi) => {
-        // Emit one result per backlog tree this item is assigned to,
-        // so items present in multiple trees show all occurrences.
-        const treeIds = Object.keys(wi.backlogAssignments);
-        if (treeIds.length === 0) return [];
+    const itemResults: SearchResultItem[] = [];
+    for (const wi of Object.values(workItems)) {
+      const match = matchItem(wi, parsedSearch, searchContext);
+      if (!match) continue;
+      // One result per tree the item is in, so items present in several trees show all occurrences.
+      for (const treeId of Object.keys(wi.backlogAssignments)) {
+        const backlogId = wi.backlogAssignments[treeId];
+        const tree = backlogTrees[treeId];
+        const backlog = backlogId ? backlogs[backlogId] : null;
 
-        return treeIds.map((treeId) => {
-          const backlogId = wi.backlogAssignments[treeId];
-          const tree = backlogTrees[treeId];
-          const backlog = backlogId ? backlogs[backlogId] : null;
-
-          // Build full backlog ancestry path from root backlog down to the item's backlog.
-          const backlogPath: string[] = [];
-          const visitedBacklogIds = new Set<string>();
-          let bl = backlog;
-          while (bl && !visitedBacklogIds.has(bl.id)) {
-            visitedBacklogIds.add(bl.id);
-            backlogPath.unshift(bl.name);
-            bl = bl.parentId ? backlogs[bl.parentId] : null;
-          }
-
-          // Build work item ancestor chain using per-tree effective parent.
-          const workItemAncestors: string[] = [];
-          const visitedWorkItemIds = new Set<string>();
-          let parentId = getEffectiveParentId(wi, treeId);
-          while (parentId && !visitedWorkItemIds.has(parentId)) {
-            visitedWorkItemIds.add(parentId);
-            const parent = workItems[parentId];
-            if (!parent) break;
-            workItemAncestors.unshift(parent.title);
-            parentId = getEffectiveParentId(parent, treeId);
-          }
-
-          return {
-            kind: 'workitem' as const,
-            item: wi,
-            treeId,
-            backlogId: backlogId ?? "",
-            treeName: tree?.name ?? "",
-            backlogName: backlog?.name ?? "",
-            backlogPath,
-            workItemAncestors,
-          };
-        });
-      })
-      .filter((r) => r.treeId)
-      .sort((a, b) => {
-        const t = a.item.title.localeCompare(b.item.title);
-        if (t !== 0) return t;
-        return a.treeName.localeCompare(b.treeName);
-      });
-
-    // A filter is about items: a list has no deadline to be due by.
-    const backlogResults: SearchResultBacklog[] = (activeSearchFilter ? [] : Object.values(backlogs))
-      .filter((bl) => bl.name.toLowerCase().includes(q))
-      .map((bl) => {
-        const tree = backlogTrees[bl.treeId];
+        // The list's path, from the top list down to the item's.
         const backlogPath: string[] = [];
         const visitedBacklogIds = new Set<string>();
-        let current = bl;
-        while (current && !visitedBacklogIds.has(current.id)) {
-          visitedBacklogIds.add(current.id);
-          backlogPath.unshift(current.name);
-          current = current.parentId ? backlogs[current.parentId] : null;
+        let bl = backlog;
+        while (bl && !visitedBacklogIds.has(bl.id)) {
+          visitedBacklogIds.add(bl.id);
+          backlogPath.unshift(bl.name);
+          bl = bl.parentId ? backlogs[bl.parentId] : null;
         }
-        return {
-          kind: 'backlog' as const,
-          treeId: bl.treeId,
-          backlogId: bl.id,
-          treeName: tree?.name ?? '',
-          backlogName: bl.name,
-          backlogPath,
-        };
-      })
-      .filter((r) => r.treeId)
-      .sort((a, b) => {
-        const t = a.backlogName.localeCompare(b.backlogName);
-        if (t !== 0) return t;
-        return a.treeName.localeCompare(b.treeName);
-      });
 
-    return [...itemResults, ...backlogResults];
-  }, [searchQuery, activeSearchFilter, workItems, backlogTrees, backlogs, jiraByItem]);
+        // The items above it, by its parent in this tree.
+        const workItemAncestors: string[] = [];
+        const visitedWorkItemIds = new Set<string>();
+        let parentId = getEffectiveParentId(wi, treeId);
+        while (parentId && !visitedWorkItemIds.has(parentId)) {
+          visitedWorkItemIds.add(parentId);
+          const parent = workItems[parentId];
+          if (!parent) break;
+          workItemAncestors.unshift(parent.title);
+          parentId = getEffectiveParentId(parent, treeId);
+        }
+
+        itemResults.push({
+          kind: 'workitem' as const,
+          item: wi,
+          treeId,
+          backlogId: backlogId ?? "",
+          treeName: tree?.name ?? "",
+          backlogName: backlog?.name ?? "",
+          backlogPath,
+          workItemAncestors,
+          score: match.score,
+          ranges: match.ranges,
+          elsewhere: match.elsewhere,
+        });
+      }
+    }
+
+    // Commands are about items: a list has no deadline to be due by.
+    const backlogResults: SearchResultBacklog[] =
+      parsedSearch.commands.length > 0 || parsedSearch.words.length === 0
+        ? []
+        : Object.values(backlogs).flatMap((bl) => {
+            const match = matchName(bl.name, parsedSearch.words);
+            if (!match) return [];
+            const tree = backlogTrees[bl.treeId];
+            const backlogPath: string[] = [];
+            const visitedBacklogIds = new Set<string>();
+            let current = bl;
+            while (current && !visitedBacklogIds.has(current.id)) {
+              visitedBacklogIds.add(current.id);
+              backlogPath.unshift(current.name);
+              current = current.parentId ? backlogs[current.parentId] : null;
+            }
+            return [{
+              kind: 'backlog' as const,
+              treeId: bl.treeId,
+              backlogId: bl.id,
+              treeName: tree?.name ?? '',
+              backlogName: bl.name,
+              backlogPath,
+              score: match.score + 15,
+              ranges: match.ranges,
+            }];
+          });
+
+    const nameOf = (r: SearchResult) => (r.kind === 'backlog' && !('item' in r) ? r.backlogName : (r as SearchResultItem).item.title);
+    return [...itemResults, ...backlogResults]
+      .filter((r) => r.treeId)
+      .sort((a, b) => b.score - a.score || nameOf(a).localeCompare(nameOf(b)) || a.treeName.localeCompare(b.treeName));
+  }, [parsedSearch, searchContext, workItems, backlogTrees, backlogs]);
+
+  // Long result lists are shown fifty at a time.
+  const SEARCH_PAGE = 50;
+  const [searchShown, setSearchShown] = useState(SEARCH_PAGE);
+  // The result chosen with the arrow keys; -1 for none.
+  const [activeSearchIdx, setActiveSearchIdx] = useState(-1);
+  useEffect(() => {
+    setSearchShown(SEARCH_PAGE);
+    setActiveSearchIdx(-1);
+  }, [deferredSearchQuery]);
+  const shownSearchResults = useMemo(() => searchResults?.slice(0, searchShown) ?? [], [searchResults, searchShown]);
+
+  // The commands that fit what is being typed after a "/".
+  const commandTyped = commandBeingTyped(searchQuery);
+  const commandSuggestions = commandTyped ? suggestCommands(commandTyped) : [];
+  const applyCommandSuggestion = (insert: string) => {
+    if (!commandTyped) return;
+    setSearchQuery(searchQuery.slice(0, searchQuery.length - commandTyped.length) + insert);
+    filterInputRef.current?.focus();
+  };
 
   // Filter results: items from ALL trees that match the active label and/or
   // team filters, shown as a flat list. Returns null when no filter is active.
@@ -3849,7 +3942,47 @@ export function WorkItemTreePanel() {
   );
 
   const selectBacklog = useAppStore((s) => s.selectBacklog);
-  const isSearchMode = searchQuery.trim().length >= 3;
+  const isSearchMode = parseQuery(searchQuery).active;
+
+  /** Go to a search result, from a click or with Enter in the search box. */
+  const openSearchResult = (result: SearchResult) => {
+    if (!('item' in result)) {
+      selectBacklog(result.backlogId, result.treeId);
+      setSearchQuery("");
+      return;
+    }
+    const { item, treeId, backlogId } = result;
+    // If snoozed, wake the item so it appears in the destination backlog.
+    if (useSnoozeStore.getState().isSnoozed(item.id)) {
+      useSnoozeStore.getState().unsnoozeWorkItem(item.id);
+    }
+    // Expand ancestor backlogs and work items so the item is visible
+    useAppStore.setState((state) => {
+      const expandedBacklogs = new Set(state.expandedBacklogs);
+      let bl = state.backlogs[backlogId];
+      while (bl?.parentId) {
+        expandedBacklogs.add(bl.parentId);
+        bl = state.backlogs[bl.parentId];
+      }
+      const expandedWorkItems = new Set(state.expandedWorkItems);
+      let wi = state.workItems[item.id];
+      while (wi) {
+        const pid = getEffectiveParentId(wi, treeId);
+        if (!pid) break;
+        expandedWorkItems.add(pid);
+        wi = state.workItems[pid];
+      }
+      return { expandedBacklogs, expandedWorkItems };
+    });
+    selectBacklog(backlogId, treeId);
+    setSearchQuery("");
+    // Small delay lets the backlog panel re-render with the new selection
+    // before we try to highlight the work item row.
+    setTimeout(() => {
+      selectWorkItem(item.id, false);
+      scrollToWorkItem(item.id);
+    }, 50);
+  };
   const isLabelFilterMode = filterLabelIds.size > 0;
   const isTeamFilterMode = filterTeamIds.size > 0;
   const isFilterMode = isLabelFilterMode || isTeamFilterMode;
@@ -3938,12 +4071,49 @@ export function WorkItemTreePanel() {
                   setFilterLabelIds(new Set());
                   setFilterTeamIds(new Set());
                   (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Tab" && !e.shiftKey && commandSuggestions.length > 0) {
+                  e.preventDefault();
+                  applyCommandSuggestion(commandSuggestions[0].insert);
+                } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && isSearchMode && shownSearchResults.length > 0) {
+                  e.preventDefault();
+                  const last = shownSearchResults.length - 1;
+                  setActiveSearchIdx((i) => (e.key === "ArrowDown" ? Math.min(i + 1, last) : Math.max(i - 1, 0)));
                 } else if (e.key === "Enter") {
+                  // The chosen result, or the best one.
+                  const chosen = isSearchMode ? shownSearchResults[Math.max(activeSearchIdx, 0)] : undefined;
+                  if (chosen) openSearchResult(chosen);
                   (e.target as HTMLInputElement).blur();
                 }
                 e.stopPropagation();
               }}
+              role="combobox"
+              aria-expanded={isSearchMode}
+              aria-autocomplete="list"
             />
+            {isSearchFocused && commandSuggestions.length > 0 && (
+              <div
+                className="absolute left-0 right-0 top-full z-30 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                role="listbox"
+                aria-label="Search commands"
+              >
+                {commandSuggestions.map((command, i) => (
+                  <button
+                    key={command.usage}
+                    type="button"
+                    role="option"
+                    aria-selected={i === 0}
+                    className={`flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left text-xs hover:bg-accent${i === 0 ? " bg-accent/60" : ""}`}
+                    // Keep the cursor in the search box.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => applyCommandSuggestion(command.insert)}
+                  >
+                    <span className="font-mono">{command.usage}</span>
+                    <span className="text-muted-foreground">{command.description}</span>
+                  </button>
+                ))}
+                <p className="px-2 pt-1 text-[10px] text-muted-foreground">Tab completes the first. Commands combine with words.</p>
+              </div>
+            )}
             {(searchQuery || filterLabelIds.size > 0 || filterTeamIds.size > 0) && (
               <button
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
@@ -4336,125 +4506,82 @@ export function WorkItemTreePanel() {
           /* Search results list: flat list of matching items with tree/backlog context */
           <div className="flex-1 overflow-y-auto p-0 md:p-0.5" onClick={(e) => e.stopPropagation()}>
             {searchResults && searchResults.length > 0 ? (
-              <div className="flex flex-col">
-                {(() => {
-                  // Compute query string once before mapping to avoid redundant string ops per item.
-                  const q = searchQuery.trim().toLowerCase();
-                  return searchResults.map((result, idx) => {
-                    if (result.kind === 'backlog') {
-                      const { treeId, backlogId, treeName, backlogName, backlogPath } = result;
-                      const nameLower = backlogName.toLowerCase();
-                      const matchIdx = nameLower.indexOf(q);
-                      const titleNode =
-                        matchIdx >= 0 ? (
-                          <>
-                            <IconizedTitle title={backlogName.slice(0, matchIdx)} />
-                            <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
-                              {backlogName.slice(matchIdx, matchIdx + q.length)}
-                            </mark>
-                            <IconizedTitle title={backlogName.slice(matchIdx + q.length)} />
-                          </>
-                        ) : (
-                          <IconizedTitle title={backlogName} />
-                        );
-                      return (
-                        <div
-                          key={`backlog-${backlogId}`}
-                          className="flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 cursor-pointer select-none"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectBacklog(backlogId, treeId);
-                            setSearchQuery("");
-                          }}
-                        >
-                          <span
-                            className="text-[10px] tabular-nums text-muted-foreground shrink-0 w-5 text-right mt-1 select-none"
-                            aria-hidden="true"
-                          >
-                            {idx + 1}
-                          </span>
-                          <span className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50 bg-muted-foreground/40" />
-                          <div className="min-w-0 flex-1">
-                            <span className="text-sm leading-snug break-words">
-                              {titleNode}
-                              <span className="text-[10px] text-muted-foreground ml-1">(list)</span>
-                            </span>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                              {isScrambled ? "···" : [treeName, ...backlogPath].join(" › ")}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    }
-                    const { item, treeId, backlogId, treeName, backlogPath, workItemAncestors } = result;
-                    const titleLower = item.title.toLowerCase();
-                    const matchIdx = titleLower.indexOf(q);
-                    const titleNode =
-                      matchIdx >= 0 ? (
-                        <>
-                          <IconizedTitle title={item.title.slice(0, matchIdx)} />
-                          <mark className="bg-primary/20 text-foreground rounded-sm px-0 not-italic">
-                            {item.title.slice(matchIdx, matchIdx + q.length)}
-                          </mark>
-                          <IconizedTitle title={item.title.slice(matchIdx + q.length)} />
-                        </>
-                      ) : (
-                        <IconizedTitle title={item.title} />
-                      );
+              <div className="flex flex-col" role="listbox" aria-label="Search results">
+                {shownSearchResults.map((result, idx) => {
+                  const active = idx === activeSearchIdx;
+                  if (!('item' in result)) {
+                    const { treeId, backlogId, treeName, backlogName, backlogPath, ranges } = result;
                     return (
-                      <SearchResultItem
-                        key={`${item.id}::${treeId}`}
-                        item={item}
-                        treeId={treeId}
-                        backlogId={backlogId}
-                        idx={idx}
-                        titleNode={titleNode}
-                        workItemAncestors={workItemAncestors}
-                        treeName={treeName}
-                        backlogPath={backlogPath}
-                        isScrambled={isScrambled}
-                        onNavigate={() => {
-                          // If snoozed, wake the item so it appears in the destination backlog.
-                          if (useSnoozeStore.getState().isSnoozed(item.id)) {
-                            useSnoozeStore.getState().unsnoozeWorkItem(item.id);
-                          }
-                          // Expand ancestor backlogs and work items so the item is visible
-                          useAppStore.setState((state) => {
-                            const expandedBacklogs = new Set(state.expandedBacklogs);
-                            let bl = state.backlogs[backlogId];
-                            while (bl?.parentId) {
-                              expandedBacklogs.add(bl.parentId);
-                              bl = state.backlogs[bl.parentId];
-                            }
-                            const expandedWorkItems = new Set(state.expandedWorkItems);
-                            let wi = state.workItems[item.id];
-                            while (wi) {
-                              const pid = getEffectiveParentId(wi, treeId);
-                              if (!pid) break;
-                              expandedWorkItems.add(pid);
-                              wi = state.workItems[pid];
-                            }
-                            return { expandedBacklogs, expandedWorkItems };
-                          });
-                          selectBacklog(backlogId, treeId);
-                          setSearchQuery("");
-                          // Small delay lets the backlog panel re-render with the new selection
-                          // before we try to highlight the work item row.
-                          setTimeout(() => {
-                            selectWorkItem(item.id, false);
-                            scrollToWorkItem(item.id);
-                          }, 50);
+                      <div
+                        key={`backlog-${backlogId}`}
+                        ref={(node) => { if (active) node?.scrollIntoView?.({ block: "nearest" }); }}
+                        role="option"
+                        aria-selected={active}
+                        className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 cursor-pointer select-none${active ? " bg-accent" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSearchResult(result);
                         }}
-                      />
+                      >
+                        <span
+                          className="text-[10px] tabular-nums text-muted-foreground shrink-0 w-5 text-right mt-1 select-none"
+                          aria-hidden="true"
+                        >
+                          {idx + 1}
+                        </span>
+                        <span className="w-3 h-3 rounded-full shrink-0 mt-1 border border-background/50 bg-muted-foreground/40" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm leading-snug break-words">
+                            <MarkedTitle title={backlogName} ranges={ranges} />
+                            <span className="text-[10px] text-muted-foreground ml-1">(list)</span>
+                          </span>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {isScrambled ? "···" : [treeName, ...backlogPath].join(" › ")}
+                          </p>
+                        </div>
+                      </div>
                     );
-                  });
-                })()}
+                  }
+                  const { item, treeId, backlogId, treeName, backlogPath, workItemAncestors, ranges, elsewhere } = result;
+                  const note = elsewhere.length > 0
+                    ? elsewhere.map((e) => (e.in === "key" ? `Jira key ${e.snippet}` : `In ${MATCHED_IN_LABEL[e.in]}: ${e.snippet}`)).join(" · ")
+                    : undefined;
+                  return (
+                    <SearchResultItem
+                      key={`${item.id}::${treeId}`}
+                      item={item}
+                      treeId={treeId}
+                      backlogId={backlogId}
+                      idx={idx}
+                      titleNode={<MarkedTitle title={item.title} ranges={ranges} />}
+                      workItemAncestors={workItemAncestors}
+                      treeName={treeName}
+                      backlogPath={backlogPath}
+                      isScrambled={isScrambled}
+                      active={active}
+                      note={note}
+                      onNavigate={() => openSearchResult(result)}
+                    />
+                  );
+                })}
+                {searchResults.length > shownSearchResults.length && (
+                  <button
+                    type="button"
+                    className="m-2 self-center rounded-md border px-3 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchShown((n) => n + SEARCH_PAGE);
+                    }}
+                  >
+                    Show more ({searchResults.length - shownSearchResults.length} left)
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                {activeSearchFilter ? activeSearchFilter.nothingFound : <>No items match &ldquo;{searchQuery}&rdquo;</>}
+            ) : searchResults ? (
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground px-4 text-center">
+                {searchNothingFound(parsedSearch, deferredSearchQuery)}
               </div>
-            )}
+            ) : null}
           </div>
         ) : isFilterMode ? (
           /* Filter results list: flat list of items matching the active label/team filters across all backlogs */

@@ -818,8 +818,8 @@ function buildSections(): Section[] {
       content: (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            The <strong className="text-foreground">search bar</strong> at the top of the left panel lets you find work
-            items by name across all trees in your organisation. Results are shown in the right panel with full
+            The <strong className="text-foreground">search bar</strong> at the top of the left panel finds work
+            items and lists across all trees in your organisation. Results are shown in the right panel with full
             context so you can navigate directly to any item.
           </p>
           <div className="space-y-2">
@@ -830,11 +830,23 @@ function buildSections(): Section[] {
               },
               {
                 action: "Find items",
-                how: "Type any part of the work item title. Results update as you type and are sorted alphabetically.",
+                how: "Type words from the item. Every word has to be found, in any order: \"jira release\" finds \"Release notes for Jira\". Capitals and accents do not matter (\"tyopaikka\" finds \"työpaikka\"), and a word of four letters or more is found in a name with a letter wrong, missing, extra or swapped.",
               },
               {
-                action: "Find what is due today",
-                how: 'Type "/due today" to list every item whose deadline is today, in any tree.',
+                action: "Where it looks",
+                how: "Names first, then Jira keys, labels, descriptions and links. A result found anywhere but its name says where, with the text around the match.",
+              },
+              {
+                action: "Best matches first",
+                how: "An item named exactly what you typed comes first, then names starting with it, then the rest. Open items come before done ones. Fifty results are shown at a time; Show more lists the next fifty.",
+              },
+              {
+                action: "Keyboard",
+                how: "Up and Down move through the results, Enter opens the chosen one (or the first), and Escape clears the search.",
+              },
+              {
+                action: "Commands",
+                how: 'Type "/" for the list of commands; Tab completes the first. "/due today", "/due this week", "/overdue", "/open", "/done", "/label name", "/team name", "/rated 4+" (or "/rated 4" for exactly 4) and "/scrambled". Commands combine with each other and with words: "/open /label urgent api". Put a label or team name with spaces in quotes: /label "very urgent".',
               },
               {
                 action: "Find what is scrambled",
@@ -842,7 +854,7 @@ function buildSections(): Section[] {
               },
               {
                 action: "Result context",
-                how: "Each result shows the matching title with the search term highlighted, the tree and full list hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
+                how: "Each result shows the matching title with the words found highlighted, the tree and full list hierarchy path, and any parent work item ancestors — so you can tell apart items with the same name.",
               },
               {
                 action: "Navigate to an item",
