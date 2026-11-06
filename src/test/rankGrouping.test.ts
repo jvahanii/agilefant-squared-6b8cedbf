@@ -137,9 +137,11 @@ describe("grouped rank fetch", () => {
 
   it("asks the RPC for the ranks rather than reading the tables", async () => {
     await loadFromSupabase(ORG);
-    expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0].name).toBe("get_work_item_ranks");
-    expect(rpcCalls[0].args).toEqual({ _org_ids: [ORG] });
+    // Besides the request for what changed, which a first load makes for the time (rowMirror.ts).
+    const rankCalls = rpcCalls.filter((call) => call.name !== "get_org_changes");
+    expect(rankCalls).toHaveLength(1);
+    expect(rankCalls[0].name).toBe("get_work_item_ranks");
+    expect(rankCalls[0].args).toEqual({ _org_ids: [ORG] });
   });
 
   it("produces exactly the same ranks as the row reads when the RPC is unavailable", async () => {

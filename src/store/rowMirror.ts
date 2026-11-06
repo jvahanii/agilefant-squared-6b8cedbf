@@ -16,8 +16,6 @@
  *
  * Only the active organization's rows: a partner's are few and read in full.
  */
-import { supabase } from "@/integrations/supabase/client";
-
 export type RankMap = Record<string, Record<string, number>>;
 
 export interface HyperlinkRow {
@@ -88,6 +86,10 @@ const memory = new Map<string, Mirror>();
 const inFlight = new Map<string, Promise<OrgRows>>();
 
 const defaultRpc: ChangesRpc = async (orgId, since) => {
+  // Imported when first asked, not with this module: the test setup clears the
+  // kept copies through it before a test's mock of the client is in place, and
+  // a client imported then would be the real one, reaching the real database.
+  const { supabase } = await import("@/integrations/supabase/client");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc("get_org_changes", { _org_id: orgId, _since: since });
   if (error) throw error;
