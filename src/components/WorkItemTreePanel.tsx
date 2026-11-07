@@ -4,21 +4,16 @@ import { backlogPoints } from "@/lib/backlogPoints";
 import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
 import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { useTeamStore } from "@/store/teamStore";
-import { WorkItem, WorkItemStatus, getEffectiveParentId } from "@/types/models";
+import { WorkItem, getEffectiveParentId } from "@/types/models";
 import { useBacklogStatusesStore, getEffectiveStatusesForTree } from "@/store/backlogStatusesStore";
-import { GripVertical, FileText, Plus, Trash2, ClipboardPaste, Clock, X, BellOff, Bell, Search, ArrowDownAZ, List as ListIcon, LayoutGrid, Lock, Ban, ChartGantt } from "lucide-react";
+import { GripVertical, FileText, Plus, ClipboardPaste, Clock, X, BellOff, Search, ArrowDownAZ, List as ListIcon, LayoutGrid, Lock, Ban, ChartGantt } from "lucide-react";
 import { BoardView } from "./BoardView";
 import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useDeferredValue, useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { ActionPrompt } from "./ActionPrompt";
-import { MoveToParentDialog } from "./MoveToParentDialog";
-import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
-import { HyperlinksDialog } from "./HyperlinksDialog";
-import { WorkItemDescriptionDialog, WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
-import { SnoozeDialog } from "./SnoozeDialog";
 import { TimelineView } from "./TimelineView";
 import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
 import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
@@ -26,7 +21,7 @@ import { useDeadlinesEnabled } from "@/lib/workItemDeadline";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
-import { overlayOpen, releaseOverlayLock } from "@/lib/overlayLock";
+import { overlayOpen } from "@/lib/overlayLock";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,36 +70,21 @@ import { buildVisibleRows, effectiveChildren, topLevelItems } from "@/lib/workIt
 import { observeWidthForRemeasure } from "@/lib/virtualRows";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
 import { ListHeadingLabels } from "./LabelNames";
-import { JiraItemMenuItems } from "./JiraItemMenuItems";
 import { MobileBacklogAttributesSheet } from "./MobileAttributesSheet";
 import { BacklogStatusesDialog } from "./BacklogStatusesDialog";
 import {
   ContextMenu,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
   useSnoozeStore,
-  snoozeOptionLaterToday,
-  snoozeOptionTomorrowMorning,
-  snoozeOptionNextWeek,
-  snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import { toast } from "@/hooks/use-toast";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import {
   DRAG_THRESHOLD_PX_SQUARED,
-  EMPTY_ARRAY,
   LabelFilterContext,
   RunningNumberContext,
   SELECTION_SHORTCUTS,
@@ -115,6 +95,11 @@ import {
 } from "./workItemRow/rowShared";
 import { InlineWorkItemInput } from "./workItemRow/InlineWorkItemInput";
 import { WorkItemNode } from "./workItemRow/WorkItemRow";
+import { ItemMenu, type ItemActions } from "./workItemRow/ItemMenu";
+import { ItemDialogs } from "./workItemRow/ItemDialogs";
+import { rankToTopOfList, useCommonItemActions, useItemFeatures } from "./workItemRow/itemActions";
+import { useRowDialogs } from "./workItemRow/useRowDialogs";
+import { whenRowReady } from "./workItemRow/rowShared";
 
 type SearchResultItem = {
   kind: 'workitem';
@@ -366,57 +351,15 @@ function SearchResultItem({
   useEffect(() => {
     if (active) rowRef.current?.scrollIntoView?.({ block: "nearest" });
   }, [active]);
-  const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
-  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
-  const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
-  const guardedDelete = useDeleteWithTimeGuard();
-  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const backlogs = useAppStore((s) => s.backlogs);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
-  const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
-  const labelsMap = useLabelsStore((s) => s.labels);
-  const byEntity = useLabelsStore((s) => s.byEntity);
-  const assignLabel = useLabelsStore((s) => s.assignLabel);
-  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
-  const createLabel = useLabelsStore((s) => s.createLabel);
-  const deleteLabel = useLabelsStore((s) => s.deleteLabel);
-  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
-  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
   const isMobile = useIsMobile();
-  const teams = useTeamStore((s) => s.teams);
-  const workItemTeams = useTeamStore((s) => s.workItemTeams[item.id] ?? EMPTY_ARRAY);
-  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
-  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
-
-  const [showRespawnDialog, setShowRespawnDialog] = useState(false);
-  const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
-  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
-  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
-  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
-  const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
-  const [showDeletePrompt, setShowDeletePrompt] = useState(false);
-  // Inline new-label creation in context menu (SearchResultItem)
-  const [srNewLabelForm, setSrNewLabelForm] = useState(false);
-  const [srNewLabelName, setSrNewLabelName] = useState("");
-  const [srNewLabelColor, setSrNewLabelColor] = useState("#6366f1");
-  const [srLabelSearch, setSrLabelSearch] = useState("");
-  const srNewLabelNameRef = useRef<HTMLInputElement>(null);
-  const [srDeleteLabelId, setSrDeleteLabelId] = useState<string | null>(null);
-
+  const features = useItemFeatures(item, treeId);
   const itemTotalMinutesCached = useWorkItemTotalMinutes(item.id);
-  const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
+  const itemTotalMinutes = features.timeLogging ? itemTotalMinutesCached : 0;
 
-  const orgLabels = useMemo(
-    () =>
-      Object.values(labelsMap)
-        .filter((l) => l.organizationId === activeOrgId)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [labelsMap, activeOrgId],
-  );
-
-  // All backlog IDs in this item's tree, for the "Move to backlog" sub-menu.
+  // The lists of this item's tree, for "Move to list".
   const treeBacklogIds = useMemo(() => {
     const ids: string[] = [];
     const collect = (id: string) => {
@@ -431,13 +374,32 @@ function SearchResultItem({
 
   // Search-result cards can span multiple backlogs; use the tree's default
   // status set (root backlog's effective statuses) for display.
-  useBacklogStatusesStore((s) => s.statusesByBacklog);
+  const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
   const treeStatuses = useMemo(
     () =>
-      getEffectiveStatusesForTree(treeId).map((s) => ({ key: s.key, label: s.label, color: s.color })),
+      getEffectiveStatusesForTree(treeId).map((s) => ({ key: s.key, label: s.label, color: s.color, displayLabel: s.label })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [treeId, useBacklogStatusesStore((s) => s.statusesByBacklog)],
+    [treeId, statusesByBacklog],
   );
+
+  // The item's menu and its dialogs: the same as on its row in the list. A
+  // search result is not part of the list's selection, so they act on it alone.
+  const dialogs = useRowDialogs();
+  const actOn = useCallback(() => [item.id], [item.id]);
+  const common = useCommonItemActions({ workItemId: item.id, actOn, dialogs, activeOrgId });
+  /** Go to the item in its list, and once its row is there, do `then` on it. */
+  const goThen = (then: () => void) => {
+    onNavigate();
+    whenRowReady(item.id, then);
+  };
+  const actions: ItemActions = {
+    ...common,
+    rankToTop: () => rankToTopOfList(item, treeId, backlogId),
+    // A result's name is not edited here: go to the item and edit it there.
+    startRename: () =>
+      goThen(() => window.dispatchEvent(new CustomEvent("shortcut:edit-title", { detail: { workItemId: item.id } }))),
+    addChild: () => goThen(() => window.dispatchEvent(new CustomEvent("shortcut:add-child-workitem"))),
+  };
 
   const {
     attributes,
@@ -459,26 +421,6 @@ function SearchResultItem({
   const { onPointerDown: dndPointerDown, ...restListeners } = !isMobile ? (listeners ?? {}) : {};
 
   const statusColor = treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8";
-  const assignmentCount = Object.keys(item.backlogAssignments).length;
-
-  const handleDeleteClick = useCallback(() => {
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
-  }, [assignmentCount, deleteWorkItem, item.id]);
-
-  const handleQuickSnooze = useCallback(
-    async (until: Date) => {
-      if (!activeOrgId) return;
-      await snoozeWorkItem({ workItemId: item.id, organizationId: activeOrgId, snoozedUntil: until });
-    },
-    [item.id, activeOrgId, snoozeWorkItem],
-  );
-
-  const handleDeleteChoice = (value: string) => {
-    setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") removeWorkItemFromTree(item.id, treeId);
-    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
-  };
 
   return (
     <>
@@ -491,7 +433,7 @@ function SearchResultItem({
               role="option"
               aria-selected={active}
               className={`flex items-start gap-2 px-3 py-1.5 text-left hover:bg-accent/60 transition-colors border-b border-border/30 last:border-b-0 group select-none${active ? " bg-accent" : ""}${!isMobile ? " cursor-grab active:cursor-grabbing" : ""}`}
-              title={timeLoggingVisible && itemTotalMinutes > 0 ? `${formatDuration(itemTotalMinutes)} logged` : undefined}
+              title={features.timeLogging && itemTotalMinutes > 0 ? `${formatDuration(itemTotalMinutes)} logged` : undefined}
               onPointerDown={(e) => {
                 dndPointerDown?.(e);
                 dragStartedRef.current = false;
@@ -560,294 +502,30 @@ function SearchResultItem({
               )}
             </div>
           </ContextMenuTrigger>
-          <ContextMenuContent className="w-52">
-            <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
-            <ContextMenuSeparator />
-            <JiraItemMenuItems workItemId={item.id} />
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">
-                <span
-                  className="w-2 h-2 rounded-full mr-2 shrink-0 inline-block"
-                  style={{ backgroundColor: treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8" }}
-                />
-                Status
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                <ContextMenuRadioGroup
-                  value={item.status}
-                  onValueChange={(val) => setWorkItemStatus(item.id, val as WorkItemStatus)}
-                >
-                  {treeStatuses.map((s) => (
-                    <ContextMenuRadioItem key={s.key} value={s.key} className="text-xs">
-                      <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: s.color }} />
-                      {s.label}
-                    </ContextMenuRadioItem>
-                  ))}
-                </ContextMenuRadioGroup>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-            <WorkItemDescriptionMenuItem onOpen={() => setShowDescriptionDialog(true)} />
-            <ContextMenuItem className="text-xs" onSelect={() => setShowMoveToParentDialog(true)}>
-              Reparent…
-            </ContextMenuItem>
-            {treeBacklogIds.length > 1 && (
-              <ContextMenuSub>
-                <ContextMenuSubTrigger className="text-xs">Move to list</ContextMenuSubTrigger>
-                <ContextMenuSubContent>
-                  {treeBacklogIds
-                    .filter((blId) => blId !== backlogId)
-                    .map((blId) => (
-                      <ContextMenuItem
-                        key={blId}
-                        className="text-xs"
-                        onSelect={() => moveWorkItemToBacklog(item.id, blId, treeId)}
-                      >
-                        {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
-                      </ContextMenuItem>
-                    ))}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            )}
-            <ContextMenuSeparator />
-            {labelsVisible && orgLabels.length > 0 && (
-              <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-                <ContextMenuSubContent
-                  className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
-                  collisionPadding={8}
-                >
-                  <div className="px-2 pt-1 pb-0.5">
-                    <div className="flex items-center gap-1 rounded border border-input bg-background px-1.5 py-0.5">
-                      <Search className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <input
-                        className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
-                        placeholder="Search labels…"
-                        value={srLabelSearch}
-                        onChange={(e) => setSrLabelSearch(e.target.value)}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      />
-                      {srLabelSearch && (
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setSrLabelSearch(""); }}>
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {orgLabels
-                    .filter((l) => !srLabelSearch.trim() || l.name.toLowerCase().includes(srLabelSearch.toLowerCase()))
-                    .map((label) => {
-                      const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
-                      return (
-                        <ContextMenuCheckboxItem
-                          key={label.id}
-                          className="text-xs pr-1"
-                          checked={isAssigned}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              assignLabel(label.id, "work_item", item.id, label.organizationId);
-                            } else {
-                              unassignLabel(label.id, "work_item", item.id);
-                            }
-                          }}
-                        >
-                          <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                          <span className="flex-1 min-w-0 truncate">{label.name}</span>
-                          <button
-                            className="ml-1 shrink-0 p-1 -my-1 rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSrDeleteLabelId(label.id); }}
-                            title={`Delete label "${label.name}"`}
-                            aria-label={`Delete label ${label.name}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </ContextMenuCheckboxItem>
-                      );
-                    })}
-                  <ContextMenuSeparator />
-                  {srNewLabelForm ? (
-                    <div className="px-2 py-1.5 space-y-1.5" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={srNewLabelColor} onChange={(e) => setSrNewLabelColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 p-0 bg-transparent shrink-0" />
-                        <input ref={srNewLabelNameRef} className="flex-1 text-xs bg-transparent border-b border-primary/40 outline-none px-1 py-0.5" placeholder="Label name…" value={srNewLabelName} onChange={(e) => setSrNewLabelName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { const hc = async () => { if (!activeOrgId || !srNewLabelName.trim()) return; const lbl = await createLabel(activeOrgId, srNewLabelName.trim(), srNewLabelColor); if (lbl) { assignLabel(lbl.id, "work_item", item.id, activeOrgId); } setSrNewLabelName(""); setSrNewLabelForm(false); }; hc(); } if (e.key === "Escape") { setSrNewLabelForm(false); setSrNewLabelName(""); } e.stopPropagation(); }} />
-                        <button className="text-muted-foreground hover:text-foreground" onClick={() => { setSrNewLabelForm(false); setSrNewLabelName(""); }}><X className="w-3.5 h-3.5" /></button>
-                      </div>
-                      <button className="w-full text-xs text-center py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={!srNewLabelName.trim()} onClick={async () => { if (!activeOrgId || !srNewLabelName.trim()) return; const lbl = await createLabel(activeOrgId, srNewLabelName.trim(), srNewLabelColor); if (lbl) { assignLabel(lbl.id, "work_item", item.id, activeOrgId); } setSrNewLabelName(""); setSrNewLabelForm(false); }}>Create</button>
-                    </div>
-                  ) : (
-                    <ContextMenuItem className="text-xs" onSelect={(e) => { e.preventDefault(); setSrNewLabelForm(true); setSrLabelSearch(""); }}>
-                      <Plus className="w-3 h-3 mr-2" /> New label
-                    </ContextMenuItem>
-                  )}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            )}
-            {teams.length > 0 && (
-              <ContextMenuSub>
-                <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
-                <ContextMenuSubContent>
-                  {teams.map((team) => {
-                    const isAssigned = workItemTeams.includes(team.id);
-                    return (
-                      <ContextMenuItem
-                        key={team.id}
-                        className="text-xs"
-                        onSelect={(e) => e.preventDefault()}
-                        onClick={() => {
-                          if (isAssigned) {
-                            unassignTeam(item.id, team.id);
-                          } else {
-                            assignTeam(item.id, team.id, team.organization_id || activeOrgId!);
-                          }
-                        }}
-                      >
-                        <span
-                          className="w-2.5 h-2.5 rounded-full mr-1 shrink-0 inline-block"
-                          style={{
-                            backgroundColor: isAssigned ? "hsl(var(--primary))" : "transparent",
-                            border: isAssigned ? "none" : "1px solid hsl(var(--muted-foreground)/0.4)",
-                          }}
-                        />
-                        {team.name}
-                      </ContextMenuItem>
-                    );
-                  })}
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            )}
-            {timeLoggingVisible && (
-              <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
-                Log time
-              </ContextMenuItem>
-            )}
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">
-                <BellOff className="w-3 h-3 mr-2" />
-                Snooze
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionLaterToday())}>
-                  <span className="flex-1">Later Today</span>
-                  <span className="ml-4 text-muted-foreground text-[10px]">3h from now</span>
-                </ContextMenuItem>
-                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionTomorrowMorning())}>
-                  <span className="flex-1">Tomorrow Morning</span>
-                  <span className="ml-4 text-muted-foreground text-[10px]">7:00 AM</span>
-                </ContextMenuItem>
-                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionThisWeekend())}>
-                  <span className="flex-1">This Weekend</span>
-                  <span className="ml-4 text-muted-foreground text-[10px]">Sat 7:00 AM</span>
-                </ContextMenuItem>
-                <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionNextWeek())}>
-                  <span className="flex-1">Next Week</span>
-                  <span className="ml-4 text-muted-foreground text-[10px]">Mon 7:00 AM</span>
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem className="text-xs" onSelect={() => setShowSnoozeDialog(true)}>
-                  Pick Date / Time…
-                </ContextMenuItem>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-            {isSnoozed && (
-              <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(item.id)}>
-                <Bell className="w-3 h-3 mr-2" />
-                Unsnooze
-              </ContextMenuItem>
-            )}
-            <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
-              Respawn settings
-            </ContextMenuItem>
-            <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
-              Hyperlinks
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              className="text-xs text-destructive focus:text-destructive"
-              onSelect={handleDeleteClick}
-            >
-              Delete
-            </ContextMenuItem>
-          </ContextMenuContent>
+          <ItemMenu
+            item={item}
+            treeId={treeId}
+            backlogId={backlogId}
+            moveTargets={treeBacklogIds}
+            statuses={treeStatuses}
+            features={features}
+            isScrambled={isScrambled}
+            actOn={actOn}
+            dialogs={dialogs}
+            actions={actions}
+          />
         </ContextMenu>
       </div>
-      {srDeleteLabelId && (
-        <ActionPrompt
-          title={`Delete label "${labelsMap[srDeleteLabelId]?.name ?? srDeleteLabelId}"?`}
-          options={[
-            {
-              label: "Delete",
-              description: "Permanently delete this label from all items. This cannot be undone.",
-              value: "confirm",
-              variant: "destructive",
-              isDefault: true,
-            },
-          ]}
-          onSelect={() => { deleteLabel(srDeleteLabelId); setSrDeleteLabelId(null); }}
-          onCancel={() => setSrDeleteLabelId(null)}
-        />
-      )}
-      {showDeletePrompt && (
-        <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} lists`}
-          options={[
-            {
-              label: "Remove from this list",
-              description: `Remove from "${backlogs[backlogId]?.name ?? backlogId}" only. Keeps it in other lists.`,
-              value: "remove-from-backlog",
-              isDefault: true,
-            },
-            {
-              label: "Delete everywhere",
-              description: "Permanently delete this item from all lists.",
-              value: "delete-everywhere",
-              variant: "destructive",
-            },
-          ]}
-          onSelect={handleDeleteChoice}
-          onCancel={() => setShowDeletePrompt(false)}
-        />
-      )}
-      {showRespawnDialog && (
-        <RespawnSettingsDialog
-          workItemId={item.id}
-          open
-          onOpenChange={(o) => { setShowRespawnDialog(o); if (!o) releaseOverlayLock(); }}
-        />
-      )}
-      {showHyperlinksDialog && (
-        <HyperlinksDialog
-          workItemId={item.id}
-          open
-          onOpenChange={(o) => { setShowHyperlinksDialog(o); if (!o) releaseOverlayLock(); }}
-        />
-      )}
-      {showDescriptionDialog && (
-        <WorkItemDescriptionDialog workItemId={item.id} open onOpenChange={(o) => {
-          setShowDescriptionDialog(o);
-          if (!o) releaseOverlayLock();
-        }} />
-      )}
-      {showTimeLogDialog && timeLoggingVisible && (
-        <TimeLogDialog
-          workItemId={item.id}
-          open
-          onOpenChange={(o) => { setShowTimeLogDialog(o); if (!o) releaseOverlayLock(); }}
-        />
-      )}
-      {showSnoozeDialog && (
-        <SnoozeDialog
-          workItemIds={[item.id]}
-          open
-          onOpenChange={(o) => { setShowSnoozeDialog(o); if (!o) releaseOverlayLock(); }}
-        />
-      )}
-      {showMoveToParentDialog && (
-        <MoveToParentDialog
-          workItemIds={[item.id]}
-          treeId={treeId}
-          open
-          onOpenChange={(o) => { setShowMoveToParentDialog(o); if (!o) releaseOverlayLock(); }}
-        />
-      )}
+      <ItemDialogs
+        item={item}
+        actOn={actOn}
+        treeId={treeId}
+        backlogId={backlogId}
+        activeOrgId={activeOrgId}
+        timeLoggingVisible={features.timeLogging}
+        dialogs={dialogs}
+        actions={actions}
+      />
     </>
   );
 }

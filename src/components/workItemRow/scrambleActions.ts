@@ -14,7 +14,6 @@ import { scrambleName } from "@/lib/scramble";
 import { peekCurrentUser } from "@/lib/currentUser";
 import { toast } from "@/hooks/use-toast";
 import type { ScramblePinResult } from "@/components/ScramblePinDialog";
-import { selectionOrItem } from "./rowShared";
 
 /**
  * The organizations that own the rows about to be scrambled and have no PIN
@@ -25,17 +24,19 @@ import { selectionOrItem } from "./rowShared";
  */
 let orgsNeedingPin = new Set<string>();
 
-/** The rows a scramble starts from, and everything under them. */
-function rowsToScramble(workItemId: string): string[] {
-  // The rows a scramble action starts from: the selection when this row is part
-  // of it, otherwise this row alone — as the other bulk actions here work.
-  // A hidden name with its work readable beneath it has hidden nothing.
-  return idsToScramble(selectionOrItem(workItemId), useAppStore.getState().workItems, useScrambledItemsStore.getState().byItem);
+/**
+ * The rows a scramble takes in: the ones it starts from (`targets`: the
+ * selection when the item is part of one, otherwise the item alone — as the
+ * menu's other entries work) and everything under them. A hidden name with
+ * its work readable beneath it has hidden nothing.
+ */
+function rowsToScramble(targets: string[]): string[] {
+  return idsToScramble(targets, useAppStore.getState().workItems, useScrambledItemsStore.getState().byItem);
 }
 
-export async function runScramble(workItemId: string, activeOrgId: string | null, pin: string): Promise<ScramblePinResult> {
+export async function runScramble(targets: string[], activeOrgId: string | null, pin: string): Promise<ScramblePinResult> {
   const items = useAppStore.getState().workItems;
-  const ids = rowsToScramble(workItemId);
+  const ids = rowsToScramble(targets);
   const me = peekCurrentUser()?.id ?? null;
   const needPin = orgsNeedingPin;
   let done = 0;
@@ -74,14 +75,14 @@ export async function runScramble(workItemId: string, activeOrgId: string | null
  * Start scrambling: straight away where every owning organization has its PIN
  * already, otherwise by asking for the PIN to set (`askForPin`).
  */
-export async function startScramble(workItemId: string, activeOrgId: string | null, askForPin: () => void): Promise<void> {
+export async function startScramble(targets: string[], activeOrgId: string | null, askForPin: () => void): Promise<void> {
   // Which organizations own the rows about to be scrambled — an item shared
   // in from a partner belongs to that partner, not the active organization,
   // and its PIN is checked there.
   const items = useAppStore.getState().workItems;
   const orgIds = [
     ...new Set(
-      rowsToScramble(workItemId)
+      rowsToScramble(targets)
         .map((id) => items[id].organizationId ?? activeOrgId)
         .filter((org): org is string => !!org),
     ),
@@ -105,7 +106,7 @@ export async function startScramble(workItemId: string, activeOrgId: string | nu
     askForPin();
     return;
   }
-  const result = await runScramble(workItemId, activeOrgId, "");
+  const result = await runScramble(targets, activeOrgId, "");
   if (result.error) toast({ title: "Could not scramble", description: result.error, variant: "destructive" });
 }
 
@@ -115,13 +116,13 @@ export async function runReveal(workItemId: string, pin: string): Promise<Scramb
   return { revealed: data ?? "" };
 }
 
-export async function runUnscramble(workItemId: string, activeOrgId: string | null, pin: string): Promise<ScramblePinResult> {
+export async function runUnscramble(targets: string[], activeOrgId: string | null, pin: string): Promise<ScramblePinResult> {
   const scrambled = useScrambledItemsStore.getState().byItem;
   const me = peekCurrentUser()?.id ?? null;
   // The rows and everything under them, as a scramble takes them in — but
   // only the ones this person scrambled: the database refuses the rest, and
   // there is no point asking it.
-  const ids = idsToUnscramble(selectionOrItem(workItemId), useAppStore.getState().workItems, scrambled, me);
+  const ids = idsToUnscramble(targets, useAppStore.getState().workItems, scrambled, me);
   if (ids.length === 0) return { error: "Nothing here that you scrambled" };
   let done = 0;
   for (const id of ids) {

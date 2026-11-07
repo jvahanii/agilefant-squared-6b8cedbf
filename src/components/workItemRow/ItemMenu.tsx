@@ -1,10 +1,18 @@
 /**
- * A row's right-click menu. Drawn only while open, so what it keeps — the
- * label and team searches, a label being made — starts afresh each time.
- * Entries act on the selection when the row is part of one.
+ * A work item's right-click menu — the same wherever the item is shown: its
+ * row in the list, its card on the board, its line in the search results.
+ *
+ * It was written out three times, and the copies drifted: the board's had no
+ * dates or scrambling, the search results' lacked ten entries. Now each place
+ * hands this menu its actions, and an entry is offered wherever its action
+ * exists — renaming in place, say, only where the name can be edited.
+ *
+ * Drawn only while open, so what it keeps — the label and team searches, a
+ * label being made — starts afresh each time. Entries act on `actOn()`: the
+ * selection when the item is part of one, where items can be selected.
  */
-import { useRef, useState } from "react";
-import { ArrowDownAZ, Bell, BellOff, CalendarClock, CalendarPlus, CalendarRange, FolderInput, LayoutGrid, Plus, Trash2, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowDownAZ, Bell, BellOff, CalendarClock, CalendarPlus, CalendarRange, FolderInput, LayoutGrid, List as ListIcon, Plus, Trash2, X } from "lucide-react";
 import {
   ContextMenuCheckboxItem,
   ContextMenuContent,
@@ -18,10 +26,11 @@ import {
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
 import { useAppStore } from "@/store/appStore";
+import { useOrgStore } from "@/store/orgStore";
+import { useTeamStore } from "@/store/teamStore";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
-import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
-import { requestTopLevelRerank } from "@/store/rerankGuardStore";
+import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
 import {
   useSnoozeStore,
   snoozeOptionLaterToday,
@@ -30,90 +39,84 @@ import {
   snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
 import { useLabelsStore, type Label } from "@/store/labelsStore";
-import type { Team } from "@/store/teamStore";
-import { getEffectiveParentId, type WorkItem, type WorkItemStatus } from "@/types/models";
+import type { WorkItem, WorkItemStatus } from "@/types/models";
 import { scrambleName } from "@/lib/scramble";
+import { peekCurrentUser } from "@/lib/currentUser";
 import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
-import { toast } from "@/hooks/use-toast";
 import { JiraItemMenuItems } from "../JiraItemMenuItems";
 import { WorkItemDescriptionMenuItem } from "../WorkItemDescriptionDialog";
-import { changeSelectionOrItem, listAndSublists, selectionOrItem } from "./rowShared";
+import { changeEach, type ActOn } from "./rowShared";
 import { MenuSearchField, TeamsSubmenu } from "./RowTeams";
+import type { ItemFeatures } from "./itemActions";
 import type { RowDialogs } from "./useRowDialogs";
 
-export interface RowStatus {
+export interface ItemStatus {
   key: string;
   label: string;
   color: string;
   displayLabel: string;
 }
 
-/** What the row does, for its menu to call. */
-export interface RowActions {
-  startRename: () => void;
-  /** Put an icon's shortcode into the name: at the cursor while it is being edited. */
-  insertIcon: (shortcode: string) => void;
-  editPoints: () => void;
-  addChild: () => void;
+/** What the item does, for its menu to call. The optional ones only some places can do. */
+export interface ItemActions {
   duplicate: () => void;
   remove: () => void;
   openMoveToList: () => void;
   openReparent: () => void;
   scramble: () => void;
   snoozeUntil: (until: Date) => void;
+  rankToTop: () => void;
+  /** Where the name can be edited in place, or gone to and edited. */
+  startRename?: () => void;
+  /** Put an icon's shortcode into the name: at the cursor while it is being edited. */
+  insertIcon?: (shortcode: string) => void;
+  /** Edit the points in place; without it the menu opens the attributes sheet. */
+  editPoints?: () => void;
+  addChild?: () => void;
+  /** The same item in the other view: "View in board" from the list, "View in list" from the board. */
+  viewElsewhere?: { label: string; view: "board" | "list"; run: () => void };
 }
 
-/** What the organization and the row's list have switched on. */
-export interface RowFeatures {
-  deadlines: boolean;
-  createdDates: boolean;
-  startEndDates: boolean;
-  burnups: boolean;
-  points: boolean;
-  labels: boolean;
-  timeLogging: boolean;
-  scrambling: boolean;
-}
-
-export function RowMenu({
+export function ItemMenu({
   item,
   treeId,
   backlogId,
-  allBacklogIds,
+  moveTargets,
   statuses,
   features,
   isScrambled,
-  isNameScrambled,
-  scrambledByMe,
-  isMobile,
-  teams,
-  orgLabels,
-  activeOrgId,
-  setViewMode,
+  actOn,
   dialogs,
   actions,
 }: {
   item: WorkItem;
   treeId: string;
   backlogId: string;
-  allBacklogIds: string[];
-  statuses: RowStatus[];
-  features: RowFeatures;
+  /** The lists "Move to list" offers. */
+  moveTargets: string[];
+  statuses: ItemStatus[];
+  features: ItemFeatures;
+  /** List names are shown scrambled. */
   isScrambled: boolean;
-  isNameScrambled: boolean;
-  scrambledByMe: boolean;
-  isMobile: boolean;
-  teams: Team[];
-  orgLabels: Label[];
-  activeOrgId: string | null;
-  setViewMode: (mode: "list" | "board") => void;
+  actOn: ActOn;
   dialogs: RowDialogs;
-  actions: RowActions;
+  actions: ItemActions;
 }) {
   const workItemId = item.id;
-  const several = useAppStore((s) => s.selectedWorkItemIds.length > 1 && s.selectedWorkItemIds.includes(workItemId));
+  const several = actOn().length > 1;
   const backlogs = useAppStore((s) => s.backlogs);
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const teams = useTeamStore((s) => s.teams);
+  const labelsMap = useLabelsStore((s) => s.labels);
+  const orgLabels = useMemo(
+    () => Object.values(labelsMap).filter((l) => l.organizationId === activeOrgId).sort((a, b) => a.name.localeCompare(b.name)),
+    [labelsMap, activeOrgId],
+  );
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(workItemId));
+  const scrambledBy = useScrambledItemsStore((s) => s.byItem.get(workItemId));
+  const isNameScrambled = useScrambledItemsStore((s) => s.byItem.has(workItemId));
+  const scrambledByMe = isNameScrambled && scrambledBy === (peekCurrentUser()?.id ?? null);
+  const currentList = item.backlogAssignments[treeId] ?? backlogId;
   const { show } = dialogs;
 
   return (
@@ -134,7 +137,7 @@ export function RowMenu({
             value={item.status}
             onValueChange={(val) => {
               const { setWorkItemStatus } = useAppStore.getState();
-              changeSelectionOrItem(workItemId, (id) => setWorkItemStatus(id, val as WorkItemStatus));
+              changeEach(actOn(), (id) => setWorkItemStatus(id, val as WorkItemStatus));
             }}
           >
             {statuses.map((s) => (
@@ -164,16 +167,12 @@ export function RowMenu({
           {item.startedOn || item.endedOn ? "Change start and end dates…" : "Set start and end dates…"}
         </ContextMenuItem>
       )}
-      <ContextMenuItem className="text-xs" onSelect={() => {
-        setViewMode("board");
-        // Select the item after view mode change and React reconciliation
-        setTimeout(() => {
-          useAppStore.getState().selectWorkItem(workItemId, false);
-        }, 100);
-      }}>
-        <LayoutGrid className="w-3 h-3 mr-2" />
-        View in board
-      </ContextMenuItem>
+      {actions.viewElsewhere && (
+        <ContextMenuItem className="text-xs" onSelect={actions.viewElsewhere.run}>
+          {actions.viewElsewhere.view === "board" ? <LayoutGrid className="w-3 h-3 mr-2" /> : <ListIcon className="w-3 h-3 mr-2" />}
+          {actions.viewElsewhere.label}
+        </ContextMenuItem>
+      )}
       {features.burnups && (
         <ContextMenuItem
           className="text-xs"
@@ -184,56 +183,39 @@ export function RowMenu({
           View burnup…
         </ContextMenuItem>
       )}
-      <ContextMenuItem
-        className="text-xs"
-        onSelect={() => {
-          const state = useAppStore.getState();
-          const backlogIds = listAndSublists(backlogId);
-          const viewedBacklogId = state.selectedBacklogIds[0] ?? backlogId;
-          const inView = new Set(backlogIds);
-          const parentId = getEffectiveParentId(item, treeId);
-          requestTopLevelRerank({
-            treeId,
-            backlogId: viewedBacklogId,
-            backlogIds,
-            touchesTopLevel: parentId === null || !inView.has(state.workItems[parentId]?.backlogAssignments[treeId]),
-            proceed: () => {
-              useAppStore.getState().reorderWorkItemAmongSiblings(workItemId, 0, treeId, backlogIds);
-              toast({ title: "Moved item to top", description: item.title });
-            },
-          });
-        }}
-      >
+      <ContextMenuItem className="text-xs" onSelect={actions.rankToTop}>
         Rank to top
       </ContextMenuItem>
-      <ContextMenuSub>
-        <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
-        <ContextMenuSubContent
-          className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
-          collisionPadding={8}
-        >
-          <div className="grid grid-cols-6 gap-0.5 p-1">
-            {ICON_SHORTCODES.map((sc) => (
-              <button
-                key={sc}
-                className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
-                title={`:${sc}:`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  actions.insertIcon(`:${sc}:`);
-                }}
-              >
-                {ICON_MAP[sc]}
-              </button>
-            ))}
-          </div>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
+      {actions.insertIcon && (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
+          <ContextMenuSubContent
+            className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
+            collisionPadding={8}
+          >
+            <div className="grid grid-cols-6 gap-0.5 p-1">
+              {ICON_SHORTCODES.map((sc) => (
+                <button
+                  key={sc}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
+                  title={`:${sc}:`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    actions.insertIcon?.(`:${sc}:`);
+                  }}
+                >
+                  {ICON_MAP[sc]}
+                </button>
+              ))}
+            </div>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      )}
+      <WorkItemDescriptionMenuItem onOpen={() => show("description")} />
       {/* A scrambled name cannot be edited — the database refuses it, since
           a rename would be lost when the original is put back, and would
           let anyone replace a name they cannot read. */}
-      <WorkItemDescriptionMenuItem onOpen={() => show("description")} />
-      {!isNameScrambled && (
+      {!isNameScrambled && actions.startRename && (
         <ContextMenuItem className="text-xs" onSelect={actions.startRename}>
           Rename
         </ContextMenuItem>
@@ -246,7 +228,7 @@ export function RowMenu({
         )
       ) : scrambledByMe ? (
         <>
-          {/* Revealing is always about this one row; a dialog cannot show
+          {/* Revealing is always about this one item; a dialog cannot show
               several names at once, and each is worth asking for. */}
           <ContextMenuItem className="text-xs" onSelect={() => show("scramble", { kind: "reveal", mode: "enter" })}>
             Show real name…
@@ -265,22 +247,18 @@ export function RowMenu({
         <span className="ml-auto text-[10px] text-muted-foreground">⌘D</span>
       </ContextMenuItem>
       {features.points && (
-        <ContextMenuItem
-          className="text-xs"
-          onSelect={() => {
-            // The inline points input only exists on desktop; on mobile the
-            // points field lives in the attributes sheet.
-            if (isMobile) show("attributes");
-            else actions.editPoints();
-          }}
-        >
+        // Where the points cannot be edited in place (on a phone, in the
+        // search results) the attributes sheet has them.
+        <ContextMenuItem className="text-xs" onSelect={() => (actions.editPoints ? actions.editPoints() : show("attributes"))}>
           Edit story points
         </ContextMenuItem>
       )}
 
-      <ContextMenuItem className="text-xs" onSelect={actions.addChild}>
-        Add child item
-      </ContextMenuItem>
+      {actions.addChild && (
+        <ContextMenuItem className="text-xs" onSelect={actions.addChild}>
+          Add child item
+        </ContextMenuItem>
+      )}
       {item.childrenIds.length > 1 && (
         <ContextMenuItem className="text-xs" onSelect={() => show("sortChildren")}>
           <ArrowDownAZ className="w-3 h-3 mr-1.5 shrink-0" />
@@ -292,19 +270,19 @@ export function RowMenu({
         Move…
         <span className="ml-auto text-[10px] text-muted-foreground">M</span>
       </ContextMenuItem>
-      {allBacklogIds.length > 1 && (
+      {moveTargets.length > 1 && (
         <ContextMenuSub>
           <ContextMenuSubTrigger className="text-xs">
             Move to list
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
-            {allBacklogIds
-              .filter((blId) => blId !== backlogId)
+            {moveTargets
+              .filter((blId) => blId !== currentList)
               .map((blId) => (
                 <ContextMenuItem
                   key={blId}
                   className="text-xs"
-                  onSelect={() => useAppStore.getState().moveWorkItemsToBacklog(selectionOrItem(workItemId), blId, treeId)}
+                  onSelect={() => useAppStore.getState().moveWorkItemsToBacklog(actOn(), blId, treeId)}
                 >
                   {isScrambled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
                 </ContextMenuItem>
@@ -317,9 +295,9 @@ export function RowMenu({
       </ContextMenuItem>
       <ContextMenuSeparator />
       {features.labels && orgLabels.length > 0 && (
-        <LabelsSubmenu workItemId={workItemId} orgLabels={orgLabels} activeOrgId={activeOrgId} onDelete={(id) => show("deleteLabel", id)} />
+        <LabelsSubmenu actOn={actOn} orgLabels={orgLabels} activeOrgId={activeOrgId} onDelete={(id) => show("deleteLabel", id)} />
       )}
-      {teams.length > 0 && <TeamsSubmenu workItemId={workItemId} teams={teams} activeOrgId={activeOrgId} />}
+      {teams.length > 0 && <TeamsSubmenu actOn={actOn} teams={teams} activeOrgId={activeOrgId} />}
       {features.timeLogging && (
         <>
           <ContextMenuItem className="text-xs" onSelect={() => show("timeLog")}>
@@ -375,7 +353,7 @@ export function RowMenu({
       <ContextMenuItem className="text-xs" onSelect={() => show("hyperlinks")}>
         Hyperlinks
       </ContextMenuItem>
-      {isSavingsIncomeEnabled(activeOrgId) && (
+      {features.savingsIncome && (
         <ContextMenuItem className="text-xs" onSelect={() => show("financials")}>
           Savings &amp; Income
         </ContextMenuItem>
@@ -393,12 +371,12 @@ export function RowMenu({
 
 /** "Labels": tick the ones the item (or selection) has, make a new one, or delete one. */
 function LabelsSubmenu({
-  workItemId,
+  actOn,
   orgLabels,
   activeOrgId,
   onDelete,
 }: {
-  workItemId: string;
+  actOn: ActOn;
   orgLabels: Label[];
   activeOrgId: string | null;
   onDelete: (labelId: string) => void;
@@ -418,7 +396,7 @@ function LabelsSubmenu({
     if (!activeOrgId || !newLabelName.trim()) return;
     const { createLabel, assignLabel } = useLabelsStore.getState();
     const label = await createLabel(activeOrgId, newLabelName.trim(), newLabelColor);
-    if (label) selectionOrItem(workItemId).forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId));
+    if (label) actOn().forEach((id) => assignLabel(label.id, "work_item", id, activeOrgId));
     closeForm();
   };
 
@@ -433,7 +411,7 @@ function LabelsSubmenu({
         {orgLabels
           .filter((l) => !query.trim() || l.name.toLowerCase().includes(query.toLowerCase()))
           .map((label) => {
-            const contextIds = selectionOrItem(workItemId);
+            const contextIds = actOn();
             const assignedCount = contextIds.filter((id) => (byEntity[`work_item:${id}`] ?? []).includes(label.id)).length;
             const fullyAssigned = assignedCount === contextIds.length;
             const partiallyAssigned = assignedCount > 0 && !fullyAssigned;

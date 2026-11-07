@@ -1,4 +1,7 @@
-/** The dialogs and prompts a row opens, each drawn only while open. */
+/**
+ * The dialogs and prompts an item's menu opens — wherever the item is shown —
+ * each drawn only while open.
+ */
 import { useAppStore } from "@/store/appStore";
 import { useLabelsStore } from "@/store/labelsStore";
 import { isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
@@ -20,13 +23,14 @@ import { CreatedDateDialog } from "../CreatedDateDialog";
 import { StartEndDatesDialog } from "../StartEndDatesDialog";
 import { MobileWorkItemAttributesSheet } from "../MobileAttributesSheet";
 import { ScramblePinDialog } from "../ScramblePinDialog";
-import { listAndSublists, selectionOrItem } from "./rowShared";
+import { listAndSublists, type ActOn } from "./rowShared";
 import { runReveal, runScramble, runUnscramble } from "./scrambleActions";
-import type { RowActions } from "./RowMenu";
+import type { ItemActions } from "./ItemMenu";
 import type { RowDialogs as Dialogs } from "./useRowDialogs";
 
-export function RowDialogs({
+export function ItemDialogs({
   item,
+  actOn,
   treeId,
   backlogId,
   activeOrgId,
@@ -35,12 +39,14 @@ export function RowDialogs({
   actions,
 }: {
   item: WorkItem;
+  /** The items the dialogs act on: the item, or the selection it is part of. */
+  actOn: ActOn;
   treeId: string;
   backlogId: string;
   activeOrgId: string | null;
   timeLoggingVisible: boolean;
   dialogs: Dialogs;
-  actions: RowActions;
+  actions: ItemActions;
 }) {
   const { open, show, hide, onOpenChange } = dialogs;
   const workItemId = item.id;
@@ -142,10 +148,10 @@ export function RowDialogs({
           itemTitle={item.title}
           onConfirm={
             scramblePrompt.kind === "scramble"
-              ? (pin) => runScramble(workItemId, activeOrgId, pin)
+              ? (pin) => runScramble(actOn(), activeOrgId, pin)
               : scramblePrompt.kind === "reveal"
                 ? (pin) => runReveal(workItemId, pin)
-                : (pin) => runUnscramble(workItemId, activeOrgId, pin)
+                : (pin) => runUnscramble(actOn(), activeOrgId, pin)
           }
         />
       )}
@@ -171,16 +177,16 @@ export function RowDialogs({
         />
       )}
       {open.snooze && (
-        <SnoozeDialog workItemIds={selectionOrItem(workItemId)} open onOpenChange={onOpenChange("snooze")} />
+        <SnoozeDialog workItemIds={actOn()} open onOpenChange={onOpenChange("snooze")} />
       )}
       {open.deadline && (
-        <DeadlineDialog workItemIds={selectionOrItem(workItemId)} open onOpenChange={onOpenChange("deadline")} />
+        <DeadlineDialog workItemIds={actOn()} open onOpenChange={onOpenChange("deadline")} />
       )}
       {open.createdDate && (
-        <CreatedDateDialog workItemIds={selectionOrItem(workItemId)} open onOpenChange={onOpenChange("createdDate")} />
+        <CreatedDateDialog workItemIds={actOn()} open onOpenChange={onOpenChange("createdDate")} />
       )}
       {open.startEnd && (
-        <StartEndDatesDialog workItemIds={selectionOrItem(workItemId)} open onOpenChange={onOpenChange("startEnd")} />
+        <StartEndDatesDialog workItemIds={actOn()} open onOpenChange={onOpenChange("startEnd")} />
       )}
       {open.attributes && (
         <MobileWorkItemAttributesSheet

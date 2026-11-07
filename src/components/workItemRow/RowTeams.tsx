@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ContextMenuItem, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from "@/components/ui/context-menu";
-import { EMPTY_ARRAY, selectionOrItem } from "./rowShared";
+import { EMPTY_ARRAY, selectionOrItem, type ActOn } from "./rowShared";
 
 /** How many of `ids` have the team: all, some or none of them. */
 function teamAssignment(ids: string[], teamId: string) {
@@ -161,7 +161,7 @@ export function RowTeamsDropdown({
 }
 
 /** "Assign teams" in the row's right-click menu. */
-export function TeamsSubmenu({ workItemId, teams, activeOrgId }: { workItemId: string; teams: Team[]; activeOrgId: string | null }) {
+export function TeamsSubmenu({ actOn, teams, activeOrgId }: { actOn: ActOn; teams: Team[]; activeOrgId: string | null }) {
   const [query, setQuery] = useState("");
   return (
     <ContextMenuSub>
@@ -169,7 +169,7 @@ export function TeamsSubmenu({ workItemId, teams, activeOrgId }: { workItemId: s
       <ContextMenuSubContent>
         <MenuSearchField placeholder="Search teams…" value={query} onChange={setQuery} />
         {matching(teams, query).map((team) => {
-          const ids = selectionOrItem(workItemId);
+          const ids = actOn();
           return (
             <ContextMenuItem
               key={team.id}

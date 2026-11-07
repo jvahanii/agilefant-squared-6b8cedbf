@@ -3,41 +3,28 @@ import { useDraggable, useDroppable, useDndContext } from "@dnd-kit/core";
 import { useAppStore } from "@/store/appStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useLabelsStore } from "@/store/labelsStore";
-import { useBacklogStatusesStore, DEFAULT_STATUSES as DEFAULT_TREE_STATUSES, getEffectiveStatuses, isPinnedStatus, type BacklogStatus as TreeStatus } from "@/store/backlogStatusesStore";
+import { useBacklogStatusesStore, getEffectiveStatuses, isPinnedStatus, type BacklogStatus as TreeStatus } from "@/store/backlogStatusesStore";
 import { WorkItem, WorkItemStatus } from "@/types/models";
 import { cn } from "@/lib/utils";
-import { Link2, GripVertical, Trash2, Plus, RotateCcw, BellOff, Bell, FolderInput, ArrowDownAZ, Clock, EyeOff, Eye, List as ListIcon, Columns2 } from "lucide-react";
+import { GripVertical, Trash2, Plus, Columns2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { JiraIssueTag } from "@/components/JiraIssueTag";
-import { JiraItemMenuItems } from "@/components/JiraItemMenuItems";
-import { ICON_MAP, ICON_SHORTCODES } from "@/lib/iconMap";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { focusForEdit } from "@/lib/focusEdit";
 import { useOrgStore } from "@/store/orgStore";
-import { useOrgSettingsStore, isSavingsIncomeEnabled } from "@/store/orgSettingsStore";
-import { useTimeEntryStore } from "@/store/timeEntryStore";
-import { computeWorkItemTotalMinutes } from "@/lib/timeUtils";
-import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { toast } from "@/hooks/use-toast";
-import { RespawnSettingsDialog } from "./RespawnSettingsDialog";
-import { HyperlinksDialog } from "./HyperlinksDialog";
-import { WorkItemDescriptionDialog, WorkItemDescriptionMenuItem } from "./WorkItemDescriptionDialog";
-import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
-import { FinancialsDialog } from "./FinancialsDialog";
-import { SnoozeDialog } from "./SnoozeDialog";
-import { MoveToParentDialog } from "./MoveToParentDialog";
 import { MoveToBacklogDialog } from "./MoveToBacklogDialog";
 import { ActionPrompt } from "./ActionPrompt";
-import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
+import { ItemMenu, type ItemActions } from "./workItemRow/ItemMenu";
+import { ItemDialogs } from "./workItemRow/ItemDialogs";
+import { useCommonItemActions, useItemFeatures } from "./workItemRow/itemActions";
+import { useRowDialogs } from "./workItemRow/useRowDialogs";
+import { changeSelectionOrItem, listAndSublists, selectionOrItem } from "./workItemRow/rowShared";
 import {
   useSnoozeStore,
-  snoozeOptionLaterToday,
-  snoozeOptionTomorrowMorning,
-  snoozeOptionNextWeek,
-  snoozeOptionThisWeekend,
 } from "@/store/snoozeStore";
 import {
   ContextMenu,
@@ -45,13 +32,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
-  ContextMenuLabel,
   ContextMenuSub,
   ContextMenuSubTrigger,
   ContextMenuSubContent,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
-  ContextMenuCheckboxItem,
 } from "@/components/ui/context-menu";
 
 interface BoardViewProps {
@@ -1233,8 +1216,6 @@ function BoardCard({
   });
   const cardListeners = !isMobile ? listeners : undefined;
 
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
   const workItemTeamsMap = useTeamStore((s) => s.workItemTeams);
   const teams = useTeamStore((s) => s.teams);
   const labelsMap = useLabelsStore((s) => s.labels);
@@ -1252,59 +1233,18 @@ function BoardCard({
     () => treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8",
     [treeStatuses, item.status],
   );
-
-  // App store actions
-  const setWorkItemStatus = useAppStore((s) => s.setWorkItemStatus);
-  const deleteWorkItem = useAppStore((s) => s.deleteWorkItem);
-  const guardedDelete = useDeleteWithTimeGuard();
-  const duplicateWorkItems = useAppStore((s) => s.duplicateWorkItems);
-  const renameWorkItem = useAppStore((s) => s.renameWorkItem);
-  const setWorkItemPoints = useAppStore((s) => s.setWorkItemPoints);
-  const addWorkItem = useAppStore((s) => s.addWorkItem);
-  const sortChildrenAlphabetically = useAppStore((s) => s.sortChildrenAlphabetically);
-  const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
-  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
-  const removeWorkItemsFromTreeBulk = useAppStore((s) => s.removeWorkItemsFromTreeBulk);
-  const selectWorkItem = useAppStore((s) => s.selectWorkItem);
-
-  const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const pointsVisible = usePointsVisibleForTree(treeId);
-  const timeLoggingVisible = useOrgSettingsStore((s) => {
-    if (!activeOrgId) return false;
-    return s.settings[activeOrgId]?.timeLoggingEnabled ?? false;
-  });
-  const labelsVisible = useOrgSettingsStore((s) => {
-    if (!activeOrgId) return false;
-    return s.settings[activeOrgId]?.labelsEnabled ?? false;
-  });
-
-  const assignLabel = useLabelsStore((s) => s.assignLabel);
-  const unassignLabel = useLabelsStore((s) => s.unassignLabel);
-  const assignTeam = useTeamStore((s) => s.assignTeamToWorkItem);
-  const unassignTeam = useTeamStore((s) => s.unassignTeamFromWorkItem);
-
-  const timeEntries = useTimeEntryStore((s) => s.timeEntries);
-  const itemTotalMinutes = useMemo(() => {
-    if (!timeLoggingVisible) return 0;
-    return computeWorkItemTotalMinutes(item.id, workItems, timeEntries);
-  }, [timeEntries, item.id, workItems, timeLoggingVisible]);
-
-  // Snooze
-  const snoozeWorkItem = useSnoozeStore((s) => s.snoozeWorkItem);
-  const unsnoozeWorkItem = useSnoozeStore((s) => s.unsnoozeWorkItem);
   const isSnoozed = useSnoozeStore((s) => s.isSnoozed(item.id));
 
-  // Dialog state
-  const [showRespawnDialog, setShowRespawnDialog] = useState(false);
-  const [showHyperlinksDialog, setShowHyperlinksDialog] = useState(false);
-  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
-  const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
-  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
-  const [showMoveToParentDialog, setShowMoveToParentDialog] = useState(false);
-  const [showMoveToBacklogDialog, setShowMoveToBacklogDialog] = useState(false);
-  const [showFinancialsDialog, setShowFinancialsDialog] = useState(false);
-  const [showDeletePrompt, setShowDeletePrompt] = useState(false);
-  const [showSortPrompt, setShowSortPrompt] = useState(false);
+  // The item's menu and its dialogs: the same as on its row in the list.
+  const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const features = useItemFeatures(item, treeId);
+  const dialogs = useRowDialogs();
+  const actOn = useCallback(() => selectionOrItem(item.id), [item.id]);
+  const common = useCommonItemActions({ workItemId: item.id, actOn, dialogs, activeOrgId });
+  const statuses = useMemo(
+    () => treeStatuses.map((s) => ({ key: s.key, label: s.label, color: s.color, displayLabel: s.label })),
+    [treeStatuses],
+  );
 
   // Inline editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -1317,63 +1257,17 @@ function BoardCard({
     if (isEditingTitle) focusForEdit(titleInputRef.current, isMobile);
   }, [isEditingTitle, isMobile]);
 
-
-  const assignmentCount = Object.keys(item.backlogAssignments).length;
-
-  const orgLabels = useMemo(() => {
-    return Object.values(labelsMap)
-      .filter((l) => l.organizationId === activeOrgId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [labelsMap, activeOrgId]);
-
-  const handleQuickSnooze = useCallback(async (until: Date) => {
-    if (!activeOrgId) return;
-    try {
-      await snoozeWorkItem({ workItemId: item.id, organizationId: activeOrgId, snoozedUntil: until });
-    } catch (err) {
-      console.error("Failed to snooze item", err);
-    }
-  }, [item.id, activeOrgId, snoozeWorkItem]);
-
-  const handleDeleteClick = useCallback(() => {
-    if (assignmentCount > 1) setShowDeletePrompt(true);
-    else guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
-  }, [assignmentCount, deleteWorkItem, item.id]);
-
-  const handleDeleteChoice = useCallback((value: string) => {
-    setShowDeletePrompt(false);
-    if (value === "remove-from-backlog") removeWorkItemsFromTreeBulk([{ workItemId: item.id, treeId }]);
-    else if (value === "delete-everywhere") guardedDelete({ kind: 'work_item', id: item.id }, item.title, () => deleteWorkItem(item.id));
-  }, [item.id, treeId, deleteWorkItem, removeWorkItemsFromTreeBulk]);
-
-  const handleDuplicate = useCallback(() => {
-    const newRootIds = duplicateWorkItems([item.id]);
-    if (newRootIds.length === 1) {
-      const newId = newRootIds[0];
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent("shortcut:edit-title", { detail: { workItemId: newId } }));
-      }, 50);
-    }
-  }, [duplicateWorkItems, item.id]);
-
   const commitTitle = () => {
     const trimmed = editTitle.trim();
-    if (trimmed && trimmed !== item.title) renameWorkItem(item.id, trimmed);
+    if (trimmed && trimmed !== item.title) useAppStore.getState().renameWorkItem(item.id, trimmed);
     setIsEditingTitle(false);
   };
 
   const commitPoints = () => {
     const num = parseInt(editPoints, 10);
     const points = isNaN(num) || num <= 0 ? undefined : num;
-    const state = useAppStore.getState();
-    const selectedIds = state.selectedWorkItemIds;
-    if (selectedIds.length > 1 && selectedIds.includes(item.id)) {
-      state.runBulk(() => {
-        selectedIds.forEach((id) => setWorkItemPoints(id, points));
-      });
-    } else {
-      setWorkItemPoints(item.id, points);
-    }
+    const { setWorkItemPoints } = useAppStore.getState();
+    changeSelectionOrItem(item.id, (id) => setWorkItemPoints(id, points));
     setIsEditingPoints(false);
   };
 
@@ -1390,32 +1284,57 @@ function BoardCard({
     return () => window.removeEventListener("shortcut:edit-title", handler);
   }, [item.id, item.title]);
 
-  const reorderWorkItemInBoard = useAppStore((s) => s.reorderWorkItemInBoard);
-
-  const handleMoveToTop = useCallback(() => {
-    const state = useAppStore.getState();
-    const backlogIds: string[] = [];
-    const collectBacklogs = (id: string) => {
-      backlogIds.push(id);
-      state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-    };
-    collectBacklogs(backlogId);
-    reorderWorkItemInBoard(item.id, 0, treeId, backlogIds);
-    toast({ title: "Moved item to top", description: item.title });
-  }, [item.id, item.title, backlogId, treeId, reorderWorkItemInBoard]);
-
-  const handleSortChildren = useCallback(() => {
-    const state = useAppStore.getState();
-    const backlogIds: string[] = [];
-    const collectBacklogs = (id: string) => {
-      backlogIds.push(id);
-      state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-    };
-    collectBacklogs(backlogId);
-    sortChildrenAlphabetically(item.id, treeId, backlogIds);
-    toast({ title: "Children sorted A→Z", description: "Press Ctrl+Z to undo" });
-    setShowSortPrompt(false);
-  }, [item.id, backlogId, treeId, sortChildrenAlphabetically]);
+  const actions: ItemActions = {
+    ...common,
+    // On the board, "top" is the top of the card's column.
+    rankToTop: () => {
+      useAppStore.getState().reorderWorkItemInBoard(item.id, 0, treeId, listAndSublists(backlogId));
+      toast({ title: "Moved item to top", description: item.title });
+    },
+    startRename: () => {
+      setEditTitle(item.title);
+      setIsEditingTitle(true);
+    },
+    insertIcon: (shortcode) => {
+      const inp = titleInputRef.current;
+      if (isEditingTitle && inp) {
+        const start = inp.selectionStart ?? editTitle.length;
+        const end = inp.selectionEnd ?? start;
+        setEditTitle(editTitle.slice(0, start) + shortcode + editTitle.slice(end));
+        requestAnimationFrame(() => {
+          inp.focus();
+          const pos = start + shortcode.length;
+          inp.setSelectionRange(pos, pos);
+        });
+      } else {
+        setEditTitle(item.title + shortcode);
+        setIsEditingTitle(true);
+      }
+    },
+    editPoints: () => {
+      setEditPoints(item.points != null ? String(item.points) : "");
+      setIsEditingPoints(true);
+    },
+    // A board has no place to type a child's name in, so the child is made
+    // with one to rename.
+    addChild: () => {
+      useAppStore.getState().addWorkItem(item.title + " (child)", item.id, item.backlogAssignments[treeId] ?? backlogId, treeId);
+    },
+    viewElsewhere: {
+      label: "View in list",
+      view: "list",
+      run: () => {
+        setViewMode("list");
+        // Select the item and scroll into view after view mode change and React reconciliation
+        setTimeout(() => {
+          useAppStore.getState().selectWorkItem(item.id, false);
+          document
+            .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
+            ?.scrollIntoView({ block: "nearest" });
+        }, REACT_RECONCILIATION_DELAY);
+      },
+    },
+  };
 
   return (
     <>
@@ -1526,335 +1445,30 @@ function BoardCard({
             </div>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
-          <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
-          <ContextMenuSeparator />
-          <JiraItemMenuItems workItemId={item.id} />
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs">
-              <span
-                className="w-2 h-2 rounded-full mr-2 shrink-0 inline-block"
-                style={{ backgroundColor: treeStatuses.find((s) => s.key === item.status)?.color ?? "#94a3b8" }}
-              />
-              Status
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              <ContextMenuRadioGroup
-                value={item.status}
-                onValueChange={(val) => setWorkItemStatus(item.id, val as WorkItemStatus)}
-              >
-                {treeStatuses.map((s) => (
-                  <ContextMenuRadioItem key={s.key} value={s.key} className="text-xs">
-                    <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: s.color }} />
-                    {s.label}
-                  </ContextMenuRadioItem>
-                ))}
-              </ContextMenuRadioGroup>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuItem 
-            className="text-xs" 
-            onSelect={() => {
-              setViewMode("list");
-              // Select the item and scroll into view after view mode change and React reconciliation
-              setTimeout(() => {
-                selectWorkItem(item.id, false);
-                document
-                  .querySelector(`[data-work-item-id="${CSS.escape(item.id)}"]`)
-                  ?.scrollIntoView({ block: "nearest" });
-              }, REACT_RECONCILIATION_DELAY);
-            }}
-          >
-            <ListIcon className="w-3 h-3 mr-2" />
-            View in list
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={handleMoveToTop}
-          >
-            Rank to top
-          </ContextMenuItem>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
-            <ContextMenuSubContent
-              className="max-h-60 overflow-y-auto w-56 max-w-[calc(100vw-1.5rem)]"
-              collisionPadding={8}
-            >
-              <div className="grid grid-cols-6 gap-0.5 p-1">
-                {ICON_SHORTCODES.map((sc) => (
-                  <button
-                    key={sc}
-                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-accent text-lg"
-                    title={`:${sc}:`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const shortcode = `:${sc}:`;
-                      if (isEditingTitle && titleInputRef.current) {
-                        const inp = titleInputRef.current;
-                        const start = inp.selectionStart ?? editTitle.length;
-                        const end = inp.selectionEnd ?? start;
-                        const before = editTitle.slice(0, start);
-                        const after = editTitle.slice(end);
-                        const newTitle = before + shortcode + after;
-                        setEditTitle(newTitle);
-                        requestAnimationFrame(() => {
-                          inp.focus();
-                          const pos = start + shortcode.length;
-                          inp.setSelectionRange(pos, pos);
-                        });
-                      } else {
-                        setEditTitle(item.title + shortcode);
-                        setIsEditingTitle(true);
-                      }
-                    }}
-                  >
-                    {ICON_MAP[sc]}
-                  </button>
-                ))}
-              </div>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => {
-              setEditTitle(item.title);
-              setIsEditingTitle(true);
-            }}
-          >
-            Rename
-          </ContextMenuItem>
-          <ContextMenuItem className="text-xs" onSelect={handleDuplicate}>
-            Duplicate
-            <span className="ml-auto text-[10px] text-muted-foreground">⌘D</span>
-          </ContextMenuItem>
-          {pointsVisible && (
-            <ContextMenuItem
-              className="text-xs"
-              onSelect={() => {
-                setEditPoints(item.points != null ? String(item.points) : "");
-                setIsEditingPoints(true);
-              }}
-            >
-              Edit story points
-            </ContextMenuItem>
-          )}
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => {
-              addWorkItem(item.title + " (child)", item.id, item.backlogAssignments[treeId] ?? backlogId, treeId);
-            }}
-          >
-            <Plus className="w-3 h-3 mr-1.5 shrink-0" />
-            Add child item
-          </ContextMenuItem>
-          {item.childrenIds.length > 1 && (
-            <ContextMenuItem
-              className="text-xs"
-              onSelect={() => setShowSortPrompt(true)}
-            >
-              <ArrowDownAZ className="w-3 h-3 mr-1.5 shrink-0" />
-              Sort children A→Z
-            </ContextMenuItem>
-          )}
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => setShowMoveToBacklogDialog(true)}
-          >
-            <FolderInput className="w-3 h-3 mr-1.5 shrink-0" />
-            Move…
-            <span className="ml-auto text-[10px] text-muted-foreground">M</span>
-          </ContextMenuItem>
-          {allBacklogIds.length > 1 && (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">
-                Move to list
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                {allBacklogIds
-                  .filter((blId) => blId !== (item.backlogAssignments[treeId] ?? backlogId))
-                  .map((blId) => (
-                    <ContextMenuItem
-                      key={blId}
-                      className="text-xs"
-                      onSelect={() => moveWorkItemToBacklog(item.id, blId, treeId)}
-                    >
-                      {scrambleEnabled ? scrambleName(backlogs[blId]?.name ?? blId) : (backlogs[blId]?.name ?? blId)}
-                    </ContextMenuItem>
-                  ))}
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          )}
-          <ContextMenuItem
-            className="text-xs"
-            onSelect={() => setShowMoveToParentDialog(true)}
-          >
-            Reparent…
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          {labelsVisible && orgLabels.length > 0 && (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">Labels</ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-56 max-w-[calc(100vw-1.5rem)]" collisionPadding={8}>
-                {orgLabels.map((label) => {
-                  const isAssigned = (byEntity[`work_item:${item.id}`] ?? []).includes(label.id);
-                  return (
-                    <ContextMenuCheckboxItem
-                      key={label.id}
-                      className="text-xs"
-                      checked={isAssigned}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          assignLabel(label.id, "work_item", item.id, label.organizationId);
-                        } else {
-                          unassignLabel(label.id, "work_item", item.id);
-                        }
-                      }}
-                    >
-                      <span className="w-2 h-2 rounded-full mr-1 shrink-0 inline-block" style={{ backgroundColor: label.color }} />
-                      <span className="flex-1 min-w-0 truncate">{label.name}</span>
-                    </ContextMenuCheckboxItem>
-                  );
-                })}
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          )}
-          {teams.length > 0 && (
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="text-xs">Assign teams</ContextMenuSubTrigger>
-              <ContextMenuSubContent>
-                {teams.map((team) => {
-                  const isAssigned = teamIds.includes(team.id);
-                  return (
-                    <ContextMenuCheckboxItem
-                      key={team.id}
-                      className="text-xs"
-                      checked={isAssigned}
-                      onCheckedChange={(checked) => {
-                        const orgId = team.organization_id || activeOrgId;
-                        if (!orgId) return;
-                        if (checked) {
-                          assignTeam(item.id, team.id, orgId);
-                        } else {
-                          unassignTeam(item.id, team.id);
-                        }
-                      }}
-                    >
-                      {team.name}
-                    </ContextMenuCheckboxItem>
-                  );
-                })}
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          )}
-          {timeLoggingVisible && (
-            <ContextMenuItem className="text-xs" onSelect={() => setShowTimeLogDialog(true)}>
-              <Clock className="w-3 h-3 mr-2" />
-              Log time
-            </ContextMenuItem>
-          )}
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="text-xs">
-              <BellOff className="w-3 h-3 mr-2" />
-              Snooze
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent>
-              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionLaterToday())}>
-                <span className="flex-1">Later Today</span>
-                <span className="ml-4 text-muted-foreground text-[10px]">3h from now</span>
-              </ContextMenuItem>
-              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionTomorrowMorning())}>
-                <span className="flex-1">Tomorrow Morning</span>
-                <span className="ml-4 text-muted-foreground text-[10px]">7:00 AM</span>
-              </ContextMenuItem>
-              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionThisWeekend())}>
-                <span className="flex-1">This Weekend</span>
-                <span className="ml-4 text-muted-foreground text-[10px]">Sat 7:00 AM</span>
-              </ContextMenuItem>
-              <ContextMenuItem className="text-xs" onSelect={() => handleQuickSnooze(snoozeOptionNextWeek())}>
-                <span className="flex-1">Next Week</span>
-                <span className="ml-4 text-muted-foreground text-[10px]">Mon 7:00 AM</span>
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem className="text-xs" onSelect={() => setShowSnoozeDialog(true)}>
-                Pick Date / Time…
-              </ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          {isSnoozed && (
-            <ContextMenuItem className="text-xs" onSelect={() => unsnoozeWorkItem(item.id)}>
-              <Bell className="w-3 h-3 mr-2" />
-              Unsnooze
-            </ContextMenuItem>
-          )}
-          <ContextMenuItem className="text-xs" onSelect={() => setShowRespawnDialog(true)}>
-            <RotateCcw className="w-3 h-3 mr-2" />
-            Respawn settings
-          </ContextMenuItem>
-          <WorkItemDescriptionMenuItem onOpen={() => setShowDescriptionDialog(true)} />
-          <ContextMenuItem className="text-xs" onSelect={() => setShowHyperlinksDialog(true)}>
-            <Link2 className="w-3 h-3 mr-2" />
-            Hyperlinks
-          </ContextMenuItem>
-          {isSavingsIncomeEnabled(activeOrgId) && (
-            <ContextMenuItem className="text-xs" onSelect={() => setShowFinancialsDialog(true)}>
-              Savings & Income
-            </ContextMenuItem>
-          )}
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            className="text-xs text-destructive focus:text-destructive"
-            onSelect={handleDeleteClick}
-          >
-            <Trash2 className="w-3 h-3 mr-2" />
-            Delete
-          </ContextMenuItem>
-        </ContextMenuContent>
+        <ItemMenu
+          item={item}
+          treeId={treeId}
+          backlogId={backlogId}
+          moveTargets={allBacklogIds}
+          statuses={statuses}
+          features={features}
+          isScrambled={scrambleEnabled}
+          actOn={actOn}
+          dialogs={dialogs}
+          actions={actions}
+        />
       </ContextMenu>
 
-      {/* Dialogs */}
-      {showDescriptionDialog && <WorkItemDescriptionDialog workItemId={item.id} open onOpenChange={setShowDescriptionDialog} />}
-      <RespawnSettingsDialog
-        workItemId={item.id}
-        open={showRespawnDialog}
-        onOpenChange={setShowRespawnDialog}
-      />
-      <HyperlinksDialog
-        workItemId={item.id}
-        open={showHyperlinksDialog}
-        onOpenChange={setShowHyperlinksDialog}
-      />
-      {timeLoggingVisible && (
-        <TimeLogDialog
-          workItemId={item.id}
-          open={showTimeLogDialog}
-          onOpenChange={setShowTimeLogDialog}
-        />
-      )}
-      <SnoozeDialog
-        workItemIds={[item.id]}
-        open={showSnoozeDialog}
-        onOpenChange={setShowSnoozeDialog}
-      />
-      <MoveToParentDialog
-        workItemIds={[item.id]}
+      <ItemDialogs
+        item={item}
+        actOn={actOn}
         treeId={treeId}
-        open={showMoveToParentDialog}
-        onOpenChange={setShowMoveToParentDialog}
+        backlogId={item.backlogAssignments[treeId] ?? backlogId}
+        activeOrgId={activeOrgId}
+        timeLoggingVisible={features.timeLogging}
+        dialogs={dialogs}
+        actions={actions}
       />
-      <MoveToBacklogDialog
-        workItemIds={[item.id]}
-        treeId={treeId}
-        currentBacklogId={item.backlogAssignments[treeId] ?? backlogId}
-        open={showMoveToBacklogDialog}
-        onOpenChange={setShowMoveToBacklogDialog}
-      />
-      {isSavingsIncomeEnabled(activeOrgId) && (
-        <FinancialsDialog
-          workItemId={item.id}
-          open={showFinancialsDialog}
-          onOpenChange={setShowFinancialsDialog}
-        />
-      )}
       {isEditingPoints && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setIsEditingPoints(false)}>
           <div className="bg-card rounded-lg shadow-lg p-4 w-64" onClick={(e) => e.stopPropagation()}>
@@ -1885,44 +1499,6 @@ function BoardCard({
             </div>
           </div>
         </div>
-      )}
-
-      {showDeletePrompt && (
-        <ActionPrompt
-          title={`"${item.title}" is in ${assignmentCount} lists`}
-          options={[
-            {
-              label: "Remove from this list",
-              description: `Remove from "${backlogs[item.backlogAssignments[treeId]]?.name ?? backlogId}" only. Keeps it in other lists.`,
-              value: "remove-from-backlog",
-              isDefault: true,
-            },
-            {
-              label: "Delete everywhere",
-              description: "Permanently delete this item from all lists.",
-              value: "delete-everywhere",
-              variant: "destructive",
-            },
-          ]}
-          onSelect={handleDeleteChoice}
-          onCancel={() => setShowDeletePrompt(false)}
-        />
-      )}
-
-      {showSortPrompt && (
-        <ActionPrompt
-          title="Sort children A→Z?"
-          options={[
-            {
-              label: "Sort A→Z",
-              description: "Sorts children alphabetically. You can undo with Ctrl+Z.",
-              value: "confirm",
-              isDefault: true,
-            },
-          ]}
-          onSelect={handleSortChildren}
-          onCancel={() => setShowSortPrompt(false)}
-        />
       )}
     </>
   );

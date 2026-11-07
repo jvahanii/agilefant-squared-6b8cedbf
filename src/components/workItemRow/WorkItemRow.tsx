@@ -18,10 +18,8 @@ import { useAppStore } from "@/store/appStore";
 import { useBacklogStatusesStore, getEffectiveStatuses } from "@/store/backlogStatusesStore";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
-import { useScramblingEnabled } from "@/store/orgSettingsStore";
 import { type WorkItemStatus } from "@/types/models";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { toast } from "@/hooks/use-toast";
 import { useWorkItemFinancialTotals } from "@/hooks/useFinancialTotals";
 import { focusForEdit } from "@/lib/focusEdit";
@@ -31,11 +29,7 @@ import { peekCurrentUser } from "@/lib/currentUser";
 import { rowClickIntent } from "@/lib/rowClick";
 import { effectiveChildren } from "@/lib/workItemRows";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
-import { usePointsVisibleForTree } from "@/lib/pointsVisibility";
-import { useRatingsEnabled } from "@/lib/ratingsVisibility";
-import { useDeadlinesEnabled, formatDeadline, isDeadlinePassed } from "@/lib/workItemDeadline";
-import { useCreatedDatesEnabled } from "@/lib/workItemCreated";
-import { useStartEndDatesEnabled } from "@/lib/workItemStartEnd";
+import { formatDeadline, isDeadlinePassed } from "@/lib/workItemDeadline";
 import { StarRating } from "@/components/StarRating";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { formatDuration } from "../TimeLogDialog";
@@ -45,8 +39,9 @@ import { LabelNames } from "../LabelNames";
 import { JiraIssueTag } from "../JiraIssueTag";
 import { InlineWorkItemInput } from "./InlineWorkItemInput";
 import { RowBadges, RowWhereabouts } from "./RowBadges";
-import { RowDialogs } from "./RowDialogs";
-import { RowMenu, type RowActions, type RowFeatures, type RowStatus } from "./RowMenu";
+import { ItemDialogs } from "./ItemDialogs";
+import { ItemMenu, type ItemActions, type ItemStatus } from "./ItemMenu";
+import { rankToTopOfList, useCommonItemActions, useItemFeatures } from "./itemActions";
 import { RowPoints } from "./RowPoints";
 import { RowTeamsDropdown } from "./RowTeams";
 import {
@@ -61,7 +56,6 @@ import {
   scrollWorkItemIntoView,
   selectionOrItem,
 } from "./rowShared";
-import { startScramble } from "./scrambleActions";
 import { useRowDialogs } from "./useRowDialogs";
 
 export interface WorkItemNodeProps {
@@ -110,27 +104,19 @@ function WorkItemNodeContent({
   const expandRecursive = useAppStore((s) => s.expandWorkItemsRecursive);
   const collapseRecursive = useAppStore((s) => s.collapseWorkItemsRecursive);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
-  const guardedDeleteBulk = useDeleteWithTimeGuard();
   const isMobile = useIsMobile();
-  const { activeOrgId, labelsVisible, timeLoggingVisible, savingsIncomeVisible, burnupsVisible, teams } = shared;
+  const { activeOrgId, labelsVisible, timeLoggingVisible, savingsIncomeVisible, teams } = shared;
 
   // What shows, and what the menu offers: the organization's switches, and
-  // for some the row's own list's too.
-  const pointsVisible = usePointsVisibleForTree(treeId);
-  const orgRatingsEnabled = useRatingsEnabled();
-  const rowBacklogId = item?.backlogAssignments?.[treeId];
-  const rowBacklogRatings = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.ratingsEnabled ?? false : false));
-  const ratingsVisible = orgRatingsEnabled && rowBacklogRatings;
-  const deadlinesVisible = useDeadlinesEnabled();
-  const orgCreatedDatesEnabled = useCreatedDatesEnabled();
-  const rowBacklogCreatedDates = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.createdDatesEnabled ?? false : false));
-  const createdDatesVisible = orgCreatedDatesEnabled && rowBacklogCreatedDates;
-  // Start and end dates: the organization's switch offers them in the menu;
-  // the row's own list decides whether they also show on the row.
-  const startEndDatesEnabled = useStartEndDatesEnabled();
-  const rowBacklogStartEnd = useAppStore((s) => (rowBacklogId ? s.backlogs[rowBacklogId]?.startEndDatesEnabled ?? false : false));
-  const startEndDatesVisible = startEndDatesEnabled && rowBacklogStartEnd;
-  const scramblingEnabled = useScramblingEnabled();
+  // for some the item's own list's too.
+  const features = useItemFeatures(item, treeId);
+  const {
+    points: pointsVisible,
+    ratingsShown: ratingsVisible,
+    deadlines: deadlinesVisible,
+    createdDates: createdDatesVisible,
+    startEndShown: startEndDatesVisible,
+  } = features;
   const itemFinancials = useWorkItemFinancialTotals(workItemId);
   const itemTotalMinutesCached = useWorkItemTotalMinutes(workItemId);
   const itemTotalMinutes = timeLoggingVisible ? itemTotalMinutesCached : 0;
@@ -150,7 +136,7 @@ function WorkItemNodeContent({
   // unified — column labels ARE status labels. Subscribed so that realtime
   // updates draw the row again.
   const statusesByBacklog = useBacklogStatusesStore((s) => s.statusesByBacklog);
-  const treeStatuses = useMemo<RowStatus[]>(
+  const treeStatuses = useMemo<ItemStatus[]>(
     () => getEffectiveStatuses(backlogId).map((s) => ({ key: s.key, label: s.label, color: s.color, displayLabel: s.label })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [backlogId, statusesByBacklog],
@@ -207,7 +193,12 @@ function WorkItemNodeContent({
     setIsEditingTitle(false);
   };
 
-  const actions: RowActions = {
+  /** What the row's menu, buttons and shortcuts act on: the item, or the selection it is part of. */
+  const actOn = useCallback(() => selectionOrItem(workItemId), [workItemId]);
+  const common = useCommonItemActions({ workItemId, actOn, dialogs, activeOrgId });
+  const actions: ItemActions = {
+    ...common,
+    rankToTop: () => item && rankToTopOfList(item, treeId, backlogId),
     startRename: startEditingTitle,
     insertIcon: (shortcode) => {
       const ta = titleRef.current;
@@ -225,47 +216,23 @@ function WorkItemNodeContent({
         setIsEditingTitle(true);
       }
     },
-    editPoints: () => setIsEditingPoints(true),
+    // The points are edited in place on a desktop; a phone has them in the
+    // attributes sheet, which the menu opens without this.
+    editPoints: isMobile ? undefined : () => setIsEditingPoints(true),
     addChild: () => {
       if (!useAppStore.getState().expandedWorkItems.has(workItemId)) toggleExpand(workItemId);
       setIsAdding(true);
     },
-    duplicate: () => {
-      const newRootIds = useAppStore.getState().duplicateWorkItems([...selectionOrItem(workItemId)]);
-      // When a single item was duplicated, focus its title for inline rename.
-      if (newRootIds.length === 1) {
-        const newId = newRootIds[0];
+    viewElsewhere: {
+      label: "View in board",
+      view: "board",
+      run: () => {
+        setViewMode("board");
+        // Select the item after view mode change and React reconciliation
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent("shortcut:edit-title", { detail: { workItemId: newId } }));
-        }, 50);
-      }
-    },
-    remove: () => {
-      if (!item) return;
-      const state = useAppStore.getState();
-      const ids = [...selectionOrItem(workItemId)];
-      // An item in several lists may be meant to go from this one only: ask.
-      if (ids.some((id) => Object.keys(state.workItems[id]?.backlogAssignments ?? {}).length > 1)) {
-        show("deleteChoice", ids);
-        return;
-      }
-      const targets = ids.map((id) => ({ kind: "work_item" as const, id }));
-      const label = ids.length === 1 ? (state.workItems[ids[0]]?.title ?? "this item") : `${ids.length} items`;
-      guardedDeleteBulk(targets, label, () => state.deleteWorkItemsBulk(ids));
-    },
-    openMoveToList: () => show("moveToBacklog", selectionOrItem(workItemId)),
-    openReparent: () => show("moveToParent", selectionOrItem(workItemId)),
-    scramble: () => void startScramble(workItemId, activeOrgId, () => show("scramble", { kind: "scramble", mode: "set" })),
-    snoozeUntil: async (until) => {
-      if (!activeOrgId) return;
-      const { snoozeWorkItem } = useSnoozeStore.getState();
-      try {
-        await Promise.all(
-          selectionOrItem(workItemId).map((id) => snoozeWorkItem({ workItemId: id, organizationId: activeOrgId, snoozedUntil: until })),
-        );
-      } catch (err) {
-        console.error("Failed to snooze one or more items", err);
-      }
+          useAppStore.getState().selectWorkItem(workItemId, false);
+        }, 100);
+      },
     },
   };
   // The shortcut listeners below stay bound; they call the latest of these.
@@ -274,16 +241,6 @@ function WorkItemNodeContent({
   const teamCountRef = useRef(teams.length);
   teamCountRef.current = teams.length;
 
-  const features: RowFeatures = {
-    deadlines: deadlinesVisible,
-    createdDates: createdDatesVisible,
-    startEndDates: startEndDatesEnabled,
-    burnups: burnupsVisible,
-    points: pointsVisible,
-    labels: labelsVisible,
-    timeLogging: timeLoggingVisible,
-    scrambling: scramblingEnabled,
-  };
 
   const {
     attributes,
@@ -777,21 +734,15 @@ function WorkItemNodeContent({
           </div>
         </div>
         </ContextMenuTrigger>
-        <RowMenu
+        <ItemMenu
           item={item}
           treeId={treeId}
           backlogId={backlogId}
-          allBacklogIds={allBacklogIds}
+          moveTargets={allBacklogIds}
           statuses={treeStatuses}
           features={features}
           isScrambled={isScrambled}
-          isNameScrambled={isNameScrambled}
-          scrambledByMe={scrambledByMe}
-          isMobile={isMobile}
-          teams={teams}
-          orgLabels={shared.orgLabels}
-          activeOrgId={activeOrgId}
-          setViewMode={setViewMode}
+          actOn={actOn}
           dialogs={dialogs}
           actions={actions}
         />
@@ -827,8 +778,9 @@ function WorkItemNodeContent({
           onCancel={() => setIsAddingSibling(false)}
         />
       )}
-      <RowDialogs
+      <ItemDialogs
         item={item}
+        actOn={actOn}
         treeId={treeId}
         backlogId={backlogId}
         activeOrgId={activeOrgId}

@@ -6,7 +6,7 @@
  * pieces, so that taking it apart changes nothing: the snapshots are of the
  * row as it was.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import { render, act, fireEvent, screen, cleanup, within } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -364,6 +364,67 @@ describe("a row's right-click menu", () => {
       expect(menu && menuEntries(menu).slice(0, 30)).toMatchSnapshot();
     });
   }
+});
+
+describe("an item's menu, wherever the item is", () => {
+  // Each draws the whole panel up to three times.
+  vi.setConfig({ testTimeout: 20000 });
+  afterAll(() => vi.resetConfig());
+
+  /** The menu as the list row offers it, the board card, and the search result. */
+  async function menusOf(id: string) {
+    seed();
+    const row = menuEntries(openMenu(id));
+    cleanup();
+    seed({ view: "board" });
+    fireEvent.contextMenu(document.querySelector(`[data-board-card-id="${id}"]`)!);
+    const card = menuEntries(menus()[0]);
+    cleanup();
+    seed();
+    await act(async () => {
+      useAppStore.getState().setSearchQuery(`Item ${id}`);
+    });
+    await settle();
+    const result = [...document.querySelectorAll("[role=option]")].find((o) => o.textContent?.includes(`Item ${id}`))!;
+    fireEvent.contextMenu(result);
+    const found = menuEntries(menus()[0]);
+    return { row, card, found };
+  }
+
+  it("is the same on the board, but for going to the other view", async () => {
+    // B: the board shows the items without children.
+    const { row, card } = await menusOf("B");
+    expect(card).toEqual(row.map((e) => (e === "menuitem: View in board" ? "menuitem: View in list" : e)));
+  });
+
+  it("is the same in the search results, but for what needs the list itself", async () => {
+    const { row, found } = await menusOf("B");
+    // Nowhere to view it in but the list it opens in; and an icon goes into a
+    // name being typed, which a search result has none of.
+    expect(found).toEqual(row.filter((e) => e !== "menuitem: View in board" && e !== "menuitem: Insert icon"));
+  });
+
+  it("opens the same dialogs from a board card", async () => {
+    seed({ view: "board" });
+    fireEvent.contextMenu(document.querySelector('[data-board-card-id="B"]')!);
+    fireEvent.click(within(menus()[0]).getByText("Set deadline…"));
+    await settle();
+    expect(opened().dialogs).toEqual(["Deadline"]);
+  });
+
+  it("renames a search result by going to the item and opening its name there", async () => {
+    seed();
+    await act(async () => {
+      useAppStore.getState().setSearchQuery("Item B");
+    });
+    await settle();
+    const result = [...document.querySelectorAll("[role=option]")].find((o) => o.textContent?.includes("Item B"))!;
+    fireEvent.contextMenu(result);
+    fireEvent.click(within(menus()[0]).getByText("Rename"));
+    await settle(600);
+    expect(useAppStore.getState().selectedWorkItemIds).toEqual(["B"]);
+    expect(opened().inline).toEqual(["textarea=Item B"]);
+  });
 });
 
 describe("what each menu entry opens", () => {

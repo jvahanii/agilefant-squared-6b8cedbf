@@ -56,11 +56,15 @@ export function selectionOrItem(workItemId: string): string[] {
   return selected.length > 1 && selected.includes(workItemId) ? selected : [workItemId];
 }
 
-/** Do `change` to each of those items, as one step to undo when there are several. */
-export function changeSelectionOrItem(workItemId: string, change: (id: string) => void): void {
-  const ids = selectionOrItem(workItemId);
+/** Do `change` to each of `ids`, as one step to undo when there are several. */
+export function changeEach(ids: readonly string[], change: (id: string) => void): void {
   if (ids.length > 1) useAppStore.getState().runBulk(() => ids.forEach(change));
-  else change(workItemId);
+  else ids.forEach(change);
+}
+
+/** Do `change` to the item, or to the selection it is part of. */
+export function changeSelectionOrItem(workItemId: string, change: (id: string) => void): void {
+  changeEach(selectionOrItem(workItemId), change);
 }
 
 /** Whether this row is the one that answers for the selection: its first item's. */
@@ -128,4 +132,21 @@ export function listAndSublists(backlogId: string): string[] {
   };
   collect(backlogId);
   return ids;
+}
+
+/** The items an entry of an item's menu acts on, read when it is chosen. */
+export type ActOn = () => string[];
+
+/**
+ * Do `then` once the item's row is drawn in the list and selected — after
+ * going to it from somewhere else, such as a search result. Gives up after a
+ * few seconds, if the row never appears.
+ */
+export function whenRowReady(workItemId: string, then: () => void, timeoutMs = 3000): void {
+  const until = Date.now() + timeoutMs;
+  const check = () => {
+    if (rowIsDrawn(workItemId) && isFirstSelected(workItemId)) then();
+    else if (Date.now() < until) setTimeout(check, 50);
+  };
+  setTimeout(check, 50);
 }
