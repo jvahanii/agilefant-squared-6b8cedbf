@@ -14,7 +14,7 @@ import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react"
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
-import { isTimeLoggingEnabled, useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
 import { PatternTrainerHeaderButton } from "@/components/PatternTrainerHeaderButton";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
+import { handleShortcut, shortcutRowsByGroup } from "@/lib/shortcuts";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { ListScrambleDialogHost } from "@/components/ListScrambleDialogHost";
@@ -74,12 +75,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
 import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
 import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
-import { rowAfterStatusMove } from "@/lib/statusSelection";
-import { topLevelItems } from "@/lib/workItemRows";
-import { listSortModeFor, shownTopLevelOrder } from "@/store/listSortStore";
 
 // Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
@@ -103,23 +100,6 @@ interface PendingCrossTreeDrop {
   itemTitles: string[];
   sourceTreeName: string;
   targetTreeName: string;
-}
-
-/** Ask the list showing this work item to scroll it into view (WorkItemTreePanel listens). */
-function revealWorkItem(id: string) {
-  window.dispatchEvent(new CustomEvent("shortcut:reveal-work-item", { detail: { id } }));
-}
-
-/**
- * Scroll the backlog tree to a backlog's row. The tree is not virtualized, so
- * the row is already on the page; one frame lets the selection render first.
- */
-function revealBacklog(id: string) {
-  requestAnimationFrame(() => {
-    document
-      .querySelector(`[data-backlog-tree-row="${CSS.escape(id)}"]`)
-      ?.scrollIntoView({ block: "nearest" });
-  });
 }
 
 export default function AppLayout() {
@@ -158,7 +138,6 @@ function AppLayoutInner() {
   const { user } = useAuth();
   const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
   const moveWorkItemsToBacklog = useAppStore((s) => s.moveWorkItemsToBacklog);
-  const reorderBacklogAmongSiblings = useAppStore((s) => s.reorderBacklogAmongSiblings);
   const moveBacklog = useAppStore((s) => s.moveBacklog);
   const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
   const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
@@ -229,550 +208,20 @@ function AppLayoutInner() {
       dialogWasOpen = !!document.querySelector('[role="dialog"]');
     };
 
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-
-      // Global Undo/Redo
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) {
-        e.preventDefault();
-        redo();
-        return;
-      }
-
-      // Ctrl+A / Cmd+A selects all visible work items (skip when a dialog is open)
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
-        if (dialogWasOpen || document.querySelector('[role="dialog"]')) return;
-        const ids = visibleWorkItemIdsRef.current;
-        if (ids.length > 0) {
-          e.preventDefault();
-          useAppStore.setState({ selectedWorkItemIds: [...ids] });
-        }
-        return;
-      }
-
-      // Ctrl+K / Cmd+K opens the hyperlink dialog
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        const state = useAppStore.getState();
-        if (state.selectedWorkItemIds.length > 0) {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent("shortcut:edit-hyperlinks"));
-        }
-        return;
-      }
-
-      // Ctrl+D / Cmd+D duplicates the selected work item(s)
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d" && !e.shiftKey && !e.altKey) {
-        const state = useAppStore.getState();
-        if (state.selectedWorkItemIds.length > 0) {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent("shortcut:duplicate-selected"));
-        }
-        return;
-      }
-
-      if (isInput) return;
-
-      // Don't fire global shortcuts when a modal dialog is open (e.g. reparent dialog).
-      if (dialogWasOpen || document.querySelector('[role="dialog"]')) return;
-
-      const state = useAppStore.getState();
-
-      // Helper: set the status of every selected work item, as one undo step.
-      // In a list whose sort the change reorders (sorted by status), the
-      // selection then moves to the row below the old spot rather than
-      // following the item to its new group — see lib/statusSelection.
-      const setSelectedStatus = (status: WorkItemStatus, label: string) => {
-        if (state.selectedWorkItemIds.length === 0) return;
-        e.preventDefault();
-        const selectedIds = state.selectedWorkItemIds;
-        const backlogId = state.selectedBacklogIds[0];
-        const treeId = state.selectedTreeId;
-        const mode = listSortModeFor(backlogId);
-        const inList = !!backlogId && !!treeId && state.backlogs[backlogId]?.viewMode !== "board" && mode !== "rank";
-
-        // The backlogs the list shows: the selected one and everything under it.
-        const shown = new Set<string>();
-        const collect = (id: string) => {
-          shown.add(id);
-          state.backlogs[id]?.childrenIds.forEach(collect);
-        };
-        if (inList) collect(backlogId);
-        const topLevelOrder = (workItems: typeof state.workItems) =>
-          shownTopLevelOrder(topLevelItems(workItems, treeId!, shown), mode, treeId!).map(
-            (wi) => wi.id,
-          );
-        const visibleBefore = visibleWorkItemIdsRef.current;
-        const orderBefore = inList ? topLevelOrder(state.workItems) : [];
-
-        state.runBulk(() => {
-          selectedIds.forEach((id) => state.setWorkItemStatus(id, status));
-        });
-
-        if (inList) {
-          const after = useAppStore.getState();
-          const selected = new Set(selectedIds);
-          const next = rowAfterStatusMove({
-            visibleBefore,
-            selectedIds,
-            orderBefore,
-            orderAfter: topLevelOrder(after.workItems),
-            isInsideSelected: (id) => {
-              const seen = new Set<string>();
-              for (let p = getEffectiveParentId(after.workItems[id], treeId!); p && !seen.has(p); ) {
-                if (selected.has(p)) return true;
-                seen.add(p);
-                const parent = after.workItems[p];
-                p = parent ? getEffectiveParentId(parent, treeId!) : null;
-              }
-              return false;
-            },
-          });
-          if (next) after.selectWorkItem(next, false);
-        }
-        toast({ title: `Marked ${selectedIds.length} item(s) as ${label}` });
-      };
-
-      // Helper: move the single selected work item one step up (-1) or down (+1).
-      const reorderSelectedItem = (direction: -1 | 1) => {
-        if (state.selectedWorkItemIds.length < 1 || !state.selectedTreeId || state.selectedBacklogIds.length === 0)
-          return;
-        const anchorId = state.selectedWorkItemIds[0];
-        const wi = state.workItems[anchorId];
-        if (!wi) return;
-        const treeId = state.selectedTreeId;
-        const selectedBacklogId = state.selectedBacklogIds[0];
-        const selectedSet = new Set(state.selectedWorkItemIds);
-
-        const backlogIds: string[] = [];
-        const collectBacklogs = (id: string) => {
-          backlogIds.push(id);
-          state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-        };
-        collectBacklogs(selectedBacklogId);
-
-        const backlogIdSet = new Set(backlogIds);
-        const wiEffectiveParent = getEffectiveParentId(wi, treeId);
-        const anchorParentInContext =
-          wiEffectiveParent !== null &&
-          !!state.workItems[wiEffectiveParent] &&
-          backlogIdSet.has(state.workItems[wiEffectiveParent].backlogAssignments[treeId]);
-
-        // Neighbours are found in rank order, so this runs after any save of the
-        // shown order: in a list sorted by name, "up" means the item above on
-        // screen only once that order has become the rank.
-        const move = () => {
-          const current = useAppStore.getState().workItems;
-          const siblings = Object.values(current)
-            .filter((w) => {
-              if (!backlogIdSet.has(w.backlogAssignments[treeId])) return false;
-              const wEffectiveParent = getEffectiveParentId(w, treeId);
-              if (anchorParentInContext) {
-                return wEffectiveParent === wiEffectiveParent;
-              }
-              return (
-                wEffectiveParent === null ||
-                !current[wEffectiveParent] ||
-                !backlogIdSet.has(current[wEffectiveParent].backlogAssignments[treeId])
-              );
-            })
-            .sort((a, b) => {
-              const rankDiff = (a.ranks[a.backlogAssignments[treeId]] ?? 0) - (b.ranks[b.backlogAssignments[treeId]] ?? 0);
-              return rankDiff !== 0 ? rankDiff : a.id.localeCompare(b.id);
-            });
-
-          // Find drop-zone indices of all selected siblings; move the whole group by one
-          // neighbour up or down — top selected → zone-1 for up, bottom selected → zone+2 for down.
-          const selectedIdxs: number[] = [];
-          siblings.forEach((s, i) => { if (selectedSet.has(s.id)) selectedIdxs.push(i); });
-          if (selectedIdxs.length === 0) return;
-          const topIdx = selectedIdxs[0];
-          const botIdx = selectedIdxs[selectedIdxs.length - 1];
-          const newIdx = direction === -1 ? topIdx - 1 : botIdx + 2;
-          if (newIdx < 0 || newIdx > siblings.length) return;
-          useAppStore.getState().reorderWorkItemAmongSiblings(anchorId, newIdx, treeId, backlogIds);
-        };
-
-        requestTopLevelRerank({
-          treeId,
-          backlogId: selectedBacklogId,
-          backlogIds,
-          touchesTopLevel: !anchorParentInContext,
-          proceed: move,
-        });
-      };
-
-      // Alt+Enter or F2: rename the first selected work item
-      if ((e.altKey && e.key === "Enter") || e.key === "F2") {
-        if (state.selectedWorkItemIds.length > 0) {
-          e.preventDefault();
-          window.dispatchEvent(
-            new CustomEvent("shortcut:edit-title", {
-              detail: { workItemId: state.selectedWorkItemIds[0] },
-            }),
-          );
-        }
-        return;
-      }
-
-      if (e.ctrlKey || e.metaKey) return;
-
-      switch (e.key.toLowerCase()) {
-        case "t": {
-          // Rank to Top
-          if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            const treeId = state.selectedTreeId;
-            const selectedBacklogId = state.selectedBacklogIds[0];
-            const backlogIds: string[] = [];
-            const collectBacklogs = (id: string) => {
-              backlogIds.push(id);
-              state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-            };
-            collectBacklogs(selectedBacklogId);
-
-            // Call reorderWorkItemAmongSiblings once per unique sibling context rather
-            // than once per selected item.  Each call already moves every selected item
-            // in that context (because internally it uses itemsToMoveIds =
-            // selectedWorkItemIds), so calling it N times for N items in the same
-            // group creates N−1 redundant undo entries.  Those ghost entries make the
-            // user press Ctrl+Z N times to undo a single T press; the first N−1
-            // presses appear to do nothing, hiding the fact that one more Ctrl+Z will
-            // silently undo the move.  A subsequent drag/reorder then writes the
-            // undo'd state back to the DB, causing items to no longer be at the top
-            // on the next reload.
-            const backlogIdSet = new Set(backlogIds);
-            const contextOf = (id: string) => {
-              const wi = state.workItems[id];
-              if (!wi) return null;
-              const effectiveParentId = getEffectiveParentId(wi, treeId);
-              const parentInContext = effectiveParentId !== null &&
-                backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
-              return parentInContext ? `child:${effectiveParentId}` : "root";
-            };
-            requestTopLevelRerank({
-              treeId,
-              backlogId: selectedBacklogId,
-              backlogIds,
-              touchesTopLevel: state.selectedWorkItemIds.some((id) => contextOf(id) === "root"),
-              proceed: () => {
-                const processedContexts = new Set<string>();
-                state.runBulk(() => {
-                  state.selectedWorkItemIds.forEach((id) => {
-                    const contextKey = contextOf(id);
-                    if (!contextKey || processedContexts.has(contextKey)) return;
-                    processedContexts.add(contextKey);
-                    state.reorderWorkItemAmongSiblings(id, 0, treeId, backlogIds);
-                  });
-                });
-                toast({ title: `Moved ${state.selectedWorkItemIds.length} items to top` });
-              },
-            });
-          }
-          break;
-        }
-        case "b": {
-          if (e.shiftKey) {
-            // Rank to Bottom (Shift+B)
-            if (state.selectedWorkItemIds.length > 0 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-              e.preventDefault();
-              const treeId = state.selectedTreeId;
-              const selectedBacklogId = state.selectedBacklogIds[0];
-              const backlogIds: string[] = [];
-              const collectBacklogs = (id: string) => {
-                backlogIds.push(id);
-                state.backlogs[id]?.childrenIds.forEach(collectBacklogs);
-              };
-              collectBacklogs(selectedBacklogId);
-
-              // Same deduplication as "Move to top" – one call per sibling context.
-              const backlogIdSet = new Set(backlogIds);
-              const contextOf = (id: string) => {
-                const wi = state.workItems[id];
-                if (!wi) return null;
-                const effectiveParentId = getEffectiveParentId(wi, treeId);
-                const parentInContext = effectiveParentId !== null &&
-                  backlogIdSet.has(state.workItems[effectiveParentId]?.backlogAssignments[treeId] ?? "");
-                return parentInContext ? `child:${effectiveParentId}` : "root";
-              };
-              requestTopLevelRerank({
-                treeId,
-                backlogId: selectedBacklogId,
-                backlogIds,
-                touchesTopLevel: state.selectedWorkItemIds.some((id) => contextOf(id) === "root"),
-                proceed: () => {
-                  const processedContexts = new Set<string>();
-                  state.runBulk(() => {
-                    state.selectedWorkItemIds.forEach((id) => {
-                      const contextKey = contextOf(id);
-                      if (!contextKey || processedContexts.has(contextKey)) return;
-                      processedContexts.add(contextKey);
-                      state.reorderWorkItemAmongSiblings(id, 999999, treeId, backlogIds);
-                    });
-                  });
-                  toast({ title: `Moved ${state.selectedWorkItemIds.length} items to bottom` });
-                },
-              });
-            }
-          } else {
-            setSelectedStatus("blocked", "Blocked");
-          }
-          break;
-        }
-        case "n": {
-          setSelectedStatus("not_started", "Not Started");
-          break;
-        }
-        case "d": {
-          setSelectedStatus("done", "Done");
-          break;
-        }
-        case "i": {
-          setSelectedStatus("in_progress", "In Progress");
-          break;
-        }
-        case "p": {
-          setSelectedStatus("pending", "Pending");
-          break;
-        }
-        case "o": {
-          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            reorderSelectedItem(1);
-          } else if (state.selectedWorkItemIds.length === 0 && state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-            // Move selected backlog down among siblings
-            e.preventDefault();
-            const blId = state.selectedBacklogIds[0];
-            const bl = state.backlogs[blId];
-            if (bl) {
-              const parentId = bl.parentId;
-              const siblingIds = parentId ? (state.backlogs[parentId]?.childrenIds ?? []) : state.backlogTrees[state.selectedTreeId]?.rootBacklogIds ?? [];
-              const currentIdx = siblingIds.indexOf(blId);
-              const newIdx = currentIdx + 1;
-              if (newIdx < siblingIds.length) {
-                // Move to one position after current → swap with the next sibling
-                reorderBacklogAmongSiblings(blId, newIdx + 1, parentId, state.selectedTreeId);
-              }
-            }
-          }
-          break;
-        }
-        case "u": {
-          if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            reorderSelectedItem(-1);
-          } else if (state.selectedWorkItemIds.length === 0 && state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-            // Move selected backlog up among siblings
-            e.preventDefault();
-            const blId = state.selectedBacklogIds[0];
-            const bl = state.backlogs[blId];
-            if (bl) {
-              const parentId = bl.parentId;
-              const siblingIds = parentId ? (state.backlogs[parentId]?.childrenIds ?? []) : state.backlogTrees[state.selectedTreeId]?.rootBacklogIds ?? [];
-              const currentIdx = siblingIds.indexOf(blId);
-              const newIdx = currentIdx - 1;
-              if (newIdx >= 0) {
-                reorderBacklogAmongSiblings(blId, newIdx, parentId, state.selectedTreeId);
-              }
-            }
-          }
-          break;
-        }
-        case "a": {
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:open-team-assign"));
-          }
-          break;
-        }
-        case "h": {
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:edit-hyperlinks"));
-          }
-          break;
-        }
-        case "l": {
-          const orgId = useOrgStore.getState().activeOrgId;
-          // Shift+L reads the time back: who spent it on what. Unlike logging,
-          // it needs nothing selected — the question is about everyone.
-          if (e.shiftKey) {
-            if (isTimeLoggingEnabled(orgId)) {
-              e.preventDefault();
-              setShowTimesheet(true);
-            }
-            break;
-          }
-          if (state.selectedWorkItemIds.length > 0 && isTimeLoggingEnabled(orgId)) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:log-time"));
-          }
-          break;
-        }
-        case "m": {
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:move-to-backlog"));
-          }
-          break;
-        }
-        case "r": {
-          if (state.selectedWorkItemIds.length > 0) {
-            e.preventDefault();
-            window.dispatchEvent(new CustomEvent("shortcut:move-to-parent"));
-          }
-          break;
-        }
-        case "enter": {
-          if (e.shiftKey) {
-            e.preventDefault();
-            if (state.selectedWorkItemIds.length > 0) {
-              window.dispatchEvent(new CustomEvent("shortcut:add-child-workitem"));
-            } else if (state.selectedBacklogIds.length > 0) {
-              window.dispatchEvent(new CustomEvent("shortcut:add-child-backlog"));
-            }
-          } else {
-            e.preventDefault();
-            if (state.selectedWorkItemIds.length > 0) {
-              window.dispatchEvent(new CustomEvent("shortcut:add-sibling-workitem"));
-            } else if (state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-              window.dispatchEvent(new CustomEvent("shortcut:add-workitem"));
-            }
-          }
-          break;
-        }
-        case "delete":
-        case "backspace": {
-          if (state.selectedWorkItemIds.length > 0 || state.selectedBacklogIds.length > 0) {
-            e.preventDefault();
-            const direction = e.key === "Backspace" ? "up" : "down";
-            deleteDirectionRef.current = direction;
-            window.dispatchEvent(new CustomEvent("shortcut:delete-selected", { detail: { direction } }));
-          }
-          break;
-        }
-        case "?": {
-          e.preventDefault();
-          setShowShortcuts((s) => !s);
-          break;
-        }
-        case "escape": {
-          if (state.selectedWorkItemIds.length > 0) {
-            useAppStore.getState().clearWorkItemSelection();
-          }
-          break;
-        }
-        case "arrowright": {
-          if (state.selectedWorkItemIds.length > 0) {
-            const wiId = state.selectedWorkItemIds[0];
-            const wi = state.workItems[wiId];
-            if (wi && wi.childrenIds.length > 0) {
-              e.preventDefault();
-              useAppStore.getState().expandWorkItemsRecursive(wiId);
-            }
-          } else if (state.selectedBacklogIds.length > 0) {
-            const backlogId = state.selectedBacklogIds[0];
-            const backlog = state.backlogs[backlogId];
-            if (backlog && backlog.childrenIds.length > 0) {
-              e.preventDefault();
-              useAppStore.getState().expandBacklogsRecursive(backlogId);
-            }
-          }
-          break;
-        }
-        case "arrowleft": {
-          if (state.selectedWorkItemIds.length > 0) {
-            const wiId = state.selectedWorkItemIds[0];
-            const wi = state.workItems[wiId];
-            if (wi && wi.childrenIds.length > 0) {
-              e.preventDefault();
-              useAppStore.getState().collapseWorkItemsRecursive(wiId);
-            }
-          } else if (state.selectedBacklogIds.length > 0) {
-            const backlogId = state.selectedBacklogIds[0];
-            const backlog = state.backlogs[backlogId];
-            if (backlog && backlog.childrenIds.length > 0) {
-              e.preventDefault();
-              useAppStore.getState().collapseBacklogsRecursive(backlogId);
-            }
-          }
-          break;
-        }
-        case "arrowup":
-        case "arrowdown": {
-          // When the selected backlog is in board view mode, BoardView
-          // handles arrow-key navigation within columns.  Skip the flat-
-          // list based navigation here to avoid double-stepping.
-          const selectedBacklogId = state.selectedBacklogIds[0];
-          if (selectedBacklogId && state.backlogs[selectedBacklogId]?.viewMode === "board") return;
-
-          const isDown = e.key.toLowerCase() === "arrowdown";
-          if (state.selectedWorkItemIds.length > 0) {
-
-            
-            const ids = visibleWorkItemIdsRef.current;
-            
-            if (e.shiftKey) {
-              // Shift+Arrow: extend the selection range by one in the pressed direction.
-              const selectedIndices = state.selectedWorkItemIds
-                .map((id) => ids.indexOf(id))
-                .filter((i) => i !== -1)
-                .sort((a, b) => a - b);
-              if (selectedIndices.length === 0) break;
-
-              const nextIdx = isDown
-                ? Math.min(selectedIndices[selectedIndices.length - 1] + 1, ids.length - 1)
-                : Math.max(selectedIndices[0] - 1, 0);
-
-              const nextId = ids[nextIdx];
-              if (!nextId) break;
-              e.preventDefault();
-              // Add to selection if not already selected — never remove on extend.
-              if (!state.selectedWorkItemIds.includes(nextId)) {
-                useAppStore.getState().selectWorkItem(nextId, true);
-              }
-              revealWorkItem(nextId);
-            } else {
-              // Plain Arrow: single-select navigation (existing behavior).
-              const currentId = state.selectedWorkItemIds[state.selectedWorkItemIds.length - 1];
-              const idx = ids.indexOf(currentId);
-              if (idx === -1) break;
-              const nextIdx = isDown ? idx + 1 : idx - 1;
-              if (nextIdx < 0 || nextIdx >= ids.length) break;
-              e.preventDefault();
-              useAppStore.getState().selectWorkItem(ids[nextIdx]);
-              revealWorkItem(ids[nextIdx]);
-            }
-          } else if (state.selectedBacklogIds.length > 0) {
-            // Navigate selection through visible backlogs.
-            const currentId = state.selectedBacklogIds[state.selectedBacklogIds.length - 1];
-            const ids = visibleBacklogIdsRef.current;
-            const idx = ids.indexOf(currentId);
-            if (idx === -1) break;
-            const nextIdx = isDown ? idx + 1 : idx - 1;
-            if (nextIdx < 0 || nextIdx >= ids.length) break;
-            const nextBacklog = useAppStore.getState().backlogs[ids[nextIdx]];
-            if (!nextBacklog) break;
-            e.preventDefault();
-            useAppStore.getState().selectBacklog(ids[nextIdx], nextBacklog.treeId);
-            revealBacklog(ids[nextIdx]);
-          }
-          break;
-        }
-      }
-    };
+    // Every shortcut, what it is for and what it does: lib/shortcuts.ts.
+    const handler = (e: KeyboardEvent) =>
+      handleShortcut(e, {
+        dialogWasOpen,
+        toggleShortcutsOverlay: () => setShowShortcuts((s) => !s),
+        openTimesheet: () => setShowTimesheet(true),
+      });
     window.addEventListener("keydown", noteDialogOpen, true);
     window.addEventListener("keydown", handler);
     return () => {
       window.removeEventListener("keydown", noteDialogOpen, true);
       window.removeEventListener("keydown", handler);
     };
-  }, [undo, redo, moveWorkItemToBacklog, moveWorkItemsToBacklog, reorderWorkItemAmongSiblings]);
+  }, []);
 
   // Mobile swipe gesture handlers
   useEffect(() => {
@@ -1679,33 +1128,8 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const shortcuts = [
-    { keys: ["Enter"], description: "New root work item" },
-    { keys: ["Shift", "Enter"], description: "New child item" },
-    { keys: ["Del", "Bksp"], description: "Delete selected" },
-    { keys: ["Shift", "Click"], description: "Select range (Explorer style)" },
-    { keys: ["↑", "↓"], description: "Change selection up/down" },
-    { keys: ["U"], description: "Move item up" },
-    { keys: ["O"], description: "Move item down" },
-    { keys: ["→"], description: "Expand selected item or list branch" },
-    { keys: ["T"], description: "Move selection to Top" },
-    { keys: ["Shift", "B"], description: "Move selection to Bottom" },
-    { keys: ["Ctrl/Cmd", "A"], description: "Select all visible work items" },
-    { keys: ["Esc"], description: "Deselect items" },
-    { keys: ["Ctrl", "Z"], description: "Undo action" },
-    { keys: ["/"], description: "Focus search / filter bar" },
-    { keys: ["?"], description: "Toggle help" },
-    { keys: ["N"], description: "Set status: Not Started" },
-    { keys: ["D"], description: "Set status: Done" },
-    { keys: ["I"], description: "Set status: In Progress" },
-    { keys: ["P"], description: "Set status: Pending" },
-    { keys: ["B"], description: "Set status: Blocked" },
-    { keys: ["H", "Ctrl/Cmd+K"], description: "Edit hyperlinks" },
-    { keys: ["L"], description: "Log spent time" },
-    { keys: ["Shift", "L"], description: "Logged time: who spent it on what" },
-    { keys: ["M"], description: "Move to list…" },
-    { keys: ["R"], description: "Reparent (change parent)…" },
-  ];
+  // The same list the user guide shows, from the shortcuts themselves (lib/shortcuts.ts).
+  const sections = shortcutRowsByGroup();
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -1716,22 +1140,27 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
             <Keyboard className="w-4 h-4" /> Keyboard Shortcuts
           </h3>
         </div>
-        <div className="px-6 py-4 space-y-3">
-          {shortcuts.map((s, i) => (
-            <div key={i} className="flex items-center justify-between group">
-              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                {s.description}
-              </span>
-              <div className="flex items-center gap-1">
-                {s.keys.map((key, j) => (
-                  <kbd
-                    key={j}
-                    className="px-1.5 py-1 rounded border bg-muted text-[10px] font-mono shadow-sm min-w-[28px] text-center"
-                  >
-                    {key}
-                  </kbd>
-                ))}
-              </div>
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
+          {sections.map(({ group, rows }) => (
+            <div key={group} className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{group}</p>
+              {rows.map((s, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 group">
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                    {s.description}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {s.keys.map((key, j) => (
+                      <kbd
+                        key={j}
+                        className="px-1.5 py-1 rounded border bg-muted text-[10px] font-mono shadow-sm min-w-[28px] text-center"
+                      >
+                        {key}
+                      </kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

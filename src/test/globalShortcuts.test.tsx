@@ -152,7 +152,7 @@ async function press({ key, shift = false, ctrl = false, alt = false, target = "
     listOrder: s.backlogTrees[TREE]?.rootBacklogIds ?? [],
     expandedItems: [...s.expandedWorkItems].sort(),
     expandedLists: [...s.expandedBacklogs].sort(),
-    shortcutsOverlay: !!screen.queryByText("Toggle help"),
+    shortcutsOverlay: !!screen.queryByRole("heading", { name: "Keyboard Shortcuts" }),
     timesheet: !!screen.queryByTestId("timesheet-open"),
   };
 }

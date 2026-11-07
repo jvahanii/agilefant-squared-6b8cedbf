@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { shortcutRowsByGroup } from "@/lib/shortcuts";
 import {
   BookOpen,
   Layers,
@@ -325,58 +326,15 @@ function buildSections(): Section[] {
             Agilefant² is designed to be controlled entirely from the keyboard. Shortcuts only fire when no text input
             is focused.
           </p>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Navigation</p>
-            <ShortcutRow keys={["↑", "↓"]} description="Move selection up / down" />
-            <ShortcutRow keys={["→"]} description="Expand selected item or list branch" />
-            <ShortcutRow keys={["←"]} description="Collapse selected item or list branch" />
-            <ShortcutRow keys={["Esc"]} description="Deselect all items" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Creating & Deleting
-            </p>
-            <ShortcutRow keys={["Enter"]} description="New root work item" />
-            <ShortcutRow keys={["Shift", "Enter"]} description="New child item under selection" />
-            <ShortcutRow keys={["Del / Bksp"]} description="Delete selected item(s)" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reordering</p>
-            <ShortcutRow keys={["T"]} description="Move selection to Top" />
-            <ShortcutRow keys={["Shift", "B"]} description="Move selection to Bottom" />
-            <ShortcutRow keys={["O"]} description="Move item down one position" />
-            <ShortcutRow keys={["U"]} description="Move item up one position" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Status</p>
-            <ShortcutRow keys={["D"]} description="Set status: Done" />
-            <ShortcutRow keys={["I"]} description="Set status: In Progress" />
-            <ShortcutRow keys={["P"]} description="Set status: Pending" />
-            <ShortcutRow keys={["B"]} description="Set status: Blocked" />
-            <ShortcutRow keys={["N"]} description="Set status: Not Started" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reparenting & Moving</p>
-            <ShortcutRow keys={["R"]} description="Reparent: open Move to Parent dialog" />
-            <ShortcutRow keys={["M"]} description="Move to List dialog" />
-            <ShortcutRow keys={["Tab"]} description="Indent: make the last child of the item above at the same level" />
-            <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other</p>
-            <ShortcutRow keys={["Ctrl", "Z"]} description="Undo" />
-            <ShortcutRow keys={["Ctrl", "Y"]} description="Redo (also Ctrl+Shift+Z)" />
-            <ShortcutRow keys={["Ctrl", "D"]} description="Duplicate selected item(s)" />
-            <ShortcutRow keys={["Ctrl", "A"]} description="Select all visible work items" />
-            <ShortcutRow keys={["H"]} description="Edit hyperlinks" />
-            <ShortcutRow keys={["Ctrl", "K"]} description="Edit hyperlinks (alternative)" />
-            <ShortcutRow keys={["L"]} description="Log spent time" />
-            <ShortcutRow keys={["Shift", "L"]} description="Logged time: who spent it on what" />
-            <ShortcutRow keys={["Alt", "Enter"]} description="Rename first selected item" />
-            <ShortcutRow keys={["F2"]} description="Rename first selected item" />
-            <ShortcutRow keys={["/"]} description="Focus search bar" />
-            <ShortcutRow keys={["?"]} description="Toggle shortcuts overlay" />
-          </div>
+          {/* From the shortcuts themselves (lib/shortcuts.ts), so the guide says what the keys do. */}
+          {shortcutRowsByGroup().map(({ group, rows }) => (
+            <div key={group} className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{group}</p>
+              {rows.map((row, i) => (
+                <ShortcutRow key={i} keys={row.keys} description={row.description} />
+              ))}
+            </div>
+          ))}
         </div>
       ),
     },
