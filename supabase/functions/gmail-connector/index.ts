@@ -1,17 +1,20 @@
-// Per-user Gmail integration endpoint.
+// Per-user Gmail integration endpoint. The app names an action; each is a
+// function below, listed in ACTIONS at the end:
 //
-// Actions:
-//   status      → is this user connected, and to which address
-//   start       → returns the OAuth authorization URL (opened in a popup)
-//   exchange    → exchanges the OAuth code for a connection key and stores it
-//   disconnect  → forgets the stored connection
-//   preview     → runs a Gmail search and returns extracted links (no writes)
-//                 mode 'jobs' narrows the result to job postings
-//   import      → creates one work item per selected link
-//   mark_read   → removes the UNREAD label from the given messages
-//   career_pages     → reads the career pages a job search names and returns
-//                      the positions on them that are new to it (no writes)
-//   mark_pages_seen  → remembers positions a search need not offer again
+//   status              → is this user connected, and to which address
+//   start               → returns the OAuth authorization URL (opened in a popup)
+//   exchange            → exchanges the OAuth code for a connection key and stores it
+//   disconnect          → forgets the stored connection
+//   set_oauth_client    → sets the organization's own Google OAuth client
+//   remove_oauth_client → removes it, and the connections made through it
+//   preview             → runs a Gmail search and returns extracted links (no writes)
+//                         mode 'jobs' narrows the result to job postings
+//   posting_facts       → what a few postings say: deadline, closed, cities
+//   career_pages        → reads the career pages a job search names and returns
+//                         the positions on them that are new to it (no writes)
+//   mark_pages_seen     → remembers positions a search need not offer again
+//   mark_read           → removes the UNREAD label from the given messages
+//   import              → creates one work item per selected link
 
 import {
   adminClient,
@@ -128,6 +131,555 @@ async function dropOwnClientConnections(admin: ReturnType<typeof adminClient>, o
   if (error) throw error;
 }
 
+/** One request, as every action is handed it. */
+interface Request_ {
+  user: { id: string };
+  admin: ReturnType<typeof adminClient>;
+  // deno-lint-ignore no-explicit-any
+  body: any;
+  /** When the request arrived, for the timings a preview sends back. */
+  startedAt: number;
+  /** The organization the request names; refused without one. */
+  organizationIdFor: () => string;
+}
+
+/**
+ * Every connection action is about one organization, because the
+ * organization decides how Gmail is reached: its own Google OAuth client,
+ * or — for the few allowed it — the shared connector.
+ */
+// deno-lint-ignore no-explicit-any
+function requiredOrganizationId(body: any): string {
+  const id = String(body.organizationId ?? '');
+  if (!id) throw new Error('bad_request: organizationId is required');
+  return id;
+}
+
+async function status({ user, admin, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  await assertOrgMember(user.id, organizationId);
+  const shared = await usesSharedConnector(admin, organizationId);
+  const { data, error } = await forScope(
+    admin.from('gmail_connections').select('connected_email, updated_at').eq('user_id', user.id),
+    shared,
+    organizationId,
+  ).maybeSingle();
+  if (error) throw error;
+
+  // Never the secret: whether a client exists, and its public ID, is all
+  // the app needs to show.
+  const client = shared ? null : await getOAuthClient(admin, organizationId);
+  return json({
+    connected: !!data,
+    email: data?.connected_email ?? null,
+    updatedAt: data?.updated_at ?? null,
+    oauth: shared
+      ? { mode: 'shared' }
+      : {
+          mode: 'own',
+          configured: !!client,
+          clientId: client?.clientId ?? null,
+          updatedAt: client?.updatedAt ?? null,
+          canManage: await canManageOrg(user.id, organizationId),
+        },
+  });
+}
+
+async function start({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  const returnUrl = String(body.returnUrl ?? '');
+  if (!returnUrl) return json({ error: 'returnUrl is required' }, 400);
+  await assertOrgMember(user.id, organizationId);
+
+  if (await usesSharedConnector(admin, organizationId)) {
+    // A reconnect — typically after the connection expired — must name the
+    // stored key, or the gateway refuses to start.
+    const { data: existing, error: existingError } = await forScope(
+      admin.from('gmail_connections').select('connection_key_encrypted').eq('user_id', user.id),
+      true,
+      organizationId,
+    ).maybeSingle();
+    if (existingError) throw existingError;
+    const existingKey = existing?.connection_key_encrypted
+      ? await decryptKey(existing.connection_key_encrypted as string)
+      : null;
+    try {
+      return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
+    } catch (e) {
+      // The gateway remembers every app user it has connected, and demands
+      // that user's own key to connect them again. Two ways that fails:
+      //   - Disconnect deleted the key, so the old identity cannot be
+      //     reconnected at all (400, "Reconnect requires the
+      //     X-Connection-Api-Key header");
+      //   - the stored key belongs to a fresh identity started after such a
+      //     disconnect, not to the user id (403, "X-Connection-Api-Key does
+      //     not match this app_user_id").
+      // Nothing else uses the app user id — every later call names the
+      // connection by its key — so start a fresh identity, and the
+      // exchange replaces the stored connection with the new one.
+      const message = e instanceof Error ? e.message : String(e);
+      if (!/X-Connection-Api-Key/i.test(message)) throw e;
+      console.error('gateway refused the reconnect for this app user; starting a fresh app user:', message);
+      return json({ authorizationUrl: await startAuthorize(crypto.randomUUID(), returnUrl, null) });
+    }
+  }
+
+  const client = await getOAuthClient(admin, organizationId);
+  if (!client) throw new Error('oauth_client_not_configured');
+  const redirectUri = callbackUri(returnUrl);
+  const state = await signState(env('APP_USER_CONNECTION_KEY_SECRET'), {
+    userId: user.id,
+    organizationId,
+    redirectUri,
+  });
+  return json({
+    authorizationUrl: googleAuthorizeUrl({ clientId: client.clientId, redirectUri, state, scopes: GOOGLE_SCOPES }),
+  });
+}
+
+async function exchange({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  const code = String(body.code ?? '');
+  if (!code) return json({ error: 'code is required' }, 400);
+  await assertOrgMember(user.id, organizationId);
+
+  const shared = await usesSharedConnector(admin, organizationId);
+  let secret: string;
+  let auth: GmailAuth;
+  if (shared) {
+    secret = await exchangeCode(code);
+    auth = { kind: 'gateway', key: secret };
+  } else {
+    const client = await getOAuthClient(admin, organizationId);
+    if (!client) throw new Error('oauth_client_not_configured');
+    // The state proves this code was asked for by this user, for this
+    // organization, in the last few minutes — and carries the redirect URI
+    // Google requires the exchange to repeat.
+    const started = await verifyState(env('APP_USER_CONNECTION_KEY_SECRET'), String(body.state ?? ''), {
+      userId: user.id,
+      organizationId,
+    });
+    const tokens = await exchangeGoogleCode(fetch, client, code, started.r);
+    secret = tokens.refreshToken;
+    auth = { kind: 'google', token: async () => tokens.accessToken };
+  }
+
+  let email: string | null = null;
+  try {
+    const profile = await gmail<{ emailAddress?: string }>(auth, '/users/me/profile');
+    email = profile.emailAddress ?? null;
+  } catch (e) {
+    console.error('profile lookup failed', e instanceof Error ? e.message : e);
+  }
+  const { error } = await admin.from('gmail_connections').upsert(
+    {
+      user_id: user.id,
+      organization_id: shared ? null : organizationId,
+      provider: shared ? 'gateway' : 'google',
+      connected_email: email,
+      connection_key_encrypted: await encryptKey(secret),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,organization_id' },
+  );
+  if (error) throw error;
+  return json({ connected: true, email });
+}
+
+async function disconnect({ user, admin, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  const shared = await usesSharedConnector(admin, organizationId);
+  const { error } = await forScope(
+    admin.from('gmail_connections').delete().eq('user_id', user.id),
+    shared,
+    organizationId,
+  );
+  if (error) throw error;
+  return json({ connected: false });
+}
+
+async function setOauthClient({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  const clientId = String(body.clientId ?? '').trim();
+  const clientSecret = String(body.clientSecret ?? '').trim();
+  if (!(await canManageOrg(user.id, organizationId))) {
+    throw new Error("forbidden: only an owner or admin can set this organization's Google OAuth client");
+  }
+  if (await usesSharedConnector(admin, organizationId)) {
+    return json({ error: 'This organization uses the shared connector and needs no OAuth client of its own.' }, 400);
+  }
+  if (!looksLikeGoogleClientId(clientId)) {
+    return json(
+      { error: 'That does not look like a Google OAuth client ID. It ends in .apps.googleusercontent.com.' },
+      400,
+    );
+  }
+  if (!clientSecret) return json({ error: 'The client secret is required.' }, 400);
+
+  const previous = await getOAuthClient(admin, organizationId);
+  const { error } = await admin.from('organization_google_oauth_clients').upsert(
+    {
+      organization_id: organizationId,
+      client_id: clientId,
+      client_secret_encrypted: await encryptKey(clientSecret),
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'organization_id' },
+  );
+  if (error) throw error;
+
+  // A refresh token is bound to the client that issued it. A new secret for
+  // the same client keeps every connection working; a different client
+  // leaves them all unusable, so they go now rather than failing later.
+  if (previous && previous.clientId !== clientId) {
+    await dropOwnClientConnections(admin, organizationId);
+  }
+  return json({ configured: true, clientId });
+}
+
+async function removeOauthClient({ user, admin, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  if (!(await canManageOrg(user.id, organizationId))) {
+    throw new Error("forbidden: only an owner or admin can remove this organization's Google OAuth client");
+  }
+  const { error } = await admin.from('organization_google_oauth_clients').delete().eq('organization_id', organizationId);
+  if (error) throw error;
+  // Nothing can refresh these without the client, so none may linger
+  // looking connected.
+  await dropOwnClientConnections(admin, organizationId);
+  return json({ configured: false });
+}
+
+async function preview({ user, admin, body, startedAt }: Request_): Promise<Response> {
+  const query = String(body.query ?? '').trim();
+  const organizationId = String(body.organizationId ?? '');
+  if (!query) return json({ error: 'query is required' }, 400);
+  if (!organizationId) return json({ error: 'organizationId is required' }, 400);
+  // Side by side: both are questions to the database, and the search waits
+  // on both either way. A caller who is no member is refused before the
+  // connection read alongside is put to any use.
+  const [, { auth }] = await Promise.all([
+    assertOrgMember(user.id, organizationId),
+    getConnection(admin, user.id, organizationId),
+  ]);
+  const max = Math.min(Number(body.maxMessages ?? 25) || 25, MAX_MESSAGES);
+  const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
+  // How long each part of the search took, sent back with the answer: the
+  // search has been slow without anything saying where.
+  const timings: Record<string, number> = { signIn: Date.now() - startedAt };
+  const searchStarted = Date.now();
+  const links = await searchLinks(auth, query, max, mode);
+  timings.gmail = Date.now() - searchStarted;
+
+  if (mode === 'jobs') {
+    // Job ad import keeps no ledger, so "already imported" is answered from
+    // the work items themselves: is this posting's URL already attached to
+    // one. Informational only -- the import never refuses.
+    const backlogId = String(body.backlogId ?? '');
+    const treeId = String(body.treeId ?? '');
+    // The tree, not the backlog, is the unit that matters: the same posting
+    // filed into another list a week ago is still one you have seen. Falls
+    // back on the backlog alone for a caller that names no tree.
+    const tree = treeId
+      ? await postingsInTree(admin, organizationId, treeId, timings)
+      : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
+    const inTree = tree.urls;
+    const present = backlogId && !treeId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
+    // The same fetch the import does, so the picker can show a deadline and
+    // say when a posting has stopped taking applications -- LinkedIn leaves
+    // those up, and importing one as work is a waste of a row. Capped inside
+    // fillDeadlines; a posting that will not load simply tells us nothing.
+    // A caller that reads the postings itself, batch by batch through
+    // posting_facts so it can show how far it has got, says so.
+    const detailStarted = Date.now();
+    const detailed = body.readPostings === false ? links : await fillDeadlines(links);
+    // What each ad read said about needing Finnish, kept under the ad's
+    // address for the public page's filter. It costs no request: the
+    // pages have just been read.
+    if (body.readPostings !== false) await rememberLanguage(adminClient(), detailed);
+    timings.postings = Date.now() - detailStarted;
+    timings.total = Date.now() - startedAt;
+    return json({
+      timings,
+      links: detailed.map((l) => ({
+        ...l,
+        alreadyImported: inTree.has(l.url) || present.has(l.url),
+        // Which list it is already in, so the picker can say where rather
+        // than leaving the reader to go and find it.
+        alreadyIn: inTree.get(l.url) ?? null,
+        // The same job under another link — from another board, or
+        // re-posted — is known by its name instead. Offered as candidates:
+        // whether a same-named item in another city is the same job is for
+        // the picker to say, once it knows where this one is.
+        ...(inTree.has(l.url) || present.has(l.url) ? {} : lookalikesOf(tree.names, l.title)),
+      })),
+    });
+  }
+
+  const messageIds = [...new Set(links.map((l) => l.messageId))];
+  const { data: existing, error } = await admin
+    .from('gmail_imported_links')
+    .select('gmail_message_id, normalized_url')
+    .eq('organization_id', organizationId)
+    .in('gmail_message_id', messageIds.length ? messageIds : ['none']);
+  if (error) throw error;
+  const seen = new Set((existing ?? []).map((r) => `${r.gmail_message_id}|${r.normalized_url}`));
+
+  return json({
+    links: links.map((l) => ({ ...l, alreadyImported: seen.has(`${l.messageId}|${l.url}`) })),
+  });
+}
+
+/**
+ * What a few postings say about themselves -- deadline, closed -- the same
+ * reading the preview does, for a picker that asks batch by batch so it can
+ * show its progress. Small batches keep each call well inside the
+ * function's time limit.
+ */
+async function postingFacts({ user, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  await assertOrgMember(user.id, organizationId);
+  const raw: unknown[] = Array.isArray(body.links) ? body.links : [];
+  if (raw.length > POSTING_FACTS_BATCH) {
+    return json({ error: `at most ${POSTING_FACTS_BATCH} postings per call` }, 400);
+  }
+  const links = raw
+    .map((l) => l as { url?: unknown; date?: unknown })
+    .filter((l) => typeof l.url === 'string' && /^https?:\/\//i.test(l.url))
+    .map((l) => ({ url: l.url as string, date: typeof l.date === 'string' ? l.date : undefined }));
+  const read = await fillDeadlines(links);
+  await rememberLanguage(adminClient(), read);
+  return json({
+    facts: read.map((l) => ({
+      url: l.url,
+      deadline: (l as { deadline?: string }).deadline ?? null,
+      applicationsClosed: (l as { applicationsClosed?: boolean }).applicationsClosed === true,
+      cities: (l as { cities?: string[] }).cities ?? null,
+    })),
+  });
+}
+
+/**
+ * The career pages a job search names: every position on each, less the
+ * ones already in the tree and the ones an earlier run listed and left.
+ * What mail does by being read, a page cannot — it shows the same list
+ * every day — so only what is new to this search is worth a row.
+ */
+async function careerPages({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  await assertOrgMember(user.id, organizationId);
+  const queryId = String(body.queryId ?? '');
+  const treeId = String(body.treeId ?? '');
+  const saved = await savedSearch(admin, organizationId, queryId);
+  const urls = (saved.career_pages ?? []).slice(0, MAX_CAREER_PAGES);
+  if (urls.length === 0) return json({ pages: [], links: [] });
+
+  const tree = treeId
+    ? await postingsInTree(admin, organizationId, treeId)
+    : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
+  const inTree = tree.urls;
+  const { data: seenRows, error: seenError } = await admin
+    .from('career_page_seen_postings')
+    .select('url')
+    .eq('query_id', queryId);
+  if (seenError) throw seenError;
+  const seen = new Set((seenRows ?? []).map((r) => r.url as string));
+
+  const now = new Date().toISOString();
+  const pages: Array<{
+    url: string;
+    messageId: string;
+    name: string;
+    /** Positions the page lists. */
+    total: number;
+    /** Of those, already in the tree. */
+    inLists: number;
+    /** Of the rest, listed by an earlier run and left. */
+    skipped: number;
+    /** Why the page told us nothing, when it did not. */
+    error: string | null;
+  }> = [];
+  const links: unknown[] = [];
+  for (const url of urls) {
+    const source = careerPageFor(url);
+    const page = { url, messageId: pageMessageId(url), name: source?.company ?? url, total: 0, inLists: 0, skipped: 0 };
+    if (!source) {
+      pages.push({ ...page, error: 'This page is not one Agilefant knows how to read.' });
+      continue;
+    }
+    const res = await fetchPosting(url);
+    if ('error' in res || !res.ok) {
+      const status = 'error' in res ? res.error : res.status;
+      pages.push({ ...page, error: status ? `The page answered ${status}.` : 'The page did not answer.' });
+      continue;
+    }
+    const all = positionsAsLinks(source, url, await res.text(), now);
+    const known = all.filter((l) => inTree.has(l.url));
+    const left = all.filter((l) => !inTree.has(l.url) && seen.has(l.url));
+    const fresh = all.filter((l) => !inTree.has(l.url) && !seen.has(l.url));
+    pages.push({
+      ...page,
+      total: all.length,
+      inLists: known.length,
+      skipped: left.length,
+      // Not an error to have nothing open — but it is also what a changed
+      // layout looks like, and silence would hide that.
+      error: all.length === 0 ? 'No open positions were found on the page. If it lists some, its layout has changed.' : null,
+    });
+    links.push(
+      ...fresh.map((l) => ({ ...l, alreadyImported: false, alreadyIn: null, ...lookalikesOf(tree.names, l.title) })),
+    );
+  }
+  return json({ pages, links });
+}
+
+async function markPagesSeen({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  await assertOrgMember(user.id, organizationId);
+  const queryId = String(body.queryId ?? '');
+  await savedSearch(admin, organizationId, queryId);
+  const raw: unknown[] = Array.isArray(body.urls) ? body.urls : [];
+  const urls = [...new Set(raw.filter((u): u is string => typeof u === 'string' && /^https?:\/\//i.test(u)))];
+  if (urls.length === 0) return json({ marked: 0 });
+  if (urls.length > 500) return json({ error: 'too many positions at once' }, 400);
+  const { error } = await admin
+    .from('career_page_seen_postings')
+    .upsert(
+      urls.map((url) => ({ query_id: queryId, organization_id: organizationId, url })),
+      { onConflict: 'query_id,url', ignoreDuplicates: true },
+    );
+  if (error) throw error;
+  return json({ marked: urls.length });
+}
+
+async function markRead({ user, admin, body, organizationIdFor }: Request_): Promise<Response> {
+  const organizationId = organizationIdFor();
+  const messageIds = Array.isArray(body.messageIds) ? body.messageIds.map(String).filter(Boolean) : [];
+  if (messageIds.length === 0) return json({ error: 'messageIds is required' }, 400);
+  if (messageIds.length > 500) return json({ error: 'too many messages at once' }, 400);
+  await assertOrgMember(user.id, organizationId);
+
+  const { auth } = await getConnection(admin, user.id, organizationId);
+  await markMessagesRead(auth, messageIds);
+  return json({ marked: [...new Set(messageIds)].length });
+}
+
+async function importLinks({ user, admin, body }: Request_): Promise<Response> {
+  const organizationId = String(body.organizationId ?? '');
+  const treeId = String(body.treeId ?? '');
+  const backlogId = String(body.backlogId ?? '');
+  const links = Array.isArray(body.links) ? (body.links as ExtractedLink[]) : [];
+  if (!organizationId || !treeId || !backlogId) {
+    return json({ error: 'organizationId, treeId and backlogId are required' }, 400);
+  }
+  if (links.length === 0) return json({ error: 'links is required' }, 400);
+  await assertOrgMember(user.id, organizationId);
+
+  const mapped = links.map((l) => ({
+    url: String(l.url ?? ''),
+    title: String(l.title ?? ''),
+    messageId: String(l.messageId ?? ''),
+    subject: String(l.subject ?? ''),
+    from: String(l.from ?? ''),
+    date: String(l.date ?? ''),
+    // A deadline the picker already knows — from the mail, or read through
+    // the browser from a board that refuses this server (Jobly) — is kept,
+    // so the import does not fetch again and come back with nothing. Only
+    // a well-formed date: it becomes part of the item's name.
+    ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
+    ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
+    // Cities the picker already read — through the browser, for a board
+    // that refuses this server. They go into the item's name, so only short
+    // strings, and not many. An empty list is kept: it means the page was
+    // read and named none, so the import need not read it again.
+    ...(Array.isArray(l.cities)
+      ? {
+          cities: l.cities
+            .filter((c): c is string => typeof c === 'string' && c.trim().length > 0 && c.length <= 60)
+            .map((c) => c.trim())
+            .slice(0, 10),
+        }
+      : {}),
+    // The star rating the picker gave this row; the import drops one out
+    // of range rather than failing.
+    ...(Number.isInteger(l.rating) && (l.rating as number) >= 1 && (l.rating as number) <= 5
+      ? { rating: l.rating }
+      : {}),
+  })).filter((l) => l.url && l.messageId);
+
+  // Auto-place: which list a posting belongs in is decided here, after the
+  // deadlines have been read, not in the browser before them. Splitting in
+  // the picker meant a posting whose closing date the import discovered got
+  // that date in its name while sitting in the "no deadline" list.
+  const auto = body.autoPlace as { datedBacklogId?: string; undatedBacklogId?: string } | undefined;
+  const datedBacklogId = String(auto?.datedBacklogId ?? '');
+  const undatedBacklogId = String(auto?.undatedBacklogId ?? '');
+  if (datedBacklogId && undatedBacklogId) {
+    const read = body.mode === 'jobs' ? await fillDeadlines(mapped) : mapped;
+    if (body.mode === 'jobs') await rememberLanguage(adminClient(), read);
+    const dated = read.filter((l) => (l as { deadline?: string }).deadline);
+    const undated = read.filter((l) => !(l as { deadline?: string }).deadline);
+    const base = {
+      organizationId,
+      treeId,
+      queryId: body.queryId ?? null,
+      allowDuplicates: body.mode === 'jobs',
+      fetchDeadlines: false,
+    };
+    const results = await Promise.all([
+      dated.length
+        ? importLinksAsWorkItems(admin, { ...base, backlogId: datedBacklogId }, dated)
+        : Promise.resolve(null),
+      undated.length
+        ? importLinksAsWorkItems(admin, { ...base, backlogId: undatedBacklogId }, undated)
+        : Promise.resolve(null),
+    ]);
+    return json({
+      created: results.reduce((n, r) => n + (r?.created ?? 0), 0),
+      skipped: results.reduce((n, r) => n + (r?.skipped ?? 0), 0),
+      collapsed: results.reduce((n, r) => n + (r?.collapsed ?? 0), 0),
+      createdIds: results.flatMap((r) => r?.createdIds ?? []),
+      // A posting lands in one list or the other, so the two maps never
+      // share a URL.
+      createdByUrl: Object.assign({}, ...results.map((r) => r?.createdByUrl ?? {})),
+      dated: dated.length,
+      undated: undated.length,
+    });
+  }
+
+  const result = await importLinksAsWorkItems(
+    admin,
+    {
+      organizationId,
+      treeId,
+      backlogId,
+      queryId: body.queryId ?? null,
+      // Job ad import keeps no memory of what it has imported.
+      allowDuplicates: body.mode === 'jobs',
+      fetchDeadlines: body.mode === 'jobs',
+    },
+    mapped,
+  );
+  return json(result);
+}
+
+/** The actions, by the name the app sends. */
+const ACTIONS: Record<string, (request: Request_) => Promise<Response>> = {
+  status,
+  start,
+  exchange,
+  disconnect,
+  set_oauth_client: setOauthClient,
+  remove_oauth_client: removeOauthClient,
+  preview,
+  posting_facts: postingFacts,
+  career_pages: careerPages,
+  mark_pages_seen: markPagesSeen,
+  mark_read: markRead,
+  import: importLinks,
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -140,521 +692,10 @@ Deno.serve(async (req) => {
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const action = String(body.action ?? 'status');
 
-    // Every connection action is about one organization, because the
-    // organization decides how Gmail is reached: its own Google OAuth client,
-    // or — for the few allowed it — the shared connector.
-    const organizationIdFor = (): string => {
-      const id = String(body.organizationId ?? '');
-      if (!id) throw new Error('bad_request: organizationId is required');
-      return id;
-    };
-
-    if (action === 'status') {
-      const organizationId = organizationIdFor();
-      await assertOrgMember(user.id, organizationId);
-      const shared = await usesSharedConnector(admin, organizationId);
-      const { data, error } = await forScope(
-        admin.from('gmail_connections').select('connected_email, updated_at').eq('user_id', user.id),
-        shared,
-        organizationId,
-      ).maybeSingle();
-      if (error) throw error;
-
-      // Never the secret: whether a client exists, and its public ID, is all
-      // the app needs to show.
-      const client = shared ? null : await getOAuthClient(admin, organizationId);
-      return json({
-        connected: !!data,
-        email: data?.connected_email ?? null,
-        updatedAt: data?.updated_at ?? null,
-        oauth: shared
-          ? { mode: 'shared' }
-          : {
-              mode: 'own',
-              configured: !!client,
-              clientId: client?.clientId ?? null,
-              updatedAt: client?.updatedAt ?? null,
-              canManage: await canManageOrg(user.id, organizationId),
-            },
-      });
-    }
-
-    if (action === 'start') {
-      const organizationId = organizationIdFor();
-      const returnUrl = String(body.returnUrl ?? '');
-      if (!returnUrl) return json({ error: 'returnUrl is required' }, 400);
-      await assertOrgMember(user.id, organizationId);
-
-      if (await usesSharedConnector(admin, organizationId)) {
-        // A reconnect — typically after the connection expired — must name the
-        // stored key, or the gateway refuses to start.
-        const { data: existing, error: existingError } = await forScope(
-          admin.from('gmail_connections').select('connection_key_encrypted').eq('user_id', user.id),
-          true,
-          organizationId,
-        ).maybeSingle();
-        if (existingError) throw existingError;
-        const existingKey = existing?.connection_key_encrypted
-          ? await decryptKey(existing.connection_key_encrypted as string)
-          : null;
-        try {
-          return json({ authorizationUrl: await startAuthorize(user.id, returnUrl, existingKey) });
-        } catch (e) {
-          // The gateway remembers every app user it has connected, and demands
-          // that user's own key to connect them again. Two ways that fails:
-          //   - Disconnect deleted the key, so the old identity cannot be
-          //     reconnected at all (400, "Reconnect requires the
-          //     X-Connection-Api-Key header");
-          //   - the stored key belongs to a fresh identity started after such a
-          //     disconnect, not to the user id (403, "X-Connection-Api-Key does
-          //     not match this app_user_id").
-          // Nothing else uses the app user id — every later call names the
-          // connection by its key — so start a fresh identity, and the
-          // exchange replaces the stored connection with the new one.
-          const message = e instanceof Error ? e.message : String(e);
-          if (!/X-Connection-Api-Key/i.test(message)) throw e;
-          console.error('gateway refused the reconnect for this app user; starting a fresh app user:', message);
-          return json({ authorizationUrl: await startAuthorize(crypto.randomUUID(), returnUrl, null) });
-        }
-      }
-
-      const client = await getOAuthClient(admin, organizationId);
-      if (!client) throw new Error('oauth_client_not_configured');
-      const redirectUri = callbackUri(returnUrl);
-      const state = await signState(env('APP_USER_CONNECTION_KEY_SECRET'), {
-        userId: user.id,
-        organizationId,
-        redirectUri,
-      });
-      return json({
-        authorizationUrl: googleAuthorizeUrl({ clientId: client.clientId, redirectUri, state, scopes: GOOGLE_SCOPES }),
-      });
-    }
-
-    if (action === 'exchange') {
-      const organizationId = organizationIdFor();
-      const code = String(body.code ?? '');
-      if (!code) return json({ error: 'code is required' }, 400);
-      await assertOrgMember(user.id, organizationId);
-
-      const shared = await usesSharedConnector(admin, organizationId);
-      let secret: string;
-      let auth: GmailAuth;
-      if (shared) {
-        secret = await exchangeCode(code);
-        auth = { kind: 'gateway', key: secret };
-      } else {
-        const client = await getOAuthClient(admin, organizationId);
-        if (!client) throw new Error('oauth_client_not_configured');
-        // The state proves this code was asked for by this user, for this
-        // organization, in the last few minutes — and carries the redirect URI
-        // Google requires the exchange to repeat.
-        const started = await verifyState(env('APP_USER_CONNECTION_KEY_SECRET'), String(body.state ?? ''), {
-          userId: user.id,
-          organizationId,
-        });
-        const tokens = await exchangeGoogleCode(fetch, client, code, started.r);
-        secret = tokens.refreshToken;
-        auth = { kind: 'google', token: async () => tokens.accessToken };
-      }
-
-      let email: string | null = null;
-      try {
-        const profile = await gmail<{ emailAddress?: string }>(auth, '/users/me/profile');
-        email = profile.emailAddress ?? null;
-      } catch (e) {
-        console.error('profile lookup failed', e instanceof Error ? e.message : e);
-      }
-      const { error } = await admin.from('gmail_connections').upsert(
-        {
-          user_id: user.id,
-          organization_id: shared ? null : organizationId,
-          provider: shared ? 'gateway' : 'google',
-          connected_email: email,
-          connection_key_encrypted: await encryptKey(secret),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,organization_id' },
-      );
-      if (error) throw error;
-      return json({ connected: true, email });
-    }
-
-    if (action === 'disconnect') {
-      const organizationId = organizationIdFor();
-      const shared = await usesSharedConnector(admin, organizationId);
-      const { error } = await forScope(
-        admin.from('gmail_connections').delete().eq('user_id', user.id),
-        shared,
-        organizationId,
-      );
-      if (error) throw error;
-      return json({ connected: false });
-    }
-
-    if (action === 'set_oauth_client') {
-      const organizationId = organizationIdFor();
-      const clientId = String(body.clientId ?? '').trim();
-      const clientSecret = String(body.clientSecret ?? '').trim();
-      if (!(await canManageOrg(user.id, organizationId))) {
-        throw new Error("forbidden: only an owner or admin can set this organization's Google OAuth client");
-      }
-      if (await usesSharedConnector(admin, organizationId)) {
-        return json({ error: 'This organization uses the shared connector and needs no OAuth client of its own.' }, 400);
-      }
-      if (!looksLikeGoogleClientId(clientId)) {
-        return json(
-          { error: 'That does not look like a Google OAuth client ID. It ends in .apps.googleusercontent.com.' },
-          400,
-        );
-      }
-      if (!clientSecret) return json({ error: 'The client secret is required.' }, 400);
-
-      const previous = await getOAuthClient(admin, organizationId);
-      const { error } = await admin.from('organization_google_oauth_clients').upsert(
-        {
-          organization_id: organizationId,
-          client_id: clientId,
-          client_secret_encrypted: await encryptKey(clientSecret),
-          updated_by: user.id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'organization_id' },
-      );
-      if (error) throw error;
-
-      // A refresh token is bound to the client that issued it. A new secret for
-      // the same client keeps every connection working; a different client
-      // leaves them all unusable, so they go now rather than failing later.
-      if (previous && previous.clientId !== clientId) {
-        await dropOwnClientConnections(admin, organizationId);
-      }
-      return json({ configured: true, clientId });
-    }
-
-    if (action === 'remove_oauth_client') {
-      const organizationId = organizationIdFor();
-      if (!(await canManageOrg(user.id, organizationId))) {
-        throw new Error("forbidden: only an owner or admin can remove this organization's Google OAuth client");
-      }
-      const { error } = await admin.from('organization_google_oauth_clients').delete().eq('organization_id', organizationId);
-      if (error) throw error;
-      // Nothing can refresh these without the client, so none may linger
-      // looking connected.
-      await dropOwnClientConnections(admin, organizationId);
-      return json({ configured: false });
-    }
-
-    if (action === 'preview') {
-      const query = String(body.query ?? '').trim();
-      const organizationId = String(body.organizationId ?? '');
-      if (!query) return json({ error: 'query is required' }, 400);
-      if (!organizationId) return json({ error: 'organizationId is required' }, 400);
-      // Side by side: both are questions to the database, and the search waits
-      // on both either way. A caller who is no member is refused before the
-      // connection read alongside is put to any use.
-      const [, { auth }] = await Promise.all([
-        assertOrgMember(user.id, organizationId),
-        getConnection(admin, user.id, organizationId),
-      ]);
-      const max = Math.min(Number(body.maxMessages ?? 25) || 25, MAX_MESSAGES);
-      const mode: LinkMode = body.mode === 'jobs' ? 'jobs' : 'links';
-      // How long each part of the search took, sent back with the answer: the
-      // search has been slow without anything saying where.
-      const timings: Record<string, number> = { signIn: Date.now() - startedAt };
-      const searchStarted = Date.now();
-      const links = await searchLinks(auth, query, max, mode);
-      timings.gmail = Date.now() - searchStarted;
-
-      if (mode === 'jobs') {
-        // Job ad import keeps no ledger, so "already imported" is answered from
-        // the work items themselves: is this posting's URL already attached to
-        // one. Informational only -- the import never refuses.
-        const backlogId = String(body.backlogId ?? '');
-        const treeId = String(body.treeId ?? '');
-        // The tree, not the backlog, is the unit that matters: the same posting
-        // filed into another list a week ago is still one you have seen. Falls
-        // back on the backlog alone for a caller that names no tree.
-        const tree = treeId
-          ? await postingsInTree(admin, organizationId, treeId, timings)
-          : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
-        const inTree = tree.urls;
-        const present = backlogId && !treeId ? await urlsInBacklog(admin, backlogId) : new Set<string>();
-        // The same fetch the import does, so the picker can show a deadline and
-        // say when a posting has stopped taking applications -- LinkedIn leaves
-        // those up, and importing one as work is a waste of a row. Capped inside
-        // fillDeadlines; a posting that will not load simply tells us nothing.
-        // A caller that reads the postings itself, batch by batch through
-        // posting_facts so it can show how far it has got, says so.
-        const detailStarted = Date.now();
-        const detailed = body.readPostings === false ? links : await fillDeadlines(links);
-        // What each ad read said about needing Finnish, kept under the ad's
-        // address for the public page's filter. It costs no request: the
-        // pages have just been read.
-        if (body.readPostings !== false) await rememberLanguage(adminClient(), detailed);
-        timings.postings = Date.now() - detailStarted;
-        timings.total = Date.now() - startedAt;
-        return json({
-          timings,
-          links: detailed.map((l) => ({
-            ...l,
-            alreadyImported: inTree.has(l.url) || present.has(l.url),
-            // Which list it is already in, so the picker can say where rather
-            // than leaving the reader to go and find it.
-            alreadyIn: inTree.get(l.url) ?? null,
-            // The same job under another link — from another board, or
-            // re-posted — is known by its name instead. Offered as candidates:
-            // whether a same-named item in another city is the same job is for
-            // the picker to say, once it knows where this one is.
-            ...(inTree.has(l.url) || present.has(l.url) ? {} : lookalikesOf(tree.names, l.title)),
-          })),
-        });
-      }
-
-      const messageIds = [...new Set(links.map((l) => l.messageId))];
-      const { data: existing, error } = await admin
-        .from('gmail_imported_links')
-        .select('gmail_message_id, normalized_url')
-        .eq('organization_id', organizationId)
-        .in('gmail_message_id', messageIds.length ? messageIds : ['none']);
-      if (error) throw error;
-      const seen = new Set((existing ?? []).map((r) => `${r.gmail_message_id}|${r.normalized_url}`));
-
-      return json({
-        links: links.map((l) => ({ ...l, alreadyImported: seen.has(`${l.messageId}|${l.url}`) })),
-      });
-    }
-
-    // What a few postings say about themselves -- deadline, closed -- the same
-    // reading the preview does, for a picker that asks batch by batch so it can
-    // show its progress. Small batches keep each call well inside the
-    // function's time limit.
-    if (action === 'posting_facts') {
-      const organizationId = organizationIdFor();
-      await assertOrgMember(user.id, organizationId);
-      const raw: unknown[] = Array.isArray(body.links) ? body.links : [];
-      if (raw.length > POSTING_FACTS_BATCH) {
-        return json({ error: `at most ${POSTING_FACTS_BATCH} postings per call` }, 400);
-      }
-      const links = raw
-        .map((l) => l as { url?: unknown; date?: unknown })
-        .filter((l) => typeof l.url === 'string' && /^https?:\/\//i.test(l.url))
-        .map((l) => ({ url: l.url as string, date: typeof l.date === 'string' ? l.date : undefined }));
-      const read = await fillDeadlines(links);
-      await rememberLanguage(adminClient(), read);
-      return json({
-        facts: read.map((l) => ({
-          url: l.url,
-          deadline: (l as { deadline?: string }).deadline ?? null,
-          applicationsClosed: (l as { applicationsClosed?: boolean }).applicationsClosed === true,
-          cities: (l as { cities?: string[] }).cities ?? null,
-        })),
-      });
-    }
-
-    // The career pages a job search names: every position on each, less the
-    // ones already in the tree and the ones an earlier run listed and left.
-    // What mail does by being read, a page cannot — it shows the same list
-    // every day — so only what is new to this search is worth a row.
-    if (action === 'career_pages') {
-      const organizationId = organizationIdFor();
-      await assertOrgMember(user.id, organizationId);
-      const queryId = String(body.queryId ?? '');
-      const treeId = String(body.treeId ?? '');
-      const saved = await savedSearch(admin, organizationId, queryId);
-      const urls = (saved.career_pages ?? []).slice(0, MAX_CAREER_PAGES);
-      if (urls.length === 0) return json({ pages: [], links: [] });
-
-      const tree = treeId
-        ? await postingsInTree(admin, organizationId, treeId)
-        : { urls: new Map<string, string>(), names: new Map() as NamesInTree };
-      const inTree = tree.urls;
-      const { data: seenRows, error: seenError } = await admin
-        .from('career_page_seen_postings')
-        .select('url')
-        .eq('query_id', queryId);
-      if (seenError) throw seenError;
-      const seen = new Set((seenRows ?? []).map((r) => r.url as string));
-
-      const now = new Date().toISOString();
-      const pages: Array<{
-        url: string;
-        messageId: string;
-        name: string;
-        /** Positions the page lists. */
-        total: number;
-        /** Of those, already in the tree. */
-        inLists: number;
-        /** Of the rest, listed by an earlier run and left. */
-        skipped: number;
-        /** Why the page told us nothing, when it did not. */
-        error: string | null;
-      }> = [];
-      const links: unknown[] = [];
-      for (const url of urls) {
-        const source = careerPageFor(url);
-        const page = { url, messageId: pageMessageId(url), name: source?.company ?? url, total: 0, inLists: 0, skipped: 0 };
-        if (!source) {
-          pages.push({ ...page, error: 'This page is not one Agilefant knows how to read.' });
-          continue;
-        }
-        const res = await fetchPosting(url);
-        if ('error' in res || !res.ok) {
-          const status = 'error' in res ? res.error : res.status;
-          pages.push({ ...page, error: status ? `The page answered ${status}.` : 'The page did not answer.' });
-          continue;
-        }
-        const all = positionsAsLinks(source, url, await res.text(), now);
-        const known = all.filter((l) => inTree.has(l.url));
-        const left = all.filter((l) => !inTree.has(l.url) && seen.has(l.url));
-        const fresh = all.filter((l) => !inTree.has(l.url) && !seen.has(l.url));
-        pages.push({
-          ...page,
-          total: all.length,
-          inLists: known.length,
-          skipped: left.length,
-          // Not an error to have nothing open — but it is also what a changed
-          // layout looks like, and silence would hide that.
-          error: all.length === 0 ? 'No open positions were found on the page. If it lists some, its layout has changed.' : null,
-        });
-        links.push(
-          ...fresh.map((l) => ({ ...l, alreadyImported: false, alreadyIn: null, ...lookalikesOf(tree.names, l.title) })),
-        );
-      }
-      return json({ pages, links });
-    }
-
-    if (action === 'mark_pages_seen') {
-      const organizationId = organizationIdFor();
-      await assertOrgMember(user.id, organizationId);
-      const queryId = String(body.queryId ?? '');
-      await savedSearch(admin, organizationId, queryId);
-      const raw: unknown[] = Array.isArray(body.urls) ? body.urls : [];
-      const urls = [...new Set(raw.filter((u): u is string => typeof u === 'string' && /^https?:\/\//i.test(u)))];
-      if (urls.length === 0) return json({ marked: 0 });
-      if (urls.length > 500) return json({ error: 'too many positions at once' }, 400);
-      const { error } = await admin
-        .from('career_page_seen_postings')
-        .upsert(
-          urls.map((url) => ({ query_id: queryId, organization_id: organizationId, url })),
-          { onConflict: 'query_id,url', ignoreDuplicates: true },
-        );
-      if (error) throw error;
-      return json({ marked: urls.length });
-    }
-
-    if (action === 'mark_read') {
-      const organizationId = organizationIdFor();
-      const messageIds = Array.isArray(body.messageIds) ? body.messageIds.map(String).filter(Boolean) : [];
-      if (messageIds.length === 0) return json({ error: 'messageIds is required' }, 400);
-      if (messageIds.length > 500) return json({ error: 'too many messages at once' }, 400);
-      await assertOrgMember(user.id, organizationId);
-
-      const { auth } = await getConnection(admin, user.id, organizationId);
-      await markMessagesRead(auth, messageIds);
-      return json({ marked: [...new Set(messageIds)].length });
-    }
-
-    if (action === 'import') {
-      const organizationId = String(body.organizationId ?? '');
-      const treeId = String(body.treeId ?? '');
-      const backlogId = String(body.backlogId ?? '');
-      const links = Array.isArray(body.links) ? (body.links as ExtractedLink[]) : [];
-      if (!organizationId || !treeId || !backlogId) {
-        return json({ error: 'organizationId, treeId and backlogId are required' }, 400);
-      }
-      if (links.length === 0) return json({ error: 'links is required' }, 400);
-      await assertOrgMember(user.id, organizationId);
-
-      const mapped = links.map((l) => ({
-        url: String(l.url ?? ''),
-        title: String(l.title ?? ''),
-        messageId: String(l.messageId ?? ''),
-        subject: String(l.subject ?? ''),
-        from: String(l.from ?? ''),
-        date: String(l.date ?? ''),
-        // A deadline the picker already knows — from the mail, or read through
-        // the browser from a board that refuses this server (Jobly) — is kept,
-        // so the import does not fetch again and come back with nothing. Only
-        // a well-formed date: it becomes part of the item's name.
-        ...(wellFormedDeadline(l.deadline) ? { deadline: wellFormedDeadline(l.deadline) } : {}),
-        ...(l.deadlineOpen === true ? { deadlineOpen: true } : {}),
-        // Cities the picker already read — through the browser, for a board
-        // that refuses this server. They go into the item's name, so only short
-        // strings, and not many. An empty list is kept: it means the page was
-        // read and named none, so the import need not read it again.
-        ...(Array.isArray(l.cities)
-          ? {
-              cities: l.cities
-                .filter((c): c is string => typeof c === 'string' && c.trim().length > 0 && c.length <= 60)
-                .map((c) => c.trim())
-                .slice(0, 10),
-            }
-          : {}),
-        // The star rating the picker gave this row; the import drops one out
-        // of range rather than failing.
-        ...(Number.isInteger(l.rating) && (l.rating as number) >= 1 && (l.rating as number) <= 5
-          ? { rating: l.rating }
-          : {}),
-      })).filter((l) => l.url && l.messageId);
-
-      // Auto-place: which list a posting belongs in is decided here, after the
-      // deadlines have been read, not in the browser before them. Splitting in
-      // the picker meant a posting whose closing date the import discovered got
-      // that date in its name while sitting in the "no deadline" list.
-      const auto = body.autoPlace as { datedBacklogId?: string; undatedBacklogId?: string } | undefined;
-      const datedBacklogId = String(auto?.datedBacklogId ?? '');
-      const undatedBacklogId = String(auto?.undatedBacklogId ?? '');
-      if (datedBacklogId && undatedBacklogId) {
-        const read = body.mode === 'jobs' ? await fillDeadlines(mapped) : mapped;
-        if (body.mode === 'jobs') await rememberLanguage(adminClient(), read);
-        const dated = read.filter((l) => (l as { deadline?: string }).deadline);
-        const undated = read.filter((l) => !(l as { deadline?: string }).deadline);
-        const base = {
-          organizationId,
-          treeId,
-          queryId: body.queryId ?? null,
-          allowDuplicates: body.mode === 'jobs',
-          fetchDeadlines: false,
-        };
-        const results = await Promise.all([
-          dated.length
-            ? importLinksAsWorkItems(admin, { ...base, backlogId: datedBacklogId }, dated)
-            : Promise.resolve(null),
-          undated.length
-            ? importLinksAsWorkItems(admin, { ...base, backlogId: undatedBacklogId }, undated)
-            : Promise.resolve(null),
-        ]);
-        return json({
-          created: results.reduce((n, r) => n + (r?.created ?? 0), 0),
-          skipped: results.reduce((n, r) => n + (r?.skipped ?? 0), 0),
-          collapsed: results.reduce((n, r) => n + (r?.collapsed ?? 0), 0),
-          createdIds: results.flatMap((r) => r?.createdIds ?? []),
-          // A posting lands in one list or the other, so the two maps never
-          // share a URL.
-          createdByUrl: Object.assign({}, ...results.map((r) => r?.createdByUrl ?? {})),
-          dated: dated.length,
-          undated: undated.length,
-        });
-      }
-
-      const result = await importLinksAsWorkItems(
-        admin,
-        {
-          organizationId,
-          treeId,
-          backlogId,
-          queryId: body.queryId ?? null,
-          // Job ad import keeps no memory of what it has imported.
-          allowDuplicates: body.mode === 'jobs',
-          fetchDeadlines: body.mode === 'jobs',
-        },
-        mapped,
-      );
-      return json(result);
-    }
-
-    return json({ error: `unknown action: ${action}` }, 400);
+    // Own names only: "toString" is no action.
+    const handle = Object.hasOwn(ACTIONS, action) ? ACTIONS[action] : undefined;
+    if (!handle) return json({ error: `unknown action: ${action}` }, 400);
+    return await handle({ user, admin, body, startedAt, organizationIdFor: () => requiredOrganizationId(body) });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('gmail-connector error:', message);
