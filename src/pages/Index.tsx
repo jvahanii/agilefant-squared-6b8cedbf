@@ -20,6 +20,7 @@ import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 import { prefetchLoadExtras } from '@/store/loadExtras';
+import { forgetOutgoingShares } from '@/store/supabaseSync';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -91,6 +92,8 @@ const Index = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'backlog_tree_shares' },
         () => {
+          // Who our trees are shared with has changed: read it again.
+          forgetOutgoingShares();
           loadData().then(() => {
             if (isTimeLoggingEnabled(activeOrgId)) {
               loadTimeEntries(activeOrgId);

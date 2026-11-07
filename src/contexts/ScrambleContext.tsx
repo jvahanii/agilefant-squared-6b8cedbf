@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchIsSuperuser } from "@/lib/superuser";
 
 interface ScrambleContextType {
   scrambleEnabled: boolean;
@@ -21,17 +21,13 @@ export function ScrambleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from("profiles")
-      .select("is_superuser")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
+    // Shared with the organization menu: one read for both (superuser.ts).
+    fetchIsSuperuser(user.id)
+      .then(({ isSuperuser: su, error }) => {
         if (error) {
           console.error("ScrambleContext: failed to fetch superuser status", error);
           return;
         }
-        const su = data?.is_superuser ?? false;
         setIsSuperuser(su);
         // Security: only superusers may have a role override. Clear any
         // sessionStorage-injected override for non-superusers so that admin-only

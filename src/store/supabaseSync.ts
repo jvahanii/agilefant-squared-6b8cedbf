@@ -201,6 +201,39 @@ async function loadAllRowsIn(table: string, column: string, values: string[]): P
   );
 }
 
+// ─── Who our trees are shared with ─────────────────────────────────────────
+
+type OutgoingShares = { data: Array<{ organization_id: string; tree_id: string }> | null; error: unknown };
+let outgoingShares: { key: string; at: number; promise: Promise<OutgoingShares> } | null = null;
+/** How long one read of them serves everyone who asks. */
+export const OUTGOING_SHARES_REUSE_MS = 10_000;
+
+/**
+ * The organizations our trees are shared with. A load reads them, and so does
+ * the live-update hook, to listen to those organizations too — a couple of
+ * seconds apart, the same rows. One read now serves both, for a few seconds;
+ * a share added or removed forgets it (forgetOutgoingShares).
+ */
+export function readOutgoingShares(treeIds: readonly string[]): Promise<OutgoingShares> {
+  const key = [...treeIds].sort().join(',');
+  if (outgoingShares && outgoingShares.key === key && Date.now() - outgoingShares.at < OUTGOING_SHARES_REUSE_MS) {
+    return outgoingShares.promise;
+  }
+  const promise = Promise.resolve(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id') as any).in('tree_id', [...treeIds]),
+  ).then((res: OutgoingShares) => {
+    if (res.error && outgoingShares?.promise === promise) outgoingShares = null;
+    return res;
+  });
+  outgoingShares = { key, at: Date.now(), promise };
+  return promise;
+}
+
+export function forgetOutgoingShares(): void {
+  outgoingShares = null;
+}
+
 // ─── Load all data from Supabase (filtered by org) ────────────────────────
 
 export async function loadFromSupabase(
@@ -257,7 +290,7 @@ export async function loadFromSupabase(
     : Promise.resolve({ data: [], error: null });
 
   const outgoingSharesPromise = ownTreeIds.length > 0
-    ? supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id').in('tree_id', ownTreeIds)
+    ? readOutgoingShares(ownTreeIds)
     : Promise.resolve({ data: [], error: null });
 
   const [sharedTreesRes, outgoingSharesRes] = await Promise.all([sharedTreesPromise, outgoingSharesPromise]);

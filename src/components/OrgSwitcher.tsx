@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchIsSuperuser } from "@/lib/superuser";
 
 export function OrgSwitcher() {
   const { user, signOut } = useAuth();
@@ -30,12 +30,8 @@ export function OrgSwitcher() {
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from("profiles")
-      .select("is_superuser")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
+    // Shared with the scramble setting: one read for both (superuser.ts).
+    fetchIsSuperuser(user.id).then(({ isSuperuser }) => setIsSuperuser(isSuperuser));
   }, [user?.id]);
 
   const handleCreate = async (e: React.FormEvent) => {

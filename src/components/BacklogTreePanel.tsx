@@ -1,4 +1,5 @@
 import { useAppStore } from "@/store/appStore";
+import { useTreeSharesStore } from "@/store/treeSharesStore";
 import { ChevronRight, ChevronDown, ChevronUp, Plus, Trash2, GripVertical, Share2, Users, Clock, Tag, TrendingUp, Globe, Lock } from "lucide-react";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import {
@@ -67,50 +68,19 @@ interface TreeShare {
 }
 
 function useTreeShares(treeIds: string[]) {
-  const [shares, setShares] = useState<Record<string, TreeShare[]>>({});
+  // Read once for every tree, and shared with the item panel (treeSharesStore.ts).
+  const shares = useTreeSharesStore((s) => s.byTree);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const treeIdsKey = treeIds.join(",");
 
   useEffect(() => {
     if (treeIds.length === 0 || !activeOrgId) return;
+    useTreeSharesStore.getState().ensure(activeOrgId, treeIds);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeIdsKey, activeOrgId]);
 
-    const load = async () => {
-      // Who every tree is shared with, in one request; one a tree only where
-      // that is not to be had (a database without get_trees_sharing_info).
-      const result: Record<string, TreeShare[]> = {};
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const all = await (supabase as any).rpc("get_trees_sharing_info", { _tree_ids: treeIds, _exclude_org_id: activeOrgId });
-      if (!all.error && Array.isArray(all.data)) {
-        for (const row of all.data as Array<{ tree_id: string; org_id: string; org_name: string }>) {
-          (result[row.tree_id] ??= []).push({ orgId: row.org_id, orgName: row.org_name });
-        }
-        setShares(result);
-        return;
-      }
-
-      const results = await Promise.all(
-        treeIds.map((treeId) =>
-          supabase.rpc("get_tree_sharing_info", {
-            _tree_id: treeId,
-            _exclude_org_id: activeOrgId,
-          }).then((res) => ({ treeId, data: res.data, error: res.error }))
-        )
-      );
-
-      for (const { treeId, data, error } of results) {
-        if (error || !data || data.length === 0) continue;
-        result[treeId] = (data as any[]).map((row: any) => ({
-          orgId: row.org_id,
-          orgName: row.org_name,
-        }));
-      }
-
-      setShares(result);
-    };
-
-    load();
-
+  useEffect(() => {
+    if (!activeOrgId) return;
     // Subscribe to realtime changes on the shares table so the icon
     // updates immediately for all parties (both when a share is added and removed).
     const channel = supabase
@@ -118,13 +88,12 @@ function useTreeShares(treeIds: string[]) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "backlog_tree_shares" },
-        () => { load(); }
+        () => { useTreeSharesStore.getState().refresh(); }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [treeIdsKey, activeOrgId]);
+  }, [activeOrgId]);
 
   return shares;
 }

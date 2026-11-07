@@ -16,6 +16,7 @@ import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
+import { readOutgoingShares } from '@/store/supabaseSync';
 
 /**
  * Subscribes to Supabase Realtime Postgres changes for the active organization's
@@ -584,11 +585,8 @@ export function useRealtimeSync() {
       const ourTreeIds = [...accessibleTreeIds].filter((id) => id.startsWith(`${activeOrgId}::`));
       if (ourTreeIds.length === 0) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from('backlog_tree_shares')
-        .select('organization_id')
-        .in('tree_id', ourTreeIds);
+      // The same read the load makes, shared with it (readOutgoingShares).
+      const { data, error } = await readOutgoingShares(ourTreeIds);
 
       if (error) {
         console.error('useRealtimeSync: failed to fetch outgoing tree shares', error);

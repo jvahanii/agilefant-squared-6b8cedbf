@@ -61,6 +61,7 @@ import { useScrambledListsStore } from "@/store/scrambledListsStore";
 import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
 import { indentTargets, rowsForReparenting } from "@/lib/workItemRows";
+import { useTreeSharesStore } from "@/store/treeSharesStore";
 import { rowClickIntent } from "@/lib/rowClick";
 import {
   commandBeingTyped,
@@ -3413,29 +3414,17 @@ export function WorkItemTreePanel() {
   // Scramble support: check whether the currently selected tree is shared with any org.
   // If it is shared, names in it are NOT scrambled even when scramble is enabled.
   const { scrambleEnabled, isSuperuser } = useScramble();
-  const [selectedTreeIsShared, setSelectedTreeIsShared] = useState(false);
-
+  // From the read the tree panel makes for every tree (treeSharesStore.ts). Until
+  // it answers the tree counts as not shared; if it failed, as shared, so that
+  // names are not exposed when that is not known.
+  const shareTreeIdsKey = Object.keys(backlogTrees).sort().join(",");
   useEffect(() => {
-    if (!selectedTreeId || !activeOrgId) {
-      setSelectedTreeIsShared(false);
-      return;
-    }
-    supabase
-      .rpc("get_tree_sharing_info", {
-        _tree_id: selectedTreeId,
-        _exclude_org_id: activeOrgId,
-      })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("WorkItemTreePanel: failed to fetch tree sharing info", error);
-          // Default to treating the tree as shared (not scrambled) on error, to avoid
-          // accidentally exposing names when share status is unknown.
-          setSelectedTreeIsShared(true);
-          return;
-        }
-        setSelectedTreeIsShared(Array.isArray(data) && data.length > 0);
-      });
-  }, [selectedTreeId, activeOrgId]);
+    if (!activeOrgId || !shareTreeIdsKey) return;
+    useTreeSharesStore.getState().ensure(activeOrgId, shareTreeIdsKey.split(","));
+  }, [activeOrgId, shareTreeIdsKey]);
+  const selectedTreeIsShared = useTreeSharesStore(
+    (s) => !!selectedTreeId && (s.failed || (s.byTree[selectedTreeId]?.length ?? 0) > 0),
+  );
 
   // A tree's content is scrambled only when scramble is enabled AND the tree is not shared.
   const isScrambled = scrambleEnabled && !selectedTreeIsShared;

@@ -7,6 +7,8 @@ import { clearAllCachedAppData } from "@/store/appDataCache";
 import { forgetRowMirrors } from "@/store/rowMirror";
 import { forgetItemChanges } from "@/lib/itemChangedAt";
 import { forgetLoadExtras } from "@/store/loadExtras";
+import { forgetTreeShares } from "@/store/treeSharesStore";
+import { forgetSuperuser } from "@/lib/superuser";
 
 // Unlike localStorage, the cache survives between tests in a file, so without
 // this one test's snapshot sends the next one down the cached load path.
@@ -16,6 +18,8 @@ beforeEach(async () => {
   await forgetRowMirrors();
   forgetItemChanges();
   forgetLoadExtras();
+  forgetTreeShares();
+  forgetSuperuser();
 });
 
 Object.defineProperty(window, "matchMedia", {
