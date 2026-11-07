@@ -198,6 +198,7 @@ describe("the Gmail function", () => {
   it("reads a few postings at a time, and refuses more", async () => {
     expect({
       read: await call({ action: "posting_facts", ...ORG, links: [{ url: "https://x/a", date: "2026-01-01" }, { url: "ftp://no" }] }),
+      six: (await call({ action: "posting_facts", ...ORG, links: Array.from({ length: 6 }, (_, i) => ({ url: `https://x/${i}` })) })).status,
       tooMany: await call({ action: "posting_facts", ...ORG, links: Array.from({ length: 7 }, (_, i) => ({ url: `https://x/${i}` })) }),
     }).toMatchSnapshot();
   });

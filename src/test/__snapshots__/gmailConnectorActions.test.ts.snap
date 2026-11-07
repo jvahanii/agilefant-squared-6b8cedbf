@@ -273,6 +273,7 @@ exports[`the Gmail function > reads a few postings at a time, and refuses more 1
     "gmail": [],
     "status": 200,
   },
+  "six": 200,
   "tooMany": {
     "body": {
       "error": "at most 6 postings per call",
