@@ -1,0 +1,1273 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`reparentWorkItem, branch by branch > mirrored into another tree 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": {
+        "org::bt-2": "s",
+      },
+      "ranks": {
+        "org::bl-a": 1,
+        "org::bl-c": 0,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [
+        "q",
+      ],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "q",
+    "s",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > moved to another tree, descendants and all 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [
+        "solo",
+      ],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": "s",
+      "parentIds": {},
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": "solo",
+      "parentIds": {},
+      "ranks": {
+        "org::bl-c": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": "solo",
+      "parentIds": {},
+      "ranks": {
+        "org::bl-c": 5,
+      },
+    },
+  },
+  "saved": [
+    "s",
+    "solo",
+    "solo1",
+    "solo2",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > to the top of a tree 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 3,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "kid2",
+    "p",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > within one tree and one list, at a given rank 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+        "q",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "p",
+    "q",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > within one tree and one list, for a multi-tree item 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": {
+        "org::bt-1": "q",
+      },
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [
+        "p",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "p",
+    "q",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > within one tree and one list, for a single-tree item 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+        "q",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "p",
+    "q",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > within one tree into another list, for a multi-tree item 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": {
+        "org::bt-1": "r",
+      },
+      "ranks": {
+        "org::bl-b": 4,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "p",
+        "r1",
+        "r2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 2,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 4,
+      },
+    },
+  },
+  "saved": [
+    "grand",
+    "kid1",
+    "kid2",
+    "p",
+    "r",
+  ],
+}
+`;
+
+exports[`reparentWorkItem, branch by branch > within one tree into another list, taking the descendants along 1`] = `
+{
+  "items": {
+    "grand": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "kid2",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+      },
+    },
+    "kid2": {
+      "children": [
+        "grand",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": "p",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "p": {
+      "children": [
+        "kid1",
+        "kid2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 0,
+        "org::bl-c": 5,
+      },
+    },
+    "q": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-a",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-a": 1,
+      },
+    },
+    "r": {
+      "children": [
+        "r1",
+        "r2",
+        "solo",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 0,
+      },
+    },
+    "r2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 3,
+      },
+    },
+    "s": {
+      "children": [],
+      "lists": {
+        "org::bt-2": "org::bl-c",
+      },
+      "parentId": null,
+      "parentIds": null,
+      "ranks": {
+        "org::bl-c": 0,
+      },
+    },
+    "solo": {
+      "children": [
+        "solo1",
+        "solo2",
+      ],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "r",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 4,
+      },
+    },
+    "solo1": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 4,
+      },
+    },
+    "solo2": {
+      "children": [],
+      "lists": {
+        "org::bt-1": "org::bl-b",
+      },
+      "parentId": "solo",
+      "parentIds": null,
+      "ranks": {
+        "org::bl-b": 5,
+      },
+    },
+  },
+  "saved": [
+    "r",
+    "solo",
+    "solo1",
+    "solo2",
+  ],
+}
+`;
