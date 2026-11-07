@@ -859,6 +859,78 @@ type ContainerSnapshot = {
   backlogTrees: Record<string, BacklogTree>;
 };
 
+/** Ids saved as a JSON array in this browser; none if missing or unreadable. */
+function readStoredIds(key: string): string[] {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The selection saved for the organisation in this browser, kept to what `data` still has. */
+function storedSelection(
+  orgId: string,
+  data: { workItems: Record<string, WorkItem>; backlogs: Record<string, Backlog>; backlogTrees: Record<string, BacklogTree> },
+) {
+  const treeId = localStorage.getItem(`selection_${orgId}_treeId`);
+  return {
+    backlogIds: readStoredIds(`selection_${orgId}_backlogIds`).filter((id) => data.backlogs[id]),
+    treeId: treeId && data.backlogTrees[treeId] ? treeId : null,
+    workItemIds: readStoredIds(`selection_${orgId}_workItemIds`).filter((id) => data.workItems[id]),
+  };
+}
+
+/** The parents of each of `ids`, all the way up: opened so the selection can be seen. */
+function ancestorsOf(ids: string[], byId: Record<string, { parentId?: string | null }>): Set<string> {
+  const ancestors = new Set<string>();
+  for (const id of ids) {
+    let current = byId[id];
+    while (current?.parentId) {
+      ancestors.add(current.parentId);
+      current = byId[current.parentId];
+    }
+  }
+  return ancestors;
+}
+
+/** The links of the items kept; links of items the clean-up dropped go too. */
+function linksOfKept(all: Record<string, Hyperlink[]>, workItems: Record<string, WorkItem>): Record<string, Hyperlink[]> {
+  const kept = new Set(Object.keys(workItems));
+  const links: Record<string, Hyperlink[]> = {};
+  for (const [wiId, itemLinks] of Object.entries(all)) {
+    if (kept.has(wiId)) links[wiId] = itemLinks;
+  }
+  return links;
+}
+
+/**
+ * Bug fix: if sanitizeData dropped ALL backlog assignments for an item that
+ * existed in the current store with valid assignments, preserve the current
+ * store's copy so the item doesn't disappear. This guards against partial
+ * Supabase responses where trees or backlogs referenced by an item happen to
+ * be missing from the fetched dataset (e.g. replication lag, pagination gaps).
+ */
+function keepItemsTheCleanUpEmptied(clean: Record<string, WorkItem>, current: Record<string, WorkItem>): void {
+  for (const [id, currentWi] of Object.entries(current)) {
+    const cleanWi = clean[id];
+    if (!cleanWi) continue;
+    if (Object.keys(cleanWi.backlogAssignments).length === 0 &&
+        Object.keys(currentWi.backlogAssignments).length > 0) {
+      console.warn(
+        `loadFromSupabase: preserving item ${id} from current store — ` +
+        `sanitizeData dropped all ${Object.keys(currentWi.backlogAssignments).length} assignments. ` +
+        `Missing trees/backlogs in Supabase response likely caused this.`
+      );
+      clean[id] = currentWi;
+    }
+  }
+}
+
+type CachedAppDataSnapshot = NonNullable<Awaited<ReturnType<typeof readCachedAppData>>>;
+
 function sameStringArray(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((value, index) => value === b[index]);
@@ -1630,6 +1702,309 @@ export const useAppStore = create<AppState>()((set, get) => {
     }
   };
 
+  /**
+   * Restore from the cached snapshot so repeat visits show the previous state
+   * without any loading spinner. Fresh data from Supabase replaces it
+   * afterwards (refreshInBackground).
+   */
+  const showCachedCopy = (orgId: string, cached: CachedAppDataSnapshot) => {
+    const cachedDataWithPending = mergePendingWorkItems({
+      workItems: cached.workItems,
+      backlogs: cached.backlogs,
+      backlogTrees: cached.backlogTrees,
+    }, orgId, [], { backlogs: cached.backlogs, backlogTrees: cached.backlogTrees });
+    const selection = storedSelection(orgId, cachedDataWithPending);
+    const cachedSnapshotKey = buildCachedSnapshotKey(
+      orgId,
+      cached.timestamp,
+      cachedDataWithPending,
+      selection.backlogIds,
+      selection.treeId,
+      selection.workItemIds,
+    );
+    const currentState = get();
+    // The cache exists to fill an empty screen on a cold start. Applying it
+    // over data already on screen is what made a wake-up resync repaint the
+    // hierarchy as it stood before the last edits — the cache is only
+    // written after a fetch, so it lags every edit made since — and then
+    // put it back a moment later when the fetch below returned. Worse, this
+    // apply clears the undo and redo stacks and collapses every branch, so
+    // a wake threw those away for good.
+    const hasLiveData =
+      currentState.organizationId === orgId &&
+      Object.keys(currentState.workItems).length > 0 &&
+      !currentState.isLoading;
+    const canSkipCachedApply =
+      hasLiveData ||
+      (lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
+        currentState.organizationId === orgId &&
+        Object.keys(currentState.backlogTrees).length > 0 &&
+        !currentState.isLoading);
+    if (canSkipCachedApply) return;
+    // Old enough that it is only for looking at until the refresh lands.
+    const cachedIsOld = Date.now() - cached.timestamp > DATA_CACHE_FRESH_MS;
+    lastAppliedCachedSnapshotKey = cachedSnapshotKey;
+    set((state) => {
+      const selectionUnchanged =
+        sameStringArray(state.selectedBacklogIds, selection.backlogIds) &&
+        state.selectedTreeId === selection.treeId &&
+        sameStringArray(state.selectedWorkItemIds, selection.workItemIds);
+      if (
+        state.workItems === cachedDataWithPending.workItems &&
+        state.backlogs === cachedDataWithPending.backlogs &&
+        state.backlogTrees === cachedDataWithPending.backlogTrees &&
+        state.hyperlinks === cached.hyperlinks &&
+        state.changeLog === cached.changeLog &&
+        selectionUnchanged &&
+        !state.isLoading &&
+        state.loadingProgress === 100
+      ) {
+        return state;
+      }
+      return {
+        workItems: cachedDataWithPending.workItems,
+        backlogs: cachedDataWithPending.backlogs,
+        backlogTrees: cachedDataWithPending.backlogTrees,
+        hyperlinks: cached.hyperlinks,
+        changeLog: cached.changeLog,
+        selectedBacklogIds: selection.backlogIds,
+        selectedTreeId: selection.treeId,
+        selectedWorkItemIds: selection.workItemIds,
+        isLoading: false,
+        loadingProgress: 100,
+        undoStack: [],
+        redoStack: [],
+        expandedWorkItems: new Set<string>(),
+        expandedBacklogs: new Set<string>(),
+        catchingUp: cachedIsOld,
+      };
+    });
+    if (cachedIsOld) {
+      // Not for ever: offline, or on a connection that never answers,
+      // the copy is all there is, and it has to be usable.
+      setTimeout(() => {
+        if (get().catchingUp) set({ catchingUp: false });
+      }, CATCH_UP_MAX_MS);
+    }
+  };
+
+  /**
+   * Behind the cached copy: send what is queued, fetch everything, and put it
+   * in the store and the cache — unless the reader edited meanwhile, when only
+   * the cache is written and another refresh follows. One at a time per
+   * organisation.
+   */
+  const refreshInBackground = (orgId: string) => {
+    if (appDataBackgroundRefreshInFlight?.orgId === orgId) return;
+    set({ workItemsRefreshing: true });
+    const backgroundPromise = (async () => {
+      try {
+        // Snapshot the mutation version before fetching so we can
+        // detect whether the user made any edits while the network
+        // round-trip was in-flight. If they did, we skip overwriting
+        // state to avoid losing their changes.
+        const versionBeforeFetch = localMutationVersion;
+        const pendingAtLoad = readPendingWorkItemUpserts(orgId);
+        await flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {});
+        await flushPendingRankUpserts(orgId).catch(() => {});
+        await flushPendingBoardRankUpserts(orgId).catch(() => {});
+        const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
+          loadFromSupabase(orgId),
+          loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, Hyperlink[]>)),
+          loadChangeLog(orgId).catch(() => [] as ChangeLogEntry[]),
+        ]);
+        const cacheIt = (data: { workItems: Record<string, WorkItem>; backlogs: Record<string, Backlog>; backlogTrees: Record<string, BacklogTree> }, hyperlinks: Record<string, Hyperlink[]>) =>
+          writeCachedAppData(orgId, {
+            workItems: data.workItems,
+            backlogs: data.backlogs,
+            backlogTrees: data.backlogTrees,
+            hyperlinks,
+            changeLog: dbChangeLog as ChangeLogEntry[],
+            selectedBacklogIds: get().selectedBacklogIds,
+            selectedTreeId: get().selectedTreeId,
+            selectedWorkItemIds: get().selectedWorkItemIds,
+          });
+        // If the user made any edits while we were fetching, skip the state
+        // update so their changes aren't overwritten. The fresh data is still
+        // written to the cache so the next page load benefits from it.
+        if (localMutationVersion !== versionBeforeFetch) {
+          const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
+          cacheIt(cleanDataBg, (allHyperlinks as Record<string, Hyperlink[]>) ?? {});
+          refreshAgainAfterEdit(() => void get().loadFromSupabase());
+          return;
+        }
+        refreshesAfterEdit = 0;
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
+        keepItemsTheCleanUpEmptied(cleanData.workItems, get().workItems);
+        const hyperlinks = linksOfKept(allHyperlinks, cleanData.workItems);
+        cacheIt(cleanData, hyperlinks);
+        // Only replace state if the user hasn't switched orgs while the
+        // background refresh was in flight.
+        if (get().organizationId === orgId) {
+          set({
+            workItems: cleanData.workItems,
+            backlogs: cleanData.backlogs,
+            backlogTrees: cleanData.backlogTrees,
+            hyperlinks,
+            changeLog: dbChangeLog as ChangeLogEntry[],
+            // Preserve current selection.
+            selectedBacklogIds: get().selectedBacklogIds,
+            selectedTreeId: get().selectedTreeId,
+            selectedWorkItemIds: get().selectedWorkItemIds,
+          });
+        }
+      } catch {
+        // Background refresh failed — cached data is still shown.
+      }
+    })().finally(() => {
+      if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
+        appDataBackgroundRefreshInFlight = null;
+      }
+      if (get().workItemsRefreshing || get().catchingUp) set({ workItemsRefreshing: false, catchingUp: false });
+    });
+    appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
+    void backgroundPromise;
+  };
+
+  /**
+   * With nothing cached: load with the progress bar showing. The lists are
+   * painted as soon as they arrive, the items after them; queued saves are
+   * sent alongside. Gives up the spinner after fifteen seconds, with -1 as
+   * the progress for App.tsx to retry on.
+   */
+  const loadFresh = async (orgId: string) => {
+    set((state) => state.isLoading && state.loadingProgress === 0 ? state : { isLoading: true, loadingProgress: 0 });
+
+    // Safety timeout: if data loading takes longer than 15 seconds (e.g. due
+    // to a hung network request), don't leave the UI stuck in a loading
+    // spinner. Instead, flip isLoading to false BUT set loadingProgress to -1
+    // as a sentinel so App.tsx can detect the failed load and retry. Covers
+    // both phases: the shell may already have painted while the work items
+    // are still in flight, so a hang after the early paint must also raise
+    // the -1 sentinel for App.tsx's retry to pick up.
+    const timeoutId = setTimeout(() => {
+      if (get().organizationId === orgId && (get().isLoading || get().workItemsLoading)) {
+        set({ isLoading: false, workItemsLoading: false, loadingProgress: -1 });
+      }
+    }, 15000);
+
+    try {
+      if (get().organizationId !== orgId) return;
+      set({ loadingProgress: 5 });
+
+      const pendingAtLoad = readPendingWorkItemUpserts(orgId);
+      // Queued saves go out alongside the load rather than before it, so a
+      // slow or failing one does not hold the list back. Items first, then
+      // their ranks: side by side, a queued rank for a queued new item could
+      // reach the database before the item did and be refused — the same
+      // failure that kept "Failed to save ranking" coming back on load.
+      const rankFlushPromise = flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees })
+        .catch(() => {})
+        .then(() =>
+          Promise.all([
+            flushPendingRankUpserts(orgId).catch(() => {}),
+            flushPendingBoardRankUpserts(orgId).catch(() => {}),
+          ]),
+        )
+        .catch(() => {});
+
+      // The data and the links (fetched by organization, so they need not
+      // wait for the item ids) side by side, each moving the progress bar as
+      // it finishes. The change log is loaded when the history is opened.
+      const [rawData, allHyperlinks] = await Promise.all([
+        loadFromSupabase(orgId, (structure) => {
+          // Paint the shell from trees + backlogs while the work items are
+          // still downloading. sanitizeData runs here too, so this structure
+          // is identical to the one the final commit installs below and
+          // nothing the user sees now shifts when the items land.
+          if (get().organizationId !== orgId) return;
+          const structureOnly = sanitizeData({ ...structure, workItems: {} }, orgId);
+          const selection = storedSelection(orgId, structureOnly);
+          set({
+            backlogs: structureOnly.backlogs,
+            backlogTrees: structureOnly.backlogTrees,
+            selectedBacklogIds: selection.backlogIds,
+            selectedTreeId: selection.treeId,
+            expandedBacklogs: ancestorsOf(selection.backlogIds, structureOnly.backlogs),
+            isLoading: false,
+            workItemsLoading: true,
+            loadingProgress: 40,
+          });
+        }).then((r) => {
+          if (get().organizationId === orgId) set({ loadingProgress: 50 });
+          return r;
+        }),
+        loadHyperlinksForWorkItems([], orgId)
+          .catch(() => ({} as Record<string, Hyperlink[]>))
+          .then((r) => {
+            if (get().organizationId === orgId) set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) }));
+            return r;
+          }),
+      ]);
+      if (get().organizationId !== orgId) return;
+      rankFlushPromise.catch(() => {});
+      const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
+      set({ loadingProgress: 80 });
+
+      const hyperlinks = linksOfKept(allHyperlinks, cleanData.workItems);
+      set({ loadingProgress: 90 });
+
+      // The selection this browser saved, and everything above it opened so
+      // that it can be seen.
+      const selection = storedSelection(orgId, cleanData);
+      const expandedBacklogs = ancestorsOf(selection.backlogIds, cleanData.backlogs);
+      const expandedWorkItems = ancestorsOf(selection.workItemIds, cleanData.workItems);
+
+      clearTimeout(timeoutId);
+
+      // Silent duplicate-rank auto-heal: densify any sibling groups whose
+      // per-backlog ranks collide (grouped by tree, backlog, and effective
+      // per-tree parent). Fixes are applied to local state AND persisted to
+      // the DB so the next reload starts clean.
+      const healed = healDuplicateRanks(cleanData.workItems);
+      const finalWorkItems = healed.workItems;
+      if (healed.rankRows.length > 0) {
+        const rowsWithOrg: WorkItemBacklogRankUpsert[] = healed.rankRows.map((r) => ({
+          ...r,
+          organizationId: finalWorkItems[r.workItemId]?.organizationId ?? orgId,
+        }));
+        persistRankUpserts(rowsWithOrg);
+      }
+
+      writeCachedAppData(orgId, {
+        workItems: finalWorkItems,
+        backlogs: cleanData.backlogs,
+        backlogTrees: cleanData.backlogTrees,
+        hyperlinks,
+        changeLog: [],
+        selectedBacklogIds: selection.backlogIds,
+        selectedTreeId: selection.treeId,
+        selectedWorkItemIds: selection.workItemIds,
+      });
+
+      set({
+        ...cleanData,
+        workItems: finalWorkItems,
+        hyperlinks,
+        // changeLog loaded lazily via loadChangeLog action.
+        changeLog: [],
+        isLoading: false,
+        workItemsLoading: false,
+        loadingProgress: 100,
+        undoStack: [],
+        redoStack: [],
+        selectedBacklogIds: selection.backlogIds,
+        selectedTreeId: selection.treeId,
+        selectedWorkItemIds: selection.workItemIds,
+        expandedBacklogs,
+        expandedWorkItems,
+      });
+    } catch {
+      clearTimeout(timeoutId);
+      if (get().organizationId === orgId) set({ isLoading: false, workItemsLoading: false, loadingProgress: 0 });
+    }
+  };
+
   return {
     workItems: {},
     backlogs: {},
@@ -1672,408 +2047,17 @@ export const useAppStore = create<AppState>()((set, get) => {
         return appDataLoadInFlight.promise;
       }
 
+      // A copy cached in this browser is shown at once, and refreshed behind
+      // it; with none, the load shows its progress (showCachedCopy,
+      // refreshInBackground, loadFresh above).
       const runLoad = async () => {
-
-      // Restore from the cached snapshot so repeat visits show the previous
-      // state without any loading spinner.  Fresh data from Supabase replaces
-      // the cache asynchronously afterwards.
-      const cached = await readCachedAppData(orgId);
-      if (cached && Object.keys(cached.workItems).length > 0) {
-        const cachedDataWithPending = mergePendingWorkItems({
-          workItems: cached.workItems,
-          backlogs: cached.backlogs,
-          backlogTrees: cached.backlogTrees,
-        }, orgId, [], { backlogs: cached.backlogs, backlogTrees: cached.backlogTrees });
-        const parseStoredIdsCached = (key: string): string[] => {
-          try {
-            const raw = localStorage.getItem(key);
-            const parsed = raw ? JSON.parse(raw) : [];
-            return Array.isArray(parsed) ? parsed : [];
-          } catch { return []; }
-        };
-        const storedBacklogIds = parseStoredIdsCached(`selection_${orgId}_backlogIds`);
-        const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
-        const storedWorkItemIds = parseStoredIdsCached(`selection_${orgId}_workItemIds`);
-        const validBacklogIds = storedBacklogIds.filter((id) => cachedDataWithPending.backlogs[id]);
-        const validTreeId = storedTreeId && cachedDataWithPending.backlogTrees[storedTreeId] ? storedTreeId : null;
-        const validWorkItemIds = storedWorkItemIds.filter((id) => cachedDataWithPending.workItems[id]);
-
-        const cachedSnapshotKey = buildCachedSnapshotKey(
-          orgId,
-          cached.timestamp,
-          cachedDataWithPending,
-          validBacklogIds,
-          validTreeId,
-          validWorkItemIds,
-        );
-        const currentState = get();
-        // The cache exists to fill an empty screen on a cold start. Applying it
-        // over data already on screen is what made a wake-up resync repaint the
-        // hierarchy as it stood before the last edits — the cache is only
-        // written after a fetch, so it lags every edit made since — and then
-        // put it back a moment later when the fetch below returned. Worse, this
-        // apply clears the undo and redo stacks and collapses every branch, so
-        // a wake threw those away for good.
-        const hasLiveData =
-          currentState.organizationId === orgId &&
-          Object.keys(currentState.workItems).length > 0 &&
-          !currentState.isLoading;
-        const canSkipCachedApply =
-          hasLiveData ||
-          (lastAppliedCachedSnapshotKey === cachedSnapshotKey &&
-            currentState.organizationId === orgId &&
-            Object.keys(currentState.backlogTrees).length > 0 &&
-            !currentState.isLoading);
-        // Old enough that it is only for looking at until the refresh lands.
-        const cachedIsOld = Date.now() - cached.timestamp > DATA_CACHE_FRESH_MS;
-        if (!canSkipCachedApply) {
-          lastAppliedCachedSnapshotKey = cachedSnapshotKey;
-          set((state) => {
-            const selectionUnchanged =
-              sameStringArray(state.selectedBacklogIds, validBacklogIds) &&
-              state.selectedTreeId === validTreeId &&
-              sameStringArray(state.selectedWorkItemIds, validWorkItemIds);
-            if (
-              state.workItems === cachedDataWithPending.workItems &&
-              state.backlogs === cachedDataWithPending.backlogs &&
-              state.backlogTrees === cachedDataWithPending.backlogTrees &&
-              state.hyperlinks === cached.hyperlinks &&
-              state.changeLog === cached.changeLog &&
-              selectionUnchanged &&
-              !state.isLoading &&
-              state.loadingProgress === 100
-            ) {
-              return state;
-            }
-            return {
-              workItems: cachedDataWithPending.workItems,
-              backlogs: cachedDataWithPending.backlogs,
-              backlogTrees: cachedDataWithPending.backlogTrees,
-              hyperlinks: cached.hyperlinks,
-              changeLog: cached.changeLog,
-              selectedBacklogIds: validBacklogIds,
-              selectedTreeId: validTreeId,
-              selectedWorkItemIds: validWorkItemIds,
-              isLoading: false,
-              loadingProgress: 100,
-              undoStack: [],
-              redoStack: [],
-              expandedWorkItems: new Set<string>(),
-              expandedBacklogs: new Set<string>(),
-              catchingUp: cachedIsOld,
-            };
-          });
-          if (cachedIsOld) {
-            // Not for ever: offline, or on a connection that never answers,
-            // the copy is all there is, and it has to be usable.
-            setTimeout(() => {
-              if (get().catchingUp) set({ catchingUp: false });
-            }, CATCH_UP_MAX_MS);
-          }
+        const cached = await readCachedAppData(orgId);
+        if (cached && Object.keys(cached.workItems).length > 0) {
+          showCachedCopy(orgId, cached);
+          refreshInBackground(orgId);
+          return;
         }
-
-        // Refresh in the background so the cache stays fresh.
-        if (appDataBackgroundRefreshInFlight?.orgId !== orgId) {
-          set({ workItemsRefreshing: true });
-          const backgroundPromise = (async () => {
-          try {
-            // Snapshot the mutation version before fetching so we can
-            // detect whether the user made any edits while the network
-            // round-trip was in-flight. If they did, we skip overwriting
-            // state to avoid losing their changes.
-            const versionBeforeFetch = localMutationVersion;
-            const pendingAtLoad = readPendingWorkItemUpserts(orgId);
-            await flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {});
-            await flushPendingRankUpserts(orgId).catch(() => {});
-            await flushPendingBoardRankUpserts(orgId).catch(() => {});
-            const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
-              loadFromSupabase(orgId),
-              loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>)),
-              loadChangeLog(orgId).catch(() => [] as ChangeLogEntry[]),
-            ]);
-            // If the user made any edits while we were fetching, skip
-            // the state update so their changes aren't overwritten.
-            // The fresh data is still written to the cache so the next
-            // page load benefits from it.
-            if (localMutationVersion !== versionBeforeFetch) {
-              // User edited — don't overwrite, but still update cache
-              // for next visit.
-              const cleanDataBg = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
-              writeCachedAppData(orgId, {
-                workItems: cleanDataBg.workItems,
-                backlogs: cleanDataBg.backlogs,
-                backlogTrees: cleanDataBg.backlogTrees,
-                hyperlinks: allHyperlinks as Record<string, import('@/types/models').Hyperlink[]> ?? {},
-                changeLog: dbChangeLog as ChangeLogEntry[],
-                selectedBacklogIds: get().selectedBacklogIds,
-                selectedTreeId: get().selectedTreeId,
-                selectedWorkItemIds: get().selectedWorkItemIds,
-              });
-              refreshAgainAfterEdit(() => void get().loadFromSupabase());
-              return;
-            }
-            refreshesAfterEdit = 0;
-            const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
-
-        // Bug fix: if sanitizeData dropped ALL backlog assignments for an
-        // item that existed in the current store with valid assignments,
-        // preserve the current store's copy so the item doesn't disappear.
-        // This guards against partial Supabase responses where trees or
-        // backlogs referenced by an item happen to be missing from the
-        // fetched dataset (e.g. replication lag, pagination gaps).
-        const currentWorkItems = get().workItems;
-        for (const [id, currentWi] of Object.entries(currentWorkItems)) {
-          const cleanWi = cleanData.workItems[id];
-          if (!cleanWi) continue;
-          if (Object.keys(cleanWi.backlogAssignments).length === 0 &&
-              Object.keys(currentWi.backlogAssignments).length > 0) {
-            console.warn(
-              `loadFromSupabase: preserving item ${id} from current store — ` +
-              `sanitizeData dropped all ${Object.keys(currentWi.backlogAssignments).length} assignments. ` +
-              `Missing trees/backlogs in Supabase response likely caused this.`
-            );
-            cleanData.workItems[id] = currentWi;
-          }
-        }
-
-        const workItemIdSet = new Set(Object.keys(cleanData.workItems));
-        const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
-        for (const [wiId, links] of Object.entries(allHyperlinks)) {
-          if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
-        }
-        writeCachedAppData(orgId, {
-          workItems: cleanData.workItems,
-          backlogs: cleanData.backlogs,
-          backlogTrees: cleanData.backlogTrees,
-          hyperlinks,
-          changeLog: dbChangeLog as ChangeLogEntry[],
-          selectedBacklogIds: get().selectedBacklogIds,
-          selectedTreeId: get().selectedTreeId,
-          selectedWorkItemIds: get().selectedWorkItemIds,
-        });
-        // Only replace state if the user hasn't switched orgs while the
-        // background refresh was in flight.
-        if (get().organizationId === orgId) {
-          set({
-            workItems: cleanData.workItems,
-            backlogs: cleanData.backlogs,
-            backlogTrees: cleanData.backlogTrees,
-            hyperlinks,
-            changeLog: dbChangeLog as ChangeLogEntry[],
-            // Preserve current selection.
-            selectedBacklogIds: get().selectedBacklogIds,
-            selectedTreeId: get().selectedTreeId,
-            selectedWorkItemIds: get().selectedWorkItemIds,
-          });
-        }
-          } catch {
-            // Background refresh failed — cached data is still shown.
-          }
-          })().finally(() => {
-            if (appDataBackgroundRefreshInFlight?.promise === backgroundPromise) {
-              appDataBackgroundRefreshInFlight = null;
-            }
-            if (get().workItemsRefreshing || get().catchingUp) set({ workItemsRefreshing: false, catchingUp: false });
-          });
-          appDataBackgroundRefreshInFlight = { orgId, promise: backgroundPromise };
-          void backgroundPromise;
-        }
-        return;
-      }
-
-      set((state) => state.isLoading && state.loadingProgress === 0 ? state : { isLoading: true, loadingProgress: 0 });
-
-      // Safety timeout: if data loading takes longer than 15 seconds (e.g. due to
-      // a hung network request), unblock the UI so the app renders in an empty state
-      // rather than showing the loading spinner indefinitely. The isLoading check
-      // prevents a no-op state update if the timeout fires after a successful load.
-      // Safety timeout: if data loading takes longer than 15 seconds
-      // (e.g. due to a hung network request), don't leave the UI
-      // stuck in a loading spinner. Instead, flip isLoading to false
-      // BUT set loadingProgress to -1 as a sentinel so App.tsx can
-      // detect the failed load and retry.
-      // Covers both phases: the shell may already have painted while the work
-      // items are still in flight, so a hang after the early paint must also
-      // raise the -1 sentinel for App.tsx's retry to pick up.
-      const timeoutId = setTimeout(() => {
-        if (get().organizationId === orgId && (get().isLoading || get().workItemsLoading)) {
-          set({ isLoading: false, workItemsLoading: false, loadingProgress: -1 });
-        }
-      }, 15000);
-
-      try {
-        if (get().organizationId !== orgId) return;
-        set({ loadingProgress: 5 });
-
-        // Fire flushPendingRankUpserts concurrently with the main data load
-        // instead of blocking on it first.  If it fails or hangs the data
-        // still arrives and the UI becomes interactive sooner.
-        const pendingAtLoad = readPendingWorkItemUpserts(orgId);
-        // Items first, then their ranks. Run side by side, a queued rank for a
-        // queued new item could reach the database before the item did and be
-        // refused — the same failure that kept "Failed to save ranking"
-        // coming back on load.
-        const rankFlushPromise = flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees })
-          .catch(() => {})
-          .then(() =>
-            Promise.all([
-              flushPendingRankUpserts(orgId).catch(() => {}),
-              flushPendingBoardRankUpserts(orgId).catch(() => {}),
-            ]),
-          )
-          .catch(() => {});
-
-        // Run the main data load, hyperlinks (org-scoped), change log, and
-        // rank flush all concurrently. Hyperlinks can be fetched by
-        // organization_id without first needing the resolved work-item id
-        // list, so all waves overlap instead of running serially.
-        // Each promise increments the progress bar as it finishes so the
-        // bar reflects real work rather than staying frozen.
-        // Load change log lazily on demand (when the user opens the history
-        // panel) instead of eagerly on every page load.  This saves one
-        // network round-trip on mobile for the common case.
-        const parseStoredIds = (key: string): string[] => {
-          try {
-            const raw = localStorage.getItem(key);
-            const parsed = raw ? JSON.parse(raw) : [];
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        };
-
-        const [rawData, allHyperlinks] = await Promise.all([
-          loadFromSupabase(orgId, (structure) => {
-            // Paint the shell from trees + backlogs while the work items are
-            // still downloading. sanitizeData runs here too, so this structure
-            // is identical to the one the final commit installs below and
-            // nothing the user sees now shifts when the items land.
-            if (get().organizationId !== orgId) return;
-            const structureOnly = sanitizeData({ ...structure, workItems: {} }, orgId);
-            const validBacklogIds = parseStoredIds(`selection_${orgId}_backlogIds`)
-              .filter((id) => structureOnly.backlogs[id]);
-            const storedTreeId = localStorage.getItem(`selection_${orgId}_treeId`);
-            const expandedBacklogs = new Set<string>();
-            for (const id of validBacklogIds) {
-              let current = structureOnly.backlogs[id];
-              while (current?.parentId) {
-                expandedBacklogs.add(current.parentId);
-                current = structureOnly.backlogs[current.parentId];
-              }
-            }
-            set({
-              backlogs: structureOnly.backlogs,
-              backlogTrees: structureOnly.backlogTrees,
-              selectedBacklogIds: validBacklogIds,
-              selectedTreeId: storedTreeId && structureOnly.backlogTrees[storedTreeId] ? storedTreeId : null,
-              expandedBacklogs,
-              isLoading: false,
-              workItemsLoading: true,
-              loadingProgress: 40,
-            });
-          }).then((r) => {
-            if (get().organizationId === orgId) set({ loadingProgress: 50 });
-            return r;
-          }),
-          loadHyperlinksForWorkItems([], orgId)
-            .catch(() => ({} as Record<string, import('@/types/models').Hyperlink[]>))
-            .then((r) => {
-              if (get().organizationId === orgId) set((s) => ({ loadingProgress: Math.max(s.loadingProgress, 70) }));
-              return r;
-            }),
-        ]);
-        if (get().organizationId !== orgId) return;
-        // Ensure the rank flush has had at least the duration of the main
-        // data fetch to complete, but don't block the UI if it hasn't.
-        rankFlushPromise.catch(() => {});
-        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
-        set({ loadingProgress: 80 });
-
-        // Filter hyperlinks to the work items that survived sanitization.
-        const workItemIdSet = new Set(Object.keys(cleanData.workItems));
-        const hyperlinks: Record<string, import('@/types/models').Hyperlink[]> = {};
-        for (const [wiId, links] of Object.entries(allHyperlinks)) {
-          if (workItemIdSet.has(wiId)) hyperlinks[wiId] = links;
-        }
-        set({ loadingProgress: 90 });
-
-        const storedBacklogIds = parseStoredIds(`selection_${orgId}_backlogIds`);
-        const storedTreeId: string | null = localStorage.getItem(`selection_${orgId}_treeId`);
-        const storedWorkItemIds = parseStoredIds(`selection_${orgId}_workItemIds`);
-
-        const validBacklogIds = storedBacklogIds.filter((id) => cleanData.backlogs[id]);
-        const validTreeId = storedTreeId && cleanData.backlogTrees[storedTreeId] ? storedTreeId : null;
-        const validWorkItemIds = storedWorkItemIds.filter((id) => cleanData.workItems[id]);
-
-        // Expand all ancestor backlogs so selected backlog items are visible
-        const expandedBacklogs = new Set<string>();
-        for (const id of validBacklogIds) {
-          let current = cleanData.backlogs[id];
-          while (current?.parentId) {
-            expandedBacklogs.add(current.parentId);
-            current = cleanData.backlogs[current.parentId];
-          }
-        }
-
-        // Expand all ancestor work items so selected work items are visible
-        const expandedWorkItems = new Set<string>();
-        for (const id of validWorkItemIds) {
-          let current = cleanData.workItems[id];
-          while (current?.parentId) {
-            expandedWorkItems.add(current.parentId);
-            current = cleanData.workItems[current.parentId];
-          }
-        }
-
-        clearTimeout(timeoutId);
-
-        // Silent duplicate-rank auto-heal: densify any sibling groups whose
-        // per-backlog ranks collide (grouped by tree, backlog, and effective
-        // per-tree parent). Fixes are applied to local state AND persisted to
-        // the DB so the next reload starts clean.
-        const healed = healDuplicateRanks(cleanData.workItems);
-        const finalWorkItems = healed.workItems;
-        if (healed.rankRows.length > 0) {
-          const rowsWithOrg: WorkItemBacklogRankUpsert[] = healed.rankRows.map((r) => ({
-            ...r,
-            organizationId: finalWorkItems[r.workItemId]?.organizationId ?? orgId,
-          }));
-          persistRankUpserts(rowsWithOrg);
-        }
-
-        writeCachedAppData(orgId, {
-          workItems: finalWorkItems,
-          backlogs: cleanData.backlogs,
-          backlogTrees: cleanData.backlogTrees,
-          hyperlinks,
-          changeLog: [],
-          selectedBacklogIds: validBacklogIds,
-          selectedTreeId: validTreeId,
-          selectedWorkItemIds: validWorkItemIds,
-        });
-
-        set({
-          ...cleanData,
-          workItems: finalWorkItems,
-          hyperlinks,
-          // changeLog loaded lazily via loadChangeLog action.
-          changeLog: [],
-          isLoading: false,
-          workItemsLoading: false,
-          loadingProgress: 100,
-          undoStack: [],
-          redoStack: [],
-          selectedBacklogIds: validBacklogIds,
-          selectedTreeId: validTreeId,
-          selectedWorkItemIds: validWorkItemIds,
-          expandedBacklogs,
-          expandedWorkItems,
-        });
-
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if (get().organizationId === orgId) set({ isLoading: false, workItemsLoading: false, loadingProgress: 0 });
-      }
+        await loadFresh(orgId);
       };
 
       const promise = Promise.resolve().then(runLoad).finally(() => {
