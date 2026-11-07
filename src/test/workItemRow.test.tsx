@@ -288,6 +288,19 @@ describe("a row's right-click menu", () => {
     expect({ mine, theirs }).toMatchSnapshot();
   });
 
+  it("does not offer scrambling where the organization has it off, but a name I scrambled keeps its entries", () => {
+    useScrambledItemsStore.setState({ byItem: new Map([["B", "me"]]) } as never);
+    seed({ settings: { ...ALL_ON, scramblingEnabled: false } });
+    const plain = menuEntries(openMenu("D")).join(" | ");
+    cleanup();
+    useScrambledItemsStore.setState({ byItem: new Map([["B", "me"]]) } as never);
+    seed({ settings: { ...ALL_ON, scramblingEnabled: false } });
+    const mine = menuEntries(openMenu("B")).join(" | ");
+    expect(plain).not.toContain("Scramble");
+    expect(mine).toContain("Show real name…");
+    expect(mine).toContain("Unscramble name…");
+  });
+
   for (const sub of ["Status", "Insert icon", "Move to list", "Labels", "Assign teams", "Snooze"]) {
     it(`has a ${sub} submenu`, () => {
       seed({ selected: ["A", "B"] });
@@ -425,6 +438,18 @@ describe("what the shortcuts open from the selected row", () => {
   for (const name of events) {
     it(name, async () => {
       seed({ selected: ["B"] });
+      await act(async () => {
+        window.dispatchEvent(new CustomEvent(name));
+      });
+      await settle();
+      const s = useAppStore.getState();
+      expect({ ...opened(), menus: menus().map(menuEntries), count: Object.keys(s.workItems).length }).toMatchSnapshot();
+    });
+  }
+
+  for (const name of events) {
+    it(`${name}, with several selected`, async () => {
+      seed({ selected: ["D", "B"] });
       await act(async () => {
         window.dispatchEvent(new CustomEvent(name));
       });

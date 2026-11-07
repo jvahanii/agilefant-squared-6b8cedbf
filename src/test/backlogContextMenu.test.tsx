@@ -297,19 +297,11 @@ describe("scrambling a list from its menu", () => {
 });
 
 describe("scrambling an item, where the organization has it off", () => {
-  // The item's menu and its sheet on a phone are too large to stand up here;
-  // what is pinned is that each asks the setting before offering to scramble,
-  // and offers what a scrambled name needs without asking it.
+  // The item's menu is tested as drawn, in workItemRow.test.tsx. Its sheet on
+  // a phone is too large to stand up here; what is pinned is that it asks the
+  // setting before offering to scramble, and offers what a scrambled name
+  // needs without asking it.
   const source = (file: string) => readFileSync(join(process.cwd(), "src", "components", file), "utf8");
-
-  it("is not offered in the item's menu, but a scrambled name keeps its entries", () => {
-    // Spacing aside, so reformatting the file does not fail this.
-    const menu = source("WorkItemTreePanel.tsx").replace(/\s+/g, " ");
-    expect(menu).toContain("{!isNameScrambled ? ( scramblingEnabled && ( <ContextMenuItem className=\"text-xs\" onSelect={() => void startScramble()}>");
-    const mine = menu.slice(menu.indexOf(") : scrambledByMe ? ( <>"));
-    expect(mine.slice(0, 900)).toContain("Show real name…");
-    expect(mine.slice(0, 900)).toContain("Unscramble {isSelected && isMultiSelected");
-  });
 
   it("is not offered in the item's sheet on a phone, but a scrambled name keeps its row", () => {
     expect(source("MobileAttributesSheet.tsx")).toContain("{(isNameScrambled || scramblingEnabled) && (");

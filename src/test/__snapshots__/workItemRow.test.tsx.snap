@@ -952,7 +952,29 @@ exports[`what the shortcuts open from the selected row > shortcut:add-child-work
 }
 `;
 
+exports[`what the shortcuts open from the selected row > shortcut:add-child-workitem, with several selected 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
+  "menus": [],
+}
+`;
+
 exports[`what the shortcuts open from the selected row > shortcut:add-sibling-workitem 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:add-sibling-workitem, with several selected 1`] = `
 {
   "count": 7,
   "dialogs": [],
@@ -972,6 +994,15 @@ exports[`what the shortcuts open from the selected row > shortcut:delete-selecte
 }
 `;
 
+exports[`what the shortcuts open from the selected row > shortcut:delete-selected, with several selected 1`] = `
+{
+  "count": 5,
+  "dialogs": [],
+  "inline": [],
+  "menus": [],
+}
+`;
+
 exports[`what the shortcuts open from the selected row > shortcut:duplicate-selected 1`] = `
 {
   "count": 8,
@@ -981,7 +1012,27 @@ exports[`what the shortcuts open from the selected row > shortcut:duplicate-sele
 }
 `;
 
+exports[`what the shortcuts open from the selected row > shortcut:duplicate-selected, with several selected 1`] = `
+{
+  "count": 9,
+  "dialogs": [],
+  "inline": [],
+  "menus": [],
+}
+`;
+
 exports[`what the shortcuts open from the selected row > shortcut:edit-hyperlinks 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Hyperlinks",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:edit-hyperlinks, with several selected 1`] = `
 {
   "count": 7,
   "dialogs": [
@@ -1012,11 +1063,33 @@ exports[`what the shortcuts open from the selected row > shortcut:log-time 1`] =
 }
 `;
 
+exports[`what the shortcuts open from the selected row > shortcut:log-time, with several selected 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Time Log",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
 exports[`what the shortcuts open from the selected row > shortcut:move-to-backlog 1`] = `
 {
   "count": 7,
   "dialogs": [
     "Move “Item B” to list",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:move-to-backlog, with several selected 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Move “2 items” to list",
   ],
   "inline": [],
   "menus": [],
@@ -1034,7 +1107,32 @@ exports[`what the shortcuts open from the selected row > shortcut:move-to-parent
 }
 `;
 
+exports[`what the shortcuts open from the selected row > shortcut:move-to-parent, with several selected 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Reparent “2 items”",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
 exports[`what the shortcuts open from the selected row > shortcut:open-team-assign 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "menus": [
+    [
+      "menuitem: Red",
+      "menuitem: Blue",
+    ],
+  ],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:open-team-assign, with several selected 1`] = `
 {
   "count": 7,
   "dialogs": [],
