@@ -99,7 +99,10 @@ beforeAll(async () => {
       handler = h;
     },
   };
-  await import("../../supabase/functions/gmail-connector/index.ts");
+  // By a path the app's type check does not follow: the function is Deno code,
+  // checked on its own (tsconfig.functions.json).
+  const FUNCTION = "../../supabase/functions/gmail-connector/index.ts";
+  await import(/* @vite-ignore */ FUNCTION);
 });
 
 beforeEach(() => {
