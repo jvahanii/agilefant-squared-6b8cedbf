@@ -130,3 +130,57 @@ export function effectiveAncestors(
   }
   return chain;
 }
+
+/**
+ * Where Tab puts each selected row: under its previous sibling, at the end of
+ * that sibling's children — as in any outliner.
+ *
+ * It used to be under whatever row was just above. Above an item, under an
+ * open sibling, is that sibling's last child — or a grandchild — so the item
+ * went a level or more too deep: indenting the next item of a list under the
+ * one before it, to go on adding to it, was what failed.
+ *
+ * The previous sibling is the nearest row above at the same depth, passing
+ * deeper rows (its children) and other selected rows (they are indented
+ * alongside, under the same sibling). A shallower row first means there is
+ * none: the item is its parent's first child and stays where it is. Depth is
+ * counted among the rows shown, so an item whose parent is not shown counts as
+ * a top row, as it is drawn.
+ *
+ * Only the topmost selected rows are planned; a selected row under another
+ * selected row moves with it. Returns the new parent of each row that moves.
+ */
+export function indentTargets(
+  rows: readonly string[],
+  selected: ReadonlySet<string>,
+  parentOf: (id: string) => string | null,
+): Map<string, string> {
+  const shown = new Set(rows);
+  const depthOf = new Map<string, number>();
+  const depth = (id: string): number => {
+    const known = depthOf.get(id);
+    if (known !== undefined) return known;
+    let d = 0;
+    for (let p = parentOf(id), guard = 0; p && shown.has(p) && guard < 100; p = parentOf(p), guard++) d++;
+    depthOf.set(id, d);
+    return d;
+  };
+  const underSelected = (id: string) => {
+    for (let p = parentOf(id), guard = 0; p && guard < 100; p = parentOf(p), guard++) if (selected.has(p)) return true;
+    return false;
+  };
+  const targets = new Map<string, string>();
+  rows.forEach((id, idx) => {
+    if (!selected.has(id) || underSelected(id)) return;
+    const mine = depth(id);
+    for (let i = idx - 1; i >= 0; i--) {
+      const d = depth(rows[i]);
+      if (d < mine) return;
+      if (d === mine && !selected.has(rows[i])) {
+        targets.set(id, rows[i]);
+        return;
+      }
+    }
+  });
+  return targets;
+}

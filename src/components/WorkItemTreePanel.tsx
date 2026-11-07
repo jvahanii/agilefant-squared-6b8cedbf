@@ -60,7 +60,7 @@ import { useScramblingEnabled } from "@/store/orgSettingsStore";
 import { useScrambledListsStore } from "@/store/scrambledListsStore";
 import { refuseRenameOfScrambledList } from "@/store/listScrambleStore";
 import { idsToScramble, idsToUnscramble } from "@/lib/scrambleScope";
-import { rowsForReparenting } from "@/lib/workItemRows";
+import { indentTargets, rowsForReparenting } from "@/lib/workItemRows";
 import { rowClickIntent } from "@/lib/rowClick";
 import {
   commandBeingTyped,
@@ -3766,7 +3766,7 @@ export function WorkItemTreePanel() {
     };
   }, [scrollToWorkItem]);
 
-  // Keyboard shortcuts: Tab = indent (make child of item above),
+  // Keyboard shortcuts: Tab = indent (last child of the previous sibling),
   // Shift+Tab = outdent (elevate to parent's level).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -3825,7 +3825,9 @@ export function WorkItemTreePanel() {
 
 
         // Snapshot parent ids first so reparenting doesn't affect later lookups.
-        const plans = orderedSelected
+        // Only the topmost: a selected item under another selected one moves with it.
+        const outdentedAfter = new Map<string, number>();
+        const plans = topmostSelected
           .map((id) => {
             const item = state.workItems[id];
             const effectiveParentId = treeId ? getEffectiveParentId(item, treeId) : item.parentId;
@@ -3836,9 +3838,12 @@ export function WorkItemTreePanel() {
             const targetBacklogId = grandparentId
               ? (state.workItems[grandparentId]?.backlogAssignments[treeId] ?? backlogId)
               : backlogId;
-            // Place the outdented item right after its former parent.
+            // Right after its former parent — and after any sibling outdented
+            // before it from the same parent, or a run of them came out reversed.
             const parentRank = parent.ranks[targetBacklogId] ?? 0;
-            const insertRank = parentRank + 1;
+            const before = outdentedAfter.get(effectiveParentId) ?? 0;
+            outdentedAfter.set(effectiveParentId, before + 1);
+            const insertRank = parentRank + 1 + before;
             return { id, grandparentId, targetBacklogId, insertRank };
           })
           .filter((p): p is { id: string; grandparentId: string | null; targetBacklogId: string; insertRank: number } => p !== null);
@@ -3855,33 +3860,15 @@ export function WorkItemTreePanel() {
               : `Outdented ${plans.length} items`,
         });
       } else {
-        // Indent: each selected item becomes a child of the nearest preceding
-        // item that is NOT itself selected (preserves relative grouping).
+        // Indent: each selected item goes under its previous sibling, at the end
+        // of that sibling's children (indentTargets).
+        const targets = indentTargets(currentIds, selectedSet, (id) => {
+          const wi = state.workItems[id];
+          return wi ? getEffectiveParentId(wi, treeId) : null;
+        });
         const plans: { id: string; parentId: string; targetBacklogId: string }[] = [];
         for (const id of topmostSelected) {
-          const idx = currentIds.indexOf(id);
-          let parentId: string | null = null;
-          for (let i = idx - 1; i >= 0; i--) {
-            // Skip other selected items
-            if (selectedSet.has(currentIds[i])) continue;
-            // Skip items that are descendants of any selected item (prevent cycles)
-            const candidateId = currentIds[i];
-            const candidate = state.workItems[candidateId];
-            let isDescendant = false;
-            if (candidate) {
-              let cur: string | null = treeId ? getEffectiveParentId(candidate, treeId) : candidate.parentId;
-              while (cur) {
-                if (selectedSet.has(cur)) { isDescendant = true; break; }
-                const curWi = state.workItems[cur];
-                cur = treeId && curWi ? getEffectiveParentId(curWi, treeId) : curWi?.parentId ?? null;
-              }
-            }
-            if (isDescendant) continue;
-            {
-              parentId = currentIds[i];
-              break;
-            }
-          }
+          const parentId = targets.get(id);
           if (!parentId) continue;
           const parentItem = state.workItems[parentId];
           if (!parentItem) continue;

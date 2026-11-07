@@ -359,7 +359,7 @@ function buildSections(): Section[] {
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reparenting & Moving</p>
             <ShortcutRow keys={["R"]} description="Reparent: open Move to Parent dialog" />
             <ShortcutRow keys={["M"]} description="Move to List dialog" />
-            <ShortcutRow keys={["Tab"]} description="Indent: make child of item above" />
+            <ShortcutRow keys={["Tab"]} description="Indent: make the last child of the item above at the same level" />
             <ShortcutRow keys={["Shift", "Tab"]} description="Outdent: elevate to parent's level" />
           </div>
           <div className="space-y-1">

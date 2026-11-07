@@ -8,7 +8,7 @@
  * at depth 0 — and every row after it too.
  */
 import { describe, it, expect } from "vitest";
-import { buildVisibleRows, effectiveAncestors, effectiveChildren } from "@/lib/workItemRows";
+import { buildVisibleRows, effectiveAncestors, effectiveChildren, indentTargets } from "@/lib/workItemRows";
 import type { WorkItem } from "@/types/models";
 
 const T = "tree";
@@ -103,5 +103,45 @@ describe("list view rows", () => {
     const items = fixture();
     expect(effectiveAncestors("skate", items, T).map((a) => a.id)).toEqual(["stronger", "q34", "vo2"]);
     expect(effectiveAncestors("skate", items, OTHER).map((a) => a.id)).toEqual(["stronger", "q34", "fat"]);
+  });
+});
+
+describe("where Tab puts a row", () => {
+  // A
+  //   A1
+  //   A2
+  //     A2a
+  // B
+  // C
+  const parents: Record<string, string | null> = { A: null, A1: "A", A2: "A", A2a: "A2", B: null, C: null };
+  const rows = ["A", "A1", "A2", "A2a", "B", "C"];
+  const parentOf = (id: string) => parents[id] ?? null;
+
+  it("is under the previous sibling, past that sibling's open children", () => {
+    expect(indentTargets(rows, new Set(["B"]), parentOf)).toEqual(new Map([["B", "A"]]));
+  });
+
+  it("is under the previous sibling for a child too, not the grandchild above it", () => {
+    expect(indentTargets(["A", "A1", "A2", "A2a", "A3"], new Set(["A3"]), (id) => ({ ...parents, A3: "A" })[id] ?? null)).toEqual(
+      new Map([["A3", "A2"]]),
+    );
+  });
+
+  it("is nowhere for a first child: it stays where it is", () => {
+    expect(indentTargets(rows, new Set(["A1"]), parentOf).size).toBe(0);
+    expect(indentTargets(rows, new Set(["A"]), parentOf).size).toBe(0);
+  });
+
+  it("is the same sibling for a run of selected rows, which keep their order", () => {
+    expect(indentTargets(rows, new Set(["B", "C"]), parentOf)).toEqual(new Map([["B", "A"], ["C", "A"]]));
+  });
+
+  it("leaves a selected row under another selected row to move with it", () => {
+    expect(indentTargets(rows, new Set(["A2", "A2a"]), parentOf)).toEqual(new Map([["A2", "A1"]]));
+  });
+
+  it("counts a row whose parent is not shown as a top row", () => {
+    // X's parent is in another list; it is drawn at the top level.
+    expect(indentTargets(["B", "X"], new Set(["X"]), (id) => (id === "X" ? "elsewhere" : null))).toEqual(new Map([["X", "B"]]));
   });
 });
