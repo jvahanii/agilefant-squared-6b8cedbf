@@ -22,6 +22,8 @@ import { ItemMenu, type ItemActions } from "./workItemRow/ItemMenu";
 import { ItemDialogs } from "./workItemRow/ItemDialogs";
 import { useCommonItemActions, useItemFeatures } from "./workItemRow/itemActions";
 import { useRowDialogs } from "./workItemRow/useRowDialogs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { releaseOverlayLock } from "@/lib/overlayLock";
 import { changeSelectionOrItem, listAndSublists, selectionOrItem } from "./workItemRow/rowShared";
 import {
   useSnoozeStore,
@@ -1469,10 +1471,23 @@ function BoardCard({
         dialogs={dialogs}
         actions={actions}
       />
+      {/* A dialog, drawn over the page. It was a "fixed" overlay inside the
+          card, and the card's column moves each card into place with a
+          transform — which made that overlay the card's own size: the editor
+          sat squeezed into the column, and its buttons could not be reached. */}
       {isEditingPoints && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setIsEditingPoints(false)}>
-          <div className="bg-card rounded-lg shadow-lg p-4 w-64" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-medium mb-2">Edit story points for "{item.title}"</p>
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (open) return;
+            setIsEditingPoints(false);
+            releaseOverlayLock();
+          }}
+        >
+          <DialogContent className="w-72 max-w-[calc(100vw-2rem)]" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle className="text-sm font-medium">Edit story points for "{item.title}"</DialogTitle>
+            </DialogHeader>
             <input
               autoFocus
               className="w-full text-sm bg-muted rounded-md border px-2 py-1 outline-none focus:border-primary"
@@ -1480,10 +1495,9 @@ function BoardCard({
               onChange={(e) => setEditPoints(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitPoints();
-                if (e.key === "Escape") setIsEditingPoints(false);
               }}
             />
-            <div className="flex justify-end gap-2 mt-3">
+            <div className="flex justify-end gap-2">
               <button
                 className="px-3 py-1 text-xs rounded-md border hover:bg-muted transition-colors"
                 onClick={() => setIsEditingPoints(false)}
@@ -1497,8 +1511,8 @@ function BoardCard({
                 Save
               </button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

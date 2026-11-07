@@ -584,7 +584,9 @@ exports[`what each menu entry opens > Add child item 1`] = `
 {
   "count": 7,
   "dialogs": [],
-  "inline": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
   "order": [
     "Item A",
     "Item P",
@@ -714,7 +716,9 @@ exports[`what each menu entry opens > Edit story points 1`] = `
 {
   "count": 7,
   "dialogs": [],
-  "inline": [],
+  "inline": [
+    "input=3",
+  ],
   "order": [
     "Item A",
     "Item P",
@@ -805,7 +809,9 @@ exports[`what each menu entry opens > Rename 1`] = `
 {
   "count": 7,
   "dialogs": [],
-  "inline": [],
+  "inline": [
+    "textarea=Item A",
+  ],
   "order": [
     "Item A",
     "Item P",

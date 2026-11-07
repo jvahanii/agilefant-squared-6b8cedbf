@@ -119,8 +119,35 @@ export function ItemMenu({
   const currentList = item.backlogAssignments[treeId] ?? backlogId;
   const { show } = dialogs;
 
+  // An entry that opens a field in place — the name, the points, a new child —
+  // runs once the menu has closed. Run at once, its field took the focus while
+  // the closing menu still held it, and the menu took it straight back, then
+  // handed it to the item: what was typed went nowhere, and Escape did not
+  // cancel. So it waits for the menu to let go, and the menu does not hand
+  // the focus to the item instead.
+  const afterClose = useRef<(() => void) | null>(null);
+  const inPlace = (act: (() => void) | undefined) =>
+    act &&
+    (() => {
+      afterClose.current = act;
+    });
+  const startRename = inPlace(actions.startRename);
+  const editPoints = inPlace(actions.editPoints);
+  const addChild = inPlace(actions.addChild);
+  // The icons sit in a submenu that stays open for the next one: at once.
+  const insertIcon = actions.insertIcon;
+
   return (
-    <ContextMenuContent className="w-52">
+    <ContextMenuContent
+      className="w-52"
+      onCloseAutoFocus={(e) => {
+        const run = afterClose.current;
+        if (!run) return;
+        afterClose.current = null;
+        e.preventDefault();
+        run();
+      }}
+    >
       <ContextMenuLabel className="text-xs truncate">{item.title}</ContextMenuLabel>
       <ContextMenuSeparator />
       <JiraItemMenuItems workItemId={item.id} />
@@ -186,7 +213,7 @@ export function ItemMenu({
       <ContextMenuItem className="text-xs" onSelect={actions.rankToTop}>
         Rank to top
       </ContextMenuItem>
-      {actions.insertIcon && (
+      {insertIcon && (
         <ContextMenuSub>
           <ContextMenuSubTrigger className="text-xs">Insert icon</ContextMenuSubTrigger>
           <ContextMenuSubContent
@@ -201,7 +228,7 @@ export function ItemMenu({
                   title={`:${sc}:`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    actions.insertIcon?.(`:${sc}:`);
+                    insertIcon(`:${sc}:`);
                   }}
                 >
                   {ICON_MAP[sc]}
@@ -215,8 +242,8 @@ export function ItemMenu({
       {/* A scrambled name cannot be edited — the database refuses it, since
           a rename would be lost when the original is put back, and would
           let anyone replace a name they cannot read. */}
-      {!isNameScrambled && actions.startRename && (
-        <ContextMenuItem className="text-xs" onSelect={actions.startRename}>
+      {!isNameScrambled && startRename && (
+        <ContextMenuItem className="text-xs" onSelect={startRename}>
           Rename
         </ContextMenuItem>
       )}
@@ -249,13 +276,13 @@ export function ItemMenu({
       {features.points && (
         // Where the points cannot be edited in place (on a phone, in the
         // search results) the attributes sheet has them.
-        <ContextMenuItem className="text-xs" onSelect={() => (actions.editPoints ? actions.editPoints() : show("attributes"))}>
+        <ContextMenuItem className="text-xs" onSelect={() => (editPoints ? editPoints() : show("attributes"))}>
           Edit story points
         </ContextMenuItem>
       )}
 
-      {actions.addChild && (
-        <ContextMenuItem className="text-xs" onSelect={actions.addChild}>
+      {addChild && (
+        <ContextMenuItem className="text-xs" onSelect={addChild}>
           Add child item
         </ContextMenuItem>
       )}

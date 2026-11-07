@@ -604,9 +604,39 @@ describe("an item's menu, wherever the item is", () => {
     const result = [...document.querySelectorAll("[role=option]")].find((o) => o.textContent?.includes("Item B"))!;
     fireEvent.contextMenu(result);
     fireEvent.click(within(menus()[0]).getByText("Rename"));
-    await settle(600);
+    // It waits for the menu to close, then for the item's row to be drawn in its list.
+    for (let i = 0; i < 60 && opened().inline.length === 0; i++) await settle(50);
     expect(useAppStore.getState().selectedWorkItemIds).toEqual(["B"]);
     expect(opened().inline).toEqual(["textarea=Item B"]);
+  });
+});
+
+describe("an edit started from an item's menu", () => {
+  // The menu hands focus back to the row as it closes; an edit started from it
+  // must keep it, or what is typed goes nowhere and Escape does not cancel.
+  const cases: Array<[string, (el: Element | null) => boolean]> = [
+    ["Rename", (el) => el?.tagName === "TEXTAREA" && (el as HTMLTextAreaElement).value === "Item B"],
+    ["Edit story points", (el) => el?.tagName === "INPUT"],
+    ["Add child item", (el) => el?.getAttribute("placeholder") === "Work item title…"],
+  ];
+  for (const [entry, isTheField] of cases) {
+    it(`keeps the focus in its field: ${entry}`, async () => {
+      seed();
+      fireEvent.click(within(openMenu("B")).getByText(entry));
+      await settle(50);
+      expect(isTheField(document.activeElement), `focus is on ${document.activeElement?.tagName}`).toBe(true);
+    });
+  }
+
+  it("keeps the focus in the board's points editor", async () => {
+    seed({ view: "board" });
+    fireEvent.contextMenu(document.querySelector('[data-board-card-id="B"]')!);
+    fireEvent.click(within(menus()[0]).getByText("Edit story points"));
+    await settle(50);
+    expect(document.activeElement?.tagName).toBe("INPUT");
+    // Drawn over the page, not inside the card's column.
+    expect(document.activeElement?.closest("[data-board-card-id]")).toBeNull();
+    expect(document.activeElement?.closest("[role=dialog]")).not.toBeNull();
   });
 });
 
