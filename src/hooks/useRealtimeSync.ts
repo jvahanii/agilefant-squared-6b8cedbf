@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserId } from '@/lib/currentUser';
 import { useAppStore } from '@/store/appStore';
@@ -18,11 +19,194 @@ import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 import { readOutgoingShares } from '@/store/supabaseSync';
 
+type Change = 'INSERT' | 'UPDATE' | 'DELETE';
+type Row = Record<string, unknown>;
+type Payload = RealtimePostgresChangesPayload<Row>;
+
+/** The row a change is about: the old one for a deletion. */
+const rowOf = (payload: Payload) => (payload.eventType === 'DELETE' ? payload.old : payload.new) as Row;
+
+// What this organisation can see, read when a change arrives: the store holds
+// only what comes from trees it has access to.
+const visibleTrees = () => new Set(Object.keys(useAppStore.getState().backlogTrees));
+const inVisibleTree = (assignments: unknown) => {
+  const trees = visibleTrees();
+  return Object.keys((assignments as Record<string, string> | null | undefined) ?? {}).some((tid) => trees.has(tid));
+};
+const itemIsHere = (row: Row) => !!useAppStore.getState().workItems[row.work_item_id as string];
+
 /**
- * Subscribes to Supabase Realtime Postgres changes for the active organization's
- * work_items, backlogs, backlog_trees, and work_item_hyperlinks tables. When a
- * row changes in another browser session or by another member of the same org,
- * the Zustand store is updated in-place without a full reload.
+ * A table every organisation's channel listens to, filtered to that
+ * organisation's rows: what a change to it does to the stores.
+ */
+interface OrgTable {
+  table: string;
+  /** What a change does, given its row; or, with `whole`, given all of it. */
+  apply?: (change: Change, row: Row) => void;
+  whole?: (payload: Payload) => void;
+  /**
+   * A partner's change is applied only when this says the row is in a tree we
+   * can see. Deletions always are: a row we never had is simply not found.
+   * Absent: every change is applied.
+   */
+  partnerSees?: (row: Row) => boolean;
+  /** Our own organisation's only: partners never add trees or settings of ours. */
+  ownOnly?: boolean;
+}
+
+const ORG_TABLES: OrgTable[] = [
+  {
+    table: 'work_items',
+    apply: (c, r) => useAppStore.getState().applyRealtimeWorkItem(c, r),
+    partnerSees: (r) => inVisibleTree(r.backlog_assignments),
+  },
+  {
+    table: 'backlogs',
+    apply: (c, r) => useAppStore.getState().applyRealtimeBacklog(c, r),
+    partnerSees: (r) => visibleTrees().has(r.tree_id as string),
+  },
+  {
+    table: 'backlog_trees',
+    apply: (c, r) => useAppStore.getState().applyRealtimeBacklogTree(c, r),
+    ownOnly: true,
+  },
+  {
+    table: 'work_item_hyperlinks',
+    apply: (c, r) => useAppStore.getState().applyRealtimeHyperlink(c, r),
+    // Its item is here, in a shared tree we have access to.
+    partnerSees: (r) => inVisibleTree(useAppStore.getState().workItems[r.work_item_id as string]?.backlogAssignments),
+  },
+  {
+    table: 'work_item_backlog_ranks',
+    apply: (c, r) => useAppStore.getState().applyRealtimeWorkItemRank(c, r),
+    partnerSees: itemIsHere,
+  },
+  {
+    table: 'work_item_board_ranks',
+    apply: (c, r) => useAppStore.getState().applyRealtimeWorkItemBoardRank(c, r),
+    partnerSees: itemIsHere,
+  },
+  {
+    table: 'time_entries',
+    apply: (c, r) => useTimeEntryStore.getState().applyRealtimeTimeEntry(c, r),
+    // The item or list it is logged on is here. The store is filled only from
+    // accessible trees, so that is proof enough of access.
+    partnerSees: (r) => {
+      const state = useAppStore.getState();
+      if (r.work_item_id) return !!state.workItems[r.work_item_id as string];
+      if (r.backlog_id) return !!state.backlogs[r.backlog_id as string];
+      return false;
+    },
+  },
+  {
+    table: 'work_item_team_assignments',
+    apply: (c, r) => useTeamStore.getState().applyRealtimeTeamAssignment(c, r),
+  },
+  {
+    table: 'teams',
+    apply: (c, r) => useTeamStore.getState().applyRealtimeTeam(c, r),
+  },
+  {
+    table: 'work_item_financials',
+    apply: (c, r) => useFinancialsStore.getState().applyRealtime(c, r),
+    partnerSees: itemIsHere,
+  },
+  {
+    table: 'organization_settings',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    whole: (payload) => useOrgSettingsStore.getState().applyRealtimeSettings(payload as any),
+    ownOnly: true,
+  },
+  {
+    table: 'labels',
+    apply: (c, r) => useLabelsStore.getState().applyRealtimeLabel(c, r),
+  },
+  {
+    table: 'label_assignments',
+    apply: (c, r) => useLabelsStore.getState().applyRealtimeAssignment(c, r),
+  },
+];
+
+/**
+ * Tables that ride on our own channel without a filter: RLS already limits
+ * what the subscriber may see. A channel takes any number of bindings, and
+ * each extra channel costs Realtime a subscription row plus a publication
+ * re-check every time it subscribes — 100k of those checks were the biggest
+ * single consumer of database time.
+ */
+const OWN_UNFILTERED: Array<{ table: string; on: (payload: Payload) => void }> = [
+  {
+    // Backlog statuses: RLS restricts to accessible backlogs.
+    table: 'backlog_statuses',
+    on: (payload) => {
+      const row = rowOf(payload);
+      const backlogId = row?.backlog_id as string | undefined;
+      if (!backlogId || !useAppStore.getState().backlogs[backlogId]) return;
+      useBacklogStatusesStore.getState().applyRealtimeStatus(payload.eventType, row);
+    },
+  },
+  // Public links: any change reloads which trees and backlogs are published.
+  // The event's contents are deliberately ignored -- on a table with RLS a
+  // DELETE carries only the primary key, which here is the token, so it could
+  // not say which marker to drop. The reload asks the database instead,
+  // debounced so a cascade costs one query.
+  { table: 'published_links', on: () => usePublishedLinksStore.getState().scheduleLoad() },
+  // Scrambled item names: same shape, same reason.
+  { table: 'work_item_scrambles', on: () => useScrambledItemsStore.getState().scheduleLoad() },
+  // Which Jira issue each item is: same shape, same reason.
+  { table: 'jira_issue_links', on: () => useJiraIssuesStore.getState().scheduleLoad() },
+  // And the connection: its hierarchy levels change when Jira's do.
+  { table: 'jira_connections', on: () => useJiraIssuesStore.getState().scheduleLoad() },
+  // And scrambled lists.
+  { table: 'backlog_scrambles', on: () => useScrambledListsStore.getState().scheduleLoad() },
+  {
+    // Per-tree yearly financial targets, filtered to accessible trees here.
+    table: 'tree_financial_targets',
+    on: (payload) => {
+      const row = rowOf(payload);
+      const treeId = row?.tree_id as string | undefined;
+      if (!treeId || !visibleTrees().has(treeId)) return;
+      useTargetsStore.getState().applyRealtime(payload.eventType, row);
+    },
+  },
+];
+
+/**
+ * A channel for one organisation's changes: our own, or a partner's that
+ * shares trees with us. A partner's are applied only where they touch what
+ * we can see (OrgTable.partnerSees).
+ */
+function buildOrgChannel(name: string, orgId: string, partner: boolean) {
+  const channel = supabase.channel(name);
+  for (const t of ORG_TABLES) {
+    if (partner && t.ownOnly) continue;
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: t.table, filter: `organization_id=eq.${orgId}` },
+      (payload: Payload) => {
+        if (t.whole) {
+          t.whole(payload);
+          return;
+        }
+        const row = rowOf(payload);
+        if (partner && payload.eventType !== 'DELETE' && t.partnerSees && !t.partnerSees(row)) return;
+        t.apply?.(payload.eventType, row);
+      },
+    );
+  }
+  if (!partner) {
+    for (const t of OWN_UNFILTERED) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: t.table }, t.on);
+    }
+  }
+  return channel;
+}
+
+/**
+ * Subscribes to Supabase Realtime Postgres changes for the active
+ * organization's tables (ORG_TABLES and OWN_UNFILTERED). When a row changes
+ * in another browser session or by another member of the same org, the
+ * stores are updated in place without a full reload.
  *
  * Additionally subscribes to the same tables for every "partner" organization
  * that participates in tree sharing with the active org:
@@ -38,22 +222,6 @@ import { readOutgoingShares } from '@/store/supabaseSync';
 export function useRealtimeSync() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
-  const applyRealtimeWorkItem = useAppStore((s) => s.applyRealtimeWorkItem);
-  const applyRealtimeWorkItemRank = useAppStore((s) => s.applyRealtimeWorkItemRank);
-  const applyRealtimeWorkItemBoardRank = useAppStore((s) => s.applyRealtimeWorkItemBoardRank);
-  const applyRealtimeBacklog = useAppStore((s) => s.applyRealtimeBacklog);
-  const applyRealtimeBacklogTree = useAppStore((s) => s.applyRealtimeBacklogTree);
-  const applyRealtimeHyperlink = useAppStore((s) => s.applyRealtimeHyperlink);
-  const applyRealtimeTimeEntry = useTimeEntryStore((s) => s.applyRealtimeTimeEntry);
-  const applyRealtimeTeamAssignment = useTeamStore((s) => s.applyRealtimeTeamAssignment);
-  const applyRealtimeTeam = useTeamStore((s) => s.applyRealtimeTeam);
-  const applyRealtimeSettings = useOrgSettingsStore((s) => s.applyRealtimeSettings);
-  const applyRealtimeLabel = useLabelsStore((s) => s.applyRealtimeLabel);
-  const applyRealtimeAssignment = useLabelsStore((s) => s.applyRealtimeAssignment);
-  const applyRealtimeStatus = useBacklogStatusesStore((s) => s.applyRealtimeStatus);
-  const applyRealtimeSnooze = useSnoozeStore((s) => s.applyRealtimeSnooze);
-  const applyRealtimeFinancials = useFinancialsStore((s) => s.applyRealtime);
-  const applyRealtimeTarget = useTargetsStore((s) => s.applyRealtime);
 
   // Coming back to the tab: reconnect if the socket died while it was hidden,
   // and after a long absence catch up on what was missed. Nothing did this
@@ -94,7 +262,7 @@ export function useRealtimeSync() {
   useEffect(() => {
     if (!activeOrgId) return;
 
-    const accessibleTreeIds = new Set(Object.keys(backlogTrees));
+    const accessibleTreeIds = new Set(Object.keys(useAppStore.getState().backlogTrees));
 
     // Derive incoming partner org IDs synchronously from tree IDs that belong
     // to a different org (format: "<ownerOrgId>::<rawId>").
@@ -114,441 +282,11 @@ export function useRealtimeSync() {
     const unsubscribers: Array<() => void> = [];
     let destroyed = false;
 
-    /**
-     * Attaches `labels` and `label_assignments` Postgres CDC listeners to the
-     * provided channel builder.  Extracted here to eliminate the duplicate
-     * handler blocks that previously appeared in both `subscribePartnerOrg`
-     * and the own-org channel.
-     */
-    function addLabelHandlers(
-      channel: ReturnType<typeof supabase.channel>,
-      orgId: string,
-    ): ReturnType<typeof supabase.channel> {
-      return channel
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'labels',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeLabel(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'label_assignments',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        );
-    }
+    const subscribePartnerOrg = (orgId: string) => {
+      unsubscribers.push(subscribeWithHealth(() => buildOrgChannel(`entity-realtime-${activeOrgId}-partner-${orgId}`, orgId, true)));
+    };
 
-    // Helper: build a channel that monitors work_items, backlogs, and
-    // work_item_hyperlinks for a partner org.  A JS-side filter ensures we only
-    // apply changes that reference trees the active org can actually access.
-    function buildPartnerChannel(orgId: string) {
-      const channel = supabase
-        .channel(`entity-realtime-${activeOrgId}-partner-${orgId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_items',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              // Only apply if this item is assigned to at least one accessible tree.
-              const assignments = (row.backlog_assignments as Record<string, string>) ?? {};
-              const currentTrees = new Set(Object.keys(useAppStore.getState().backlogTrees));
-              if (!Object.keys(assignments).some((tid) => currentTrees.has(tid))) return;
-            }
-            applyRealtimeWorkItem(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'backlogs',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              // Only apply if this backlog belongs to an accessible tree.
-              const currentTrees = new Set(Object.keys(useAppStore.getState().backlogTrees));
-              if (!currentTrees.has(row.tree_id as string)) return;
-            }
-            applyRealtimeBacklog(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_hyperlinks',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              // Only apply if the parent work item is in our store (i.e. it
-              // belongs to a shared tree we have access to).
-              const workItemId = row.work_item_id as string;
-              const assignments = useAppStore.getState().workItems[workItemId]?.backlogAssignments ?? {};
-              const currentTrees = new Set(Object.keys(useAppStore.getState().backlogTrees));
-              if (!Object.keys(assignments).some((tid) => currentTrees.has(tid))) return;
-            }
-            applyRealtimeHyperlink(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_backlog_ranks',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              const workItemId = row.work_item_id as string;
-              if (!useAppStore.getState().workItems[workItemId]) return;
-            }
-            applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_board_ranks',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              const workItemId = row.work_item_id as string;
-              if (!useAppStore.getState().workItems[workItemId]) return;
-            }
-            applyRealtimeWorkItemBoardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'time_entries',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              // Only apply if the referenced work item or backlog is already in our
-              // store. The store is populated exclusively from accessible trees, so
-              // presence here is a sufficient proof of access – no extra tree check
-              // is needed.
-              const workItemId = row.work_item_id as string | null;
-              const backlogId = row.backlog_id as string | null;
-              const state = useAppStore.getState();
-              if (workItemId) {
-                if (!state.workItems[workItemId]) return;
-              } else if (backlogId) {
-                if (!state.backlogs[backlogId]) return;
-              } else {
-                return;
-              }
-            }
-            applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_team_assignments',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeTeamAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'teams',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_financials',
-            filter: `organization_id=eq.${orgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            if (payload.eventType !== 'DELETE') {
-              const workItemId = row.work_item_id as string;
-              if (!useAppStore.getState().workItems[workItemId]) return;
-            }
-            applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        );
-      return addLabelHandlers(channel, orgId);
-    }
-
-    function subscribePartnerOrg(orgId: string) {
-      unsubscribers.push(subscribeWithHealth(() => buildPartnerChannel(orgId)));
-    }
-
-    // Own-org channel (includes backlog_trees; partner orgs only ever add
-    // work_items / backlogs to shared trees, never new backlog_trees).
-    function buildOwnChannel() {
-      const ownChannel = supabase
-        .channel(`entity-realtime-${activeOrgId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_items',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeWorkItem(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'backlogs',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeBacklog(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'backlog_trees',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeBacklogTree(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_hyperlinks',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeHyperlink(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_backlog_ranks',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeWorkItemRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_board_ranks',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeWorkItemBoardRank(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'time_entries',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeTimeEntry(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_team_assignments',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeTeamAssignment(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'teams',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeTeam(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'work_item_financials',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            applyRealtimeFinancials(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'organization_settings',
-            filter: `organization_id=eq.${activeOrgId}`,
-          },
-          (payload) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            applyRealtimeSettings(payload as any);
-          },
-        );
-      // Four more tables ride on this same channel rather than opening their own.
-      // A channel takes any number of bindings, and each extra channel costs
-      // Realtime a subscription row plus a publication re-check every time it
-      // subscribes — 100k of those checks were the biggest single consumer of
-      // database time. None of these four needs a filter: RLS already limits
-      // what the subscriber may see.
-      ownChannel
-        // Backlog statuses: RLS restricts to accessible backlogs.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'backlog_statuses' },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            const backlogId = row?.backlog_id as string | undefined;
-            if (!backlogId) return;
-            const accessible = useAppStore.getState().backlogs;
-            if (!accessible[backlogId]) return;
-            applyRealtimeStatus(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        )
-        // Public links: any change reloads which trees and backlogs are
-        // published. The event's contents are deliberately ignored -- on a table
-        // with RLS a DELETE carries only the primary key, which here is the
-        // token, so it could not say which marker to drop. The reload asks the
-        // database instead, debounced so a cascade costs one query.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'published_links' },
-          () => usePublishedLinksStore.getState().scheduleLoad(),
-        )
-        // Scrambled item names: same shape, same reason.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'work_item_scrambles' },
-          () => useScrambledItemsStore.getState().scheduleLoad(),
-        )
-        // Which Jira issue each item is: same shape, same reason.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'jira_issue_links' },
-          () => useJiraIssuesStore.getState().scheduleLoad(),
-        )
-        // And the connection: its hierarchy levels change when Jira's do.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'jira_connections' },
-          () => useJiraIssuesStore.getState().scheduleLoad(),
-        )
-        // And scrambled lists.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'backlog_scrambles' },
-          () => useScrambledListsStore.getState().scheduleLoad(),
-        )
-        // Per-tree yearly financial targets, filtered to accessible trees here.
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'tree_financial_targets' },
-          (payload) => {
-            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-            const treeId = row?.tree_id as string | undefined;
-            if (!treeId) return;
-            const accessible = new Set(Object.keys(useAppStore.getState().backlogTrees));
-            if (!accessible.has(treeId)) return;
-            applyRealtimeTarget(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-          },
-        );
-      return addLabelHandlers(ownChannel, activeOrgId);
-    }
-
-    unsubscribers.push(subscribeWithHealth(buildOwnChannel));
+    unsubscribers.push(subscribeWithHealth(() => buildOrgChannel(`entity-realtime-${activeOrgId}`, activeOrgId, false)));
 
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
@@ -560,16 +298,8 @@ export function useRealtimeSync() {
           .channel(`work-item-snoozes-${userId}`)
           .on(
             'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'work_item_snoozes',
-              filter: `user_id=eq.${userId}`,
-            },
-            (payload) => {
-              const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>;
-              applyRealtimeSnooze(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', row);
-            },
+            { event: '*', schema: 'public', table: 'work_item_snoozes', filter: `user_id=eq.${userId}` },
+            (payload: Payload) => useSnoozeStore.getState().applyRealtimeSnooze(payload.eventType, rowOf(payload)),
           );
       unsubscribers.push(subscribeWithHealth(buildSnoozeChannel));
     })();
@@ -609,11 +339,9 @@ export function useRealtimeSync() {
       destroyed = true;
       for (const unsubscribe of unsubscribers) unsubscribe();
     };
-    // applyRealtime* actions are stable Zustand references; omitting them is intentional.
     // partnerOrgsKey re-subscribes when an organization starts or stops sharing
     // trees with this one — the only change that alters which channels exist.
     // A tree shared *out* after this ran is picked up by the next resync rather
     // than by rebuilding every channel on each tree edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId, partnerOrgsKey, hasOwnTrees]);
 }
