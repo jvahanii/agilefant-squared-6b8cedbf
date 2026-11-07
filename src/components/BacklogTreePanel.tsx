@@ -75,8 +75,19 @@ function useTreeShares(treeIds: string[]) {
     if (treeIds.length === 0 || !activeOrgId) return;
 
     const load = async () => {
-      // Use security definer function to get sharing info for each tree
+      // Who every tree is shared with, in one request; one a tree only where
+      // that is not to be had (a database without get_trees_sharing_info).
       const result: Record<string, TreeShare[]> = {};
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const all = await (supabase as any).rpc("get_trees_sharing_info", { _tree_ids: treeIds, _exclude_org_id: activeOrgId });
+      if (!all.error && Array.isArray(all.data)) {
+        for (const row of all.data as Array<{ tree_id: string; org_id: string; org_name: string }>) {
+          (result[row.tree_id] ??= []).push({ orgId: row.org_id, orgName: row.org_name });
+        }
+        setShares(result);
+        return;
+      }
 
       const results = await Promise.all(
         treeIds.map((treeId) =>

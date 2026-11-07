@@ -6,6 +6,7 @@ import { beforeEach } from "vitest";
 import { clearAllCachedAppData } from "@/store/appDataCache";
 import { forgetRowMirrors } from "@/store/rowMirror";
 import { forgetItemChanges } from "@/lib/itemChangedAt";
+import { forgetLoadExtras } from "@/store/loadExtras";
 
 // Unlike localStorage, the cache survives between tests in a file, so without
 // this one test's snapshot sends the next one down the cached load path.
@@ -14,6 +15,7 @@ beforeEach(async () => {
   await clearAllCachedAppData();
   await forgetRowMirrors();
   forgetItemChanges();
+  forgetLoadExtras();
 });
 
 Object.defineProperty(window, "matchMedia", {

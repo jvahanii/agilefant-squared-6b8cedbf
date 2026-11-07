@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { paginateSelect } from '@/integrations/supabase/pagination';
 import { getCurrentUserId } from '@/lib/currentUser';
+import { takeLoadExtra } from './loadExtras';
 
 export interface WorkItemSnooze {
   id: string;
@@ -142,7 +143,9 @@ export const useSnoozeStore = create<SnoozeState>((set, get) => ({
     }
 
     // Paginate: heavy users may have thousands of snoozes across orgs.
-    const { data, error } = await paginateSelect<Record<string, unknown>>((from, to) =>
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const bundled = await takeLoadExtra('snoozes');
+    const { data, error } = bundled ? { data: bundled, error: null } : await paginateSelect<Record<string, unknown>>((from, to) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from('work_item_snoozes' as any).select('*') as any)
         .eq('user_id', userId)

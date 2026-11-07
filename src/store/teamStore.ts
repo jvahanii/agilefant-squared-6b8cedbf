@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { paginateSelect } from '@/integrations/supabase/pagination';
 import { toast } from '@/hooks/use-toast';
+import { takeLoadExtra } from './loadExtras';
 
 export interface Team {
   id: string;
@@ -36,14 +37,8 @@ interface TeamState {
   applyRealtimeTeam: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', row: Record<string, unknown>) => void;
 }
 
-export const useTeamStore = create<TeamState>()((set, get) => ({
-  teams: [],
-  teamMembers: [],
-  workItemTeams: {},
-  loading: false,
-
-  loadTeams: async (orgId: string) => {
-    set({ loading: true });
+/** The teams of an organization and its partners, and their members, read for themselves. */
+async function readTeams(orgId: string): Promise<[{ data: unknown[] | null }, { data: unknown[] | null }]> {
     // Find partner org IDs via shared trees (both directions)
     const shares = (await supabase.from('backlog_tree_shares' as any).select('organization_id, tree_id')).data as any[] | null;
     // Trees owned by orgId that are shared → partner is the share's organization_id
@@ -72,10 +67,29 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
       }
     }
     const allOrgIds = [orgId, ...Array.from(partnerOrgIds)];
-    const [teamsRes, membersRes] = await Promise.all([
+    return Promise.all([
       supabase.from('teams' as any).select('*').in('organization_id', allOrgIds),
       supabase.from('team_members' as any).select('*'),
     ]);
+}
+
+export const useTeamStore = create<TeamState>()((set, get) => ({
+  teams: [],
+  teamMembers: [],
+  workItemTeams: {},
+  loading: false,
+
+  loadTeams: async (orgId: string) => {
+    set({ loading: true });
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const [bundledTeams, bundledMembers] = await Promise.all([
+      takeLoadExtra('teams', { orgId }),
+      takeLoadExtra('teamMembers', { orgId }),
+    ]);
+    const [teamsRes, membersRes] =
+      bundledTeams && bundledMembers
+        ? [{ data: bundledTeams }, { data: bundledMembers }]
+        : await readTeams(orgId);
     const teams = ((teamsRes.data ?? []) as any[]).map((t: any) => ({
       id: t.id,
       name: t.name,
@@ -94,7 +108,9 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
 
   loadWorkItemTeams: async (_orgId: string) => {
     // RLS handles visibility; don't filter by org so shared items' assignments are included
-    const { data } = await paginateSelect<any>((from, to) =>
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const bundled = await takeLoadExtra('teamAssignments');
+    const { data } = bundled ? { data: bundled } : await paginateSelect<any>((from, to) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from('work_item_team_assignments' as any).select('work_item_id, team_id') as any)
         .order('work_item_id', { ascending: true })

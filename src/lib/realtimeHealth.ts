@@ -29,6 +29,7 @@ import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
+import { prefetchLoadExtras } from '@/store/loadExtras';
 
 export type ChannelStatus = string;
 
@@ -179,6 +180,8 @@ async function runResync(full: boolean): Promise<void> {
   }
   const orgIdList = [...orgIds];
 
+  // The small reads below, in one request, which each store takes its part of.
+  prefetchLoadExtras(orgId, { fresh: true });
   const tasks: Array<Promise<unknown>> = [
     useTeamStore.getState().loadTeams(orgId),
     useTeamStore.getState().loadWorkItemTeams(orgId),

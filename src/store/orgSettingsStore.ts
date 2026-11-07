@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrgStore } from '@/store/orgStore';
+import { takeLoadExtra } from './loadExtras';
 
 interface OrgSettings {
   timeLoggingEnabled: boolean;
@@ -111,7 +112,11 @@ export const useOrgSettingsStore = create<OrgSettingsState>((set, get) => ({
 
   loadSettings: async (orgId: string) => {
     set({ loading: true });
-    const { data, error } = await supabase
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const bundled = await takeLoadExtra('settings', { orgId });
+    const { data, error } = bundled
+      ? { data: bundled as never, error: null }
+      : await supabase
       .from('organization_settings')
       .select('organization_id, time_logging_enabled, points_enabled, labels_enabled, custom_statuses_enabled, savings_income_enabled, boards_enabled, burnups_enabled, persist_notifications_enabled, public_links_enabled, ratings_enabled, deadlines_enabled, created_dates_enabled, start_end_dates_enabled, scrambling_enabled')
       .eq('organization_id', orgId)

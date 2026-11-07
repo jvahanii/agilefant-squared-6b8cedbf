@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { takeLoadExtra } from './loadExtras';
 
 /**
  * Which lists are scrambled, and by whom — the list's side of
@@ -39,7 +40,11 @@ export const useScrambledListsStore = create<ScrambledListsState>((set, get) => 
   load: async () => {
     // Columns are listed rather than "*" because original_name is not granted
     // to any client role — asking for it would fail the whole query.
-    const { data, error } = await supabase
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const bundled = await takeLoadExtra('listScrambles');
+    const { data, error } = bundled
+      ? { data: bundled as never, error: null }
+      : await supabase
       .from('backlog_scrambles')
       .select('backlog_id, scrambled_by, with_backlog_id');
     if (error) {

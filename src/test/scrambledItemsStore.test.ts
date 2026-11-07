@@ -95,7 +95,8 @@ describe("scrambled items store", () => {
     store.scheduleLoad();
     expect(select).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(SCRAMBLE_RELOAD_DEBOUNCE_MS);
+    // The read follows a step later: it first looks for the load's combined read.
+    await vi.advanceTimersByTimeAsync(SCRAMBLE_RELOAD_DEBOUNCE_MS);
     expect(select).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });

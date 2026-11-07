@@ -19,6 +19,7 @@ import { usePublishedLinksStore } from '@/store/publishedLinksStore';
 import { useScrambledItemsStore } from '@/store/scrambledItemsStore';
 import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
+import { prefetchLoadExtras } from '@/store/loadExtras';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -66,6 +67,8 @@ const Index = () => {
       // useOrgStore.subscribe block in App.tsx before this effect runs, so we
       // intentionally don't call them here — doing so would double-fetch the
       // entire dataset on every org switch.
+      // The small reads that follow, in one request, which each store takes its part of.
+      prefetchLoadExtras(activeOrgId);
       loadTeams(activeOrgId);
       loadWorkItemTeams(activeOrgId);
       loadSettings(activeOrgId).then(() => {

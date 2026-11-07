@@ -56,13 +56,14 @@ describe("scrambled lists store", () => {
     quiet.mockRestore();
   });
 
-  it("reloads once for a burst of change events", () => {
+  it("reloads once for a burst of change events", async () => {
     vi.useFakeTimers();
     select.mockResolvedValue({ data: [], error: null });
 
     for (let i = 0; i < 5; i += 1) useScrambledListsStore.getState().scheduleLoad();
     expect(select).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(LIST_SCRAMBLE_RELOAD_DEBOUNCE_MS);
+    // The read follows a step later: it first looks for the load's combined read.
+    await vi.advanceTimersByTimeAsync(LIST_SCRAMBLE_RELOAD_DEBOUNCE_MS);
     expect(select).toHaveBeenCalledTimes(1);
   });
 

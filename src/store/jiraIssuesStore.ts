@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { IssueTypeLevel } from '../../supabase/functions/_shared/jiraMapping';
+import { takeLoadExtra } from './loadExtras';
 
 /**
  * Which Jira issue each synced work item is: its key and type, and where to
@@ -56,9 +57,11 @@ export const useJiraIssuesStore = create<JiraIssuesState>((set, get) => ({
 
   load: async () => {
     // Columns are listed: only these are granted to the app.
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const [bundledLinks, bundledConnections] = await Promise.all([takeLoadExtra('jiraLinks'), takeLoadExtra('jiraConnections')]);
     const [links, connections] = await Promise.all([
-      supabase.from('jira_issue_links').select('work_item_id, organization_id, connection_id, jira_key, jira_type, last_error, stopped'),
-      supabase.from('jira_connections').select('id, organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
+      bundledLinks ? { data: bundledLinks as never, error: null } : supabase.from('jira_issue_links').select('work_item_id, organization_id, connection_id, jira_key, jira_type, last_error, stopped'),
+      bundledConnections ? { data: bundledConnections as never, error: null } : supabase.from('jira_connections').select('id, organization_id, base_url, project_key, backlog_id, tree_id, enabled, issue_types'),
     ]);
     if (links.error) {
       console.error('Could not load Jira issues:', links.error.message);

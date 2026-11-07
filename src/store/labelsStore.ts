@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { paginateSelect } from '@/integrations/supabase/pagination';
+import { takeLoadExtra } from './loadExtras';
 
 export type LabelEntityType = 'work_item' | 'backlog';
 
@@ -135,16 +136,21 @@ export const useLabelsStore = create<LabelsState>((set, get) => ({
     if (orgIds.length === 0) return;
     set({ loading: true });
 
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const [bundledLabels, bundledAssignments] = await Promise.all([
+      takeLoadExtra('labels', { orgIds }),
+      takeLoadExtra('labelAssignments', { orgIds }),
+    ]);
     const [{ data: labelRows, error: labelErr }, { data: assignRows, error: assignErr }] =
       await Promise.all([
-        paginateSelect<Record<string, unknown>>((from, to) =>
+        bundledLabels ? { data: bundledLabels, error: null } : paginateSelect<Record<string, unknown>>((from, to) =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (supabase.from('labels' as any).select('*') as any)
             .in('organization_id', orgIds)
             .order('id', { ascending: true })
             .range(from, to),
         ),
-        paginateSelect<Record<string, unknown>>((from, to) =>
+        bundledAssignments ? { data: bundledAssignments, error: null } : paginateSelect<Record<string, unknown>>((from, to) =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (supabase.from('label_assignments' as any).select('*') as any)
             .in('organization_id', orgIds)

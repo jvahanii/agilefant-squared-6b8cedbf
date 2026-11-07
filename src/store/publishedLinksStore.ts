@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
+import { takeLoadExtra } from './loadExtras';
 
 /**
  * Which trees and backlogs currently have a public link, for the markers in
@@ -36,7 +37,9 @@ export const usePublishedLinksStore = create<PublishedLinksState>((set, get) => 
   backlogs: new Set(),
 
   load: async () => {
-    const { data, error } = await supabase.from('published_links').select('tree_id, backlog_id');
+    // Taken from the load's combined read where there is one (loadExtras.ts).
+    const bundled = await takeLoadExtra('publishedLinks');
+    const { data, error } = bundled ? { data: bundled as never, error: null } : await supabase.from('published_links').select('tree_id, backlog_id');
     if (error) {
       console.error('Could not load published links:', error.message);
       return;
