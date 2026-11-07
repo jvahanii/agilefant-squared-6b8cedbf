@@ -113,7 +113,13 @@ const ALL_OFF = Object.fromEntries(Object.keys(ALL_ON).map((k) => [k, false]));
  * Elsewhere:   P › D
  * Tree 2:      A as well, in "Other"
  */
-function seed({ selected = [] as string[], expanded = ["A"], settings = ALL_ON as Record<string, boolean> } = {}) {
+function seed({
+  selected = [] as string[],
+  expanded = ["A"],
+  settings = ALL_ON as Record<string, boolean>,
+  view = "list" as "list" | "board",
+  query = "",
+} = {}) {
   const items = [
     item("A", {
       points: 3, rating: 4, deadline: "2020-01-02", createdOn: "2020-01-01", startedOn: "2020-01-03", endedOn: "2020-01-05",
@@ -134,7 +140,7 @@ function seed({ selected = [] as string[], expanded = ["A"], settings = ALL_ON a
     organizationId: ORG,
     workItems: Object.fromEntries(items.map((i) => [i.id, i])),
     backlogs: {
-      [LIST]: { id: LIST, name: "List", parentId: null, childrenIds: [CHILD_LIST], treeId: TREE, rank: 0, ratingsEnabled: true, createdDatesEnabled: true, startEndDatesEnabled: true },
+      [LIST]: { id: LIST, name: "List", parentId: null, childrenIds: [CHILD_LIST], treeId: TREE, rank: 0, viewMode: view, ratingsEnabled: true, createdDatesEnabled: true, startEndDatesEnabled: true },
       [CHILD_LIST]: { id: CHILD_LIST, name: "Child list", parentId: LIST, childrenIds: [], treeId: TREE, rank: 0, ratingsEnabled: true, createdDatesEnabled: true, startEndDatesEnabled: true },
       [ELSEWHERE]: { id: ELSEWHERE, name: "Elsewhere", parentId: null, childrenIds: [], treeId: TREE, rank: 1 },
       [OTHER]: { id: OTHER, name: "Other", parentId: null, childrenIds: [], treeId: TREE2, rank: 0 },
@@ -148,7 +154,7 @@ function seed({ selected = [] as string[], expanded = ["A"], settings = ALL_ON a
     selectedBacklogIds: [LIST],
     selectedWorkItemIds: selected,
     expandedWorkItems: new Set(expanded),
-    searchQuery: "",
+    searchQuery: query,
     isLoading: false,
     loadingProgress: 100,
   } as never);
@@ -186,6 +192,19 @@ const normalize = (html: string) => html.replace(/:r[0-9a-z]+:/g, ":r:");
 const rowOf = (id: string) => document.querySelector(`[data-work-item-id="${id}"]`) as HTMLElement;
 
 /** Each row drawn, in order, as its whole wrapper (row and any inline input). */
+/** Each board card drawn, in order. */
+function cardsAsDrawn() {
+  return [...document.querySelectorAll("[data-board-card-id]")].map((card) => ({
+    id: card.getAttribute("data-board-card-id"),
+    html: normalize(card.outerHTML),
+  }));
+}
+
+/** Each search result drawn, in order. */
+function resultsAsDrawn() {
+  return [...document.querySelectorAll("[role=listbox][aria-label='Search results'] [role=option]")].map((r) => normalize(r.outerHTML));
+}
+
 function rowsAsDrawn() {
   return [...document.querySelectorAll("[data-work-item-id]")].map((row) => ({
     id: row.getAttribute("data-work-item-id"),
@@ -258,6 +277,39 @@ describe("a row as drawn", () => {
     useScrambledItemsStore.setState({ byItem: new Map([["B", "me"]]) } as never);
     seed();
     expect(rowsAsDrawn().find((r) => r.id === "B")).toMatchSnapshot();
+  });
+});
+
+describe("a board card as drawn", () => {
+  it("with everything the organization can switch on", () => {
+    seed({ view: "board" });
+    expect(cardsAsDrawn()).toMatchSnapshot();
+  });
+
+  it("selected", () => {
+    seed({ view: "board", selected: ["A"] });
+    expect(cardsAsDrawn().find((c) => c.id === "A")).toMatchSnapshot();
+  });
+
+  it("is renamed in place on a double click", () => {
+    seed({ view: "board" });
+    fireEvent.doubleClick(document.querySelector('[data-board-card-id="B"]')!);
+    const input = document.querySelector('[data-board-card-id="B"] input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Renamed" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(useAppStore.getState().workItems.B.title).toBe("Renamed");
+  });
+});
+
+describe("a search result as drawn", () => {
+  it("lists what matches, with where it is", async () => {
+    seed();
+    // Typed after the list is shown: opening a list clears the search box.
+    await act(async () => {
+      useAppStore.getState().setSearchQuery("Item");
+    });
+    await settle();
+    expect(resultsAsDrawn()).toMatchSnapshot();
   });
 });
 
