@@ -1,0 +1,1049 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a row as drawn > selected, alone and with others 1`] = `
+[
+  {
+    "html": "<div data-index="0" class="absolute top-0 left-0 w-full" style="transform: translateY(0px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            bg-selection/10 border-selection/30 ring-1 ring-selection/30
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down w-3.5 h-3.5"><path d="m6 9 6 6 6-6"></path></svg></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">1</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item A: 4 of 5"><button type="button" aria-label="1 star" aria-pressed="true" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="true" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="true" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="true" title="Click again to remove the rating" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums hover:bg-muted text-destructive" title="Deadline 2020-01-02 — passed" aria-label="Deadline 1/2/2020, passed. Change">1/2/2020</button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A</span></span></span><span class="ml-1"><span style="color: rgb(255, 0, 0);">Urgent</span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><span>Red</span></span></span></span><span class="shrink-0 mt-0.5 text-primary/70" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3 h-3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></span><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground" title="Started 2020-01-03, ended 2020-01-05" aria-label="Started 2020-01-03, ended 2020-01-05. Change">1/3/2020–1/5/2020</button><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground" title="Created 2020-01-01" aria-label="Created 1/1/2020. Change">1/1/2020</button><button class="shrink-0 mt-0.5 text-primary/70 hover:text-primary transition-colors" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3 h-3"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><div class="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5"><div class="flex items-center text-[10px] text-foreground"><span class="mr-0.5">also in</span><span class="flex items-center"><button class="hover:text-foreground hover:underline transition-colors">Other</button></span></div></div><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-primary font-medium" title="Own: 3, Rolled-up: 7">2/7</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-primary font-medium" title="Story points (tap to edit)">2/7</span><div class="flex md:hidden items-center gap-0.5 shrink-0 "><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><span class="text-[10px] font-medium tabular-nums leading-none">1</span></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div><span class="text-xs text-muted-foreground tabular-nums min-w-[12px] text-right">2</span></div></div></div></div>",
+    "id": "A",
+  },
+  {
+    "html": "<div data-index="4" class="absolute top-0 left-0 w-full" style="transform: translateY(128px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="B" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            bg-selection/10 border-selection/30 ring-1 ring-selection/30
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">5</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item B: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item B</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 flex items-center gap-0.5 rounded px-1 text-[10px] font-medium bg-destructive/10 text-destructive" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ban w-2.5 h-2.5"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></svg>Closed</span><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">–</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">–</span><div class="flex md:hidden items-center gap-0.5 shrink-0 "><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item B"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "B",
+  },
+]
+`;
+
+exports[`a row as drawn > with everything switched off 1`] = `
+[
+  {
+    "html": "<div data-index="0" class="absolute top-0 left-0 w-full" style="transform: translateY(0px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down w-3.5 h-3.5"><path d="m6 9 6 6 6-6"></path></svg></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">1</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><span>Red</span></span></span></span><span class="shrink-0 mt-0.5 text-primary/70" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3 h-3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></span><button class="shrink-0 mt-0.5 text-primary/70 hover:text-primary transition-colors" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3 h-3"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><div class="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5"><div class="flex items-center text-[10px] text-foreground"><span class="mr-0.5">also in</span><span class="flex items-center"><button class="hover:text-foreground hover:underline transition-colors">Other</button></span></div></div><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div><span class="text-xs text-muted-foreground tabular-nums min-w-[12px] text-right">2</span></div></div></div></div>",
+    "id": "A",
+  },
+  {
+    "html": "<div data-index="1" class="absolute top-0 left-0 w-full" style="transform: translateY(32px);"><div class="relative py-px" style="margin-left: 32px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A1" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 32px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">2</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(34, 197, 94);" title="Done" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A1</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A1"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "A1",
+  },
+  {
+    "html": "<div data-index="2" class="absolute top-0 left-0 w-full" style="transform: translateY(64px);"><div class="relative py-px" style="margin-left: 32px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A2" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 32px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">3</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A2</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "A2",
+  },
+  {
+    "html": "<div data-index="3" class="absolute top-0 left-0 w-full" style="transform: translateY(96px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="C" data-backlog-id="org::bl-1a" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            text-muted-foreground
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/30 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/50 hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">4</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item C</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5"><div class="flex items-center text-[10px] text-muted-foreground/70"><span class="mr-0.5">in</span><button class="hover:text-foreground hover:underline transition-colors">Child list</button></div></div><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item C"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "C",
+  },
+  {
+    "html": "<div data-index="4" class="absolute top-0 left-0 w-full" style="transform: translateY(128px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="B" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">5</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item B</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 flex items-center gap-0.5 rounded px-1 text-[10px] font-medium bg-destructive/10 text-destructive" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ban w-2.5 h-2.5"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></svg>Closed</span><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item B"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "B",
+  },
+  {
+    "html": "<div data-index="5" class="absolute top-0 left-0 w-full" style="transform: translateY(160px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="D" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">6</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item D</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 rounded px-1 text-[10px] font-medium bg-muted text-muted-foreground" data-state="closed">?</span><div class="hidden md:flex items-center shrink-0 mt-0.5 text-[10px] text-muted-foreground/70 max-w-[200px]"><span class="flex items-center min-w-0"><span class="truncate"><span class="inline-flex items-baseline gap-0"><span>Item P</span></span></span></span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0"><path d="m9 18 6-6-6-6"></path></svg></div><div class="flex items-start gap-1 mt-0.5"><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item D"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "D",
+  },
+]
+`;
+
+exports[`a row as drawn > with everything the organization can switch on 1`] = `
+[
+  {
+    "html": "<div data-index="0" class="absolute top-0 left-0 w-full" style="transform: translateY(0px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down w-3.5 h-3.5"><path d="m6 9 6 6 6-6"></path></svg></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">1</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item A: 4 of 5"><button type="button" aria-label="1 star" aria-pressed="true" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="true" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="true" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="true" title="Click again to remove the rating" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums hover:bg-muted text-destructive" title="Deadline 2020-01-02 — passed" aria-label="Deadline 1/2/2020, passed. Change">1/2/2020</button><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A</span></span></span><span class="ml-1"><span style="color: rgb(255, 0, 0);">Urgent</span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><span>Red</span></span></span></span><span class="shrink-0 mt-0.5 text-primary/70" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3 h-3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></span><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground" title="Started 2020-01-03, ended 2020-01-05" aria-label="Started 2020-01-03, ended 2020-01-05. Change">1/3/2020–1/5/2020</button><button type="button" class="mt-0.5 shrink-0 rounded px-1 text-xs tabular-nums text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground" title="Created 2020-01-01" aria-label="Created 1/1/2020. Change">1/1/2020</button><button class="shrink-0 mt-0.5 text-primary/70 hover:text-primary transition-colors" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3 h-3"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><div class="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5"><div class="flex items-center text-[10px] text-foreground"><span class="mr-0.5">also in</span><span class="flex items-center"><button class="hover:text-foreground hover:underline transition-colors">Other</button></span></div></div><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-primary font-medium" title="Own: 3, Rolled-up: 7">2/7</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-primary font-medium" title="Story points (tap to edit)">2/7</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><span class="text-[10px] font-medium tabular-nums leading-none">1</span></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div><span class="text-xs text-muted-foreground tabular-nums min-w-[12px] text-right">2</span></div></div></div></div>",
+    "id": "A",
+  },
+  {
+    "html": "<div data-index="1" class="absolute top-0 left-0 w-full" style="transform: translateY(32px);"><div class="relative py-px" style="margin-left: 32px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A1" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 32px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">2</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(34, 197, 94);" title="Done" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item A1: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A1</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">2</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">2</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A1"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "A1",
+  },
+  {
+    "html": "<div data-index="2" class="absolute top-0 left-0 w-full" style="transform: translateY(64px);"><div class="relative py-px" style="margin-left: 32px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="A2" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 32px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">3</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item A2: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item A2</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">5</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">5</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item A2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "A2",
+  },
+  {
+    "html": "<div data-index="3" class="absolute top-0 left-0 w-full" style="transform: translateY(96px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="C" data-backlog-id="org::bl-1a" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            text-muted-foreground
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/30 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/50 hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">4</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item C: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item C</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><div class="hidden md:flex items-center gap-1.5 shrink-0 ml-auto mt-0.5"><div class="flex items-center text-[10px] text-muted-foreground/70"><span class="mr-0.5">in</span><button class="hover:text-foreground hover:underline transition-colors">Child list</button></div></div><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">–</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">–</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item C"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "C",
+  },
+  {
+    "html": "<div data-index="4" class="absolute top-0 left-0 w-full" style="transform: translateY(128px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="B" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">5</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item B: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item B</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 flex items-center gap-0.5 rounded px-1 text-[10px] font-medium bg-destructive/10 text-destructive" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ban w-2.5 h-2.5"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></svg>Closed</span><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">–</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">–</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item B"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "B",
+  },
+  {
+    "html": "<div data-index="5" class="absolute top-0 left-0 w-full" style="transform: translateY(160px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="D" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">6</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item D: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><span class="inline-flex items-baseline gap-0"><span>Item D</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 rounded px-1 text-[10px] font-medium bg-muted text-muted-foreground" data-state="closed">?</span><div class="hidden md:flex items-center shrink-0 mt-0.5 text-[10px] text-muted-foreground/70 max-w-[200px]"><span class="flex items-center min-w-0"><span class="truncate"><span class="inline-flex items-baseline gap-0"><span>Item P</span></span></span></span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right w-2.5 h-2.5 mx-0.5 opacity-40 shrink-0"><path d="m9 18 6-6-6-6"></path></svg></div><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">–</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">–</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item D"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+    "id": "D",
+  },
+]
+`;
+
+exports[`a row as drawn > with its name scrambled 1`] = `
+{
+  "html": "<div data-index="4" class="absolute top-0 left-0 w-full" style="transform: translateY(128px);"><div class="relative py-px" style="margin-left: 12px;"><div class="absolute inset-x-0 inset-y-0"></div></div><div><div role="button" tabindex="0" aria-disabled="false" aria-roledescription="draggable" aria-describedby="" data-work-item-id="B" data-backlog-id="org::bl-1" data-tree-id="org::tree-1" class="
+            flex items-start gap-1.5 px-3 py-px rounded-md
+            transition-all duration-150 ease-out group
+            border select-none
+            cursor-grab active:cursor-grabbing
+            
+            border-transparent hover:bg-muted hover:border-border
+            
+            
+          " style="padding-left: 12px;" data-state="closed"><div data-drag-handle="true" class="w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground/40 "><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical w-3.5 h-3.5"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg></div><button class="relative w-4 h-4 mt-0.5 flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:content-['']"></button><span class="text-sm tabular-nums text-muted-foreground shrink-0 w-6 text-right select-none" aria-hidden="true">5</span><button class="relative w-3 h-3 mt-1 rounded-full shrink-0 border border-background/50 transition-transform hover:scale-125 before:absolute before:-inset-x-1.5 before:-top-1 before:-bottom-1" style="background-color: rgb(148, 163, 184);" title="Not Started" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"></button><span class="inline-flex shrink-0 items-center mt-0.5" role="group" aria-label="Rating for Item B: unrated"><button type="button" aria-label="1 star" aria-pressed="false" title="Rate 1 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="2 stars" aria-pressed="false" title="Rate 2 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="3 stars" aria-pressed="false" title="Rate 3 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="4 stars" aria-pressed="false" title="Rate 4 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button><button type="button" aria-label="5 stars" aria-pressed="false" title="Rate 5 of 5" class="p-px leading-none cursor-pointer hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star h-3.5 w-3.5 text-muted-foreground/40" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg></button></span><span class="flex-1 text-sm break-words whitespace-normal py-0.5"><span class="cursor-text"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock mr-1 inline-block h-3 w-3 align-[-1px] text-muted-foreground" aria-label="This name is scrambled"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span class="inline-flex items-baseline gap-0"><span>Item B</span></span></span><span class="ml-1 text-muted-foreground inline-flex items-center gap-0.5"><span class="inline-flex items-center gap-0.5 cursor-pointer hover:bg-muted rounded px-0.5 -ml-0.5 transition-colors" type="button" id="radix-:r:" aria-haspopup="menu" aria-expanded="false" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-3 h-3 text-muted-foreground/50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span></span></span><span class="shrink-0 mt-0.5 flex items-center gap-0.5 rounded px-1 text-[10px] font-medium bg-destructive/10 text-destructive" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ban w-2.5 h-2.5"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></svg>Closed</span><div class="flex items-start gap-1 mt-0.5"><span class="hidden md:inline text-xs tabular-nums cursor-text shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (click to edit)">–</span><span class="md:hidden text-xs tabular-nums cursor-pointer shrink-0 min-w-[20px] text-center text-muted-foreground" title="Story points (tap to edit)">–</span><div class="flex md:hidden items-center gap-0.5 shrink-0 invisible"><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Edit attributes of Item B"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-3.5 h-3.5"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg></button><button class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button></div><div class="hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Add child item (Shift+Enter)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-3.5 h-3.5"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Respawn settings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw w-3.5 h-3.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Manage hyperlinks (H)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link2 w-3.5 h-3.5"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg></button><button class="flex items-center gap-0.5 h-5 px-0.5 min-w-[1.25rem] justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Labels" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:r:" data-state="closed"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag w-3.5 h-3.5"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"></circle></svg></button><button class="flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors px-0.5 min-w-[1.25rem] h-5" title="Log time"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock w-3.5 h-3.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button><button class="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete item (Del)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2 w-3.5 h-3.5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg></button></div></div></div></div></div>",
+  "id": "B",
+}
+`;
+
+exports[`a row's right-click menu > has a Assign teams submenu 1`] = `
+[
+  "menuitem: Red(1/2)",
+  "menuitem: Blue",
+]
+`;
+
+exports[`a row's right-click menu > has a Insert icon submenu 1`] = `[]`;
+
+exports[`a row's right-click menu > has a Labels submenu 1`] = `
+[
+  "menuitemcheckbox: Later",
+  "menuitemcheckbox: Urgent(1/2)",
+  "—",
+  "menuitem: New label",
+]
+`;
+
+exports[`a row's right-click menu > has a Move to list submenu 1`] = `
+[
+  "menuitem: Child list",
+]
+`;
+
+exports[`a row's right-click menu > has a Snooze submenu 1`] = `
+[
+  "menuitem: Later Today3h from now",
+  "menuitem: Tomorrow Morning7:00 AM",
+  "menuitem: This WeekendSat 7:00 AM",
+  "menuitem: Next WeekMon 7:00 AM",
+  "—",
+  "menuitem: Pick Date / Time…",
+]
+`;
+
+exports[`a row's right-click menu > has a Status submenu 1`] = `
+[
+  "menuitemradio: Not Started [x]",
+  "menuitemradio: In Progress",
+  "menuitemradio: Pending",
+  "menuitemradio: Blocked",
+  "menuitemradio: Done",
+]
+`;
+
+exports[`a row's right-click menu > offers, for a name I scrambled and one someone else did 1`] = `
+{
+  "mine": [
+    "—",
+    "menuitem: Status",
+    "menuitem: Set deadline…",
+    "menuitem: Set created date…",
+    "menuitem: Set start and end dates…",
+    "menuitem: View in board",
+    "menuitem: View burnup…",
+    "menuitem: Rank to top",
+    "menuitem: Insert icon",
+    "menuitem: Description…",
+    "menuitem: Show real name…",
+    "menuitem: Unscramble name…",
+    "menuitem: Duplicate⌘D",
+    "menuitem: Edit story points",
+    "menuitem: Add child item",
+    "menuitem: Move…M",
+    "menuitem: Move to list",
+    "menuitem: Reparent…",
+    "—",
+    "menuitem: Labels",
+    "menuitem: Assign teams",
+    "menuitem: Log time",
+    "menuitem: Transfer time entries",
+    "menuitem: Snooze",
+    "menuitem: Respawn settings",
+    "menuitem: Hyperlinks",
+    "menuitem: Savings & Income",
+    "—",
+    "menuitem: Delete",
+  ],
+  "theirs": [
+    "—",
+    "menuitem: Status",
+    "menuitem: Set deadline…",
+    "menuitem: Set created date…",
+    "menuitem: Set start and end dates…",
+    "menuitem: View in board",
+    "menuitem: View burnup…",
+    "menuitem: Rank to top",
+    "menuitem: Insert icon",
+    "menuitem: Description…",
+    "menuitem: Scrambled by someone else (disabled)",
+    "menuitem: Duplicate⌘D",
+    "menuitem: Edit story points",
+    "menuitem: Add child item",
+    "menuitem: Move…M",
+    "menuitem: Move to list",
+    "menuitem: Reparent…",
+    "—",
+    "menuitem: Labels",
+    "menuitem: Assign teams",
+    "menuitem: Log time",
+    "menuitem: Transfer time entries",
+    "menuitem: Snooze",
+    "menuitem: Respawn settings",
+    "menuitem: Hyperlinks",
+    "menuitem: Savings & Income",
+    "—",
+    "menuitem: Delete",
+  ],
+}
+`;
+
+exports[`a row's right-click menu > offers, for an item of several selected 1`] = `
+[
+  "—",
+  "menuitem: Status",
+  "menuitem: Change deadline…",
+  "menuitem: Change created date…",
+  "menuitem: Change start and end dates…",
+  "menuitem: View in board",
+  "menuitem: View burnup…",
+  "menuitem: Rank to top",
+  "menuitem: Insert icon",
+  "menuitem: Description…",
+  "menuitem: Rename",
+  "menuitem: Scramble names…",
+  "menuitem: Duplicate⌘D",
+  "menuitem: Edit story points",
+  "menuitem: Add child item",
+  "menuitem: Sort children A→Z",
+  "menuitem: Move…M",
+  "menuitem: Move to list",
+  "menuitem: Reparent…",
+  "—",
+  "menuitem: Labels",
+  "menuitem: Assign teams",
+  "menuitem: Log time",
+  "menuitem: Transfer time entries",
+  "menuitem: Snooze",
+  "menuitem: Respawn settings",
+  "menuitem: Hyperlinks",
+  "menuitem: Savings & Income",
+  "—",
+  "menuitem: Delete",
+]
+`;
+
+exports[`a row's right-click menu > offers, for one item 1`] = `
+[
+  "—",
+  "menuitem: Status",
+  "menuitem: Change deadline…",
+  "menuitem: Change created date…",
+  "menuitem: Change start and end dates…",
+  "menuitem: View in board",
+  "menuitem: View burnup…",
+  "menuitem: Rank to top",
+  "menuitem: Insert icon",
+  "menuitem: Description…",
+  "menuitem: Rename",
+  "menuitem: Scramble name…",
+  "menuitem: Duplicate⌘D",
+  "menuitem: Edit story points",
+  "menuitem: Add child item",
+  "menuitem: Sort children A→Z",
+  "menuitem: Move…M",
+  "menuitem: Move to list",
+  "menuitem: Reparent…",
+  "—",
+  "menuitem: Labels",
+  "menuitem: Assign teams",
+  "menuitem: Log time",
+  "menuitem: Transfer time entries",
+  "menuitem: Snooze",
+  "menuitem: Respawn settings",
+  "menuitem: Hyperlinks",
+  "menuitem: Savings & Income",
+  "—",
+  "menuitem: Delete",
+]
+`;
+
+exports[`a row's right-click menu > offers, with everything switched off 1`] = `
+[
+  "—",
+  "menuitem: Status",
+  "menuitem: View in board",
+  "menuitem: Rank to top",
+  "menuitem: Insert icon",
+  "menuitem: Description…",
+  "menuitem: Rename",
+  "menuitem: Duplicate⌘D",
+  "menuitem: Add child item",
+  "menuitem: Move…M",
+  "menuitem: Move to list",
+  "menuitem: Reparent…",
+  "—",
+  "menuitem: Assign teams",
+  "menuitem: Snooze",
+  "menuitem: Respawn settings",
+  "menuitem: Hyperlinks",
+  "—",
+  "menuitem: Delete",
+]
+`;
+
+exports[`what each menu entry opens > Add child item 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Change created date… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Created date",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Change deadline… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Deadline",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Change start and end dates… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Start and end dates",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Delete 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Description… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Description",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Duplicate 1`] = `
+{
+  "count": 10,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item A",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Edit story points 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Hyperlinks 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Hyperlinks",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Log time 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Time Log",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Move… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Move “Item A” to list",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Rank to top 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Rename 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Reparent… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Reparent “Item A”",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Respawn settings 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Respawn settings",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Savings & Income 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Savings & Income",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Scramble name… 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Choose a PIN",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Set deadline… 1`] = `"not offered"`;
+
+exports[`what each menu entry opens > Sort children A→Z 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > Transfer time entries 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Transfer time entries from "Item A"",
+  ],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > View burnup… 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what each menu entry opens > View in board 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "order": [
+    "Item A",
+    "Item P",
+    "Item C",
+    "Item B",
+  ],
+  "selected": [
+    "Item A",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > a click selects, Ctrl adds, Shift extends 1`] = `
+{
+  "one": [
+    "B",
+  ],
+  "range": [
+    "A",
+    "A1",
+    "A2",
+    "C",
+    "B",
+    "D",
+  ],
+  "two": [
+    "B",
+    "D",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > the add-child button 1`] = `
+{
+  "dialogs": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > the attributes button 1`] = `
+{
+  "dialogs": [
+    "Item A",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the chevron closes a branch, with Shift just the one level 1`] = `
+{
+  "closed": [],
+  "reopened": [
+    "A",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > the created date 1`] = `
+{
+  "dialogs": [
+    "Created date",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the deadline 1`] = `
+{
+  "dialogs": [
+    "Deadline",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the delete button 1`] = `
+{
+  "dialogs": [],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the hyperlinks badge 1`] = `
+{
+  "dialogs": [
+    "Hyperlinks",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the hyperlinks button 1`] = `
+{
+  "dialogs": [
+    "Hyperlinks",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the log time button 1`] = `
+{
+  "dialogs": [
+    "Time Log",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the points 1`] = `
+{
+  "dialogs": [],
+  "inline": [
+    "input=3",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > the respawn button 1`] = `
+{
+  "dialogs": [
+    "Respawn settings",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the start and end dates 1`] = `
+{
+  "dialogs": [
+    "Start and end dates",
+  ],
+  "inline": [],
+}
+`;
+
+exports[`what the row's own controls open > the status dot sets the status of the whole selection 1`] = `
+{
+  "entries": null,
+  "statuses": [
+    "not_started",
+    "not_started",
+    "not_started",
+  ],
+}
+`;
+
+exports[`what the row's own controls open > the teams of an item are picked from its row 1`] = `null`;
+
+exports[`what the shortcuts open from the selected row > shortcut:add-child-workitem 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:add-sibling-workitem 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [
+    "textarea "Work item title…"=",
+  ],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:delete-selected 1`] = `
+{
+  "count": 6,
+  "dialogs": [],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:duplicate-selected 1`] = `
+{
+  "count": 8,
+  "dialogs": [],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:edit-hyperlinks 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Hyperlinks",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:edit-title opens the named row's name for editing 1`] = `
+{
+  "dialogs": [],
+  "inline": [
+    "textarea=Item D",
+  ],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:log-time 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Time Log",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:move-to-backlog 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Move “Item B” to list",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:move-to-parent 1`] = `
+{
+  "count": 7,
+  "dialogs": [
+    "Reparent “Item B”",
+  ],
+  "inline": [],
+  "menus": [],
+}
+`;
+
+exports[`what the shortcuts open from the selected row > shortcut:open-team-assign 1`] = `
+{
+  "count": 7,
+  "dialogs": [],
+  "inline": [],
+  "menus": [
+    [
+      "menuitem: Red",
+      "menuitem: Blue",
+    ],
+  ],
+}
+`;
