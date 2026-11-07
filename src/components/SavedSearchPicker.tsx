@@ -1,27 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Globe, LinkIcon, Loader2, Mail, MailCheck, MapPin } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Globe, Loader2, MailCheck } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { StarRating } from "@/components/StarRating";
 import { toast } from "@/hooks/use-toast";
 import {
   alreadyInSummary,
   careerPageLine,
-  cityLine,
   declineLabel,
-  declinedSummary,
-  deadlineLabel,
   emailCountOf,
-  foundWhere,
   isCareerPageRow,
   pageCountOf,
-  gmailMessageUrl,
   groupBySourceEmail,
-  alsoInLabel,
   distinctJobs,
   keptCopies,
   previewSummary,
@@ -29,40 +21,18 @@ import {
   repeatedRows,
   rowKey,
   sameJobRows,
-  senderAddress,
-  senderName,
   startingReason,
-  uncheckedReason,
   type CareerPageNote,
   type PreviewLink,
 } from "@/lib/gmailPreview";
-import { explainGmailError } from "@/lib/gmailOAuth";
-import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConnector";
-import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/lib/postingReader";
-import {
-  AUTO_PLACE_TOAST_MS,
-  countOpenAds,
-  findImportList,
-  findMirrorTarget,
-  listsShownInPicker,
-  postingUrlsIn,
-  hasClosingDate,
-  importListOrder,
-} from "@/lib/autoPlace";
-import { supabase } from "@/integrations/supabase/client";
-import { sortTopLevel } from "@/lib/listSort";
-import { topLevelItems } from "@/lib/workItemRows";
-import { currentListSortContext } from "@/store/listSortStore";
-import { useOrgSettingsStore } from "@/store/orgSettingsStore";
-import { waitForItems } from "@/lib/waitForItems";
+import type { ImportMode, RunnableSearch } from "@/lib/gmailConnector";
+import { listsShownInPicker, postingUrlsIn } from "@/lib/autoPlace";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
-import { closedCheckMessage, linkedItemsIn, useClosedPostingsStore } from "@/store/closedPostingsStore";
-
-/** Postings read per posting_facts call — the server accepts at most this many. */
-const POSTINGS_PER_CALL = 6;
-/** Postings read per search, as the server capped it when it read them itself. */
-const MAX_POSTINGS_READ = 40;
+import { useImportPlacement } from "@/components/jobSearch/useImportPlacement";
+import { useSearchRun } from "@/components/jobSearch/useSearchRun";
+import { declineAll, importJobs, importLinks, type ImportContext } from "@/components/jobSearch/jobImport";
+import { GroupHeading, PostingRow, type RowExtras } from "@/components/jobSearch/PostingRows";
 
 /**
  * Run a saved Gmail search and choose what to import from it.
@@ -74,6 +44,10 @@ const MAX_POSTINGS_READ = 40;
  * Starts the search as soon as it is shown. Used inline under a saved search in
  * Bells & Whistles, and in a dialog from the app header — one component, so the
  * two can never drift apart in what they offer or how they import.
+ *
+ * The parts: the run itself (useSearchRun), where the postings go
+ * (useImportPlacement), what importing does (jobImport) and how a row is drawn
+ * (PostingRows). This is what the reader sees and chooses.
  */
 export function SavedSearchPicker({
   search,
@@ -87,67 +61,8 @@ export function SavedSearchPicker({
   /** Called after an import, a cancel, or a search that found nothing or failed. */
   onClose: () => void;
 }) {
-  const reloadData = useAppStore((s) => s.loadFromSupabase);
   const backlogs = useAppStore((s) => s.backlogs);
-  // The list the picker imports into and the one it mirrors to, by backlog id,
-  // as saved on the search. Read here rather than taken from the caller, whose
-  // copy of the search may predate a change made in an earlier run of this
-  // picker.
-  const [placeInto, setPlaceInto] = useState<{ list: string | null; mirror: string | null }>({
-    list: null,
-    mirror: null,
-  });
-  useEffect(() => {
-    if (mode !== "jobs") return;
-    let cancelled = false;
-    void supabase
-      .from("gmail_import_queries")
-      .select("auto_place_backlog_id, auto_place_mirror_backlog_id")
-      .eq("id", search.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setPlaceInto({
-          list: data.auto_place_backlog_id ?? null,
-          mirror: data.auto_place_mirror_backlog_id ?? null,
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, search.id]);
-  /**
-   * The one list every chosen posting goes into: the list chosen in this
-   * picker, and until one is — or once that one is gone — the list the search
-   * was saved with. A job search imports into one list and nowhere else; null
-   * only for a link import, which has its own button.
-   */
-  const importList = useMemo(
-    () =>
-      mode === "jobs"
-        ? (findImportList(backlogs, { tree_id: search.tree_id, auto_place_backlog_id: placeInto.list }) ??
-          search.backlog_id)
-        : null,
-    [backlogs, mode, search.tree_id, search.backlog_id, placeInto.list],
-  );
-  /** The lists a posting can be imported into: this search's tree, by name. */
-  const treeBacklogs = useMemo(
-    () =>
-      Object.values(backlogs ?? {})
-        .filter((b) => b.treeId === search.tree_id)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [backlogs, search.tree_id],
-  );
-  const backlogName = (id: string) => backlogs?.[id]?.name ?? "?";
-  /**
-   * Where the rows switched on are mirrored: the list this search chose, or
-   * the default until it chooses one. Null when there is nowhere to.
-   */
-  const mirrorTarget = useMemo(
-    () => (mode === "jobs" ? findMirrorTarget(backlogs, search.tree_id, placeInto.mirror) : null),
-    [backlogs, mode, search.tree_id, placeInto.mirror],
-  );
-  const backlogTrees = useAppStore((s) => s.backlogTrees);
+  const { importList, treeBacklogs, mirrorTarget, mirrorBacklogs, choosePlaceInto, backlogName } = useImportPlacement(search, mode);
   // Which postings are already in the list mirrored to — the shortlist of
   // jobs to apply for next — or in the list of jobs applied for. The search
   // says where in its own tree a posting already is; these are in another
@@ -181,53 +96,22 @@ export function SavedSearchPicker({
     }
     return byUrl;
   }, [mode, backlogs, search.tree_id, mirrorTarget, itemsNow, linksNow]);
-  /**
-   * The lists a posting can be mirrored into: any outside this search's tree,
-   * since an item holds one list per tree. Named with their tree, which is what
-   * tells two same-named lists apart.
-   */
-  const mirrorBacklogs = useMemo(
-    () =>
-      Object.values(backlogs ?? {})
-        .filter((b) => b.treeId !== search.tree_id)
-        .map((b) => ({ id: b.id, label: `${backlogTrees?.[b.treeId]?.name ?? "?"} › ${b.name}` }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [backlogs, backlogTrees, search.tree_id],
-  );
 
-  /** Choosing a list saves it on the search straight away; a failure puts it back. */
-  const choosePlaceInto = async (which: "list" | "mirror", id: string | null) => {
-    const before = placeInto;
-    setPlaceInto({ ...before, [which]: id });
-    // The list chosen here becomes the search's own list as well, so there is
-    // one answer to "where does this search import to" — here, under the saved
-    // search in Bells & Whistles, and for a scheduled run.
-    const change =
-      which === "mirror"
-        ? { auto_place_mirror_backlog_id: id }
-        : { auto_place_backlog_id: id, ...(id ? { backlog_id: id } : {}) };
-    const { error } = await supabase.from("gmail_import_queries").update(change).eq("id", search.id);
-    if (error) {
-      setPlaceInto(before);
-      toast({ title: "Could not save the list", description: error.message, variant: "destructive" });
-    }
-  };
-  const [loading, setLoading] = useState(true);
-  /** The search came back empty — said in place of the list. */
-  const [nothingFound, setNothingFound] = useState(false);
-  /** What the search is doing, for the line shown while any of it is under way. */
-  const [stage, setStage] = useState("Searching Gmail…");
-  /**
-   * How far the search has got, out of a hundred — or null once all of it is
-   * done. The list is on screen from the moment the mail has been read; the
-   * career pages and the postings fill it in after that, and until they have
-   * the bar says how much is left and nothing can be imported.
-   */
-  const [progress, setProgress] = useState<number | null>(SEARCH_PROGRESS.gmail);
-  const [preview, setPreview] = useState<PreviewLink[]>([]);
-  /** The career pages this run read, with what each had to say. */
-  const [pages, setPages] = useState<CareerPageNote[]>([]);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const { isSuperuser } = useScramble();
+  const roleOverride = useOrgStore((s) => s.roleOverride);
+  // The posting reader is a superuser tool for now, like the header button —
+  // and so is the closed-ads check that follows an import.
+  const canReadInBrowser = isSuperuser && !roleOverride;
+
+  const { loading, nothingFound, stage, progress, preview, pages, selected, untickedByHand, reading, chooseRows } = useSearchRun({
+    search,
+    mode,
+    organizationId,
+    canReadInBrowser,
+    alsoInByUrl,
+    onClose,
+  });
+
   /** Star rating chosen per row, by row key; rows without an entry import unrated. */
   const [ratingByKey, setRatingByKey] = useState<Record<string, number | undefined>>({});
   /** Rows switched on for mirroring, by row key; every row starts off. */
@@ -237,265 +121,6 @@ export function SavedSearchPicker({
   // Only the ads ticked for import: to look over what will be imported before
   // importing it. Live, so one unticked meanwhile goes out of the list too.
   const [onlyTicked, setOnlyTicked] = useState(false);
-  const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
-  /** Rows ticked or unticked by hand, which a late answer must not overrule. */
-  const touched = useRef(new Set<string>());
-  /**
-   * Rows unticked by hand. A row unticked for a reason of its own says which;
-   * one unticked here used to say nothing at all, and read as unticked for no
-   * reason. State rather than the ref above, because the row has to re-render.
-   */
-  const [untickedByHand, setUntickedByHand] = useState<Record<string, boolean>>({});
-  /** Tick or untick rows, remembering that the reader did it. */
-  const chooseRows = (keys: string[], on: boolean) => {
-    keys.forEach((k) => touched.current.add(k));
-    setSelected((prev) => {
-      const next = { ...prev };
-      for (const k of keys) next[k] = on;
-      return next;
-    });
-    setUntickedByHand((prev) => {
-      const next = { ...prev };
-      for (const k of keys) {
-        if (on) delete next[k];
-        else next[k] = true;
-      }
-      return next;
-    });
-  };
-  const { isSuperuser } = useScramble();
-  const roleOverride = useOrgStore((s) => s.roleOverride);
-  // The posting reader is a superuser tool for now, like the header button —
-  // and so is the closed-ads check that follows an import.
-  const canReadInBrowser = isSuperuser && !roleOverride;
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setStage("Searching Gmail…");
-        const res = await callGmail<{ links: PreviewLink[] }>({
-          action: "preview",
-          organizationId,
-          query: search.query,
-          maxMessages: 25,
-          mode,
-          backlogId: search.backlog_id,
-          // The whole tree, so a posting already filed into another list
-          // counts as one that has been seen.
-          treeId: search.tree_id,
-          // The postings are read below, batch by batch, so the wait can say
-          // how far it has got instead of sitting on "Searching Gmail…".
-          readPostings: false,
-        });
-        if (cancelled) return;
-        let sorted = [...res.links].sort(
-          (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
-        );
-
-        // The rows go on screen as soon as there are any, and again each time
-        // something is learnt about them: first as the mail gave them, then
-        // with the career pages' jobs, then with what each posting says. They
-        // used to wait for all of it — which is most of the wait, and none of
-        // it needed to read the list.
-        //
-        // Anything startingReason names starts unchecked — already in the
-        // tree, no longer accepting applications, past its closing date, or a
-        // repeat of a posting another email already lists. They stay
-        // importable on purpose, and the row says which it is. A row the
-        // reader has ticked or unticked by hand keeps what they chose.
-        const show = (rows: PreviewLink[]) => {
-          const repeats = new Map([...sameJobRows(rows), ...repeatedRows(rows)]);
-          setPreview(rows);
-          setSelected((prev) =>
-            Object.fromEntries(
-              rows.map((l) => {
-                const key = rowKey(l);
-                return [key, touched.current.has(key) ? !!prev[key] : startingReason(l, repeats) === null];
-              }),
-            ),
-          );
-          setLoading(false);
-        };
-        const foundSoFar = () =>
-          `Found ${distinctJobs(sorted)} job${distinctJobs(sorted) === 1 ? "" : "s"} ${foundWhere(
-            emailCountOf(sorted),
-            pageCountOf(sorted),
-          )}.`;
-        if (sorted.length > 0) show(sorted);
-        setProgress(SEARCH_PROGRESS.pages);
-
-        // The career pages the search names, after the mail: the positions on
-        // them that are neither in the tree nor left by an earlier run. An
-        // extra — if the pages cannot be read, the mail is still worth showing.
-        if (mode === "jobs") {
-          setStage(sorted.length > 0 ? `${foundSoFar()} Checking career pages…` : "Checking career pages…");
-          try {
-            const fromPages = await callGmail<{ pages?: CareerPageNote[]; links?: PreviewLink[] }>({
-              action: "career_pages",
-              organizationId,
-              queryId: search.id,
-              treeId: search.tree_id,
-            });
-            if (cancelled) return;
-            setPages(fromPages?.pages ?? []);
-            sorted = [...sorted, ...(fromPages?.links ?? [])];
-            if (sorted.length > 0) show(sorted);
-          } catch (e) {
-            if (cancelled) return;
-            // A server that does not know the action yet has no pages to read.
-            if (!/unknown action/i.test((e as Error).message)) {
-              toast({
-                title: "The career pages could not be read",
-                description: `${(e as Error).message} The emails are listed as usual.`,
-                variant: "destructive",
-              });
-            }
-          }
-        }
-        if (sorted.length === 0) {
-          // Nothing to pick — usually because every alert has been read. Said
-          // in place, with a way out, rather than by closing on a small toast:
-          // a dialog that vanishes looks like one that failed.
-          setNothingFound(true);
-          setProgress(null);
-          setLoading(false);
-          return;
-        }
-        setProgress(SEARCH_PROGRESS.postings);
-
-        if (mode === "jobs") {
-          // Deadline and closed, from each posting the mail left undated — the
-          // reading the server used to do inside the search, and to the same
-          // limit. Jobly always refuses the server, so it is left to the
-          // browser reader below rather than waited on here.
-          const found = foundSoFar();
-          // Read while the deadline or the city is unknown: a mail that states
-          // the date still leaves the page as the only place that says where,
-          // and the dialog shows it. A city the mail gave (Työmarkkinatori)
-          // needs no read.
-          //
-          // Deadlines first, cities with what is left, and the same cap over
-          // both — as the server queues them. The Finnish boards give a date
-          // and never a city, so one undivided list spends the whole budget on
-          // cities and leaves the genuinely undated postings unread.
-          const readable = sorted.filter((l) => !l.applicationsClosed && !readableInBrowser(l.url));
-          const toRead = [
-            ...new Map(
-              [...readable.filter((l) => !l.deadline), ...readable.filter((l) => l.deadline && l.cities === undefined)].map(
-                (l) => [l.url, { url: l.url, date: l.date }],
-              ),
-            ).values(),
-          ].slice(0, MAX_POSTINGS_READ);
-          for (let at = 0; at < toRead.length; at += POSTINGS_PER_CALL) {
-            setStage(`${found} Reading job postings for deadlines and cities… ${at}/${toRead.length}`);
-            setProgress(SEARCH_PROGRESS.postings + ((100 - SEARCH_PROGRESS.postings) * at) / toRead.length);
-            let facts: { url: string; deadline: string | null; applicationsClosed: boolean; cities?: string[] | null }[];
-            try {
-              ({ facts } = await callGmail<{ facts: typeof facts }>({
-                action: "posting_facts",
-                organizationId,
-                links: toRead.slice(at, at + POSTINGS_PER_CALL),
-              }));
-            } catch {
-              // Deadlines are a nicety here; the import reads them again anyway.
-              break;
-            }
-            if (cancelled) return;
-            const byUrl = new Map(facts.map((f) => [f.url, f]));
-            sorted = sorted.map((l) => {
-              const f = byUrl.get(l.url);
-              if (!f) return l;
-              return {
-                ...l,
-                ...(!l.deadline && f.deadline ? { deadline: f.deadline } : {}),
-                ...(f.applicationsClosed ? { applicationsClosed: true } : {}),
-                // Carried to the import, so it need not read the page again. A
-                // city already known stands: the mail named it, or the career
-                // page the posting is listed on did.
-                ...(Array.isArray(f.cities) && l.cities === undefined ? { cities: f.cities } : {}),
-              };
-            });
-            // What these postings said, on their rows now rather than at the end.
-            show(sorted);
-          }
-          if (cancelled) return;
-        }
-        show(sorted);
-        setProgress(null);
-
-        // Postings the server was refused (Jobly) are read through the browser,
-        // when the posting reader extension is there. The list is already
-        // usable meanwhile; rows gain their deadline as each answer arrives.
-        if (!canReadInBrowser) return;
-        // Read while the city is unknown, even with a date from the mail: the
-        // server cannot read these pages at import, so this is the only chance
-        // to learn where the job is.
-        const urls = [
-          ...new Set(
-            sorted.filter((l) => l.cities === undefined && !l.applicationsClosed && readableInBrowser(l.url)).map((l) => l.url),
-          ),
-        ];
-        if (urls.length === 0 || !(await postingReaderAvailable())) return;
-        if (cancelled) return;
-        setReading({ done: 0, total: urls.length });
-        for (const [i, url] of urls.entries()) {
-          const reference = sorted.find((l) => l.url === url)?.date || new Date().toISOString();
-          const facts = await readPostingFacts(url, reference);
-          if (cancelled) return;
-          if (facts.cities) {
-            setPreview((prev) => prev.map((l) => (l.url === url ? { ...l, cities: facts.cities } : l)));
-          }
-          if (facts.deadline || facts.closed) {
-            setPreview((prev) =>
-              prev.map((l) =>
-                l.url === url
-                  ? { ...l, deadline: l.deadline ?? facts.deadline, applicationsClosed: l.applicationsClosed || !!facts.closed }
-                  : l,
-              ),
-            );
-            // What was just learnt can make the row one to leave alone: closed,
-            // or a closing date already past. Never overrules a row the reader
-            // has ticked or unticked by hand.
-            if (uncheckedReason({ ...facts, deadline: facts.deadline, applicationsClosed: facts.closed })) {
-              setSelected((prev) => {
-                const next = { ...prev };
-                for (const l of sorted) {
-                  const key = `${l.messageId}|${l.url}`;
-                  if (l.url === url && !touched.current.has(key)) next[key] = false;
-                }
-                return next;
-              });
-            }
-          }
-          setReading({ done: i + 1, total: urls.length });
-        }
-        setReading(null);
-      } catch (e) {
-        if (cancelled) return;
-        const message = (e as Error).message;
-        toast({
-          title: message.includes("gmail_not_connected") ? "Connect Gmail again" : "Gmail search failed",
-          // An expired connection lands here too, so say where the fix is.
-          description: message.includes("gmail_not_connected")
-            ? "Gmail is not connected, or the connection has expired. Reconnect it under Bells & Whistles → Your Gmail account."
-            : explainGmailError(message),
-          variant: "destructive",
-        });
-        onClose();
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setProgress(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // One search per mount: the caller remounts to run it again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Derived once: the header count and the list must not disagree when a
   // keyword filter is on.
@@ -525,7 +150,7 @@ export function SavedSearchPicker({
   const alsoIn = useMemo(() => repeatedElsewhere(visiblePreview), [visiblePreview]);
   // After folding, so that the row shown for a posting is the one whose tick counts.
   const shownPreview = useMemo(
-    () => (onlyTicked ? foldedPreview.filter((l) => selected[`${l.messageId}|${l.url}`]) : foldedPreview),
+    () => (onlyTicked ? foldedPreview.filter((l) => selected[rowKey(l)]) : foldedPreview),
     [foldedPreview, onlyTicked, selected],
   );
   const visibleGroups = useMemo(() => groupBySourceEmail(shownPreview), [shownPreview]);
@@ -540,337 +165,96 @@ export function SavedSearchPicker({
   // And with them the rows that are another row's job under a different link —
   // the same ad on two boards. A row that is both says it is a repeat.
   const repeats = useMemo(() => new Map([...sameJobRows(preview), ...repeatedRows(preview)]), [preview]);
-
-  // Each row is told whether its posting is in one of those lists, and kept
-  // told: they are on screen behind this dialog and can change while it is open.
-  // A row found to be there that is not in the import tree any more would be
-  // imported as a second item, so it is unticked — unless the reader has
-  // already ticked or unticked it by hand.
-  useEffect(() => {
-    if (mode !== "jobs") return;
-    const where = (l: PreviewLink) => alsoInByUrl.get(l.url) ?? null;
-    const stale = preview.filter((l) => (l.alsoIn ?? null) !== where(l));
-    if (stale.length === 0) return;
-    setPreview((prev) => prev.map((l) => ((l.alsoIn ?? null) === where(l) ? l : { ...l, alsoIn: where(l) })));
-    const found = stale.filter((l) => where(l) && !l.alreadyImported).map(rowKey);
-    if (found.length === 0) return;
-    setSelected((prev) => {
-      const next = { ...prev };
-      for (const key of found) if (!touched.current.has(key)) next[key] = false;
-      return next;
-    });
-  }, [mode, preview, alsoInByUrl]);
   const emailCount = useMemo(() => emailCountOf(preview), [preview]);
   /** Jobs listed from career pages — what "skip" on the decline button covers. */
   const pageJobCount = useMemo(() => distinctJobs(preview.filter(isCareerPageRow)), [preview]);
   // Nothing ticked means there is no new job to import — mark-as-read then
   // becomes the only meaningful action and stands out for it.
-  const noNewJobs = useMemo(() => preview.every((l) => !selected[`${l.messageId}|${l.url}`]), [preview, selected]);
+  const noNewJobs = useMemo(() => preview.every((l) => !selected[rowKey(l)]), [preview, selected]);
 
+  const importContext: ImportContext = { search, mode, organizationId, canCheckClosed: canReadInBrowser };
+
+  /** The ticked rows, each with the rating given it. */
   const pickedLinks = () =>
     preview
-      .filter((l) => selected[`${l.messageId}|${l.url}`])
+      .filter((l) => selected[rowKey(l)])
       .map((l) => {
-        const rating = ratingByKey[`${l.messageId}|${l.url}`];
+        const rating = ratingByKey[rowKey(l)];
         // Unrated is the server's default; leaving it out keeps the payload
         // exactly what an older build would send.
         return rating ? { ...l, rating } : l;
       });
 
-  const importInto = (backlogId: string, links: PreviewLink[]) =>
-    callGmail<{
-      created: number;
-      skipped: number;
-      collapsed: number;
-      createdIds?: string[];
-      /** The item made from each posting, by URL; absent from an older server. */
-      createdByUrl?: Record<string, string>;
-    }>({
-      action: "import",
-      mode,
-      organizationId,
-      treeId: search.tree_id,
-      backlogId,
-      queryId: search.id,
-      links,
-    });
-
-  /**
-   * After an import, check the job ads that were already in the lists it filled
-   * — the new ones were read moments ago. Same check as the backlog header's
-   * "Check for closed ads", so a superuser's only: it spends a burst of server
-   * requests. Closed ads are marked on their rows; nothing is changed. Runs on
-   * after the picker has closed, and skips if a check is already going.
-   */
-  const checkExistingForClosed = async (
-    backlogIds: string[],
-    createdIds: string[],
-    /**
-     * The import into the chosen list only. Only one toast shows at a time, so the check's report
-     * waits until `notBefore` rather than cutting the import summary short, and
-     * then restates the open-ad totals with whatever the check found closed.
-     */
-    after?: { notBefore: number; totals: () => string },
-  ) => {
-    if (!canReadInBrowser) return;
-    const closedStore = useClosedPostingsStore.getState();
-    if (closedStore.checking) return;
-    const app = useAppStore.getState();
-    const items = linkedItemsIn(app.workItems, app.hyperlinks, search.tree_id, new Set(backlogIds), new Set(createdIds));
-    if (items.length === 0) return;
-    const message = closedCheckMessage(await closedStore.check(items));
-    const wait = after ? after.notBefore - Date.now() : 0;
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    toast({
-      ...message,
-      title: `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}`,
-      ...(after ? { description: [message.description, after.totals()].filter(Boolean).join(" ") } : {}),
-    });
-  };
-
-  /**
-   * Mark the emails these rows came from as read, and return how many were.
-   * Best-effort: a failure is reported, not thrown — and a connection made
-   * before the app asked for permission to change labels cannot do this until
-   * it is made again.
-   */
-  const markRead = async (links: PreviewLink[]): Promise<number> => {
-    // A career page's rows carry the page where an email's carry the email;
-    // there is no message there to mark.
-    const messageIds = [
-      ...new Set(links.filter((l) => !isCareerPageRow(l)).map((l) => l.messageId).filter(Boolean)),
-    ];
-    if (messageIds.length === 0) return 0;
-    try {
-      const marked = await callGmail<{ marked: number }>({ action: "mark_read", organizationId, messageIds });
-      return marked.marked ?? 0;
-    } catch (e) {
-      const message = (e as Error).message;
-      toast({
-        title: "Could not mark the emails as read",
-        description: message.includes("gmail_permission_missing")
-          ? "Agilefant may now mark job alerts as read, which needs Gmail permission you have not given yet. Connect Gmail again under Bells & Whistles → Your Gmail account."
-          : explainGmailError(message),
-        variant: "destructive",
-      });
-      return -1;
-    }
-  };
-
-  /**
-   * What marking read is to an email, for the jobs among these rows that came
-   * from a career page: remember them on the search, so the next run does not
-   * offer them again. A page lists the same positions every day, and has no
-   * "read" of its own to mark. Returns how many, or -1 on a failure it has
-   * already reported.
-   */
-  const markSeen = async (links: PreviewLink[]): Promise<number> => {
-    const urls = [...new Set(links.filter(isCareerPageRow).map((l) => l.url))];
-    if (urls.length === 0) return 0;
-    try {
-      const res = await callGmail<{ marked: number }>({
-        action: "mark_pages_seen",
-        organizationId,
-        queryId: search.id,
-        urls,
-      });
-      return res.marked ?? 0;
-    } catch (e) {
-      toast({
-        title: "Could not remember the career page jobs",
-        description: `${(e as Error).message} They will be offered again next time.`,
-        variant: "destructive",
-      });
-      return -1;
-    }
-  };
-
-  /**
-   * Nothing worth importing, but the alerts are still unread: mark every email
-   * the search listed as read, so an "only unread" search stops offering them —
-   * and skip every career page job listed, for the same reason.
-   */
-  const markAllRead = async () => {
+  /** Run one of the flows below with the buttons held off meanwhile. */
+  const busy = async (flow: () => Promise<void>) => {
     setImporting(true);
     try {
-      const marked = await markRead(preview);
-      if (marked < 0) return;
-      const skipped = await markSeen(preview);
-      if (skipped < 0) return;
-      toast({ title: declinedSummary(marked, skipped), description: "Nothing was imported." });
-      onClose();
+      await flow();
     } finally {
       setImporting(false);
     }
   };
+  const nothingPicked = (links: PreviewLink[]) => {
+    if (links.length > 0) return false;
+    toast({ title: "Nothing selected", variant: "destructive" });
+    return true;
+  };
+
+  const markAllRead = () =>
+    busy(async () => {
+      if (await declineAll(importContext, preview)) onClose();
+    });
 
   const importSelected = async () => {
     const links = pickedLinks();
-    if (links.length === 0) {
-      toast({ title: "Nothing selected", variant: "destructive" });
-      return;
-    }
-    setImporting(true);
-    try {
-      const res = await importInto(search.backlog_id, links);
-      toast({
-        title: `Imported ${res.created} work item${res.created === 1 ? "" : "s"}`,
-        description: res.skipped
-          ? `${res.skipped} already imported`
-          : res.collapsed
-            ? `${res.collapsed} duplicate${res.collapsed === 1 ? "" : "s"} in this import merged`
-            : undefined,
-      });
-      onClose();
-      await reloadData();
-      void checkExistingForClosed([search.backlog_id], res.createdIds ?? []);
-    } catch (e) {
-      toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setImporting(false);
-    }
+    if (nothingPicked(links)) return;
+    await busy(() => importLinks(importContext, links, { onDone: onClose }));
   };
 
-  /**
-   * Import every chosen posting into the one list the search names, then leave
-   * that list in its order — the jobs with a deadline first, soonest at the
-   * top, then the jobs without one by name — and keep that order as its rank.
-   */
   const importIntoList = async () => {
     const links = pickedLinks();
-    if (links.length === 0) {
-      toast({ title: "Nothing selected", variant: "destructive" });
-      return;
-    }
-    if (!importList) return;
-    setImporting(true);
-    try {
-      // The import reads the closing dates the picker does not know yet, so
-      // the new items arrive with them and the ordering below can use them.
-      const res = await importInto(importList, links);
-      const created = res.created ?? 0;
-      const createdIds = res.createdIds ?? [];
+    if (nothingPicked(links) || !importList) return;
+    await busy(() =>
+      importJobs(importContext, {
+        links,
+        importList,
+        preview,
+        visiblePreview,
+        mirrorKeys: new Set(preview.map(rowKey).filter((key) => selected[key] && mirrorByKey[key])),
+        mirrorTarget,
+        backlogName,
+        onDone: onClose,
+      }),
+    );
+  };
 
-      // Every alert listed is done with: marking them read takes them out of
-      // an "only unread" search, so the next run offers what has arrived since.
-      //
-      // Every one listed, not only the ones something was taken from. An
-      // alert whose jobs are all in the lists already has nothing ticked, so
-      // nothing was ever taken from it — and marked by that rule it stayed
-      // unread and came back in every search, with nothing new in it, for
-      // good. Importing is the end of going through what was listed: what was
-      // not ticked was left out on purpose, by the picker or by the reader.
-      // What a keyword filter is hiding has not been gone through, and stays —
-      // unless something ticked in it was imported all the same.
-      //
-      // Best-effort — the import itself has already succeeded, and a
-      // connection made before the app asked for permission to change labels
-      // cannot do this until it is made again.
-      const markedRead = await markRead([...links, ...visiblePreview]);
-      // A career page jobs were chosen from is done with in the same way: what
-      // was left on it was left on purpose, so none of its rows comes back.
-      // A page nothing was taken from stays: it is no alert to be rid of, and
-      // lists the same jobs tomorrow.
-      const pagesChosenFrom = new Set(links.filter(isCareerPageRow).map((l) => l.messageId));
-      const onThosePages = preview.filter((l) => pagesChosenFrom.has(l.messageId));
-      const leftOnPages = distinctJobs(onThosePages) - distinctJobs(links.filter(isCareerPageRow));
-      const pagesRemembered = (await markSeen(onThosePages)) >= 0;
-
-      onClose();
-      // The new items have to be in the store before the list is ranked, or
-      // the ranking covers only what was there before and the new ones land at
-      // the end. A reload does not guarantee that: with cached data on screen
-      // it returns at once and fetches in the background. So wait until the
-      // imported items are actually here.
-      await reloadData();
-      const arrived = await waitForItems(createdIds, reloadData);
-
-      // Ranking covers what was already in the list as well as what has just
-      // arrived.
-      const app = useAppStore.getState();
-      // The rows switched on, turned into the items the import made of them.
-      // By URL, which is what the import reports each new item under: the
-      // switch is about a posting, and only an item can be mirrored.
-      const toMirror = mirrorTarget
-        ? [
-            ...new Set(
-              preview
-                .filter((l) => selected[`${l.messageId}|${l.url}`] && mirrorByKey[`${l.messageId}|${l.url}`])
-                .map((l) => res.createdByUrl?.[l.url])
-                .filter((id): id is string => !!id),
-            ),
-          ]
-        : [];
-      /**
-       * Job ads still open in the list, read at the moment of asking: the
-       * toast asks once the list is filled, the closed check again once it
-       * knows more. Closed = closing date passed, or marked closed by a check.
-       */
-      const openTotals = () => {
-        const { workItems } = useAppStore.getState();
-        const { closed } = useClosedPostingsStore.getState();
-        const items = topLevelItems(workItems, search.tree_id, new Set([importList]));
-        const open = (dated: boolean) => countOpenAds(items.filter((item) => hasClosingDate(item) === dated), closed);
-        return (
-          `Open ads now: ${open(true) + open(false)} in total — ${open(true)} with a deadline, ` +
-          `${open(false)} without (closed ones not counted).`
-        );
-      };
-      let mirrored = 0;
-      app.runBulk(() => {
-        // The list's order: the jobs with a deadline first, soonest at the top,
-        // then the jobs without one, by name.
-        const deadlinesAsField =
-          useOrgSettingsStore.getState().settings[organizationId]?.deadlinesEnabled ?? false;
-        const byName = sortTopLevel(
-          topLevelItems(useAppStore.getState().workItems, search.tree_id, new Set([importList])),
-          "name-asc",
-          search.tree_id,
-          currentListSortContext(search.tree_id),
-        );
-        const ordered = importListOrder(byName, deadlinesAsField);
-        if (ordered.length > 0) {
-          app.applySiblingOrder(
-            null,
-            search.tree_id,
-            [importList],
-            ordered.map((item) => item.id),
-            `Job import: ${ordered.length} items, deadlines first then by name`,
-          );
-        }
-
-        // The rows switched on are mirrored into the chosen list as well —
-        // one item, filed in both trees. Whatever rating a row was given plays
-        // no part. Same bulk as the ranking: one undo takes back both.
-        if (mirrorTarget && toMirror.length > 0) {
-          app.moveWorkItemsToBacklog(toMirror, mirrorTarget.backlogId, mirrorTarget.treeId, "mirror", search.tree_id);
-          mirrored = toMirror.length;
-        }
-      });
-
-      toast({
-        title: `Imported ${created} work item${created === 1 ? "" : "s"} into ${backlogName(importList)}`,
-        description:
-          (arrived
-            ? `The list is in order — jobs with a deadline first, soonest at the top, then the rest by name — and that order is saved as its rank.`
-            : `The new items took too long to load, so the list may not be fully in order.`) +
-          (mirrored > 0 && mirrorTarget ? ` ${mirrored} also mirrored to ${backlogName(mirrorTarget.backlogId)}.` : "") +
-          (markedRead > 0 ? ` ${markedRead} email${markedRead === 1 ? "" : "s"} marked as read.` : "") +
-          (pagesRemembered && leftOnPages > 0
-            ? ` ${leftOnPages} career page job${leftOnPages === 1 ? "" : "s"} left out will not be offered again.`
-            : "") +
-          ` ${openTotals()}`,
-        duration: AUTO_PLACE_TOAST_MS,
-      });
-      void checkExistingForClosed([importList], createdIds, {
-        notBefore: Date.now() + AUTO_PLACE_TOAST_MS,
-        totals: openTotals,
-      });
-    } catch (e) {
-      toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setImporting(false);
-    }
+  /** A row's stars and mirror switch, for the item it will make or the one already in the tree. */
+  const extrasFor = (l: PreviewLink): RowExtras => {
+    const key = rowKey(l);
+    const existingId = !selected[key] && l.alreadyImported ? existingItemByUrl.get(l.url) : undefined;
+    const existing = existingId ? itemsNow[existingId] : undefined;
+    const mirroredAlready =
+      !!existing && !!mirrorTarget && existing.backlogAssignments?.[mirrorTarget.treeId] === mirrorTarget.backlogId;
+    return {
+      existing,
+      rating: ratingByKey[key],
+      onRate: (r) => (existing ? setWorkItemRating(existing.id, r) : setRatingByKey((prev) => ({ ...prev, [key]: r }))),
+      mirror: mirrorTarget && {
+        label: backlogName(mirrorTarget.backlogId),
+        on: existing ? mirroredAlready : !!mirrorByKey[key],
+        locked: mirroredAlready,
+        onChange: (on) => {
+          if (!existing) {
+            setMirrorByKey((prev) => ({ ...prev, [key]: on }));
+          } else if (on && !mirroredAlready) {
+            useAppStore
+              .getState()
+              .moveWorkItemsToBacklog([existing.id], mirrorTarget.backlogId, mirrorTarget.treeId, "mirror", search.tree_id);
+          }
+        },
+      },
+      importing,
+    };
   };
 
   if (loading) return <SearchProgress stage={stage} value={progress} />;
@@ -959,236 +343,29 @@ export function SavedSearchPicker({
           </p>
         )}
         {visibleGroups.map((group) => {
-          const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
-          const allChecked = keys.every((k) => selected[k]);
-          const alreadyIn = alreadyInSummary(group.links);
-          // Set when the rows came from a career page rather than an email.
-          const page = pageByMessageId.get(group.messageId);
-          const fromPage = isCareerPageRow(group);
+          const keys = group.links.map(rowKey);
           return (
             <div key={group.messageId} className="border rounded-md overflow-hidden">
-              {/* The source email, above the jobs it produced. It reads as a
-                  heading rather than a first row: solid bar, an envelope, and
-                  the subject in its own weight — the postings beneath sit in
-                  from its edge. The subject wraps rather than truncates, since a
-                  digest subject is long and what identifies it sits at the end. */}
-              <div className="flex items-start gap-2 border-b bg-muted px-2 py-2">
-                <Checkbox
-                  checked={allChecked}
-                  onCheckedChange={(c) => chooseRows(keys, !!c)}
-                  className="mt-0.5"
-                  aria-label={`Select all ${group.links.length} from ${group.subject}`}
-                />
-                {fromPage ? (
-                  <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                ) : (
-                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                )}
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm font-semibold leading-snug break-words">{group.subject}</p>
-                  {fromPage ? (
-                    <p className="text-xs text-muted-foreground break-all">Career page · {page?.url ?? group.from}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground break-words">
-                      {senderName(group.from)}
-                      {senderAddress(group.from) && (
-                        <span className="break-all"> &lt;{senderAddress(group.from)}&gt;</span>
-                      )}
-                      {group.date && ` · ${new Date(group.date).toLocaleString()}`}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {fromPage
-                      ? `${group.links.length} new job${group.links.length === 1 ? "" : "s"} from this page${
-                          page ? ` · ${careerPageLine(page)}` : ""
-                        }`
-                      : `${group.links.length} job${group.links.length === 1 ? "" : "s"} in this email${
-                          alreadyIn ? ` · ${alreadyIn}` : ""
-                        }`}
-                  </p>
-                </div>
-                {fromPage ? (
-                  page && (
-                    <a
-                      href={page.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
-                      title="Open this career page"
-                    >
-                      Open page
-                    </a>
-                  )
-                ) : (
-                  <a
-                    href={gmailMessageUrl(group.messageId)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs underline shrink-0 text-muted-foreground hover:text-foreground"
-                    title="Open this email in Gmail"
-                  >
-                    Open in Gmail
-                  </a>
-                )}
-              </div>
-
+              <GroupHeading
+                group={group}
+                page={pageByMessageId.get(group.messageId)}
+                allChecked={keys.every((k) => selected[k])}
+                alreadyIn={alreadyInSummary(group.links)}
+                onTickAll={(on) => chooseRows(keys, on)}
+              />
               <div className="px-2 py-1.5 pl-4 space-y-1.5">
                 {group.links.map((l) => {
-                  const key = `${l.messageId}|${l.url}`;
+                  const key = rowKey(l);
                   return (
-                    // Not a <label>: a click anywhere on one toggled the row,
-                    // so reading a cut-off line of cities unticked the posting
-                    // it belonged to. The tick follows the checkbox and the
-                    // title line only.
-                    <div key={key} className="flex items-start gap-2 text-sm">
-                      <Checkbox
-                        checked={!!selected[key]}
-                        onCheckedChange={(c) => chooseRows([key], !!c)}
-                        className="mt-0.5"
-                        aria-label={l.title || l.url}
-                      />
-                      <span className="min-w-0 flex-1">
-                        {/* The whole employer and job name, never cut: it is
-                            what the decision to import rests on. The labels
-                            keep their place and the line wraps instead. */}
-                        <span
-                          className="flex cursor-pointer flex-wrap items-baseline gap-2 font-medium text-sm"
-                          onClick={() => chooseRows([key], !selected[key])}
-                        >
-                          <a
-                            href={l.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            // Opening the posting is not choosing it.
-                            onClick={(e) => e.stopPropagation()}
-                            className="break-words underline decoration-muted-foreground/50 hover:text-primary hover:decoration-primary"
-                          >
-                            {l.title}
-                          </a>
-                          <span className="flex shrink-0 items-baseline gap-2">
-                            <span
-                              className={`align-middle text-[10px] font-normal uppercase tracking-wide border rounded px-1 py-0.5 ${
-                                l.applicationsClosed
-                                  ? "border-destructive/40 text-destructive"
-                                  : l.deadline
-                                    ? ""
-                                    : "text-muted-foreground"
-                              }`}
-                            >
-                              {deadlineLabel(l)}
-                            </span>
-                            {l.alreadyImported && (
-                              // Its own colour: which list a posting is already
-                              // in is the thing worth spotting while scanning,
-                              // and it read as one more grey label.
-                              <span className="align-middle text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 border border-primary/40 bg-primary/10 text-primary">
-                                {l.alreadyIn ? `already in ${l.alreadyIn}` : "already imported"}
-                              </span>
-                            )}
-                            {l.alsoIn && (
-                              // A colour of its own again: on the shortlist, or
-                              // applied for, is not the same news as filed
-                              // somewhere in the tree.
-                              <span className="align-middle text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 border border-emerald-600/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                                {l.alreadyImported ? "also in" : "already in"} {l.alsoIn}
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                        {/* Why this row is not going to be imported. A row the
-                            reader unticked says so too, rather than leaving the
-                            line out and looking unticked for no reason. */}
-                        {!selected[key] && (startingReason(l, repeats) ?? (untickedByHand[key] ? "you unticked it" : null)) && (
-                          <span className="block text-xs text-muted-foreground">
-                            Not selected: {startingReason(l, repeats) ?? "you unticked it"}. Tick it to import anyway.
-                          </span>
-                        )}
-                        {/* Two cities and a count, like the item's name; all of
-                            them on hover. */}
-                        {!!l.cities?.length && (
-                          <span className="block truncate text-xs text-foreground/80" title={l.cities.join(", ")}>
-                            <MapPin className="w-3 h-3 inline mr-1 text-muted-foreground" aria-hidden="true" />
-                            {cityLine(l.cities)}
-                          </span>
-                        )}
-                        <span className="block truncate text-xs text-muted-foreground">
-                          <LinkIcon className="w-3 h-3 inline mr-1" />
-                          {l.url}
-                        </span>
-                        {/* The emails folded into this row. Said plainly rather
-                            than shown as rows of their own: the same posting
-                            listed three times read as three jobs, and the
-                            import merges them into one item anyway. */}
-                        {alsoIn.has(key) && (
-                          <span
-                            className="block truncate text-xs text-muted-foreground"
-                            title={alsoIn.get(key)!.subjects.join("\n")}
-                          >
-                            <Mail className="w-3 h-3 inline mr-1" aria-hidden="true" />
-                            {alsoInLabel(alsoIn.get(key)!.count)}
-                          </span>
-                        )}
-                        {(() => {
-                          // A ticked row rates and mirrors the item the import
-                          // will create. An unticked row whose posting is
-                          // already in the tree acts on that existing item
-                          // instead — no second item is made of it.
-                          const existingId = !selected[key] && l.alreadyImported ? existingItemByUrl.get(l.url) : undefined;
-                          const existing = existingId ? itemsNow[existingId] : undefined;
-                          if (!selected[key] && !existing) return null;
-                          const mirroredAlready =
-                            !!existing &&
-                            !!mirrorTarget &&
-                            existing.backlogAssignments?.[mirrorTarget.treeId] === mirrorTarget.backlogId;
-                          return (
-                            <span className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <StarRating
-                                rating={existing ? existing.rating : ratingByKey[key]}
-                                onRate={(r) =>
-                                  existing
-                                    ? setWorkItemRating(existing.id, r)
-                                    : setRatingByKey((prev) => ({ ...prev, [key]: r }))
-                                }
-                                disabled={importing}
-                                label={l.title || l.url}
-                              />
-                              {/* Whether the import into the chosen list also mirrors this
-                                  one. Independent of the rating, which travels
-                                  with the item the import creates. For an
-                                  existing item the switch mirrors it directly;
-                                  a mirror once made is not taken back here. */}
-                              {mirrorTarget && (
-                                <span className="ml-2 flex items-center gap-1.5">
-                                  <Switch
-                                    checked={existing ? mirroredAlready : !!mirrorByKey[key]}
-                                    onCheckedChange={(on) => {
-                                      if (existing) {
-                                        if (on && !mirroredAlready) {
-                                          useAppStore
-                                            .getState()
-                                            .moveWorkItemsToBacklog(
-                                              [existing.id],
-                                              mirrorTarget.backlogId,
-                                              mirrorTarget.treeId,
-                                              "mirror",
-                                              search.tree_id,
-                                            );
-                                        }
-                                      } else {
-                                        setMirrorByKey((prev) => ({ ...prev, [key]: on }));
-                                      }
-                                    }}
-                                    disabled={importing || mirroredAlready}
-                                    aria-label={`Mirror ${l.title || l.url} to ${backlogName(mirrorTarget.backlogId)}`}
-                                  />
-                                  <span className="truncate">Mirror to {backlogName(mirrorTarget.backlogId)}</span>
-                                </span>
-                              )}
-                            </span>
-                          );
-                        })()}
-                      </span>
-                    </div>
+                    <PostingRow
+                      key={key}
+                      link={l}
+                      ticked={!!selected[key]}
+                      reasonUnticked={startingReason(l, repeats) ?? (untickedByHand[key] ? "you unticked it" : null)}
+                      folded={alsoIn.get(key)}
+                      onTick={(on) => chooseRows([key], on)}
+                      extras={extrasFor(l)}
+                    />
                   );
                 })}
               </div>
@@ -1291,14 +468,6 @@ export function SavedSearchPicker({
     </div>
   );
 }
-
-/**
- * How far along the search is, out of a hundred, when each part begins.
- * Reading Gmail and the career pages take a few seconds between them and say
- * nothing of how far they have got, so they are given a small fixed share;
- * the postings are read a few at a time and move the bar the rest of the way.
- */
-const SEARCH_PROGRESS = { gmail: 8, pages: 22, postings: 30 } as const;
 
 /** What the search is doing and how far it has got — while it waits for the
  *  first rows, and above the list while the rest is filled in. */
