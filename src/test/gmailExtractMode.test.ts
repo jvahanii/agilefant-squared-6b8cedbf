@@ -205,6 +205,34 @@ describe('work item naming: company then title', () => {
   });
 
   /**
+   * Sofigate's Teamtailor digest of 22 October, markup quoted from the real
+   * mail: postings on sofigategroupoy.teamtailor.com, named after the company
+   * the mail names rather than the slug.
+   */
+  it('reads a Sofigate digest from its Teamtailor site', () => {
+    const posting = (href: string, text: string) =>
+      `<tr>\r\n  <td align="center" style="padding: 0 0 2px 0; font-size: 20px;">\r\n    \r\n          <a style="color:#f91926;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-decoration:none;" href="${href}">${text}</a>\r\n\r\n          </td></tr><tr>\r\n  <td align="center" style="padding: 0 0 20px 0; font-size: 17px;">\r\n              Business Support and operations\r\n              ·\r\n              Helsinki\r\n                ·\r\n                Hybrid\r\n                <img alt="Remote status" width="18" height="12" src="https://tt.teamtailor.com/assets/icons/remote-gray-23d6d767.png">\r\n\r\n</td></tr>\r\n`;
+    const html =
+      '<a style="color:#f91926;" border="0" align="center" href="https://sofigategroupoy.teamtailor.com">\r\n<img alt="Sofigate" width="150" height="42" src="https://images.teamtailor-cdn.com/images/s3/teamtailor-production/logotype_mail_retina-v3/image_uploads/f0f489ac-e215-477a-90e6-c1b0e64a5570/original.png">\r\n</a>' +
+      '\r\n      Jarno, we have <strong>2 new jobs</strong> that match your profile\r\n\r\n' +
+      posting('https://sofigategroupoy.teamtailor.com/jobs/8585995-junior-financial-specialist', 'Junior Financial Specialist') +
+      posting('https://sofigategroupoy.teamtailor.com/jobs/8587540-creative-designer', 'Creative Designer') +
+      '<a href="https://sofigategroupoy.teamtailor.com/?utm_content=email-career-site&amp;utm_medium=email&amp;utm_source=new_jobs_digest" style="color:#f91926;">Browse career site</a> or <a href="https://sofigategroupoy.teamtailor.com/connect/profile?utm_content=email-update-profile&amp;utm_medium=email&amp;utm_source=new_jobs_digest" style="color:#f91926;">update your profile</a>' +
+      '<a target="_blank" href="https://sofigategroupoy.teamtailor.com/privacy-policy">\r\n<u>Privacy Policy</u>\r\n</a>' +
+      '<a href="https://sofigategroupoy.teamtailor.com/request_removal" target="_blank"><u>Remove my data</u></a>';
+
+    const links = extractLinks(
+      message('Sofigate <no-reply@sofigategroupoy.teamtailor-mail.com>', html, 'Sofigate: 2 new jobs matching your profile'),
+      'jobs',
+    );
+
+    expect(links.map((l) => [l.url, l.title])).toEqual([
+      ['https://sofigategroupoy.teamtailor.com/jobs/8585995-junior-financial-specialist', 'Sofigate - Junior Financial Specialist'],
+      ['https://sofigategroupoy.teamtailor.com/jobs/8587540-creative-designer', 'Sofigate - Creative Designer'],
+    ]);
+  });
+
+  /**
    * Barona's weekly job suggestions, markup quoted from the real mail of
    * 18 September. Every link is a Customer.io tracker whose base64 payload holds
    * the real address, every job link reads "View job", and the address carries
