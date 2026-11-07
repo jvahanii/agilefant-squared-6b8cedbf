@@ -572,7 +572,9 @@ exports[`what each menu entry opens > Duplicate 1`] = `
 {
   "count": 10,
   "dialogs": [],
-  "inline": [],
+  "inline": [
+    "textarea=Item A",
+  ],
   "order": [
     "Item A",
     "Item P",
@@ -1047,7 +1049,9 @@ exports[`what the shortcuts open from the selected row > shortcut:duplicate-sele
 {
   "count": 8,
   "dialogs": [],
-  "inline": [],
+  "inline": [
+    "textarea=Item B",
+  ],
   "menus": [],
 }
 `;

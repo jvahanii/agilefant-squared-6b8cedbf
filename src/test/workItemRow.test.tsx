@@ -251,11 +251,14 @@ function openSub(name: string) {
   return after.length > before ? after[after.length - 1] : null;
 }
 
-async function settle() {
+async function settle(ms = 0) {
   await act(async () => {
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, ms));
   });
 }
+
+/** A duplicate opens its name for editing 50 ms on; wait for that, so the result does not depend on timing. */
+const AFTER_DUPLICATE_MS = 120;
 
 describe("a row as drawn", () => {
   it("with everything the organization can switch on", () => {
@@ -380,7 +383,7 @@ describe("what each menu entry opens", () => {
         return;
       }
       fireEvent.click(el);
-      await settle();
+      await settle(entry === "Duplicate" ? AFTER_DUPLICATE_MS : 0);
       const s = useAppStore.getState();
       expect({
         ...opened(),
@@ -493,7 +496,7 @@ describe("what the shortcuts open from the selected row", () => {
       await act(async () => {
         window.dispatchEvent(new CustomEvent(name));
       });
-      await settle();
+      await settle(name === "shortcut:duplicate-selected" ? AFTER_DUPLICATE_MS : 0);
       const s = useAppStore.getState();
       expect({ ...opened(), menus: menus().map(menuEntries), count: Object.keys(s.workItems).length }).toMatchSnapshot();
     });
@@ -505,7 +508,7 @@ describe("what the shortcuts open from the selected row", () => {
       await act(async () => {
         window.dispatchEvent(new CustomEvent(name));
       });
-      await settle();
+      await settle(name === "shortcut:duplicate-selected" ? AFTER_DUPLICATE_MS : 0);
       const s = useAppStore.getState();
       expect({ ...opened(), menus: menus().map(menuEntries), count: Object.keys(s.workItems).length }).toMatchSnapshot();
     });
