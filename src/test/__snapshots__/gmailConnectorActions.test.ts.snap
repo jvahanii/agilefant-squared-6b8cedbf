@@ -1,0 +1,548 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the Gmail function > answers a preflight, and refuses the signed-out and the unknown 1`] = `
+{
+  "noOrg": {
+    "body": {
+      "error": "organizationId is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "preflight": 200,
+  "signedOut": {
+    "body": {
+      "error": "unauthorized",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 401,
+  },
+  "unknown": {
+    "body": {
+      "error": "unknown action: nonsense",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+}
+`;
+
+exports[`the Gmail function > disconnects 1`] = `
+{
+  "body": {
+    "connected": false,
+  },
+  "db": [
+    "gmail_connections: delete() eq(user_id,user-1) eq(organization_id,org-1)",
+  ],
+  "gmail": [],
+  "status": 200,
+}
+`;
+
+exports[`the Gmail function > finishes a shared-connector connection, and refuses one without a code 1`] = `
+{
+  "done": {
+    "body": {
+      "connected": true,
+      "email": "me@example.com",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_connections: upsert(object,object)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "noCode": {
+    "body": {
+      "error": "code is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+}
+`;
+
+exports[`the Gmail function > imports links: into one list, or split by deadline, keeping what the picker knew 1`] = `
+{
+  "jobs": {
+    "body": {
+      "collapsed": 0,
+      "created": 2,
+      "createdByUrl": {},
+      "createdIds": [
+        "b-0",
+        "b-1",
+      ],
+      "opts": {
+        "allowDuplicates": true,
+        "backlogId": "b",
+        "fetchDeadlines": true,
+        "organizationId": "org-1",
+        "queryId": null,
+        "treeId": "t",
+      },
+      "skipped": 0,
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "noLinks": {
+    "body": {
+      "error": "links is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "noTree": {
+    "body": {
+      "error": "organizationId, treeId and backlogId are required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "split": {
+    "body": {
+      "collapsed": 0,
+      "created": 2,
+      "createdByUrl": {},
+      "createdIds": [
+        "dated-0",
+        "dated-1",
+      ],
+      "dated": 2,
+      "skipped": 0,
+      "undated": 0,
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
+
+exports[`the Gmail function > previews a search: job ads with where they already are, or links with what was imported 1`] = `
+{
+  "jobs": {
+    "body": {
+      "links": [
+        {
+          "alreadyImported": true,
+          "alreadyIn": "Open jobs",
+          "date": "2026-01-01",
+          "deadline": "2026-12-01",
+          "from": "f",
+          "messageId": "m1",
+          "subject": "s",
+          "title": "Job A",
+          "url": "https://x/a",
+        },
+        {
+          "alreadyImported": false,
+          "alreadyIn": null,
+          "date": "2026-01-02",
+          "deadline": "2026-12-01",
+          "from": "f",
+          "messageId": "m2",
+          "subject": "s",
+          "title": "Job B",
+          "url": "https://x/b",
+        },
+      ],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [
+      "search jobs 25 jobs",
+    ],
+    "status": 200,
+  },
+  "jobsByList": {
+    "body": {
+      "links": [
+        {
+          "alreadyImported": false,
+          "alreadyIn": null,
+          "date": "2026-01-01",
+          "from": "f",
+          "messageId": "m1",
+          "subject": "s",
+          "title": "Job A",
+          "url": "https://x/a",
+        },
+        {
+          "alreadyImported": true,
+          "alreadyIn": null,
+          "date": "2026-01-02",
+          "from": "f",
+          "messageId": "m2",
+          "subject": "s",
+          "title": "Job B",
+          "url": "https://x/b",
+        },
+      ],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [
+      "search jobs 25 jobs",
+    ],
+    "status": 200,
+  },
+  "links": {
+    "body": {
+      "links": [
+        {
+          "alreadyImported": true,
+          "date": "2026-01-01",
+          "from": "f",
+          "messageId": "m1",
+          "subject": "s",
+          "title": "Job A",
+          "url": "https://x/a",
+        },
+        {
+          "alreadyImported": false,
+          "date": "2026-01-02",
+          "from": "f",
+          "messageId": "m2",
+          "subject": "s",
+          "title": "Job B",
+          "url": "https://x/b",
+        },
+      ],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_imported_links: select(gmail_message_id, normalized_url) eq(organization_id,org-1) in(gmail_message_id,[2])",
+    ],
+    "gmail": [
+      "search links 100 links",
+    ],
+    "status": 200,
+  },
+  "noOrg": {
+    "body": {
+      "error": "organizationId is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "noQuery": {
+    "body": {
+      "error": "query is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+}
+`;
+
+exports[`the Gmail function > reads a few postings at a time, and refuses more 1`] = `
+{
+  "read": {
+    "body": {
+      "facts": [
+        {
+          "applicationsClosed": false,
+          "cities": null,
+          "deadline": "2026-12-01",
+          "url": "https://x/a",
+        },
+      ],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "tooMany": {
+    "body": {
+      "error": "at most 6 postings per call",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 400,
+  },
+}
+`;
+
+exports[`the Gmail function > reads a search's career pages, and says why one told it nothing 1`] = `
+{
+  "noQuery": {
+    "body": {
+      "error": "queryId is required",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 400,
+  },
+  "none": {
+    "body": {
+      "links": [],
+      "pages": [],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_import_queries: select(id, career_pages) eq(id,q) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "notOurs": {
+    "body": {
+      "error": "forbidden: no such saved search in this organization",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_import_queries: select(id, career_pages) eq(id,q) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 403,
+  },
+  "pages": {
+    "body": {
+      "links": [],
+      "pages": [
+        {
+          "error": "This page is not one Agilefant knows how to read.",
+          "inLists": 0,
+          "messageId": "page:https://unknown.example/careers",
+          "name": "https://unknown.example/careers",
+          "skipped": 0,
+          "total": 0,
+          "url": "https://unknown.example/careers",
+        },
+      ],
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_import_queries: select(id, career_pages) eq(id,q) eq(organization_id,org-1)",
+      "career_page_seen_postings: select(url) eq(query_id,q)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
+
+exports[`the Gmail function > remembers the career page jobs left out, and marks mail read 1`] = `
+{
+  "read": {
+    "body": {
+      "marked": 2,
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [
+      "markRead 3",
+    ],
+    "status": 200,
+  },
+  "readNone": {
+    "body": {
+      "error": "messageIds is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "seen": {
+    "body": {
+      "marked": 1,
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_import_queries: select(id, career_pages) eq(id,q) eq(organization_id,org-1)",
+      "career_page_seen_postings: upsert([1],object)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "seenNone": {
+    "body": {
+      "marked": 0,
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_import_queries: select(id, career_pages) eq(id,q) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
+
+exports[`the Gmail function > says whether this user is connected, and how the organisation reaches Gmail 1`] = `
+{
+  "own": {
+    "body": {
+      "connected": true,
+      "email": "me@example.com",
+      "oauth": {
+        "canManage": false,
+        "clientId": "c.apps.googleusercontent.com",
+        "configured": true,
+        "mode": "own",
+        "updatedAt": "2026-01-01",
+      },
+      "updatedAt": "2026-01-01",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_connections: select(connected_email, updated_at) eq(user_id,user-1) eq(organization_id,org-1)",
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+      "profiles: select(is_superuser) eq(id,user-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "shared": {
+    "body": {
+      "connected": true,
+      "email": "me@example.com",
+      "oauth": {
+        "mode": "shared",
+      },
+      "updatedAt": "2026-01-01",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_connections: select(connected_email, updated_at) eq(user_id,user-1) is(organization_id,object)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
+
+exports[`the Gmail function > sets and removes the organisation's own client, for its owners and admins only 1`] = `
+{
+  "changed": {
+    "body": {
+      "clientId": "123456789012-abc123.apps.googleusercontent.com",
+      "configured": true,
+    },
+    "db": [
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+      "organization_google_oauth_clients: upsert(object,object)",
+      "gmail_connections: delete() eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+  "member": {
+    "body": {
+      "error": "forbidden: only an owner or admin can set this organization's Google OAuth client",
+    },
+    "db": [
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+      "profiles: select(is_superuser) eq(id,user-1)",
+    ],
+    "gmail": [],
+    "status": 403,
+  },
+  "noSecret": {
+    "body": {
+      "error": "The client secret is required.",
+    },
+    "db": [
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 400,
+  },
+  "notAClientId": {
+    "body": {
+      "error": "That does not look like a Google OAuth client ID. It ends in .apps.googleusercontent.com.",
+    },
+    "db": [
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 400,
+  },
+  "removed": {
+    "body": {
+      "configured": false,
+    },
+    "db": [
+      "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
+      "organization_google_oauth_clients: delete() eq(organization_id,org-1)",
+      "gmail_connections: delete() eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
+
+exports[`the Gmail function > starts a connection: through the shared connector, or the organisation's own client 1`] = `
+{
+  "badReturn": {
+    "body": {
+      "error": "returnUrl must be the app callback page",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 400,
+  },
+  "noClient": {
+    "body": {
+      "error": "oauth_client_not_configured",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+    ],
+    "gmail": [],
+    "status": 409,
+  },
+  "noReturn": {
+    "body": {
+      "error": "returnUrl is required",
+    },
+    "db": [],
+    "gmail": [],
+    "status": 400,
+  },
+  "own": {
+    "starts": "https://accounts.google.com/o/oauth2/v2/auth",
+    "status": 200,
+  },
+  "shared": {
+    "body": {
+      "authorizationUrl": "https://gateway/authorize?u=user-1&r=https://app/gmail-callback.html&k=plain:old",
+    },
+    "db": [
+      "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
+      "gmail_connections: select(connection_key_encrypted) eq(user_id,user-1) is(organization_id,object)",
+    ],
+    "gmail": [],
+    "status": 200,
+  },
+}
+`;
