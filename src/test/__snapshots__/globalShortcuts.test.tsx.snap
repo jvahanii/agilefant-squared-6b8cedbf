@@ -1,0 +1,1836 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`global shortcuts, key by key > Ctrl+Alt+D does not duplicate 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > Ctrl+K with nothing selected 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > Ctrl+T does nothing 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > D in a dialog 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > D while typing 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > Shift+L opens the logged-time report and L logs time, where the organization logs time 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": true,
+}
+`;
+
+exports[`global shortcuts, key by key > Shift+L opens the logged-time report and L logs time, where the organization logs time 2`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:log-time",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": true,
+}
+`;
+
+exports[`global shortcuts, key by key > an unbound key 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > assign teams 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:open-team-assign",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > blocked 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "blocked",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > collapse an item 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > delete a list 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "direction": "down",
+      },
+      "type": "shortcut:delete-selected",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-2",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > delete going down 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "direction": "down",
+      },
+      "type": "shortcut:delete-selected",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > delete going up 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "direction": "up",
+      },
+      "type": "shortcut:delete-selected",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > done 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "done",
+    "C": "done",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > done with Shift 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "done",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > duplicate 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:duplicate-selected",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > escape 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > expand a list 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [
+    "org-1::bl-1",
+  ],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > expand an item 1`] = `
+{
+  "events": [],
+  "expandedItems": [
+    "A",
+  ],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > extend the selection down 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "id": "B",
+      },
+      "type": "shortcut:reveal-work-item",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A1",
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > extend the selection up 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "id": "A1",
+      },
+      "type": "shortcut:reveal-work-item",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+    "A1",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > help overlay 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": true,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > hyperlinks with Ctrl+K 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:edit-hyperlinks",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > hyperlinks with H 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:edit-hyperlinks",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > in progress 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "in_progress",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > item down 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "B",
+    "A",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > item up 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "C",
+    "B",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > list down 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-2",
+    "org-1::bl-1",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > list up 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-2",
+    "org-1::bl-1",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-2",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > log time, logging off 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > move to list 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:move-to-backlog",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > new child item 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:add-child-workitem",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > new child list 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:add-child-backlog",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > new item in a list 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:add-workitem",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > new sibling item 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:add-sibling-workitem",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > next item 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "id": "A1",
+      },
+      "type": "shortcut:reveal-work-item",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A1",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > next list 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1a",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > not started 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > pending 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "pending",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > previous item 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "id": "B",
+      },
+      "type": "shortcut:reveal-work-item",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > previous list 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1a",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > redo with Ctrl+Shift+Z 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "done",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > redo with Ctrl+Y 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "done",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > rename with Alt+Enter 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "workItemId": "B",
+      },
+      "type": "shortcut:edit-title",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > rename with F2 1`] = `
+{
+  "events": [
+    {
+      "detail": {
+        "workItemId": "B",
+      },
+      "type": "shortcut:edit-title",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > reparent 1`] = `
+{
+  "events": [
+    {
+      "detail": null,
+      "type": "shortcut:move-to-parent",
+    },
+  ],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > select all 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+    "A1",
+    "B",
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > select all in a dialog 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > status with nothing selected 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > to the bottom 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "B",
+    "C",
+    "A",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > to the top 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "C",
+    "A",
+    "B",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "C",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > undo after nothing 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > undo while typing 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
