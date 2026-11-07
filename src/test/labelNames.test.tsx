@@ -81,8 +81,8 @@ describe("a list's heading", () => {
   });
 
   it("is in the heading over the list's items", () => {
-    const source = readFileSync(join(process.cwd(), "src", "components", "WorkItemTreePanel.tsx"), "utf8");
-    const heading = source.slice(source.indexOf("function EditableBacklogName"), source.indexOf("function InlineWorkItemInput"));
+    const source = readFileSync(join(process.cwd(), "src", "components", "listPanel", "ListHeader.tsx"), "utf8");
+    const heading = source.slice(source.indexOf("function EditableBacklogName"), source.indexOf("export function ResultsHeader"));
     expect(heading).toContain("<ListHeadingLabels backlogId={backlogId} />");
   });
 });

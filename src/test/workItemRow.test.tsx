@@ -406,6 +406,20 @@ describe("the list panel", () => {
     expect({ titles, list: useAppStore.getState().selectedBacklogIds }).toMatchSnapshot();
   });
 
+  it("counts the items, and the one selected", () => {
+    seed({ selected: ["B"] });
+    expect(screen.getByRole("heading", { name: /List/ }).parentElement!.textContent).toMatchSnapshot();
+  });
+
+  it("ranks an item and a list of the same name", async () => {
+    seed();
+    await act(async () => {
+      useAppStore.setState((s) => ({ workItems: { ...s.workItems, B: { ...s.workItems.B, title: "Other" } } }));
+    });
+    await typeSearch("Other");
+    expect([...document.querySelectorAll("[aria-label='Search results'] [role=option]")].map((o) => o.textContent)).toMatchSnapshot();
+  });
+
   it("says when nothing is found", async () => {
     seed();
     await typeSearch("zzqx");

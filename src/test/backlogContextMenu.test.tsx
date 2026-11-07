@@ -310,7 +310,7 @@ describe("scrambling an item, where the organization has it off", () => {
 
 describe("both places a list is right-clicked", () => {
   it("use the one menu, so they cannot drift apart again", () => {
-    for (const file of ["BacklogTreePanel.tsx", "WorkItemTreePanel.tsx"]) {
+    for (const file of ["BacklogTreePanel.tsx", "listPanel/ListHeader.tsx"]) {
       const source = readFileSync(join(process.cwd(), "src", "components", file), "utf8");
       expect(source, file).toContain("<BacklogContextMenuItems");
     }
