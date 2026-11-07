@@ -435,7 +435,8 @@ export const SHORTCUTS: Shortcut[] = [
     rows: [{ keys: ["Ctrl", "A"], description: "Select all visible work items" }],
     matches: (e) => withCtrl(e) && key(e) === "a",
     run: (ctx) => {
-      if (dialogOpen(ctx)) return;
+      // In a field, Ctrl+A selects its text, as everywhere else.
+      if (typingIn(ctx.e) || dialogOpen(ctx)) return;
       const ids = visibleWorkItemIdsRef.current;
       if (ids.length > 0) {
         ctx.e.preventDefault();
@@ -663,6 +664,13 @@ export const SHORTCUTS: Shortcut[] = [
   },
 ];
 
+/** Is this key press typed into a text field? */
+function typingIn(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  if (!target) return false;
+  return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+}
+
 /**
  * Answer a key press with the shortcut it is, if any. The `anywhere` ones are
  * tried first; then, while typing in a field or with a dialog open, nothing
@@ -676,9 +684,7 @@ export function handleShortcut(e: KeyboardEvent, context: Omit<ShortcutContext, 
       return;
     }
   }
-  const target = e.target as HTMLElement;
-  const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-  if (isInput) return;
+  if (typingIn(e)) return;
   // Don't fire global shortcuts when a modal dialog is open (e.g. reparent dialog).
   if (context.dialogWasOpen || document.querySelector('[role="dialog"]')) return;
   for (const s of SHORTCUTS) {

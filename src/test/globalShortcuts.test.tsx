@@ -165,6 +165,7 @@ const CASES: Array<[string, string[], string[] | undefined, Press]> = [
   ["redo with Ctrl+Shift+Z", ["B"], undefined, { key: "z", ctrl: true, shift: true }],
   ["select all", ["B"], undefined, { key: "a", ctrl: true }],
   ["select all in a dialog", ["B"], undefined, { key: "a", ctrl: true, target: "dialog" }],
+  ["Ctrl+A while typing selects the text, not the items", ["B"], undefined, { key: "a", ctrl: true, target: "input" }],
   ["hyperlinks with Ctrl+K", ["B"], undefined, { key: "k", ctrl: true }],
   ["Ctrl+K with nothing selected", [], undefined, { key: "k", ctrl: true }],
   ["duplicate", ["B"], undefined, { key: "d", ctrl: true }],

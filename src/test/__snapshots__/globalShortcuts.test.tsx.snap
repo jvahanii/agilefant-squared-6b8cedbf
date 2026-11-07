@@ -1,5 +1,37 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`global shortcuts, key by key > Ctrl+A while typing selects the text, not the items 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": false,
+  "selectedItems": [
+    "B",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
 exports[`global shortcuts, key by key > Ctrl+Alt+D does not duplicate 1`] = `
 {
   "events": [],
