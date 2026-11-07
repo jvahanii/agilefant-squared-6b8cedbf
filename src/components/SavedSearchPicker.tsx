@@ -234,6 +234,9 @@ export function SavedSearchPicker({
   const [mirrorByKey, setMirrorByKey] = useState<Record<string, boolean>>({});
   const [importing, setImporting] = useState(false);
   const [filterKeyword, setFilterKeyword] = useState("");
+  // Only the ads ticked for import: to look over what will be imported before
+  // importing it. Live, so one unticked meanwhile goes out of the list too.
+  const [onlyTicked, setOnlyTicked] = useState(false);
   const [reading, setReading] = useState<{ done: number; total: number } | null>(null);
   /** Rows ticked or unticked by hand, which a late answer must not overrule. */
   const touched = useRef(new Set<string>());
@@ -520,7 +523,12 @@ export function SavedSearchPicker({
   }, [visiblePreview]);
   /** For a kept row, the other emails that carried it. */
   const alsoIn = useMemo(() => repeatedElsewhere(visiblePreview), [visiblePreview]);
-  const visibleGroups = useMemo(() => groupBySourceEmail(foldedPreview), [foldedPreview]);
+  // After folding, so that the row shown for a posting is the one whose tick counts.
+  const shownPreview = useMemo(
+    () => (onlyTicked ? foldedPreview.filter((l) => selected[`${l.messageId}|${l.url}`]) : foldedPreview),
+    [foldedPreview, onlyTicked, selected],
+  );
+  const visibleGroups = useMemo(() => groupBySourceEmail(shownPreview), [shownPreview]);
   // Counted before folding: an email whose every posting folded away still
   // carried those postings, and is still one of the emails "mark read" covers.
   // Counting the cards instead would contradict that button.
@@ -915,17 +923,21 @@ export function SavedSearchPicker({
             Clear
           </Button>
         )}
+        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+          <Switch checked={onlyTicked} onCheckedChange={setOnlyTicked} aria-label="Show only ticked ads" />
+          Only ticked
+        </label>
       </div>
       <p className="text-xs font-medium text-muted-foreground">
         {previewSummary({
-          shown: distinctJobs(foldedPreview),
+          shown: distinctJobs(shownPreview),
           emails: visibleEmailCount,
           pages: visiblePageCount,
           // Over the rows actually listed, so the count and the list agree now
           // that the folded-away copies are not on screen to be counted.
-          fresh: foldedPreview.filter((l) => startingReason(l, repeats) === null).length,
+          fresh: shownPreview.filter((l) => startingReason(l, repeats) === null).length,
           mode,
-          total: filterKeyword ? distinctJobs(preview) : undefined,
+          total: filterKeyword || onlyTicked ? distinctJobs(preview) : undefined,
         })}
       </p>
       {/* Pages with no heading of their own below, because they brought no row:
@@ -941,6 +953,11 @@ export function SavedSearchPicker({
       {/* At most half the window, so on a short screen the dialog still fits
           with Import selected in reach — the dialog itself does not scroll. */}
       <div data-scroll-with-arrows className="max-h-[min(24rem,50vh)] overflow-y-auto space-y-4 pr-1">
+        {onlyTicked && shownPreview.length === 0 && (
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No ads are ticked{filterKeyword ? " among those matching the filter" : ""}. Turn off Only ticked to see them all.
+          </p>
+        )}
         {visibleGroups.map((group) => {
           const keys = group.links.map((l) => `${l.messageId}|${l.url}`);
           const allChecked = keys.every((k) => selected[k]);

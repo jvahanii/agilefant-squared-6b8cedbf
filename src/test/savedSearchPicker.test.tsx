@@ -425,6 +425,40 @@ describe("SavedSearchPicker", () => {
     expect(screen.queryByText("Role A")).not.toBeInTheDocument();
   });
 
+  it("hides the unticked ads with Only ticked, and shows them again when it is turned off", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: [
+        link({ url: "https://x/new", title: "Open one" }),
+        link({ url: "https://x/other", title: "Other one" }),
+        link({ url: "https://x/seen", title: "Seen one", alreadyImported: true, alreadyIn: "Applied" }),
+      ],
+    });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Open one");
+
+    const onlyTicked = screen.getByRole("switch", { name: "Show only ticked ads" });
+    fireEvent.click(onlyTicked);
+    expect(screen.getByText("Open one")).toBeInTheDocument();
+    expect(screen.queryByText("Seen one")).not.toBeInTheDocument();
+    expect(screen.getByText(/^2 jobs.*(filtered from 3)/)).toBeInTheDocument();
+
+    // Unticking one while the list shows only ticked ads takes it out of the list.
+    fireEvent.click(screen.getByRole("checkbox", { name: /Other one/ }));
+    expect(screen.queryByText("Other one")).not.toBeInTheDocument();
+
+    fireEvent.click(onlyTicked);
+    expect(screen.getByText("Seen one")).toBeInTheDocument();
+    expect(screen.getByText("Other one")).toBeInTheDocument();
+  });
+
+  it("says so when Only ticked leaves nothing to show", async () => {
+    callGmail.mockResolvedValueOnce({ links: [link({ url: "https://x/seen", title: "Seen one", alreadyImported: true })] });
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Seen one");
+    fireEvent.click(screen.getByRole("switch", { name: "Show only ticked ads" }));
+    expect(screen.getByText(/No ads are ticked/)).toBeInTheDocument();
+  });
+
   it("imports only what is ticked, into the search's own list until another is chosen, then closes and reloads", async () => {
     callGmail
       .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" }), link({ url: "https://x/b", title: "B", alreadyImported: true })] })
@@ -1303,7 +1337,7 @@ describe("Import into the chosen list: mirroring the rows switched on", () => {
 
   it("starts every row switched off, and mirrors nothing then", async () => {
     await openPicker(null, { [SHORTLIST]: backlog(SHORTLIST, "Hae näitä seuraavaksi", NEXT_TREE) });
-    expect(screen.getAllByRole("switch").map((s) => s.getAttribute("aria-checked"))).toEqual(["false", "false"]);
+    expect(screen.getAllByRole("switch", { name: /^Mirror / }).map((s) => s.getAttribute("aria-checked"))).toEqual(["false", "false"]);
     await importAndAutoPlace();
     expect(moveWorkItemsToBacklog).not.toHaveBeenCalled();
   });
@@ -1338,7 +1372,7 @@ describe("Import into the chosen list: mirroring the rows switched on", () => {
 
   it("offers no switch when there is nowhere to mirror", async () => {
     await openPicker(null, {});
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /^Mirror / })).not.toBeInTheDocument();
   });
 });
 

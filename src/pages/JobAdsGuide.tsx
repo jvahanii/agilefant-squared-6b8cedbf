@@ -321,6 +321,10 @@ export default function JobAdsGuide() {
             <Em>Filter by keyword…</Em> narrows the list, for example to a job title or an employer.
           </li>
           <li>Tick the postings to import, individually or a whole email at a time.</li>
+          <li>
+            <Em>Only ticked</Em> hides the postings that are not ticked, to look over what will be imported. Unticking
+            one while it is on takes it out of the list; turn it off to see them all again.
+          </li>
         </Ul>
 
         <SubHeading>What starts unticked</SubHeading>
