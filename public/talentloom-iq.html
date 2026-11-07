@@ -1486,15 +1486,16 @@ function snkDraw(reveal){
 }
 function snkToggle(k){
   if(done)return;
-  const at=snk.sel.indexOf(k);
-  if(at>=0)snk.sel[at]=null;
-  else{const e=snk.sel.indexOf(null);if(e>=0)snk.sel[e]=k;}
+  const e=snk.sel.indexOf(null);
+  if(e>=0)snk.sel[e]=k;
+  else{const at=snk.sel.lastIndexOf(k);if(at>=0)snk.sel[at]=null;}
   $('err').textContent='';snkDraw();
 }
 function checkSnake(){
   if(done)return;
   if(snk.sel.indexOf(null)>=0){$('err').textContent='Valitse kaksi kuviota tai paina Ohita';return;}
-  finish(snk.sel[0]===item.ci[0]&&snk.sel[1]===item.ci[1],'');
+  const same=j=>keyOf(item.options[snk.sel[j]])===keyOf(item.seq[item.L-2+j]);
+  finish(same(0)&&same(1),'');
 }
 function balSvg(sc,no){
   const ico=(k,x,y)=>{
@@ -1544,7 +1545,7 @@ function newItem(){
     $('ans').focus();
   }else if(item.kind==='snake'){
     snk={sel:[null,null],over:false};
-    let h='<div id="snk"></div><div class="small" style="margin-bottom:8px">Napsauta kaksi kuviota siinä järjestyksessä kuin ne kuuluvat jonon loppuun (ensin ensimmäinen puuttuva). Napsauta valittua uudelleen, jos haluat poistaa sen.</div><div class="opts" style="grid-template-columns:repeat(4,minmax(0,1fr));max-width:480px">';
+    let h='<div id="snk"></div><div class="small" style="margin-bottom:8px">Napsauta kaksi kuviota siinä järjestyksessä kuin ne kuuluvat jonon loppuun (ensin ensimmäinen puuttuva). Sama kuvio voidaan valita kahdesti. Poista valinta napsauttamalla sitä jonossa.</div><div class="opts" style="grid-template-columns:repeat(4,minmax(0,1fr));max-width:480px">';
     item.options.forEach((sp,k)=>{h+='<div><button class="opt" data-k="'+k+'" aria-label="Vaihtoehto '+'ABCDEFGH'[k]+'">'+snkTile(sp)+'</button><div class="lab">'+'ABCDEFGH'[k]+'</div></div>';});
     h+='</div><div style="margin-top:12px"><button id="go" class="primary" disabled>Tarkista</button> <button id="skip">Ohita</button></div>';
     $('body').innerHTML=h;
