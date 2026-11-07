@@ -72,6 +72,8 @@ import { useLabelsStore } from "@/store/labelsStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useClosedPostingsStore } from "@/store/closedPostingsStore";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
+import { useSnoozeStore } from "@/store/snoozeStore";
+import { useListSortStore } from "@/store/listSortStore";
 import { setCurrentUser } from "@/lib/currentUser";
 import type { WorkItem } from "@/types/models";
 
@@ -183,6 +185,8 @@ function seed({
 
 beforeEach(() => {
   cleanup();
+  // A sort chosen in one test is kept, as it is for a reader; start from rank.
+  useListSortStore.getState().setMode(LIST, "rank");
   useScrambledItemsStore.setState({ byItem: new Map() } as never);
 });
 
@@ -244,6 +248,11 @@ function openMenu(id: string) {
   return menus()[0];
 }
 
+/** A dropdown opens from the keyboard here: jsdom has no pointer events for it. */
+function openDropdown(trigger: HTMLElement) {
+  fireEvent.keyDown(trigger, { key: "Enter" });
+}
+
 function openSub(name: string) {
   const before = menus().length;
   fireEvent.click(screen.getByRole("menuitem", { name }));
@@ -301,6 +310,166 @@ describe("a board card as drawn", () => {
     fireEvent.change(input, { target: { value: "Renamed" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(useAppStore.getState().workItems.B.title).toBe("Renamed");
+  });
+});
+
+/** The panel without its rows (recorded on their own above): header, filter bar, lists. */
+function panelAsDrawn() {
+  const panel = document.querySelector("[role=combobox]")!.closest(".h-full.flex.flex-col")!.cloneNode(true) as HTMLElement;
+  panel.querySelectorAll("[data-index]").forEach((row) => row.remove());
+  return normalize(panel.outerHTML);
+}
+
+const filterBox = () => document.querySelector("[role=combobox]") as HTMLInputElement;
+
+async function typeSearch(text: string) {
+  await act(async () => {
+    fireEvent.change(filterBox(), { target: { value: text } });
+  });
+  await settle();
+}
+
+describe("the list panel", () => {
+  it("draws its header and filter bar", () => {
+    seed();
+    expect(panelAsDrawn()).toMatchSnapshot();
+  });
+
+  it("draws them with everything switched off", () => {
+    seed({ settings: ALL_OFF });
+    expect(panelAsDrawn()).toMatchSnapshot();
+  });
+
+  it("offers to wake the items snoozed in the list", () => {
+    useSnoozeStore.setState({
+      snoozes: { C: { id: "s", userId: "me", workItemId: "C", organizationId: ORG, snoozedUntil: "2999-01-01T00:00:00Z", note: null, createdAt: "", updatedAt: "" } },
+    } as never);
+    seed();
+    const button = screen.getByTitle(/hidden by snooze/);
+    expect(button.textContent).toBe("Snoozed: 1");
+    useSnoozeStore.setState({ snoozes: {} } as never);
+  });
+
+  it("shows the label and team chips while the filter box is focused", () => {
+    seed();
+    fireEvent.focus(filterBox());
+    expect(normalize(filterBox().parentElement!.parentElement!.outerHTML)).toMatchSnapshot();
+  });
+
+  it("lists the items with a label chosen, and goes to one", async () => {
+    seed();
+    fireEvent.focus(filterBox());
+    fireEvent.click(screen.getByRole("button", { name: "Urgent" }));
+    await settle();
+    expect(panelAsDrawn()).toMatchSnapshot();
+    fireEvent.click(document.querySelector("[role=option]")!);
+    await settle(120);
+    expect({ selected: useAppStore.getState().selectedWorkItemIds, filtered: !!screen.queryByText("Label filter results") }).toEqual({ selected: ["A"], filtered: false });
+  });
+
+  it("lists the items with a team chosen", async () => {
+    seed();
+    fireEvent.focus(filterBox());
+    fireEvent.click(screen.getByRole("button", { name: "Red" }));
+    await settle();
+    expect(screen.getByText("Team filter results")).toBeInTheDocument();
+    expect([...document.querySelectorAll("[role=option]")].map((o) => o.textContent)).toMatchSnapshot();
+  });
+
+  it("suggests commands as one is typed, and Tab completes the first", async () => {
+    seed();
+    fireEvent.focus(filterBox());
+    await typeSearch("/du");
+    const suggestions = [...document.querySelectorAll("[aria-label='Search commands'] [role=option]")].map((o) => o.textContent);
+    fireEvent.keyDown(filterBox(), { key: "Tab" });
+    expect({ suggestions, completed: useAppStore.getState().searchQuery }).toMatchSnapshot();
+  });
+
+  it("moves through the results with the arrow keys and opens the chosen one with Enter", async () => {
+    seed();
+    await typeSearch("Item");
+    const titles = [...document.querySelectorAll("[aria-label='Search results'] [role=option]")].map((o) => o.textContent);
+    fireEvent.keyDown(filterBox(), { key: "ArrowDown" });
+    fireEvent.keyDown(filterBox(), { key: "ArrowDown" });
+    const active = document.querySelector("[aria-label='Search results'] [aria-selected=true]")?.textContent;
+    fireEvent.keyDown(filterBox(), { key: "Enter" });
+    await settle(120);
+    expect({ titles, active, selected: useAppStore.getState().selectedWorkItemIds, query: useAppStore.getState().searchQuery }).toMatchSnapshot();
+  });
+
+  it("finds lists by name too, and opens one", async () => {
+    seed();
+    await typeSearch("Elsewhere");
+    const titles = [...document.querySelectorAll("[aria-label='Search results'] [role=option]")].map((o) => o.textContent);
+    fireEvent.click(screen.getByText("(list)").closest("[role=option]")!);
+    await settle();
+    expect({ titles, list: useAppStore.getState().selectedBacklogIds }).toMatchSnapshot();
+  });
+
+  it("says when nothing is found", async () => {
+    seed();
+    await typeSearch("zzqx");
+    expect(panelAsDrawn()).toMatchSnapshot();
+  });
+
+  it("clears the search and the filters with Escape", async () => {
+    seed();
+    fireEvent.focus(filterBox());
+    fireEvent.click(screen.getByRole("button", { name: "Urgent" }));
+    await typeSearch("Item");
+    fireEvent.keyDown(filterBox(), { key: "Escape" });
+    await settle();
+    expect({ query: useAppStore.getState().searchQuery, filtered: !!screen.queryByText(/filter results/) }).toEqual({ query: "", filtered: false });
+  });
+
+  it("focuses the filter box with /", () => {
+    seed();
+    fireEvent.keyDown(window, { key: "/" });
+    expect(document.activeElement).toBe(filterBox());
+  });
+
+  it("offers the list's sorts, and sorts the top level by one", async () => {
+    seed();
+    openDropdown(screen.getByTitle("Sort top-level items"));
+    const entries = menuEntries(menus()[0]);
+    fireEvent.click(within(menus()[0]).getAllByRole("menuitemradio").find((m) => /Z.*A|Name.*desc|descending/i.test(m.textContent ?? "")) ?? within(menus()[0]).getAllByRole("menuitemradio")[1]);
+    await settle();
+    expect({ entries, rows: rowsAsDrawn().map((r) => r.id), button: document.querySelector("[title^='Sorted by'],[title='Sort top-level items']")?.getAttribute("title") }).toMatchSnapshot();
+  });
+
+  it("opens a new item's field with the add button, and adds it", async () => {
+    seed();
+    fireEvent.click(screen.getByTitle("Add work item (Enter)"));
+    const field = screen.getByPlaceholderText("Work item title…");
+    fireEvent.change(field, { target: { value: "New one" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    await settle();
+    expect(Object.values(useAppStore.getState().workItems).some((w) => w.title === "New one" && !w.parentId)).toBe(true);
+  });
+
+  it("opens the list's time log from the header", async () => {
+    seed();
+    fireEvent.click(screen.getByTitle("Log time for this list"));
+    await settle();
+    expect(opened().dialogs).toEqual(["Time Log"]);
+  });
+
+  it("offers the list's own menu when its header is right-clicked", () => {
+    seed();
+    fireEvent.contextMenu(screen.getByRole("heading", { name: /List/ }));
+    expect(menuEntries(menus()[0])).toMatchSnapshot();
+  });
+
+  it("adds an item with Insert: a child of the selected one, or at the top", async () => {
+    seed({ selected: ["B"] });
+    fireEvent.keyDown(window, { key: "Insert" });
+    await settle();
+    const child = opened().inline;
+    cleanup();
+    seed();
+    fireEvent.keyDown(window, { key: "Insert" });
+    await settle();
+    expect({ child, top: opened().inline }).toMatchSnapshot();
   });
 });
 
@@ -521,7 +690,7 @@ describe("what the row's own controls open", () => {
   it("the status dot sets the status of the whole selection", () => {
     seed({ selected: ["B", "D"] });
     const dot = rowOf("B").querySelector("button.rounded-full") as HTMLElement;
-    fireEvent.pointerDown(dot, { button: 0, ctrlKey: false });
+    openDropdown(dot);
     const menu = menus()[0];
     const entries = menu ? menuEntries(menu) : null;
     const done = menu && within(menu).getAllByRole("menuitem").find((m) => m.textContent?.trim() === "Done");
@@ -533,7 +702,7 @@ describe("what the row's own controls open", () => {
   it("the teams of an item are picked from its row", () => {
     seed({ selected: ["A"] });
     const trigger = rowOf("A").querySelector("span.cursor-pointer") as HTMLElement;
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    openDropdown(trigger);
     const menu = menus()[0];
     expect(menu ? menuEntries(menu) : null).toMatchSnapshot();
   });
