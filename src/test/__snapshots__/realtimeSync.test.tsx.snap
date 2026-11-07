@@ -1,0 +1,421 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`live updates > apply each change, or drop it when it is in a tree that cannot be seen 1`] = `
+{
+  "entity-realtime-org": {
+    "backlog_scrambles: delete unseen": [
+      "scrambledListsReload()",
+    ],
+    "backlog_scrambles: insert seen": [
+      "scrambledListsReload()",
+    ],
+    "backlog_scrambles: update unseen": [
+      "scrambledListsReload()",
+    ],
+    "backlog_statuses: delete unseen": [],
+    "backlog_statuses: insert seen": [
+      "status(INSERT)",
+    ],
+    "backlog_statuses: update unseen": [],
+    "backlog_trees: delete unseen": [
+      "tree(DELETE)",
+    ],
+    "backlog_trees: insert seen": [
+      "tree(INSERT)",
+    ],
+    "backlog_trees: update unseen": [
+      "tree(UPDATE)",
+    ],
+    "backlogs: delete unseen": [
+      "backlog(DELETE)",
+    ],
+    "backlogs: insert seen": [
+      "backlog(INSERT)",
+    ],
+    "backlogs: update unseen": [
+      "backlog(UPDATE)",
+    ],
+    "jira_connections: delete unseen": [
+      "jiraReload()",
+    ],
+    "jira_connections: insert seen": [
+      "jiraReload()",
+    ],
+    "jira_connections: update unseen": [
+      "jiraReload()",
+    ],
+    "jira_issue_links: delete unseen": [
+      "jiraReload()",
+    ],
+    "jira_issue_links: insert seen": [
+      "jiraReload()",
+    ],
+    "jira_issue_links: update unseen": [
+      "jiraReload()",
+    ],
+    "label_assignments: delete unseen": [
+      "labelAssignment(DELETE)",
+    ],
+    "label_assignments: insert seen": [
+      "labelAssignment(INSERT)",
+    ],
+    "label_assignments: update unseen": [
+      "labelAssignment(UPDATE)",
+    ],
+    "labels: delete unseen": [
+      "label(DELETE)",
+    ],
+    "labels: insert seen": [
+      "label(INSERT)",
+    ],
+    "labels: update unseen": [
+      "label(UPDATE)",
+    ],
+    "organization_settings: delete unseen": [
+      "settings(DELETE)",
+    ],
+    "organization_settings: insert seen": [
+      "settings(INSERT)",
+    ],
+    "organization_settings: update unseen": [
+      "settings(UPDATE)",
+    ],
+    "published_links: delete unseen": [
+      "publishedLinksReload()",
+    ],
+    "published_links: insert seen": [
+      "publishedLinksReload()",
+    ],
+    "published_links: update unseen": [
+      "publishedLinksReload()",
+    ],
+    "teams: delete unseen": [
+      "team(DELETE)",
+    ],
+    "teams: insert seen": [
+      "team(INSERT)",
+    ],
+    "teams: update unseen": [
+      "team(UPDATE)",
+    ],
+    "time_entries: delete unseen": [
+      "timeEntry(DELETE)",
+    ],
+    "time_entries: insert seen": [
+      "timeEntry(INSERT)",
+    ],
+    "time_entries: update unseen": [
+      "timeEntry(UPDATE)",
+    ],
+    "tree_financial_targets: delete unseen": [],
+    "tree_financial_targets: insert seen": [
+      "target(INSERT)",
+    ],
+    "tree_financial_targets: update unseen": [],
+    "work_item_backlog_ranks: delete unseen": [
+      "rank(DELETE)",
+    ],
+    "work_item_backlog_ranks: insert seen": [
+      "rank(INSERT)",
+    ],
+    "work_item_backlog_ranks: update unseen": [
+      "rank(UPDATE)",
+    ],
+    "work_item_board_ranks: delete unseen": [
+      "boardRank(DELETE)",
+    ],
+    "work_item_board_ranks: insert seen": [
+      "boardRank(INSERT)",
+    ],
+    "work_item_board_ranks: update unseen": [
+      "boardRank(UPDATE)",
+    ],
+    "work_item_financials: delete unseen": [
+      "financials(DELETE)",
+    ],
+    "work_item_financials: insert seen": [
+      "financials(INSERT)",
+    ],
+    "work_item_financials: update unseen": [
+      "financials(UPDATE)",
+    ],
+    "work_item_hyperlinks: delete unseen": [
+      "hyperlink(DELETE)",
+    ],
+    "work_item_hyperlinks: insert seen": [
+      "hyperlink(INSERT)",
+    ],
+    "work_item_hyperlinks: update unseen": [
+      "hyperlink(UPDATE)",
+    ],
+    "work_item_scrambles: delete unseen": [
+      "scrambledItemsReload()",
+    ],
+    "work_item_scrambles: insert seen": [
+      "scrambledItemsReload()",
+    ],
+    "work_item_scrambles: update unseen": [
+      "scrambledItemsReload()",
+    ],
+    "work_item_team_assignments: delete unseen": [
+      "teamAssignment(DELETE)",
+    ],
+    "work_item_team_assignments: insert seen": [
+      "teamAssignment(INSERT)",
+    ],
+    "work_item_team_assignments: update unseen": [
+      "teamAssignment(UPDATE)",
+    ],
+    "work_items: delete unseen": [
+      "workItem(DELETE)",
+    ],
+    "work_items: insert seen": [
+      "workItem(INSERT)",
+    ],
+    "work_items: update unseen": [
+      "workItem(UPDATE)",
+    ],
+  },
+  "entity-realtime-org-partner-out": {
+    "backlogs: delete unseen": [
+      "backlog(DELETE)",
+    ],
+    "backlogs: insert seen": [
+      "backlog(INSERT)",
+    ],
+    "backlogs: update unseen": [],
+    "label_assignments: delete unseen": [
+      "labelAssignment(DELETE)",
+    ],
+    "label_assignments: insert seen": [
+      "labelAssignment(INSERT)",
+    ],
+    "label_assignments: update unseen": [
+      "labelAssignment(UPDATE)",
+    ],
+    "labels: delete unseen": [
+      "label(DELETE)",
+    ],
+    "labels: insert seen": [
+      "label(INSERT)",
+    ],
+    "labels: update unseen": [
+      "label(UPDATE)",
+    ],
+    "teams: delete unseen": [
+      "team(DELETE)",
+    ],
+    "teams: insert seen": [
+      "team(INSERT)",
+    ],
+    "teams: update unseen": [
+      "team(UPDATE)",
+    ],
+    "time_entries: delete unseen": [
+      "timeEntry(DELETE)",
+    ],
+    "time_entries: insert seen": [
+      "timeEntry(INSERT)",
+    ],
+    "time_entries: update unseen": [],
+    "work_item_backlog_ranks: delete unseen": [
+      "rank(DELETE)",
+    ],
+    "work_item_backlog_ranks: insert seen": [
+      "rank(INSERT)",
+    ],
+    "work_item_backlog_ranks: update unseen": [],
+    "work_item_board_ranks: delete unseen": [
+      "boardRank(DELETE)",
+    ],
+    "work_item_board_ranks: insert seen": [
+      "boardRank(INSERT)",
+    ],
+    "work_item_board_ranks: update unseen": [],
+    "work_item_financials: delete unseen": [
+      "financials(DELETE)",
+    ],
+    "work_item_financials: insert seen": [
+      "financials(INSERT)",
+    ],
+    "work_item_financials: update unseen": [],
+    "work_item_hyperlinks: delete unseen": [
+      "hyperlink(DELETE)",
+    ],
+    "work_item_hyperlinks: insert seen": [
+      "hyperlink(INSERT)",
+    ],
+    "work_item_hyperlinks: update unseen": [],
+    "work_item_team_assignments: delete unseen": [
+      "teamAssignment(DELETE)",
+    ],
+    "work_item_team_assignments: insert seen": [
+      "teamAssignment(INSERT)",
+    ],
+    "work_item_team_assignments: update unseen": [
+      "teamAssignment(UPDATE)",
+    ],
+    "work_items: delete unseen": [
+      "workItem(DELETE)",
+    ],
+    "work_items: insert seen": [
+      "workItem(INSERT)",
+    ],
+    "work_items: update unseen": [],
+  },
+  "entity-realtime-org-partner-partner": {
+    "backlogs: delete unseen": [
+      "backlog(DELETE)",
+    ],
+    "backlogs: insert seen": [
+      "backlog(INSERT)",
+    ],
+    "backlogs: update unseen": [],
+    "label_assignments: delete unseen": [
+      "labelAssignment(DELETE)",
+    ],
+    "label_assignments: insert seen": [
+      "labelAssignment(INSERT)",
+    ],
+    "label_assignments: update unseen": [
+      "labelAssignment(UPDATE)",
+    ],
+    "labels: delete unseen": [
+      "label(DELETE)",
+    ],
+    "labels: insert seen": [
+      "label(INSERT)",
+    ],
+    "labels: update unseen": [
+      "label(UPDATE)",
+    ],
+    "teams: delete unseen": [
+      "team(DELETE)",
+    ],
+    "teams: insert seen": [
+      "team(INSERT)",
+    ],
+    "teams: update unseen": [
+      "team(UPDATE)",
+    ],
+    "time_entries: delete unseen": [
+      "timeEntry(DELETE)",
+    ],
+    "time_entries: insert seen": [
+      "timeEntry(INSERT)",
+    ],
+    "time_entries: update unseen": [],
+    "work_item_backlog_ranks: delete unseen": [
+      "rank(DELETE)",
+    ],
+    "work_item_backlog_ranks: insert seen": [
+      "rank(INSERT)",
+    ],
+    "work_item_backlog_ranks: update unseen": [],
+    "work_item_board_ranks: delete unseen": [
+      "boardRank(DELETE)",
+    ],
+    "work_item_board_ranks: insert seen": [
+      "boardRank(INSERT)",
+    ],
+    "work_item_board_ranks: update unseen": [],
+    "work_item_financials: delete unseen": [
+      "financials(DELETE)",
+    ],
+    "work_item_financials: insert seen": [
+      "financials(INSERT)",
+    ],
+    "work_item_financials: update unseen": [],
+    "work_item_hyperlinks: delete unseen": [
+      "hyperlink(DELETE)",
+    ],
+    "work_item_hyperlinks: insert seen": [
+      "hyperlink(INSERT)",
+    ],
+    "work_item_hyperlinks: update unseen": [],
+    "work_item_team_assignments: delete unseen": [
+      "teamAssignment(DELETE)",
+    ],
+    "work_item_team_assignments: insert seen": [
+      "teamAssignment(INSERT)",
+    ],
+    "work_item_team_assignments: update unseen": [
+      "teamAssignment(UPDATE)",
+    ],
+    "work_items: delete unseen": [
+      "workItem(DELETE)",
+    ],
+    "work_items: insert seen": [
+      "workItem(INSERT)",
+    ],
+    "work_items: update unseen": [],
+  },
+  "work-item-snoozes-me": {
+    "work_item_snoozes: delete unseen": [
+      "snooze(DELETE)",
+    ],
+    "work_item_snoozes: insert seen": [
+      "snooze(INSERT)",
+    ],
+    "work_item_snoozes: update unseen": [
+      "snooze(UPDATE)",
+    ],
+  },
+}
+`;
+
+exports[`live updates > open these channels, each listening to these tables 1`] = `
+{
+  "entity-realtime-org": [
+    "backlog_scrambles",
+    "backlog_statuses",
+    "backlog_trees [organization_id=eq.org]",
+    "backlogs [organization_id=eq.org]",
+    "jira_connections",
+    "jira_issue_links",
+    "label_assignments [organization_id=eq.org]",
+    "labels [organization_id=eq.org]",
+    "organization_settings [organization_id=eq.org]",
+    "published_links",
+    "teams [organization_id=eq.org]",
+    "time_entries [organization_id=eq.org]",
+    "tree_financial_targets",
+    "work_item_backlog_ranks [organization_id=eq.org]",
+    "work_item_board_ranks [organization_id=eq.org]",
+    "work_item_financials [organization_id=eq.org]",
+    "work_item_hyperlinks [organization_id=eq.org]",
+    "work_item_scrambles",
+    "work_item_team_assignments [organization_id=eq.org]",
+    "work_items [organization_id=eq.org]",
+  ],
+  "entity-realtime-org-partner-out": [
+    "backlogs [organization_id=eq.out]",
+    "label_assignments [organization_id=eq.out]",
+    "labels [organization_id=eq.out]",
+    "teams [organization_id=eq.out]",
+    "time_entries [organization_id=eq.out]",
+    "work_item_backlog_ranks [organization_id=eq.out]",
+    "work_item_board_ranks [organization_id=eq.out]",
+    "work_item_financials [organization_id=eq.out]",
+    "work_item_hyperlinks [organization_id=eq.out]",
+    "work_item_team_assignments [organization_id=eq.out]",
+    "work_items [organization_id=eq.out]",
+  ],
+  "entity-realtime-org-partner-partner": [
+    "backlogs [organization_id=eq.partner]",
+    "label_assignments [organization_id=eq.partner]",
+    "labels [organization_id=eq.partner]",
+    "teams [organization_id=eq.partner]",
+    "time_entries [organization_id=eq.partner]",
+    "work_item_backlog_ranks [organization_id=eq.partner]",
+    "work_item_board_ranks [organization_id=eq.partner]",
+    "work_item_financials [organization_id=eq.partner]",
+    "work_item_hyperlinks [organization_id=eq.partner]",
+    "work_item_team_assignments [organization_id=eq.partner]",
+    "work_items [organization_id=eq.partner]",
+  ],
+  "work-item-snoozes-me": [
+    "work_item_snoozes [user_id=eq.me]",
+  ],
+}
+`;
