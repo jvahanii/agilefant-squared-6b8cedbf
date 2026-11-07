@@ -223,7 +223,9 @@ function WorkItemNodeContent({
       if (!useAppStore.getState().expandedWorkItems.has(workItemId)) toggleExpand(workItemId);
       setIsAdding(true);
     },
-    viewElsewhere: {
+    // Only where the organization has boards: elsewhere the board is never
+    // shown, and the entry only saved a view nobody could see.
+    viewElsewhere: !features.boards ? undefined : {
       label: "View in board",
       view: "board",
       run: () => {

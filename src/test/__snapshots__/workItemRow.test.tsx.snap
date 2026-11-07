@@ -425,7 +425,6 @@ exports[`a row's right-click menu > offers, with everything switched off 1`] = `
 [
   "—",
   "menuitem: Status",
-  "menuitem: View in board",
   "menuitem: Rank to top",
   "menuitem: Insert icon",
   "menuitem: Description…",

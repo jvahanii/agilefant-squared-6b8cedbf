@@ -35,6 +35,8 @@ export interface ItemFeatures {
   timeLogging: boolean;
   scrambling: boolean;
   savingsIncome: boolean;
+  /** The list can be shown as a board. */
+  boards: boolean;
   /** Stars, and the start-to-end span, shown on the item: the organization's switch and its list's. */
   ratingsShown: boolean;
   startEndShown: boolean;
@@ -64,6 +66,7 @@ export function useItemFeatures(item: WorkItem | undefined, treeId: string): Ite
     timeLogging: settings?.timeLoggingEnabled ?? false,
     scrambling,
     savingsIncome: settings?.savingsIncomeEnabled ?? false,
+    boards: settings?.boardsEnabled ?? false,
     ratingsShown: orgRatings && listRatings,
     startEndShown: startEndDates && listStartEnd,
   };
