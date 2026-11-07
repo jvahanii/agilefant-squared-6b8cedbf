@@ -208,6 +208,14 @@ describe("suggestions", () => {
     expect(commandBeingTyped("/overdue")).toBeNull();
     expect(commandBeingTyped("api")).toBeNull();
   });
+
+  it("are not offered once a command is followed by words, so Tab cannot replace them", () => {
+    expect(commandBeingTyped("/open budget")).toBeNull();
+    expect(commandBeingTyped("/label ")).toBeNull();
+    expect(commandBeingTyped("/label urg")).toBeNull();
+    expect(suggestCommands(commandBeingTyped("/due ")!).map((c) => c.usage)).toEqual(["/due today", "/due this week"]);
+    expect(suggestCommands(commandBeingTyped("/due this ")!).map((c) => c.usage)).toEqual(["/due this week"]);
+  });
 });
 
 describe("lists", () => {

@@ -212,14 +212,16 @@ export function commandBeingTyped(query: string): string | null {
   const m = /(?:^|\s)(\/[a-z]*(?: [a-z]*)?(?: [a-z]*)?)$/i.exec(query);
   if (!m) return null;
   const typed = m[1].toLowerCase();
-  // A finished command needs no suggestion.
-  const finished = SEARCH_COMMANDS.some((c) => c.insert.trim() === typed.trim() && !c.insert.endsWith(" "));
-  return finished ? null : typed;
+  // Still on its way to a command: the start of one, not one already typed out.
+  // "/open budget" is a command and a word, and Tab there would have replaced
+  // the lot with "/open" again.
+  const open = SEARCH_COMMANDS.some((c) => (c.insert.startsWith(typed) || c.usage.startsWith(typed)) && c.insert !== typed);
+  return open ? typed : null;
 }
 
 export function suggestCommands(typed: string) {
-  const t = typed.trim().toLowerCase();
-  return SEARCH_COMMANDS.filter((c) => c.usage.startsWith(t) || c.insert.startsWith(t) || t.startsWith(c.insert.trim()));
+  const t = typed.toLowerCase();
+  return SEARCH_COMMANDS.filter((c) => c.usage.startsWith(t) || c.insert.startsWith(t));
 }
 
 // ─── Matching ────────────────────────────────────────────────────────────────
