@@ -16,7 +16,7 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
 }));
 
 import { useAppStore } from "@/store/appStore";
-import { upsertWorkItemBacklogRankRowsDetailed } from "@/store/supabaseSync";
+import { upsertWorkItem, upsertWorkItemBacklogRankRowsDetailed } from "@/store/supabaseSync";
 import { byRank, topLevelItems } from "@/lib/workItemRows";
 import type { WorkItem } from "@/types/models";
 
@@ -83,6 +83,48 @@ const writtenListRows = () =>
 
 beforeEach(() => {
   vi.mocked(upsertWorkItemBacklogRankRowsDetailed).mockClear();
+  vi.mocked(upsertWorkItem).mockClear();
+});
+
+/** The list rank the last item save of `id` writes: upsertWorkItem saves the
+ *  item's ranks too, after the item row, so it lands after the rank batch. */
+const lastSavedListRank = (id: string) => {
+  const saves = vi.mocked(upsertWorkItem).mock.calls.filter(([wi]) => wi.id === id);
+  return saves.length === 0 ? undefined : saves[saves.length - 1][0].ranks[BL];
+};
+
+describe("board drop: saving the moved card keeps its new list rank", () => {
+  // Seen live on 2026-11-08: the drop wrote the parcel's new list rank, and
+  // 0.7 s later the save of its status change wrote its old rank back.
+  const seedForReturn = () =>
+    seed([
+      card(UUSI, "not_started", 1, 1),
+      card(WEEKLY, "not_started", 2, 2),
+      card(PARCEL, "in_progress", 3, 0),
+      card(BUDGET, "not_started", 4, 3),
+    ]);
+
+  it("dropped on a slot (workitem-board-reorder)", () => {
+    seedForReturn();
+    useAppStore.getState().reorderWorkItemInBoard(PARCEL, 0, BT, [BL], "not_started");
+
+    const rank = useAppStore.getState().workItems[PARCEL].ranks[BL];
+    expect(rank).toBe(1);
+    expect(lastSavedListRank(PARCEL)).toBe(rank);
+  });
+
+  it("dropped on the column itself (board-column: status first, then the reorder)", () => {
+    seedForReturn();
+    // What AppLayout's handleDragEnd does for a "board-column" drop.
+    useAppStore.getState().runBulk(() => {
+      useAppStore.getState().setWorkItemStatus(PARCEL, "not_started");
+      useAppStore.getState().reorderWorkItemInBoard(PARCEL, 0, BT, [BL]);
+    });
+
+    const rank = useAppStore.getState().workItems[PARCEL].ranks[BL];
+    expect(rank).toBe(1);
+    expect(lastSavedListRank(PARCEL)).toBe(rank);
+  });
 });
 
 describe("board drop: the column it computes is the column the board draws", () => {

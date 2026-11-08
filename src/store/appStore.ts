@@ -2493,13 +2493,6 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
       if (boardRows.length > 0) persistBoardRankUpserts(boardRows);
 
-      // Persist status changes for cards dragged in from another column.
-      for (const id of itemsToMoveIds) {
-        if (state.workItems[id] && state.workItems[id].status !== columnStatus && updatedItems[id]) {
-          upsertWorkItem(updatedItems[id], orgId);
-        }
-      }
-
       // ---- Feed the new column order back into the list ranks --------------
       // Only cards that share a list context (same backlog + same effective
       // parent) and the same status can express this order in the list, so the
@@ -2542,6 +2535,24 @@ export const useAppStore = create<AppState>()((set, get) => {
         if (parent) touchedParents.add(parent);
       }
       if (listRows.length > 0) persistRankUpserts(listRows);
+
+      // Save the moved cards — only now, with their new list ranks. A work
+      // item save writes the item's list ranks as well, after the item row,
+      // so it lands after the rank rows above: saved from before the ranks
+      // were set, it put the card's old list rank back (seen live: the card
+      // then shared a rank with the item that had been given its old one).
+      // A card whose status changed is saved for that; a card whose list rank
+      // changed is saved again too, because a "board-column" drop has already
+      // queued a save from setWorkItemStatus, made with the old rank, and the
+      // queue saves in order.
+      for (const id of itemsToMoveIds) {
+        const before = state.workItems[id];
+        const after = updatedItems[id];
+        if (!before || !after) continue;
+        if (before.status !== after.status || syncedListRanks[id] !== undefined) {
+          upsertWorkItem(after, orgId);
+        }
+      }
 
       // Keep parents' childrenIds in sync with the new list ranks.
       for (const parentId of touchedParents) {
