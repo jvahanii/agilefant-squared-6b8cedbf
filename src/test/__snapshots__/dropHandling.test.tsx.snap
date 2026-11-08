@@ -1,0 +1,9691 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`dropping on AppLayout > a drop with no drag data does nothing 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > a list onto an item does nothing 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > an item onto a tree slot does nothing 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > board column: an id no longer there is skipped 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "setWorkItemStatus",
+      "B",
+      "done",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "gone",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "done",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board column: no lists given, status only 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "setWorkItemStatus",
+      "B",
+      "blocked",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "blocked",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board column: one card to done 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "setWorkItemStatus",
+      "B",
+      "done",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "done",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board column: two cards, one already in that status 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "setWorkItemStatus",
+      "B",
+      "in_progress",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "in_progress",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board column: without selectedIds, the dragged item 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "setWorkItemStatus",
+      "C",
+      "pending",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "pending",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board slot: an empty selection does nothing 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > board slot: second in a column 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "A",
+      1,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "not_started",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board slot: the first of two selected 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "E",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "in_progress",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "in_progress",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+        "org-1::bl-m1": 0,
+      },
+      "status": "in_progress",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > board slot: to the top of a column 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "not_started",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-2",
+      "org-1::bl-1",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+        "org-1::bl-2",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list slot: in the other tree 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-2",
+      null,
+      "org-1::bt-2",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-2",
+      1,
+      null,
+      "org-1::bt-2",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 2,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-2",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list slot: out to the top level 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-1a",
+      null,
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-1a",
+      2,
+      null,
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 2,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+        "org-1::bl-1a",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list slot: the selection goes together 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-1a",
+      null,
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-1a",
+      9007199254740991,
+      null,
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-2",
+      9007199254740991,
+      null,
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-1a",
+      0,
+      null,
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-2",
+      1,
+      null,
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 2,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1a",
+        "org-1::bl-2",
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list slot: to the top 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-2",
+      0,
+      null,
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-2",
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list slot: under another list 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-2",
+      "org-1::bl-1",
+      "org-1::bt-1",
+    ],
+    [
+      "reorderBacklogAmongSiblings",
+      "org-1::bl-2",
+      0,
+      "org-1::bl-1",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-2",
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto a list: the selection goes together 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-1a",
+      "org-1::bl-m1",
+      "org-1::bt-2",
+    ],
+    [
+      "moveBacklog",
+      "org-1::bl-2",
+      "org-1::bl-m1",
+      "org-1::bt-2",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-2": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-m1",
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-m1",
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+        "org-1::bl-2",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list onto itself 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > list slot in a sub-list's rows: moves the item there 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "B",
+      ],
+      "org-1::bl-1a",
+      "org-1::bt-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 2,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot in its own list's rows: no list move 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 2,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot under an item of a sub-list 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "B",
+      ],
+      "org-1::bl-1a",
+      "org-1::bt-1",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "D",
+      "org-1::bt-1",
+      "org-1::bl-1a",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": "D",
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [
+        "B",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item D"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot with a status: the board's way 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemInBoard",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "not_started",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot, sorted by name: among children, no question 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "A",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "B",
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item A"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot, sorted by name: asks first 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": {
+    "backlogId": "org-1::bl-1",
+    "backlogIds": [
+      "org-1::bl-1",
+      "org-1::bl-1a",
+    ],
+    "treeId": "org-1::bt-1",
+  },
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > list slot, sorted by name: asks, answered yes 1`] = `
+{
+  "afterAnswer": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "reorderWorkItemAmongSiblings",
+        "C",
+        0,
+        "org-1::bt-1",
+        [
+          "org-1::bl-1",
+          "org-1::bl-1a",
+        ],
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 4,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 2,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 1,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": {
+      "backlogId": "org-1::bl-1",
+      "backlogIds": [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "treeId": "org-1::bt-1",
+    },
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list slot, sorted by name: asks, cancelled 1`] = `
+{
+  "afterAnswer": {
+    "calls": [],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": {
+      "backlogId": "org-1::bl-1",
+      "backlogIds": [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+      "treeId": "org-1::bt-1",
+    },
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list slot, sorted, the sub-list in view decides 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "D",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: a child to the top level 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "A1",
+      null,
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "A1",
+      1,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 2,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 5,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Moved to root (no parent)",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: among the children, no move 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "A1",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: an id no longer there is skipped 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "gone",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: to the bottom 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "A",
+      99,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: to the top 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 2,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: two children to the top level 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "D",
+      ],
+      "org-1::bl-1",
+      "org-1::bt-1",
+    ],
+    [
+      "reparentWorkItem",
+      "A1",
+      null,
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "A1",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 5,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Moved to root (no parent)",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: two to the top 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "C",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 3,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: two under another item 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "A",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reparentWorkItem",
+      "C",
+      "A",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "B",
+      1,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+        "B",
+        "C",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented 2 items to "Item A"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list slot: under another item 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "A",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reorderWorkItemAmongSiblings",
+      "B",
+      0,
+      "org-1::bt-1",
+      [
+        "org-1::bl-1",
+        "org-1::bl-1a",
+      ],
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "B",
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item A"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: already there leaves this tree, no question 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "removeWorkItemFromTree",
+      "E",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: an item with a child counts both 1`] = `
+{
+  "afterAnswer": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "moveWorkItemsToBacklog",
+        [
+          "A",
+          "C",
+        ],
+        "org-1::bl-m1",
+        "org-1::bt-2",
+      ],
+      [
+        "removeWorkItemFromTree",
+        "A",
+        "org-1::bt-1",
+      ],
+      [
+        "removeWorkItemFromTree",
+        "C",
+        "org-1::bt-1",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-m1": -2,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-m1": -1,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 1,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": {
+      "options": [
+        {
+          "description": "Switch from Tree One to Tree Two.",
+          "isDefault": true,
+          "label": "Move",
+        },
+        {
+          "description": "Keep in both tree views.",
+          "isDefault": false,
+          "label": "Mirror",
+        },
+      ],
+      "title": "Move 3 items to Tree Two",
+    },
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: asks 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": {
+    "options": [
+      {
+        "description": "Switch from Tree One to Tree Two.",
+        "isDefault": true,
+        "label": "Move",
+      },
+      {
+        "description": "Keep in both tree views.",
+        "isDefault": false,
+        "label": "Mirror",
+      },
+    ],
+    "title": "Move "Item B" to Tree Two",
+  },
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: asks, answered Mirror 1`] = `
+{
+  "afterAnswer": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "moveWorkItemsToBacklog",
+        [
+          "B",
+        ],
+        "org-1::bl-m2",
+        "org-1::bt-2",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m2",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+          "org-1::bl-m2": 0,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 1,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": {
+      "options": [
+        {
+          "description": "Switch from Tree One to Tree Two.",
+          "isDefault": true,
+          "label": "Move",
+        },
+        {
+          "description": "Keep in both tree views.",
+          "isDefault": false,
+          "label": "Mirror",
+        },
+      ],
+      "title": "Move "Item B" to Tree Two",
+    },
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: asks, answered Move 1`] = `
+{
+  "afterAnswer": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "moveWorkItemsToBacklog",
+        [
+          "B",
+        ],
+        "org-1::bl-m2",
+        "org-1::bt-2",
+      ],
+      [
+        "removeWorkItemFromTree",
+        "B",
+        "org-1::bt-1",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m2",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-m2": 0,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 1,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": {
+      "options": [
+        {
+          "description": "Switch from Tree One to Tree Two.",
+          "isDefault": true,
+          "label": "Move",
+        },
+        {
+          "description": "Keep in both tree views.",
+          "isDefault": false,
+          "label": "Mirror",
+        },
+      ],
+      "title": "Move "Item B" to Tree Two",
+    },
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: asks, cancelled 1`] = `
+{
+  "afterAnswer": {
+    "calls": [],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+    ],
+    "crossTreePrompt": {
+      "options": [
+        {
+          "description": "Switch from Tree One to Tree Two.",
+          "isDefault": true,
+          "label": "Move",
+        },
+        {
+          "description": "Keep in both tree views.",
+          "isDefault": false,
+          "label": "Mirror",
+        },
+      ],
+      "title": "Move "Item B" to Tree Two",
+    },
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 3,
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 0,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list, other tree: one already there, one asked about 1`] = `
+{
+  "afterAnswer": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "moveWorkItemsToBacklog",
+        [
+          "B",
+        ],
+        "org-1::bl-m1",
+        "org-1::bt-2",
+      ],
+    ],
+    "crossTreePrompt": null,
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+          "org-1::bl-m1": -1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 2,
+  },
+  "afterDrop": {
+    "calls": [
+      [
+        "runBulk",
+      ],
+      [
+        "removeWorkItemFromTree",
+        "E",
+        "org-1::bt-1",
+      ],
+    ],
+    "crossTreePrompt": {
+      "options": [
+        {
+          "description": "Switch from Tree One to Tree Two.",
+          "isDefault": true,
+          "label": "Move",
+        },
+        {
+          "description": "Keep in both tree views.",
+          "isDefault": false,
+          "label": "Mirror",
+        },
+      ],
+      "title": "Move "Item B" to Tree Two",
+    },
+    "items": {
+      "A": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [
+          "A1",
+        ],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "A1": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": "A",
+        "ranks": {
+          "org-1::bl-1": 0,
+        },
+        "status": "not_started",
+      },
+      "B": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 1,
+        },
+        "status": "not_started",
+      },
+      "C": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1": 2,
+        },
+        "status": "in_progress",
+      },
+      "D": {
+        "backlogAssignments": {
+          "org-1::bt-1": "org-1::bl-1a",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-1a": 0,
+        },
+        "status": "not_started",
+      },
+      "E": {
+        "backlogAssignments": {
+          "org-1::bt-2": "org-1::bl-m1",
+        },
+        "childrenIds": [],
+        "parentId": null,
+        "ranks": {
+          "org-1::bl-m1": 0,
+        },
+        "status": "not_started",
+      },
+    },
+    "lists": {
+      "org-1::bl-1": {
+        "childrenIds": [
+          "org-1::bl-1a",
+        ],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-1a": {
+        "childrenIds": [],
+        "parentId": "org-1::bl-1",
+        "rank": 0,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-1",
+      },
+      "org-1::bl-m1": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 0,
+        "treeId": "org-1::bt-2",
+      },
+      "org-1::bl-m2": {
+        "childrenIds": [],
+        "parentId": null,
+        "rank": 1,
+        "treeId": "org-1::bt-2",
+      },
+    },
+    "rerankQuestion": null,
+    "toasts": [],
+    "trees": {
+      "org-1::bt-1": {
+        "rank": 0,
+        "rootBacklogIds": [
+          "org-1::bl-1",
+          "org-1::bl-2",
+        ],
+      },
+      "org-1::bt-2": {
+        "rank": 1,
+        "rootBacklogIds": [
+          "org-1::bl-m1",
+          "org-1::bl-m2",
+        ],
+      },
+    },
+    "undoSteps": 1,
+  },
+}
+`;
+
+exports[`dropping on AppLayout > list, same tree: an item with a child 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "A",
+      ],
+      "org-1::bl-2",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-2",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-2": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-2",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-2": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list, same tree: one item 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "B",
+      ],
+      "org-1::bl-2",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-2",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-2": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > list, same tree: two items into a sub-list 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "moveWorkItemsToBacklog",
+      [
+        "B",
+        "C",
+      ],
+      "org-1::bl-1a",
+      "org-1::bt-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": -2,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": -1,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > no drop target 1`] = `
+{
+  "calls": [],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > onto an item in a sub-list 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "D",
+      "org-1::bt-1",
+      "org-1::bl-1a",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": "D",
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [
+        "B",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item D"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > onto an item: one 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "C",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "C",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "B",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item C"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > onto an item: the target itself is left out 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "C",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "C",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "B",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented to "Item C"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > onto an item: two 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      "C",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reparentWorkItem",
+      "D",
+      "C",
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "C",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "B",
+        "D",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "C",
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Reparented 2 items to "Item C"",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > onto itself: nothing, no toast 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > to the root: one 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "A1",
+      null,
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Moved to root (no parent)",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > to the root: two 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reparentWorkItem",
+      "A1",
+      null,
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+    [
+      "reparentWorkItem",
+      "B",
+      null,
+      "org-1::bt-1",
+      "org-1::bl-1",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 4,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 5,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [
+    {
+      "title": "Moved 2 items to root",
+    },
+  ],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > tree onto a list does nothing 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 0,
+}
+`;
+
+exports[`dropping on AppLayout > tree onto a tree slot: to the bottom 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderBacklogTree",
+      "org-1::bt-1",
+      2,
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
+
+exports[`dropping on AppLayout > tree onto a tree slot: to the top 1`] = `
+{
+  "calls": [
+    [
+      "runBulk",
+    ],
+    [
+      "reorderBacklogTree",
+      "org-1::bt-2",
+      0,
+    ],
+  ],
+  "crossTreePrompt": null,
+  "items": {
+    "A": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [
+        "A1",
+      ],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "A1": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": "A",
+      "ranks": {
+        "org-1::bl-1": 0,
+      },
+      "status": "not_started",
+    },
+    "B": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 1,
+      },
+      "status": "not_started",
+    },
+    "C": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 2,
+      },
+      "status": "in_progress",
+    },
+    "D": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1a",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1a": 0,
+      },
+      "status": "not_started",
+    },
+    "E": {
+      "backlogAssignments": {
+        "org-1::bt-1": "org-1::bl-1",
+        "org-1::bt-2": "org-1::bl-m1",
+      },
+      "childrenIds": [],
+      "parentId": null,
+      "ranks": {
+        "org-1::bl-1": 3,
+        "org-1::bl-m1": 0,
+      },
+      "status": "not_started",
+    },
+  },
+  "lists": {
+    "org-1::bl-1": {
+      "childrenIds": [
+        "org-1::bl-1a",
+      ],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-1a": {
+      "childrenIds": [],
+      "parentId": "org-1::bl-1",
+      "rank": 0,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-1",
+    },
+    "org-1::bl-m1": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 0,
+      "treeId": "org-1::bt-2",
+    },
+    "org-1::bl-m2": {
+      "childrenIds": [],
+      "parentId": null,
+      "rank": 1,
+      "treeId": "org-1::bt-2",
+    },
+  },
+  "rerankQuestion": null,
+  "toasts": [],
+  "trees": {
+    "org-1::bt-1": {
+      "rank": 1,
+      "rootBacklogIds": [
+        "org-1::bl-1",
+        "org-1::bl-2",
+      ],
+    },
+    "org-1::bt-2": {
+      "rank": 0,
+      "rootBacklogIds": [
+        "org-1::bl-m1",
+        "org-1::bl-m2",
+      ],
+    },
+  },
+  "undoSteps": 1,
+}
+`;
