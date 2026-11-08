@@ -317,8 +317,18 @@ interface AppState extends DataSnapshot {
  * Resolve duplicate work-item ranks in-place.  For each (treeId, backlogId,
  * parentId) group, items sharing a rank are re-numbered sequentially (ties
  * broken by ID for determinism).  Mutates `items` directly for performance.
+ * Each rank it changes is added to `repairs`, for the caller to save
+ * (`hadRank` is the caller's to set: ranks are already filled in here).
  */
-function dedupWorkItemRanksInPlace(items: Record<string, WorkItem>): void {
+export interface LoadRankRepair {
+  workItemId: string;
+  backlogId: string;
+  rank: number;
+  /** Whether the item had a rank row in this list (an update, not an insert). */
+  hadRank: boolean;
+}
+
+function dedupWorkItemRanksInPlace(items: Record<string, WorkItem>, repairs?: LoadRankRepair[]): void {
   const groups = new Map<string, string[]>();
   for (const wi of Object.values(items)) {
     for (const [treeId, blId] of Object.entries(wi.backlogAssignments)) {
@@ -357,6 +367,7 @@ function dedupWorkItemRanksInPlace(items: Record<string, WorkItem>): void {
       const r = items[id].ranks[blId] ?? 0;
       if (r <= prev) {
         const newRank = prev + 1;
+        repairs?.push({ workItemId: id, backlogId: blId, rank: newRank, hadRank: true });
         items[id] = { ...items[id], ranks: { ...items[id].ranks, [blId]: newRank } };
         prev = newRank;
       } else {
@@ -380,7 +391,9 @@ const ensureCleanId = (id: string, orgId: string): string => {
   return `${parts[parts.length - 2]}::${parts[parts.length - 1]}`;
 };
 
-export function sanitizeData(data: any, orgId: string) {
+/** `rankRepairs`, when given, collects the shared list ranks this resolved —
+ *  for a load of fresh data to save (saveLoadRankRepairs). */
+export function sanitizeData(data: any, orgId: string, rankRepairs?: LoadRankRepair[]) {
   const cleanWorkItems: Record<string, WorkItem> = {};
   const cleanBacklogs: Record<string, Backlog> = {};
   const cleanTrees: Record<string, BacklogTree> = {};
@@ -407,6 +420,9 @@ export function sanitizeData(data: any, orgId: string) {
     };
   });
 
+  // Items with no rank row in a list read as rank 0 there; a repair of one
+  // would create the row rather than update it.
+  const ranklessKeys = new Set<string>();
   Object.values(data.workItems || {}).forEach((wi: any) => {
     const id = ensureCleanId(wi.id, orgId);
     const validAssignments: Record<string, string> = {};
@@ -421,8 +437,9 @@ export function sanitizeData(data: any, orgId: string) {
       if (cleanTrees[cleanT] && cleanBacklogs[cleanB]) {
         validAssignments[cleanT] = cleanB;
         // Re-key ranks: try original backlogId first, then cleaned
-        const origRank = (wi.ranks ?? {})[bId as string] ?? (wi.ranks ?? {})[cleanB] ?? 0;
-        validRanks[cleanB] = origRank;
+        const loadedRank = (wi.ranks ?? {})[bId as string] ?? (wi.ranks ?? {})[cleanB];
+        if (loadedRank === undefined) ranklessKeys.add(`${id}|${cleanB}`);
+        validRanks[cleanB] = loadedRank ?? 0;
         const origBoardRank = (wi.boardRanks ?? {})[bId as string] ?? (wi.boardRanks ?? {})[cleanB];
         if (typeof origBoardRank === 'number') validBoardRanks[cleanB] = origBoardRank;
       } else {
@@ -488,7 +505,11 @@ export function sanitizeData(data: any, orgId: string) {
   });
 
   // Resolve any duplicate ranks that arrived from the DB
-  dedupWorkItemRanksInPlace(cleanWorkItems);
+  const repairs: LoadRankRepair[] = [];
+  dedupWorkItemRanksInPlace(cleanWorkItems, repairs);
+  for (const r of repairs) {
+    rankRepairs?.push({ ...r, hadRank: !ranklessKeys.has(`${r.workItemId}|${r.backlogId}`) });
+  }
 
   return { workItems: cleanWorkItems, backlogs: cleanBacklogs, backlogTrees: cleanTrees };
 }
@@ -1602,6 +1623,28 @@ async function flushPendingWorkItemUpserts(orgId: string, fallbackContainers?: C
 }
 
 /**
+ * Save the shared list ranks a load resolved (sanitizeData). They used to stay
+ * in memory only — healDuplicateRanks, which saves, runs after the resolving
+ * and finds nothing left — so the page and the database disagreed, and a later
+ * write of only the ranks it changed could land on a stale value and share it.
+ *
+ * Only ranks the store still holds are saved (a queued item save merged over
+ * the load may have replaced them). A rank row is created only for this
+ * organization's items: members of an organization a tree is shared with may
+ * update rank rows but not insert them.
+ */
+function saveLoadRankRepairs(repairs: LoadRankRepair[], workItems: Record<string, WorkItem>, orgId: string) {
+  const rows: WorkItemBacklogRankUpsert[] = repairs.flatMap((r) => {
+    const wi = workItems[r.workItemId];
+    if (!wi || wi.ranks[r.backlogId] !== r.rank) return [];
+    const owner = wi.organizationId ?? orgId;
+    if (!r.hadRank && owner !== orgId) return [];
+    return [{ workItemId: r.workItemId, backlogId: r.backlogId, rank: r.rank, organizationId: owner }];
+  });
+  if (rows.length > 0) persistRankUpserts(rows);
+}
+
+/**
  * Silent auto-heal for duplicate per-backlog ranks. Groups items by
  * (backlogId, effective_per_tree_parent) and densifies each group to
  * consecutive 0..N-1 ranks, ordered by current rank then id as a
@@ -1836,7 +1879,8 @@ export const useAppStore = create<AppState>()((set, get) => {
           return;
         }
         refreshesAfterEdit = 0;
-        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
+        const rankRepairs: LoadRankRepair[] = [];
+        const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId, rankRepairs), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
         keepItemsTheCleanUpEmptied(cleanData.workItems, get().workItems);
         const hyperlinks = linksOfKept(allHyperlinks, cleanData.workItems);
         cacheIt(cleanData, hyperlinks);
@@ -1854,6 +1898,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             selectedTreeId: get().selectedTreeId,
             selectedWorkItemIds: get().selectedWorkItemIds,
           });
+          saveLoadRankRepairs(rankRepairs, cleanData.workItems, orgId);
         }
       } catch {
         // Background refresh failed — cached data is still shown.
@@ -1945,7 +1990,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       ]);
       if (get().organizationId !== orgId) return;
       rankFlushPromise.catch(() => {});
-      const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
+      const rankRepairs: LoadRankRepair[] = [];
+      const cleanData = mergePendingWorkItems(sanitizeData(rawData, orgId, rankRepairs), orgId, pendingAtLoad, { backlogs: get().backlogs, backlogTrees: get().backlogTrees });
       set({ loadingProgress: 80 });
 
       const hyperlinks = linksOfKept(allHyperlinks, cleanData.workItems);
@@ -1972,6 +2018,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         }));
         persistRankUpserts(rowsWithOrg);
       }
+      // What sanitizeData resolved before the heal above could see it. A rank
+      // the heal changed again is no longer the repaired one, and is skipped.
+      saveLoadRankRepairs(rankRepairs, finalWorkItems, orgId);
 
       writeCachedAppData(orgId, {
         workItems: finalWorkItems,
