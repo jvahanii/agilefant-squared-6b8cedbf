@@ -24,7 +24,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { BacklogTreePanel } from "@/components/BacklogTreePanel";
@@ -36,7 +35,6 @@ import { RerankGuardHost } from "@/components/RerankGuardHost";
 import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
 import { PatternTrainerHeaderButton } from "@/components/PatternTrainerHeaderButton";
-import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { handleShortcut, shortcutRowsByGroup } from "@/lib/shortcuts";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
@@ -47,9 +45,7 @@ import {
   Undo2,
   Redo2,
   Keyboard,
-  RotateCcw,
   Copy,
-  FileText,
   MoreVertical,
   HelpCircle,
   Eye,
@@ -75,8 +71,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { getEffectiveParentId, type WorkItemStatus } from "@/types/models";
-import { backlogsToMove, dropBacklogsAt } from "@/lib/backlogMove";
+import { backlogsToMove } from "@/lib/backlogMove";
+import {
+  answerCrossTree,
+  countWithDescendants,
+  handleDrop,
+  type PendingCrossTreeDrop,
+} from "@/components/dragAndDrop/drops";
 
 // Lazy-loaded so the recharts bundle (via BurnupChartDialog) is not part of the
 // initial cold-start payload; it's only fetched when a burnup chart is opened.
@@ -90,17 +91,6 @@ const BurnupChartDialog = lazy(() =>
 const TimesheetBrowserDialog = lazy(() =>
   import("@/components/TimesheetBrowserDialog").then((m) => ({ default: m.TimesheetBrowserDialog })),
 );
-
-interface PendingCrossTreeDrop {
-  workItemIds: string[];
-  totalCount: number;
-  targetBacklogId: string;
-  targetTreeId: string;
-  sourceTreeId: string;
-  itemTitles: string[];
-  sourceTreeName: string;
-  targetTreeName: string;
-}
 
 export default function AppLayout() {
   return (
@@ -136,14 +126,6 @@ function BurnupDialogHost() {
 
 function AppLayoutInner() {
   const { user } = useAuth();
-  const moveWorkItemToBacklog = useAppStore((s) => s.moveWorkItemToBacklog);
-  const moveWorkItemsToBacklog = useAppStore((s) => s.moveWorkItemsToBacklog);
-  const moveBacklog = useAppStore((s) => s.moveBacklog);
-  const removeWorkItemFromTree = useAppStore((s) => s.removeWorkItemFromTree);
-  const reparentWorkItem = useAppStore((s) => s.reparentWorkItem);
-  const reorderWorkItemAmongSiblings = useAppStore((s) => s.reorderWorkItemAmongSiblings);
-  const reorderWorkItemInBoard = useAppStore((s) => s.reorderWorkItemInBoard);
-  const reorderBacklogTree = useAppStore((s) => s.reorderBacklogTree);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
   const undoStackLength = useAppStore((s) => s.undoStack.length);
@@ -439,18 +421,6 @@ function AppLayoutInner() {
     return unsub;
   }, [activeOrgId]);
 
-  const countWithDescendants = useCallback((ids: string[]) => {
-    const store = useAppStore.getState();
-    const seen = new Set<string>();
-    const collect = (id: string) => {
-      if (seen.has(id)) return;
-      seen.add(id);
-      store.workItems[id]?.childrenIds.forEach(collect);
-    };
-    ids.forEach(collect);
-    return seen.size;
-  }, []);
-
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const data = event.active.data.current;
@@ -477,256 +447,24 @@ function AppLayoutInner() {
         setActiveDrag({ id: data.treeId, type: "tree-node", title: tree?.name ?? "" });
       }
     },
-    [countWithDescendants],
+    [],
   );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveDrag(null);
-      const { active, over } = event;
-      if (!over) return;
-
-      const activeData = active.data.current;
-      const overData = over.data.current;
-      const draggedIds: string[] = activeData?.selectedIds ?? [activeData?.workItemId];
-
-      // Coalesce the entire drop into a single undo entry — multi-item drags
-      // and chained reparent+reorder operations should be one undo step.
-      useAppStore.getState().runBulk(() => {
-
-
-      if (activeData?.type === "workitem" && overData?.type === "board-column") {
-        const statusKey = overData.statusKey as WorkItemStatus;
-        const treeId = overData.treeId as string;
-        const backlogIds = (overData.backlogIds as string[]) ?? [];
-        const surfaceStore = useAppStore.getState();
-        draggedIds.forEach((id) => {
-          const wi = surfaceStore.workItems[id];
-          if (!wi) return;
-          if (wi.status !== statusKey) {
-            useAppStore.getState().setWorkItemStatus(id, statusKey);
-          }
-        });
-        // Rank dragged items at the top of the column so they appear
-        // first after the status change.  Using index 0 places them
-        // before the first card.
-        if (draggedIds.length > 0 && treeId && backlogIds.length > 0) {
-          reorderWorkItemInBoard(draggedIds[0], 0, treeId, backlogIds);
-        }
-        return;
-      }
-
-
-      if (activeData?.type === "workitem" && overData?.type === "backlog") {
-        const sourceTreeId = activeData.treeId as string;
-        const targetTreeId = overData.treeId as string;
-
-        if (sourceTreeId !== targetTreeId) {
-          const store = useAppStore.getState();
-
-          // Items already assigned to the target tree are being moved back to their
-          // original tree — simply remove them from the source tree without prompting.
-          const alreadyInTarget = draggedIds.filter(
-            (id) => store.workItems[id]?.backlogAssignments?.[targetTreeId] !== undefined,
-          );
-          alreadyInTarget.forEach((id) => removeWorkItemFromTree(id, sourceTreeId));
-
-          const notInTarget = draggedIds.filter(
-            (id) => store.workItems[id]?.backlogAssignments?.[targetTreeId] === undefined,
-          );
-          if (notInTarget.length === 0) return;
-
-          const sourceTree = store.backlogTrees[sourceTreeId];
-          const targetTree = store.backlogTrees[targetTreeId];
-          const titles = notInTarget.map((id) => store.workItems[id]?.title ?? "").filter(Boolean);
-          setPendingCrossTree({
-            workItemIds: notInTarget,
-            totalCount: countWithDescendants(notInTarget),
-            targetBacklogId: overData.backlogId,
-            targetTreeId,
-            sourceTreeId,
-            itemTitles: titles,
-            sourceTreeName: sourceTree?.name ?? sourceTreeId,
-            targetTreeName: targetTree?.name ?? targetTreeId,
-          });
-        } else {
-          moveWorkItemsToBacklog(draggedIds, overData.backlogId, overData.treeId);
-        }
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-parent") {
-        const targetId = overData.workItemId;
-        const idsToReparent = draggedIds.filter((id) => id !== targetId);
-        idsToReparent.forEach((id) => {
-          reparentWorkItem(id, targetId, overData.treeId, overData.backlogId);
-        });
-        if (idsToReparent.length > 0) {
-          const parentTitle = useAppStore.getState().workItems[targetId as string]?.title ?? "item";
-          toast({
-            title:
-              idsToReparent.length === 1
-                ? `Reparented to "${parentTitle}"`
-                : `Reparented ${idsToReparent.length} items to "${parentTitle}"`,
-          });
-        }
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-root") {
-        draggedIds.forEach((id) => {
-          reparentWorkItem(id, null, overData.treeId, overData.backlogId);
-        });
-        toast({
-          title: draggedIds.length === 1 ? "Moved to root (no parent)" : `Moved ${draggedIds.length} items to root`,
-        });
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-board-reorder") {
-        const treeId = overData.treeId as string;
-        const backlogIds = overData.backlogIds as string[];
-        if (draggedIds.length > 0) {
-          reorderWorkItemInBoard(
-            draggedIds[0],
-            overData.index as number,
-            treeId,
-            backlogIds,
-            overData.statusKey as string | undefined,
-          );
-        }
-      } else if (activeData?.type === "workitem" && overData?.type === "workitem-reorder") {
-        const targetParentId = overData.parentId as string | null;
-        const treeId = overData.treeId as string;
-        const backlogIds = overData.backlogIds as string[];
-        const targetBacklogId = overData.backlogId as string | undefined;
-        const reorderStatusKey = overData.statusKey as string | undefined;
-
-        // Board drop zones carry a statusKey — route them through the single
-        // board reorder implementation in the store (which reconciles the
-        // list ranks of same-status siblings).
-        if (reorderStatusKey && draggedIds.length > 0) {
-          reorderWorkItemInBoard(draggedIds[0], overData.index as number, treeId, backlogIds, reorderStatusKey);
-          return;
-        }
-
-
-        // The whole drop is one action — backlog move, reparent, reorder — so it
-        // is all or nothing: cancelling the question below leaves nothing
-        // half-moved.
-        const performDrop = () => {
-          // If the drop zone targets a specific sub-backlog, move items to that backlog first
-          // (handles the combined parent-backlog view where items from multiple sub-backlogs
-          // are shown together and dragging near items of a different sub-backlog should
-          // reassign the item to that sub-backlog).
-          if (targetBacklogId) {
-            const preMoveStore = useAppStore.getState();
-            const idsToMove = draggedIds.filter((id) => {
-              const wi = preMoveStore.workItems[id];
-              if (!wi) return false;
-              const currentBacklogId = wi.backlogAssignments[treeId];
-              return !!currentBacklogId && currentBacklogId !== targetBacklogId;
-            });
-            if (idsToMove.length > 0) moveWorkItemsToBacklog(idsToMove, targetBacklogId, treeId);
-          }
-
-          // Re-read store after potential backlog moves so reparent/reorder see latest state.
-          const store = useAppStore.getState();
-          const reparentedIds: string[] = [];
-          draggedIds.forEach((id) => {
-            const wi = store.workItems[id];
-            if (!wi) return;
-            if (getEffectiveParentId(wi, treeId) !== targetParentId) {
-              const backlogId = targetBacklogId ?? backlogIds[0] ?? "";
-              reparentWorkItem(id, targetParentId, treeId, backlogId);
-              reparentedIds.push(id);
-            }
-          });
-          // One reorderWorkItemAmongSiblings call handles all selected items in the
-          // same sibling context (the function moves all of selectedWorkItemIds, not
-          // just the single workItemId argument).  Calling it once per dragged item
-          // would create N redundant undo entries for N dragged items.
-          if (draggedIds.length > 0) {
-            reorderWorkItemAmongSiblings(draggedIds[0], overData.index as number, treeId, backlogIds);
-          }
-          if (reparentedIds.length > 0) {
-            const newParentTitle = targetParentId
-              ? (useAppStore.getState().workItems[targetParentId]?.title ?? "item")
-              : null;
-            toast({
-              title: newParentTitle
-                ? reparentedIds.length === 1
-                  ? `Reparented to "${newParentTitle}"`
-                  : `Reparented ${reparentedIds.length} items to "${newParentTitle}"`
-                : reparentedIds.length === 1
-                  ? "Moved to root (no parent)"
-                  : `Moved ${reparentedIds.length} items to root`,
-            });
-          }
-        };
-
-        // A drop between top-level items sets a top-level rank. The drop index
-        // counts rows as shown, which after saving the shown order is the rank
-        // order too, so the item lands where it was dropped.
-        requestTopLevelRerank({
-          treeId,
-          backlogId: useAppStore.getState().selectedBacklogIds[0] ?? backlogIds[0],
-          backlogIds,
-          touchesTopLevel: targetParentId === null,
-          proceed: performDrop,
-        });
-      } else if (activeData?.type === "backlog-node" && overData?.type === "backlog-reorder") {
-        const targetParentId = overData.parentId as string | null;
-        const treeId = overData.treeId as string;
-        const targetIndex = overData.index as number;
-        const store = useAppStore.getState();
-        // The whole selection when the dragged backlog is part of it, in tree
-        // order, landing together at the drop point.
-        const ids = backlogsToMove(
-          activeData.backlogId as string,
-          store.selectedBacklogIds,
-          store.backlogs,
-          store.backlogTrees,
-          targetParentId,
-        );
-        dropBacklogsAt(useAppStore.getState, ids, targetParentId, treeId, targetIndex);
-      } else if (activeData?.type === "backlog-node" && overData?.type === "backlog") {
-        const targetBacklogId = overData.backlogId as string;
-        const treeId = overData.treeId as string;
-        const store = useAppStore.getState();
-        const ids = backlogsToMove(
-          activeData.backlogId as string,
-          store.selectedBacklogIds,
-          store.backlogs,
-          store.backlogTrees,
-          targetBacklogId,
-        );
-        ids.forEach((backlogId) => moveBacklog(backlogId, targetBacklogId, treeId));
-      } else if (activeData?.type === "tree-node" && overData?.type === "tree-reorder") {
-        const treeId = activeData.treeId as string;
-        const targetIndex = overData.index as number;
-        reorderBacklogTree(treeId, targetIndex);
-      }
-      });
-    },
-    [
-      moveWorkItemToBacklog,
-      moveWorkItemsToBacklog,
-      removeWorkItemFromTree,
-      reparentWorkItem,
-      reorderWorkItemAmongSiblings,
-      reorderWorkItemInBoard,
-      moveBacklog,
-      reorderBacklogTree,
-      countWithDescendants,
-    ],
-  );
+  // What each drop does: components/dragAndDrop/drops.ts.
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDrag(null);
+    const { active, over } = event;
+    if (!over) return;
+    handleDrop(active.data.current, over.data.current, setPendingCrossTree);
+  }, []);
 
   const handleCrossTreeChoice = useCallback(
     (value: string) => {
       if (!pendingCrossTree) return;
-      const { workItemIds, targetBacklogId, targetTreeId, sourceTreeId } = pendingCrossTree;
-
-      useAppStore.getState().runBulk(() => {
-        moveWorkItemsToBacklog(workItemIds, targetBacklogId, targetTreeId);
-        if (value === "move") {
-          workItemIds.forEach((id) => removeWorkItemFromTree(id, sourceTreeId));
-        }
-      });
+      answerCrossTree(pendingCrossTree, value);
       setPendingCrossTree(null);
     },
-    [pendingCrossTree, moveWorkItemsToBacklog, removeWorkItemFromTree],
+    [pendingCrossTree],
   );
 
   // Extract handler functions for reuse in mobile menu
