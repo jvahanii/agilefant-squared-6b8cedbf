@@ -75,9 +75,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 const checkClosed = vi.fn().mockResolvedValue({ closed: 1, checked: 2, unknown: 0, fromTitle: 0 });
 /** Work item ids a posting check has marked closed. */
 let closedIds = new Set<string>();
+/** Whether another closed-ads check (the list header button) is going. */
+let checkingNow = false;
 vi.mock("@/store/closedPostingsStore", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/closedPostingsStore")>()),
-  useClosedPostingsStore: { getState: () => ({ checking: false, check: checkClosed, closed: closedIds }) },
+  useClosedPostingsStore: { getState: () => ({ checking: checkingNow, check: checkClosed, closed: closedIds }) },
 }));
 let readerInstalled = false;
 const readPostingFacts = vi.fn();
@@ -156,6 +158,7 @@ beforeEach(() => {
   storeState = {};
   checkClosed.mockClear();
   closedIds = new Set();
+  checkingNow = false;
   realWaitForItems = false;
 });
 
@@ -494,52 +497,134 @@ describe("SavedSearchPicker", () => {
     expect(links.find((l: { url: string }) => l.url === "https://x/b")).not.toHaveProperty("rating");
   });
 
-  it("checks the ads already in the list for closed ones once it has imported", async () => {
+  describe("checking the ads already in the list for closed ones", () => {
     const existing = (id: string, backlogId: string) => ({
       id, title: id, status: "not_started", parentId: null, childrenIds: [],
       backlogAssignments: { "tree-1": backlogId }, ranks: { [backlogId]: 0 },
     });
-    storeState = {
-      workItems: {
-        old: existing("old", "bl-1"),
-        fresh: existing("fresh", "bl-1"),
-        unlinked: existing("unlinked", "bl-1"),
-        elsewhere: existing("elsewhere", "bl-other"),
-      },
-      hyperlinks: {
-        old: [{ url: "https://x/old" }],
-        fresh: [{ url: "https://x/fresh" }],
-        elsewhere: [{ url: "https://x/elsewhere" }],
-      },
+    /** "bl-1" holds one linked ad and one without a link; "bl-other" one more. */
+    const lists = () => {
+      storeState = {
+        backlogs: {
+          "bl-1": { id: "bl-1", name: "ICT jobs inbox", parentId: null, childrenIds: [], treeId: "tree-1", rank: 0 },
+          "bl-other": { id: "bl-other", name: "Open jobs", parentId: null, childrenIds: [], treeId: "tree-1", rank: 1 },
+        },
+        workItems: {
+          old: existing("old", "bl-1"),
+          unlinked: existing("unlinked", "bl-1"),
+          elsewhere: existing("elsewhere", "bl-other"),
+        },
+        hyperlinks: { old: [{ url: "https://x/old" }], elsewhere: [{ url: "https://x/elsewhere" }] },
+      };
+      callGmail
+        .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" })] })
+        .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["fresh"] })
+        .mockResolvedValueOnce({ marked: 1 });
     };
-    callGmail
-      .mockResolvedValueOnce({ links: [link({ url: "https://x/a", title: "A" })] })
-      .mockResolvedValueOnce({ created: 1, skipped: 0, collapsed: 0, createdIds: ["fresh"] })
-      .mockResolvedValueOnce({ marked: 1 });
-    // The check's report waits ten seconds for the import's summary to clear.
-    // Left to real time it would arrive in the middle of whichever test was
-    // running by then — so the check itself takes those seconds, on a clock
-    // only this test moves.
-    vi.useFakeTimers({ toFake: ["Date"] });
-    checkClosed.mockImplementationOnce(async () => {
-      vi.setSystemTime(Date.now() + 11_000);
-      return { closed: 1, checked: 2, unknown: 0, fromTitle: 0 };
-    });
-
-    try {
+    const show = async () => {
       render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
       await screen.findByText("A");
+    };
+    const importNow = async () => {
+      await waitFor(() => expect(screen.getByRole("button", { name: /^Import selected into / })).toBeEnabled());
       fireEvent.click(screen.getByRole("button", { name: /^Import selected into / }));
+      await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
+    };
+    const summary = () => toast.mock.calls.find((c) => String(c[0].title).startsWith("Imported"))![0];
+    const existingAdsToast = () => toast.mock.calls.find((c) => String(c[0].title).startsWith("Existing ads"));
 
-      // Only what was there before, in the list imported into, with a link.
-      await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+    it("starts while the search runs, on what is in the list imported into, with a link", async () => {
+      lists();
+      await show();
+      // Before anything is imported: nothing waits for it afterwards.
+      await waitFor(() => expect(checkClosed).toHaveBeenCalledTimes(1));
       expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
-      await waitFor(() =>
-        expect(toast.mock.calls.map((c) => c[0].title)).toContain("Existing ads: 1 closed ad"),
+    });
+
+    it("puts an answer that is in by the import into the import's summary, with no report of its own", async () => {
+      lists();
+      await show();
+      await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+      await importNow();
+      expect(summary().description).toContain(
+        "Existing ads: 1 closed ad. 1 still open. Of 2 checked; nothing was changed — the closed ones are shown first, on this device only.",
       );
-    } finally {
-      vi.useRealTimers();
-    }
+      // Not checked a second time after the import, nor reported twice.
+      await new Promise((r) => setTimeout(r, 300));
+      expect(checkClosed).toHaveBeenCalledTimes(1);
+      expect(existingAdsToast()).toBeUndefined();
+    });
+
+    it("reports a check still going at the import once it is done, after the summary", async () => {
+      let finish: () => void = () => {};
+      checkClosed.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = () => resolve({ closed: 1, checked: 2, unknown: 0, fromTitle: 0 });
+          }),
+      );
+      lists();
+      await show();
+      await waitFor(() => expect(checkClosed).toHaveBeenCalled());
+      await importNow();
+      expect(summary().description).not.toContain("Existing ads");
+      // The answer comes after the summary's ten seconds, on a clock only this test moves.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(Date.now() + 11_000);
+        finish();
+        await waitFor(() => expect(existingAdsToast()?.[0].title).toBe("Existing ads: 1 closed ad"));
+        expect(checkClosed).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("checks the list chosen in the picker too, and the import takes that answer", async () => {
+      checkClosed
+        .mockResolvedValueOnce({ closed: 0, checked: 1, unknown: 0, fromTitle: 0 })
+        .mockResolvedValueOnce({ closed: 1, checked: 1, unknown: 0, fromTitle: 0 });
+      lists();
+      await show();
+      await waitFor(() => expect(checkClosed).toHaveBeenCalledTimes(1));
+      fireEvent.change(screen.getByRole("combobox", { name: "Import into" }), { target: { value: "bl-other" } });
+      await waitFor(() => expect(checkClosed).toHaveBeenCalledTimes(2));
+      expect(checkClosed.mock.calls[1][0]).toEqual([{ id: "elsewhere", title: "elsewhere", urls: ["https://x/elsewhere"] }]);
+      await importNow();
+      expect(summary().title).toBe("Imported 1 work item into Open jobs");
+      expect(summary().description).toContain("Existing ads: 1 closed ad.");
+    });
+
+    it("checks after the import, as before, when another check was going while it searched", async () => {
+      checkingNow = true; // the list header's own check
+      lists();
+      await show();
+      await new Promise((r) => setTimeout(r, 300));
+      expect(checkClosed).not.toHaveBeenCalled();
+      checkingNow = false;
+      vi.useFakeTimers({ toFake: ["Date"] });
+      checkClosed.mockImplementationOnce(async () => {
+        vi.setSystemTime(Date.now() + 11_000);
+        return { closed: 1, checked: 2, unknown: 0, fromTitle: 0 };
+      });
+      try {
+        await importNow();
+        await waitFor(() => expect(existingAdsToast()?.[0].title).toBe("Existing ads: 1 closed ad"));
+        // Only what was there before: the new item is left out.
+        expect(checkClosed.mock.calls[0][0]).toEqual([{ id: "old", title: "old", urls: ["https://x/old"] }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("is not run for someone who is not a superuser", async () => {
+      superuser = false;
+      lists();
+      await show();
+      await importNow();
+      await new Promise((r) => setTimeout(r, 300));
+      expect(checkClosed).not.toHaveBeenCalled();
+    });
   });
 
   it("marks every listed email read without importing, when nothing is worth it", async () => {
@@ -1443,22 +1528,52 @@ describe("Import into the chosen list: the summary", () => {
   };
   const existingAdsToast = () => toast.mock.calls.find((c) => String(c[0].title).startsWith("Existing ads"));
 
-  it("holds the closed check's report back while the summary is up", async () => {
+  /** A check that is still going at the import, until `finish` is called. */
+  const slowCheck = () => {
+    const control = { finish: () => {} };
+    checkClosed.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          control.finish = () => {
+            closedIds = new Set(["old"]); // the check found it closed...
+            vi.setSystemTime(new Date("2026-09-21T12:00:11Z")); // ...after the summary's ten seconds
+            resolve({ closed: 1, checked: 1, unknown: 0, fromTitle: 0 });
+          };
+        }),
+    );
+    return control;
+  };
+
+  it("holds the report of a check still going back while the summary is up", async () => {
     // Only one toast shows at a time: reporting now would cut the summary short.
+    const check = slowCheck();
     await autoPlaceWithCheck();
     await new Promise((r) => setTimeout(r, 300));
     expect(existingAdsToast()).toBeUndefined();
+    check.finish();
+    readerInstalled = false;
   });
 
-  it("restates the open totals once the check knows what is closed", async () => {
+  it("restates the open totals once a check still going knows what is closed", async () => {
+    const check = slowCheck();
+    await autoPlaceWithCheck();
+    await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
+    check.finish();
+    await waitFor(() => expect(existingAdsToast()).toBeDefined());
+    expect(existingAdsToast()![0].description).toContain("Open ads now: 0 in total — 0 with a deadline, 0 without");
+    readerInstalled = false;
+  });
+
+  it("leaves what a check done before the import found closed out of the summary's totals", async () => {
     checkClosed.mockImplementationOnce(async () => {
-      closedIds = new Set(["old"]); // the check found it closed...
-      vi.setSystemTime(new Date("2026-09-21T12:00:11Z")); // ...after the summary's ten seconds
+      closedIds = new Set(["old"]);
       return { closed: 1, checked: 1, unknown: 0, fromTitle: 0 };
     });
     await autoPlaceWithCheck();
-    await waitFor(() => expect(existingAdsToast()).toBeDefined());
-    expect(existingAdsToast()![0].description).toContain("Open ads now: 0 in total — 0 with a deadline, 0 without");
+    await waitFor(() => expect(toast.mock.calls.some((c) => String(c[0].title).startsWith("Imported"))).toBe(true));
+    const summary = toast.mock.calls.find((c) => String(c[0].title).startsWith("Imported"))![0];
+    expect(summary.description).toContain("Existing ads: 1 closed ad.");
+    expect(summary.description).toContain("Open ads now: 0 in total — 0 with a deadline, 0 without");
     readerInstalled = false;
   });
 });

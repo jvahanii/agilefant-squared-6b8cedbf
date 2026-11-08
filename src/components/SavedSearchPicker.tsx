@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe, Loader2, MailCheck } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,14 @@ import { useScramble } from "@/contexts/ScrambleContext";
 import { useOrgStore } from "@/store/orgStore";
 import { useImportPlacement } from "@/components/jobSearch/useImportPlacement";
 import { useSearchRun } from "@/components/jobSearch/useSearchRun";
-import { declineAll, importJobs, importLinks, type ImportContext } from "@/components/jobSearch/jobImport";
+import {
+  declineAll,
+  importJobs,
+  importLinks,
+  startClosedCheck,
+  type ClosedCheckWhileSearching,
+  type ImportContext,
+} from "@/components/jobSearch/jobImport";
 import { GroupHeading, PostingRow, type RowExtras } from "@/components/jobSearch/PostingRows";
 
 /**
@@ -62,7 +69,8 @@ export function SavedSearchPicker({
   onClose: () => void;
 }) {
   const backlogs = useAppStore((s) => s.backlogs);
-  const { importList, treeBacklogs, mirrorTarget, mirrorBacklogs, choosePlaceInto, backlogName } = useImportPlacement(search, mode);
+  const { importList, placementKnown, treeBacklogs, mirrorTarget, mirrorBacklogs, choosePlaceInto, backlogName } =
+    useImportPlacement(search, mode);
   // Which postings are already in the list mirrored to — the shortlist of
   // jobs to apply for next — or in the list of jobs applied for. The search
   // says where in its own tree a posting already is; these are in another
@@ -174,6 +182,20 @@ export function SavedSearchPicker({
 
   const importContext: ImportContext = { search, mode, organizationId, canCheckClosed: canReadInBrowser };
 
+  // The ads already in the list imported into are checked for closed ones
+  // while the search runs, not after the import: started as soon as the
+  // list is known, and again for another list chosen here. The import takes
+  // up the answer (importJobs).
+  const closedCheck = useRef<ClosedCheckWhileSearching | null>(null);
+  useEffect(() => {
+    if (mode !== "jobs" || !placementKnown || !importList) return;
+    const current = closedCheck.current;
+    if (current?.treeId === search.tree_id && current.backlogId === importList) return;
+    closedCheck.current = startClosedCheck(importContext, importList, current) ?? current;
+    // importContext is rebuilt every render; what the check goes by is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, placementKnown, importList, search.tree_id, canReadInBrowser]);
+
   /** The ticked rows, each with the rating given it. */
   const pickedLinks = () =>
     preview
@@ -223,6 +245,7 @@ export function SavedSearchPicker({
         mirrorKeys: new Set(preview.map(rowKey).filter((key) => selected[key] && mirrorByKey[key])),
         mirrorTarget,
         backlogName,
+        closedCheck: closedCheck.current,
         onDone: onClose,
       }),
     );

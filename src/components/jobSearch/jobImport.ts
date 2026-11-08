@@ -47,12 +47,74 @@ function importInto(ctx: ImportContext, backlogId: string, links: PreviewLink[])
   });
 }
 
+type ClosedCheckResult = Awaited<ReturnType<ReturnType<typeof useClosedPostingsStore.getState>["check"]>>;
+
+/**
+ * Check the job ads in these lists for closed ones, leaving out `exclude`.
+ * Same check as the backlog header's "Check for closed ads", so a superuser's
+ * only: it spends a burst of server requests. Closed ads are marked on their
+ * rows; nothing is changed. Null when there is nothing to check, or when a
+ * check is already going.
+ */
+function checkClosed(ctx: ImportContext, backlogIds: string[], exclude: string[]): Promise<ClosedCheckResult | null> {
+  if (!ctx.canCheckClosed) return Promise.resolve(null);
+  const closedStore = useClosedPostingsStore.getState();
+  if (closedStore.checking) return Promise.resolve(null);
+  const app = useAppStore.getState();
+  const items = linkedItemsIn(app.workItems, app.hyperlinks, ctx.search.tree_id, new Set(backlogIds), new Set(exclude));
+  if (items.length === 0) return Promise.resolve(null);
+  return closedStore.check(items);
+}
+
+/**
+ * The closed-ads check of a job search's import list, started with the
+ * search rather than after the import: the ads already in the list are
+ * checked while the mail is read and the rows gone through, so by the time
+ * of the import its answer is usually in. The import takes it up
+ * (importJobs) when it went to this list.
+ */
+export interface ClosedCheckWhileSearching {
+  treeId: string;
+  backlogId: string;
+  /** Null when there was nothing to check, or another check was going. */
+  result: Promise<ClosedCheckResult | null>;
+  /** The result once it is in; undefined until then. */
+  settled?: ClosedCheckResult | null;
+}
+
+/**
+ * Start checking the ads already in `backlogId`. A list chosen while the
+ * previous one's check is still going is checked once that one is done: the
+ * check runs one at a time.
+ */
+export function startClosedCheck(
+  ctx: ImportContext,
+  backlogId: string,
+  previous: ClosedCheckWhileSearching | null,
+): ClosedCheckWhileSearching | null {
+  if (!ctx.canCheckClosed) return null;
+  const before = previous?.result ?? Promise.resolve(null);
+  const check: ClosedCheckWhileSearching = {
+    treeId: ctx.search.tree_id,
+    backlogId,
+    result: before.then(() => checkClosed(ctx, [backlogId], [])),
+  };
+  void check.result.then((result) => {
+    check.settled = result;
+  });
+  return check;
+}
+
+/** A check's answer, as a sentence for the import's summary. */
+function existingAdsLine(result: ClosedCheckResult): string {
+  const message = closedCheckMessage(result);
+  return `Existing ads: ${message.title.charAt(0).toLowerCase()}${message.title.slice(1)}. ${message.description}`;
+}
+
 /**
  * After an import, check the job ads that were already in the lists it filled
- * — the new ones were read moments ago. Same check as the backlog header's
- * "Check for closed ads", so a superuser's only: it spends a burst of server
- * requests. Closed ads are marked on their rows; nothing is changed. Runs on
- * after the picker has closed, and skips if a check is already going.
+ * — the new ones were read moments ago — and report it. Runs on after the
+ * picker has closed, and skips if a check is already going.
  */
 async function checkExistingForClosed(
   ctx: ImportContext,
@@ -65,14 +127,12 @@ async function checkExistingForClosed(
    * check found closed.
    */
   after?: { notBefore: number; totals: () => string },
+  /** A check of these lists started with the search and still going: its answer, rather than a new check. */
+  running?: Promise<ClosedCheckResult | null>,
 ) {
-  if (!ctx.canCheckClosed) return;
-  const closedStore = useClosedPostingsStore.getState();
-  if (closedStore.checking) return;
-  const app = useAppStore.getState();
-  const items = linkedItemsIn(app.workItems, app.hyperlinks, ctx.search.tree_id, new Set(backlogIds), new Set(createdIds));
-  if (items.length === 0) return;
-  const message = closedCheckMessage(await closedStore.check(items));
+  const result = (running ? await running : null) ?? (await checkClosed(ctx, backlogIds, createdIds));
+  if (!result) return;
+  const message = closedCheckMessage(result);
   const wait = after ? after.notBefore - Date.now() : 0;
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
   toast({
@@ -190,6 +250,7 @@ export async function importJobs(
     mirrorKeys,
     mirrorTarget,
     backlogName,
+    closedCheck,
     onDone,
   }: {
     /** The rows picked, with their ratings. */
@@ -202,6 +263,8 @@ export async function importJobs(
     mirrorKeys: Set<string>;
     mirrorTarget: { backlogId: string; treeId: string } | null;
     backlogName: (id: string) => string;
+    /** The closed-ads check started with the search, if there was one. */
+    closedCheck?: ClosedCheckWhileSearching | null;
     /** Called once the import has gone through, before the list is put in order. */
     onDone: () => void;
   },
@@ -311,6 +374,12 @@ export async function importJobs(
       }
     });
 
+    // The check started with the search, if it was of this list. Done by now,
+    // its answer goes into this summary — the closed ones already left out of
+    // the totals; still going, it reports when done, as a check started now
+    // would.
+    const early = closedCheck?.treeId === search.tree_id && closedCheck.backlogId === importList ? closedCheck : null;
+    const checkedAlready = early?.settled ?? null;
     toast({
       title: `Imported ${created} work item${created === 1 ? "" : "s"} into ${backlogName(importList)}`,
       description:
@@ -322,13 +391,19 @@ export async function importJobs(
         (pagesRemembered && leftOnPages > 0
           ? ` ${leftOnPages} career page job${leftOnPages === 1 ? "" : "s"} left out will not be offered again.`
           : "") +
+        (checkedAlready ? ` ${existingAdsLine(checkedAlready)}` : "") +
         ` ${openTotals()}`,
       duration: AUTO_PLACE_TOAST_MS,
     });
-    void checkExistingForClosed(ctx, [importList], createdIds, {
-      notBefore: Date.now() + AUTO_PLACE_TOAST_MS,
-      totals: openTotals,
-    });
+    if (!checkedAlready) {
+      void checkExistingForClosed(
+        ctx,
+        [importList],
+        createdIds,
+        { notBefore: Date.now() + AUTO_PLACE_TOAST_MS, totals: openTotals },
+        early && early.settled === undefined ? early.result : undefined,
+      );
+    }
   } catch (e) {
     toast({ title: "Import failed", description: (e as Error).message, variant: "destructive" });
   }

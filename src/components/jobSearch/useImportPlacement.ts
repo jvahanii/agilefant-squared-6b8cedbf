@@ -21,6 +21,12 @@ export function useImportPlacement(search: RunnableSearch, mode: ImportMode) {
     list: null,
     mirror: null,
   });
+  /**
+   * Whether the saved choice has been read, so that `importList` is the list
+   * the import will go to and not only the search's own list for now — what
+   * the closed-ads check started with the search goes by.
+   */
+  const [placementKnown, setPlacementKnown] = useState(false);
   useEffect(() => {
     if (mode !== "jobs") return;
     let cancelled = false;
@@ -30,11 +36,14 @@ export function useImportPlacement(search: RunnableSearch, mode: ImportMode) {
       .eq("id", search.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (cancelled || !data) return;
-        setPlaceInto({
-          list: data.auto_place_backlog_id ?? null,
-          mirror: data.auto_place_mirror_backlog_id ?? null,
-        });
+        if (cancelled) return;
+        if (data) {
+          setPlaceInto({
+            list: data.auto_place_backlog_id ?? null,
+            mirror: data.auto_place_mirror_backlog_id ?? null,
+          });
+        }
+        setPlacementKnown(true);
       });
     return () => {
       cancelled = true;
@@ -105,5 +114,5 @@ export function useImportPlacement(search: RunnableSearch, mode: ImportMode) {
 
   const backlogName = (id: string) => backlogs?.[id]?.name ?? "?";
 
-  return { importList, treeBacklogs, mirrorTarget, mirrorBacklogs, choosePlaceInto, backlogName };
+  return { importList, placementKnown, treeBacklogs, mirrorTarget, mirrorBacklogs, choosePlaceInto, backlogName };
 }
