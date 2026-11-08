@@ -45,7 +45,9 @@ import {
 } from "./appDataCache";
 import { insertChangeLogEntry, loadChangeLog, type ChangeLogEntry } from "./changeLog";
 import { getEffectiveStatuses } from "./backlogStatusesStore";
-import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
+import { redistributeRanksByStatus, boardRankFromListPosition, listRanksFollowingColumn } from "@/lib/rankSync";
+import { boardColumnKey, byBoardRank } from "@/lib/boardColumn";
+import { byRank } from "@/lib/workItemRows";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 import { notifyPersistDebug } from "@/lib/persistDebug";
 import { noteItemChanged } from "@/lib/itemChangedAt";
@@ -2450,24 +2452,27 @@ export const useAppStore = create<AppState>()((set, get) => {
       const movingSet = new Set(itemsToMoveIds);
       const backlogIdSet = new Set(backlogIds.map((id) => ensureCleanId(id, orgId)));
 
-      // The board column: leaf cards of this backlog subtree carrying this
-      // status (mirrors BoardView's grouping), in current board order.
+      // The board column exactly as BoardView draws it: leaf cards of this
+      // backlog subtree filed under this column (a status the board has no
+      // column for is drawn under Not Started), in the same stable board order
+      // over the same Object.values — `targetIndex` is an index into that
+      // drawn column. Moving cards from other columns are collected alongside;
+      // they are not in the drawn column, so they do not shift the index.
+      const columnKeys = new Set(getEffectiveStatuses(backlogIds[0]).map((s) => s.key));
+      const columnKey = statusKey ?? boardColumnKey(mainItem.status, columnKeys);
+      const isDrawnHere = (wi: WorkItem) => boardColumnKey(wi.status, columnKeys) === columnKey;
       const columnCards = Object.values(state.workItems)
         .filter((wi) => {
           const blId = wi.backlogAssignments[treeId];
           if (!blId || !backlogIdSet.has(blId)) return false;
           if (wi.childrenIds.length > 0) return false;
-          return wi.status === columnStatus || movingSet.has(wi.id);
+          return isDrawnHere(wi) || movingSet.has(wi.id);
         })
-        .sort((a, b) => {
-          const ab = a.backlogAssignments[treeId];
-          const bb = b.backlogAssignments[treeId];
-          const diff = (a.boardRanks?.[ab] ?? a.ranks[ab] ?? 0) - (b.boardRanks?.[bb] ?? b.ranks[bb] ?? 0);
-          return diff !== 0 ? diff : a.id.localeCompare(b.id);
-        });
+        .sort(byBoardRank(treeId));
 
       const remaining = columnCards.filter((c) => !movingSet.has(c.id));
-      const movingBeforeTarget = columnCards.filter((c, i) => movingSet.has(c.id) && i < targetIndex).length;
+      const drawnColumn = columnCards.filter(isDrawnHere);
+      const movingBeforeTarget = drawnColumn.filter((c, i) => movingSet.has(c.id) && i < targetIndex).length;
       const clampedIdx = Math.max(0, Math.min(targetIndex - movingBeforeTarget, remaining.length));
       const movingItems = columnCards.filter((c) => movingSet.has(c.id));
       const newColumn = [...remaining];
@@ -2498,16 +2503,33 @@ export const useAppStore = create<AppState>()((set, get) => {
       // ---- Feed the new column order back into the list ranks --------------
       // Only cards that share a list context (same backlog + same effective
       // parent) and the same status can express this order in the list, so the
-      // list-rank slots are redistributed inside each such group. Everything
-      // else in the list stays exactly where it was.
-      const listMembers = newColumn.flatMap((c) => {
-        const wi = updatedItems[c.id];
-        const blId = wi?.backlogAssignments[treeId];
-        if (!wi || !blId) return [];
-        const parent = getEffectiveParentId(wi, treeId);
-        return [{ id: wi.id, status: `${blId}::${parent ?? "root"}`, rank: wi.ranks[blId] ?? 0 }];
-      });
-      const syncedListRanks = redistributeRanksByStatus(listMembers, newColumn.map((c) => c.id));
+      // list positions those cards hold are handed round inside each such
+      // group. Everything else in the list stays where it was; its ranks change
+      // only where shared ranks must be split (see listRanksFollowingColumn).
+      const listGroupOf = (wi: WorkItem): string | null => {
+        const blId = wi.backlogAssignments[treeId];
+        return blId ? `${blId}::${getEffectiveParentId(wi, treeId) ?? "root"}` : null;
+      };
+      const columnGroups = new Set(newColumn.flatMap((c) => {
+        const key = updatedItems[c.id] ? listGroupOf(updatedItems[c.id]) : null;
+        return key ? [key] : [];
+      }));
+      const groupSiblings = new Map<string, WorkItem[]>();
+      for (const wi of Object.values(updatedItems)) {
+        const key = listGroupOf(wi);
+        if (!key || !columnGroups.has(key)) continue;
+        const list = groupSiblings.get(key) ?? [];
+        list.push(wi);
+        groupSiblings.set(key, list);
+      }
+      const columnOrder = newColumn.map((c) => c.id);
+      const syncedListRanks: Record<string, number> = {};
+      for (const siblings of groupSiblings.values()) {
+        Object.assign(syncedListRanks, listRanksFollowingColumn(
+          siblings.sort(byRank(treeId)).map((wi) => ({ id: wi.id, rank: wi.ranks[wi.backlogAssignments[treeId]] ?? 0 })),
+          columnOrder,
+        ));
+      }
       const listRows: WorkItemBacklogRankUpsert[] = [];
       const touchedParents = new Set<string>();
       for (const [id, rank] of Object.entries(syncedListRanks)) {

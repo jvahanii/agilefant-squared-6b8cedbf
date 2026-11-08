@@ -60,6 +60,50 @@ export function redistributeRanksByStatus(
 }
 
 /**
+ * List ranks for one sibling group (same backlog, same effective parent) after
+ * a board drop, so that the group's cards in that column follow `columnOrder`.
+ *
+ * `siblings` is the whole group in list order (as the list draws it: rank, then
+ * id), with each item's rank as the list reads it (a missing rank reads as 0).
+ * The cards in the column take over the list positions the column's cards
+ * already hold, in column order; everything else keeps its position. Each
+ * position keeps the rank value it had — which is exactly the slot
+ * redistribution of `redistributeRanksByStatus` while ranks are distinct.
+ *
+ * Ranks are not always distinct: two items can share one, or an item can lack
+ * one and read as 0. Handing such slots round left the column's cards on equal
+ * ranks, which the list then ordered by id, not as the board showed them. So a
+ * rank that is not above the one before it is raised to one more than that,
+ * which may move later items up by one too; their order does not change.
+ *
+ * Returns only the ids whose rank changes.
+ */
+export function listRanksFollowingColumn(
+  siblings: { id: string; rank: number }[],
+  columnOrder: string[],
+): Record<string, number> {
+  const inGroup = new Set(siblings.map((s) => s.id));
+  const columnCards = columnOrder.filter((id) => inGroup.has(id));
+  const inColumn = new Set(columnCards);
+  // One card alone has no order to express, as in redistributeRanksByStatus.
+  if (inColumn.size < 2) return {};
+
+  let next = 0;
+  const order = siblings.map((s) => (inColumn.has(s.id) ? columnCards[next++] : s.id));
+  const rankOf = new Map(siblings.map((s) => [s.id, s.rank]));
+
+  const result: Record<string, number> = {};
+  let previous = -Infinity;
+  order.forEach((id, position) => {
+    const slot = siblings[position].rank;
+    const rank = slot > previous ? slot : previous + 1;
+    if (rank !== rankOf.get(id)) result[id] = rank;
+    previous = rank;
+  });
+  return result;
+}
+
+/**
  * Compute a board rank that inserts `movedId` into an existing column so that
  * its position relative to the given same-context siblings matches their list
  * order.  `columnCards` must be the column's cards in board order.

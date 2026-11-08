@@ -1,5 +1,35 @@
 import { describe, it, expect } from "vitest";
-import { redistributeRanksByStatus, boardRankFromListPosition } from "@/lib/rankSync";
+import { redistributeRanksByStatus, boardRankFromListPosition, listRanksFollowingColumn } from "@/lib/rankSync";
+
+describe("listRanksFollowingColumn", () => {
+  const sibs = (...pairs: [string, number][]) => pairs.map(([id, rank]) => ({ id, rank }));
+
+  it("hands round the column's own positions when ranks are distinct", () => {
+    // a, c in the column; b (another status) keeps 1.
+    expect(listRanksFollowingColumn(sibs(["a", 0], ["b", 1], ["c", 2]), ["c", "a"])).toEqual({ c: 0, a: 2 });
+  });
+
+  it("matches redistributeRanksByStatus on distinct ranks", () => {
+    const members = [
+      { id: "a", status: "g", rank: 1 },
+      { id: "b", status: "g", rank: 4 },
+      { id: "c", status: "g", rank: 6 },
+    ];
+    const order = ["c", "a", "b"];
+    expect(listRanksFollowingColumn(sibs(["a", 1], ["x", 3], ["b", 4], ["c", 6]), order))
+      .toEqual(redistributeRanksByStatus(members, order));
+  });
+
+  it("splits shared ranks, raising later items only as far as needed", () => {
+    // b and c share 2; d at 3 must then move up, e at 9 need not.
+    expect(listRanksFollowingColumn(sibs(["a", 1], ["b", 2], ["c", 2], ["d", 3], ["e", 9]), ["c", "a", "b"]))
+      .toEqual({ c: 1, a: 2, b: 3, d: 4 });
+  });
+
+  it("leaves a lone card alone", () => {
+    expect(listRanksFollowingColumn(sibs(["a", 2], ["b", 2]), ["a"])).toEqual({});
+  });
+});
 
 describe("redistributeRanksByStatus", () => {
   it("reorders same-status members into the slots they already own", () => {

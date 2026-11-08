@@ -24,6 +24,7 @@ import { useCommonItemActions, useItemFeatures } from "./workItemRow/itemActions
 import { useRowDialogs } from "./workItemRow/useRowDialogs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { releaseOverlayLock } from "@/lib/overlayLock";
+import { boardColumnKey, byBoardRank } from "@/lib/boardColumn";
 import { changeSelectionOrItem, listAndSublists, selectionOrItem } from "./workItemRow/rowShared";
 import {
   useSnoozeStore,
@@ -255,18 +256,13 @@ export function BoardView({ backlogId, treeId, addWorkItem, setViewMode }: Board
       leaves.push(wi);
     }
     for (const wi of leaves) {
-      const key = known.has(wi.status) ? wi.status : "not_started";
-      (map[key] ??= []).push(wi);
+      (map[boardColumnKey(wi.status, known)] ??= []).push(wi);
     }
-    // Board order: sort each column by its own boardRanks (fallback to list rank).
+    // Board order: sort each column by its own boardRanks (fallback to list
+    // rank). reorderWorkItemInBoard sorts with the same comparator, so a drop
+    // index means the same card to both.
     for (const key of Object.keys(map)) {
-      map[key].sort((a, b) => {
-        const ab = a.backlogAssignments[treeId];
-        const bb = b.backlogAssignments[treeId];
-        const ar = a.boardRanks?.[ab] ?? a.ranks?.[ab] ?? 0;
-        const br = b.boardRanks?.[bb] ?? b.ranks?.[bb] ?? 0;
-        return ar - br;
-      });
+      map[key].sort(byBoardRank(treeId));
     }
     return map;
   }, [workItems, backlogs, backlogId, treeId, allStatuses]);
