@@ -222,6 +222,39 @@ describe("board drop: the list follows the column without shared ranks", () => {
     expect(new Set(ranks).size).toBe(ranks.length);
   });
 
+  it("writes the whole sibling group, so ranks the page repaired on load reach the database", () => {
+    // Loading repairs shared ranks in memory only (dedupWorkItemRanksInPlace):
+    // the database still says Weekly sync 2, Budget plan 2, but the page holds
+    // 2 and 3. Seen live on 2026-11-08: the drop wrote only the ranks it
+    // changed, so Budget plan kept 2 in the database while another item was
+    // written 2 — a shared rank again.
+    seed([
+      card(UUSI, "not_started", 1, 1),
+      card(WEEKLY, "not_started", 2, 2),
+      card(BUDGET, "not_started", 3, 3), // 2 in the database
+      card(OTHER, "in_progress", 4, 0),
+      card(PARCEL, "in_progress", 0, 1),
+    ]);
+
+    // Weekly sync to the top of Not Started: it swaps with Uusi; Budget plan
+    // keeps the 3 the page gave it.
+    useAppStore.getState().reorderWorkItemInBoard(WEEKLY, 0, BT, [BL], "not_started");
+    expect(useAppStore.getState().workItems[BUDGET].ranks[BL]).toBe(3);
+
+    const { workItems } = useAppStore.getState();
+    const written = new Map(writtenListRows().map((r) => [r.workItemId, r.rank]));
+    for (const id of [PARCEL, UUSI, WEEKLY, BUDGET, OTHER]) expect(written.get(id)).toBe(workItems[id].ranks[BL]);
+  });
+
+  it("writes nothing when the drop changes no list rank", () => {
+    seed([
+      card(UUSI, "not_started", 0, 0),
+      card(WEEKLY, "not_started", 1, 1),
+    ]);
+    useAppStore.getState().reorderWorkItemInBoard(UUSI, 0, BT, [BL], "not_started");
+    expect(writtenListRows()).toEqual([]);
+  });
+
   it("with distinct ranks only the column's own list slots are handed round", () => {
     // Unchanged behaviour: the Not Started items swap the slots {0, 2}; the
     // In Progress item at 1 is not touched.
@@ -237,6 +270,5 @@ describe("board drop: the list follows the column without shared ranks", () => {
     expect(workItems[WEEKLY].ranks[BL]).toBe(0);
     expect(workItems[UUSI].ranks[BL]).toBe(2);
     expect(workItems[OTHER].ranks[BL]).toBe(1);
-    expect(writtenListRows().map((r) => r.workItemId).sort()).toEqual([UUSI, WEEKLY].sort());
   });
 });

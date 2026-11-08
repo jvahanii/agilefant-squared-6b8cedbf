@@ -2517,23 +2517,37 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       const columnOrder = newColumn.map((c) => c.id);
       const syncedListRanks: Record<string, number> = {};
+      // Groups whose order changed are written whole, not just the ranks that
+      // changed — as a list drop writes all the siblings. Loading repairs
+      // shared ranks in memory only (dedupWorkItemRanksInPlace), so a rank the
+      // drop leaves alone may still differ in the database; written alone, the
+      // changed ranks could land on it and share it again (seen live).
+      const rewrittenGroups: WorkItem[][] = [];
       for (const siblings of groupSiblings.values()) {
-        Object.assign(syncedListRanks, listRanksFollowingColumn(
+        const changed = listRanksFollowingColumn(
           siblings.sort(byRank(treeId)).map((wi) => ({ id: wi.id, rank: wi.ranks[wi.backlogAssignments[treeId]] ?? 0 })),
           columnOrder,
-        ));
+        );
+        if (Object.keys(changed).length === 0) continue;
+        Object.assign(syncedListRanks, changed);
+        rewrittenGroups.push(siblings);
       }
-      const listRows: WorkItemBacklogRankUpsert[] = [];
       const touchedParents = new Set<string>();
       for (const [id, rank] of Object.entries(syncedListRanks)) {
         const wi = updatedItems[id];
         const blId = wi?.backlogAssignments[treeId];
         if (!wi || !blId) continue;
         updatedItems[id] = { ...wi, ranks: { ...wi.ranks, [blId]: rank } };
-        listRows.push({ workItemId: id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId });
         const parent = getEffectiveParentId(updatedItems[id], treeId);
         if (parent) touchedParents.add(parent);
       }
+      const listRows: WorkItemBacklogRankUpsert[] = rewrittenGroups.flat().flatMap((s) => {
+        const wi = updatedItems[s.id];
+        const blId = wi?.backlogAssignments[treeId];
+        const rank = blId ? wi.ranks[blId] : undefined;
+        if (!wi || !blId || rank === undefined) return [];
+        return [{ workItemId: wi.id, backlogId: blId, rank, organizationId: wi.organizationId ?? orgId }];
+      });
       if (listRows.length > 0) persistRankUpserts(listRows);
 
       // Save the moved cards — only now, with their new list ranks. A work
