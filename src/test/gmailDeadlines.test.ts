@@ -505,6 +505,27 @@ describe('textFromHtml', () => {
   });
 });
 
+describe("a posting on Orion's Oracle recruiting site, on .oraclecloud.com", () => {
+  const POSTING = 'https://fa-esaq-saasfaprod1.fa.ocs.oraclecloud.com:443/hcmUI/CandidateExperience/en/sites/OrionCareers/job/1918/?utm_medium=career+site&utm_source=job+alert';
+  // As the API answered for it on 8 November 2026, trimmed to what is read.
+  const ANSWER = JSON.stringify({
+    items: [{ Id: '1918', Title: 'SAP Solution Lead, Finance', ExternalPostedEndDate: '2026-11-22T21:55:00+00:00', PrimaryLocation: 'Espoo, Finland', ExternalDescriptionStr: '<p>Join our Finance IT team.</p>' }],
+    count: 1,
+  });
+
+  it("is read from its site's job API", () => {
+    expect(postingTextUrl(POSTING)).toBe(
+      'https://fa-esaq-saasfaprod1.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=' +
+        encodeURIComponent('ById;Id="1918",siteNumber=OrionCareers'),
+    );
+  });
+
+  it('gives the last day to apply and the city', () => {
+    // 21:55 UTC is 23:55 in Espoo: the 22nd is the last day.
+    expect(factsFromOracleJob(ANSWER)).toMatchObject({ deadline: '2026-11-22', cities: ['Espoo'] });
+  });
+});
+
 describe("a posting on an Oracle recruiting site — Danske Bank's", () => {
   // Its page is a shell filled in by script; the site's job API has the posting.
   const POSTING = 'https://ejqi.fa.ocs.oraclecloud.eu:443/hcmUI/CandidateExperience/en/sites/CX_1001/job/25234/?utm_medium=career+site';

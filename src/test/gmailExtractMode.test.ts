@@ -831,3 +831,48 @@ describe("Danske Bank's job alerts", () => {
     expect(fi[0].url).toBe(`${SITE.replace(':443', '')}/job/25074`);
   });
 });
+
+describe("Orion's job alerts", () => {
+  // As the mail of 8 November 2026 has it: the posting a plain link named
+  // after the job, then "All Open Vacancies" and an unsubscribe link.
+  const SITE = 'https://fa-esaq-saasfaprod1.fa.ocs.oraclecloud.com:443/hcmUI/CandidateExperience/en/sites/OrionCareers';
+  const posting = (id: number, title: string) =>
+    `<a style="color: black;" href="${SITE}/job/${id}/?utm_medium=career+site&utm_source=job+alert">${title}</a><br><br/>`;
+  const mail = (...postings: string[]) =>
+    `Dear Jarno,<br/><br/>We are pleased to inform you that we have recently published some exciting open vacancies that may align with your interests and career goals. We invite you to take a moment to explore these opportunities:<br/><br/>` +
+    postings.join('') +
+    `<br/>Additionally, you are welcome to view all of our current open vacancies at your convenience.<br/><br/>` +
+    `<a href="${SITE}/jobs?selectedCategoriesFacet=300000053242858&selectedLocationsFacet=300000004909422&sortBy=POSTING_DATES_DESC" target="_blank">All Open Vacancies</a><br/><br/> \r\n` +
+    `<div>\r\n Best regards,\r\n</div>\r\n<div>\r\n Orion Pharma Recruitment&nbsp;&nbsp;\r\n</div><br/>` +
+    `Thank you for considering these opportunities. If you prefer not to receive notifications about our open vacancies, please click ` +
+    `<a href="https://fa-esaq-saasfaprod1.fa.ocs.oraclecloud.com:443/hcmUI/CandidateExperience/s/NLmEA3STJ1" target="_blank">unsubscribe</a>.\r\n`;
+  const FROM = 'Orion Pharma Recruiting <noreply@careers.orionpharma.com>';
+  const links = (html: string, from = FROM, subject = 'New job opportunities at Orion career site') =>
+    extractLinks(message(from, html, subject), 'jobs');
+
+  it('takes the posting, named after Orion Pharma and the job, and nothing else', () => {
+    const out = links(mail(posting(1918, 'SAP Solution Lead, Finance')));
+    expect(out.map((l) => [l.url, l.title])).toEqual([
+      [`${SITE.replace(':443', '')}/job/1918`, 'Orion Pharma - SAP Solution Lead, Finance'],
+    ]);
+  });
+
+  it('takes every posting when there are several', () => {
+    const out = links(mail(posting(1918, 'SAP Solution Lead, Finance'), posting(1920, 'Data &amp; AI Architect')));
+    expect(out.map((l) => l.title)).toEqual(['Orion Pharma - SAP Solution Lead, Finance', 'Orion Pharma - Data & AI Architect']);
+  });
+
+  it('is one posting whatever language the link opens it in', () => {
+    const fi = links(mail(posting(1918, 'SAP Solution Lead, Finance').replace('/en/sites/', '/fi/sites/')));
+    expect(fi[0].url).toBe(`${SITE.replace(':443', '')}/job/1918`);
+  });
+
+  it("takes nothing from the site's other mail: a rejection with its survey, an identity code", () => {
+    const rejection =
+      `Dear Jarno,<br/>Thank you for applying for the AI Solution Expert position.<br/>We encourage you to keep an eye on our career site.<br/>` +
+      `Here is the link to the survey: <a href="https://link.webropolsurveys.com/S/27E3CBDC312348EB">https://link.webropolsurveys.com/S/27E3CBDC312348EB</a>.`;
+    expect(links(rejection, 'Mari Ukkonen <recruiting@careers.orionpharma.com>', 'Orion Pharma – Your application,  AI Solution Expert')).toEqual([]);
+    const code = `Dear Jarno,<br/>Please confirm your identity and application for the position of AI Solution Expert - 1684. You can confirm your identity using this verification code: 000000.`;
+    expect(links(code, FROM, 'Confirm your identity for job AI Solution Expert - 1684')).toEqual([]);
+  });
+});

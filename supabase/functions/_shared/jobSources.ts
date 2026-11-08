@@ -429,6 +429,31 @@ export const JOB_SOURCES: JobSource[] = [
     canonicalPath: (u) => u.pathname.replace(/\/CandidateExperience\/[a-z]{2}\//i, '/CandidateExperience/en/').replace(/\/+$/, ''),
   },
   {
+    // Orion's job alerts, "New job opportunities at Orion career site", from
+    // its Oracle recruiting site — the same system as Danske Bank's, so the
+    // same shape: each posting a plain link named after the job,
+    //
+    //   <a style="color: black;" href="https://fa-esaq-saasfaprod1.fa.ocs.oraclecloud.com:443/hcmUI/CandidateExperience/en/sites/OrionCareers/job/1918/?utm_…">
+    //     SAP Solution Lead, Finance</a>
+    //
+    // then "All Open Vacancies" (/jobs?…) and an unsubscribe link (/s/<code>),
+    // neither a posting. The mail says nothing of place or closing date; the
+    // site's job API does (fetchDeadline's Oracle reader).
+    //
+    // careers.orionpharma.com also sends application receipts, rejections and
+    // identity codes. Only noreply@ is searched, and the codes it also sends
+    // carry no posting link, so they yield nothing.
+    id: 'orion',
+    senders: /@careers\.orionpharma\.com/i,
+    alertSenders: ['noreply@careers.orionpharma.com'],
+    // One employer. The name the mail signs with, and LinkedIn uses.
+    company: () => 'Orion Pharma',
+    isJobUrl: (u) =>
+      /^fa-esaq-saasfaprod1\.fa\.ocs\.oraclecloud\.com$/i.test(u.hostname) &&
+      /^\/hcmUI\/CandidateExperience\/[a-z]{2}\/sites\/[^/]+\/job\/\d+\/?$/i.test(u.pathname),
+    canonicalPath: (u) => u.pathname.replace(/\/CandidateExperience\/[a-z]{2}\//i, '/CandidateExperience/en/').replace(/\/+$/, ''),
+  },
+  {
     // MPS's weekly job mail, "MPS viikon työpaikat". A posting is a heading
     // link, with a line after it saying everything else:
     //
