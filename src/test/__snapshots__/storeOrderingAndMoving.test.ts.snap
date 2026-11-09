@@ -3364,6 +3364,26 @@ exports[`moving > under another item, step by step 1`] = `
             "status": "in_progress",
             "title": "Mike",
           },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b1": 7,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
         ],
         "order-org",
       ],

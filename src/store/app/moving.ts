@@ -593,6 +593,8 @@ export function movingActions(set: SetState, get: GetState, internalLog: LogChan
 
       // IDs of descendants that were migrated (for DB upsert in move-to-tree).
       const changedDescendantIds: string[] = [];
+      // Siblings moved down a place to make room (an outdent), saved with the rest.
+      const shiftedSiblingIds: string[] = [];
 
       // Whether the item lives in more than one tree — drives whether we use a
       // global or per-tree parent change.
@@ -785,6 +787,7 @@ export function movingActions(set: SetState, get: GetState, internalLog: LogChan
                   const sWi = updatedItems[sid];
                   const shifted = { ...sWi, ranks: { ...sWi.ranks, [blId]: (sWi.ranks[blId] ?? 0) + 1 } };
                   updatedItems[sid] = shifted;
+                  shiftedSiblingIds.push(sid);
                 });
                 newRanks[blId] = rank;
               }
@@ -810,6 +813,9 @@ export function movingActions(set: SetState, get: GetState, internalLog: LogChan
       }
       for (const id of changedDescendantIds) {
         if (updatedItems[id]) changed.push(updatedItems[id]);
+      }
+      for (const id of new Set(shiftedSiblingIds)) {
+        if (updatedItems[id] && !changed.includes(updatedItems[id])) changed.push(updatedItems[id]);
       }
       upsertWorkItems(changed, orgId);
       const oldEffectiveParentIdForLog = treeId ? getEffectiveParentId(item, treeId) : item.parentId;
