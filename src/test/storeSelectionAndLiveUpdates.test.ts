@@ -155,6 +155,10 @@ describe("selection and expansion", () => {
       ["open all under b2 (a leaf)", () => a().expandBacklogsRecursive("b2")],
       ["shut all under b1a", () => a().collapseBacklogsRecursive("b1a")],
       ["shut all under b1", () => a().collapseBacklogsRecursive("b1")],
+      ["open all under b1 again", () => a().expandBacklogsRecursive("b1")],
+      ["shut all under b1, b1a with it", () => a().collapseBacklogsRecursive("b1")],
+      ["open all under w1 again", () => a().expandWorkItemsRecursive("w1")],
+      ["shut all under w1, w2 with it", () => a().collapseWorkItemsRecursive("w1")],
       ["open all under an unknown item", () => a().expandWorkItemsRecursive("nope")],
       ["shut all under an unknown list", () => a().collapseBacklogsRecursive("nope")],
     ];

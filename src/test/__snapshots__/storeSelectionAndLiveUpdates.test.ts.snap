@@ -2015,6 +2015,63 @@ exports[`selection and expansion > step by step, with an organization 1`] = `
     "openItems": [
       "w4",
     ],
+    "openLists": [
+      "b1",
+      "b1a",
+    ],
+    "step": "open all under b1 again",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "shut all under b1, b1a with it",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+      "w1",
+      "w2",
+    ],
+    "openLists": [],
+    "step": "open all under w1 again",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "shut all under w1, w2 with it",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
     "openLists": [],
     "step": "open all under an unknown item",
     "tree": "t1",
