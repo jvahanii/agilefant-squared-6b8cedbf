@@ -1,0 +1,7290 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`moving > duplicating, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [
+      [
+        "assignLabel",
+        "lab1",
+        "work_item",
+        "order-org::wi-00000001",
+        "order-org",
+      ],
+      [
+        "assignTeamToWorkItem",
+        "order-org::wi-00000002",
+        "team1",
+        "order-org",
+      ],
+      [
+        "upsertFinancials",
+        "order-org::wi-00000001",
+        "order-org",
+        {
+          "actualIncomeByMonth": {},
+          "actualSavingsByMonth": {},
+          "currency": "EUR",
+          "incomeByMonth": {},
+          "savingsByMonth": {
+            "2026-01": 5,
+          },
+        },
+      ],
+    ],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 4,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 5,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 6,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 2,
+            },
+            "childrenIds": [],
+            "id": "order-org::w10",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 8,
+            },
+            "status": "not_started",
+            "title": "Bravo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000003",
+            "organizationId": "order-org",
+            "parentId": "order-org::wi-00000002",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w3",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [
+              "order-org::wi-00000003",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000002",
+            "organizationId": "order-org",
+            "parentId": "order-org::wi-00000001",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 1,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [
+              "order-org::wi-00000002",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000001",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 1,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "Zulu",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertHyperlink",
+        {
+          "altText": "C",
+          "id": "00000004-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000003",
+        },
+        "order-org",
+        "order-org",
+      ],
+      [
+        "upsertHyperlink",
+        {
+          "altText": "A",
+          "id": "00000005-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://a.example",
+          "workItemId": "order-org::wi-00000001",
+        },
+        "order-org",
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {
+      "order-org::wi-00000001": [
+        {
+          "altText": "A",
+          "id": "00000005-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://a.example",
+          "workItemId": "order-org::wi-00000001",
+        },
+      ],
+      "order-org::wi-00000003": [
+        {
+          "altText": "C",
+          "id": "00000004-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000003",
+        },
+      ],
+    },
+    "log": [
+      [
+        "Duplicate",
+        "order-org::wi-00000001",
+        "1 root(s), 3 total",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": [
+      "order-org::wi-00000001",
+    ],
+    "selected": [
+      "order-org::wi-00000001",
+    ],
+    "step": "w1 with everything under it",
+    "undo": 1,
+    "workItems": {
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 8,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 6,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::wi-00000001": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [
+          "order-org::wi-00000002",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000001",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::wi-00000002": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [
+          "order-org::wi-00000003",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000002",
+        "organizationId": "order-org",
+        "parentId": "order-org::wi-00000001",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::wi-00000003": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000003",
+        "organizationId": "order-org",
+        "parentId": "order-org::wi-00000002",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [
+      [
+        "assignTeamToWorkItem",
+        "order-org::wi-00000006",
+        "team1",
+        "order-org",
+      ],
+    ],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000007",
+            "organizationId": "order-org",
+            "parentId": "order-org::wi-00000006",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w3",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [
+              "order-org::wi-00000007",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000006",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 6,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 7,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 2,
+            },
+            "childrenIds": [],
+            "id": "order-org::w10",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 9,
+            },
+            "status": "not_started",
+            "title": "Bravo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "childrenIds": [],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000010",
+            "organizationId": "order-org",
+            "parentId": "order-org::wi-00000009",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 6,
+              "order-org::b3": 0,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w8",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "childrenIds": [
+              "order-org::wi-00000010",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000009",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 5,
+              "order-org::b3": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "in_progress",
+            "title": "Mike",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertHyperlink",
+        {
+          "altText": "C",
+          "id": "00000008-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000007",
+        },
+        "order-org",
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {
+      "order-org::wi-00000007": [
+        {
+          "altText": "C",
+          "id": "00000008-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000007",
+        },
+      ],
+    },
+    "log": [
+      [
+        "Duplicate",
+        "order-org::wi-00000006",
+        "2 root(s), 4 total",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": [
+      "order-org::wi-00000006",
+      "order-org::wi-00000009",
+    ],
+    "selected": [
+      "order-org::wi-00000006",
+      "order-org::wi-00000009",
+    ],
+    "step": "w2 and w4, w8 under w4",
+    "undo": 2,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+          "order-org::wi-00000006",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 9,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 6,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 7,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::wi-00000006": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [
+          "order-org::wi-00000007",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000006",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::wi-00000007": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000007",
+        "organizationId": "order-org",
+        "parentId": "order-org::wi-00000006",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::wi-00000009": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "childrenIds": [
+          "order-org::wi-00000010",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000009",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 5,
+          "order-org::b3": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::wi-00000010": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "childrenIds": [],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000010",
+        "organizationId": "order-org",
+        "parentId": "order-org::wi-00000009",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [
+      [
+        "assignTeamToWorkItem",
+        "order-org::wi-00000011",
+        "team1",
+        "order-org",
+      ],
+    ],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [
+              "order-org::wi-00000007",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000006",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 3,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000012",
+            "organizationId": "order-org",
+            "parentId": "order-org::wi-00000011",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w3",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "childrenIds": [
+              "order-org::wi-00000012",
+            ],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000011",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w2",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertHyperlink",
+        {
+          "altText": "C",
+          "id": "00000013-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000012",
+        },
+        "order-org",
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {
+      "order-org::wi-00000012": [
+        {
+          "altText": "C",
+          "id": "00000013-0000-4000-8000-000000000000",
+          "rank": 0,
+          "url": "https://c.example",
+          "workItemId": "order-org::wi-00000012",
+        },
+      ],
+    },
+    "log": [
+      [
+        "Duplicate",
+        "order-org::wi-00000011",
+        "1 root(s), 2 total",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": [
+      "order-org::wi-00000011",
+    ],
+    "selected": [
+      "order-org::wi-00000011",
+    ],
+    "step": "w3 and its parent w2 (only the parent's copy is a root)",
+    "undo": 3,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+          "order-org::wi-00000006",
+          "order-org::wi-00000011",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::wi-00000006": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [
+          "order-org::wi-00000007",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000006",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::wi-00000011": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [
+          "order-org::wi-00000012",
+        ],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000011",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::wi-00000012": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "childrenIds": [],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000012",
+        "organizationId": "order-org",
+        "parentId": "order-org::wi-00000011",
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1a",
+            },
+            "childrenIds": [],
+            "createdOn": "2026-03-04",
+            "deadline": undefined,
+            "description": undefined,
+            "id": "order-org::wi-00000014",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": undefined,
+            "points": undefined,
+            "ranks": {
+              "order-org::b1a": 1,
+            },
+            "rating": undefined,
+            "respawnEnabled": undefined,
+            "respawnHour": undefined,
+            "respawnIntervalDays": undefined,
+            "respawnLastTriggeredAt": undefined,
+            "respawnMinute": undefined,
+            "status": "not_started",
+            "title": "w9",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Duplicate",
+        "order-org::wi-00000014",
+        "1 root(s), 1 total",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": [
+      "order-org::wi-00000014",
+    ],
+    "selected": [
+      "order-org::wi-00000014",
+    ],
+    "step": "w9 in b1a",
+    "undo": 4,
+    "workItems": {
+      "order-org::wi-00000014": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1a",
+        },
+        "childrenIds": [],
+        "createdOn": "2026-03-04",
+        "deadline": undefined,
+        "description": undefined,
+        "id": "order-org::wi-00000014",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": undefined,
+        "points": undefined,
+        "ranks": {
+          "order-org::b1a": 1,
+        },
+        "rating": undefined,
+        "respawnEnabled": undefined,
+        "respawnHour": undefined,
+        "respawnIntervalDays": undefined,
+        "respawnLastTriggeredAt": undefined,
+        "respawnMinute": undefined,
+        "status": "not_started",
+        "title": "w9",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "deleteWorkItems",
+        [
+          "order-org::wi-00000014",
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Duplicate",
+        "order-org::wi-00000011",
+        "1 root(s), 2 total",
+      ],
+      [
+        "Duplicate",
+        "order-org::wi-00000006",
+        "2 root(s), 4 total",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 1,
+    "returned": undefined,
+    "selected": [
+      "order-org::wi-00000011",
+    ],
+    "step": "undo",
+    "undo": 3,
+    "workItems": {
+      "order-org::wi-00000014": "REMOVED",
+    },
+  },
+]
+`;
+
+exports[`moving > out of a tree, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 3,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b1": 6,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Remove from Tree",
+        "order-org::w4",
+        "tree: "T2"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w4 out of tree two",
+    "undo": 1,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "deleteWorkItems",
+        [
+          "order-org::w8",
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Remove from Tree",
+        "order-org::w8",
+        "tree: "T1"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w8 out of tree one (still in two)",
+    "undo": 2,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w8": "REMOVED",
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "deleteWorkItems",
+        [
+          "order-org::w2",
+          "order-org::w3",
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Remove from Tree",
+        "order-org::w2",
+        "tree: "T1"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w2 out of tree one (its only one)",
+    "undo": 3,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": "REMOVED",
+      "order-org::w3": "REMOVED",
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "deleteWorkItems",
+        [
+          "order-org::w5",
+          "order-org::w7",
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Remove from Tree",
+        "order-org::w5",
+        undefined,
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w5 and w7 out of tree one",
+    "undo": 4,
+    "workItems": {
+      "order-org::w5": "REMOVED",
+      "order-org::w7": "REMOVED",
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "restoreWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 4,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 5,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+        {
+          "order-org::w1": [
+            {
+              "altText": "A",
+              "id": "h1",
+              "rank": 0,
+              "url": "https://a.example",
+              "workItemId": "order-org::w1",
+            },
+          ],
+          "order-org::w3": [
+            {
+              "altText": "C",
+              "id": "h3",
+              "rank": 0,
+              "url": "https://c.example",
+              "workItemId": "order-org::w3",
+            },
+          ],
+        },
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Remove from Tree",
+        "order-org::w2",
+        "tree: "T1"",
+      ],
+      [
+        "Remove from Tree",
+        "order-org::w8",
+        "tree: "T1"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 3,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+]
+`;
+
+exports[`moving > to another list or tree, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {
+              "order-org::b2": -1,
+            },
+            "childrenIds": [
+              "order-org::w2",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b2": -1,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {
+              "order-org::b2": 0,
+            },
+            "childrenIds": [
+              "order-org::w3",
+            ],
+            "id": "order-org::w2",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "ranks": {
+              "order-org::b2": 0,
+            },
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {
+              "order-org::b2": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w2",
+            "ranks": {
+              "order-org::b2": 0,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "organizationId": "order-org",
+            "rank": -1,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w2",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w3",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w2",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w3",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w1",
+        "list: "B1" → "B2"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b2",
+          "organizationId": "order-org",
+          "rank": -1,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b2",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w2",
+        },
+        {
+          "backlogId": "order-org::b2",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w3",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w1 with its children to b2",
+    "undo": 1,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {
+          "order-org::b2": -1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b2": -1,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {
+          "order-org::b2": 0,
+        },
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {
+          "order-org::b2": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+              "order-org::b3": -1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 5,
+              "order-org::b3": -1,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": -1,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "?" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": -1,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w4 mirrored into b3 of tree two",
+    "undo": 2,
+    "workItems": {
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+          "order-org::b3": -1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+          "order-org::b3": -1,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b3": -2,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b3": -2,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": -2,
+            "workItemId": "order-org::w5",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w5",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w5",
+        "list: "?" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": -2,
+          "workItemId": "order-org::w5",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w5 moved to tree two",
+    "undo": 3,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b3": -2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b3": -2,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1b",
+            },
+            "boardRanks": {
+              "order-org::b1b": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1b": 0,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1b",
+            },
+            "boardRanks": {
+              "order-org::b1b": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w9",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1b": 1,
+            },
+            "status": "not_started",
+            "title": "w9",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1b",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w6",
+          },
+          {
+            "backlogId": "order-org::b1b",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w9",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w6",
+          },
+          {
+            "backlogId": "order-org::b1a",
+            "workItemId": "order-org::w9",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w6",
+        "list: "B2" → "B1b"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1b",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w6",
+        },
+        {
+          "backlogId": "order-org::b1b",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w9",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w6 and w9 to b1b",
+    "undo": 4,
+    "workItems": {
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1b",
+        },
+        "boardRanks": {
+          "order-org::b1b": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1b": 0,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+      "order-org::w9": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1b",
+        },
+        "boardRanks": {
+          "order-org::b1b": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w9",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1b": 1,
+        },
+        "status": "not_started",
+        "title": "w9",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b3": -1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b3": -1,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b3": -3,
+            },
+            "childrenIds": [],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b3": -3,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": -3,
+            "workItemId": "order-org::w6",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1b",
+            "workItemId": "order-org::w6",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "B3" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": -3,
+          "workItemId": "order-org::w6",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w6 and w7 moved to tree two",
+    "undo": 5,
+    "workItems": {
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b3": -3,
+        },
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b3": -3,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b3": -1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b3": -1,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b2": -2,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b2": -2,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b2": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b2": 0,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "organizationId": "order-org",
+            "rank": -2,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Move to List",
+        "order-org::w4",
+        "list: "B1" → "B2"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b2",
+          "organizationId": "order-org",
+          "rank": -2,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b2",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w8",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w4 mirrored into b2 (same tree)",
+    "undo": 6,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b2": -2,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b2": -2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b2": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b2": 0,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 3,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b1": 6,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w4",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBoardRanks",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "B3" → "B3"",
+      ],
+      [
+        "Move to List",
+        "order-org::w6",
+        "list: "B2" → "B1b"",
+      ],
+      [
+        "Move to List",
+        "order-org::w5",
+        "list: "?" → "B3"",
+      ],
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "?" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w4",
+        },
+      ],
+    },
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 5,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1b",
+            },
+            "boardRanks": {
+              "order-org::b1b": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1b": 0,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+              "order-org::b3": -1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 5,
+              "order-org::b3": -1,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1b",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w6",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBoardRanks",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "workItemId": "order-org::w6",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "workItemId": "order-org::w6",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Move to List",
+        "order-org::w6",
+        "list: "B2" → "B1b"",
+      ],
+      [
+        "Move to List",
+        "order-org::w5",
+        "list: "?" → "B3"",
+      ],
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "?" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1b",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w6",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 2,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 4,
+    "workItems": {
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1b",
+        },
+        "boardRanks": {
+          "order-org::b1b": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1b": 0,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+          "order-org::b3": -1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+          "order-org::b3": -1,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b3": -3,
+            },
+            "childrenIds": [],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b3": -3,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b3": -1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b3": -1,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": -3,
+            "workItemId": "order-org::w6",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBoardRanks",
+        [
+          {
+            "backlogId": "order-org::b1b",
+            "workItemId": "order-org::w6",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b1b",
+            "workItemId": "order-org::w6",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Move to List",
+        "order-org::w7",
+        "list: "B3" → "B3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": -3,
+          "workItemId": "order-org::w6",
+        },
+      ],
+    },
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "redo",
+    "undo": 5,
+    "workItems": {
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b3": -3,
+        },
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b3": -3,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b3": -1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b3": -1,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+]
+`;
+
+exports[`moving > under another item in another list, with everything under it 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w2",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": "order-org::w6",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b2": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w1",
+            ],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b2": 0,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w3",
+            ],
+            "id": "order-org::w2",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "ranks": {
+              "order-org::b2": 1,
+            },
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w2",
+            "ranks": {
+              "order-org::b2": 2,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w1",
+        "parent: "none" → "w6"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w1, with w2 and w3 under it, under w6 in b2",
+    "undo": 1,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": "order-org::w6",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b2": 1,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b2": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w1",
+        ],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w2",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w3",
+            ],
+            "id": "order-org::w2",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "ranks": {
+              "order-org::b1": 1,
+            },
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w2",
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w2",
+          },
+          {
+            "backlogId": "order-org::b2",
+            "workItemId": "order-org::w3",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 0,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+    },
+  },
+]
+`;
+
+exports[`moving > under another item, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w2",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "ranks": {
+              "order-org::b1": 1,
+            },
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w2",
+              "order-org::w3",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w3",
+        "parent: "w2" → "Zulu"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w3 under w1",
+    "undo": 1,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+          "order-org::w3",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+              "order-org::w7",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 3,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w7",
+        "parent: "none" → "Mike"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w7 under w4, at rank 0",
+    "undo": 2,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+          "order-org::w7",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 7,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w2",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 8,
+            },
+            "status": "not_started",
+            "title": "w2",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w3",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w2",
+        "parent: "Zulu" → "none"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w2 to the top level",
+    "undo": 3,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 8,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 3,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w3",
+              "order-org::w6",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w6",
+        "parent: "none" → "Zulu"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w6 from b2 under w1 in b1",
+    "undo": 4,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w3",
+          "order-org::w6",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+              "order-org::w7",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": {
+              "order-org::t1": "order-org::w6",
+            },
+            "ranks": {
+              "order-org::b2": 0,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w4",
+            ],
+            "id": "order-org::w6",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 3,
+            },
+            "status": "not_started",
+            "title": "w6",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b2": 7,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+            },
+            "boardRanks": {
+              "order-org::b1": 1,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b2": 0,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w4",
+        "parent: "none" → "w6"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w4 with w8 under it, under w6 in b2",
+    "undo": 5,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+          "order-org::w7",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": {
+          "order-org::t1": "order-org::w6",
+        },
+        "ranks": {
+          "order-org::b2": 0,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w6": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w4",
+        ],
+        "id": "order-org::w6",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "w6",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b2": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b2": 7,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [],
+            "id": "order-org::w9",
+            "organizationId": "order-org",
+            "parentId": "order-org::w8",
+            "parentIds": {},
+            "ranks": {
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w9",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w9",
+            ],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b2": 7,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w9",
+        "parent: "none" → "w8" (move to tree)",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w9 under w8 in tree two, moved there",
+    "undo": 6,
+    "workItems": {
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w9",
+        ],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b2": 7,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+      "order-org::w9": {
+        "backlogAssignments": {
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w9",
+        "organizationId": "order-org",
+        "parentId": "order-org::w8",
+        "parentIds": {},
+        "ranks": {
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w9",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "parentIds": {
+              "order-org::t2": "order-org::w8",
+            },
+            "ranks": {
+              "order-org::b1": 4,
+              "order-org::b3": 1,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b2",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w9",
+              "order-org::w5",
+            ],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b2": 7,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w5",
+        "parent: "none" → "w8" (mirror)",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w5 under w8 in tree two, mirrored",
+    "undo": 7,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "parentIds": {
+          "order-org::t2": "order-org::w8",
+        },
+        "ranks": {
+          "order-org::b1": 4,
+          "order-org::b3": 1,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w9",
+          "order-org::w5",
+        ],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b2": 7,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w3",
+              "order-org::w6",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": "order-org::w3",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {},
+            "childrenIds": [
+              "order-org::w1",
+            ],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w1",
+            "parentIds": undefined,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reparent",
+        "order-org::w1",
+        "parent: "none" → "w3"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w1 under its own grandchild (refused)",
+    "undo": 8,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w3",
+          "order-org::w6",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": "order-org::w3",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w1",
+        ],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w3",
+              "order-org::w6",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Reparent",
+        "order-org::w5",
+        "parent: "none" → "w8" (mirror)",
+      ],
+      [
+        "Reparent",
+        "order-org::w9",
+        "parent: "none" → "w8" (move to tree)",
+      ],
+      [
+        "Reparent",
+        "order-org::w4",
+        "parent: "none" → "w6"",
+      ],
+      [
+        "Reparent",
+        "order-org::w6",
+        "parent: "none" → "Zulu"",
+      ],
+      [
+        "Reparent",
+        "order-org::w2",
+        "parent: "Zulu" → "none"",
+      ],
+      [
+        "Reparent",
+        "order-org::w7",
+        "parent: "none" → "Mike"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 7,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w3",
+          "order-org::w6",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "parentIds": undefined,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 4,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "deleteWorkItemBacklogRanks",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "workItemId": "order-org::w5",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Reparent",
+        "order-org::w9",
+        "parent: "none" → "w8" (move to tree)",
+      ],
+      [
+        "Reparent",
+        "order-org::w4",
+        "parent: "none" → "w6"",
+      ],
+      [
+        "Reparent",
+        "order-org::w6",
+        "parent: "none" → "Zulu"",
+      ],
+      [
+        "Reparent",
+        "order-org::w2",
+        "parent: "Zulu" → "none"",
+      ],
+      [
+        "Reparent",
+        "order-org::w7",
+        "parent: "none" → "Mike"",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 2,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 6,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b2",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w9",
+        ],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b2": 7,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+]
+`;
+
+exports[`ordering > in a list, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 4,
+            "workItemId": "order-org::w10",
+          },
+        ],
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w1",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w7",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w1",
+        },
+      ],
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 4,
+          "workItemId": "order-org::w10",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w7 to the top of b1",
+    "undo": 1,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w2",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w2",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w2",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w2 among its siblings (alone)",
+    "undo": 2,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 4,
+            "workItemId": "order-org::w10",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w1",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 4,
+          "workItemId": "order-org::w10",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w1 to the bottom",
+    "undo": 3,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 4,
+            "workItemId": "order-org::w10",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w5",
+        "2 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 4,
+          "workItemId": "order-org::w10",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "w4 and w5 selected, w5 dragged up one",
+    "undo": 4,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1a",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w9",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 4,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 5,
+            "workItemId": "order-org::w10",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w9",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1a",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w9",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 4,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 5,
+          "workItemId": "order-org::w10",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "w9 into the view of b1 and b1a, to the top",
+    "undo": 5,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::w9": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1a",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w9",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1a": 0,
+        },
+        "status": "not_started",
+        "title": "w9",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w8",
+          },
+          {
+            "backlogId": "order-org::b3",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w4",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Reorder",
+        "order-org::w8",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w8",
+        },
+        {
+          "backlogId": "order-org::b3",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w4",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "w8, a child here and a root in tree two, to the top of b3",
+    "undo": 6,
+    "workItems": {
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {},
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w10",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w4",
+          },
+        ],
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w10",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w1",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Sort",
+        "order-org::t1",
+        "5 items sorted alphabetically",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w10",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w1",
+        },
+      ],
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w10",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w4",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "sort b1 by name",
+    "undo": 7,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Sort",
+        "order-org::w1",
+        "1 items sorted alphabetically",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "sort under w1",
+    "undo": 8,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w2": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {},
+        "childrenIds": [
+          "order-org::w3",
+        ],
+        "id": "order-org::w2",
+        "organizationId": "order-org",
+        "parentId": "order-org::w1",
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "w2",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Sort",
+        "order-org::t1",
+        "custom order",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w7",
+        },
+      ],
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "order b1 as given",
+    "undo": 9,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 2,
+            },
+            "childrenIds": [
+              "order-org::w2",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 4,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 3,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Sort",
+        "order-org::w1",
+        "1 items sorted alphabetically",
+      ],
+      [
+        "Sort",
+        "order-org::t1",
+        "5 items sorted alphabetically",
+      ],
+      [
+        "Reorder",
+        "order-org::w8",
+        "1 items moved",
+      ],
+      [
+        "Reorder",
+        "order-org::w9",
+        "1 items moved",
+      ],
+      [
+        "Reorder",
+        "order-org::w5",
+        "2 items moved",
+      ],
+      [
+        "Reorder",
+        "order-org::w1",
+        "1 items moved",
+      ],
+      [
+        "Reorder",
+        "order-org::w2",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 1,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "undo",
+    "undo": 8,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w2",
+            ],
+            "id": "order-org::w1",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 1,
+            },
+            "status": "not_started",
+            "title": "Zulu",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [
+              "order-org::w8",
+            ],
+            "id": "order-org::w4",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 2,
+              "order-org::b3": 1,
+            },
+            "status": "in_progress",
+            "title": "Mike",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 0,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 2,
+            },
+            "childrenIds": [],
+            "id": "order-org::w7",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 3,
+            },
+            "status": "not_started",
+            "title": "Alpha",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Sort",
+        "order-org::t1",
+        "custom order",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [
+      "order-org::w4",
+      "order-org::w5",
+    ],
+    "step": "redo",
+    "undo": 9,
+    "workItems": {
+      "order-org::w1": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w2",
+        ],
+        "id": "order-org::w1",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 1,
+        },
+        "status": "not_started",
+        "title": "Zulu",
+      },
+      "order-org::w4": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [
+          "order-org::w8",
+        ],
+        "id": "order-org::w4",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 2,
+          "order-org::b3": 1,
+        },
+        "status": "in_progress",
+        "title": "Mike",
+      },
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 0,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 3,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+    },
+  },
+]
+`;
+
+exports[`ordering > on a board, step by step 1`] = `
+[
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w3",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w10",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w7",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w3",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w10",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w8",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w7 to the top of Not started",
+    "undo": 1,
+    "workItems": {
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 7,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 3,
+        },
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItem",
+        {
+          "backlogAssignments": {
+            "order-org::t1": "order-org::b1",
+          },
+          "boardRanks": {
+            "order-org::b1": 0,
+          },
+          "childrenIds": [],
+          "id": "order-org::w10",
+          "organizationId": "order-org",
+          "parentId": null,
+          "ranks": {
+            "order-org::b1": 5,
+          },
+          "status": "not_started",
+          "title": "Bravo",
+        },
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBacklogRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w1",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w4",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 4,
+            "workItemId": "order-org::w5",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 7,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 5,
+            "workItemId": "order-org::w10",
+          },
+        ],
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w10",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w7",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w3",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w10",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w10",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w3",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w8",
+        },
+      ],
+      "pending_work_item_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w1",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w4",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 4,
+          "workItemId": "order-org::w5",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 7,
+          "workItemId": "order-org::w7",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 5,
+          "workItemId": "order-org::w10",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w10 above w7: the list follows the column",
+    "undo": 2,
+    "workItems": {
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 7,
+        },
+        "status": "not_started",
+        "title": "Alpha",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 3,
+        },
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItem",
+        {
+          "backlogAssignments": {
+            "order-org::t1": "order-org::b1",
+          },
+          "boardRanks": {
+            "order-org::b1": 0,
+          },
+          "childrenIds": [],
+          "id": "order-org::w7",
+          "organizationId": "order-org",
+          "parentId": null,
+          "ranks": {
+            "order-org::b1": 7,
+          },
+          "status": "in_progress",
+          "title": "Alpha",
+        },
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w7",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w7",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w7",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w7 into In progress, below w4",
+    "undo": 3,
+    "workItems": {
+      "order-org::w7": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w7",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 7,
+        },
+        "status": "in_progress",
+        "title": "Alpha",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w5",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w4",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w5",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w4 into Done, at the top",
+    "undo": 4,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w10",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 1,
+            "workItemId": "order-org::w3",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w1",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w10",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 1,
+          "workItemId": "order-org::w3",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w8",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w1 within its column, no column given",
+    "undo": 5,
+    "workItems": {
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 1,
+        },
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+  {
+    "backlogTrees": "untouched",
+    "backlogs": "untouched",
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItem",
+        {
+          "backlogAssignments": {
+            "order-org::t1": "order-org::b1",
+          },
+          "boardRanks": {
+            "order-org::b1": 0,
+          },
+          "childrenIds": [],
+          "id": "order-org::w5",
+          "organizationId": "order-org",
+          "parentId": null,
+          "ranks": {
+            "order-org::b1": 4,
+          },
+          "status": "blocked",
+          "title": "Echo",
+        },
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 0,
+            "workItemId": "order-org::w5",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": "untouched",
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w5",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 0,
+          "workItemId": "order-org::w5",
+        },
+      ],
+    },
+    "redo": 0,
+    "returned": undefined,
+    "selected": [],
+    "step": "w5 to a column of its own in b3's view",
+    "undo": 6,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "blocked",
+        "title": "Echo",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 0,
+            },
+            "childrenIds": [],
+            "id": "order-org::w5",
+            "organizationId": "order-org",
+            "parentId": null,
+            "ranks": {
+              "order-org::b1": 4,
+            },
+            "status": "done",
+            "title": "Echo",
+          },
+        ],
+        "order-org",
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w1",
+        "1 items moved",
+      ],
+      [
+        "Board Reorder",
+        "order-org::w4",
+        "1 items moved",
+      ],
+      [
+        "Board Reorder",
+        "order-org::w7",
+        "1 items moved",
+      ],
+      [
+        "Board Reorder",
+        "order-org::w10",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {},
+    "redo": 1,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 5,
+    "workItems": {
+      "order-org::w5": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w5",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 4,
+        },
+        "status": "done",
+        "title": "Echo",
+      },
+    },
+  },
+  {
+    "backlogTrees": {},
+    "backlogs": {},
+    "copied": [],
+    "db": [
+      [
+        "upsertWorkItems",
+        [
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+            },
+            "boardRanks": {
+              "order-org::b1": 2,
+            },
+            "childrenIds": [],
+            "id": "order-org::w3",
+            "organizationId": "order-org",
+            "parentId": "order-org::w2",
+            "ranks": {
+              "order-org::b1": 2,
+            },
+            "status": "not_started",
+            "title": "w3",
+          },
+          {
+            "backlogAssignments": {
+              "order-org::t1": "order-org::b1",
+              "order-org::t2": "order-org::b3",
+            },
+            "boardRanks": {
+              "order-org::b1": 3,
+            },
+            "childrenIds": [],
+            "id": "order-org::w8",
+            "organizationId": "order-org",
+            "parentId": "order-org::w4",
+            "parentIds": {
+              "order-org::t2": null,
+            },
+            "ranks": {
+              "order-org::b1": 6,
+              "order-org::b3": 0,
+            },
+            "status": "not_started",
+            "title": "w8",
+          },
+        ],
+        "order-org",
+      ],
+      [
+        "upsertWorkItemBoardRankRowsDetailed",
+        [
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 2,
+            "workItemId": "order-org::w3",
+          },
+          {
+            "backlogId": "order-org::b1",
+            "organizationId": "order-org",
+            "rank": 3,
+            "workItemId": "order-org::w8",
+          },
+        ],
+      ],
+    ],
+    "hyperlinks": {},
+    "log": [
+      [
+        "Board Reorder",
+        "order-org::w4",
+        "1 items moved",
+      ],
+      [
+        "Board Reorder",
+        "order-org::w7",
+        "1 items moved",
+      ],
+      [
+        "Board Reorder",
+        "order-org::w10",
+        "1 items moved",
+      ],
+    ],
+    "queued": {},
+    "queuedAtOnce": {
+      "pending_work_item_board_rank_upserts": [
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 2,
+          "workItemId": "order-org::w3",
+        },
+        {
+          "backlogId": "order-org::b1",
+          "organizationId": "order-org",
+          "rank": 3,
+          "workItemId": "order-org::w8",
+        },
+      ],
+    },
+    "redo": 2,
+    "returned": undefined,
+    "selected": [],
+    "step": "undo",
+    "undo": 4,
+    "workItems": {
+      "order-org::w10": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 0,
+        },
+        "childrenIds": [],
+        "id": "order-org::w10",
+        "organizationId": "order-org",
+        "parentId": null,
+        "ranks": {
+          "order-org::b1": 5,
+        },
+        "status": "not_started",
+        "title": "Bravo",
+      },
+      "order-org::w3": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+        },
+        "boardRanks": {
+          "order-org::b1": 2,
+        },
+        "childrenIds": [],
+        "id": "order-org::w3",
+        "organizationId": "order-org",
+        "parentId": "order-org::w2",
+        "ranks": {
+          "order-org::b1": 2,
+        },
+        "status": "not_started",
+        "title": "w3",
+      },
+      "order-org::w8": {
+        "backlogAssignments": {
+          "order-org::t1": "order-org::b1",
+          "order-org::t2": "order-org::b3",
+        },
+        "boardRanks": {
+          "order-org::b1": 3,
+        },
+        "childrenIds": [],
+        "id": "order-org::w8",
+        "organizationId": "order-org",
+        "parentId": "order-org::w4",
+        "parentIds": {
+          "order-org::t2": null,
+        },
+        "ranks": {
+          "order-org::b1": 6,
+          "order-org::b3": 0,
+        },
+        "status": "not_started",
+        "title": "w8",
+      },
+    },
+  },
+]
+`;

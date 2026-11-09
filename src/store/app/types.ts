@@ -161,3 +161,6 @@ export interface AppState extends DataSnapshot {
 /** The store's set and get, as a slice of actions is given them. */
 export type SetState = StoreApi<AppState>["setState"];
 export type GetState = StoreApi<AppState>["getState"];
+
+/** What the store's actions log a change with (internalLog). */
+export type LogChange = (entry: Omit<ChangeLogEntry, "timestamp" | "id" | "userEmail">) => void;
