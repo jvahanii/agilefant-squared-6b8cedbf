@@ -32,7 +32,7 @@ import { useTimeEntryStore } from "@/store/timeEntryStore";
 import { TimeLogDialog, formatDuration } from "./TimeLogDialog";
 import { BacklogPointsDialog } from "./BacklogPointsDialog";
 import { BacklogContextMenuItems } from "./BacklogContextMenuItems";
-import { backlogPoints, type BacklogPoints as BacklogPointsBreakdown } from "@/lib/backlogPoints";
+import { useBacklogPointsCached } from "@/lib/backlogPointsCache";
 import { useDeleteWithTimeGuard } from "@/hooks/useDeleteWithTimeGuard";
 import { useScramble } from "@/contexts/ScrambleContext";
 import { scrambleName } from "@/lib/scramble";
@@ -237,16 +237,6 @@ function useBacklogTotalMinutes(backlogId: string, treeId: string) {
   return timeLoggingVisible ? cached : 0;
 }
 
-/**
- * A backlog's points: the larger of its own estimate and its contents, which
- * are its items and those of every backlog below it. See lib/backlogPoints.
- */
-function useBacklogPoints(backlogId: string, treeId: string): BacklogPointsBreakdown {
-  const workItems = useAppStore((s) => s.workItems);
-  const backlogs = useAppStore((s) => s.backlogs);
-  return useMemo(() => backlogPoints(backlogId, treeId, workItems, backlogs), [workItems, backlogs, backlogId, treeId]);
-}
-
 const DRAG_THRESHOLD = 8; // pixels — minimum movement to count as a drag vs. a tap
 
 function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }: BacklogNodeProps) {
@@ -301,7 +291,10 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
     [setDragRef, setDropRef],
   );
 
-  const pointsBreakdown = useBacklogPoints(backlogId, backlog?.treeId ?? "");
+  // The larger of its own estimate and its contents, which are its items and
+  // those of every backlog below it — worked out once for all the rows, and
+  // read here without redrawing for another row's change (lib/backlogPointsCache).
+  const pointsBreakdown = useBacklogPointsCached(backlogId);
   const totalPoints = pointsBreakdown.effective;
   // Said on hover where the backlog has an estimate: which of the two it is.
   const pointsTitle =
@@ -314,7 +307,7 @@ function BacklogNode({ backlogId, depth, index, parentId, treeId, isScrambled }:
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const savingsIncomeVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.savingsIncomeEnabled ?? false);
   const backlogTotalMinutes = useBacklogTotalMinutes(backlogId, treeId);
-  const backlogFinancials = useBacklogFinancialTotals(backlogId, treeId);
+  const backlogFinancials = useBacklogFinancialTotals(backlogId);
   const [showTimeLogDialog, setShowTimeLogDialog] = useState(false);
   const [showMobileAttributesSheet, setShowMobileAttributesSheet] = useState(false);
   const [showStatusesDialog, setShowStatusesDialog] = useState(false);

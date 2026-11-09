@@ -138,6 +138,88 @@ export function backlogPoints(
   return { own, itemsTotal, contents, effective: Math.max(own ?? 0, contents) };
 }
 
+/**
+ * Every backlog's points at once, for a panel that shows them all: what
+ * backlogPoints gives each, from one pass over the items rather than one per
+ * backlog. The panel used to make 52 passes over 5 000 items after every
+ * change, and a move out of a long list stalled on them.
+ *
+ * Same rules: an item counts in every backlog whose subtree holds its list in
+ * the backlog's tree, unless its parent there sits inside that subtree too.
+ * "Subtree" goes down childrenIds, as subtree() does, so the backlogs a list
+ * is under are those it can be reached from.
+ */
+export function allBacklogPoints(workItems: Items, backlogs: Backlogs): Map<string, BacklogPoints> {
+  // Who lists each backlog among its children.
+  const parentsOf = new Map<string, string[]>();
+  for (const b of Object.values(backlogs)) {
+    for (const c of b.childrenIds) {
+      const list = parentsOf.get(c);
+      if (list) list.push(b.id);
+      else parentsOf.set(c, [b.id]);
+    }
+  }
+  // A backlog and every backlog whose subtree holds it.
+  const above = new Map<string, Set<string>>();
+  const aboveOf = (id: string): Set<string> => {
+    const known = above.get(id);
+    if (known) return known;
+    const ids = new Set<string>();
+    const walk = (x: string) => {
+      if (ids.has(x)) return;
+      ids.add(x);
+      parentsOf.get(x)?.forEach(walk);
+    };
+    walk(id);
+    above.set(id, ids);
+    return ids;
+  };
+
+  const itemsTotal = new Map<string, number>();
+  const memoByTree = new Map<string, Map<string, number>>();
+  for (const wi of Object.values(workItems)) {
+    for (const [treeId, at] of Object.entries(wi.backlogAssignments)) {
+      if (!at) continue;
+      const parentId = getEffectiveParentId(wi, treeId);
+      const parentAt = parentId ? workItems[parentId]?.backlogAssignments[treeId] : undefined;
+      const parentAbove = parentAt ? aboveOf(parentAt) : undefined;
+      let points: number | undefined;
+      for (const b of aboveOf(at)) {
+        // Counted by a backlog only through its own tree's assignment.
+        if (backlogs[b]?.treeId !== treeId) continue;
+        if (parentAbove?.has(b)) continue;
+        if (points === undefined) {
+          let memo = memoByTree.get(treeId);
+          if (!memo) memoByTree.set(treeId, (memo = new Map()));
+          points = itemEffectivePoints(workItems, wi.id, memo, treeId);
+        }
+        itemsTotal.set(b, (itemsTotal.get(b) ?? 0) + points);
+      }
+    }
+  }
+
+  const result = new Map<string, BacklogPoints>();
+  const pointsOf = (id: string): BacklogPoints => {
+    const known = result.get(id);
+    if (known) return known;
+    const own = backlogs[id]?.points ?? undefined;
+    const total = itemsTotal.get(id) ?? 0;
+    let uplift = 0;
+    if (estimateBelow(id, backlogs)) {
+      for (const childId of backlogs[id]?.childrenIds ?? []) {
+        const child = pointsOf(childId);
+        uplift += child.effective - child.itemsTotal;
+      }
+    }
+    const contents = total + uplift;
+    const points = { own, itemsTotal: total, contents, effective: Math.max(own ?? 0, contents) };
+    result.set(id, points);
+    return points;
+  };
+  Object.keys(backlogs).forEach(pointsOf);
+  return result;
+}
+
 /** A tree's total: its root backlogs, each at its effective points. */
 export function treePoints(treeId: string, rootBacklogIds: string[], workItems: Items, backlogs: Backlogs): number {
   const memo = new Map<string, number>();
