@@ -3,12 +3,15 @@
  * arriving over the realtime channel, row by row, and put into the store. The
  * echo of this page's own saves comes back the same way; it changes nothing,
  * and must not redraw anything either.
+ *
+ * What does change is made in the undo and redo copies too (rebaseUndo), so
+ * that undo takes back only what was done on this page.
  */
 import type { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from "@/types/models";
 import { isRecentlyDeletedWorkItem } from "../deletedWorkItems";
 import { noteItemChanged } from "@/lib/itemChangedAt";
-import type { AppState, SetState } from "./types";
-import { noteRemoteArrival, remotelyAddedWorkItemIds, remotelyAddedBacklogIds, remotelyAddedTreeIds } from "./remoteArrivals";
+import type { AppState, GetState, SetState } from "./types";
+import { rebaseUndoHistory } from "./rebaseUndo";
 import { suppressLocalRankEcho, suppressLocalBoardRankEcho } from "./rankEchoes";
 import { samePersistedWorkItem } from "./samePersistedWorkItem";
 
@@ -22,7 +25,15 @@ export type LiveUpdateActions = Pick<
   | "applyRealtimeHyperlink"
 >;
 
-export function liveUpdateActions(set: SetState): LiveUpdateActions {
+export function liveUpdateActions(set: SetState, get: GetState): LiveUpdateActions {
+  /** Puts a change from elsewhere into the store, and into the undo and redo copies. */
+  const applyRemote = (change: (state: AppState) => AppState | Partial<AppState>) => {
+    const before = get();
+    set(change);
+    const after = get();
+    if (after !== before) rebaseUndoHistory(before, after);
+  };
+
   // Debounce childrenIds re-sort from realtime rank events so batch
   // reorders don't cause visible jump-then-correct flickering.
   const pendingRankResorts = new Map<string, { parentId: string; treeId: string }>();
@@ -32,7 +43,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
     if (pendingRankResorts.size === 0) return;
     const toProcess = new Map(pendingRankResorts);
     pendingRankResorts.clear();
-    set((state) => {
+    applyRemote((state) => {
       const updatedItems = { ...state.workItems };
       let changed = false;
       for (const [, { parentId, treeId }] of toProcess) {
@@ -58,7 +69,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
     applyRealtimeWorkItem: (eventType, row) => {
       // Before anything decides the update changes nothing: the search goes by it.
       if (eventType !== 'DELETE') noteItemChanged(row.id as string, row.changed_at);
-      set((state) => {
+      applyRemote((state) => {
         const id = row.id as string;
 
         if (eventType === 'DELETE') {
@@ -96,9 +107,6 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
         // The echo of a save made before this page deleted the item, arriving
         // after. Showing it again would let the next edit save it again.
         if (!state.workItems[id] && isRecentlyDeletedWorkItem(id)) return state;
-
-        // Arrived from elsewhere: undo must not treat it as its own to delete.
-        if (!state.workItems[id]) noteRemoteArrival(remotelyAddedWorkItemIds, id);
 
 
         // INSERT or UPDATE: preserve existing childrenIds and ranks from current state.
@@ -291,7 +299,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
       const backlogId = row.backlog_id as string;
       if (eventType !== 'DELETE' && suppressLocalRankEcho(workItemId, backlogId)) return;
 
-      set((state) => {
+      applyRemote((state) => {
         const wi = state.workItems[workItemId];
         if (!wi) return state;
 
@@ -342,7 +350,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
       const backlogId = row.backlog_id as string;
       if (eventType !== 'DELETE' && suppressLocalBoardRankEcho(workItemId, backlogId)) return;
 
-      set((state) => {
+      applyRemote((state) => {
         const wi = state.workItems[workItemId];
         if (!wi) return state;
         const current = wi.boardRanks ?? {};
@@ -359,7 +367,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
     },
 
     applyRealtimeBacklog: (eventType, row) => {
-      set((state) => {
+      applyRemote((state) => {
         const id = row.id as string;
 
         if (eventType === 'DELETE') {
@@ -381,9 +389,6 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
           }
           return { backlogs: updatedBacklogs, backlogTrees: updatedTrees };
         }
-
-        // Arrived from elsewhere: undo must not treat it as its own to delete.
-        if (!state.backlogs[id]) noteRemoteArrival(remotelyAddedBacklogIds, id);
 
         // INSERT or UPDATE: preserve existing childrenIds from current state
         const newBacklog: Backlog = {
@@ -476,7 +481,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
     },
 
     applyRealtimeBacklogTree: (eventType, row) => {
-      set((state) => {
+      applyRemote((state) => {
         const id = row.id as string;
 
         if (eventType === 'DELETE') {
@@ -485,9 +490,6 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
           delete updatedTrees[id];
           return { backlogTrees: updatedTrees };
         }
-
-        // Arrived from elsewhere: undo must not treat it as its own to delete.
-        if (!state.backlogTrees[id]) noteRemoteArrival(remotelyAddedTreeIds, id);
 
         // INSERT or UPDATE: preserve existing rootBacklogIds so backlogs stay attached
         const newTree: BacklogTree = {
@@ -503,7 +505,7 @@ export function liveUpdateActions(set: SetState): LiveUpdateActions {
     },
 
     applyRealtimeHyperlink: (eventType, row) => {
-      set((state) => {
+      applyRemote((state) => {
         const id = row.id as string;
         const workItemId = row.work_item_id as string;
 

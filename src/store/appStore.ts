@@ -51,7 +51,6 @@ import { byRank } from "@/lib/workItemRows";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "./navigationRefs";
 import { notifyPersistDebug } from "@/lib/persistDebug";
 import type { AppState, DataSnapshot } from "./app/types";
-import { keepRemoteAdditions } from "./app/remoteArrivals";
 import { recordRankWrite, recordBoardRankWrite } from "./app/rankEchoes";
 import { samePersistedWorkItem } from "./app/samePersistedWorkItem";
 import { selectionActions, storedSelection } from "./app/selection";
@@ -4124,10 +4123,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       const stack = [...state.undoStack];
       const popped = stack.pop();
       if (!popped) return;
-      const prev = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
-      persistSnapshotSwitch(state, prev);
-      set({ ...prev, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] });
+      persistSnapshotSwitch(state, popped);
+      set({ ...popped, undoStack: stack, redoStack: [...state.redoStack, snapshot(state)] });
     },
 
     redo: () => {
@@ -4135,10 +4133,9 @@ export const useAppStore = create<AppState>()((set, get) => {
       const stack = [...state.redoStack];
       const popped = stack.pop();
       if (!popped) return;
-      const next = keepRemoteAdditions(state, popped);
       bumpMutationVersion();
-      persistSnapshotSwitch(state, next);
-      set({ ...next, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack });
+      persistSnapshotSwitch(state, popped);
+      set({ ...popped, undoStack: [...state.undoStack, snapshot(state)], redoStack: stack });
     },
 
     runBulk: (fn) => {
@@ -4233,7 +4230,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
-    ...liveUpdateActions(set),
+    ...liveUpdateActions(set, get),
 
     loadHyperlinksForItem: async (workItemId) => {
       const links = await loadHyperlinksForWorkItems([workItemId]);
