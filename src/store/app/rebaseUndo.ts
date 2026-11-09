@@ -1,5 +1,9 @@
 /**
  * Changes from elsewhere, carried into the copies undo and redo go back to.
+ * They arrive row by row over the realtime channel (liveUpdates), or all at
+ * once when the data is fetched again behind the page — after a wake-up, a
+ * reconnect, an import — and both are put in the store through
+ * setFromElsewhere.
  *
  * An undo entry is a copy of the data from before an edit made here. Changes
  * arriving from elsewhere afterwards — another person, another tab, an import —
@@ -19,11 +23,14 @@
  * - One deleted elsewhere is gone from the copies: undo does not bring back
  *   what someone else deleted.
  *
+ * A fetch hands back every entry as a new object, changed or not, so whether a
+ * field was changed elsewhere is told by its content, not by its identity.
+ *
  * The copies are changed in place. The stacks own them: each entry is made by
  * snapshot(), which copies the maps, and an entry taken off a stack is not put
  * back on one.
  */
-import type { AppState } from "./types";
+import type { AppState, GetState, SetState } from "./types";
 
 const MAPS = ["workItems", "backlogs", "backlogTrees", "hyperlinks"] as const;
 type MapName = (typeof MAPS)[number];
@@ -39,6 +46,23 @@ function changedKeys(before: Record<string, unknown>, after: Record<string, unkn
 
 const isRecord = (v: unknown): v is Entry => typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** Whether two values hold the same data: plain objects and arrays by content. */
+export function sameData(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    const bs = b as unknown[];
+    return a.length === bs.length && a.every((v, i) => sameData(v, bs[i]));
+  }
+  if (Object.getPrototypeOf(a) !== Object.prototype || Object.getPrototypeOf(b) !== Object.prototype) return false;
+  const ao = a as Entry;
+  const bo = b as Entry;
+  const keys = Object.keys(ao).filter((k) => ao[k] !== undefined);
+  if (keys.length !== Object.keys(bo).filter((k) => bo[k] !== undefined).length) return false;
+  return keys.every((k) => sameData(ao[k], bo[k]));
+}
+
 /**
  * The copy's version of an entry, given that it was `was` here before the
  * change from elsewhere and is `now` after it.
@@ -53,7 +77,7 @@ function carried(copy: unknown, was: unknown, now: unknown): unknown {
   // Changed both here and elsewhere: the fields changed elsewhere.
   let out: Entry | null = null;
   for (const f of new Set([...Object.keys(was), ...Object.keys(now)])) {
-    if (was[f] === now[f] || copy[f] === now[f]) continue;
+    if (sameData(was[f], now[f]) || copy[f] === now[f]) continue;
     out ??= { ...copy };
     if (now[f] === undefined) delete out[f];
     else out[f] = now[f];
@@ -84,4 +108,19 @@ export function rebaseUndoHistory(before: AppState, after: AppState): void {
       }
     }
   }
+}
+
+/**
+ * Puts what came from elsewhere into the store — a realtime row, or a fresh
+ * fetch — and into the undo and redo copies.
+ */
+export function setFromElsewhere(
+  set: SetState,
+  get: GetState,
+  change: Partial<AppState> | ((state: AppState) => AppState | Partial<AppState>),
+): void {
+  const before = get();
+  set(change);
+  const after = get();
+  if (after !== before) rebaseUndoHistory(before, after);
 }

@@ -11,7 +11,7 @@ import type { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from "
 import { isRecentlyDeletedWorkItem } from "../deletedWorkItems";
 import { noteItemChanged } from "@/lib/itemChangedAt";
 import type { AppState, GetState, SetState } from "./types";
-import { rebaseUndoHistory } from "./rebaseUndo";
+import { setFromElsewhere } from "./rebaseUndo";
 import { suppressLocalRankEcho, suppressLocalBoardRankEcho } from "./rankEchoes";
 import { samePersistedWorkItem } from "./samePersistedWorkItem";
 
@@ -26,13 +26,7 @@ export type LiveUpdateActions = Pick<
 >;
 
 export function liveUpdateActions(set: SetState, get: GetState): LiveUpdateActions {
-  /** Puts a change from elsewhere into the store, and into the undo and redo copies. */
-  const applyRemote = (change: (state: AppState) => AppState | Partial<AppState>) => {
-    const before = get();
-    set(change);
-    const after = get();
-    if (after !== before) rebaseUndoHistory(before, after);
-  };
+  const applyRemote = (change: (state: AppState) => AppState | Partial<AppState>) => setFromElsewhere(set, get, change);
 
   // Debounce childrenIds re-sort from realtime rank events so batch
   // reorders don't cause visible jump-then-correct flickering.

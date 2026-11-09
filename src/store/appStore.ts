@@ -55,6 +55,7 @@ import { recordRankWrite, recordBoardRankWrite } from "./app/rankEchoes";
 import { samePersistedWorkItem } from "./app/samePersistedWorkItem";
 import { selectionActions, storedSelection } from "./app/selection";
 import { liveUpdateActions } from "./app/liveUpdates";
+import { setFromElsewhere } from "./app/rebaseUndo";
 
 function generateMockData() {
   return JSON.parse(JSON.stringify(staticMockData));
@@ -1568,7 +1569,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         // Only replace state if the user hasn't switched orgs while the
         // background refresh was in flight.
         if (get().organizationId === orgId) {
-          set({
+          // Into the undo copies too: an undo after a wake-up must not take
+          // back what others did while the page slept.
+          setFromElsewhere(set, get, {
             workItems: cleanData.workItems,
             backlogs: cleanData.backlogs,
             backlogTrees: cleanData.backlogTrees,
@@ -4234,7 +4237,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     loadHyperlinksForItem: async (workItemId) => {
       const links = await loadHyperlinksForWorkItems([workItemId]);
-      set((state) => ({
+      setFromElsewhere(set, get, (state) => ({
         hyperlinks: { ...state.hyperlinks, [workItemId]: links[workItemId] ?? [] },
       }));
     },

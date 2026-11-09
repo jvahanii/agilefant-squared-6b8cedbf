@@ -11,11 +11,17 @@
  * carried into the copies too, and undo leaves it alone. Where the same item
  * was changed both here and elsewhere, undo takes back only the fields changed
  * here — and not even those where someone else has since changed them again.
+ *
+ * The same holds for what a fetch behind the page brings — after a wake-up, a
+ * reconnect, an import — where every item comes back as a new copy, changed or
+ * not.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore, resetRankEchoSuppression } from "@/store/appStore";
+import { sameData } from "@/store/app/rebaseUndo";
 import * as sync from "@/store/supabaseSync";
-import type { Backlog, BacklogTree, WorkItem } from "@/types/models";
+import { writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
+import type { Backlog, BacklogTree, Hyperlink, WorkItem } from "@/types/models";
 
 vi.mock("@/store/supabaseSync", () => ({
   loadFromSupabase: vi.fn().mockResolvedValue({ workItems: {}, backlogs: {}, backlogTrees: {} }),
@@ -45,6 +51,11 @@ vi.mock("@/store/supabaseSync", () => ({
   updateBacklogStartEndDatesEnabled: vi.fn(),
   updateBacklogPoints: vi.fn(),
   updateBacklogViewMode: vi.fn(),
+}));
+vi.mock("@/store/changeLog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/store/changeLog")>()),
+  loadChangeLog: vi.fn().mockResolvedValue([]),
+  insertChangeLogEntry: vi.fn().mockResolvedValue(undefined),
 }));
 
 const ORG = "undo-remote-org";
@@ -230,5 +241,112 @@ describe("an undo after changes from elsewhere", () => {
     undoNow();
     expect(s().hyperlinks[id("b")]?.map((l) => l.id)).toEqual(["h1"]);
     expect(sync.deleteHyperlink).not.toHaveBeenCalled();
+  });
+});
+
+/** The database as a fetch hands it back: everything as it is here, as new copies, then changed. */
+function database(change: (data: { workItems: Record<string, WorkItem>; backlogs: Record<string, Backlog>; backlogTrees: Record<string, BacklogTree> }) => void = () => {}) {
+  const data = JSON.parse(JSON.stringify({ workItems: s().workItems, backlogs: s().backlogs, backlogTrees: s().backlogTrees }));
+  change(data);
+  return data;
+}
+
+/** A load with the page already showing data, as on a wake-up: the fetch behind it lands in the store. */
+async function fetchBehindThePage(data: ReturnType<typeof database>, links: Record<string, Hyperlink[]> = {}) {
+  writeCachedAppData(ORG, {
+    workItems: s().workItems, backlogs: s().backlogs, backlogTrees: s().backlogTrees, hyperlinks: {}, changeLog: [],
+    selectedBacklogIds: [B], selectedTreeId: T, selectedWorkItemIds: [],
+  });
+  await flushCachedWrites(ORG);
+  vi.mocked(sync.loadFromSupabase).mockResolvedValueOnce(data as never);
+  vi.mocked(sync.loadHyperlinksForWorkItems).mockResolvedValueOnce(links);
+  const fetched = s().workItems;
+  await s().loadFromSupabase();
+  for (let i = 0; i < 200 && (s().workItems === fetched || s().workItemsRefreshing); i++) {
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  expect(s().workItems).not.toBe(fetched);
+}
+
+describe("an undo after a fetch behind the page", () => {
+  it("leaves what was added and moved elsewhere, and takes back what was done here", async () => {
+    s().setWorkItemStatus(id("a"), "in_progress");
+    await fetchBehindThePage(database((d) => {
+      d.workItems[id("n")] = { ...item("n", 1) };
+      d.workItems[id("b")].ranks[B] = 2;
+      d.workItems[id("c")].ranks[B] = 3;
+      d.workItems[id("b")].title = "b renamed elsewhere";
+    }));
+    expect(order()).toEqual(["a@0", "n@1", "b renamed elsewhere@2", "c@3"]);
+
+    undoNow();
+
+    expect(s().workItems[id("a")].status).toBe("not_started");
+    expect(order()).toEqual(["a@0", "n@1", "b renamed elsewhere@2", "c@3"]);
+    expect(saved()).toEqual(["a"]);
+    expect(sync.deleteWorkItems).not.toHaveBeenCalledWith(expect.arrayContaining([id("n")]));
+  });
+
+  it("takes back a move made here that the fetch brings back as it is", async () => {
+    s().reorderWorkItemAmongSiblings(id("a"), 2, T, [B]);
+    expect(order()).toEqual(["b@0", "a@1", "c@2"]);
+    await fetchBehindThePage(database());
+
+    undoNow();
+
+    expect(order()).toEqual(["a@0", "b@1", "c@2"]);
+  });
+
+  it("leaves an item changed here where it was moved elsewhere", async () => {
+    s().setWorkItemStatus(id("a"), "in_progress");
+    await fetchBehindThePage(database((d) => {
+      d.workItems[id("a")].ranks[B] = 3;
+    }));
+    undoNow();
+    expect(s().workItems[id("a")].status).toBe("not_started");
+    expect(order()).toEqual(["b@1", "c@2", "a@3"]);
+  });
+
+  it("leaves a field changed here and then elsewhere as the fetch has it", async () => {
+    s().setWorkItemStatus(id("a"), "in_progress");
+    await fetchBehindThePage(database((d) => {
+      d.workItems[id("a")].status = "blocked";
+    }));
+    undoNow();
+    expect(s().workItems[id("a")].status).toBe("blocked");
+  });
+
+  it("does not bring back an item deleted elsewhere, and keeps a link added elsewhere", async () => {
+    s().setWorkItemStatus(id("a"), "done");
+    const link = { id: "h1", workItemId: id("b"), url: "https://x.example", altText: "X", rank: 0 } as Hyperlink;
+    await fetchBehindThePage(database((d) => {
+      delete d.workItems[id("c")];
+    }), { [id("b")]: [link] });
+    undoNow();
+    expect(s().workItems[id("a")].status).toBe("not_started");
+    expect(s().workItems[id("c")]).toBeUndefined();
+    expect(sync.restoreWorkItems).not.toHaveBeenCalled();
+    expect(s().hyperlinks[id("b")]?.map((l) => l.id)).toEqual(["h1"]);
+    expect(sync.deleteHyperlink).not.toHaveBeenCalled();
+    // Nothing but the item undone is saved, though every item came back as a new copy.
+    expect(saved()).toEqual(["a"]);
+    expect(sync.upsertHyperlink).not.toHaveBeenCalled();
+  });
+});
+
+describe("telling whether a field was changed elsewhere", () => {
+  it("goes by content: a fetch's new copy of the same data is not a change", () => {
+    expect(sameData({ [B]: 1, x: [1, { y: "z" }] }, { [B]: 1, x: [1, { y: "z" }] })).toBe(true);
+    expect(sameData({ a: 1, gone: undefined }, { a: 1 })).toBe(true);
+    expect(sameData([B, T], [B, T])).toBe(true);
+  });
+  it("sees a different order, value or key", () => {
+    expect(sameData([B, T], [T, B])).toBe(false);
+    expect(sameData({ [B]: 1 }, { [B]: 2 })).toBe(false);
+    expect(sameData({ [B]: 1 }, { [T]: 1 })).toBe(false);
+    expect(sameData({ x: [1, { y: "z" }] }, { x: [1, { y: "w" }] })).toBe(false);
+    expect(sameData([1], { 0: 1 })).toBe(false);
+    expect(sameData(new Set([1]), new Set([2]))).toBe(false);
+    expect(sameData(null, {})).toBe(false);
   });
 });
